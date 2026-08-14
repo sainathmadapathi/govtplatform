@@ -1,30 +1,33 @@
 import React, { useState } from 'react';
-import { ShieldCheck, CheckCircle2, XCircle, AlertCircle, FileText, UserCheck, ChevronRight, HelpCircle } from 'lucide-react';
+import { ShieldCheck, CheckCircle2, XCircle, FileText, UserCheck, ChevronRight, HelpCircle } from 'lucide-react';
 import { ALL_EXAMS, SSC_CGL_EXAM } from '../data/examsData';
 import { evaluateCandidateEligibility } from '../services/eligibilityEngine';
-import { UserProfile, Exam, EligibilityDiagnostic } from '../types/exam';
+import { calculateAge } from '../services/profileUtils';
+import { UserProfile, Exam, EligibilityDiagnostic, DataProvenance } from '../types/exam';
 
 interface EligibilityCalculatorProps {
   onSelectExam: (exam: Exam) => void;
-  onOpenProvenanceModal: (provenance: any) => void;
+  onOpenProvenanceModal: (provenance: DataProvenance) => void;
 }
 
 export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({ onSelectExam, onOpenProvenanceModal }) => {
   const [targetExamId, setTargetExamId] = useState<string>(SSC_CGL_EXAM.id);
-  
+
   const [profile, setProfile] = useState<UserProfile>({
-    age: 21,
     dateOfBirth: '2005-05-15',
     degree: 'B.Tech',
     branch: 'Computer Science & Engineering',
     percentage: 72,
     category: 'GENERAL',
     gender: 'Male',
-    domicileState: 'Telangana'
+    domicileState: 'Telangana',
+    nationality: 'INDIAN'
   });
 
   const selectedExam = ALL_EXAMS.find(e => e.id === targetExamId) || SSC_CGL_EXAM;
   const diagnostic: EligibilityDiagnostic = evaluateCandidateEligibility(selectedExam, profile);
+  
+  const calculatedAge = calculateAge(profile.dateOfBirth, '2026-08-01');
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
@@ -40,7 +43,7 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({ on
               Deterministic "Am I Eligible?" Diagnostic Engine
             </h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-              No guessing. No AI hallucinations. Evaluates profile parameters against verified official notification rules.
+              Evaluates profile parameters against verified official notification rules using precise cutoff date calculations.
             </p>
           </div>
         </div>
@@ -82,16 +85,16 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({ on
               </select>
             </div>
 
-            {/* Age & Date of Birth */}
+            {/* Date of Birth & Category */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
-                  Current Age (Years)
+                  Date of Birth (DOB)
                 </label>
                 <input 
-                  type="number"
-                  value={profile.age}
-                  onChange={(e) => setProfile({ ...profile, age: Number(e.target.value) })}
+                  type="date"
+                  value={profile.dateOfBirth}
+                  onChange={(e) => setProfile({ ...profile, dateOfBirth: e.target.value })}
                   style={{
                     width: '100%',
                     padding: '10px 14px',
@@ -102,6 +105,9 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({ on
                     outline: 'none'
                   }}
                 />
+                <span style={{ fontSize: '0.75rem', color: 'var(--primary)', marginTop: '4px', display: 'block' }}>
+                  Calculated Age: {calculatedAge} yrs (as of 01-08-2026)
+                </span>
               </div>
 
               <div>
@@ -131,8 +137,30 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({ on
               </div>
             </div>
 
-            {/* Educational Qualification Degree & Branch */}
+            {/* Nationality & Educational Degree */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                  Nationality
+                </label>
+                <select 
+                  value={profile.nationality}
+                  onChange={(e) => setProfile({ ...profile, nationality: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: 'var(--radius-md)',
+                    background: 'var(--bg-input)',
+                    border: '1px solid var(--border-color)',
+                    color: 'white',
+                    outline: 'none'
+                  }}
+                >
+                  <option value="INDIAN">Indian Citizen</option>
+                  <option value="OTHER">Other / Non-Citizen</option>
+                </select>
+              </div>
+
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
                   Educational Degree
@@ -157,7 +185,10 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({ on
                   <option value="Class 10th">Class 10th Secondary</option>
                 </select>
               </div>
+            </div>
 
+            {/* Specialization & Percentage */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
                   Specialization Branch
@@ -178,10 +209,7 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({ on
                   }}
                 />
               </div>
-            </div>
 
-            {/* Percentage & Domicile */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
                   Degree Percentage (%)
@@ -190,26 +218,6 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({ on
                   type="number"
                   value={profile.percentage}
                   onChange={(e) => setProfile({ ...profile, percentage: Number(e.target.value) })}
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: 'var(--radius-md)',
-                    background: 'var(--bg-input)',
-                    border: '1px solid var(--border-color)',
-                    color: 'white',
-                    outline: 'none'
-                  }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
-                  Domicile State
-                </label>
-                <input 
-                  type="text"
-                  value={profile.domicileState}
-                  onChange={(e) => setProfile({ ...profile, domicileState: e.target.value })}
                   style={{
                     width: '100%',
                     padding: '10px 14px',
@@ -257,53 +265,52 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({ on
           {/* AI Explanation Box */}
           <div style={{ background: 'rgba(255, 255, 255, 0.04)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', marginBottom: '20px', lineHeight: 1.6, fontSize: '0.9rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 700, color: '#a855f7', textTransform: 'uppercase', marginBottom: '6px' }}>
-              <HelpCircle size={14} /> GovOS Plain-English Explanation (Type C Taxonomy)
+              <HelpCircle size={14} /> GovOS Plain-English Summary (Type C Taxonomy)
             </div>
             {diagnostic.plainEnglishExplanation}
           </div>
 
           {/* Post Cadre Breakdown */}
-          <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span>Post Cadre Eligibility Breakdown ({selectedExam.posts.length} Posts)</span>
-            <button 
-              className="btn btn-outline" 
-              onClick={() => onOpenProvenanceModal(selectedExam.posts[0].provenance)}
-              style={{ fontSize: '0.75rem', padding: '4px 10px' }}
-            >
-              <FileText size={12} /> Inspect Source Citation
-            </button>
+          <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '12px' }}>
+            Post Cadre Eligibility Breakdown ({selectedExam.posts.length} Posts)
           </h4>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>
-            {diagnostic.postVerdicts.map((pv, idx) => (
-              <div 
-                key={idx} 
-                style={{ 
-                  padding: '12px 16px', 
-                  borderRadius: 'var(--radius-md)', 
-                  background: pv.eligible ? 'rgba(16, 185, 129, 0.06)' : 'rgba(244, 63, 94, 0.06)',
-                  border: `1px solid ${pv.eligible ? 'rgba(16, 185, 129, 0.2)' : 'rgba(244, 63, 94, 0.2)'}`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '12px'
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    {pv.eligible ? <CheckCircle2 size={16} color="var(--emerald)" /> : <XCircle size={16} color="var(--rose)" />}
-                    {pv.postName}
+            {diagnostic.postVerdicts.map((pv, idx) => {
+              const matchedPost = selectedExam.posts.find(p => p.postName === pv.postName) || selectedExam.posts[0];
+              return (
+                <div 
+                  key={idx} 
+                  style={{ 
+                    padding: '12px 16px', 
+                    borderRadius: 'var(--radius-md)', 
+                    background: pv.eligible ? 'rgba(16, 185, 129, 0.06)' : 'rgba(244, 63, 94, 0.06)',
+                    border: `1px solid ${pv.eligible ? 'rgba(16, 185, 129, 0.2)' : 'rgba(244, 63, 94, 0.2)'}`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px'
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {pv.eligible ? <CheckCircle2 size={16} color="var(--emerald)" /> : <XCircle size={16} color="var(--rose)" />}
+                      {pv.postName}
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                      {pv.reason}
+                    </div>
                   </div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                    {pv.reason}
-                  </div>
-                </div>
 
-                <span style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', color: 'var(--primary)', cursor: 'pointer' }} onClick={() => onOpenProvenanceModal(selectedExam.posts[0].provenance)}>
-                  [{pv.clause}]
-                </span>
-              </div>
-            ))}
+                  <span 
+                    style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', color: 'var(--primary)', cursor: 'pointer' }}
+                    onClick={() => matchedPost && onOpenProvenanceModal(matchedPost.provenance)}
+                  >
+                    [{pv.clause}]
+                  </span>
+                </div>
+              );
+            })}
           </div>
 
           <button className="btn btn-emerald" onClick={() => onSelectExam(selectedExam)} style={{ width: '100%', padding: '12px' }}>

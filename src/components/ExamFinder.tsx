@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Compass, ShieldCheck, ChevronRight, Award, ArrowUpRight, Sparkles, Filter } from 'lucide-react';
+import { Search, Compass, ShieldCheck, ChevronRight, Award, Sparkles, Filter } from 'lucide-react';
 import { ALL_EXAMS } from '../data/examsData';
 import { Exam } from '../types/exam';
 
@@ -133,14 +133,9 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({ onSelectExam, onNavigate
           {/* Step 3: Age */}
           <div>
             <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px' }}>
-              3. Current Age (Years)
+              3. Target Recruitment Year
             </label>
-            <input 
-              type="number"
-              value={ageInput}
-              onChange={(e) => setAgeInput(Number(e.target.value))}
-              min={15}
-              max={60}
+            <select 
               style={{
                 width: '100%',
                 padding: '12px 16px',
@@ -152,7 +147,9 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({ onSelectExam, onNavigate
                 fontFamily: 'var(--font-sans)',
                 outline: 'none'
               }}
-            />
+            >
+              <option value="2026">2026 Recruitment Cycle</option>
+            </select>
           </div>
         </div>
 
@@ -161,7 +158,7 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({ onSelectExam, onNavigate
           <Search size={20} color="var(--text-muted)" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)' }} />
           <input 
             type="text"
-            placeholder="Search exam name or authority e.g. SSC CGL, UPSC, IBPS..."
+            placeholder="Search exam title or authority e.g. SSC CGL, UPSC, IBPS..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{
@@ -178,14 +175,14 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({ onSelectExam, onNavigate
         </div>
       </div>
 
-      {/* Featured Exams Cards */}
+      {/* Available Exams Cards */}
       <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
           <h3 style={{ fontSize: '1.3rem', fontWeight: 700 }}>
-            Available Examinations ({filteredExams.length})
+            Available Examination Guides ({filteredExams.length})
           </h3>
           <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-            Showing verified active recruitment cycles
+            Filterable examination guides database
           </span>
         </div>
 
@@ -193,18 +190,19 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({ onSelectExam, onNavigate
           {filteredExams.map(exam => (
             <div key={exam.id} className="glass-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', borderLeft: exam.isGoldenJourney ? '4px solid var(--emerald)' : '1px solid var(--border-color)' }}>
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', gap: '8px' }}>
-                  <span className="badge badge-verified">
-                    <ShieldCheck size={14} /> OFFICIALLY VERIFIED
-                  </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
                   {exam.isGoldenJourney && (
                     <span className="badge badge-demo" style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.4)' }}>
-                      🌟 GOLDEN JOURNEY DEMO
+                      🌟 GOLDEN JOURNEY
                     </span>
                   )}
-                  {exam.isDemoData && !exam.isGoldenJourney && (
+                  {exam.isDemoData ? (
                     <span className="badge badge-demo">
-                      PROTOTYPE DEMO DATA
+                      🟡 DEMO DATA
+                    </span>
+                  ) : (
+                    <span className="badge badge-verified">
+                      <ShieldCheck size={14} /> OFFICIALLY VERIFIED
                     </span>
                   )}
                 </div>
@@ -223,20 +221,20 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({ onSelectExam, onNavigate
                 {/* Key attributes pill grid */}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
                   <span className="glass-pill">
-                    🎯 Age: 18 - 27 Yrs (Base)
+                    🎓 Graduation Criteria
                   </span>
                   <span className="glass-pill">
-                    🎓 Graduation
+                    📅 2026 Cycle
                   </span>
                   <span className="glass-pill" style={{ borderColor: 'rgba(16, 185, 129, 0.3)', color: '#34d399' }}>
-                    💰 Pay Level 4 to 8
+                    🏛️ {exam.authorityName.split(' ')[0]}
                   </span>
                 </div>
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  Cycle Code: <code style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>{exam.code}</code>
+                  Code: <code style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>{exam.code}</code>
                 </span>
 
                 <button 

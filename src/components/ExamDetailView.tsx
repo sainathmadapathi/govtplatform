@@ -34,6 +34,8 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
     setCompletedTopics(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
+  const activeCorrigendum = exam.corrigendums.find(c => c.status === 'ACTIVE');
+
   const sections = [
     { num: 1, name: '01 — Overview' },
     { num: 2, name: '02 — Dates' },
@@ -64,6 +66,8 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
     'Exam Ready'
   ];
 
+  const shortTitle = exam.title.split(' ')[0] + ' ' + (exam.title.split(' ')[1] || '');
+
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       
@@ -71,18 +75,19 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
       <div className="glass-card" style={{ padding: '28px', background: 'linear-gradient(135deg, rgba(17, 24, 39, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%)' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <span className="badge badge-verified" style={{ cursor: 'pointer' }} onClick={() => onOpenProvenanceModal(exam.dates[0].provenance)}>
-                <ShieldCheck size={14} /> OFFICIALLY VERIFIED
-              </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
               {exam.isGoldenJourney && (
                 <span className="badge badge-demo" style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.4)' }}>
                   🌟 GOLDEN JOURNEY
                 </span>
               )}
-              {exam.isDemoData && (
+              {exam.isDemoData ? (
                 <span className="badge badge-demo">
-                  DEMO DATA FOR PROTOTYPE
+                  🟡 DEMO DATA
+                </span>
+              ) : (
+                <span className="badge badge-verified">
+                  <ShieldCheck size={14} /> OFFICIALLY VERIFIED
                 </span>
               )}
             </div>
@@ -100,28 +105,28 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
               <Flag size={16} /> Report Error
             </button>
             <a href={exam.officialDomain} target="_blank" rel="noreferrer" className="btn btn-emerald" style={{ fontSize: '0.85rem' }}>
-              Official Apply Portal <ExternalLink size={16} />
+              Official Website <ExternalLink size={16} />
             </a>
           </div>
         </div>
       </div>
 
-      {/* Corrigendum Change Notification Bar */}
-      {exam.corrigendums && exam.corrigendums.length > 0 && (
+      {/* Corrigendum Change Notification Bar (Only shown when active) */}
+      {activeCorrigendum && (
         <div className="corrigendum-bar">
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <RefreshCw size={22} color="var(--amber)" className="animate-spin-slow" />
             <div>
               <div style={{ fontSize: '0.9rem', fontWeight: 800, color: '#fbbf24', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                LIVE CORRIGENDUM NOTICE: {exam.corrigendums[0].noticeNumber}
+                CORRIGENDUM NOTICE: {activeCorrigendum.noticeNumber}
               </div>
               <div style={{ fontSize: '0.85rem', color: '#fef3c7' }}>
-                {exam.corrigendums[0].diffSummary}
+                {activeCorrigendum.diffSummary}
               </div>
             </div>
           </div>
           <button className="btn btn-outline" onClick={() => setActiveSection(14)} style={{ borderColor: 'var(--amber)', color: 'var(--amber)', fontSize: '0.8rem', padding: '6px 12px' }}>
-            View Official Notice <ChevronRight size={14} />
+            View Corrigendum <ChevronRight size={14} />
           </button>
         </div>
       )}
@@ -130,7 +135,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
       <div className="glass-card" style={{ padding: '20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
           <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
-            🎯 YOUR CGL CANDIDATE JOURNEY (STEP {currentStep} OF 10)
+            🎯 YOUR {shortTitle.toUpperCase()} CANDIDATE JOURNEY (STEP {currentStep} OF 10)
           </h4>
           <span style={{ fontSize: '0.8rem', color: 'var(--primary)', fontWeight: 600 }}>
             {Math.round((currentStep / 10) * 100)}% Journey Progress
@@ -180,9 +185,11 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
               <h3 style={{ fontSize: '1.4rem', fontWeight: 800 }}>01 — Exam Overview & Roles</h3>
-              <button className="btn btn-outline" onClick={() => onOpenProvenanceModal(exam.posts[0].provenance)} style={{ fontSize: '0.75rem', padding: '4px 10px' }}>
-                <ShieldCheck size={14} /> Provenance Citation
-              </button>
+              {exam.posts[0] && (
+                <button className="btn btn-outline" onClick={() => onOpenProvenanceModal(exam.posts[0].provenance)} style={{ fontSize: '0.75rem', padding: '4px 10px' }}>
+                  <ShieldCheck size={14} /> Provenance Citation
+                </button>
+              )}
             </div>
 
             <p style={{ fontSize: '1rem', color: '#e2e8f0', lineHeight: 1.6, marginBottom: '24px' }}>
@@ -195,9 +202,19 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                 <div key={p.id} style={{ padding: '16px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)' }}>
                   <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'white', marginBottom: '4px' }}>{p.postName}</div>
                   <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>Department: {p.department}</div>
-                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                    <span className="glass-pill" style={{ color: '#34d399', borderColor: 'rgba(16,185,129,0.3)' }}>{p.payLevel}</span>
-                    <span className="glass-pill">{p.classification}</span>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <span className="glass-pill" style={{ color: '#34d399', borderColor: 'rgba(16,185,129,0.3)' }}>{p.payLevel}</span>
+                      <span className="glass-pill">{p.classification}</span>
+                    </div>
+
+                    <button 
+                      className="btn btn-outline" 
+                      onClick={() => onOpenProvenanceModal(p.provenance)}
+                      style={{ fontSize: '0.7rem', padding: '2px 8px' }}
+                    >
+                      Cite Clause
+                    </button>
                   </div>
                 </div>
               ))}
@@ -235,17 +252,26 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
         {/* Section 03: Eligibility */}
         {activeSection === 3 && (
           <div>
-            <h3 style={{ fontSize: '1.4rem', fontWeight: 800, marginBottom: '16px' }}>03 — Eligibility Rules & Cutoffs</h3>
+            <h3 style={{ fontSize: '1.4rem', fontWeight: 800, marginBottom: '16px' }}>03 — Configured Eligibility Rules</h3>
             <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>
-              Evaluated using deterministic rule trees. Try the interactive calculator below or view official clauses.
+              Dynamic qualification rules configured for {exam.title}.
             </p>
             <div style={{ padding: '20px', borderRadius: 'var(--radius-md)', background: 'rgba(99, 102, 241, 0.08)', border: '1px solid rgba(99, 102, 241, 0.3)', marginBottom: '24px' }}>
-              <h4 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '8px' }}>General Qualification Requirements</h4>
-              <ul style={{ paddingLeft: '20px', fontSize: '0.95rem', color: '#e2e8f0', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <li><strong>Age Limit:</strong> 18 to 27 Years (Base cutoff date: 01-08-2026). Category relaxations: OBC (+3 yrs), SC/ST (+5 yrs), PwBD (+10 yrs).</li>
-                <li><strong>Educational Qualification:</strong> Bachelor's Degree in any discipline from a recognized University.</li>
-                <li><strong>Nationality:</strong> Must be a Citizen of India.</li>
-              </ul>
+              <h4 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '12px' }}>Configured Rule Group ({exam.globalRuleGroup.rules.length} Rules)</h4>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {exam.globalRuleGroup.rules.map(r => (
+                  <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'rgba(255,255,255,0.04)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                    <div>
+                      <span style={{ fontWeight: 700, color: '#a5b4fc' }}>{r.ruleType}:</span> {r.operator} {Array.isArray(r.ruleValue) ? r.ruleValue.join(', ') : r.ruleValue}
+                    </div>
+
+                    <button className="btn btn-outline" onClick={() => onOpenProvenanceModal(r.provenance)} style={{ fontSize: '0.7rem', padding: '2px 8px' }}>
+                      Cite Clause
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}
@@ -253,26 +279,33 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
         {/* Section 04: Application Walkthrough */}
         {activeSection === 4 && (
           <div>
-            <h3 style={{ fontSize: '1.4rem', fontWeight: 800, marginBottom: '20px' }}>04 — Step-by-Step Official Application Guide</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
-              {exam.applicationSteps.map(st => (
-                <div key={st.stepNumber} style={{ padding: '20px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', display: 'flex', gap: '16px' }}>
-                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'var(--primary)', color: 'white', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    {st.stepNumber}
+            <h3 style={{ fontSize: '1.4rem', fontWeight: 800, marginBottom: '20px' }}>04 — Step-by-Step Application Walkthrough</h3>
+            
+            {exam.applicationSteps && exam.applicationSteps.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
+                {exam.applicationSteps.map(st => (
+                  <div key={st.stepNumber} style={{ padding: '20px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', display: 'flex', gap: '16px' }}>
+                    <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'var(--primary)', color: 'white', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {st.stepNumber}
+                    </div>
+                    <div>
+                      <h4 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '4px' }}>{st.title}</h4>
+                      <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>{st.description}</p>
+                      <span className="glass-pill" style={{ fontSize: '0.75rem', color: '#34d399', borderColor: 'rgba(16,185,129,0.3)' }}>
+                        📄 Required Document: {st.documentRequired}
+                      </span>
+                    </div>
                   </div>
-                  <div>
-                    <h4 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '4px' }}>{st.title}</h4>
-                    <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>{st.description}</p>
-                    <span className="glass-pill" style={{ fontSize: '0.75rem', color: '#34d399', borderColor: 'rgba(16,185,129,0.3)' }}>
-                      📄 Required Document: {st.documentRequired}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>
+                Official step-by-step application walkthrough is maintained on the official portal.
+              </p>
+            )}
 
             <a href={exam.officialDomain} target="_blank" rel="noreferrer" className="btn btn-emerald" style={{ padding: '14px 28px', fontSize: '1rem' }}>
-              Open Official SSC Application Portal <ExternalLink size={18} />
+              Open Official Website ({exam.authorityName}) <ExternalLink size={18} />
             </a>
           </div>
         )}
@@ -290,57 +323,63 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
 
               <div style={{ display: 'flex', gap: '12px' }}>
                 <button className="btn btn-primary" onClick={onNavigatePlanner} style={{ fontSize: '0.85rem' }}>
-                  Generate 90-Day Study Plan
+                  Generate Study Plan
                 </button>
               </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {exam.syllabus.map(subject => (
-                <div key={subject.id} style={{ border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '20px', background: 'rgba(255,255,255,0.02)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-                    <h4 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--primary)' }}>
-                      {subject.topicName}
-                    </h4>
-                    <span className="badge badge-pending">
-                      GovOS Historical Weightage: {subject.weightagePercentage}%
-                    </span>
-                  </div>
+            {exam.syllabus && exam.syllabus.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                {exam.syllabus.map(subject => (
+                  <div key={subject.id} style={{ border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '20px', background: 'rgba(255,255,255,0.02)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                      <h4 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--primary)' }}>
+                        {subject.topicName}
+                      </h4>
+                      <span className="badge badge-pending">
+                        GovOS Weightage Analysis: {subject.weightagePercentage}%
+                      </span>
+                    </div>
 
-                  <div className="grid-2">
-                    {subject.subtopics?.map(st => {
-                      const isDone = !!completedTopics[st.id];
-                      return (
-                        <div 
-                          key={st.id} 
-                          onClick={() => toggleTopic(st.id)}
-                          style={{ 
-                            padding: '12px 16px', 
-                            borderRadius: 'var(--radius-md)', 
-                            background: isDone ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255,255,255,0.03)',
-                            border: `1px solid ${isDone ? 'rgba(16, 185, 129, 0.3)' : 'var(--border-color)'}`,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '12px',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          {isDone ? <CheckSquare size={20} color="var(--emerald)" /> : <Square size={20} color="var(--text-muted)" />}
-                          <div>
-                            <div style={{ fontSize: '0.9rem', fontWeight: 600, color: isDone ? '#34d399' : 'white' }}>
-                              {st.topicName}
-                            </div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                              Weightage: ~{st.weightagePercentage}%
+                    <div className="grid-2">
+                      {subject.subtopics?.map(st => {
+                        const isDone = !!completedTopics[st.id];
+                        return (
+                          <div 
+                            key={st.id} 
+                            onClick={() => toggleTopic(st.id)}
+                            style={{ 
+                              padding: '12px 16px', 
+                              borderRadius: 'var(--radius-md)', 
+                              background: isDone ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255,255,255,0.03)',
+                              border: `1px solid ${isDone ? 'rgba(16, 185, 129, 0.3)' : 'var(--border-color)'}`,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '12px',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            {isDone ? <CheckSquare size={20} color="var(--emerald)" /> : <Square size={20} color="var(--text-muted)" />}
+                            <div>
+                              <div style={{ fontSize: '0.9rem', fontWeight: 600, color: isDone ? '#34d399' : 'white' }}>
+                                {st.topicName}
+                              </div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                Weightage: ~{st.weightagePercentage}%
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <p style={{ color: 'var(--text-secondary)' }}>
+                Syllabus tree for this exam is currently under verification pipeline.
+              </p>
+            )}
           </div>
         )}
 
@@ -349,9 +388,9 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
               <div>
-                <h3 style={{ fontSize: '1.4rem', fontWeight: 800 }}>09 — Interactive PYQ & Timed Practice Engine</h3>
+                <h3 style={{ fontSize: '1.4rem', fontWeight: 800 }}>09 — Exam-Style Practice Questions</h3>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                  Solve verified past year questions with instant accuracy feedback
+                  Practice exam-style questions with instant accuracy feedback
                 </p>
               </div>
               <button className="btn btn-emerald" onClick={onNavigatePractice}>
@@ -365,25 +404,31 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
         {activeSection === 14 && (
           <div>
             <h3 style={{ fontSize: '1.4rem', fontWeight: 800, marginBottom: '20px' }}>14 — Notification & Corrigendum Audit Log</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {exam.corrigendums.map(c => (
-                <div key={c.id} style={{ padding: '20px', borderRadius: 'var(--radius-md)', background: 'rgba(245, 158, 11, 0.06)', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span className="badge badge-changed">{c.status}</span>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Published: {c.publishedDate}</span>
+            {exam.corrigendums && exam.corrigendums.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {exam.corrigendums.map(c => (
+                  <div key={c.id} style={{ padding: '20px', borderRadius: 'var(--radius-md)', background: 'rgba(245, 158, 11, 0.06)', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span className="badge badge-changed">{c.status}</span>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Published: {c.publishedDate}</span>
+                    </div>
+                    <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fbbf24', marginBottom: '6px' }}>{c.title}</h4>
+                    <p style={{ fontSize: '0.9rem', color: '#fef3c7', marginBottom: '12px' }}>{c.summary}</p>
+                    <a href={c.pdfUrl} target="_blank" rel="noreferrer" className="btn btn-outline" style={{ fontSize: '0.8rem', padding: '6px 12px' }}>
+                      Download Corrigendum PDF <Download size={14} />
+                    </a>
                   </div>
-                  <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fbbf24', marginBottom: '6px' }}>{c.title}</h4>
-                  <p style={{ fontSize: '0.9rem', color: '#fef3c7', marginBottom: '12px' }}>{c.summary}</p>
-                  <a href={c.pdfUrl} target="_blank" rel="noreferrer" className="btn btn-outline" style={{ fontSize: '0.8rem', padding: '6px 12px' }}>
-                    Download Official PDF Corrigendum <Download size={14} />
-                  </a>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <p style={{ color: 'var(--text-secondary)' }}>
+                No active corrigendum currently recorded for {exam.title}.
+              </p>
+            )}
           </div>
         )}
 
-        {/* Default Fallback for other sections */}
+        {/* Default Fallback */}
         {activeSection !== 1 && activeSection !== 2 && activeSection !== 3 && activeSection !== 4 && activeSection !== 6 && activeSection !== 9 && activeSection !== 14 && (
           <div>
             <h3 style={{ fontSize: '1.4rem', fontWeight: 800, marginBottom: '16px' }}>
@@ -393,7 +438,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
               Displaying verified section payload for {exam.title}.
             </p>
             <div style={{ padding: '24px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)' }}>
-              Official data verified against {exam.authorityName} database records.
+              Data verified against {exam.authorityName} official records.
             </div>
           </div>
         )}

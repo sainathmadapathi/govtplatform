@@ -55,14 +55,14 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal 
 
       if (qLower.includes('eligible') || qLower.includes('b.tech') || qLower.includes('age')) {
         const dummyProfile = {
-          age: 21,
           dateOfBirth: '2005-05-15',
           degree: 'B.Tech',
           branch: 'Computer Science',
           percentage: 72,
           category: 'GENERAL' as const,
           gender: 'Male' as const,
-          domicileState: 'Telangana'
+          domicileState: 'Telangana',
+          nationality: 'INDIAN'
         };
         const diag = evaluateCandidateEligibility(SSC_CGL_EXAM, dummyProfile);
         responseText = `${diag.plainEnglishExplanation} (Verified against Section 3.1, Clause 3.1(a) of the official notification).`;

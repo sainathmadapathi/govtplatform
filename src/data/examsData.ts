@@ -50,6 +50,32 @@ const sscProvenanceGovOSAnalysis: DataProvenance = {
   verificationLevel: 'OFFICIALLY_VERIFIED'
 };
 
+const upscDemoProvenance: DataProvenance = {
+  id: 'prov-upsc-demo',
+  documentTitle: 'UPSC CSE 2026 Prototype Demo Data',
+  officialUrl: 'https://upsc.gov.in',
+  pageNumber: 1,
+  clauseNumber: 'Section 2.1 (Demo Spec)',
+  publishedDate: '2026-02-14',
+  verifiedDate: '2026-08-14',
+  verifiedBy: 'GovOS Demo Pipeline',
+  taxonomyType: 'INTERPRETATION',
+  verificationLevel: 'UNDER_VERIFICATION'
+};
+
+const ibpsDemoProvenance: DataProvenance = {
+  id: 'prov-ibps-demo',
+  documentTitle: 'IBPS PO 2026 Prototype Demo Data',
+  officialUrl: 'https://ibps.in',
+  pageNumber: 1,
+  clauseNumber: 'Section 1.1 (Demo Spec)',
+  publishedDate: '2026-08-01',
+  verifiedDate: '2026-08-14',
+  verifiedBy: 'GovOS Demo Pipeline',
+  taxonomyType: 'INTERPRETATION',
+  verificationLevel: 'UNDER_VERIFICATION'
+};
+
 export const SSC_CGL_EXAM: Exam = {
   id: 'exam-ssc-cgl-2026',
   code: 'SSC_CGL_2026',
@@ -222,7 +248,7 @@ export const SSC_CGL_EXAM: Exam = {
         id: 'rule-dob-cutoff',
         ruleType: 'DOB_CUTOFF',
         operator: '=',
-        ruleValue: '01-08-2026',
+        ruleValue: '2008-08-01',
         category: 'GENERAL',
         provenance: sscProvenanceEligibility
       },
@@ -238,7 +264,7 @@ export const SSC_CGL_EXAM: Exam = {
         id: 'rule-nationality',
         ruleType: 'NATIONALITY',
         operator: '=',
-        ruleValue: 'Citizen of India',
+        ruleValue: ['INDIAN', 'Citizen of India', 'India'],
         category: 'GENERAL',
         provenance: sscProvenanceEligibility
       }
@@ -499,7 +525,7 @@ export const SSC_CGL_EXAM: Exam = {
       topicId: 'syl-quant-2',
       subject: 'Quantitative Aptitude',
       topicName: 'Percentage & Ratio',
-      questionType: 'OFFICIAL_PYQ',
+      questionType: 'GOVOS_CREATED',
       questionText: 'If 20% of A = 50% of B, then what percentage of A is B?',
       options: [
         { id: 1, text: '20%' },
@@ -510,14 +536,14 @@ export const SSC_CGL_EXAM: Exam = {
       correctOptionIndex: 1,
       explanation: '20% of A = 50% of B ⇒ 0.20 A = 0.50 B ⇒ B/A = 0.20/0.50 = 2/5 = 40%. Thus B is 40% of A.',
       year: 2024,
-      provenance: sscProvenanceOverview
+      provenance: sscProvenanceGovOSAnalysis
     },
     {
       id: 'q-quant-02',
       topicId: 'syl-quant-4',
       subject: 'Quantitative Aptitude',
       topicName: 'Time & Work',
-      questionType: 'OFFICIAL_PYQ',
+      questionType: 'GOVOS_CREATED',
       questionText: 'A can complete a piece of work in 12 days and B can do it in 18 days. Working together, in how many days can they complete the work?',
       options: [
         { id: 1, text: '6.5 days' },
@@ -528,14 +554,14 @@ export const SSC_CGL_EXAM: Exam = {
       correctOptionIndex: 1,
       explanation: 'Combined 1 day work = 1/12 + 1/18 = (3 + 2)/36 = 5/36. Total days = 36/5 = 7.2 days.',
       year: 2024,
-      provenance: sscProvenanceOverview
+      provenance: sscProvenanceGovOSAnalysis
     },
     {
       id: 'q-reas-01',
       topicId: 'syl-reas-2',
       subject: 'Reasoning & General Intelligence',
       topicName: 'Coding-Decoding',
-      questionType: 'OFFICIAL_PYQ',
+      questionType: 'GOVOS_CREATED',
       questionText: 'In a certain code language, "SYSTEM" is written as "SYSMET". How is "FRACTION" written in that code?',
       options: [
         { id: 1, text: 'CARFNOIT' },
@@ -546,14 +572,14 @@ export const SSC_CGL_EXAM: Exam = {
       correctOptionIndex: 0,
       explanation: 'The word is divided into two halves of 4 letters: FRAC → CARF and TION → NOIT. Combining yields CARFNOIT.',
       year: 2023,
-      provenance: sscProvenanceOverview
+      provenance: sscProvenanceGovOSAnalysis
     },
     {
       id: 'q-eng-01',
       topicId: 'syl-eng-3',
       subject: 'English Comprehension',
       topicName: 'Idioms & Phrases',
-      questionType: 'OFFICIAL_PYQ',
+      questionType: 'GOVOS_CREATED',
       questionText: 'Select the most appropriate meaning of the idiom: "To burn the midnight oil".',
       options: [
         { id: 1, text: 'To work or study late into the night' },
@@ -564,14 +590,14 @@ export const SSC_CGL_EXAM: Exam = {
       correctOptionIndex: 0,
       explanation: '"To burn the midnight oil" means to read or work late into the night.',
       year: 2024,
-      provenance: sscProvenanceOverview
+      provenance: sscProvenanceGovOSAnalysis
     },
     {
       id: 'q-ga-01',
       topicId: 'syl-ga-1',
       subject: 'General Awareness',
       topicName: 'Polity & Constitution',
-      questionType: 'OFFICIAL_PYQ',
+      questionType: 'GOVOS_CREATED',
       questionText: 'Which Article of the Constitution of India provides for the Fundamental Right to Freedom of Speech and Expression?',
       options: [
         { id: 1, text: 'Article 14' },
@@ -582,7 +608,7 @@ export const SSC_CGL_EXAM: Exam = {
       correctOptionIndex: 1,
       explanation: 'Article 19(1)(a) guarantees to all citizens the right to freedom of speech and expression.',
       year: 2024,
-      provenance: sscProvenanceOverview
+      provenance: sscProvenanceGovOSAnalysis
     }
   ],
 
@@ -695,20 +721,20 @@ export const PROTOTYPE_COMPANION_EXAMS: Exam[] = [
     isDemoData: true,
     overviewDescription: 'India\'s premier examination for recruitment to IAS, IPS, IFS, IRS, and Central Group A Civil Services.',
     posts: [
-      { id: 'p-ias', postName: 'Indian Administrative Service (IAS)', department: 'Cabinet Secretariat', payLevel: 'Pay Level 10', classification: 'Group A', provenance: sscProvenanceOverview },
-      { id: 'p-ips', postName: 'Indian Police Service (IPS)', department: 'Ministry of Home Affairs', payLevel: 'Pay Level 10', classification: 'Group A', provenance: sscProvenanceOverview }
+      { id: 'p-ias', postName: 'Indian Administrative Service (IAS)', department: 'Cabinet Secretariat', payLevel: 'Pay Level 10', classification: 'Group A', provenance: upscDemoProvenance },
+      { id: 'p-ips', postName: 'Indian Police Service (IPS)', department: 'Ministry of Home Affairs', payLevel: 'Pay Level 10', classification: 'Group A', provenance: upscDemoProvenance }
     ],
     dates: [
-      { id: 'ud-01', type: 'NOTIFICATION', label: 'Official Notification', dateTimeStr: '2026-02-14 10:00:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: sscProvenanceOverview },
-      { id: 'ud-02', type: 'EXAM_TIER1', label: 'Prelims Examination', dateTimeStr: '2026-05-24 09:30:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: sscProvenanceOverview }
+      { id: 'ud-01', type: 'NOTIFICATION', label: 'Official Notification', dateTimeStr: '2026-02-14 10:00:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: upscDemoProvenance },
+      { id: 'ud-02', type: 'EXAM_TIER1', label: 'Prelims Examination', dateTimeStr: '2026-05-24 09:30:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: upscDemoProvenance }
     ],
     globalRuleGroup: {
       id: 'rg-upsc-global',
       operator: 'AND',
       rules: [
-        { id: 'ur-min', ruleType: 'AGE_MIN', operator: '>=', ruleValue: 21, category: 'GENERAL', provenance: sscProvenanceOverview },
-        { id: 'ur-max', ruleType: 'AGE_MAX', operator: '<=', ruleValue: 32, category: 'GENERAL', provenance: sscProvenanceOverview },
-        { id: 'ur-deg', ruleType: 'DEGREE_REQUIRED', operator: '=', ruleValue: ['Bachelor Degree'], category: 'GENERAL', provenance: sscProvenanceOverview }
+        { id: 'ur-min', ruleType: 'AGE_MIN', operator: '>=', ruleValue: 21, category: 'GENERAL', provenance: upscDemoProvenance },
+        { id: 'ur-max', ruleType: 'AGE_MAX', operator: '<=', ruleValue: 32, category: 'GENERAL', provenance: upscDemoProvenance },
+        { id: 'ur-deg', ruleType: 'DEGREE_REQUIRED', operator: '=', ruleValue: ['Bachelor Degree'], category: 'GENERAL', provenance: upscDemoProvenance }
       ]
     },
     stages: [],
@@ -730,18 +756,18 @@ export const PROTOTYPE_COMPANION_EXAMS: Exam[] = [
     isDemoData: true,
     overviewDescription: 'Recruitment of Probationary Officers / Management Trainees in 11 Participating Public Sector Banks across India.',
     posts: [
-      { id: 'p-ibps-po', postName: 'Probationary Officer / Management Trainee', department: 'Public Sector Banks (Bank of Baroda, PNB, Canara, etc.)', payLevel: '₹36,000 Basic Pay', classification: 'Officer Scale I', provenance: sscProvenanceOverview }
+      { id: 'p-ibps-po', postName: 'Probationary Officer / Management Trainee', department: 'Public Sector Banks (Bank of Baroda, PNB, Canara, etc.)', payLevel: '₹36,000 Basic Pay', classification: 'Officer Scale I', provenance: ibpsDemoProvenance }
     ],
     dates: [
-      { id: 'ib-01', type: 'NOTIFICATION', label: 'Official Notification', dateTimeStr: '2026-08-01 10:00:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: sscProvenanceOverview }
+      { id: 'ib-01', type: 'NOTIFICATION', label: 'Official Notification', dateTimeStr: '2026-08-01 10:00:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: ibpsDemoProvenance }
     ],
     globalRuleGroup: {
       id: 'rg-ibps-global',
       operator: 'AND',
       rules: [
-        { id: 'ir-min', ruleType: 'AGE_MIN', operator: '>=', ruleValue: 20, category: 'GENERAL', provenance: sscProvenanceOverview },
-        { id: 'ir-max', ruleType: 'AGE_MAX', operator: '<=', ruleValue: 30, category: 'GENERAL', provenance: sscProvenanceOverview },
-        { id: 'ir-deg', ruleType: 'DEGREE_REQUIRED', operator: '=', ruleValue: ['Bachelor Degree'], category: 'GENERAL', provenance: sscProvenanceOverview }
+        { id: 'ir-min', ruleType: 'AGE_MIN', operator: '>=', ruleValue: 20, category: 'GENERAL', provenance: ibpsDemoProvenance },
+        { id: 'ir-max', ruleType: 'AGE_MAX', operator: '<=', ruleValue: 30, category: 'GENERAL', provenance: ibpsDemoProvenance },
+        { id: 'ir-deg', ruleType: 'DEGREE_REQUIRED', operator: '=', ruleValue: ['Bachelor Degree'], category: 'GENERAL', provenance: ibpsDemoProvenance }
       ]
     },
     stages: [],

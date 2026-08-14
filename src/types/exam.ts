@@ -205,4 +205,5 @@ export interface SourceHealthLog {
   textChanged: boolean;
   adminReviewStatus: 'HEALTHY' | 'CONFLICT_DETECTED' | 'REVIEWED';
   previousValue?: string;
-  newValue?: st
+  newValue?: string;
+}
