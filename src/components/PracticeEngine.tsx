@@ -68,6 +68,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
   const targetPost = ALL_POST_STUDY_PATHS[targetPostId] || ALL_POST_STUDY_PATHS['post-aso-css'];
 
   const questionsList = selectedPaper.questions;
+  const currentQ = questionsList[currentIdx] || questionsList[0];
 
   // Auto-scroll chat to bottom on new message
   useEffect(() => {
