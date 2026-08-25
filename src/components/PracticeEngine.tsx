@@ -3,12 +3,19 @@ import {
   Award, Clock, CheckCircle2, XCircle, HelpCircle, ShieldCheck, RefreshCw, 
   ChevronRight, ChevronLeft, Bookmark, BarChart2, CheckSquare, RotateCcw, Flame,
   FileText, Target, Zap, BookOpen, AlertTriangle, TrendingUp, Calendar, Compass, 
-  Database, Play, Pause, List, Check
+  Database, Play, Pause, List, Sparkles, Sliders, Check, ArrowRight
 } from 'lucide-react';
 import { Exam, PracticeQuestion, DataProvenance } from '../types/exam';
 import { storageService, MockAttemptRecord } from '../services/storageService';
 import { ALL_POST_STUDY_PATHS } from '../data/postStudyPathsData';
-import { OFFICIAL_10_MOCK_PAPERS, MockPaper } from '../data/mockPapersData';
+import { 
+  OFFICIAL_10_MOCK_PAPERS, 
+  SUBJECT_MOCK_TESTS, 
+  TOPIC_DRILL_TESTS, 
+  MockPaper, 
+  CustomTestConfig, 
+  generateCustomMockTest 
+} from '../data/mockPapersData';
 
 interface PracticeEngineProps {
   exam: Exam;
@@ -17,9 +24,9 @@ interface PracticeEngineProps {
 
 export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProvenanceModal }) => {
   // Navigation & Modes
-  const [activePracticeTab, setActivePracticeTab] = useState<'PAPERS_LIST' | 'ACTIVE_TEST' | 'PAST_ANALYTICS'>('PAPERS_LIST');
+  const [activePracticeTab, setActivePracticeTab] = useState<'PAPERS_LIST' | 'SUBJECT_TESTS' | 'TOPIC_DRILLS' | 'AI_GENERATOR' | 'ACTIVE_TEST' | 'PAST_ANALYTICS'>('PAPERS_LIST');
   const [selectedPaper, setSelectedPaper] = useState<MockPaper>(OFFICIAL_10_MOCK_PAPERS[0]);
-  const [activeSection, setActiveSection] = useState<'ALL' | 'Reasoning & General Intelligence' | 'General Awareness' | 'Quantitative Aptitude' | 'English Comprehension'>('ALL');
+  const [activeSection, setActiveSection] = useState<string>('ALL');
   
   // Active Test State
   const [isTestStarted, setIsTestStarted] = useState<boolean>(false);
@@ -27,8 +34,14 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
   const [userAnswers, setUserAnswers] = useState<Record<number, number>>({});
   const [markedForReview, setMarkedForReview] = useState<Record<number, boolean>>({});
   const [isSubmittedTest, setIsSubmittedTest] = useState<boolean>(false);
-  const [timerSeconds, setTimerSeconds] = useState<number>(3600); // Official 60 minutes = 3600s
+  const [timerSeconds, setTimerSeconds] = useState<number>(3600);
   const [isTimerPaused, setIsTimerPaused] = useState<boolean>(false);
+  
+  // AI Test Generator State
+  const [genSubjects, setGenSubjects] = useState<string[]>(['Quantitative Aptitude', 'Reasoning & General Intelligence', 'English Comprehension', 'General Awareness']);
+  const [genNumQuestions, setGenNumQuestions] = useState<number>(25);
+  const [genDifficulty, setGenDifficulty] = useState<'EASY' | 'MEDIUM' | 'HARD' | 'ADAPTIVE'>('MEDIUM');
+  const [genFocusGoal, setGenFocusGoal] = useState<'GENERAL' | 'WEAK_AREAS' | 'SPEED_BOOSTER' | 'PRE_EXAM'>('WEAK_AREAS');
   
   // Past Attempts History & Target Post
   const [pastAttempts, setPastAttempts] = useState<MockAttemptRecord[]>(() => storageService.getMockAttempts());
@@ -76,14 +89,12 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
     });
   };
 
-  const handleStartTest = (paper?: MockPaper) => {
-    if (paper) {
-      setSelectedPaper(paper);
-    }
+  const handleStartTest = (paper: MockPaper) => {
+    setSelectedPaper(paper);
     setUserAnswers({});
     setMarkedForReview({});
     setIsSubmittedTest(false);
-    setTimerSeconds(3600); // 60 mins
+    setTimerSeconds(paper.durationMinutes * 60);
     setIsTimerPaused(false);
     setCurrentIdx(0);
     setActiveSection('ALL');
@@ -101,17 +112,33 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
     setActivePracticeTab('PAPERS_LIST');
   };
 
+  const handleToggleGenSubject = (subj: string) => {
+    if (genSubjects.includes(subj)) {
+      if (genSubjects.length > 1) {
+        setGenSubjects(genSubjects.filter(s => s !== subj));
+      }
+    } else {
+      setGenSubjects([...genSubjects, subj]);
+    }
+  };
+
+  const handleGenerateAndStartTest = () => {
+    const customPaper = generateCustomMockTest({
+      selectedSubjects: genSubjects,
+      selectedTopics: [],
+      numQuestions: genNumQuestions,
+      difficulty: genDifficulty,
+      focusGoal: genFocusGoal
+    });
+    handleStartTest(customPaper);
+  };
+
   // Score & Performance Diagnostic Calculation
   let correctCount = 0;
   let incorrectCount = 0;
   let unattemptedCount = 0;
 
-  const subjectPerformance: Record<string, { total: number; correct: number; incorrect: number; topics: Record<string, { total: number; correct: number; incorrect: number }> }> = {
-    'Reasoning & General Intelligence': { total: 0, correct: 0, incorrect: 0, topics: {} },
-    'General Awareness': { total: 0, correct: 0, incorrect: 0, topics: {} },
-    'Quantitative Aptitude': { total: 0, correct: 0, incorrect: 0, topics: {} },
-    'English Comprehension': { total: 0, correct: 0, incorrect: 0, topics: {} }
-  };
+  const subjectPerformance: Record<string, { total: number; correct: number; incorrect: number; topics: Record<string, { total: number; correct: number; incorrect: number }> }> = {};
 
   questionsList.forEach((q, idx) => {
     const ans = userAnswers[idx];
@@ -142,7 +169,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
   });
 
   const marksEarned = (correctCount * 2) - (incorrectCount * 0.5);
-  const totalPossibleMarks = 200; // 100 Qs x 2 Marks
+  const totalPossibleMarks = selectedPaper.totalMarks;
   const accuracyPercentage = (correctCount + incorrectCount) > 0
     ? Math.round((correctCount / (correctCount + incorrectCount)) * 100)
     : 0;
@@ -172,7 +199,6 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
     let englishHours = 1.5;
     let gaHours = 1.5;
 
-    // Dynamically adjust based on weak areas
     weakAreas.forEach(w => {
       if (w.subject === 'Quantitative Aptitude') quantHours += 0.5;
       if (w.subject === 'General Awareness') gaHours += 0.5;
@@ -201,14 +227,14 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
     const newAttempt: MockAttemptRecord = {
       id: `attempt-${Date.now()}`,
       exam_id: exam.id,
-      topic_id: 'full-length-100q',
+      topic_id: selectedPaper.id,
       subject: selectedPaper.title,
       score: marksEarned,
       total_marks: totalPossibleMarks,
       correct_count: correctCount,
       incorrect_count: incorrectCount,
       unattempted_count: unattemptedCount,
-      time_taken_seconds: 3600 - timerSeconds,
+      time_taken_seconds: (selectedPaper.durationMinutes * 60) - timerSeconds,
       attempted_at: new Date().toLocaleString()
     };
 
@@ -232,54 +258,79 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
               <span className="badge badge-demo" style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.4)' }}>
-                ⚡ OFFICIAL 100-QUESTION FULL-LENGTH CBT ENGINE
+                ⚡ COMPLETE CBT MOCK & AI GENERATOR ECOSYSTEM
               </span>
               <span style={{ fontSize: '0.8rem', color: '#93c5fd', fontWeight: 700 }}>
                 • Target: {targetPost.postName}
               </span>
             </div>
             <h3 style={{ fontSize: '1.45rem', fontWeight: 800, color: 'white', margin: 0 }}>
-              Full-Length Official Shift Papers & Diagnostic Engine
+              Mock Tests, Subject Sectionals & AI Test Generator
             </h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', margin: '4px 0 0 0' }}>
-              Attempt 10 authentic full-length shift papers (100 Qs / 200 Marks / 60 Mins). Control timer with start button and get deep post-test weak/medium/strong diagnostics.
+              Take full 100-question shift papers, 25-Q sectionals, 15-Q topic drills, or design your own customized test with the AI Test Generator Assistant.
             </p>
           </div>
 
           <div style={{ display: 'flex', gap: '8px' }}>
             {isTestStarted && (
               <button onClick={handleResetTest} className="btn btn-secondary" style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <RotateCcw size={14} /> Exit to Papers List
+                <RotateCcw size={14} /> Exit Test
               </button>
             )}
           </div>
         </div>
 
-        {/* 3 Main View Tabs */}
+        {/* 5 Main View Navigation Tabs */}
         <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
           <button
             onClick={() => { setActivePracticeTab('PAPERS_LIST'); setIsTestStarted(false); }}
             className={`btn ${activePracticeTab === 'PAPERS_LIST' ? 'btn-primary' : 'btn-secondary'}`}
             style={{ fontSize: '0.85rem', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}
           >
-            <List size={15} /> 📑 10 Latest Official Shift Papers ({OFFICIAL_10_MOCK_PAPERS.length})
+            <List size={15} /> 📑 10 Full Shift Papers (100 Qs)
           </button>
+
+          <button
+            onClick={() => { setActivePracticeTab('SUBJECT_TESTS'); setIsTestStarted(false); }}
+            className={`btn ${activePracticeTab === 'SUBJECT_TESTS' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ fontSize: '0.85rem', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}
+          >
+            <Target size={15} /> 🎯 Subject Sectionals (25 Qs)
+          </button>
+
+          <button
+            onClick={() => { setActivePracticeTab('TOPIC_DRILLS'); setIsTestStarted(false); }}
+            className={`btn ${activePracticeTab === 'TOPIC_DRILLS' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ fontSize: '0.85rem', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}
+          >
+            <Zap size={15} /> ⚡ Topic Drills (15 Qs)
+          </button>
+
+          <button
+            onClick={() => { setActivePracticeTab('AI_GENERATOR'); setIsTestStarted(false); }}
+            className={`btn ${activePracticeTab === 'AI_GENERATOR' ? 'btn-emerald' : 'btn-secondary'}`}
+            style={{ fontSize: '0.85rem', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', border: '1px solid #34d399' }}
+          >
+            <Sparkles size={15} /> 🤖 AI Mock Generator Assistant
+          </button>
+
           <button
             onClick={() => setActivePracticeTab('PAST_ANALYTICS')}
             className={`btn ${activePracticeTab === 'PAST_ANALYTICS' ? 'btn-primary' : 'btn-secondary'}`}
             style={{ fontSize: '0.85rem', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}
           >
-            <BarChart2 size={15} /> 📊 All Past Tests History ({pastAttempts.length})
+            <BarChart2 size={15} /> 📊 Past Tests History ({pastAttempts.length})
           </button>
         </div>
       </div>
 
-      {/* VIEW 1: 10 LATEST OFFICIAL SHIFT PAPERS SELECTOR */}
+      {/* VIEW 1: 10 FULL SHIFT PAPERS (100 Qs) */}
       {activePracticeTab === 'PAPERS_LIST' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
             <h4 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'white', margin: 0 }}>
-              Select an Official Shift Paper (100 Questions / 200 Marks)
+              10 Official Full-Length Shift Papers (100 Questions / 200 Marks)
             </h4>
             <span style={{ fontSize: '0.8rem', color: '#86efac' }}>
               60 Minutes Real Exam Clock • 4 Sections Balanced
@@ -291,32 +342,16 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
               <div 
                 key={paper.id}
                 className="glass-card"
-                style={{
-                  padding: '20px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '14px',
-                  border: '1px solid var(--border-color)',
-                  background: 'rgba(15, 23, 42, 0.9)',
-                  transition: 'all 0.2s ease'
-                }}
+                style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px', border: '1px solid var(--border-color)', background: 'rgba(15, 23, 42, 0.9)' }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span className="badge badge-verified" style={{ fontSize: '0.72rem' }}>
-                    {paper.provenanceTag}
-                  </span>
-                  <span className="glass-pill" style={{ fontSize: '0.72rem', color: '#fbbf24' }}>
-                    {paper.examTier} • {paper.year}
-                  </span>
+                  <span className="badge badge-verified" style={{ fontSize: '0.72rem' }}>{paper.provenanceTag}</span>
+                  <span className="glass-pill" style={{ fontSize: '0.72rem', color: '#fbbf24' }}>{paper.examTier} • {paper.year}</span>
                 </div>
 
                 <div>
-                  <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'white', margin: '0 0 6px 0' }}>
-                    {pIdx + 1}. {paper.title}
-                  </h4>
-                  <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>
-                    {paper.description}
-                  </p>
+                  <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'white', margin: '0 0 6px 0' }}>{pIdx + 1}. {paper.title}</h4>
+                  <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>{paper.description}</p>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', padding: '10px', borderRadius: 'var(--radius-sm)', background: 'rgba(255,255,255,0.03)', fontSize: '0.78rem', textAlign: 'center' }}>
@@ -326,14 +361,8 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                    Shift: {paper.shiftDate}
-                  </span>
-                  <button
-                    onClick={() => handleStartTest(paper)}
-                    className="btn btn-emerald"
-                    style={{ fontSize: '0.85rem', padding: '8px 18px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800 }}
-                  >
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Shift: {paper.shiftDate}</span>
+                  <button onClick={() => handleStartTest(paper)} className="btn btn-emerald" style={{ fontSize: '0.85rem', padding: '8px 18px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800 }}>
                     <Play size={14} /> Start Paper Now
                   </button>
                 </div>
@@ -343,7 +372,237 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
         </div>
       )}
 
-      {/* VIEW 2: ACTIVE TEST & POST-TEST DIAGNOSTIC */}
+      {/* VIEW 2: SUBJECT SECTIONALS (25 Qs) */}
+      {activePracticeTab === 'SUBJECT_TESTS' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
+            <h4 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'white', margin: 0 }}>
+              Subject-Wise Full Sectional Mocks (25 Questions / 50 Marks)
+            </h4>
+            <span style={{ fontSize: '0.8rem', color: '#93c5fd' }}>
+              Targeted Subject Speed Calibration
+            </span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
+            {SUBJECT_MOCK_TESTS.map((paper, pIdx) => (
+              <div 
+                key={paper.id}
+                className="glass-card"
+                style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px', border: '1px solid var(--border-color)', background: 'rgba(15, 23, 42, 0.9)' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span className="badge badge-verified" style={{ fontSize: '0.72rem' }}>{paper.provenanceTag}</span>
+                  <span className="glass-pill" style={{ fontSize: '0.72rem', color: '#93c5fd' }}>{paper.subject}</span>
+                </div>
+
+                <div>
+                  <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'white', margin: '0 0 6px 0' }}>{paper.title}</h4>
+                  <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>{paper.description}</p>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', padding: '10px', borderRadius: 'var(--radius-sm)', background: 'rgba(255,255,255,0.03)', fontSize: '0.78rem', textAlign: 'center' }}>
+                  <div><strong style={{ color: '#93c5fd' }}>Questions</strong><div style={{ color: 'white', fontWeight: 700 }}>{paper.totalQuestions} Qs</div></div>
+                  <div><strong style={{ color: '#93c5fd' }}>Duration</strong><div style={{ color: 'white', fontWeight: 700 }}>{paper.durationMinutes} Mins</div></div>
+                  <div><strong style={{ color: '#93c5fd' }}>Max Marks</strong><div style={{ color: '#86efac', fontWeight: 700 }}>{paper.totalMarks} Marks</div></div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
+                  <span style={{ fontSize: '0.75rem', color: '#fbbf24' }}>Level: {paper.difficulty}</span>
+                  <button onClick={() => handleStartTest(paper)} className="btn btn-primary" style={{ fontSize: '0.85rem', padding: '8px 18px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800 }}>
+                    <Play size={14} /> Start Sectional
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* VIEW 3: TOPIC DRILLS (15 Qs) */}
+      {activePracticeTab === 'TOPIC_DRILLS' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
+            <h4 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'white', margin: 0 }}>
+              Topic-Specific Focused Speed Drills (15 Questions)
+            </h4>
+            <span style={{ fontSize: '0.8rem', color: '#fbbf24' }}>
+              High-Frequency Concept Sharpener
+            </span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
+            {TOPIC_DRILL_TESTS.map((paper, pIdx) => (
+              <div 
+                key={paper.id}
+                className="glass-card"
+                style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px', border: '1px solid var(--border-color)', background: 'rgba(15, 23, 42, 0.9)' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span className="badge badge-verified" style={{ fontSize: '0.72rem' }}>{paper.provenanceTag}</span>
+                  <span className="glass-pill" style={{ fontSize: '0.72rem', color: '#93c5fd' }}>{paper.subject}</span>
+                </div>
+
+                <div>
+                  <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'white', margin: '0 0 6px 0' }}>{paper.title}</h4>
+                  <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>{paper.description}</p>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', padding: '10px', borderRadius: 'var(--radius-sm)', background: 'rgba(255,255,255,0.03)', fontSize: '0.78rem', textAlign: 'center' }}>
+                  <div><strong style={{ color: '#93c5fd' }}>Questions</strong><div style={{ color: 'white', fontWeight: 700 }}>{paper.totalQuestions} Qs</div></div>
+                  <div><strong style={{ color: '#93c5fd' }}>Duration</strong><div style={{ color: 'white', fontWeight: 700 }}>{paper.durationMinutes} Mins</div></div>
+                  <div><strong style={{ color: '#93c5fd' }}>Max Marks</strong><div style={{ color: '#86efac', fontWeight: 700 }}>{paper.totalMarks} Marks</div></div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
+                  <span style={{ fontSize: '0.75rem', color: '#fbbf24' }}>Level: {paper.difficulty}</span>
+                  <button onClick={() => handleStartTest(paper)} className="btn btn-emerald" style={{ fontSize: '0.85rem', padding: '8px 18px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800 }}>
+                    <Play size={14} /> Start Drill
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* VIEW 4: AI MOCK TEST GENERATOR ASSISTANT */}
+      {activePracticeTab === 'AI_GENERATOR' && (
+        <div className="glass-card" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '22px', border: '1px solid rgba(16, 185, 129, 0.4)', background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(6, 78, 59, 0.2) 100%)' }}>
+          <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+              <span className="badge badge-verified" style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#34d399' }}>
+                <Sparkles size={14} /> AI MOCK TEST GENERATOR ASSISTANT
+              </span>
+            </div>
+            <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'white', margin: 0 }}>
+              Design Your Custom Context-Aware Mock Test
+            </h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', margin: '4px 0 0 0' }}>
+              Configure subjects, question volume, and difficulty. The engine automatically calculates the realistic exam timer calibrated to your selected difficulty level.
+            </p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+            
+            {/* 1. Subjects Selection */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <label style={{ fontSize: '0.88rem', fontWeight: 700, color: '#93c5fd' }}>
+                1. Select Target Subjects (Multi-Select):
+              </label>
+              {[
+                'Quantitative Aptitude',
+                'Reasoning & General Intelligence',
+                'English Comprehension',
+                'General Awareness',
+                'Computer Proficiency'
+              ].map(subj => {
+                const isSelected = genSubjects.includes(subj);
+                return (
+                  <div
+                    key={subj}
+                    onClick={() => handleToggleGenSubject(subj)}
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: 'var(--radius-sm)',
+                      background: isSelected ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+                      border: isSelected ? '1px solid #10b981' : '1px solid var(--border-color)',
+                      color: isSelected ? '#86efac' : 'var(--text-secondary)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      fontSize: '0.85rem',
+                      fontWeight: isSelected ? 700 : 500
+                    }}
+                  >
+                    <div style={{ width: '18px', height: '18px', borderRadius: '4px', border: isSelected ? '2px solid #10b981' : '2px solid gray', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981', fontSize: '0.75rem', fontWeight: 900 }}>
+                      {isSelected ? '✓' : ''}
+                    </div>
+                    {subj}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* 2. Number of Questions & Focus Goal */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{ fontSize: '0.88rem', fontWeight: 700, color: '#93c5fd', display: 'block', marginBottom: '8px' }}>
+                  2. Number of Questions:
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+                  {[10, 15, 25, 50].map(cnt => (
+                    <button
+                      key={cnt}
+                      onClick={() => setGenNumQuestions(cnt)}
+                      className={`btn ${genNumQuestions === cnt ? 'btn-primary' : 'btn-secondary'}`}
+                      style={{ fontSize: '0.85rem', padding: '8px', fontWeight: 700 }}
+                    >
+                      {cnt} Qs
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.88rem', fontWeight: 700, color: '#93c5fd', display: 'block', marginBottom: '8px' }}>
+                  3. Difficulty Level:
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+                  {[
+                    { id: 'EASY', label: '🟢 Easy (Speed Builder)' },
+                    { id: 'MEDIUM', label: '🟡 Medium (Standard CGL)' },
+                    { id: 'HARD', label: '🔴 Hard (Tier-2 Advanced)' },
+                    { id: 'ADAPTIVE', label: '⚡ Adaptive (Mixed)' }
+                  ].map(lvl => (
+                    <button
+                      key={lvl.id}
+                      onClick={() => setGenDifficulty(lvl.id as any)}
+                      className={`btn ${genDifficulty === lvl.id ? 'btn-emerald' : 'btn-secondary'}`}
+                      style={{ fontSize: '0.78rem', padding: '8px 10px', textAlign: 'left', fontWeight: 600 }}
+                    >
+                      {lvl.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* 3. Intelligent Timer Preview Card */}
+            <div style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#93c5fd', fontWeight: 700, fontSize: '0.9rem' }}>
+                <Clock size={18} /> Intelligent Timer Calibration
+              </div>
+
+              <div style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                Based on your selection of <strong>{genNumQuestions} Questions</strong> at <strong>{genDifficulty}</strong> difficulty across {genSubjects.length} subjects:
+              </div>
+
+              <div style={{ padding: '12px', borderRadius: 'var(--radius-sm)', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.75rem', color: '#86efac', textTransform: 'uppercase', fontWeight: 700 }}>Allocated Clock Time</div>
+                <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#34d399', margin: '2px 0' }}>
+                  {Math.max(5, Math.ceil((genNumQuestions * (genDifficulty === 'HARD' ? 55 : genDifficulty === 'EASY' ? 28 : 40)) / 60))} Minutes
+                </div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                  Calibrated for realistic TCS pace & deep accuracy
+                </div>
+              </div>
+
+              <button
+                onClick={handleGenerateAndStartTest}
+                className="btn btn-emerald"
+                style={{ width: '100%', padding: '12px', fontSize: '0.95rem', fontWeight: 800, marginTop: '4px', boxShadow: '0 4px 16px rgba(16, 185, 129, 0.4)' }}
+              >
+                <Sparkles size={16} /> Generate & Start Custom Mock
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* VIEW 5: ACTIVE TEST & POST-TEST DIAGNOSTIC DASHBOARD */}
       {activePracticeTab === 'ACTIVE_TEST' && (
         <>
           {/* Active Test Header Bar */}
@@ -353,7 +612,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                 {selectedPaper.title}
               </span>
               <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                Total: 100 Questions (25 Qs × 4 Subjects)
+                Total: {selectedPaper.totalQuestions} Questions ({selectedPaper.totalMarks} Marks)
               </span>
             </div>
 
@@ -373,19 +632,19 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
             )}
           </div>
 
-          {/* Section Jump Tabs */}
-          {!isSubmittedTest && (
+          {/* Section Jump Tabs for 100-Q Papers */}
+          {!isSubmittedTest && selectedPaper.totalQuestions >= 50 && (
             <div style={{ display: 'flex', gap: '8px', overflowX: 'auto' }}>
               {[
-                { label: 'All Sections (100 Qs)', val: 'ALL', startIdx: 0 },
-                { label: 'Section I: Reasoning (Q1 - Q25)', val: 'Reasoning & General Intelligence', startIdx: 0 },
-                { label: 'Section II: General Awareness (Q26 - Q50)', val: 'General Awareness', startIdx: 25 },
-                { label: 'Section III: Quantitative Aptitude (Q51 - Q75)', val: 'Quantitative Aptitude', startIdx: 50 },
-                { label: 'Section IV: English Comprehension (Q76 - Q100)', val: 'English Comprehension', startIdx: 75 }
+                { label: 'All Sections', val: 'ALL', startIdx: 0 },
+                { label: 'Section I: Reasoning', val: 'Reasoning & General Intelligence', startIdx: 0 },
+                { label: 'Section II: General Awareness', val: 'General Awareness', startIdx: 25 },
+                { label: 'Section III: Quantitative Aptitude', val: 'Quantitative Aptitude', startIdx: 50 },
+                { label: 'Section IV: English Comprehension', val: 'English Comprehension', startIdx: 75 }
               ].map(sec => (
                 <button
                   key={sec.val}
-                  onClick={() => { setActiveSection(sec.val as any); setCurrentIdx(sec.startIdx); }}
+                  onClick={() => { setActiveSection(sec.val); setCurrentIdx(sec.startIdx); }}
                   className={`btn ${activeSection === sec.val ? 'btn-primary' : 'btn-secondary'}`}
                   style={{ fontSize: '0.8rem', padding: '6px 14px', whiteSpace: 'nowrap' }}
                 >
@@ -404,7 +663,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <span className="badge badge-verified" style={{ fontSize: '0.8rem' }}>
-                      Question {currentIdx + 1} of 100
+                      Question {currentIdx + 1} of {questionsList.length}
                     </span>
                     <span className="glass-pill" style={{ fontSize: '0.78rem', color: '#93c5fd' }}>
                       {currentQ.subject}
@@ -486,14 +745,14 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                 </div>
               </div>
 
-              {/* Right Palette & 100-Question Grid Panel */}
+              {/* Right Palette Panel */}
               <div className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'white', margin: 0 }}>
-                    Question Palette (100 Qs)
+                    Question Palette ({questionsList.length} Qs)
                   </h4>
                   <span style={{ fontSize: '0.75rem', color: '#86efac' }}>
-                    {Object.keys(userAnswers).length}/100 Answered
+                    {Object.keys(userAnswers).length}/{questionsList.length} Done
                   </span>
                 </div>
 
@@ -548,24 +807,24 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                   className="btn btn-emerald"
                   style={{ width: '100%', padding: '12px', fontSize: '0.95rem', fontWeight: 800, marginTop: '8px', boxShadow: '0 4px 16px rgba(16, 185, 129, 0.4)' }}
                 >
-                  <CheckSquare size={16} /> Submit 100 Qs Test & Analyze
+                  <CheckSquare size={16} /> Submit & Analyze Performance
                 </button>
               </div>
 
             </div>
           ) : (
 
-            /* 🎯 POST-TEST INTELLIGENT DIAGNOSTIC DASHBOARD */
+            /* 🎯 POST-TEST INTELLIGENT DIAGNOSTIC DASHBOARD & REMEDIAL RECOMMENDATIONS */
             <div className="glass-card animate-fade-in" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
               
               {/* Score & Benchmark Banner */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px', borderBottom: '1px solid var(--border-color)', paddingBottom: '20px' }}>
                 <div>
                   <span className="badge badge-verified" style={{ fontSize: '0.78rem' }}>
-                    🎯 100-QUESTION FULL TEST COMPLETED & SYNCED TO SQLITE
+                    🎯 TEST COMPLETED & SYNCED TO SQLITE
                   </span>
                   <h3 style={{ fontSize: '1.7rem', fontWeight: 800, color: 'white', margin: '6px 0 2px 0' }}>
-                    Diagnostic Analysis & Study Hours Blueprint
+                    Diagnostic Analysis & Remedial Recommendations
                   </h3>
                   <div style={{ fontSize: '0.85rem', color: '#93c5fd' }}>
                     Target Post: <strong>{targetPost.postName}</strong> ({targetPost.department})
@@ -585,10 +844,48 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
 
                   <div style={{ padding: '12px 18px', borderRadius: 'var(--radius-md)', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', textAlign: 'center' }}>
                     <div style={{ fontSize: '0.72rem', color: '#fde047', textTransform: 'uppercase', fontWeight: 700 }}>Correct / Total</div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#fbbf24' }}>{correctCount} / 100 Qs</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#fbbf24' }}>{correctCount} / {questionsList.length}</div>
                   </div>
                 </div>
               </div>
+
+              {/* 🎯 NEW: ADAPTIVE REMEDIAL TESTS RECOMMENDED TO FIX WEAKNESSES */}
+              {weakAreas.length > 0 && (
+                <div style={{ padding: '20px', borderRadius: 'var(--radius-md)', background: 'rgba(239, 68, 68, 0.06)', border: '1px solid rgba(239, 68, 68, 0.35)', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#f87171', fontWeight: 800, fontSize: '1.05rem' }}>
+                      <Zap size={18} /> 🚀 Recommended Remedial Tests to Fix Your Weaknesses Immediately
+                    </div>
+                    <span className="badge" style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#fca5a5' }}>
+                      Auto-Generated from Test Mistakes
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
+                    {weakAreas.map((w, wIdx) => {
+                      const matchedDrill = TOPIC_DRILL_TESTS.find(t => t.subject === w.subject) || TOPIC_DRILL_TESTS[0];
+                      return (
+                        <div key={wIdx} style={{ padding: '14px', borderRadius: 'var(--radius-sm)', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(239,68,68,0.25)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '10px' }}>
+                          <div>
+                            <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'white' }}>Fix Topic: {w.topic}</div>
+                            <div style={{ fontSize: '0.78rem', color: '#fecaca', marginTop: '2px' }}>
+                              Current Accuracy: {w.accuracy}% • Missed {w.missed} questions in this test.
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={() => handleStartTest(matchedDrill)}
+                            className="btn btn-primary"
+                            style={{ fontSize: '0.78rem', padding: '6px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', width: '100%' }}
+                          >
+                            <Play size={13} /> Start 15-Q Remedial Drill <ArrowRight size={13} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* 3-COLUMN WEAK, MEDIUM, STRONG MATRIX */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
@@ -610,15 +907,12 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                           <div style={{ fontSize: '0.78rem', color: '#fecaca', marginTop: '2px' }}>
                             Subject: {w.subject} • Missed: {w.missed} Qs (Accuracy: {w.accuracy}%)
                           </div>
-                          <div style={{ fontSize: '0.75rem', color: '#f87171', marginTop: '4px' }}>
-                            Action: Review formula sheet & attempt 25 shift PYQs before next mock.
-                          </div>
                         </div>
                       ))}
                     </div>
                   ) : (
                     <div style={{ fontSize: '0.85rem', color: '#86efac' }}>
-                      🎉 Zero critical weaknesses detected in this full-length test session!
+                      🎉 Zero critical weaknesses detected in this session!
                     </div>
                   )}
                 </div>
@@ -639,9 +933,6 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                           <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'white' }}>{m.topic}</div>
                           <div style={{ fontSize: '0.78rem', color: '#fef08a', marginTop: '2px' }}>
                             Subject: {m.subject} • Accuracy: {m.accuracy}%
-                          </div>
-                          <div style={{ fontSize: '0.75rem', color: '#fbbf24', marginTop: '4px' }}>
-                            Action: Moderate conceptual clarity. Practice speed shortcuts.
                           </div>
                         </div>
                       ))}
@@ -669,9 +960,6 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                           <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'white' }}>{s.topic}</div>
                           <div style={{ fontSize: '0.78rem', color: '#86efac', marginTop: '2px' }}>
                             Subject: {s.subject} • Accuracy: {s.accuracy}%
-                          </div>
-                          <div style={{ fontSize: '0.75rem', color: '#34d399', marginTop: '4px' }}>
-                            Action: High mastery. Maintain with weekly rapid mocks.
                           </div>
                         </div>
                       ))}
@@ -739,14 +1027,14 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                 </div>
               </div>
 
-              {/* Question-by-Question Detailed Solutions Review (First 20 with show more) */}
+              {/* Question-by-Question Detailed Solutions Review */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', borderTop: '1px solid var(--border-color)', paddingTop: '20px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'white', margin: 0 }}>
-                    Detailed Step-by-Step Official Solutions (100 Questions)
+                    Detailed Step-by-Step Official Solutions ({questionsList.length} Questions)
                   </h4>
                   <button onClick={handleResetTest} className="btn btn-primary" style={{ fontSize: '0.82rem' }}>
-                    Attempt Another Shift Paper
+                    Attempt Another Test
                   </button>
                 </div>
 
@@ -781,7 +1069,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
         </>
       )}
 
-      {/* VIEW 3: PAST ATTEMPTS HISTORY */}
+      {/* VIEW 6: PAST ATTEMPTS HISTORY */}
       {activePracticeTab === 'PAST_ANALYTICS' && (
         <div className="glass-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
@@ -842,7 +1130,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
             </div>
           ) : (
             <div style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)' }}>
-              No tests recorded yet. Attempt an official shift paper to build your analytics history.
+              No tests recorded yet. Attempt a test to build your weakness analysis matrix.
             </div>
           )}
         </div>
