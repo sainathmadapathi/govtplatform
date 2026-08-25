@@ -12,7 +12,7 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
   const [healthLogs, setHealthLogs] = useState<SourceHealthLog[]>([
     {
       id: 'sh-01',
-      endpointUrl: 'https://ssc.gov.in/api/attachment/notice/ssc_cgl_2026_notification.pdf',
+      endpointUrl: 'https://ssc.gov.in',
       authorityCode: 'SSC',
       httpStatus: 200,
       checkedAt: '2026-08-14 20:30:00 UTC',
@@ -23,7 +23,7 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
     },
     {
       id: 'sh-02',
-      endpointUrl: 'https://ssc.gov.in/api/attachment/notice/cgl_2026_corrigendum_02.pdf',
+      endpointUrl: 'https://ssc.gov.in',
       authorityCode: 'SSC',
       httpStatus: 200,
       checkedAt: '2026-08-22 14:15:00 UTC',

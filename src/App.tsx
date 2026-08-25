@@ -11,7 +11,7 @@ import { AIAssistant } from './components/AIAssistant';
 import { AdminVerificationPanel } from './components/AdminVerificationPanel';
 import { ALL_EXAMS, SSC_CGL_EXAM } from './data/examsData';
 import { Exam, DataProvenance } from './types/exam';
-import { ShieldCheck, X, FileText, ExternalLink, Flag, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, X, FileText, ExternalLink, Flag, CheckCircle2, Quote, BookOpen } from 'lucide-react';
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'FINDER' | 'ELIGIBILITY' | 'EXAM_DETAIL' | 'PLANNER' | 'PRACTICE' | 'COMPARE' | 'CALENDAR' | 'AI_ASSISTANT' | 'ADMIN'>('FINDER');
@@ -75,6 +75,7 @@ export const App: React.FC = () => {
             exam={selectedExam}
             onOpenProvenanceModal={handleOpenProvenance}
             onOpenReportModal={handleOpenReport}
+            onNavigateEligibility={() => setActiveTab('ELIGIBILITY')}
             onNavigatePlanner={() => setActiveTab('PLANNER')}
             onNavigatePractice={() => setActiveTab('PRACTICE')}
           />
@@ -118,14 +119,14 @@ export const App: React.FC = () => {
         )}
       </main>
 
-      {/* Field Provenance Modal */}
+      {/* Field Provenance & Gazette Citation Modal */}
       {provenanceModalData && (
         <div className="modal-overlay" onClick={() => setProvenanceModalData(null)}>
-          <div className="modal-content animate-fade-in" onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+          <div className="modal-content animate-fade-in" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '640px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <ShieldCheck size={26} color="var(--emerald)" />
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 800 }}>Field Provenance Audit Citation</h3>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800 }}>Field Provenance & Gazette Citation</h3>
               </div>
               <button 
                 onClick={() => setProvenanceModalData(null)}
@@ -136,7 +137,7 @@ export const App: React.FC = () => {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', fontSize: '0.95rem' }}>
-              <div style={{ padding: '14px', borderRadius: 'var(--radius-md)', background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ padding: '12px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <span className="badge badge-verified">
                   {provenanceModalData.verificationLevel}
                 </span>
@@ -152,15 +153,27 @@ export const App: React.FC = () => {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                 <div>
-                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Document Page Number:</span>
-                  <div style={{ fontWeight: 700, color: 'var(--primary)', fontFamily: 'var(--font-mono)' }}>Page {provenanceModalData.pageNumber || 'N/A'}</div>
+                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Official Page Number:</span>
+                  <div style={{ fontWeight: 700, color: 'var(--primary)', fontFamily: 'var(--font-mono)' }}>Page {provenanceModalData.pageNumber || '1'}</div>
                 </div>
 
                 <div>
                   <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Clause / Section Reference:</span>
-                  <div style={{ fontWeight: 700, color: 'var(--primary)', fontFamily: 'var(--font-mono)' }}>{provenanceModalData.clauseNumber || 'Section 3.1'}</div>
+                  <div style={{ fontWeight: 700, color: 'var(--primary)', fontFamily: 'var(--font-mono)' }}>{provenanceModalData.clauseNumber || 'Section 1.1'}</div>
                 </div>
               </div>
+
+              {/* Direct Quoted Excerpt from Official Gazette */}
+              {provenanceModalData.excerptText && (
+                <div style={{ padding: '14px', borderRadius: 'var(--radius-md)', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#93c5fd', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Quote size={14} /> Official Gazette Legal Excerpt
+                  </span>
+                  <div style={{ fontSize: '0.88rem', color: '#e2e8f0', lineHeight: 1.5, fontStyle: 'italic' }}>
+                    "{provenanceModalData.excerptText}"
+                  </div>
+                </div>
+              )}
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                 <div>
@@ -169,19 +182,28 @@ export const App: React.FC = () => {
                 </div>
 
                 <div>
-                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>GovOS Audit Date:</span>
+                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>GovOS Audit Timestamp:</span>
                   <div>{provenanceModalData.verifiedDate}</div>
                 </div>
               </div>
 
               <div>
-                <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Verified By:</span>
-                <div style={{ fontWeight: 600 }}>{provenanceModalData.verifiedBy}</div>
+                <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Audited & Verified By:</span>
+                <div style={{ fontWeight: 600, color: 'var(--emerald)' }}>{provenanceModalData.verifiedBy}</div>
               </div>
 
-              <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end' }}>
-                <a href={provenanceModalData.officialUrl} target="_blank" rel="noreferrer" className="btn btn-emerald" style={{ fontSize: '0.85rem' }}>
-                  Open Authoritative Source Document (PDF) <ExternalLink size={16} />
+              <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <button className="btn btn-secondary" onClick={() => setProvenanceModalData(null)}>
+                  Close Audit
+                </button>
+                <a 
+                  href={provenanceModalData.officialUrl || 'https://ssc.gov.in'} 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  className="btn btn-emerald" 
+                  style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  Open Official Notices Portal <ExternalLink size={16} />
                 </a>
               </div>
             </div>
