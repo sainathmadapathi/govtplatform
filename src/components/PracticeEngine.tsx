@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Award, Clock, CheckCircle2, XCircle, HelpCircle, ShieldCheck, RefreshCw, 
   ChevronRight, ChevronLeft, Bookmark, BarChart2, CheckSquare, RotateCcw, Flame,
   FileText, Target, Zap, BookOpen, AlertTriangle, TrendingUp, Calendar, Compass, 
-  Database, Play, Pause, List, Sparkles, Sliders, Check, ArrowRight
+  Database, Play, Pause, List, Sparkles, Sliders, Check, ArrowRight, Send, Bot, User, MessageSquare
 } from 'lucide-react';
 import { Exam, PracticeQuestion, DataProvenance } from '../types/exam';
 import { storageService, MockAttemptRecord } from '../services/storageService';
@@ -14,7 +14,12 @@ import {
   TOPIC_DRILL_TESTS, 
   MockPaper, 
   CustomTestConfig, 
-  generateCustomMockTest 
+  generateCustomMockTest,
+  QUANT_TEMPLATES,
+  REASONING_TEMPLATES,
+  GA_TEMPLATES,
+  ENGLISH_TEMPLATES,
+  COMPUTER_TEMPLATES
 } from '../data/mockPapersData';
 
 interface PracticeEngineProps {
@@ -22,9 +27,17 @@ interface PracticeEngineProps {
   onOpenProvenanceModal: (provenance: DataProvenance) => void;
 }
 
+interface ChatMessage {
+  id: string;
+  sender: 'user' | 'assistant';
+  text: string;
+  timestamp: string;
+  proposedTest?: MockPaper;
+}
+
 export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProvenanceModal }) => {
   // Navigation & Modes
-  const [activePracticeTab, setActivePracticeTab] = useState<'PAPERS_LIST' | 'SUBJECT_TESTS' | 'TOPIC_DRILLS' | 'AI_GENERATOR' | 'ACTIVE_TEST' | 'PAST_ANALYTICS'>('PAPERS_LIST');
+  const [activePracticeTab, setActivePracticeTab] = useState<'PAPERS_LIST' | 'SUBJECT_TESTS' | 'TOPIC_DRILLS' | 'AI_CHAT_ASSISTANT' | 'ACTIVE_TEST' | 'PAST_ANALYTICS'>('PAPERS_LIST');
   const [selectedPaper, setSelectedPaper] = useState<MockPaper>(OFFICIAL_10_MOCK_PAPERS[0]);
   const [activeSection, setActiveSection] = useState<string>('ALL');
   
@@ -37,11 +50,17 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
   const [timerSeconds, setTimerSeconds] = useState<number>(3600);
   const [isTimerPaused, setIsTimerPaused] = useState<boolean>(false);
   
-  // AI Test Generator State
-  const [genSubjects, setGenSubjects] = useState<string[]>(['Quantitative Aptitude', 'Reasoning & General Intelligence', 'English Comprehension', 'General Awareness']);
-  const [genNumQuestions, setGenNumQuestions] = useState<number>(25);
-  const [genDifficulty, setGenDifficulty] = useState<'EASY' | 'MEDIUM' | 'HARD' | 'ADAPTIVE'>('MEDIUM');
-  const [genFocusGoal, setGenFocusGoal] = useState<'GENERAL' | 'WEAK_AREAS' | 'SPEED_BOOSTER' | 'PRE_EXAM'>('WEAK_AREAS');
+  // Conversational AI Mock Assistant State
+  const [chatInput, setChatInput] = useState<string>('');
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
+    {
+      id: 'msg-welcome',
+      sender: 'assistant',
+      text: "Hello! I am your AI Mock Test Creator Assistant. Tell me what you'd like to practice (e.g. \"Create a 15-question hard test on Geometry & Algebra for Tier-2\", \"Give me a 10-minute speed drill on English 60 Grammar Rules\", or \"Test my weak areas\"). I will intelligently assemble the questions, calibrate the realistic exam timer, and generate your test.",
+      timestamp: 'Just now'
+    }
+  ]);
+  const chatBottomRef = useRef<HTMLDivElement>(null);
   
   // Past Attempts History & Target Post
   const [pastAttempts, setPastAttempts] = useState<MockAttemptRecord[]>(() => storageService.getMockAttempts());
@@ -50,12 +69,12 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
 
   const questionsList = selectedPaper.questions;
 
-  // Filtered by current section tab if viewing specific section
-  const sectionQuestions = activeSection === 'ALL'
-    ? questionsList
-    : questionsList.filter(q => q.subject === activeSection);
-
-  const currentQ = questionsList[currentIdx] || questionsList[0];
+  // Auto-scroll chat to bottom on new message
+  useEffect(() => {
+    if (activePracticeTab === 'AI_CHAT_ASSISTANT') {
+      chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [chatMessages, activePracticeTab]);
 
   // Timer Effect (Only ticks if test is started, not submitted, and not paused)
   useEffect(() => {
@@ -112,25 +131,89 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
     setActivePracticeTab('PAPERS_LIST');
   };
 
-  const handleToggleGenSubject = (subj: string) => {
-    if (genSubjects.includes(subj)) {
-      if (genSubjects.length > 1) {
-        setGenSubjects(genSubjects.filter(s => s !== subj));
-      }
-    } else {
-      setGenSubjects([...genSubjects, subj]);
-    }
-  };
+  // Conversational Context Parser & Test Generator
+  const handleSendChatMessage = (customText?: string) => {
+    const query = customText || chatInput;
+    if (!query.trim()) return;
 
-  const handleGenerateAndStartTest = () => {
-    const customPaper = generateCustomMockTest({
-      selectedSubjects: genSubjects,
-      selectedTopics: [],
-      numQuestions: genNumQuestions,
-      difficulty: genDifficulty,
-      focusGoal: genFocusGoal
-    });
-    handleStartTest(customPaper);
+    const userMsg: ChatMessage = {
+      id: `msg-${Date.now()}`,
+      sender: 'user',
+      text: query,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    setChatMessages(prev => [...prev, userMsg]);
+    if (!customText) setChatInput('');
+
+    // Context Analysis
+    setTimeout(() => {
+      const lower = query.toLowerCase();
+
+      // 1. Detect Subjects
+      const matchedSubjects: string[] = [];
+      if (lower.includes('quant') || lower.includes('math') || lower.includes('geometry') || lower.includes('algebra') || lower.includes('trig') || lower.includes('profit') || lower.includes('ci/si') || lower.includes('mensuration')) {
+        matchedSubjects.push('Quantitative Aptitude');
+      }
+      if (lower.includes('reasoning') || lower.includes('syllogism') || lower.includes('blood') || lower.includes('series') || lower.includes('analogy') || lower.includes('dice')) {
+        matchedSubjects.push('Reasoning & General Intelligence');
+      }
+      if (lower.includes('english') || lower.includes('grammar') || lower.includes('vocab') || lower.includes('synonym') || lower.includes('antonym') || lower.includes('voice') || lower.includes('narration')) {
+        matchedSubjects.push('English Comprehension');
+      }
+      if (lower.includes('ga') || lower.includes('gk') || lower.includes('polity') || lower.includes('constitution') || lower.includes('history') || lower.includes('geography') || lower.includes('science')) {
+        matchedSubjects.push('General Awareness');
+      }
+      if (lower.includes('computer') || lower.includes('excel') || lower.includes('hardware') || lower.includes('cpt')) {
+        matchedSubjects.push('Computer Proficiency');
+      }
+
+      const finalSubjects = matchedSubjects.length > 0 
+        ? matchedSubjects 
+        : ['Quantitative Aptitude', 'Reasoning & General Intelligence', 'English Comprehension', 'General Awareness'];
+
+      // 2. Detect Question Count
+      const countMatch = query.match(/\b(\d+)\s*(q|qs|questions|question|problems)?\b/i);
+      let numQs = 15;
+      if (countMatch && countMatch[1]) {
+        const parsed = parseInt(countMatch[1], 10);
+        if (parsed >= 5 && parsed <= 100) {
+          numQs = parsed;
+        }
+      }
+
+      // 3. Detect Difficulty
+      let difficulty: 'EASY' | 'MEDIUM' | 'HARD' | 'ADAPTIVE' = 'MEDIUM';
+      if (lower.includes('hard') || lower.includes('tough') || lower.includes('tier-2') || lower.includes('tier 2') || lower.includes('advanced') || lower.includes('complex')) {
+        difficulty = 'HARD';
+      } else if (lower.includes('easy') || lower.includes('speed') || lower.includes('basic') || lower.includes('quick')) {
+        difficulty = 'EASY';
+      } else if (lower.includes('adaptive') || lower.includes('mixed')) {
+        difficulty = 'ADAPTIVE';
+      }
+
+      // 4. Generate Mock Paper with Intelligent Timer
+      const generatedMock = generateCustomMockTest({
+        title: `AI Customized Drill: ${finalSubjects.join(' + ')} (${numQs} Qs)`,
+        selectedSubjects: finalSubjects,
+        selectedTopics: [],
+        numQuestions: numQs,
+        difficulty,
+        focusGoal: lower.includes('weak') ? 'WEAK_AREAS' : 'GENERAL'
+      });
+
+      const responseText = `I have analyzed your request ("${query}") and created your tailored mock test:\n\n• Target Subjects: ${finalSubjects.join(', ')}\n• Questions: ${numQs} Questions\n• Difficulty: ${difficulty} Level\n• Intelligent Calibrated Timer: ${generatedMock.durationMinutes} Minutes\n\nClick below to start this test immediately!`;
+
+      const botMsg: ChatMessage = {
+        id: `msg-bot-${Date.now()}`,
+        sender: 'assistant',
+        text: responseText,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        proposedTest: generatedMock
+      };
+
+      setChatMessages(prev => [...prev, botMsg]);
+    }, 400);
   };
 
   // Score & Performance Diagnostic Calculation
@@ -258,17 +341,17 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
               <span className="badge badge-demo" style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.4)' }}>
-                ⚡ COMPLETE CBT MOCK & AI GENERATOR ECOSYSTEM
+                ⚡ CONVERSATIONAL AI MOCK CREATOR & CBT ECOSYSTEM
               </span>
               <span style={{ fontSize: '0.8rem', color: '#93c5fd', fontWeight: 700 }}>
                 • Target: {targetPost.postName}
               </span>
             </div>
             <h3 style={{ fontSize: '1.45rem', fontWeight: 800, color: 'white', margin: 0 }}>
-              Mock Tests, Subject Sectionals & AI Test Generator
+              AI Chat Test Creator, Full Shifts & Diagnostics
             </h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', margin: '4px 0 0 0' }}>
-              Take full 100-question shift papers, 25-Q sectionals, 15-Q topic drills, or design your own customized test with the AI Test Generator Assistant.
+              Chat with your AI Assistant to instantly generate tailored tests for any topic, difficulty, or time limit, or attempt 10 full shift papers.
             </p>
           </div>
 
@@ -281,8 +364,16 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
           </div>
         </div>
 
-        {/* 5 Main View Navigation Tabs */}
+        {/* 5 Main Navigation Tabs */}
         <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+          <button
+            onClick={() => { setActivePracticeTab('AI_CHAT_ASSISTANT'); setIsTestStarted(false); }}
+            className={`btn ${activePracticeTab === 'AI_CHAT_ASSISTANT' ? 'btn-emerald' : 'btn-secondary'}`}
+            style={{ fontSize: '0.85rem', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', border: '1px solid #34d399' }}
+          >
+            <MessageSquare size={15} /> 💬 Chat With AI Test Creator
+          </button>
+
           <button
             onClick={() => { setActivePracticeTab('PAPERS_LIST'); setIsTestStarted(false); }}
             className={`btn ${activePracticeTab === 'PAPERS_LIST' ? 'btn-primary' : 'btn-secondary'}`}
@@ -308,14 +399,6 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
           </button>
 
           <button
-            onClick={() => { setActivePracticeTab('AI_GENERATOR'); setIsTestStarted(false); }}
-            className={`btn ${activePracticeTab === 'AI_GENERATOR' ? 'btn-emerald' : 'btn-secondary'}`}
-            style={{ fontSize: '0.85rem', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', border: '1px solid #34d399' }}
-          >
-            <Sparkles size={15} /> 🤖 AI Mock Generator Assistant
-          </button>
-
-          <button
             onClick={() => setActivePracticeTab('PAST_ANALYTICS')}
             className={`btn ${activePracticeTab === 'PAST_ANALYTICS' ? 'btn-primary' : 'btn-secondary'}`}
             style={{ fontSize: '0.85rem', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}
@@ -325,7 +408,163 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
         </div>
       </div>
 
-      {/* VIEW 1: 10 FULL SHIFT PAPERS (100 Qs) */}
+      {/* VIEW 1: CONVERSATIONAL AI MOCK CREATOR CHAT ASSISTANT */}
+      {activePracticeTab === 'AI_CHAT_ASSISTANT' && (
+        <div className="glass-card" style={{ padding: '0', overflow: 'hidden', border: '1px solid rgba(16, 185, 129, 0.35)', background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(6, 78, 59, 0.2) 100%)', display: 'flex', flexDirection: 'column', height: '620px' }}>
+          
+          {/* Chat Header */}
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(0,0,0,0.2)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.2)', border: '1px solid #10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#34d399' }}>
+                <Bot size={20} />
+              </div>
+              <div>
+                <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'white', margin: 0 }}>
+                  AI Mock Test Creator Assistant
+                </h4>
+                <span style={{ fontSize: '0.75rem', color: '#86efac' }}>
+                  • Online • Context-Aware NLP Test Synthesis & Intelligent Timer
+                </span>
+              </div>
+            </div>
+
+            <span className="badge badge-verified" style={{ fontSize: '0.72rem' }}>
+              Target: {targetPost.postName}
+            </span>
+          </div>
+
+          {/* Quick Context Prompt Pills */}
+          <div style={{ padding: '10px 16px', background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--border-color)', display: 'flex', gap: '6px', overflowX: 'auto' }}>
+            {[
+              { label: '⚡ 15-Q Hard Geometry & Algebra Drill', prompt: 'Create a 15-question hard test on Geometry & Algebra for Tier-2' },
+              { label: '🏛️ 20-Q Polity Articles & Modern History', prompt: 'Give me a 20-question speed drill on Indian Polity Articles and Modern History' },
+              { label: '📖 15-Q 60 Grammar Rules & Vocab', prompt: 'Generate a 15-question test on English Grammar Error Spotting and Norman Lewis Vocabulary' },
+              { label: '🔍 Test My Past Weak Topics', prompt: 'Generate a practice test specifically focused on my past weak areas' }
+            ].map((pill, pIdx) => (
+              <button
+                key={pIdx}
+                onClick={() => handleSendChatMessage(pill.prompt)}
+                className="glass-pill"
+                style={{ fontSize: '0.75rem', padding: '4px 10px', color: '#93c5fd', cursor: 'pointer', whiteSpace: 'nowrap', border: '1px solid rgba(59, 130, 246, 0.3)' }}
+              >
+                {pill.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Chat Messages Stream */}
+          <div style={{ flex: 1, padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {chatMessages.map(msg => (
+              <div
+                key={msg.id}
+                style={{
+                  display: 'flex',
+                  gap: '10px',
+                  alignItems: 'flex-start',
+                  justifyContent: msg.sender === 'user' ? 'flex-end' : 'flex-start'
+                }}
+              >
+                {msg.sender === 'assistant' && (
+                  <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.2)', border: '1px solid #10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#34d399', flexShrink: 0, marginTop: '2px' }}>
+                    <Bot size={16} />
+                  </div>
+                )}
+
+                <div
+                  style={{
+                    maxWidth: '80%',
+                    padding: '14px 18px',
+                    borderRadius: 'var(--radius-md)',
+                    background: msg.sender === 'user' ? 'var(--primary)' : 'rgba(15, 23, 42, 0.95)',
+                    border: msg.sender === 'user' ? '1px solid #60a5fa' : '1px solid var(--border-color)',
+                    color: 'white',
+                    fontSize: '0.88rem',
+                    lineHeight: 1.5,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px'
+                  }}
+                >
+                  <div style={{ whiteSpace: 'pre-line' }}>{msg.text}</div>
+
+                  {/* Proposed Test Card Inside Assistant Bubble */}
+                  {msg.proposedTest && (
+                    <div style={{ padding: '14px', borderRadius: 'var(--radius-sm)', background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(16, 185, 129, 0.4)', display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '4px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span className="badge badge-verified" style={{ fontSize: '0.7rem' }}>
+                          {msg.proposedTest.provenanceTag}
+                        </span>
+                        <span style={{ fontSize: '0.75rem', color: '#fbbf24', fontWeight: 700 }}>
+                          Level: {msg.proposedTest.difficulty}
+                        </span>
+                      </div>
+
+                      <div style={{ fontWeight: 800, color: 'white', fontSize: '0.95rem' }}>
+                        {msg.proposedTest.title}
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px', fontSize: '0.75rem', textAlign: 'center', background: 'rgba(255,255,255,0.03)', padding: '8px', borderRadius: '4px' }}>
+                        <div><strong style={{ color: '#93c5fd' }}>Questions</strong><div style={{ color: 'white' }}>{msg.proposedTest.totalQuestions} Qs</div></div>
+                        <div><strong style={{ color: '#93c5fd' }}>Timer</strong><div style={{ color: '#86efac', fontWeight: 700 }}>{msg.proposedTest.durationMinutes} Mins</div></div>
+                        <div><strong style={{ color: '#93c5fd' }}>Marks</strong><div style={{ color: 'white' }}>{msg.proposedTest.totalMarks} M</div></div>
+                      </div>
+
+                      <button
+                        onClick={() => handleStartTest(msg.proposedTest!)}
+                        className="btn btn-emerald"
+                        style={{ width: '100%', padding: '10px', fontSize: '0.88rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', boxShadow: '0 4px 14px rgba(16, 185, 129, 0.4)' }}
+                      >
+                        <Play size={14} /> Start This Custom Mock Test Now <ArrowRight size={14} />
+                      </button>
+                    </div>
+                  )}
+
+                  <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', alignSelf: 'flex-end' }}>
+                    {msg.timestamp}
+                  </span>
+                </div>
+
+                {msg.sender === 'user' && (
+                  <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'rgba(59, 130, 246, 0.2)', border: '1px solid #3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#93c5fd', flexShrink: 0, marginTop: '2px' }}>
+                    <User size={16} />
+                  </div>
+                )}
+              </div>
+            ))}
+            <div ref={chatBottomRef} />
+          </div>
+
+          {/* Chat Input Bar */}
+          <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.3)', display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <input
+              type="text"
+              placeholder="e.g. 'Create a 15-question hard test on Geometry and Indian Polity with 15 mins timer'..."
+              value={chatInput}
+              onChange={e => setChatInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSendChatMessage()}
+              style={{
+                flex: 1,
+                padding: '12px 16px',
+                borderRadius: 'var(--radius-md)',
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid var(--border-color)',
+                color: 'white',
+                fontSize: '0.9rem'
+              }}
+            />
+            <button
+              onClick={() => handleSendChatMessage()}
+              className="btn btn-emerald"
+              style={{ padding: '12px 20px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800 }}
+            >
+              <Send size={16} /> Send
+            </button>
+          </div>
+
+        </div>
+      )}
+
+      {/* VIEW 2: 10 FULL SHIFT PAPERS (100 Qs) */}
       {activePracticeTab === 'PAPERS_LIST' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
@@ -372,7 +611,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
         </div>
       )}
 
-      {/* VIEW 2: SUBJECT SECTIONALS (25 Qs) */}
+      {/* VIEW 3: SUBJECT SECTIONALS (25 Qs) */}
       {activePracticeTab === 'SUBJECT_TESTS' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
@@ -419,7 +658,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
         </div>
       )}
 
-      {/* VIEW 3: TOPIC DRILLS (15 Qs) */}
+      {/* VIEW 4: TOPIC DRILLS (15 Qs) */}
       {activePracticeTab === 'TOPIC_DRILLS' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
@@ -462,142 +701,6 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-      )}
-
-      {/* VIEW 4: AI MOCK TEST GENERATOR ASSISTANT */}
-      {activePracticeTab === 'AI_GENERATOR' && (
-        <div className="glass-card" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '22px', border: '1px solid rgba(16, 185, 129, 0.4)', background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(6, 78, 59, 0.2) 100%)' }}>
-          <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '14px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-              <span className="badge badge-verified" style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#34d399' }}>
-                <Sparkles size={14} /> AI MOCK TEST GENERATOR ASSISTANT
-              </span>
-            </div>
-            <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'white', margin: 0 }}>
-              Design Your Custom Context-Aware Mock Test
-            </h3>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', margin: '4px 0 0 0' }}>
-              Configure subjects, question volume, and difficulty. The engine automatically calculates the realistic exam timer calibrated to your selected difficulty level.
-            </p>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
-            
-            {/* 1. Subjects Selection */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <label style={{ fontSize: '0.88rem', fontWeight: 700, color: '#93c5fd' }}>
-                1. Select Target Subjects (Multi-Select):
-              </label>
-              {[
-                'Quantitative Aptitude',
-                'Reasoning & General Intelligence',
-                'English Comprehension',
-                'General Awareness',
-                'Computer Proficiency'
-              ].map(subj => {
-                const isSelected = genSubjects.includes(subj);
-                return (
-                  <div
-                    key={subj}
-                    onClick={() => handleToggleGenSubject(subj)}
-                    style={{
-                      padding: '10px 14px',
-                      borderRadius: 'var(--radius-sm)',
-                      background: isSelected ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.03)',
-                      border: isSelected ? '1px solid #10b981' : '1px solid var(--border-color)',
-                      color: isSelected ? '#86efac' : 'var(--text-secondary)',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px',
-                      fontSize: '0.85rem',
-                      fontWeight: isSelected ? 700 : 500
-                    }}
-                  >
-                    <div style={{ width: '18px', height: '18px', borderRadius: '4px', border: isSelected ? '2px solid #10b981' : '2px solid gray', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981', fontSize: '0.75rem', fontWeight: 900 }}>
-                      {isSelected ? '✓' : ''}
-                    </div>
-                    {subj}
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* 2. Number of Questions & Focus Goal */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div>
-                <label style={{ fontSize: '0.88rem', fontWeight: 700, color: '#93c5fd', display: 'block', marginBottom: '8px' }}>
-                  2. Number of Questions:
-                </label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
-                  {[10, 15, 25, 50].map(cnt => (
-                    <button
-                      key={cnt}
-                      onClick={() => setGenNumQuestions(cnt)}
-                      className={`btn ${genNumQuestions === cnt ? 'btn-primary' : 'btn-secondary'}`}
-                      style={{ fontSize: '0.85rem', padding: '8px', fontWeight: 700 }}
-                    >
-                      {cnt} Qs
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label style={{ fontSize: '0.88rem', fontWeight: 700, color: '#93c5fd', display: 'block', marginBottom: '8px' }}>
-                  3. Difficulty Level:
-                </label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
-                  {[
-                    { id: 'EASY', label: '🟢 Easy (Speed Builder)' },
-                    { id: 'MEDIUM', label: '🟡 Medium (Standard CGL)' },
-                    { id: 'HARD', label: '🔴 Hard (Tier-2 Advanced)' },
-                    { id: 'ADAPTIVE', label: '⚡ Adaptive (Mixed)' }
-                  ].map(lvl => (
-                    <button
-                      key={lvl.id}
-                      onClick={() => setGenDifficulty(lvl.id as any)}
-                      className={`btn ${genDifficulty === lvl.id ? 'btn-emerald' : 'btn-secondary'}`}
-                      style={{ fontSize: '0.78rem', padding: '8px 10px', textAlign: 'left', fontWeight: 600 }}
-                    >
-                      {lvl.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* 3. Intelligent Timer Preview Card */}
-            <div style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#93c5fd', fontWeight: 700, fontSize: '0.9rem' }}>
-                <Clock size={18} /> Intelligent Timer Calibration
-              </div>
-
-              <div style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                Based on your selection of <strong>{genNumQuestions} Questions</strong> at <strong>{genDifficulty}</strong> difficulty across {genSubjects.length} subjects:
-              </div>
-
-              <div style={{ padding: '12px', borderRadius: 'var(--radius-sm)', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', textAlign: 'center' }}>
-                <div style={{ fontSize: '0.75rem', color: '#86efac', textTransform: 'uppercase', fontWeight: 700 }}>Allocated Clock Time</div>
-                <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#34d399', margin: '2px 0' }}>
-                  {Math.max(5, Math.ceil((genNumQuestions * (genDifficulty === 'HARD' ? 55 : genDifficulty === 'EASY' ? 28 : 40)) / 60))} Minutes
-                </div>
-                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                  Calibrated for realistic TCS pace & deep accuracy
-                </div>
-              </div>
-
-              <button
-                onClick={handleGenerateAndStartTest}
-                className="btn btn-emerald"
-                style={{ width: '100%', padding: '12px', fontSize: '0.95rem', fontWeight: 800, marginTop: '4px', boxShadow: '0 4px 16px rgba(16, 185, 129, 0.4)' }}
-              >
-                <Sparkles size={16} /> Generate & Start Custom Mock
-              </button>
-            </div>
-
           </div>
         </div>
       )}
@@ -849,7 +952,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                 </div>
               </div>
 
-              {/* 🎯 NEW: ADAPTIVE REMEDIAL TESTS RECOMMENDED TO FIX WEAKNESSES */}
+              {/* 🎯 ADAPTIVE REMEDIAL TESTS RECOMMENDED TO FIX WEAKNESSES */}
               {weakAreas.length > 0 && (
                 <div style={{ padding: '20px', borderRadius: 'var(--radius-md)', background: 'rgba(239, 68, 68, 0.06)', border: '1px solid rgba(239, 68, 68, 0.35)', display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
