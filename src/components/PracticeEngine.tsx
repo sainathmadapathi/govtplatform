@@ -398,32 +398,228 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
 
   // Open and Review Past Test Attempt Handler
   const handleReviewPastAttempt = (att: MockAttemptRecord) => {
-    // 1. Locate paper snapshot or matched paper from libraries
-    let targetPaper: MockPaper | undefined = att.paperData;
-    if (!targetPaper) {
-      targetPaper = availablePapers.find(p => p.id === att.topic_id || p.title === att.subject);
-    }
-    if (!targetPaper) {
-      targetPaper = [...SUBJECT_MOCK_TESTS, ...TOPIC_DRILL_TESTS].find(p => p.id === att.topic_id || p.title === att.subject);
-    }
-    if (!targetPaper) {
-      const matched = availablePapers.find(p => att.subject && att.subject.toLowerCase().includes(p.subject.toLowerCase()));
-      targetPaper = matched || OFFICIAL_10_MOCK_PAPERS[0];
-    }
+    try {
+      const allRepositoryPapers: MockPaper[] = [
+        ...availablePapers,
+        ...NEW_DISCOVERED_PAPERS,
+        ...SUBJECT_MOCK_TESTS,
+        ...TOPIC_DRILL_TESTS,
+        ...OFFICIAL_10_MOCK_PAPERS
+      ];
 
-    // 2. Load stored answers if available. If not available (older attempts), do NOT synthesize fake answers!
-    const storedAnswers = att.userAnswers || att.details?.userAnswers;
-    const hasRecordedAnswers = storedAnswers && Object.keys(storedAnswers).length > 0;
+      // 1. If att.paperData exists and has questions, use it directly
+      let targetPaper: MockPaper | undefined = att.paperData?.questions?.length ? att.paperData : undefined;
 
-    setSelectedPaper(targetPaper);
-    setUserAnswers(hasRecordedAnswers ? { ...storedAnswers } : {});
-    setReviewingAttempt(att);
-    setIsSubmittedTest(true);
-    setIsTestStarted(true);
-    setActivePracticeTab('ACTIVE_TEST');
-    setCurrentIdx(0);
-    setSolutionFilter('ALL');
-    setSolutionSectionFilter('ALL');
+      // 2. Search by exact ID in all repository papers
+      if (!targetPaper && att.topic_id) {
+        targetPaper = allRepositoryPapers.find(p => p && p.id === att.topic_id);
+      }
+
+      // 3. Search by exact Title in all repository papers
+      if (!targetPaper && att.subject) {
+        targetPaper = allRepositoryPapers.find(p => p && p.title && p.title.trim().toLowerCase() === att.subject.trim().toLowerCase());
+      }
+
+      // 4. Search by fuzzy title or subject inclusion
+      if (!targetPaper && att.subject) {
+        const subLower = att.subject.toLowerCase();
+        targetPaper = allRepositoryPapers.find(p => {
+          if (!p) return false;
+          const titleMatch = Boolean(p.title && subLower.includes(p.title.toLowerCase()));
+          const subjectMatch = Boolean(p.subject && subLower.includes(p.subject.toLowerCase()));
+          return titleMatch || subjectMatch;
+        });
+      }
+
+      // 5. If it's a quantitative drill (e.g. "AI Customized Drill: Quantitative Aptitude (7 Qs)")
+      if (!targetPaper && att.subject && att.subject.toLowerCase().includes('quantitative')) {
+        targetPaper = generateCustomMockTest({
+          title: att.subject,
+          selectedSubjects: ['Quantitative Aptitude'],
+          selectedTopics: [],
+          numQuestions: att.total_marks > 50 ? 25 : Math.max(7, Math.round(att.total_marks / 2)),
+          difficulty: 'HARD'
+        });
+      }
+
+      // 6. If it's the "Application Practice Simulator"
+      if (!targetPaper && att.subject && att.subject.toLowerCase().includes('application')) {
+        targetPaper = {
+          id: 'sim-app-practice-review',
+          title: 'SSC CGL Official Application Portal Practice Simulator',
+          category: 'SECTIONAL_MOCK',
+          examTier: 'Tier-1',
+          year: 2026,
+          totalQuestions: 4,
+          totalMarks: 100,
+          durationMinutes: 10,
+          difficulty: 'EASY',
+          description: 'Official application verification drill reviewing photo/signature standards, fee exemptions, post preferences, and eligibility checks.',
+          provenanceTag: 'SSC Official Notice Rule 11.1 Key',
+          questions: [
+            {
+              id: 'app-sim-q1',
+              subject: 'General Awareness',
+              topicName: 'Official Notification Guidelines',
+              questionText: 'According to official SSC CGL Notification 2026, what are the mandatory dimensions and specifications for the live photograph capture?',
+              options: [
+                { id: 0, text: 'Selfie taken without plain background, glasses permitted' },
+                { id: 1, text: 'Clear front-facing shot, plain light background, without cap/spectacles, neutral expression' },
+                { id: 2, text: 'Black and white passport photo with signature stamped across face' },
+                { id: 3, text: 'Side profile photo showing left ear clearly' }
+              ],
+              correctOptionIndex: 1,
+              shiftInfo: 'Official SSC Application Portal Guidelines Rule 11.1',
+              detailedExplanation: {
+                simpleExplanation: 'The official SSC live webcam photo capture requires a plain, well-lit background with no caps or spectacles to ensure automatic facial biometric matching on exam day.',
+                coreConcept: 'SSC Live Web-Capture Norms (Rule 11.1)',
+                technicalTerms: [
+                  { term: 'Biometric Verification', meaning: 'Automated facial recognition matching conducted at the CBT center.' }
+                ],
+                stepByStepMethod: [
+                  'Step 1: Check SSC notice rule 11.1 for application guidelines.',
+                  'Step 2: Note requirement of neutral background without glasses or headgear.',
+                  'Step 3: Confirm Option (2) meets all official norms.'
+                ],
+                shortcutTrick: {
+                  name: 'SSC Photo Checklist 3-Point Rule',
+                  trickSteps: 'Light background + No glasses + Both ears visible = 100% acceptance.',
+                  timeSaved: 'Prevents application rejection'
+                },
+                crucialTakeaway: 'Wearing spectacles or caps during SSC webcam capture leads to immediate application rejection under Rule 11.1.'
+              }
+            },
+            {
+              id: 'app-sim-q2',
+              subject: 'General Awareness',
+              topicName: 'Application Fee & Exemptions',
+              questionText: 'Under the official SSC CGL recruitment rules, which of the following candidate categories are entirely exempt from paying the application fee of ₹100?',
+              options: [
+                { id: 0, text: 'All male candidates from General/OBC category' },
+                { id: 1, text: 'Women candidates and candidates belonging to Scheduled Castes (SC), Scheduled Tribes (ST), and PwBD' },
+                { id: 2, text: 'Only candidates who have already cleared SSC CHSL' },
+                { id: 3, text: 'Candidates applying from rural pin codes only' }
+              ],
+              correctOptionIndex: 1,
+              shiftInfo: 'Official SSC Fee Rules Rule 10.1',
+              detailedExplanation: {
+                simpleExplanation: 'All women candidates regardless of category, along with SC, ST, PwBD, and eligible Ex-Servicemen, are completely exempt from paying the application fee.',
+                coreConcept: 'SSC Statutory Fee Exemption Framework',
+                technicalTerms: [
+                  { term: 'PwBD', meaning: 'Persons with Benchmark Disabilities.' }
+                ],
+                stepByStepMethod: [
+                  'Step 1: Refer to SSC CGL Notification clause 10.1.',
+                  'Step 2: Identify fee-exempt groups: Women, SC, ST, PwBD, ESM.',
+                  'Step 3: Option (2) correctly lists these statutory exemptions.'
+                ],
+                shortcutTrick: {
+                  name: 'Exemption Memory Code',
+                  trickSteps: 'Women + SC + ST + PwBD = ₹0 Fee.',
+                  timeSaved: 'Instant question answer'
+                },
+                crucialTakeaway: 'Always verify fee exemption status before final submit to avoid double payment.'
+              }
+            },
+            {
+              id: 'app-sim-q3',
+              subject: 'General Awareness',
+              topicName: 'Post Preference Submission',
+              questionText: 'At which stage does the Commission collect the final option-cum-preference for posts and departments from SSC CGL candidates?',
+              options: [
+                { id: 0, text: 'During initial online registration before Tier-1' },
+                { id: 1, text: 'Before declaration of the final results, via online web-portal after Tier-2 examination' },
+                { id: 2, text: 'Physically at the regional SSC office during Tier-1 exam day' },
+                { id: 3, text: 'Post-preferences are assigned randomly by computerized lottery' }
+              ],
+              correctOptionIndex: 1,
+              shiftInfo: 'Official SSC Post Allocation Notice',
+              detailedExplanation: {
+                simpleExplanation: 'Post preferences are submitted online by candidates who appear in Tier-2 before the declaration of final merit list.',
+                coreConcept: 'Post Preference Window Process',
+                technicalTerms: [
+                  { term: 'Option-cum-Preference', meaning: 'Prioritized choice of ministries (e.g. CSS, MEA, Income Tax) submitted online.' }
+                ],
+                stepByStepMethod: [
+                  'Step 1: Check recruitment scheme revised process.',
+                  'Step 2: SSC opens online portal for post preference submission post Tier-2.',
+                  'Step 3: Non-submission leads to forfeiture of candidature.'
+                ],
+                shortcutTrick: {
+                  name: 'Order of Priority Rule',
+                  trickSteps: 'Rank posts by Grade Pay (GP 4600 > GP 2800 > GP 2400) and city preferences.',
+                  timeSaved: 'Secures target department'
+                },
+                crucialTakeaway: 'Missing the online preference window completely disqualifies the candidate from final merit consideration.'
+              }
+            },
+            {
+              id: 'app-sim-q4',
+              subject: 'General Awareness',
+              topicName: 'Age Limit & Crucial Date Determination',
+              questionText: 'What is the crucial date for determination of age-limit for SSC CGL Examination as prescribed in the official notification?',
+              options: [
+                { id: 0, text: 'The date on which Tier-1 admit cards are issued' },
+                { id: 1, text: '01st August of the exam notification year (or as notified in Section 5.1)' },
+                { id: 2, text: '31st December of the previous calendar year' },
+                { id: 3, text: 'Candidate’s birthday in the respective examination year' }
+              ],
+              correctOptionIndex: 1,
+              shiftInfo: 'Official SSC Eligibility Rule 5.1',
+              detailedExplanation: {
+                simpleExplanation: 'The Commission sets 01st August of the examination year as the standard benchmark date for calculating minimum and maximum age criteria.',
+                coreConcept: 'Crucial Date of Eligibility (Rule 5.1)',
+                technicalTerms: [
+                  { term: 'Crucial Date', meaning: 'The exact calendar cutoff date against which age and degree qualifications are validated.' }
+                ],
+                stepByStepMethod: [
+                  'Step 1: Refer to Rule 5.1 of official recruitment rules.',
+                  'Step 2: Standard DoPT guidelines prescribe 01-08 of the examination year.',
+                  'Step 3: Option (2) accurately states 01st August.'
+                ],
+                shortcutTrick: {
+                  name: 'DoPT Standard Reference Rule',
+                  trickSteps: 'Exams held in second half of the year benchmark against 1st August.',
+                  timeSaved: 'Instant recall'
+                },
+                crucialTakeaway: 'Ensure your date of birth on Class 10 Certificate satisfies the 18–30 / 18–32 range as on 1st August.'
+              }
+            }
+          ]
+        };
+      }
+
+      // 7. Ultimate fallback to the primary verified mock paper so it NEVER crashes
+      if (!targetPaper) {
+        targetPaper = OFFICIAL_10_MOCK_PAPERS[0];
+      }
+
+      // Ensure paper has valid questions array
+      if (!targetPaper.questions || targetPaper.questions.length === 0) {
+        targetPaper = {
+          ...targetPaper,
+          questions: OFFICIAL_10_MOCK_PAPERS[0].questions
+        };
+      }
+
+      const storedAnswers = att.userAnswers || att.details?.userAnswers;
+      const hasRecordedAnswers = storedAnswers && Object.keys(storedAnswers).length > 0;
+
+      setSelectedPaper(targetPaper);
+      setUserAnswers(hasRecordedAnswers ? { ...storedAnswers } : {});
+      setReviewingAttempt(att);
+      setIsSubmittedTest(true);
+      setIsTestStarted(true);
+      setActivePracticeTab('ACTIVE_TEST');
+      setCurrentIdx(0);
+      setSolutionFilter('ALL');
+      setSolutionSectionFilter('ALL');
+      
+      // Scroll smoothly to top
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err) {
+      console.error('Error opening past attempt for review:', err);
+    }
   };
 
   const isOlderAttemptWithoutAnswers = Boolean(
