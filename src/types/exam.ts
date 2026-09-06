@@ -30,7 +30,7 @@ export interface CorrigendumNotice {
 
 export interface ImportantDate {
   id: string;
-  type: 'NOTIFICATION' | 'APPLICATION_OPEN' | 'APPLICATION_CLOSE' | 'ADMIT_CARD' | 'EXAM_TIER1' | 'EXAM_TIER2' | 'ANSWER_KEY' | 'RESULT';
+  type: 'NOTIFICATION' | 'APPLICATION_OPEN' | 'APPLICATION_CLOSE' | 'CORRECTION_WINDOW' | 'ADMIT_CARD' | 'EXAM_TIER1' | 'EXAM_TIER2' | 'ANSWER_KEY' | 'RESULT';
   label: string;
   dateTimeStr: string;
   timezone: string;
@@ -407,4 +407,67 @@ export interface UserReport {
   description: string;
   createdAt: string;
   adminStatus: 'PENDING' | 'RESOLVED' | 'REJECTED';
+}
+
+// --- Notification & Timeline Types ---
+
+export type NotificationChannel = 'IN_APP' | 'PUSH' | 'EMAIL' | 'WHATSAPP';
+
+export type NotificationEventType = 
+  | 'APPLICATION_OPEN' 
+  | 'APPLICATION_DEADLINE' 
+  | 'CORRECTION_WINDOW' 
+  | 'ADMIT_CARD' 
+  | 'EXAM_DATE' 
+  | 'ANSWER_KEY' 
+  | 'RESULT';
+
+export interface NotificationPreference {
+  channels: {
+    inApp: boolean; // default: true
+    browserPush: boolean; // default: false
+    email: boolean; // default: false
+    whatsapp: boolean; // default: false
+  };
+  contactInfo: {
+    email: string;
+    phone: string;
+    whatsappVerified: boolean;
+  };
+  eventSubscriptions: {
+    applicationOpening: boolean;
+    applicationDeadlines: boolean;
+    correctionWindows: boolean;
+    admitCards: boolean;
+    examDates: boolean;
+    results: boolean;
+  };
+  reminderSchedule: {
+    sevenDaysBefore: boolean;
+    threeDaysBefore: boolean;
+    oneDayBefore: boolean;
+    lastDayHoursBefore: boolean;
+  };
+}
+
+export interface CandidateNotification {
+  id: string; // Unique deterministic key e.g. "notif-ssc-cgl-2026-APPLICATION_DEADLINE-3D"
+  examId: string;
+  examCode: string;
+  examTitle: string;
+  eventType: NotificationEventType;
+  title: string;
+  message: string;
+  channelsDelivered: NotificationChannel[];
+  actionType: 'EXAM_DETAIL' | 'APPLICATION_GUIDE' | 'CALENDAR' | 'TIMELINE' | 'ADMIT_CARD' | 'RESULT';
+  actionPayload?: any;
+  priority: 'CRITICAL' | 'HIGH' | 'NORMAL';
+  createdAt: string;
+  scheduledDateStr?: string;
+  isRead: boolean;
+}
+
+export interface TrackedExamRecord {
+  examId: string;
+  trackedAt: string;
 }

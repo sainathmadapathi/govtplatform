@@ -4,7 +4,7 @@ import {
   HelpCircle, AlertTriangle, ExternalLink, CheckCircle2, ChevronRight, 
   RefreshCw, Flag, CheckSquare, Square, Download, Flame, ArrowUpRight,
   Camera, Briefcase, Clock, Building, Target, Scale, Zap, Info, Star,
-  PlayCircle, Youtube, Eye, Compass
+  PlayCircle, Youtube, Eye, Compass, Bell, Check
 } from 'lucide-react';
 import { Exam, DataProvenance, ResourceItem } from '../types/exam';
 import { ApplicationGuide } from './ApplicationGuide';
@@ -21,6 +21,8 @@ interface ExamDetailViewProps {
   onNavigateEligibility?: () => void;
   onNavigatePlanner?: () => void;
   onNavigatePractice?: () => void;
+  isTracked?: boolean;
+  onToggleTrack?: () => void;
 }
 
 export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
@@ -29,7 +31,9 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
   onOpenReportModal,
   onNavigateEligibility,
   onNavigatePlanner,
-  onNavigatePractice
+  onNavigatePractice,
+  isTracked = false,
+  onToggleTrack
 }) => {
   const [activeSection, setActiveSection] = useState<number>(1);
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -111,7 +115,17 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
             </p>
           </div>
 
-          <div style={{ display: 'flex', gap: '10px' }}>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            {onToggleTrack && (
+              <button 
+                className={`btn ${isTracked ? 'btn-emerald' : 'btn-secondary'}`}
+                onClick={onToggleTrack}
+                style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                title={isTracked ? 'Currently tracked in My Exam Timeline' : 'Track this exam for personalized deadline notifications'}
+              >
+                {isTracked ? <><Check size={16} /> Tracking</> : <><Bell size={16} /> Track Exam</>}
+              </button>
+            )}
             <button className="btn btn-secondary" onClick={() => onOpenReportModal('Exam', exam.id)} style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <Flag size={16} /> Report Error
             </button>

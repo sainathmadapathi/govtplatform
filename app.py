@@ -1,6 +1,7 @@
 import os
 import json
 import sqlite3
+from datetime import datetime
 from flask import Flask, send_from_directory, jsonify, request
 from flask_cors import CORS
 from database import get_db_connection, init_database, DB_FILE
@@ -55,6 +56,12 @@ def get_sqlite_status():
         
         cursor.execute("SELECT COUNT(*) FROM candidate_notes")
         notes_count = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM tracked_exams")
+        tracked_count = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM candidate_notifications")
+        notif_count = cursor.fetchone()[0]
         
         conn.close()
         
@@ -70,7 +77,9 @@ def get_sqlite_status():
                 "completed_modules": progress_count,
                 "mock_attempts": mock_count,
                 "bookmarks": bookmark_count,
-                "notes": notes_count
+                "notes": notes_count,
+                "tracked_exams": tracked_count,
+                "notifications": notif_count
             }
         })
     except Exception as e:
@@ -315,6 +324,176 @@ def submit_report():
         "message": "Report logged into SQLite audit queue",
         "data": data
     }), 201
+
+# --- Notification & Exam Tracking Endpoints ---
+
+@app.route('/api/sqlite/tracked-exams', methods=['GET', 'POST'])
+def handle_tracked_exams():
+    user_id = request.args.get('user_id', 'default-candidate')
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    if request.method == 'GET':
+        cursor.execute("SELECT exam_id FROM tracked_exams WHERE user_id = ? ORDER BY tracked_at DESC", (user_id,))
+        rows = cursor.fetchall()
+        conn.close()
+        return jsonify({"user_id": user_id, "tracked_exam_ids": [r["exam_id"] for r in rows]})
+
+    elif request.method == 'POST':
+        data = request.get_json(silent=True) or {}
+        exam_id = data.get('exam_id')
+        is_tracked = data.get('is_tracked', True)
+        if not exam_id:
+            conn.close()
+            return jsonify({"error": "exam_id is required"}), 400
+
+        if is_tracked:
+            cursor.execute("INSERT OR IGNORE INTO tracked_exams (user_id, exam_id) VALUES (?, ?)", (user_id, exam_id))
+        else:
+            cursor.execute("DELETE FROM tracked_exams WHERE user_id = ? AND exam_id = ?", (user_id, exam_id))
+        conn.commit()
+
+        cursor.execute("SELECT exam_id FROM tracked_exams WHERE user_id = ? ORDER BY tracked_at DESC", (user_id,))
+        rows = cursor.fetchall()
+        conn.close()
+        return jsonify({"status": "updated", "user_id": user_id, "tracked_exam_ids": [r["exam_id"] for r in rows]})
+
+@app.route('/api/sqlite/notifications/preferences', methods=['GET', 'POST'])
+def handle_notification_preferences():
+    user_id = request.args.get('user_id', 'default-candidate')
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    if request.method == 'GET':
+        cursor.execute("SELECT * FROM notification_preferences WHERE user_id = ?", (user_id,))
+        row = cursor.fetchone()
+        conn.close()
+        if row:
+            return jsonify({
+                "user_id": user_id,
+                "channels": json.loads(row["channels_json"]),
+                "contactInfo": json.loads(row["contact_json"]),
+                "eventSubscriptions": json.loads(row["subscriptions_json"]),
+                "reminderSchedule": json.loads(row["schedule_json"])
+            })
+        return jsonify({
+            "user_id": user_id,
+            "channels": { "inApp": True, "browserPush": False, "email": False, "whatsapp": False },
+            "contactInfo": { "email": "", "phone": "", "whatsappVerified": False },
+            "eventSubscriptions": {
+                "applicationOpening": True,
+                "applicationDeadlines": True,
+                "correctionWindows": True,
+                "admitCards": True,
+                "examDates": True,
+                "results": True
+            },
+            "reminderSchedule": {
+                "sevenDaysBefore": True,
+                "threeDaysBefore": True,
+                "oneDayBefore": True,
+                "lastDayHoursBefore": True
+            }
+        })
+
+    elif request.method == 'POST':
+        data = request.get_json(silent=True) or {}
+        channels_json = json.dumps(data.get('channels', { "inApp": True, "browserPush": False, "email": False, "whatsapp": False }))
+        contact_json = json.dumps(data.get('contactInfo', { "email": "", "phone": "", "whatsappVerified": False }))
+        subscriptions_json = json.dumps(data.get('eventSubscriptions', {}))
+        schedule_json = json.dumps(data.get('reminderSchedule', {}))
+
+        cursor.execute('''
+            INSERT INTO notification_preferences (user_id, channels_json, contact_json, subscriptions_json, schedule_json, updated_at)
+            VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(user_id) DO UPDATE SET
+                channels_json = excluded.channels_json,
+                contact_json = excluded.contact_json,
+                subscriptions_json = excluded.subscriptions_json,
+                schedule_json = excluded.schedule_json,
+                updated_at = CURRENT_TIMESTAMP
+        ''', (user_id, channels_json, contact_json, subscriptions_json, schedule_json))
+        conn.commit()
+        conn.close()
+        return jsonify({"status": "saved", "user_id": user_id})
+
+@app.route('/api/sqlite/notifications', methods=['GET', 'POST', 'DELETE'])
+def handle_notifications():
+    user_id = request.args.get('user_id', 'default-candidate')
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    if request.method == 'GET':
+        cursor.execute("SELECT * FROM candidate_notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 100", (user_id,))
+        rows = cursor.fetchall()
+        conn.close()
+        notifs = []
+        for r in rows:
+            notifs.append({
+                "id": r["id"],
+                "examId": r["exam_id"],
+                "eventType": r["event_type"],
+                "title": r["title"],
+                "message": r["message"],
+                "channelsDelivered": json.loads(r["channels_json"]) if r["channels_json"] else ["IN_APP"],
+                "actionType": r["action_type"] or "EXAM_DETAIL",
+                "actionPayload": json.loads(r["action_payload"]) if r["action_payload"] else None,
+                "priority": r["priority"] or "NORMAL",
+                "isRead": bool(r["is_read"]),
+                "createdAt": r["created_at"]
+            })
+        return jsonify({"user_id": user_id, "notifications": notifs})
+
+    elif request.method == 'POST':
+        data = request.get_json(silent=True) or {}
+        items = data.get('notifications') if isinstance(data.get('notifications'), list) else [data]
+        inserted = 0
+        for item in items:
+            if not item or not item.get('id'):
+                continue
+            cursor.execute('''
+                INSERT OR IGNORE INTO candidate_notifications (id, user_id, exam_id, event_type, title, message, channels_json, action_type, action_payload, priority, is_read, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                item['id'],
+                user_id,
+                item.get('examId', ''),
+                item.get('eventType', 'APPLICATION_DEADLINE'),
+                item.get('title', 'Exam Update'),
+                item.get('message', ''),
+                json.dumps(item.get('channelsDelivered', ['IN_APP'])),
+                item.get('actionType', 'EXAM_DETAIL'),
+                json.dumps(item.get('actionPayload')) if item.get('actionPayload') else None,
+                item.get('priority', 'NORMAL'),
+                1 if item.get('isRead') else 0,
+                item.get('createdAt', datetime.now().isoformat())
+            ))
+            inserted += 1
+        conn.commit()
+        conn.close()
+        return jsonify({"status": "saved", "inserted_count": inserted})
+
+    elif request.method == 'DELETE':
+        cursor.execute("DELETE FROM candidate_notifications WHERE user_id = ?", (user_id,))
+        conn.commit()
+        conn.close()
+        return jsonify({"status": "cleared", "user_id": user_id})
+
+@app.route('/api/sqlite/notifications/read', methods=['POST'])
+def mark_notification_read():
+    user_id = request.args.get('user_id', 'default-candidate')
+    data = request.get_json(silent=True) or {}
+    notif_id = data.get('notification_id')
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    if notif_id == 'ALL':
+        cursor.execute("UPDATE candidate_notifications SET is_read = 1 WHERE user_id = ?", (user_id,))
+    elif notif_id:
+        cursor.execute("UPDATE candidate_notifications SET is_read = 1 WHERE user_id = ? AND id = ?", (user_id, notif_id))
+    conn.commit()
+    conn.close()
+    return jsonify({"status": "marked_read", "user_id": user_id, "notification_id": notif_id})
 
 # Fallback for SPA routing
 @app.route('/<path:path>')

@@ -103,6 +103,46 @@ def init_database():
         )
     ''')
 
+    # 7. Candidate Tracked Exams ("My Exam Timeline")
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS tracked_exams (
+            user_id TEXT NOT NULL,
+            exam_id TEXT NOT NULL,
+            tracked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (user_id, exam_id)
+        )
+    ''')
+
+    # 8. Personalized Notification Preferences
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS notification_preferences (
+            user_id TEXT PRIMARY KEY,
+            channels_json TEXT NOT NULL,
+            contact_json TEXT NOT NULL,
+            subscriptions_json TEXT NOT NULL,
+            schedule_json TEXT NOT NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    # 9. Candidate Notifications Queue & History
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS candidate_notifications (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            exam_id TEXT NOT NULL,
+            event_type TEXT NOT NULL,
+            title TEXT NOT NULL,
+            message TEXT NOT NULL,
+            channels_json TEXT,
+            action_type TEXT,
+            action_payload TEXT,
+            priority TEXT DEFAULT 'NORMAL',
+            is_read INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
     # Insert default primary user if not exists
     cursor.execute('SELECT id FROM users WHERE id = ?', ('default-candidate',))
     if not cursor.fetchone():
@@ -110,6 +150,14 @@ def init_database():
             INSERT INTO users (id, username, target_post_id, target_exam_id, category, qualification)
             VALUES (?, ?, ?, ?, ?, ?)
         ''', ('default-candidate', 'Candidate Aspirant', 'post-aso-css', 'ssc-cgl-2026', 'UR (Unreserved)', 'Bachelor Degree'))
+
+    # Seed default tracking for SSC CGL 2026 if no exams tracked yet
+    cursor.execute('SELECT COUNT(*) FROM tracked_exams WHERE user_id = ?', ('default-candidate',))
+    if cursor.fetchone()[0] == 0:
+        cursor.execute('''
+            INSERT OR IGNORE INTO tracked_exams (user_id, exam_id)
+            VALUES (?, ?)
+        ''', ('default-candidate', 'exam-ssc-cgl-2026'))
 
     conn.commit()
     conn.close()

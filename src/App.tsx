@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { ExamFinder } from './components/ExamFinder';
 import { EligibilityCalculator } from './components/EligibilityCalculator';
@@ -9,19 +9,93 @@ import { ExamCompare } from './components/ExamCompare';
 import { ExamCalendar } from './components/ExamCalendar';
 import { AIAssistant } from './components/AIAssistant';
 import { AdminVerificationPanel } from './components/AdminVerificationPanel';
+import { NotificationCenterModal } from './components/NotificationCenterModal';
+import { NotificationPreferencesModal } from './components/NotificationPreferencesModal';
 import { ALL_EXAMS, SSC_CGL_EXAM } from './data/examsData';
-import { Exam, DataProvenance } from './types/exam';
+import { Exam, DataProvenance, CandidateNotification, NotificationPreference } from './types/exam';
+import { storageService } from './services/storageService';
 import { ShieldCheck, X, FileText, ExternalLink, Flag, CheckCircle2, Quote, BookOpen } from 'lucide-react';
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'FINDER' | 'ELIGIBILITY' | 'EXAM_DETAIL' | 'PLANNER' | 'PRACTICE' | 'COMPARE' | 'CALENDAR' | 'AI_ASSISTANT' | 'ADMIN'>('FINDER');
   const [selectedExam, setSelectedExam] = useState<Exam>(SSC_CGL_EXAM);
   
+  // Tracked Exams & Notifications State
+  const [trackedExamIds, setTrackedExamIds] = useState<string[]>(() => storageService.getTrackedExams());
+  const [notifications, setNotifications] = useState<CandidateNotification[]>(() => storageService.getNotifications());
+  const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreference>(() => storageService.getNotificationPreferences());
+  const [isNotificationsModalOpen, setIsNotificationsModalOpen] = useState<boolean>(false);
+  const [isPreferencesModalOpen, setIsPreferencesModalOpen] = useState<boolean>(false);
+
   // Modals state
   const [provenanceModalData, setProvenanceModalData] = useState<DataProvenance | null>(null);
   const [reportModalData, setReportModalData] = useState<{ open: boolean; entityType: string; entityId: string } | null>(null);
   const [reportSubmitted, setReportSubmitted] = useState<boolean>(false);
   const [reportDescription, setReportDescription] = useState<string>('');
+
+  // Initial load and sync with SQLite
+  useEffect(() => {
+    const initNotificationsAndTimeline = async () => {
+      // 1. Sync tracked exams from SQLite
+      const remoteTracked = await storageService.loadTrackedExamsFromSQLite();
+      setTrackedExamIds(remoteTracked);
+
+      // 2. Sync notification preferences from SQLite
+      const remotePrefs = await storageService.loadNotificationPreferencesFromSQLite();
+      setNotificationPreferences(remotePrefs);
+
+      // 3. Generate initial personalized notifications for tracked exams
+      const generated = storageService.generatePersonalizedNotificationsForTrackedExams(ALL_EXAMS);
+      setNotifications(generated);
+    };
+
+    initNotificationsAndTimeline();
+  }, []);
+
+  const handleToggleTrackExam = async (examId: string) => {
+    const updated = await storageService.toggleTrackExam(examId);
+    setTrackedExamIds(updated);
+    // Regenerate notifications scoped strictly to newly tracked exams
+    const regenerated = storageService.generatePersonalizedNotificationsForTrackedExams(ALL_EXAMS);
+    setNotifications(regenerated);
+  };
+
+  const handleMarkNotificationAsRead = async (id: string) => {
+    await storageService.markNotificationAsRead(id);
+    setNotifications(storageService.getNotifications());
+  };
+
+  const handleClearAllNotifications = async () => {
+    await storageService.clearAllNotifications();
+    setNotifications([]);
+  };
+
+  const handleSavePreferences = async (newPrefs: NotificationPreference) => {
+    await storageService.saveNotificationPreferences(newPrefs);
+    setNotificationPreferences(newPrefs);
+    const regenerated = storageService.generatePersonalizedNotificationsForTrackedExams(ALL_EXAMS);
+    setNotifications(regenerated);
+  };
+
+  const handleDispatchTestAlert = (testNotif: CandidateNotification) => {
+    const current = storageService.getNotifications();
+    const updated = [testNotif, ...current];
+    storageService.saveNotifications(updated);
+    setNotifications(updated);
+  };
+
+  const handleNotificationAction = (notif: CandidateNotification) => {
+    const targetExam = ALL_EXAMS.find(e => e.id === notif.examId) || ALL_EXAMS[0];
+    setSelectedExam(targetExam);
+    
+    if (notif.actionType === 'CALENDAR' || notif.actionType === 'TIMELINE') {
+      setActiveTab('CALENDAR');
+    } else {
+      setActiveTab('EXAM_DETAIL');
+    }
+
+    setIsNotificationsModalOpen(false);
+  };
 
   const handleSelectExam = (exam: Exam) => {
     setSelectedExam(exam);
@@ -45,6 +119,8 @@ export const App: React.FC = () => {
     }, 1500);
   };
 
+  const unreadCount = notifications.filter(n => !n.isRead).length;
+
   return (
     <div className="app-container">
       {/* Top Header */}
@@ -52,6 +128,10 @@ export const App: React.FC = () => {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         selectedExamTitle={selectedExam.title}
+        unreadCount={unreadCount}
+        trackedCount={trackedExamIds.length}
+        onOpenNotifications={() => setIsNotificationsModalOpen(true)}
+        onOpenTimeline={() => setActiveTab('CALENDAR')}
       />
 
       {/* View Render */}
@@ -60,6 +140,8 @@ export const App: React.FC = () => {
           <ExamFinder 
             onSelectExam={handleSelectExam}
             onNavigateEligibility={() => setActiveTab('ELIGIBILITY')}
+            trackedExamIds={trackedExamIds}
+            onToggleTrackExam={handleToggleTrackExam}
           />
         )}
 
@@ -78,6 +160,8 @@ export const App: React.FC = () => {
             onNavigateEligibility={() => setActiveTab('ELIGIBILITY')}
             onNavigatePlanner={() => setActiveTab('PLANNER')}
             onNavigatePractice={() => setActiveTab('PRACTICE')}
+            isTracked={trackedExamIds.includes(selectedExam.id)}
+            onToggleTrack={() => handleToggleTrackExam(selectedExam.id)}
           />
         )}
 
@@ -103,6 +187,9 @@ export const App: React.FC = () => {
         {activeTab === 'CALENDAR' && (
           <ExamCalendar 
             onSelectExam={handleSelectExam}
+            trackedExamIds={trackedExamIds}
+            onToggleTrackExam={handleToggleTrackExam}
+            onOpenPreferences={() => setIsPreferencesModalOpen(true)}
           />
         )}
 
@@ -274,6 +361,30 @@ export const App: React.FC = () => {
         </div>
       )}
 
+      {/* Candidate Notification Center Drawer/Modal */}
+      <NotificationCenterModal 
+        isOpen={isNotificationsModalOpen}
+        onClose={() => setIsNotificationsModalOpen(false)}
+        notifications={notifications}
+        onMarkAsRead={handleMarkNotificationAsRead}
+        onClearAll={handleClearAllNotifications}
+        onOpenPreferences={() => {
+          setIsNotificationsModalOpen(false);
+          setIsPreferencesModalOpen(true);
+        }}
+        onNotificationAction={handleNotificationAction}
+      />
+
+      {/* Candidate Notification Preferences Modal */}
+      <NotificationPreferencesModal 
+        isOpen={isPreferencesModalOpen}
+        onClose={() => setIsPreferencesModalOpen(false)}
+        preferences={notificationPreferences}
+        onSavePreferences={handleSavePreferences}
+        onDispatchTestAlert={handleDispatchTestAlert}
+      />
+
     </div>
   );
 };
+

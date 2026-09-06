@@ -1,14 +1,21 @@
 import React, { useState } from 'react';
-import { Search, Compass, ShieldCheck, ChevronRight, Award, Sparkles, Filter } from 'lucide-react';
+import { Search, Compass, ShieldCheck, ChevronRight, Award, Sparkles, Filter, Bell, Check } from 'lucide-react';
 import { ALL_EXAMS } from '../data/examsData';
 import { Exam } from '../types/exam';
 
 interface ExamFinderProps {
   onSelectExam: (exam: Exam) => void;
   onNavigateEligibility: () => void;
+  trackedExamIds?: string[];
+  onToggleTrackExam?: (examId: string) => void;
 }
 
-export const ExamFinder: React.FC<ExamFinderProps> = ({ onSelectExam, onNavigateEligibility }) => {
+export const ExamFinder: React.FC<ExamFinderProps> = ({ 
+  onSelectExam, 
+  onNavigateEligibility,
+  trackedExamIds = [],
+  onToggleTrackExam
+}) => {
   const [selectedPersona, setSelectedPersona] = useState<string>('Graduation (Any Stream)');
   const [selectedInterest, setSelectedInterest] = useState<string>('Government Job');
   const [ageInput, setAgeInput] = useState<number>(21);
@@ -232,18 +239,39 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({ onSelectExam, onNavigate
                 </div>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--border-color)', paddingTop: '16px', flexWrap: 'wrap', gap: '8px' }}>
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                   Code: <code style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>{exam.code}</code>
                 </span>
 
-                <button 
-                  className={`btn ${exam.isGoldenJourney ? 'btn-emerald' : 'btn-primary'}`}
-                  onClick={() => onSelectExam(exam)}
-                  style={{ padding: '8px 16px', fontSize: '0.85rem' }}
-                >
-                  Explore 14-Section Guide <ChevronRight size={16} />
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {onToggleTrackExam && (
+                    <button 
+                      className={`btn ${trackedExamIds.includes(exam.id) ? 'btn-emerald' : 'btn-secondary'}`}
+                      onClick={() => onToggleTrackExam(exam.id)}
+                      title={trackedExamIds.includes(exam.id) ? 'Currently tracked in My Exam Timeline' : 'Track this exam for personalized deadline notifications'}
+                      style={{ padding: '8px 12px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      {trackedExamIds.includes(exam.id) ? (
+                        <>
+                          <Check size={14} /> Tracking
+                        </>
+                      ) : (
+                        <>
+                          <Bell size={14} /> Track Exam
+                        </>
+                      )}
+                    </button>
+                  )}
+
+                  <button 
+                    className={`btn ${exam.isGoldenJourney ? 'btn-emerald' : 'btn-primary'}`}
+                    onClick={() => onSelectExam(exam)}
+                    style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+                  >
+                    Guide <ChevronRight size={16} />
+                  </button>
+                </div>
               </div>
             </div>
           ))}

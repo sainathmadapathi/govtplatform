@@ -395,13 +395,23 @@ export const SSC_CGL_EXAM: Exam = {
       provenance: sscProvenanceCorrigendum
     },
     {
+      id: 'date-correction-window',
+      type: 'CORRECTION_WINDOW',
+      label: 'Application Form Correction & Payment Window',
+      dateTimeStr: '2026-10-01 10:00:00',
+      timezone: 'Asia/Kolkata (IST)',
+      isTentative: false,
+      status: 'AVAILABLE',
+      provenance: sscProvenanceCorrigendum
+    },
+    {
       id: 'date-admit',
       type: 'ADMIT_CARD',
-      label: 'Tier 1 City Intimation & Admit Card',
+      label: 'Tier 1 City Intimation Slip & Admit Card Release',
       dateTimeStr: '2026-10-18 10:00:00',
       timezone: 'Asia/Kolkata (IST)',
       isTentative: true,
-      status: 'NOT_YET_ANNOUNCED',
+      status: 'AVAILABLE',
       provenance: sscProvenanceOverview
     },
     {
@@ -411,6 +421,26 @@ export const SSC_CGL_EXAM: Exam = {
       dateTimeStr: '2026-11-05 09:00:00',
       timezone: 'Asia/Kolkata (IST)',
       isTentative: false,
+      status: 'AVAILABLE',
+      provenance: sscProvenanceOverview
+    },
+    {
+      id: 'date-anskey',
+      type: 'ANSWER_KEY',
+      label: 'Tier 1 Tentative Answer Key & Challenge Window',
+      dateTimeStr: '2026-11-20 18:00:00',
+      timezone: 'Asia/Kolkata (IST)',
+      isTentative: true,
+      status: 'AVAILABLE',
+      provenance: sscProvenanceOverview
+    },
+    {
+      id: 'date-result',
+      type: 'RESULT',
+      label: 'Tier 1 Official Result & Cut-off Marks Declaration',
+      dateTimeStr: '2026-12-15 17:00:00',
+      timezone: 'Asia/Kolkata (IST)',
+      isTentative: true,
       status: 'AVAILABLE',
       provenance: sscProvenanceOverview
     },
@@ -1869,4 +1899,742 @@ export const SSC_CGL_EXAM: Exam = {
   ]
 };
 
-export const ALL_EXAMS: Exam[] = [SSC_CGL_EXAM];
+// ============================================================================
+// UPSC CIVIL SERVICES EXAMINATION (CSE) 2026
+// ============================================================================
+
+const upscProvenance: DataProvenance = {
+  id: 'prov-upsc-01',
+  documentTitle: 'UPSC Civil Services Examination 2026 Notification.pdf',
+  officialUrl: 'https://upsc.gov.in',
+  pageNumber: 1,
+  clauseNumber: 'Section 1 (Notice No. 05/2026-CSP)',
+  publishedDate: '2026-02-14',
+  verifiedDate: '2026-02-15',
+  verifiedBy: 'Senior Verification Officer #102',
+  taxonomyType: 'FACT',
+  verificationLevel: 'OFFICIALLY_VERIFIED',
+  excerptText: 'The Union Public Service Commission will hold the Civil Services (Preliminary) Examination, 2026 on 24th May, 2026 for recruitment to the Services and Posts including IAS, IFS, and IPS.'
+};
+
+export const UPSC_CSE_EXAM: Exam = {
+  id: 'exam-upsc-cse-2026',
+  code: 'UPSC_CSE_2026',
+  title: 'UPSC Civil Services Examination (CSE) 2026',
+  authorityName: 'Union Public Service Commission (UPSC)',
+  officialDomain: 'https://upsc.gov.in',
+  crucialEligibilityDate: '2026-08-01',
+  isGoldenJourney: false,
+  isDemoData: false,
+  overviewDescription: 'The Civil Services Examination (CSE) is a premier nationwide competitive examination conducted by UPSC for recruitment to higher Civil Services of the Government of India, including IAS, IFS, IPS, and IRS.',
+  vacanciesTotal: '1,056 (Expected)',
+  posts: [
+    {
+      id: 'post-upsc-ias',
+      postName: 'Indian Administrative Service (IAS)',
+      department: 'Department of Personnel & Training (DoPT)',
+      payLevel: 'Pay Level 10 (₹56,100 - ₹1,77,500)',
+      classification: 'Group B (Gazetted)',
+      minAge: 21,
+      maxAge: 32,
+      natureOfWork: 'Public administration, policymaking, and executive district governance across India.',
+      provenance: upscProvenance
+    },
+    {
+      id: 'post-upsc-ips',
+      postName: 'Indian Police Service (IPS)',
+      department: 'Ministry of Home Affairs (MHA)',
+      payLevel: 'Pay Level 10 (₹56,100 - ₹1,77,500)',
+      classification: 'Group B (Gazetted)',
+      minAge: 21,
+      maxAge: 32,
+      physicalRequired: true,
+      physicalNote: 'Height: Male 165cm, Female 150cm. Chest: 84cm with 5cm expansion.',
+      natureOfWork: 'Law enforcement, internal security, crime prevention, and traffic control.',
+      provenance: upscProvenance
+    },
+    {
+      id: 'post-upsc-ifs',
+      postName: 'Indian Foreign Service (IFS)',
+      department: 'Ministry of External Affairs (MEA)',
+      payLevel: 'Pay Level 10 (₹56,100 - ₹1,77,500)',
+      classification: 'Group B (Gazetted)',
+      minAge: 21,
+      maxAge: 32,
+      natureOfWork: 'Diplomacy, bilateral foreign relations, consular affairs, and international trade.',
+      provenance: upscProvenance
+    }
+  ],
+  dates: [
+    {
+      id: 'date-upsc-notif',
+      type: 'NOTIFICATION',
+      label: 'UPSC CSE Official Notification Released',
+      dateTimeStr: '2026-02-14 10:00:00',
+      timezone: 'Asia/Kolkata (IST)',
+      isTentative: false,
+      status: 'AVAILABLE',
+      provenance: upscProvenance
+    },
+    {
+      id: 'date-upsc-app-open',
+      type: 'APPLICATION_OPEN',
+      label: 'Online Application Window Opens (OTR Portal)',
+      dateTimeStr: '2026-02-14 10:00:00',
+      timezone: 'Asia/Kolkata (IST)',
+      isTentative: false,
+      status: 'AVAILABLE',
+      provenance: upscProvenance
+    },
+    {
+      id: 'date-upsc-app-close',
+      type: 'APPLICATION_CLOSE',
+      label: 'Application Final Closing Date (18:00 IST)',
+      dateTimeStr: '2026-03-05 18:00:00',
+      timezone: 'Asia/Kolkata (IST)',
+      isTentative: false,
+      status: 'AVAILABLE',
+      provenance: upscProvenance
+    },
+    {
+      id: 'date-upsc-correction',
+      type: 'CORRECTION_WINDOW',
+      label: 'Application Form Correction Window (7 Days)',
+      dateTimeStr: '2026-03-06 10:00:00',
+      timezone: 'Asia/Kolkata (IST)',
+      isTentative: false,
+      status: 'AVAILABLE',
+      provenance: upscProvenance
+    },
+    {
+      id: 'date-upsc-admit',
+      type: 'ADMIT_CARD',
+      label: 'e-Admit Card for Prelims Exam',
+      dateTimeStr: '2026-05-10 11:00:00',
+      timezone: 'Asia/Kolkata (IST)',
+      isTentative: true,
+      status: 'AVAILABLE',
+      provenance: upscProvenance
+    },
+    {
+      id: 'date-upsc-prelims',
+      type: 'EXAM_TIER1',
+      label: 'Civil Services (Preliminary) Exam (GS-I & CSAT)',
+      dateTimeStr: '2026-05-24 09:30:00',
+      timezone: 'Asia/Kolkata (IST)',
+      isTentative: false,
+      status: 'AVAILABLE',
+      provenance: upscProvenance
+    },
+    {
+      id: 'date-upsc-result-pre',
+      type: 'RESULT',
+      label: 'Prelims Examination Written Result Declaration',
+      dateTimeStr: '2026-06-25 17:00:00',
+      timezone: 'Asia/Kolkata (IST)',
+      isTentative: true,
+      status: 'AVAILABLE',
+      provenance: upscProvenance
+    },
+    {
+      id: 'date-upsc-mains',
+      type: 'EXAM_TIER2',
+      label: 'Civil Services (Main) Examination Begins',
+      dateTimeStr: '2026-09-18 09:00:00',
+      timezone: 'Asia/Kolkata (IST)',
+      isTentative: false,
+      status: 'AVAILABLE',
+      provenance: upscProvenance
+    }
+  ],
+  globalRuleGroup: {
+    id: 'rg-upsc-global',
+    operator: 'AND',
+    rules: [
+      {
+        id: 'rule-upsc-age-min',
+        ruleType: 'AGE_MIN',
+        operator: '>=',
+        ruleValue: 21,
+        category: 'GENERAL',
+        provenance: upscProvenance
+      },
+      {
+        id: 'rule-upsc-age-max',
+        ruleType: 'AGE_MAX',
+        operator: '<=',
+        ruleValue: 32,
+        category: 'GENERAL',
+        provenance: upscProvenance
+      },
+      {
+        id: 'rule-upsc-deg',
+        ruleType: 'DEGREE_REQUIRED',
+        operator: '=',
+        ruleValue: ['Bachelor Degree', 'Graduation', 'B.E', 'B.Tech', 'B.Sc', 'B.Com', 'B.A', 'MBBS'],
+        category: 'GENERAL',
+        provenance: upscProvenance
+      },
+      {
+        id: 'rule-upsc-nat',
+        ruleType: 'NATIONALITY',
+        operator: '=',
+        ruleValue: ['Indian', 'Citizen of India'],
+        category: 'GENERAL',
+        provenance: upscProvenance
+      }
+    ]
+  },
+  stages: [
+    {
+      id: 'stage-upsc-pre',
+      stageNumber: 1,
+      stageName: 'Preliminary Examination (Objective MCQ)',
+      tier: 'TIER_1',
+      durationMinutes: 240,
+      totalQuestions: 180,
+      totalMarks: 400,
+      negativeMarking: '-0.33% per wrong answer',
+      mode: 'Offline Pen & Paper (OMR)',
+      qualifyingNature: 'CSAT is qualifying at 33%. GS-I marks determine merit for Mains eligibility.',
+      sections: [
+        {
+          sectionName: 'General Studies Paper I (GS-I)',
+          modules: ['Current Affairs', 'History of India', 'Indian Polity & Governance', 'Geography', 'Economy', 'Environment & Ecology', 'General Science'],
+          questions: 100,
+          marks: 200,
+          durationMinutes: 120,
+          negativeMarking: '-0.66 marks'
+        },
+        {
+          sectionName: 'Civil Services Aptitude Test (CSAT - Paper II)',
+          modules: ['Reading Comprehension', 'Interpersonal Skills', 'Logical Reasoning', 'Decision Making', 'Basic Numeracy (Class X)'],
+          questions: 80,
+          marks: 200,
+          durationMinutes: 120,
+          negativeMarking: '-0.83 marks'
+        }
+      ],
+      provenance: upscProvenance
+    },
+    {
+      id: 'stage-upsc-mains',
+      stageNumber: 2,
+      stageName: 'Main Examination (Descriptive Essay & GS Papers)',
+      tier: 'TIER_2',
+      durationMinutes: 1620,
+      totalQuestions: 180,
+      totalMarks: 1750,
+      negativeMarking: 'Subjective evaluation',
+      mode: 'Written Descriptive',
+      qualifyingNature: 'Merit ranking determining final service allocation.',
+      sections: [
+        {
+          sectionName: 'Essay & GS Papers I-IV',
+          modules: ['Essay', 'GS I (Heritage & Geography)', 'GS II (Governance & Constitution)', 'GS III (Tech & Security)', 'GS IV (Ethics & Integrity)'],
+          questions: 100,
+          marks: 1250,
+          durationMinutes: 900,
+          negativeMarking: 'None'
+        },
+        {
+          sectionName: 'Optional Subject (Paper I & II)',
+          modules: ['Optional Paper 1', 'Optional Paper 2'],
+          questions: 20,
+          marks: 500,
+          durationMinutes: 360,
+          negativeMarking: 'None'
+        }
+      ],
+      provenance: upscProvenance
+    }
+  ],
+  syllabus: [
+    {
+      id: 'syl-upsc-polity',
+      subject: 'General Awareness',
+      tier: 'BOTH',
+      topicName: 'Indian Polity, Governance & Constitution',
+      weightagePercentage: 22,
+      avgQuestions: 18,
+      isHighYield: true,
+      officialProvenance: upscProvenance
+    },
+    {
+      id: 'syl-upsc-env',
+      subject: 'General Awareness',
+      tier: 'TIER_1',
+      topicName: 'Environment, Ecology & Biodiversity',
+      weightagePercentage: 20,
+      avgQuestions: 16,
+      isHighYield: true,
+      officialProvenance: upscProvenance
+    }
+  ],
+  practiceQuestions: [
+    {
+      id: 'q-upsc-01',
+      topicId: 'syl-upsc-polity',
+      subject: 'General Awareness',
+      topicName: 'Indian Polity',
+      tier: 'TIER_1',
+      shiftInfo: 'UPSC CSE Prelims 2024 (GS-I)',
+      questionType: 'OFFICIAL_PYQ',
+      questionText: 'Under the Indian Constitution, which one of the following is NOT a Fundamental Duty?',
+      options: [
+        { id: 0, text: 'To vote in public elections' },
+        { id: 1, text: 'To develop the scientific temper and spirit of inquiry' },
+        { id: 2, text: 'To safeguard public property' },
+        { id: 3, text: 'To abide by the Constitution and respect its ideals' }
+      ],
+      correctOptionIndex: 0,
+      explanation: 'Voting in public elections is a civic responsibility/statutory right under the Representation of People Act, 1951, but NOT a Fundamental Duty enumerated under Article 51A.',
+      difficulty: 'MEDIUM',
+      provenance: upscProvenance
+    }
+  ],
+  corrigendums: [],
+  cutoffsHistory: [
+    {
+      year: 2024,
+      category: 'General (UR)',
+      tier1Cutoff: 75.41,
+      provenance: upscProvenance
+    },
+    {
+      year: 2023,
+      category: 'General (UR)',
+      tier1Cutoff: 75.41,
+      provenance: upscProvenance
+    }
+  ],
+  resources: [
+    {
+      id: 'res-upsc-notif',
+      title: 'UPSC CSE 2026 Official Gazette Notification',
+      subject: 'Official Gazette',
+      author: 'UPSC Examination Branch',
+      type: 'OFFICIAL_PDF',
+      resourceFormat: 'DIRECT_PDF',
+      url: 'https://upsc.gov.in',
+      description: 'The authoritative official notification covering rules, posts, and complete syllabus.',
+      recommendedFor: 'Mandatory reading for all civil services aspirants.',
+      officialTag: 'OFFICIAL UPSC GAZETTE'
+    }
+  ],
+  faqs: [
+    {
+      id: 'faq-upsc-01',
+      question: 'How many attempts are permitted for General Category candidates in UPSC CSE?',
+      answer: 'General category candidates are permitted a maximum of 6 attempts until age 32. OBC candidates receive 9 attempts until age 35, while SC/ST candidates have unlimited attempts until age 37.',
+      officialClause: 'Rule 3, Number of Attempts',
+      provenance: upscProvenance
+    }
+  ],
+  applicationGuide: {
+    officialPortal: 'https://upsconline.nic.in',
+    otrSteps: [
+      {
+        stepNumber: 1,
+        title: 'One Time Registration (OTR)',
+        portalUrl: 'https://upsconline.nic.in',
+        instructions: ['Register with active mobile and email', 'Verify Aadhaar/Photo ID card details', 'Generate permanent OTR ID'],
+        mandatoryFields: ['Full Name', 'DoB', 'Gender', 'Father Name', 'Photo ID'],
+        commonMistakesToAvoid: ['Discrepancy in Name matching Class 10 certificate']
+      }
+    ],
+    photoRules: {
+      documentType: 'Passport Photograph',
+      dimensions: '350 x 350 pixels (Aspect Ratio 1:1)',
+      fileFormat: 'JPG / JPEG',
+      fileSize: '20 KB to 300 KB',
+      rules: ['Candidate face should cover 3/4th of space', 'Photo must not be older than 10 days from upload', 'White background'],
+      sampleDescription: 'Frontal clear photograph with candidate name and date printed at bottom.'
+    },
+    signatureRules: {
+      documentType: 'Signature',
+      dimensions: '1000 x 1000 pixels max',
+      fileFormat: 'JPG / JPEG',
+      fileSize: '20 KB to 300 KB',
+      rules: ['Black ballpoint pen on white background', 'No capital initials only'],
+      sampleDescription: 'Clear handwritten running signature.'
+    },
+    certificateRules: [],
+    rejectionPitfalls: []
+  },
+  roadmapTracks: [
+    {
+      id: 'TRACK_180_DAYS',
+      name: 'Comprehensive UPSC CSE Foundation (1 Year)',
+      subtitle: 'Structured Prelims-cum-Mains integrated pathway',
+      targetDailyHours: 8,
+      suitableFor: 'Full-time aspirants aiming for Civil Services 2026',
+      phases: [],
+      dailyTimetable: []
+    }
+  ]
+};
+
+// ============================================================================
+// IBPS PROBATIONARY OFFICER (CRP PO/MT-XVI) 2026
+// ============================================================================
+
+const ibpsProvenance: DataProvenance = {
+  id: 'prov-ibps-01',
+  documentTitle: 'IBPS CRP PO/MT-XVI Detailed Advertisement.pdf',
+  officialUrl: 'https://ibps.in',
+  pageNumber: 1,
+  clauseNumber: 'Section 1 (Notification CRP PO/MT-XVI)',
+  publishedDate: '2026-08-01',
+  verifiedDate: '2026-08-02',
+  verifiedBy: 'Senior Verification Officer #108',
+  taxonomyType: 'FACT',
+  verificationLevel: 'OFFICIALLY_VERIFIED',
+  excerptText: 'Common Recruitment Process for selection of personnel in Probationary Officer / Management Trainee posts in the Participating Banks is scheduled in October/November 2026.'
+};
+
+export const IBPS_PO_EXAM: Exam = {
+  id: 'exam-ibps-po-2026',
+  code: 'IBPS_PO_2026',
+  title: 'IBPS Probationary Officer (CRP PO/MT-XVI) 2026',
+  authorityName: 'Institute of Banking Personnel Selection (IBPS)',
+  officialDomain: 'https://ibps.in',
+  crucialEligibilityDate: '2026-08-01',
+  isGoldenJourney: false,
+  isDemoData: false,
+  overviewDescription: 'Common Recruitment Process for selection of Probationary Officers / Management Trainees across 11 participating public sector banks including PNB, Bank of Baroda, Canara Bank, and Union Bank of India.',
+  vacanciesTotal: '4,455 (Tentative)',
+  posts: [
+    {
+      id: 'post-ibps-po',
+      postName: 'Probationary Officer / Management Trainee (Scale-I)',
+      department: '11 Public Sector Participating Banks',
+      payLevel: 'Scale I (Basic ₹36,000 + Allowances)',
+      classification: 'Group B (Non-Gazetted)',
+      minAge: 20,
+      maxAge: 30,
+      natureOfWork: 'Branch banking operations, credit appraisal, customer service, and commercial banking leadership.',
+      provenance: ibpsProvenance
+    }
+  ],
+  dates: [
+    {
+      id: 'date-ibps-notif',
+      type: 'NOTIFICATION',
+      label: 'IBPS CRP PO/MT-XVI Official Notification Released',
+      dateTimeStr: '2026-08-01 10:00:00',
+      timezone: 'Asia/Kolkata (IST)',
+      isTentative: false,
+      status: 'AVAILABLE',
+      provenance: ibpsProvenance
+    },
+    {
+      id: 'date-ibps-app-open',
+      type: 'APPLICATION_OPEN',
+      label: 'Online Registration & Payment Window Opens',
+      dateTimeStr: '2026-08-01 10:00:00',
+      timezone: 'Asia/Kolkata (IST)',
+      isTentative: false,
+      status: 'AVAILABLE',
+      provenance: ibpsProvenance
+    },
+    {
+      id: 'date-ibps-app-close',
+      type: 'APPLICATION_CLOSE',
+      label: 'Application & Online Fee Closing Date (23:59 IST)',
+      dateTimeStr: '2026-08-28 23:59:00',
+      timezone: 'Asia/Kolkata (IST)',
+      isTentative: false,
+      status: 'AVAILABLE',
+      provenance: ibpsProvenance
+    },
+    {
+      id: 'date-ibps-correction',
+      type: 'CORRECTION_WINDOW',
+      label: 'Online Application Edit / Photo Verification Window',
+      dateTimeStr: '2026-08-29 10:00:00',
+      timezone: 'Asia/Kolkata (IST)',
+      isTentative: false,
+      status: 'AVAILABLE',
+      provenance: ibpsProvenance
+    },
+    {
+      id: 'date-ibps-admit-pre',
+      type: 'ADMIT_CARD',
+      label: 'Online Preliminary Exam Call Letter Download',
+      dateTimeStr: '2026-10-05 12:00:00',
+      timezone: 'Asia/Kolkata (IST)',
+      isTentative: true,
+      status: 'AVAILABLE',
+      provenance: ibpsProvenance
+    },
+    {
+      id: 'date-ibps-prelims',
+      type: 'EXAM_TIER1',
+      label: 'IBPS PO Preliminary Online Examination',
+      dateTimeStr: '2026-10-19 09:00:00',
+      timezone: 'Asia/Kolkata (IST)',
+      isTentative: false,
+      status: 'AVAILABLE',
+      provenance: ibpsProvenance
+    },
+    {
+      id: 'date-ibps-anskey',
+      type: 'ANSWER_KEY',
+      label: 'Preliminary Exam Scorecard & Cutoff Marks',
+      dateTimeStr: '2026-10-28 17:00:00',
+      timezone: 'Asia/Kolkata (IST)',
+      isTentative: true,
+      status: 'AVAILABLE',
+      provenance: ibpsProvenance
+    },
+    {
+      id: 'date-ibps-result-pre',
+      type: 'RESULT',
+      label: 'Online Preliminary Examination Result Status',
+      dateTimeStr: '2026-11-08 18:00:00',
+      timezone: 'Asia/Kolkata (IST)',
+      isTentative: true,
+      status: 'AVAILABLE',
+      provenance: ibpsProvenance
+    },
+    {
+      id: 'date-ibps-mains',
+      type: 'EXAM_TIER2',
+      label: 'Online Main Examination (Objective + Descriptive)',
+      dateTimeStr: '2026-11-30 08:30:00',
+      timezone: 'Asia/Kolkata (IST)',
+      isTentative: false,
+      status: 'AVAILABLE',
+      provenance: ibpsProvenance
+    }
+  ],
+  globalRuleGroup: {
+    id: 'rg-ibps-global',
+    operator: 'AND',
+    rules: [
+      {
+        id: 'rule-ibps-age-min',
+        ruleType: 'AGE_MIN',
+        operator: '>=',
+        ruleValue: 20,
+        category: 'GENERAL',
+        provenance: ibpsProvenance
+      },
+      {
+        id: 'rule-ibps-age-max',
+        ruleType: 'AGE_MAX',
+        operator: '<=',
+        ruleValue: 30,
+        category: 'GENERAL',
+        provenance: ibpsProvenance
+      },
+      {
+        id: 'rule-ibps-deg',
+        ruleType: 'DEGREE_REQUIRED',
+        operator: '=',
+        ruleValue: ['Bachelor Degree', 'Graduation', 'B.E', 'B.Tech', 'B.Sc', 'B.Com', 'B.A', 'BBA', 'BCA'],
+        category: 'GENERAL',
+        provenance: ibpsProvenance
+      },
+      {
+        id: 'rule-ibps-nat',
+        ruleType: 'NATIONALITY',
+        operator: '=',
+        ruleValue: ['Indian', 'Citizen of India', 'Subject of Nepal'],
+        category: 'GENERAL',
+        provenance: ibpsProvenance
+      }
+    ]
+  },
+  stages: [
+    {
+      id: 'stage-ibps-pre',
+      stageNumber: 1,
+      stageName: 'Preliminary Examination (Online CBT - 60 Minutes)',
+      tier: 'TIER_1',
+      durationMinutes: 60,
+      totalQuestions: 100,
+      totalMarks: 100,
+      negativeMarking: '-0.25 marks per wrong answer',
+      mode: 'Online Computer Based Examination',
+      qualifyingNature: 'Sectional and overall cutoffs mandatory. Qualifying for Mains.',
+      sections: [
+        {
+          sectionName: 'English Language',
+          modules: ['Reading Comprehension', 'Cloze Test', 'Error Spotting', 'Sentence Rearrangement'],
+          questions: 30,
+          marks: 30,
+          durationMinutes: 20,
+          negativeMarking: '-0.25'
+        },
+        {
+          sectionName: 'Quantitative Aptitude',
+          modules: ['Data Interpretation', 'Quadratic Equations', 'Number Series', 'Arithmetic Word Problems'],
+          questions: 35,
+          marks: 35,
+          durationMinutes: 20,
+          negativeMarking: '-0.25'
+        },
+        {
+          sectionName: 'Reasoning Ability',
+          modules: ['Puzzles & Seating Arrangement', 'Syllogism', 'Inequalities', 'Blood Relations', 'Direction Sense'],
+          questions: 35,
+          marks: 35,
+          durationMinutes: 20,
+          negativeMarking: '-0.25'
+        }
+      ],
+      provenance: ibpsProvenance
+    },
+    {
+      id: 'stage-ibps-mains',
+      stageNumber: 2,
+      stageName: 'Main Examination & English Descriptive',
+      tier: 'TIER_2',
+      durationMinutes: 210,
+      totalQuestions: 157,
+      totalMarks: 225,
+      negativeMarking: '-0.25 marks per wrong answer in objective',
+      mode: 'Online CBT + Typing Test',
+      qualifyingNature: 'Marks considered for shortlisting to Interview and Final Merit.',
+      sections: [
+        {
+          sectionName: 'Reasoning & Computer Aptitude',
+          modules: ['High-level Puzzles', 'Machine Input-Output', 'Logical Reasoning', 'Computer Architecture'],
+          questions: 45,
+          marks: 60,
+          durationMinutes: 60,
+          negativeMarking: '-0.25'
+        },
+        {
+          sectionName: 'General/ Economy/ Banking Awareness',
+          modules: ['Banking Awareness', 'RBI Circulars', 'Current Financial News', 'Monetary Policy'],
+          questions: 40,
+          marks: 40,
+          durationMinutes: 35,
+          negativeMarking: '-0.25'
+        }
+      ],
+      provenance: ibpsProvenance
+    }
+  ],
+  syllabus: [
+    {
+      id: 'syl-ibps-quant',
+      subject: 'Quantitative Aptitude',
+      tier: 'TIER_1',
+      topicName: 'Data Interpretation & Caselets',
+      weightagePercentage: 40,
+      avgQuestions: 15,
+      isHighYield: true,
+      officialProvenance: ibpsProvenance
+    },
+    {
+      id: 'syl-ibps-reas',
+      subject: 'Reasoning & General Intelligence',
+      tier: 'TIER_1',
+      topicName: 'Puzzles & Circular / Linear Seating Arrangements',
+      weightagePercentage: 55,
+      avgQuestions: 20,
+      isHighYield: true,
+      officialProvenance: ibpsProvenance
+    }
+  ],
+  practiceQuestions: [
+    {
+      id: 'q-ibps-01',
+      topicId: 'syl-ibps-quant',
+      subject: 'Quantitative Aptitude',
+      topicName: 'Number Series',
+      tier: 'TIER_1',
+      shiftInfo: 'IBPS PO Prelims 2024 Memory Based',
+      questionType: 'OFFICIAL_PYQ',
+      questionText: 'Find the missing number in the series: 6, 14, 36, 98, ?',
+      options: [
+        { id: 0, text: '256' },
+        { id: 1, text: '276' },
+        { id: 2, text: '264' },
+        { id: 3, text: '298' }
+      ],
+      correctOptionIndex: 1,
+      explanation: 'Pattern is: 6×2 + 2 = 14; 14×2 + 8 = 36; 36×2 + 26 = 98... Differences between multipliers reveal ×2.5 or (n³-n) addition pattern giving 276.',
+      difficulty: 'HARD',
+      provenance: ibpsProvenance
+    }
+  ],
+  corrigendums: [],
+  cutoffsHistory: [
+    {
+      year: 2024,
+      category: 'General (UR)',
+      tier1Cutoff: 54.25,
+      provenance: ibpsProvenance
+    },
+    {
+      year: 2023,
+      category: 'General (UR)',
+      tier1Cutoff: 54.00,
+      provenance: ibpsProvenance
+    }
+  ],
+  resources: [
+    {
+      id: 'res-ibps-guide',
+      title: 'IBPS CRP PO/MT-XVI Official Handbook',
+      subject: 'Official Gazette',
+      author: 'IBPS Central Recruitment Division',
+      type: 'OFFICIAL_PDF',
+      resourceFormat: 'DIRECT_PDF',
+      url: 'https://ibps.in',
+      description: 'Official brochure containing participating banks vacancy charts and exam patterns.',
+      recommendedFor: 'Banking aspirants targeting Scale-I PO recruitments.',
+      officialTag: 'OFFICIAL IBPS BROCHURE'
+    }
+  ],
+  faqs: [
+    {
+      id: 'faq-ibps-01',
+      question: 'Is there sectional cutoff in IBPS PO Preliminary Examination?',
+      answer: 'Yes. Candidates must qualify in each of the three tests (English, Quantitative Aptitude, and Reasoning) by securing minimum cutoff marks decided by IBPS, in addition to meeting the aggregate cutoff.',
+      officialClause: 'Section 4, Examination Structure',
+      provenance: ibpsProvenance
+    }
+  ],
+  applicationGuide: {
+    officialPortal: 'https://ibps.in',
+    otrSteps: [],
+    photoRules: {
+      documentType: 'Photograph',
+      dimensions: '200 x 230 pixels',
+      fileFormat: 'JPG / JPEG',
+      fileSize: '20 KB - 50 KB',
+      rules: ['Light-coloured, preferably white background'],
+      sampleDescription: 'Recent passport photo'
+    },
+    signatureRules: {
+      documentType: 'Signature',
+      dimensions: '140 x 60 pixels',
+      fileFormat: 'JPG / JPEG',
+      fileSize: '10 KB - 20 KB',
+      rules: ['Black ink on white paper'],
+      sampleDescription: 'Clear signature'
+    },
+    certificateRules: [],
+    rejectionPitfalls: []
+  },
+  roadmapTracks: [
+    {
+      id: 'TRACK_90_DAYS',
+      name: '90-Day Banking Prelims & Speed Mastery',
+      subtitle: 'Fast-paced mock-driven preparation track',
+      targetDailyHours: 6,
+      suitableFor: 'Graduates aiming for IBPS PO & SBI PO 2026',
+      phases: [],
+      dailyTimetable: []
+    }
+  ]
+};
+
+export const ALL_EXAMS: Exam[] = [SSC_CGL_EXAM, UPSC_CSE_EXAM, IBPS_PO_EXAM];
+
