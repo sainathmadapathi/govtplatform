@@ -116,6 +116,21 @@ export interface QuestionOption {
   text: string;
 }
 
+export interface ShortcutTrick {
+  name: string;
+  formula?: string;
+  explanation: string;
+  timeSaved: string;
+}
+
+export interface DetailedExplanation {
+  coreConcept: string;
+  stepByStepMethod: string[];
+  shortcutTrick?: ShortcutTrick;
+  eliminationStrategy?: string;
+  crucialTakeaway: string;
+}
+
 export interface PracticeQuestion {
   id: string;
   topicId: string;
@@ -128,6 +143,7 @@ export interface PracticeQuestion {
   options: QuestionOption[];
   correctOptionIndex: number;
   explanation: string;
+  detailedExplanation?: DetailedExplanation;
   year?: number;
   difficulty: 'EASY' | 'MEDIUM' | 'HARD';
   provenance: DataProvenance;

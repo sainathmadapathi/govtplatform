@@ -330,3 +330,39 @@ a:hover {
 .animate-fade-in {
   animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+@keyframes pulseTrickGlow {
+  0% {
+    box-shadow: 0 0 15px rgba(245, 158, 11, 0.25), inset 0 0 10px rgba(245, 158, 11, 0.1);
+    border-color: rgba(245, 158, 11, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(245, 158, 11, 0.6), inset 0 0 15px rgba(245, 158, 11, 0.2);
+    border-color: rgba(251, 191, 36, 0.9);
+  }
+  100% {
+    box-shadow: 0 0 15px rgba(245, 158, 11, 0.25), inset 0 0 10px rgba(245, 158, 11, 0.1);
+    border-color: rgba(245, 158, 11, 0.45);
+  }
+}
+
+.trick-card-animated {
+  animation: pulseTrickGlow 2.5s infinite ease-in-out;
+}
+
+@keyframes shimmerEffect {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.shimmer-badge {
+  position: relative;
+  overflow: hidden;
+}
+.shimmer-badge::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+  animation: shimmerEffect 2s infinite;
+}
