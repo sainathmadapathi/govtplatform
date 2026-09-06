@@ -254,12 +254,23 @@ def sync_all():
                     completed_at = CURRENT_TIMESTAMP
             ''', (user_id, mod_id, 1 if is_done else 0))
 
-        # 3. Batch Insert Mock Attempts
+        # 3. Batch Insert or Update Mock Attempts with details_json
         for m in mock_attempts:
             if isinstance(m, dict) and m.get('id'):
+                details = m.get('details') or {
+                    'userAnswers': m.get('userAnswers'),
+                    'paperData': m.get('paperData')
+                }
+                details_json = json.dumps(details) if details else None
                 cursor.execute('''
-                    INSERT OR IGNORE INTO mock_attempts (id, user_id, exam_id, topic_id, subject, score, total_marks, correct_count, incorrect_count, unattempted_count, time_taken_seconds)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO mock_attempts (id, user_id, exam_id, topic_id, subject, score, total_marks, correct_count, incorrect_count, unattempted_count, time_taken_seconds, details_json)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(id) DO UPDATE SET
+                        details_json = COALESCE(excluded.details_json, mock_attempts.details_json),
+                        score = excluded.score,
+                        correct_count = excluded.correct_count,
+                        incorrect_count = excluded.incorrect_count,
+                        unattempted_count = excluded.unattempted_count
                 ''', (
                     m['id'],
                     user_id,
@@ -271,7 +282,8 @@ def sync_all():
                     int(m.get('correct_count', 0)),
                     int(m.get('incorrect_count', 0)),
                     int(m.get('unattempted_count', 0)),
-                    int(m.get('time_taken_seconds', 0))
+                    int(m.get('time_taken_seconds', 0)),
+                    details_json
                 ))
 
         conn.commit()

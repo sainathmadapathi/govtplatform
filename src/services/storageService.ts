@@ -23,6 +23,13 @@ export interface MockAttemptRecord {
   unattempted_count: number;
   time_taken_seconds: number;
   attempted_at?: string;
+  userAnswers?: Record<number, number>;
+  paperData?: any;
+  details?: {
+    userAnswers?: Record<number, number>;
+    paperData?: any;
+    [key: string]: any;
+  };
 }
 
 const STORAGE_KEYS = {
@@ -116,6 +123,42 @@ class StorageService {
     }
   }
 
+  async loadMockAttemptsFromSQLite(): Promise<MockAttemptRecord[]> {
+    try {
+      const res = await fetch('/api/sqlite/mock-attempts');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.attempts && Array.isArray(data.attempts)) {
+          const loaded: MockAttemptRecord[] = data.attempts.map((a: any) => ({
+            ...a,
+            userAnswers: a.userAnswers || a.details?.userAnswers,
+            paperData: a.paperData || a.details?.paperData
+          }));
+          if (loaded.length > 0) {
+            // Update localStorage with fresh remote records while preserving local items
+            const currentLocal = this.getMockAttempts();
+            const map = new Map<string, MockAttemptRecord>();
+            currentLocal.forEach(att => map.set(att.id, att));
+            loaded.forEach(att => {
+              const existing = map.get(att.id);
+              map.set(att.id, {
+                ...att,
+                userAnswers: att.userAnswers || existing?.userAnswers,
+                paperData: att.paperData || existing?.paperData
+              });
+            });
+            const merged = Array.from(map.values());
+            localStorage.setItem(STORAGE_KEYS.MOCK_ATTEMPTS, JSON.stringify(merged.slice(0, 50)));
+            return merged;
+          }
+        }
+      }
+    } catch {
+      // Offline fallback
+    }
+    return this.getMockAttempts();
+  }
+
   // --- 4. Background SQLite Synchronization API Calls ---
 
   private async syncProfileToSQLite(profileUpdate: Partial<CandidateProfile>): Promise<void> {
@@ -144,10 +187,17 @@ class StorageService {
 
   private async syncMockAttemptToSQLite(attempt: MockAttemptRecord): Promise<void> {
     try {
+      const payload = {
+        ...attempt,
+        details: {
+          userAnswers: attempt.userAnswers,
+          paperData: attempt.paperData
+        }
+      };
       await fetch('/api/sqlite/mock-attempts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(attempt)
+        body: JSON.stringify(payload)
       });
     } catch {
       // Offline fallback
@@ -162,7 +212,13 @@ class StorageService {
           target_post_id: this.getTargetPost()
         },
         completed_modules: this.getCompletedModules(),
-        mock_attempts: this.getMockAttempts()
+        mock_attempts: this.getMockAttempts().map(att => ({
+          ...att,
+          details: {
+            userAnswers: att.userAnswers,
+            paperData: att.paperData
+          }
+        }))
       };
 
       const res = await fetch('/api/sqlite/sync-all', {

@@ -3,7 +3,7 @@ import {
   Award, Clock, CheckCircle2, XCircle, HelpCircle, ShieldCheck, RefreshCw, 
   ChevronRight, ChevronLeft, Bookmark, BarChart2, CheckSquare, RotateCcw, Flame,
   FileText, Target, Zap, BookOpen, AlertTriangle, TrendingUp, Calendar, Compass, 
-  Database, Play, Pause, List, Sparkles, Sliders, Check, ArrowRight, Send, Bot, User, MessageSquare, Filter, Download
+  Database, Play, Pause, List, Sparkles, Sliders, Check, ArrowRight, Send, Bot, User, MessageSquare, Filter, Download, Eye
 } from 'lucide-react';
 import { Exam, PracticeQuestion, DataProvenance } from '../types/exam';
 import { storageService, MockAttemptRecord } from '../services/storageService';
@@ -75,8 +75,18 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
   
   // Past Attempts History & Target Post
   const [pastAttempts, setPastAttempts] = useState<MockAttemptRecord[]>(() => storageService.getMockAttempts());
+  const [reviewingAttempt, setReviewingAttempt] = useState<MockAttemptRecord | null>(null);
   const targetPostId = storageService.getTargetPost();
   const targetPost = ALL_POST_STUDY_PATHS[targetPostId] || ALL_POST_STUDY_PATHS['post-aso-css'];
+
+  // Sync latest mock attempts from SQLite on component mount
+  useEffect(() => {
+    storageService.loadMockAttemptsFromSQLite().then(records => {
+      if (records && records.length > 0) {
+        setPastAttempts(records);
+      }
+    });
+  }, []);
 
   const questionsList = selectedPaper.questions;
   const currentQ = questionsList[currentIdx] || questionsList[0];
@@ -145,6 +155,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
     setUserAnswers({});
     setMarkedForReview({});
     setIsSubmittedTest(false);
+    setReviewingAttempt(null);
     setTimerSeconds(paper.durationMinutes * 60);
     setIsTimerPaused(false);
     setCurrentIdx(0);
@@ -160,6 +171,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
     setMarkedForReview({});
     setIsSubmittedTest(false);
     setIsTestStarted(false);
+    setReviewingAttempt(null);
     setTimerSeconds(3600);
     setCurrentIdx(0);
     setActivePracticeTab('PAPERS_LIST');
@@ -363,6 +375,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
   // Test Submission Handler
   const handleSubmitTest = () => {
     setIsSubmittedTest(true);
+    setReviewingAttempt(null);
     const newAttempt: MockAttemptRecord = {
       id: `attempt-${Date.now()}`,
       exam_id: exam.id,
@@ -374,12 +387,59 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
       incorrect_count: incorrectCount,
       unattempted_count: unattemptedCount,
       time_taken_seconds: (selectedPaper.durationMinutes * 60) - timerSeconds,
-      attempted_at: new Date().toLocaleString()
+      attempted_at: new Date().toLocaleString(),
+      userAnswers: { ...userAnswers },
+      paperData: selectedPaper
     };
 
     storageService.saveMockAttempt(newAttempt);
     setPastAttempts(storageService.getMockAttempts());
   };
+
+  // Open and Review Past Test Attempt Handler
+  const handleReviewPastAttempt = (att: MockAttemptRecord) => {
+    // 1. Locate paper snapshot or matched paper from libraries
+    let targetPaper: MockPaper | undefined = att.paperData;
+    if (!targetPaper) {
+      targetPaper = availablePapers.find(p => p.id === att.topic_id || p.title === att.subject);
+    }
+    if (!targetPaper) {
+      targetPaper = [...SUBJECT_MOCK_TESTS, ...TOPIC_DRILL_TESTS].find(p => p.id === att.topic_id || p.title === att.subject);
+    }
+    if (!targetPaper) {
+      const matched = availablePapers.find(p => att.subject && att.subject.toLowerCase().includes(p.subject.toLowerCase()));
+      targetPaper = matched || OFFICIAL_10_MOCK_PAPERS[0];
+    }
+
+    // 2. Load stored answers if available. If not available (older attempts), do NOT synthesize fake answers!
+    const storedAnswers = att.userAnswers || att.details?.userAnswers;
+    const hasRecordedAnswers = storedAnswers && Object.keys(storedAnswers).length > 0;
+
+    setSelectedPaper(targetPaper);
+    setUserAnswers(hasRecordedAnswers ? { ...storedAnswers } : {});
+    setReviewingAttempt(att);
+    setIsSubmittedTest(true);
+    setIsTestStarted(true);
+    setActivePracticeTab('ACTIVE_TEST');
+    setCurrentIdx(0);
+    setSolutionFilter('ALL');
+    setSolutionSectionFilter('ALL');
+  };
+
+  const isOlderAttemptWithoutAnswers = Boolean(
+    reviewingAttempt && (!reviewingAttempt.userAnswers || Object.keys(reviewingAttempt.userAnswers).length === 0)
+  );
+
+  const displayScore = reviewingAttempt ? reviewingAttempt.score : marksEarned;
+  const displayTotalMarks = reviewingAttempt ? reviewingAttempt.total_marks : totalPossibleMarks;
+  const displayCorrect = reviewingAttempt ? reviewingAttempt.correct_count : correctCount;
+  const displayIncorrect = reviewingAttempt ? reviewingAttempt.incorrect_count : incorrectCount;
+  const displayUnattempted = reviewingAttempt ? reviewingAttempt.unattempted_count : unattemptedCount;
+  const displayAccuracy = reviewingAttempt
+    ? ((reviewingAttempt.correct_count + reviewingAttempt.incorrect_count) > 0
+        ? Math.round((reviewingAttempt.correct_count / (reviewingAttempt.correct_count + reviewingAttempt.incorrect_count)) * 100)
+        : 0)
+    : accuracyPercentage;
 
   const formatTimer = (secs: number) => {
     const m = Math.floor(secs / 60);
@@ -389,6 +449,12 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
 
   // Filter Solutions List
   const filteredSolutions = questionsList.filter((q, idx) => {
+    if (solutionSectionFilter !== 'ALL' && q.subject !== solutionSectionFilter) return false;
+
+    if (isOlderAttemptWithoutAnswers) {
+      return true;
+    }
+
     const userAns = userAnswers[idx];
     const isCorrect = userAns === q.correctOptionIndex;
     const isUnattempted = userAns === undefined;
@@ -397,8 +463,6 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
     if (solutionFilter === 'INCORRECT' && !isIncorrect) return false;
     if (solutionFilter === 'UNATTEMPTED' && !isUnattempted) return false;
     if (solutionFilter === 'CORRECT' && !isCorrect) return false;
-
-    if (solutionSectionFilter !== 'ALL' && q.subject !== solutionSectionFilter) return false;
 
     return true;
   });
@@ -439,7 +503,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
 
             {isTestStarted && (
               <button onClick={handleResetTest} className="btn btn-secondary" style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <RotateCcw size={14} /> Exit Test
+                <RotateCcw size={14} /> {reviewingAttempt ? 'Exit Review' : 'Exit Test'}
               </button>
             )}
           </div>
@@ -494,6 +558,16 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
           >
             <BarChart2 size={15} /> 📊 Past Tests History ({pastAttempts.length})
           </button>
+
+          {isTestStarted && (
+            <button
+              onClick={() => setActivePracticeTab('ACTIVE_TEST')}
+              className={`btn ${activePracticeTab === 'ACTIVE_TEST' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ fontSize: '0.85rem', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', border: '1px solid #60a5fa' }}
+            >
+              <Eye size={15} /> {reviewingAttempt ? '🔍 Reviewing Past Test' : '📝 Active Test'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -1013,14 +1087,91 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
             /* 🎯 ENHANCED CLARITY POST-TEST DASHBOARD & ANIMATED STEP-BY-STEP SOLUTIONS */
             <div className="glass-card animate-fade-in" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '26px' }}>
               
+              {/* Review Mode Banner */}
+              {reviewingAttempt && (
+                <div style={{
+                  padding: '18px 22px',
+                  borderRadius: 'var(--radius-md)',
+                  background: 'linear-gradient(135deg, rgba(30, 58, 138, 0.45) 0%, rgba(15, 23, 42, 0.98) 100%)',
+                  border: '1.5px solid rgba(96, 165, 250, 0.5)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '16px',
+                  boxShadow: '0 8px 30px rgba(37, 99, 235, 0.25)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                    <div style={{ background: '#2563eb', padding: '12px', borderRadius: '10px', color: 'white', display: 'flex', boxShadow: '0 0 16px rgba(37, 99, 235, 0.6)' }}>
+                      <Eye size={24} />
+                    </div>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                        <span style={{ fontWeight: 800, color: 'white', fontSize: '1.2rem' }}>
+                          Historical Test Review Mode: {reviewingAttempt.subject}
+                        </span>
+                        <span className="badge" style={{ background: 'rgba(59, 130, 246, 0.25)', color: '#93c5fd', border: '1px solid rgba(96, 165, 250, 0.4)' }}>
+                          Attempted: {reviewingAttempt.attempted_at || 'Saved Session'}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '0.86rem', color: '#cbd5e1', marginTop: '4px' }}>
+                        Performance Record: <strong style={{ color: '#86efac' }}>{reviewingAttempt.correct_count} Correct</strong>, <strong style={{ color: '#f87171' }}>{reviewingAttempt.incorrect_count} Wrong</strong>, <strong style={{ color: '#fde047' }}>{reviewingAttempt.unattempted_count} Unattempted</strong> • Score: <strong style={{ color: '#34d399' }}>{reviewingAttempt.score} / {reviewingAttempt.total_marks}</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    <button 
+                      onClick={() => {
+                        setReviewingAttempt(null);
+                        setActivePracticeTab('PAST_ANALYTICS');
+                      }}
+                      className="btn btn-secondary"
+                      style={{ fontSize: '0.85rem', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}
+                    >
+                      <RotateCcw size={14} /> Back to Performance Matrix
+                    </button>
+                    <button 
+                      onClick={() => {
+                        const p = selectedPaper;
+                        setReviewingAttempt(null);
+                        handleStartTest(p);
+                      }}
+                      className="btn btn-emerald"
+                      style={{ fontSize: '0.85rem', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800 }}
+                    >
+                      <Play size={14} /> Re-take This Paper
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Notice for Older Attempts where answers were not saved */}
+              {isOlderAttemptWithoutAnswers && (
+                <div style={{
+                  padding: '14px 18px',
+                  borderRadius: 'var(--radius-md)',
+                  background: 'rgba(245, 158, 11, 0.12)',
+                  border: '1px solid rgba(245, 158, 11, 0.4)',
+                  color: '#fef08a',
+                  fontSize: '0.92rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px'
+                }}>
+                  <AlertTriangle size={18} color="#fbbf24" style={{ flexShrink: 0 }} />
+                  <span>Detailed answer selections were not recorded for this attempt. You can still review the complete paper and all solutions.</span>
+                </div>
+              )}
+
               {/* Top Scorecard Banner */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px', borderBottom: '1px solid var(--border-color)', paddingBottom: '20px' }}>
                 <div>
                   <span className="badge badge-verified" style={{ fontSize: '0.78rem' }}>
-                    🎯 TEST EVALUATION COMPLETE & SYNCED TO SQLITE
+                    {reviewingAttempt ? '📖 HISTORICAL TEST REVIEW & SOLUTIONS' : '🎯 TEST EVALUATION COMPLETE & SYNCED TO SQLITE'}
                   </span>
                   <h3 style={{ fontSize: '1.7rem', fontWeight: 800, color: 'white', margin: '6px 0 2px 0' }}>
-                    In-Depth Diagnostic Clarity & Solutions Engine
+                    {reviewingAttempt ? `Reviewing: ${selectedPaper.title}` : 'In-Depth Diagnostic Clarity & Solutions Engine'}
                   </h3>
                   <div style={{ fontSize: '0.85rem', color: '#93c5fd' }}>
                     Target Post: <strong>{targetPost.postName}</strong> ({targetPost.department})
@@ -1030,17 +1181,17 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                 <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                   <div style={{ padding: '12px 18px', borderRadius: 'var(--radius-md)', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', textAlign: 'center' }}>
                     <div style={{ fontSize: '0.72rem', color: '#86efac', textTransform: 'uppercase', fontWeight: 700 }}>Final Score</div>
-                    <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#34d399' }}>{marksEarned} / {totalPossibleMarks}</div>
+                    <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#34d399' }}>{displayScore} / {displayTotalMarks}</div>
                   </div>
 
                   <div style={{ padding: '12px 18px', borderRadius: 'var(--radius-md)', background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)', textAlign: 'center' }}>
                     <div style={{ fontSize: '0.72rem', color: '#93c5fd', textTransform: 'uppercase', fontWeight: 700 }}>Accuracy Rate</div>
-                    <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#60a5fa' }}>{accuracyPercentage}%</div>
+                    <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#60a5fa' }}>{displayAccuracy}%</div>
                   </div>
 
                   <div style={{ padding: '12px 18px', borderRadius: 'var(--radius-md)', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', textAlign: 'center' }}>
                     <div style={{ fontSize: '0.72rem', color: '#fde047', textTransform: 'uppercase', fontWeight: 700 }}>Correct / Total</div>
-                    <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#fbbf24' }}>{correctCount} / {questionsList.length}</div>
+                    <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#fbbf24' }}>{displayCorrect} / {questionsList.length}</div>
                   </div>
                 </div>
               </div>
@@ -1233,9 +1384,23 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                     </span>
                   </div>
 
-                  <button onClick={handleResetTest} className="btn btn-primary" style={{ fontSize: '0.85rem' }}>
-                    Attempt Another Test
-                  </button>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {reviewingAttempt && (
+                      <button 
+                        onClick={() => {
+                          setReviewingAttempt(null);
+                          setActivePracticeTab('PAST_ANALYTICS');
+                        }} 
+                        className="btn btn-secondary" 
+                        style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                      >
+                        <RotateCcw size={14} /> Back to Performance Matrix
+                      </button>
+                    )}
+                    <button onClick={handleResetTest} className="btn btn-primary" style={{ fontSize: '0.85rem' }}>
+                      Attempt Another Test
+                    </button>
+                  </div>
                 </div>
 
                 {/* Filter Tabs */}
@@ -1244,21 +1409,27 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                     <Filter size={14} /> Filter By:
                   </span>
 
-                  {[
-                    { id: 'ALL', label: `All Questions (${questionsList.length})` },
-                    { id: 'INCORRECT', label: `❌ Incorrect (${incorrectCount})` },
-                    { id: 'UNATTEMPTED', label: `⚠️ Unattempted (${unattemptedCount})` },
-                    { id: 'CORRECT', label: `✅ Correct (${correctCount})` }
-                  ].map(tab => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setSolutionFilter(tab.id as any)}
-                      className={`btn ${solutionFilter === tab.id ? 'btn-primary' : 'btn-secondary'}`}
-                      style={{ fontSize: '0.78rem', padding: '6px 12px' }}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
+                  {!isOlderAttemptWithoutAnswers ? (
+                    [
+                      { id: 'ALL', label: `All Questions (${questionsList.length})` },
+                      { id: 'INCORRECT', label: `❌ Incorrect (${displayIncorrect})` },
+                      { id: 'UNATTEMPTED', label: `⚠️ Unattempted (${displayUnattempted})` },
+                      { id: 'CORRECT', label: `✅ Correct (${displayCorrect})` }
+                    ].map(tab => (
+                      <button
+                        key={tab.id}
+                        onClick={() => setSolutionFilter(tab.id as any)}
+                        className={`btn ${solutionFilter === tab.id ? 'btn-primary' : 'btn-secondary'}`}
+                        style={{ fontSize: '0.78rem', padding: '6px 12px' }}
+                      >
+                        {tab.label}
+                      </button>
+                    ))
+                  ) : (
+                    <span className="badge" style={{ background: 'rgba(59, 130, 246, 0.2)', color: '#93c5fd', fontSize: '0.8rem', padding: '6px 12px' }}>
+                      Showing All {questionsList.length} Official Questions &amp; Solutions
+                    </span>
+                  )}
 
                   {/* Subject Dropdown Filter */}
                   <select
@@ -1286,8 +1457,8 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                   {filteredSolutions.map((q, idx) => {
                     const originalIdx = questionsList.findIndex(orig => orig.id === q.id);
                     const userAns = userAnswers[originalIdx];
-                    const isCorrect = userAns === q.correctOptionIndex;
-                    const isUnattempted = userAns === undefined;
+                    const isCorrect = !isOlderAttemptWithoutAnswers && userAns === q.correctOptionIndex;
+                    const isUnattempted = !isOlderAttemptWithoutAnswers && userAns === undefined;
                     const det = q.detailedExplanation;
 
                     return (
@@ -1299,7 +1470,13 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                           display: 'flex',
                           flexDirection: 'column',
                           gap: '22px',
-                          border: isCorrect ? '1.5px solid rgba(16, 185, 129, 0.45)' : isUnattempted ? '1.5px solid rgba(245, 158, 11, 0.45)' : '1.5px solid rgba(239, 68, 68, 0.45)',
+                          border: isOlderAttemptWithoutAnswers
+                            ? '1.5px solid rgba(59, 130, 246, 0.45)'
+                            : isCorrect 
+                            ? '1.5px solid rgba(16, 185, 129, 0.45)' 
+                            : isUnattempted 
+                            ? '1.5px solid rgba(245, 158, 11, 0.45)' 
+                            : '1.5px solid rgba(239, 68, 68, 0.45)',
                           background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.92) 100%)',
                           boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)'
                         }}
@@ -1310,19 +1487,35 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                             <span style={{ fontWeight: 900, color: 'white', fontSize: '1.25rem' }}>
                               Question {originalIdx + 1}
                             </span>
-                            <span
-                              className="badge"
-                              style={{
-                                padding: '6px 14px',
-                                fontSize: '0.85rem',
-                                fontWeight: 800,
-                                background: isCorrect ? 'rgba(16, 185, 129, 0.25)' : isUnattempted ? 'rgba(245, 158, 11, 0.25)' : 'rgba(239, 68, 68, 0.25)',
-                                color: isCorrect ? '#86efac' : isUnattempted ? '#fde047' : '#fca5a5',
-                                border: isCorrect ? '1px solid #10b981' : isUnattempted ? '1px solid #f59e0b' : '1px solid #ef4444'
-                              }}
-                            >
-                              {isCorrect ? '✅ Correct (+2.0 M)' : isUnattempted ? '⚠️ Unattempted (0.0 M)' : '❌ Incorrect (-0.50 M)'}
-                            </span>
+                            {isOlderAttemptWithoutAnswers ? (
+                              <span
+                                className="badge"
+                                style={{
+                                  padding: '6px 14px',
+                                  fontSize: '0.85rem',
+                                  fontWeight: 800,
+                                  background: 'rgba(59, 130, 246, 0.25)',
+                                  color: '#93c5fd',
+                                  border: '1px solid #3b82f6'
+                                }}
+                              >
+                                📘 Official Key &amp; Solution
+                              </span>
+                            ) : (
+                              <span
+                                className="badge"
+                                style={{
+                                  padding: '6px 14px',
+                                  fontSize: '0.85rem',
+                                  fontWeight: 800,
+                                  background: isCorrect ? 'rgba(16, 185, 129, 0.25)' : isUnattempted ? 'rgba(245, 158, 11, 0.25)' : 'rgba(239, 68, 68, 0.25)',
+                                  color: isCorrect ? '#86efac' : isUnattempted ? '#fde047' : '#fca5a5',
+                                  border: isCorrect ? '1px solid #10b981' : isUnattempted ? '1px solid #f59e0b' : '1px solid #ef4444'
+                                }}
+                              >
+                                {isCorrect ? '✅ Correct (+2.0 M)' : isUnattempted ? '⚠️ Unattempted (0.0 M)' : '❌ Incorrect (-0.50 M)'}
+                              </span>
+                            )}
                             <span className="glass-pill" style={{ fontSize: '0.82rem', padding: '5px 12px', color: '#93c5fd', fontWeight: 600 }}>
                               {q.subject}
                             </span>
@@ -1345,7 +1538,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px' }}>
                           {q.options.map(opt => {
                             const isThisCorrect = opt.id === q.correctOptionIndex;
-                            const isThisUserSelected = userAns === opt.id;
+                            const isThisUserSelected = !isOlderAttemptWithoutAnswers && userAns === opt.id;
 
                             let optBg = 'rgba(255, 255, 255, 0.03)';
                             let optBorder = '1px solid var(--border-color)';
@@ -1379,8 +1572,16 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                                 }}
                               >
                                 <span>{opt.text}</span>
-                                {isThisCorrect && <span style={{ fontWeight: 900, fontSize: '0.8rem', color: '#34d399' }}>✓ Correct Answer</span>}
-                                {isThisUserSelected && !isThisCorrect && <span style={{ fontWeight: 900, fontSize: '0.8rem', color: '#f87171' }}>✗ Your Choice</span>}
+                                {isThisCorrect && (
+                                  <span style={{ fontWeight: 900, fontSize: '0.8rem', color: '#34d399' }}>
+                                    ✓ Correct Answer {!isOlderAttemptWithoutAnswers && isThisUserSelected ? '(Your Choice)' : ''}
+                                  </span>
+                                )}
+                                {!isOlderAttemptWithoutAnswers && isThisUserSelected && !isThisCorrect && (
+                                  <span style={{ fontWeight: 900, fontSize: '0.8rem', color: '#f87171' }}>
+                                    ✗ Your Choice
+                                  </span>
+                                )}
                               </div>
                             );
                           })}
@@ -1513,6 +1714,23 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
             </span>
           </div>
 
+          <div style={{
+            padding: '12px 16px',
+            borderRadius: 'var(--radius-sm)',
+            background: 'rgba(59, 130, 246, 0.1)',
+            border: '1px solid rgba(59, 130, 246, 0.3)',
+            color: '#93c5fd',
+            fontSize: '0.85rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px'
+          }}>
+            <Sparkles size={16} color="#60a5fa" style={{ flexShrink: 0 }} />
+            <span>
+              <strong>Candidate Review Tip:</strong> Click on any row or the <strong>"Open &amp; Review"</strong> button to inspect your test, examine what you did right or wrong, and study detailed step-by-step solutions for future preparation.
+            </span>
+          </div>
+
           {pastAttempts.length > 0 ? (
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
@@ -1524,14 +1742,32 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                     <th style={{ padding: '12px 14px', color: '#93c5fd' }}>Correct / Total</th>
                     <th style={{ padding: '12px 14px', color: '#93c5fd' }}>Time Taken</th>
                     <th style={{ padding: '12px 14px', color: '#93c5fd' }}>Date Attempted</th>
+                    <th style={{ padding: '12px 14px', color: '#93c5fd', textAlign: 'center' }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {pastAttempts.map((att, aIdx) => {
                     const acc = (att.correct_count + att.incorrect_count) > 0 ? Math.round((att.correct_count / (att.correct_count + att.incorrect_count)) * 100) : 0;
                     return (
-                      <tr key={aIdx} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.05)', background: aIdx % 2 === 0 ? 'rgba(255, 255, 255, 0.01)' : 'transparent' }}>
-                        <td style={{ padding: '12px 14px', fontWeight: 700, color: 'white' }}>{att.subject}</td>
+                      <tr 
+                        key={aIdx} 
+                        onClick={() => handleReviewPastAttempt(att)}
+                        style={{ 
+                          borderBottom: '1px solid rgba(255, 255, 255, 0.05)', 
+                          background: aIdx % 2 === 0 ? 'rgba(255, 255, 255, 0.01)' : 'transparent',
+                          cursor: 'pointer',
+                          transition: 'background 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(59, 130, 246, 0.15)')}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = aIdx % 2 === 0 ? 'rgba(255, 255, 255, 0.01)' : 'transparent')}
+                        title="Click to open and review test questions and solutions"
+                      >
+                        <td style={{ padding: '12px 14px', fontWeight: 700, color: 'white' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <FileText size={15} color="#60a5fa" />
+                            <span>{att.subject}</span>
+                          </div>
+                        </td>
                         <td style={{ padding: '12px 14px', color: att.score >= 0 ? '#86efac' : '#f87171', fontWeight: 800 }}>
                           {att.score} / {att.total_marks}
                         </td>
@@ -1541,13 +1777,35 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                           </span>
                         </td>
                         <td style={{ padding: '12px 14px', color: 'var(--text-secondary)' }}>
-                          <span style={{ color: '#86efac' }}>{att.correct_count} Correct</span>, <span style={{ color: '#f87171' }}>{att.incorrect_count} Wrong</span>
+                          <span style={{ color: '#86efac', fontWeight: 600 }}>{att.correct_count} Correct</span>, <span style={{ color: '#f87171', fontWeight: 600 }}>{att.incorrect_count} Wrong</span>
                         </td>
                         <td style={{ padding: '12px 14px', color: 'var(--text-muted)' }}>
                           {Math.floor(att.time_taken_seconds / 60)}m {att.time_taken_seconds % 60}s
                         </td>
                         <td style={{ padding: '12px 14px', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
                           {att.attempted_at || 'Recent'}
+                        </td>
+                        <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleReviewPastAttempt(att);
+                            }}
+                            className="btn btn-primary"
+                            style={{
+                              padding: '7px 14px',
+                              fontSize: '0.82rem',
+                              fontWeight: 700,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              boxShadow: '0 2px 8px rgba(37, 99, 235, 0.35)',
+                              whiteSpace: 'nowrap'
+                            }}
+                            title="Open and review test questions and solutions"
+                          >
+                            <Eye size={14} /> Open &amp; Review
+                          </button>
                         </td>
                       </tr>
                     );
