@@ -40,7 +40,7 @@ const sscProvenance: DataProvenance = {
 };
 
 // =========================================================================
-// ENRICHED QUESTION TEMPLATES WITH IN-DEPTH THEORIES & ANIMATED TRICKS
+// ENRICHED QUESTION TEMPLATES WITH PLAIN ENGLISH & JARGON GLOSSARY
 // =========================================================================
 
 export const REASONING_TEMPLATES: {
@@ -58,11 +58,16 @@ export const REASONING_TEMPLATES: {
     correct: 0,
     exp: 'Conclusion II follows directly from statement 3 (contrapositive). Conclusion III follows since pens that are papers cannot be markers.',
     detailedExp: {
+      simpleExplanation: 'Think of this in simple everyday terms: If "No pen is a marker", that automatically means "No marker can ever be a pen" (Conclusion II is true). Also, because some papers are pens, those specific papers can never touch markers (Conclusion III is true). But we were never told that books touch pens, so Conclusion I is not guaranteed.',
       coreConcept: 'Syllogisms operate on absolute set-theoretic rules. The universal negative statement "No A is B" allows 100% mutual exclusion (A ∩ B = ∅), implying its converse "No B is A". For "Some A are B" combined with "No B is C", the intersection (A ∩ B) cannot belong to C.',
+      technicalTerms: [
+        { term: 'Universal Negative (E-Proposition)', meaning: 'A strict statement like "No A is B", meaning the two groups have zero overlap.' },
+        { term: 'Contrapositive / Inversion', meaning: 'Flipping the statement: If no pen is a marker, then no marker is a pen.' }
+      ],
       stepByStepMethod: [
-        'Step 1: Check Conclusion I ("Some books are pens"). "Books" is a subset of "papers", and "pens" overlaps with "papers", but there is no guaranteed overlap between "books" and "pens". Hence I does NOT follow.',
-        'Step 2: Check Conclusion II ("No marker is a pen"). Statement 3 asserts "No pen is a marker". Conversion of Universal Negative (E-type proposition) is immediate and valid. Hence II is 100% true.',
-        'Step 3: Check Conclusion III ("Some papers are not markers"). The subset of "papers" that are "pens" (from Statement 2) can never enter the set "markers" due to Statement 3. Thus, those papers are strictly excluded from markers. Hence III follows.'
+        'Step 1: Check Conclusion I ("Some books are pens"). "Books" is inside "papers", and "pens" overlaps with "papers", but books and pens may be in totally different corners of papers. Hence I does NOT follow.',
+        'Step 2: Check Conclusion II ("No marker is a pen"). Statement 3 asserts "No pen is a marker". This directly flips to "No marker is a pen". Hence II is 100% true.',
+        'Step 3: Check Conclusion III ("Some papers are not markers"). The papers that are pens cannot ever be markers because of statement 3. Hence III follows.'
       ],
       shortcutTrick: {
         name: 'The 100-50 Venn Elimination Method',
@@ -81,11 +86,16 @@ export const REASONING_TEMPLATES: {
     correct: 0,
     exp: 'Epistemology is the philosophical branch studying Knowledge. Ontology is the branch studying Being and Reality.',
     detailedExp: {
+      simpleExplanation: 'In simple everyday words: Just like Epistemology is the study of knowledge (what is true and how we know things), Ontology is simply the study of reality and existence (what actually exists and what is real).',
       coreConcept: 'Philosophical Taxonomies in SSC CGL General Intelligence: Branch of study to object of study relationship (Domain : Subject of Inquiry).',
+      technicalTerms: [
+        { term: 'Epistemology', meaning: 'The scientific/philosophical branch that studies "Knowledge" (how humans know what is real).' },
+        { term: 'Ontology', meaning: 'The scientific/philosophical branch that studies "Being, Nature of Existence, and Reality".' }
+      ],
       stepByStepMethod: [
-        'Step 1: Analyze the base pair "Epistemology : Knowledge". Epistemology originates from Greek "episteme" (knowledge) + "logos" (study).',
-        'Step 2: Analyze the query "Ontology". Greek "ontos" (being, that which is) + "logos" (study).',
-        'Step 3: Match "Ontology" to "Being / Reality / Existence".'
+        'Step 1: Look at the first pair: "Epistemology" means study of "Knowledge".',
+        'Step 2: Look at the target word "Ontology". In Greek, "Onto" means Being / What exists.',
+        'Step 3: Therefore, Ontology matches directly to "Being / Reality".'
       ],
       shortcutTrick: {
         name: 'Greek/Latin Root Etymology Hack',
@@ -103,12 +113,17 @@ export const REASONING_TEMPLATES: {
     correct: 0,
     exp: 'P is father of Q. Q is brother of R. R is wife of S. Thus, P is the father of S’s wife (Father-in-law).',
     detailedExp: {
+      simpleExplanation: 'Let us break down the family chain in plain English: P is the father of Q. Q is the brother of R (so P is also the father of R!). R is married to S (R is the wife, S is the husband). So P is the father of S\'s wife, which makes P the "Father-in-law" of S.',
       coreConcept: 'Coded Blood Relations require sequential generation decoding and gender tracking through operator definitions.',
+      technicalTerms: [
+        { term: 'Generation Gap (+1, 0, -1)', meaning: 'Father/Mother is +1 generation; Brother/Sister/Spouse is 0 generation; Son/Daughter is -1 generation.' },
+        { term: 'Operator Decoding', meaning: 'Converting coded symbols (+, -, ×) step-by-step into real biological relations.' }
+      ],
       stepByStepMethod: [
-        'Step 1: Decode P + Q → P is Male (+) and is the Father (+1 generation) of Q.',
-        'Step 2: Decode Q × R → Q is Male (+) and is the Brother (same generation 0) of R. Therefore, P is also the Father of R.',
-        'Step 3: Decode R - S → R is Female (-) and is the Wife of S (Male +).',
-        'Step 4: Combine relations → P is the father of R, and R is the wife of S. Hence, P is S\'s wife\'s father (Father-in-law).'
+        'Step 1: P + Q means P is the father (+1 generation) of Q.',
+        'Step 2: Q × R means Q is the brother of R (they share the same father P). So P is also R\'s father.',
+        'Step 3: R - S means R is the wife of S.',
+        'Step 4: Combine: P is the father of R, and R is S\'s wife. Therefore, P is S\'s Father-in-law.'
       ],
       shortcutTrick: {
         name: 'Generation Gap & Gender Elimination Matrix',
@@ -126,17 +141,22 @@ export const REASONING_TEMPLATES: {
     correct: 0,
     exp: 'Pattern: (Number × 2) - 3 or differences of powers of 2 (4, 8, 16, 32, 64). 67 + 64 = 131.',
     detailedExp: {
+      simpleExplanation: 'Look at how the gap between numbers grows: from 7 to 11 is +4. From 11 to 19 is +8 (doubled!). From 19 to 35 is +16 (doubled!). From 35 to 67 is +32 (doubled!). So the next gap must be +64 (doubled again!). 67 + 64 = 131.',
       coreConcept: 'Second-order difference sequence with geometric progression ($2^n$) difference multipliers.',
+      technicalTerms: [
+        { term: 'Second-Order Differences', meaning: 'Finding the pattern by looking at the gap between the gaps.' },
+        { term: 'Geometric Progression (GP)', meaning: 'A series where each number is multiplied by a constant (here the gap doubles: 4, 8, 16, 32, 64).' }
+      ],
       stepByStepMethod: [
-        'Step 1: Calculate consecutive differences: 11 - 7 = 4, 19 - 11 = 8, 35 - 19 = 16, 67 - 35 = 32.',
-        'Step 2: Notice the difference pattern: 4 (2²), 8 (2³), 16 (2⁴), 32 (2⁵).',
-        'Step 3: Next difference must be 2⁶ = 64.',
-        'Step 4: Compute next term: 67 + 64 = 131.'
+        'Step 1: Find gaps between consecutive numbers: 11 - 7 = 4, 19 - 11 = 8, 35 - 19 = 16, 67 - 35 = 32.',
+        'Step 2: Notice the gaps double every time: 4, 8, 16, 32.',
+        'Step 3: Next gap must be 32 × 2 = 64.',
+        'Step 4: Add 64 to 67 = 131.'
       ],
       shortcutTrick: {
         name: 'Arithmetic Multiplier Trick (2N - K)',
-        formula: 'T_(n+1) = 2 × T_n - 3',
-        explanation: '7×2-3=11, 11×2-3=19, 19×2-3=35, 35×2-3=67. Next term = 67×2 - 3 = 134 - 3 = 131. Pure mental calculation!',
+        formula: 'Next Number = (Current Number × 2) - 3',
+        explanation: '7×2-3=11, 11×2-3=19, 19×2-3=35, 35×2-3=67. Next term = 67×2 - 3 = 134 - 3 = 131. Pure mental calculation in 5 seconds!',
         timeSaved: '⏱️ Traditional: 35s → Shortcut: 6s (83% Time Saved)'
       },
       crucialTakeaway: 'When differences double continuously (4, 8, 16, 32), you can alternatively test (2X - C) rule for instant verification.'
@@ -159,11 +179,16 @@ export const GA_TEMPLATES: {
     correct: 0,
     exp: 'Article 32 empowers individuals to petition the Supreme Court for enforcement of Fundamental Rights via prerogative writs.',
     detailedExp: {
+      simpleExplanation: 'In simple words: If the government or anyone violates your fundamental rights, Article 32 gives you the direct legal power to walk straight to the Supreme Court of India and demand justice. That is why Dr. Ambedkar called Article 32 the "Heart and Soul" of the entire Constitution.',
       coreConcept: 'Article 32 constitutes Part III Fundamental Right conferring original and direct jurisdiction upon the Supreme Court of India. Without Article 32, declarations of fundamental rights in Articles 14–30 would remain unenforceable declarations of intent.',
+      technicalTerms: [
+        { term: 'Constitutional Remedies', meaning: 'The legal cure/solution provided directly by the highest court when a citizen\'s rights are hurt.' },
+        { term: 'Prerogative Writs', meaning: '5 official Supreme Court orders (Habeas Corpus, Mandamus, Prohibition, Quo-Warranto, Certiorari) commanding authorities to follow the law.' }
+      ],
       stepByStepMethod: [
-        'Step 1: Recall Dr. B.R. Ambedkar\'s historic constituent assembly speech: "If I was asked to name any particular article in this Constitution as the most important... I could not refer to any other article except this one. It is the very soul of the Constitution and the very heart of it."',
-        'Step 2: Identify the 5 constitutional prerogative writs issued under Article 32: Habeas Corpus (To have the body), Mandamus (We command), Prohibition (To forbid lower courts), Quo-Warranto (By what authority), and Certiorari (To be certified / quash orders).',
-        'Step 3: Distinguish from Article 226, which empowers High Courts with even wider writ jurisdiction (including legal rights beyond Fundamental Rights).'
+        'Step 1: Identify the key historical phrase: "Heart and Soul of the Constitution" was coined by Dr. B.R. Ambedkar specifically for Article 32.',
+        'Step 2: Understand why: Article 32 makes all other rights meaningful by providing enforceable court orders (writs).',
+        'Step 3: Contrast with other options: Article 14 is Equality, Article 19 is 6 Basic Freedoms, Article 21 is Right to Life.'
       ],
       shortcutTrick: {
         name: 'Mnemonic Rule for 5 Writs & Article 32',
@@ -181,11 +206,16 @@ export const GA_TEMPLATES: {
     correct: 0,
     exp: 'The Non-Cooperation Movement was launched in 1920 and called off in February 1922 following the Chauri Chaura incident.',
     detailedExp: {
+      simpleExplanation: 'In simple words: After the horrific Jallianwala Bagh firing in 1919 and broken British promises, Mahatma Gandhi decided that Indians must peacefully stop cooperating with British schools, courts, and goods. This mass movement was formally started in the year 1920.',
       coreConcept: 'The Non-Cooperation Movement (1920–1922) was the first mass-based satyagraha movement led by Mahatma Gandhi under the Indian National Congress (approved at the Calcutta Special Session in Sep 1920 and ratified at Nagpur in Dec 1920).',
+      technicalTerms: [
+        { term: 'Non-Cooperation', meaning: 'A peaceful protest method where citizens refuse to work with or buy from a ruler to make their system unworkable.' },
+        { term: 'Satyagraha', meaning: 'Gandhi\'s philosophy of non-violent resistance holding strictly to truth.' }
+      ],
       stepByStepMethod: [
-        'Step 1: Identify the immediate catalysts: (a) Rowlatt Act 1919 & Jallianwala Bagh Massacre (13 April 1919), (b) Hunter Commission report whitewashing General Dyer, (c) Khilafat injustice against the Ottoman Caliph.',
-        'Step 2: Launch date: September 1920 (formal commencement on 1 August 1920, the day Bal Gangadhar Tilak passed away).',
-        'Step 3: Termination: Called off on 12 February 1922 at Bardoli following violent clashes at Chauri Chaura (Gorakhpur, UP) on 4 February 1922.'
+        'Step 1: Identify the trigger year: Jallianwala Bagh happened in 1919.',
+        'Step 2: In response, Gandhi organized the Non-Cooperation Movement starting in 1920.',
+        'Step 3: The movement ran until 1922 when it was stopped after the Chauri Chaura police station violence.'
       ],
       shortcutTrick: {
         name: 'Gandhian Mass Movements Chronology Timeline',
@@ -213,12 +243,17 @@ export const QUANT_TEMPLATES: {
     correct: 0,
     exp: 'Formula: DCT = √(d² - (r₁ - r₂)²) = √(13² - (9 - 4)²) = √(169 - 25) = √144 = 12 cm.',
     detailedExp: {
+      simpleExplanation: 'In simple everyday words: A "Direct Common Tangent" is a straight ruler line touching the tops of two separate circles. If the distance between their centers is 13 cm, and the difference in their heights/radii is (9 - 4) = 5 cm, simple Pythagoras theorem on the right triangle gives the length as 12 cm (since 5² + 12² = 13²).',
       coreConcept: 'In Euclidean circle geometry, a Direct Common Tangent (DCT) touches both circles on the same side without intersecting the line connecting their centers. Applying the Pythagorean theorem to the right triangle formed with the center distance and radial difference gives the standard distance equation.',
+      technicalTerms: [
+        { term: 'Direct Common Tangent (DCT)', meaning: 'A straight line that touches both circles from outside without crossing in between them.' },
+        { term: 'Pythagorean Triplet (5, 12, 13)', meaning: 'Three whole numbers where 5² + 12² = 13² (25 + 144 = 169).' }
+      ],
       stepByStepMethod: [
-        'Step 1: Identify given parameters: Radius r₁ = 9 cm, Radius r₂ = 4 cm, Center Distance d = 13 cm.',
-        'Step 2: Write standard formula: Length of Direct Common Tangent (DCT) = √(d² - (r₁ - r₂)²).',
-        'Step 3: Calculate radial difference: (r₁ - r₂) = 9 - 4 = 5 cm.',
-        'Step 4: Substitute into formula: DCT = √(13² - 5²) = √(169 - 25) = √144 = 12 cm.'
+        'Step 1: Given: Radius 1 = 9 cm, Radius 2 = 4 cm, Center Distance = 13 cm.',
+        'Step 2: Difference between the two radii: 9 - 4 = 5 cm.',
+        'Step 3: Apply the DCT formula: DCT = √(Distance² - (Difference)²) = √(13² - 5²).',
+        'Step 4: Calculate: √(169 - 25) = √144 = 12 cm.'
       ],
       shortcutTrick: {
         name: 'Pythagorean Triplet Recognition Hack (5-12-13)',
@@ -236,13 +271,18 @@ export const QUANT_TEMPLATES: {
     correct: 0,
     exp: 'Formula: x³ + 1/x³ = k³ - 3k = 5³ - 3(5) = 125 - 15 = 110.',
     detailedExp: {
+      simpleExplanation: 'In simple words: Whenever you know the value of (x + 1/x) and want to find its cube (x³ + 1/x³), you just take the number, cube it (5 × 5 × 5 = 125), and subtract 3 times that number (3 × 5 = 15). So, 125 - 15 = 110.',
       coreConcept: 'Algebraic symmetric cubic identity: (a + b)³ = a³ + b³ + 3ab(a + b). Setting a = x and b = 1/x gives ab = 1, simplifying the expression to (x + 1/x)³ = (x³ + 1/x³) + 3(x + 1/x).',
+      technicalTerms: [
+        { term: 'Symmetric Expression', meaning: 'An algebraic formula where swapping x and 1/x leaves the equation unchanged.' },
+        { term: 'Reciprocal', meaning: 'The flipped fraction (1/x is the reciprocal of x, so x multiplied by 1/x is always 1).' }
+      ],
       stepByStepMethod: [
-        'Step 1: Let x + 1/x = k = 5.',
+        'Step 1: Start with the known value: x + 1/x = 5.',
         'Step 2: Cube both sides: (x + 1/x)³ = 5³ = 125.',
-        'Step 3: Expand the LHS: x³ + 1/x³ + 3(x)(1/x)(x + 1/x) = 125.',
-        'Step 4: Substitute (x + 1/x) = 5: x³ + 1/x³ + 3(1)(5) = 125  ⇒  x³ + 1/x³ + 15 = 125.',
-        'Step 5: Isolate target: x³ + 1/x³ = 125 - 15 = 110.'
+        'Step 3: Expand the formula: x³ + 1/x³ + 3(x)(1/x)(x + 1/x) = 125.',
+        'Step 4: Since x · (1/x) = 1 and (x + 1/x) = 5, we get: x³ + 1/x³ + 3(1)(5) = 125.',
+        'Step 5: Move 15 to the other side: x³ + 1/x³ = 125 - 15 = 110.'
       ],
       shortcutTrick: {
         name: 'Direct Speed Identity for Cubes (k³ - 3k)',
@@ -260,13 +300,19 @@ export const QUANT_TEMPLATES: {
     correct: 0,
     exp: 'Let CP = 100. MP = 140. After 20% discount: 112. After 5% cash discount: 106.4. Net Profit = 6.4%.',
     detailedExp: {
+      simpleExplanation: 'In simple everyday shopkeeper terms: Imagine the item cost ₹100 originally. The shopkeeper sets the tag price at ₹140 (40% markup). He gives a 20% festival discount, making it ₹112 (140 - 28). Then he gives another 5% cash discount on that ₹112, reducing ₹5.60 to reach ₹106.40. Since he spent ₹100 and collected ₹106.40, his net profit is exactly 6.4%.',
       coreConcept: 'Successive Percentage Changes and Multiplier chain: SP = CP × (1 + Markup%) × (1 - Discount₁%) × (1 - Discount₂%).',
+      technicalTerms: [
+        { term: 'Cost Price (CP)', meaning: 'The money spent to purchase or produce the good (Base = ₹100).' },
+        { term: 'Marked Price (MP)', meaning: 'The higher list price printed on the label before giving discounts.' },
+        { term: 'Successive Discounts', meaning: 'Applying each new discount on the already discounted price (not added together).' }
+      ],
       stepByStepMethod: [
-        'Step 1: Assume standard Cost Price CP = 100.',
-        'Step 2: 40% Markup ⇒ Marked Price MP = 100 × 1.40 = 140.',
-        'Step 3: 20% Trade Discount ⇒ SP₁ = 140 × (1 - 0.20) = 140 × 0.80 = 112.',
-        'Step 4: Additional 5% Cash Discount ⇒ Net SP = 112 × (1 - 0.05) = 112 × 0.95 = 106.4.',
-        'Step 5: Calculate Net Profit % = (Net SP - CP) = 106.4 - 100 = 6.4%.'
+        'Step 1: Assume Cost Price (CP) = ₹100.',
+        'Step 2: 40% Markup means Marked Price (MP) = 100 + 40 = ₹140.',
+        'Step 3: Apply 20% Discount on ₹140: Discount = 140 × 0.20 = ₹28. Price is now ₹112.',
+        'Step 4: Apply 5% Cash Discount on ₹112: Discount = 112 × 0.05 = ₹5.60. Final Selling Price = 112 - 5.60 = ₹106.40.',
+        'Step 5: Net Profit = Final Selling Price - Cost Price = 106.40 - 100 = 6.4%.'
       ],
       shortcutTrick: {
         name: 'Fractional Multiplier Chain Method',
@@ -294,12 +340,17 @@ export const ENGLISH_TEMPLATES: {
     correct: 0,
     exp: 'When subjects are connected by "Neither... nor", the verb agrees in number with the closer subject ("teachers", plural). Replace "was" with "were".',
     detailedExp: {
+      simpleExplanation: 'In simple English grammar rules: When you use "Neither... nor", look at the subject that is sitting closest to the verb. Here, the word closest to "was" is "teachers" (plural, more than one teacher). Because "teachers" is plural, the verb MUST also be plural ("were"), not singular ("was").',
       coreConcept: 'Rule of Proximity in Correlative Conjunctions: When two subjects are connected by "Either... or", "Neither... nor", or "Not only... but also", the verb must agree strictly with the nearer (closest) subject.',
+      technicalTerms: [
+        { term: 'Subject-Verb Agreement', meaning: 'A singular person gets a singular verb (is/was); multiple people get a plural verb (are/were).' },
+        { term: 'Rule of Proximity', meaning: 'When two different groups are joined by "neither/nor", the verb matches whatever word is right beside it.' }
+      ],
       stepByStepMethod: [
-        'Step 1: Identify the correlative conjunction structure: "Neither [Subject 1] nor [Subject 2] [Verb]".',
-        'Step 2: Subject 1 is "the principal" (singular). Subject 2 is "the teachers" (plural).',
-        'Step 3: The verb "was" is placed immediately next to Subject 2 ("the teachers").',
-        'Step 4: Since "teachers" is plural, the verb must be plural ("were"). Therefore, segment (C) "was in favor of" contains the error.'
+        'Step 1: Locate the sentence connector: "Neither ... nor".',
+        'Step 2: Find the subjects: "the principal" (singular) and "the teachers" (plural).',
+        'Step 3: Check which subject is closest to the verb: "the teachers" sits right next to the verb.',
+        'Step 4: Since "teachers" is plural, change "was" to "were". The error is in part (C).'
       ],
       shortcutTrick: {
         name: 'The Nearest Subject Touch Rule',
@@ -327,11 +378,16 @@ export const COMPUTER_TEMPLATES: {
     correct: 0,
     exp: 'VLOOKUP searches vertically in the leftmost column of a table array and returns data from the specified column index.',
     detailedExp: {
+      simpleExplanation: 'In simple Excel terms: The "V" in VLOOKUP stands for "Vertical" (looking top to bottom down a column). It finds what you are looking for in the very first column of your table and brings back information from any column to the right in the same row.',
       coreConcept: 'VLOOKUP (Vertical Lookup) syntax: =VLOOKUP(lookup_value, table_array, col_index_num, [range_lookup]). It strictly requires the lookup key to be in the first column of the selected array.',
+      technicalTerms: [
+        { term: 'VLOOKUP', meaning: 'Vertical Lookup: searches down the first column of a table.' },
+        { term: 'HLOOKUP', meaning: 'Horizontal Lookup: searches across the top row of a table.' }
+      ],
       stepByStepMethod: [
-        'Step 1: "V" stands for Vertical (searching down column 1).',
-        'Step 2: Syntax parameters: (1) lookup_value, (2) table_array, (3) col_index_num (1-based index), (4) exact match FALSE (0).',
-        'Step 3: Compare with HLOOKUP (Horizontal / row-wise) and XLOOKUP (modern bidirectional lookup).'
+        'Step 1: Look at the direction: Searching in the leftmost column means searching vertically down.',
+        'Step 2: "V" in VLOOKUP stands for Vertical.',
+        'Step 3: Hence, VLOOKUP is the standard function that searches column 1 and returns matching row data.'
       ],
       shortcutTrick: {
         name: 'V vs H Excel Orientation Rule',
@@ -349,7 +405,6 @@ function buildFullPaperQuestions(paperId: string, shiftInfo: string, year: numbe
   const questions: PracticeQuestion[] = [];
   let qNum = 1;
 
-  // Reasoning (25 Qs)
   for (let i = 0; i < 25; i++) {
     const t = REASONING_TEMPLATES[i % REASONING_TEMPLATES.length];
     questions.push({
@@ -372,7 +427,6 @@ function buildFullPaperQuestions(paperId: string, shiftInfo: string, year: numbe
     qNum++;
   }
 
-  // General Awareness (25 Qs)
   for (let i = 0; i < 25; i++) {
     const t = GA_TEMPLATES[i % GA_TEMPLATES.length];
     questions.push({
@@ -395,7 +449,6 @@ function buildFullPaperQuestions(paperId: string, shiftInfo: string, year: numbe
     qNum++;
   }
 
-  // Quantitative Aptitude (25 Qs)
   for (let i = 0; i < 25; i++) {
     const t = QUANT_TEMPLATES[i % QUANT_TEMPLATES.length];
     questions.push({
@@ -418,7 +471,6 @@ function buildFullPaperQuestions(paperId: string, shiftInfo: string, year: numbe
     qNum++;
   }
 
-  // English Comprehension (25 Qs)
   for (let i = 0; i < 25; i++) {
     const t = ENGLISH_TEMPLATES[i % ENGLISH_TEMPLATES.length];
     questions.push({
@@ -812,7 +864,7 @@ export const TOPIC_DRILL_TESTS: MockPaper[] = [
     description: 'Master Direct Common Tangents, Transverse Common Tangents, and Intersecting Chord Theorems.',
     provenanceTag: 'High-Yield Topic Drill',
     questions: Array.from({ length: 15 }, (_, i) => {
-      const t = QUANT_TEMPLATES[0]; // Geometry template
+      const t = QUANT_TEMPLATES[0];
       return {
         id: `drill-geom-${i+1}`,
         topicId: 'syl-quant-geom',
@@ -845,7 +897,7 @@ export const TOPIC_DRILL_TESTS: MockPaper[] = [
     description: 'Practice rapid expansions for x² + 1/x², x³ + 1/x³, and x⁴ + 1/x⁴.',
     provenanceTag: 'High-Yield Topic Drill',
     questions: Array.from({ length: 15 }, (_, i) => {
-      const t = QUANT_TEMPLATES[1]; // Algebra template
+      const t = QUANT_TEMPLATES[1];
       return {
         id: `drill-alg-${i+1}`,
         topicId: 'syl-quant-algebra',
@@ -878,7 +930,7 @@ export const TOPIC_DRILL_TESTS: MockPaper[] = [
     description: 'High-frequency revision for Fundamental Rights (Part III), DPSP (Part IV), and Writs under Article 32 & 226.',
     provenanceTag: 'High-Yield Topic Drill',
     questions: Array.from({ length: 15 }, (_, i) => {
-      const t = GA_TEMPLATES[0]; // Polity template
+      const t = GA_TEMPLATES[0];
       return {
         id: `drill-polity-${i+1}`,
         topicId: 'syl-ga-polity',
@@ -911,7 +963,7 @@ export const TOPIC_DRILL_TESTS: MockPaper[] = [
     description: 'Speed building with 3-statement and 3-conclusion Venn logic puzzles.',
     provenanceTag: 'High-Yield Topic Drill',
     questions: Array.from({ length: 15 }, (_, i) => {
-      const t = REASONING_TEMPLATES[0]; // Syllogism template
+      const t = REASONING_TEMPLATES[0];
       return {
         id: `drill-syl-${i+1}`,
         topicId: 'syl-reas-syllogism',
@@ -944,7 +996,7 @@ export const TOPIC_DRILL_TESTS: MockPaper[] = [
     description: 'Focus on Subject-Verb agreement, Conditionals, and Preposition placement.',
     provenanceTag: 'High-Yield Topic Drill',
     questions: Array.from({ length: 15 }, (_, i) => {
-      const t = ENGLISH_TEMPLATES[0]; // Grammar template
+      const t = ENGLISH_TEMPLATES[0];
       return {
         id: `drill-gram-${i+1}`,
         topicId: 'syl-eng-grammar',

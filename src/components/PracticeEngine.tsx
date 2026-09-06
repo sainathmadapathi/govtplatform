@@ -1282,7 +1282,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                 </div>
 
                 {/* Solutions List */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
                   {filteredSolutions.map((q, idx) => {
                     const originalIdx = questionsList.findIndex(orig => orig.id === q.id);
                     const userAns = userAnswers[originalIdx];
@@ -1295,64 +1295,69 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                         key={q.id}
                         className="glass-card"
                         style={{
-                          padding: '22px',
+                          padding: '30px',
                           display: 'flex',
                           flexDirection: 'column',
-                          gap: '16px',
-                          border: isCorrect ? '1px solid rgba(16, 185, 129, 0.35)' : isUnattempted ? '1px solid rgba(245, 158, 11, 0.35)' : '1px solid rgba(239, 68, 68, 0.35)',
-                          background: 'rgba(15, 23, 42, 0.95)'
+                          gap: '22px',
+                          border: isCorrect ? '1.5px solid rgba(16, 185, 129, 0.45)' : isUnattempted ? '1.5px solid rgba(245, 158, 11, 0.45)' : '1.5px solid rgba(239, 68, 68, 0.45)',
+                          background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.92) 100%)',
+                          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)'
                         }}
                       >
                         {/* Question Top Header */}
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <span style={{ fontWeight: 800, color: 'white', fontSize: '1.05rem' }}>
-                              Q{originalIdx + 1}.
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '16px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                            <span style={{ fontWeight: 900, color: 'white', fontSize: '1.25rem' }}>
+                              Question {originalIdx + 1}
                             </span>
                             <span
                               className="badge"
                               style={{
-                                background: isCorrect ? 'rgba(16, 185, 129, 0.2)' : isUnattempted ? 'rgba(245, 158, 11, 0.2)' : 'rgba(239, 68, 68, 0.2)',
-                                color: isCorrect ? '#86efac' : isUnattempted ? '#fde047' : '#fca5a5'
+                                padding: '6px 14px',
+                                fontSize: '0.85rem',
+                                fontWeight: 800,
+                                background: isCorrect ? 'rgba(16, 185, 129, 0.25)' : isUnattempted ? 'rgba(245, 158, 11, 0.25)' : 'rgba(239, 68, 68, 0.25)',
+                                color: isCorrect ? '#86efac' : isUnattempted ? '#fde047' : '#fca5a5',
+                                border: isCorrect ? '1px solid #10b981' : isUnattempted ? '1px solid #f59e0b' : '1px solid #ef4444'
                               }}
                             >
                               {isCorrect ? '✅ Correct (+2.0 M)' : isUnattempted ? '⚠️ Unattempted (0.0 M)' : '❌ Incorrect (-0.50 M)'}
                             </span>
-                            <span className="glass-pill" style={{ fontSize: '0.75rem', color: '#93c5fd' }}>
+                            <span className="glass-pill" style={{ fontSize: '0.82rem', padding: '5px 12px', color: '#93c5fd', fontWeight: 600 }}>
                               {q.subject}
                             </span>
-                            <span className="glass-pill" style={{ fontSize: '0.75rem', color: '#fbbf24' }}>
+                            <span className="glass-pill" style={{ fontSize: '0.82rem', padding: '5px 12px', color: '#fbbf24', fontWeight: 600 }}>
                               {q.topicName}
                             </span>
                           </div>
 
-                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                          <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
                             {q.shiftInfo}
                           </span>
                         </div>
 
-                        {/* Question Text */}
-                        <div style={{ fontSize: '1rem', color: 'white', lineHeight: 1.5, fontWeight: 500, whiteSpace: 'pre-line' }}>
+                        {/* Question Text with Larger Font & Line Height */}
+                        <div style={{ fontSize: '1.12rem', color: '#ffffff', lineHeight: 1.7, fontWeight: 600, whiteSpace: 'pre-line', padding: '4px 0' }}>
                           {q.questionText}
                         </div>
 
-                        {/* Options Breakdown */}
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '8px' }}>
+                        {/* Options Breakdown with Generous Padding */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px' }}>
                           {q.options.map(opt => {
                             const isThisCorrect = opt.id === q.correctOptionIndex;
                             const isThisUserSelected = userAns === opt.id;
 
                             let optBg = 'rgba(255, 255, 255, 0.03)';
                             let optBorder = '1px solid var(--border-color)';
-                            let optColor = 'var(--text-secondary)';
+                            let optColor = '#cbd5e1';
 
                             if (isThisCorrect) {
-                              optBg = 'rgba(16, 185, 129, 0.15)';
-                              optBorder = '1px solid #10b981';
+                              optBg = 'rgba(16, 185, 129, 0.18)';
+                              optBorder = '1.5px solid #10b981';
                               optColor = '#86efac';
                             } else if (isThisUserSelected && !isThisCorrect) {
-                              optBg = 'rgba(239, 68, 68, 0.15)';
-                              optBorder = '1px solid #ef4444';
+                              optBg = 'rgba(239, 68, 68, 0.18)';
+                              optBorder = '1.5px solid #ef4444';
                               optColor = '#fca5a5';
                             }
 
@@ -1360,46 +1365,67 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                               <div
                                 key={opt.id}
                                 style={{
-                                  padding: '10px 14px',
-                                  borderRadius: 'var(--radius-sm)',
+                                  padding: '14px 18px',
+                                  borderRadius: 'var(--radius-md)',
                                   background: optBg,
                                   border: optBorder,
                                   color: optColor,
-                                  fontSize: '0.85rem',
+                                  fontSize: '0.98rem',
+                                  fontWeight: isThisCorrect || isThisUserSelected ? 700 : 500,
                                   display: 'flex',
                                   alignItems: 'center',
-                                  justifyContent: 'space-between'
+                                  justifyContent: 'space-between',
+                                  gap: '8px'
                                 }}
                               >
                                 <span>{opt.text}</span>
-                                {isThisCorrect && <span style={{ fontWeight: 800, fontSize: '0.75rem' }}>✓ Official Correct</span>}
-                                {isThisUserSelected && !isThisCorrect && <span style={{ fontWeight: 800, fontSize: '0.75rem' }}>✗ Your Choice</span>}
+                                {isThisCorrect && <span style={{ fontWeight: 900, fontSize: '0.8rem', color: '#34d399' }}>✓ Correct Answer</span>}
+                                {isThisUserSelected && !isThisCorrect && <span style={{ fontWeight: 900, fontSize: '0.8rem', color: '#f87171' }}>✗ Your Choice</span>}
                               </div>
                             );
                           })}
                         </div>
 
-                        {/* 1. 📖 CORE CONCEPT & THEORY */}
-                        {det && (
-                          <div style={{ padding: '14px 16px', borderRadius: 'var(--radius-sm)', background: 'rgba(59, 130, 246, 0.06)', border: '1px solid rgba(59, 130, 246, 0.3)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#93c5fd', fontWeight: 800, fontSize: '0.88rem' }}>
-                              <BookOpen size={16} /> 1. Foundational Concept & Official Law
+                        {/* 1. 💡 SIMPLE PLAIN-ENGLISH EXPLANATION (NO JARGON) */}
+                        {det && det.simpleExplanation && (
+                          <div style={{ padding: '20px 22px', borderRadius: 'var(--radius-md)', background: 'rgba(16, 185, 129, 0.08)', border: '1.5px solid rgba(16, 185, 129, 0.45)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#34d399', fontWeight: 900, fontSize: '1.05rem' }}>
+                              <Sparkles size={20} color="#34d399" />
+                              <span>💡 1. Plain & Simple Explanation (In Easy Everyday Words)</span>
                             </div>
-                            <p style={{ fontSize: '0.84rem', color: 'var(--text-primary)', margin: 0, lineHeight: 1.5 }}>
-                              {det.coreConcept}
+                            <p style={{ fontSize: '1rem', color: '#f0fdf4', margin: 0, lineHeight: 1.75, fontWeight: 500 }}>
+                              {det.simpleExplanation}
                             </p>
                           </div>
                         )}
 
-                        {/* 2. ✍️ STEP-BY-STEP FORMAL METHOD */}
-                        {det && det.stepByStepMethod && (
-                          <div style={{ padding: '14px 16px', borderRadius: 'var(--radius-sm)', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'white', fontWeight: 800, fontSize: '0.88rem' }}>
-                              <FileText size={16} color="#34d399" /> 2. Step-by-Step Formal Method
+                        {/* 2. 📘 TECHNICAL TERMS & JARGON GLOSSARY */}
+                        {det && det.technicalTerms && det.technicalTerms.length > 0 && (
+                          <div style={{ padding: '18px 22px', borderRadius: 'var(--radius-md)', background: 'rgba(59, 130, 246, 0.06)', border: '1px solid rgba(59, 130, 246, 0.35)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#93c5fd', fontWeight: 900, fontSize: '1rem' }}>
+                              <BookOpen size={18} />
+                              <span>📘 2. Key Terms & Jargon Explained Simply</span>
                             </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              {det.technicalTerms.map((term, tIdx) => (
+                                <div key={tIdx} style={{ fontSize: '0.94rem', color: '#e2e8f0', lineHeight: 1.6, padding: '8px 12px', background: 'rgba(0,0,0,0.3)', borderRadius: 'var(--radius-sm)', borderLeft: '3px solid #60a5fa' }}>
+                                  <strong style={{ color: '#93c5fd' }}>{term.term}:</strong> {term.meaning}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 3. ✍️ STEP-BY-STEP FORMAL METHOD */}
+                        {det && det.stepByStepMethod && (
+                          <div style={{ padding: '18px 22px', borderRadius: 'var(--radius-md)', background: 'rgba(0,0,0,0.35)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ffffff', fontWeight: 900, fontSize: '1rem' }}>
+                              <FileText size={18} color="#34d399" />
+                              <span>✍️ 3. Step-by-Step Formal Method</span>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                               {det.stepByStepMethod.map((step, sIdx) => (
-                                <div key={sIdx} style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.4, paddingLeft: '8px', borderLeft: '2px solid rgba(16, 185, 129, 0.4)' }}>
+                                <div key={sIdx} style={{ fontSize: '0.95rem', color: '#e2e8f0', lineHeight: 1.65, paddingLeft: '14px', borderLeft: '3px solid rgba(16, 185, 129, 0.6)' }}>
                                   {step}
                                 </div>
                               ))}
@@ -1407,54 +1433,54 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                           </div>
                         )}
 
-                        {/* 3. ⚡ ANIMATED EXAM SHORTCUT TRICK & SPEED FORMULA */}
+                        {/* 4. ⚡ ANIMATED EXAM SHORTCUT TRICK & SPEED FORMULA */}
                         {det && det.shortcutTrick && (
                           <div
                             className="trick-card-animated"
                             style={{
-                              padding: '16px',
+                              padding: '22px',
                               borderRadius: 'var(--radius-md)',
-                              background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(251, 191, 36, 0.05) 100%)',
-                              border: '1px solid rgba(245, 158, 11, 0.5)',
+                              background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(251, 191, 36, 0.08) 100%)',
+                              border: '1.5px solid rgba(245, 158, 11, 0.6)',
                               display: 'flex',
                               flexDirection: 'column',
-                              gap: '8px'
+                              gap: '12px'
                             }}
                           >
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#fbbf24', fontWeight: 900, fontSize: '0.92rem' }}>
-                                <Flame size={18} className="animate-pulse" color="#f59e0b" />
-                                <span>⚡ 3. Exam Speed Shortcut: {det.shortcutTrick.name}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#fbbf24', fontWeight: 900, fontSize: '1.05rem' }}>
+                                <Flame size={20} className="animate-pulse" color="#f59e0b" />
+                                <span>⚡ 4. Exam Speed Shortcut: {det.shortcutTrick.name}</span>
                               </div>
-                              <span className="badge shimmer-badge" style={{ background: '#f59e0b', color: '#111827', fontWeight: 800, fontSize: '0.72rem' }}>
+                              <span className="badge shimmer-badge" style={{ background: '#f59e0b', color: '#111827', fontWeight: 900, fontSize: '0.8rem', padding: '6px 12px' }}>
                                 {det.shortcutTrick.timeSaved}
                               </span>
                             </div>
 
                             {det.shortcutTrick.formula && (
-                              <div style={{ padding: '8px 12px', borderRadius: '4px', background: 'rgba(0,0,0,0.5)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: '#fde047', fontWeight: 700 }}>
+                              <div style={{ padding: '10px 16px', borderRadius: '6px', background: 'rgba(0,0,0,0.6)', fontFamily: 'var(--font-mono)', fontSize: '0.98rem', color: '#fde047', fontWeight: 800 }}>
                                 📐 Formula: {det.shortcutTrick.formula}
                               </div>
                             )}
 
-                            <p style={{ fontSize: '0.84rem', color: 'white', margin: 0, lineHeight: 1.45 }}>
+                            <p style={{ fontSize: '0.98rem', color: '#ffffff', margin: 0, lineHeight: 1.65, fontWeight: 500 }}>
                               {det.shortcutTrick.explanation}
                             </p>
                           </div>
                         )}
 
-                        {/* 4. 🎯 CRUCIAL EXAM TAKEAWAY */}
+                        {/* 5. 🎯 CRUCIAL EXAM TAKEAWAY */}
                         {det && det.crucialTakeaway && (
-                          <div style={{ fontSize: '0.8rem', color: '#86efac', background: 'rgba(16, 185, 129, 0.08)', padding: '8px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(16, 185, 129, 0.25)' }}>
-                            <strong>🎯 Crucial Takeaway for Exam Day:</strong> {det.crucialTakeaway}
+                          <div style={{ fontSize: '0.92rem', color: '#86efac', background: 'rgba(16, 185, 129, 0.1)', padding: '12px 18px', borderRadius: 'var(--radius-md)', border: '1px solid rgba(16, 185, 129, 0.35)', lineHeight: 1.6 }}>
+                            <strong style={{ color: '#34d399' }}>🎯 Crucial Takeaway for Exam Day:</strong> {det.crucialTakeaway}
                           </div>
                         )}
 
                         {/* Fallback Explanation if Detailed Object Not Present */}
                         {!det && (
-                          <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-sm)', background: 'rgba(0,0,0,0.3)', fontSize: '0.84rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                          <div style={{ padding: '16px 18px', borderRadius: 'var(--radius-sm)', background: 'rgba(0,0,0,0.3)', fontSize: '0.95rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
                             <strong style={{ color: '#93c5fd' }}>Official Explanation:</strong>
-                            <div style={{ marginTop: '4px', whiteSpace: 'pre-line' }}>{q.explanation}</div>
+                            <div style={{ marginTop: '6px', whiteSpace: 'pre-line' }}>{q.explanation}</div>
                           </div>
                         )}
 
@@ -1462,6 +1488,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                     );
                   })}
                 </div>
+
               </div>
 
             </div>

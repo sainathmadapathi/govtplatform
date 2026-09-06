@@ -123,8 +123,15 @@ export interface ShortcutTrick {
   timeSaved: string;
 }
 
+export interface TechnicalTermDefinition {
+  term: string;
+  meaning: string;
+}
+
 export interface DetailedExplanation {
+  simpleExplanation: string;
   coreConcept: string;
+  technicalTerms?: TechnicalTermDefinition[];
   stepByStepMethod: string[];
   shortcutTrick?: ShortcutTrick;
   eliminationStrategy?: string;
