@@ -75,6 +75,8 @@ export const SSC_CGL_EXAM: Exam = {
   authorityName: 'Staff Selection Commission (SSC)',
   officialDomain: 'https://ssc.gov.in',
   crucialEligibilityDate: '2026-08-01',
+  minimumQualification: 'GRADUATION',
+  careerFields: ['Government Job', 'Civil Services & Governance'],
   isGoldenJourney: true,
   isDemoData: false,
   overviewDescription:
@@ -1852,6 +1854,37 @@ export const SSC_CGL_EXAM: Exam = {
     }
   ],
 
+  // Admit Card / Hall Ticket release details & SSC regional download mirrors
+  admitCardDetails: {
+    status: 'NOT_YET_ANNOUNCED',
+    releaseDateStr: '2026-10-18 10:00:00',
+    officialPortalUrl: 'https://ssc.gov.in',
+    loginCredentialsRequired: [
+      'Registration Number / Roll Number',
+      'Registered Password or Date of Birth',
+      'Captcha verification code'
+    ],
+    instructions: [
+      'Download the e-Admit Card only from the official SSC regional portal for your allotted zone.',
+      'Verify that your name, photograph, signature, exam city, shift timing and venue address are printed correctly.',
+      'Report any discrepancy to the concerned SSC Regional Office immediately, before the exam date.',
+      'Carry a clear laser printout together with the same original photo ID quoted in the application.'
+    ],
+    cityIntimationAvailable: true,
+    cityIntimationUrl: 'https://ssc.gov.in',
+    regionPortals: [
+      { regionName: 'Northern Region', regionCode: 'NR', statesCovered: 'Delhi, Rajasthan, Uttarakhand', portalUrl: 'https://sscnr.nic.in', status: 'ACTIVE' },
+      { regionName: 'Central Region', regionCode: 'CR', statesCovered: 'Uttar Pradesh, Bihar', portalUrl: 'https://ssc-cr.org', status: 'ACTIVE' },
+      { regionName: 'Western Region', regionCode: 'WR', statesCovered: 'Maharashtra, Gujarat, Goa', portalUrl: 'https://sscwr.net', status: 'ACTIVE' },
+      { regionName: 'Eastern Region', regionCode: 'ER', statesCovered: 'West Bengal, Odisha, Jharkhand', portalUrl: 'https://sscer.org', status: 'ACTIVE' },
+      { regionName: 'Southern Region', regionCode: 'SR', statesCovered: 'Tamil Nadu, Andhra Pradesh, Telangana', portalUrl: 'https://sscsr.gov.in', status: 'ACTIVE' },
+      { regionName: 'Karnataka-Kerala Region', regionCode: 'KKR', statesCovered: 'Karnataka, Kerala', portalUrl: 'https://ssckkr.kar.nic.in', status: 'ACTIVE' },
+      { regionName: 'North Western Region', regionCode: 'NWR', statesCovered: 'Punjab, Haryana, Himachal Pradesh, J&K', portalUrl: 'https://sscnwr.org', status: 'ACTIVE' },
+      { regionName: 'Madhya Pradesh Region', regionCode: 'MPR', statesCovered: 'Madhya Pradesh, Chhattisgarh', portalUrl: 'https://sscmpr.org', status: 'ACTIVE' },
+      { regionName: 'North Eastern Region', regionCode: 'NER', statesCovered: 'Assam, Meghalaya, Manipur, Tripura, Nagaland', portalUrl: 'https://sscner.org.in', status: 'ACTIVE' }
+    ]
+  },
+
   // Frequently Asked Questions citing Official Notification Clauses
   faqs: [
     {
@@ -1924,6 +1957,8 @@ export const UPSC_CSE_EXAM: Exam = {
   authorityName: 'Union Public Service Commission (UPSC)',
   officialDomain: 'https://upsc.gov.in',
   crucialEligibilityDate: '2026-08-01',
+  minimumQualification: 'GRADUATION',
+  careerFields: ['Civil Services & Governance', 'Government Job'],
   isGoldenJourney: false,
   isDemoData: false,
   overviewDescription: 'The Civil Services Examination (CSE) is a premier nationwide competitive examination conducted by UPSC for recruitment to higher Civil Services of the Government of India, including IAS, IFS, IPS, and IRS.',
@@ -1934,6 +1969,7 @@ export const UPSC_CSE_EXAM: Exam = {
       postName: 'Indian Administrative Service (IAS)',
       department: 'Department of Personnel & Training (DoPT)',
       payLevel: 'Pay Level 10 (₹56,100 - ₹1,77,500)',
+      payScale: '₹56,100 – ₹1,77,500',
       classification: 'Group B (Gazetted)',
       minAge: 21,
       maxAge: 32,
@@ -1945,6 +1981,7 @@ export const UPSC_CSE_EXAM: Exam = {
       postName: 'Indian Police Service (IPS)',
       department: 'Ministry of Home Affairs (MHA)',
       payLevel: 'Pay Level 10 (₹56,100 - ₹1,77,500)',
+      payScale: '₹56,100 – ₹1,77,500',
       classification: 'Group B (Gazetted)',
       minAge: 21,
       maxAge: 32,
@@ -1958,6 +1995,7 @@ export const UPSC_CSE_EXAM: Exam = {
       postName: 'Indian Foreign Service (IFS)',
       department: 'Ministry of External Affairs (MEA)',
       payLevel: 'Pay Level 10 (₹56,100 - ₹1,77,500)',
+      payScale: '₹56,100 – ₹1,77,500',
       classification: 'Group B (Gazetted)',
       minAge: 21,
       maxAge: 32,
@@ -2300,6 +2338,8 @@ export const IBPS_PO_EXAM: Exam = {
   authorityName: 'Institute of Banking Personnel Selection (IBPS)',
   officialDomain: 'https://ibps.in',
   crucialEligibilityDate: '2026-08-01',
+  minimumQualification: 'GRADUATION',
+  careerFields: ['Banking & Financial Sector', 'Government Job'],
   isGoldenJourney: false,
   isDemoData: false,
   overviewDescription: 'Common Recruitment Process for selection of Probationary Officers / Management Trainees across 11 participating public sector banks including PNB, Bank of Baroda, Canara Bank, and Union Bank of India.',
@@ -2310,6 +2350,7 @@ export const IBPS_PO_EXAM: Exam = {
       postName: 'Probationary Officer / Management Trainee (Scale-I)',
       department: '11 Public Sector Participating Banks',
       payLevel: 'Scale I (Basic ₹36,000 + Allowances)',
+      payScale: '₹36,000 (Basic) + DA, HRA & Allowances',
       classification: 'Group B (Non-Gazetted)',
       minAge: 20,
       maxAge: 30,

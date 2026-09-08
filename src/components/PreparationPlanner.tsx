@@ -4,6 +4,7 @@ import {
   Sparkles, BookOpen, Target, CheckSquare, Square, ShieldCheck, Award
 } from 'lucide-react';
 import { Exam, RoadmapTrack } from '../types/exam';
+import { storageService } from '../services/storageService';
 
 interface PreparationPlannerProps {
   exam: Exam;
@@ -13,12 +14,14 @@ export const PreparationPlanner: React.FC<PreparationPlannerProps> = ({ exam }) 
   const tracks = exam.roadmapTracks || [];
   const [selectedTrackId, setSelectedTrackId] = useState<string>(tracks[0]?.id || 'TRACK_90_DAYS');
   const [expandedPhase, setExpandedPhase] = useState<number>(1);
-  const [completedGoals, setCompletedGoals] = useState<Record<string, boolean>>({});
+  const [completedGoals, setCompletedGoals] = useState<Record<string, boolean>>(
+    () => storageService.getRoadmapGoals(exam.id)
+  );
 
   const currentTrack: RoadmapTrack = tracks.find(t => t.id === selectedTrackId) || tracks[0];
 
   const toggleGoal = (goalKey: string) => {
-    setCompletedGoals(prev => ({ ...prev, [goalKey]: !prev[goalKey] }));
+    setCompletedGoals(storageService.toggleRoadmapGoal(exam.id, goalKey));
   };
 
   const totalGoals = currentTrack.phases.reduce((acc, phase) => {

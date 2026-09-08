@@ -120,9 +120,9 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
     { id: 'post-iti', name: 'Inspector of Income Tax (CBDT)' },
     { id: 'post-excise', name: 'Inspector (Central Excise & GST - CBIC)' },
     { id: 'post-jso', name: 'Junior Statistical Officer (JSO - MoSPI)' },
-    { id: 'post-cbi-si', name: 'Sub-Inspector (Central Bureau of Investigation - CBI)' },
-    { id: 'post-tax-asst', name: 'Tax Assistant (CBDT / CBIC)' },
-    { id: 'post-auditor', name: 'Auditor (Office of C&AG / CGA)' }
+    { id: 'post-si-cbi', name: 'Sub-Inspector (Central Bureau of Investigation - CBI)' },
+    { id: 'post-tax-assistant-cbdt', name: 'Tax Assistant (CBDT / CBIC)' },
+    { id: 'post-auditor-cag', name: 'Auditor (Office of C&AG / CGA)' }
   ];
 
   // Helper: Live Photo File Inspector (Official SSC Gazette Section 7.2)

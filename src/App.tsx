@@ -31,6 +31,7 @@ export const App: React.FC = () => {
   const [provenanceModalData, setProvenanceModalData] = useState<DataProvenance | null>(null);
   const [reportModalData, setReportModalData] = useState<{ open: boolean; entityType: string; entityId: string } | null>(null);
   const [reportSubmitted, setReportSubmitted] = useState<boolean>(false);
+  const [reportDelivered, setReportDelivered] = useState<boolean>(true);
   const [reportDescription, setReportDescription] = useState<string>('');
 
   // Initial load and sync with SQLite
@@ -47,6 +48,9 @@ export const App: React.FC = () => {
       // 3. Generate initial personalized notifications for tracked exams
       const generated = storageService.generatePersonalizedNotificationsForTrackedExams(ALL_EXAMS);
       setNotifications(generated);
+
+      // 4. Retry any accuracy reports queued while the server was unreachable
+      storageService.flushPendingReports();
     };
 
     initNotificationsAndTimeline();
@@ -112,11 +116,18 @@ export const App: React.FC = () => {
     setReportDescription('');
   };
 
-  const handleSendReport = () => {
+  const handleSendReport = async () => {
+    if (!reportModalData) return;
+    const result = await storageService.submitReport({
+      entityType: reportModalData.entityType,
+      entityId: reportModalData.entityId,
+      description: reportDescription
+    });
+    setReportDelivered(result.delivered);
     setReportSubmitted(true);
     setTimeout(() => {
       setReportModalData(null);
-    }, 1500);
+    }, 2200);
   };
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
@@ -345,15 +356,26 @@ export const App: React.FC = () => {
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
                   <button className="btn btn-secondary" onClick={() => setReportModalData(null)}>Cancel</button>
-                  <button className="btn btn-emerald" onClick={handleSendReport}>Submit Issue Report</button>
+                  <button 
+                    className="btn btn-emerald" 
+                    onClick={handleSendReport}
+                    disabled={!reportDescription.trim()}
+                    style={{ opacity: reportDescription.trim() ? 1 : 0.5, cursor: reportDescription.trim() ? 'pointer' : 'not-allowed' }}
+                  >
+                    Submit Issue Report
+                  </button>
                 </div>
               </div>
             ) : (
               <div style={{ padding: '24px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-                <CheckCircle2 size={48} color="var(--emerald)" />
-                <h4 style={{ fontSize: '1.2rem', fontWeight: 800 }}>Report Submitted to Admin Queue</h4>
+                <CheckCircle2 size={48} color={reportDelivered ? 'var(--emerald)' : 'var(--amber)'} />
+                <h4 style={{ fontSize: '1.2rem', fontWeight: 800 }}>
+                  {reportDelivered ? 'Report Submitted to Admin Queue' : 'Report Saved — Will Sync Shortly'}
+                </h4>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                  Thank you for keeping GovOS authoritative and accurate!
+                  {reportDelivered
+                    ? 'Thank you for keeping GovOS authoritative and accurate!'
+                    : 'The verification server is unreachable right now. Your report is stored on this device and will be sent automatically the next time GovOS connects.'}
                 </p>
               </div>
             )}

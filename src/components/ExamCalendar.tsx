@@ -195,7 +195,7 @@ export const ExamCalendar: React.FC<ExamCalendarProps> = ({
                         onClick={() => onSelectExam(exam)}
                         style={{ fontSize: '0.85rem', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '6px' }}
                       >
-                        View 14-Section Guide <ArrowRight size={14} />
+                        View Full Exam Guide <ArrowRight size={14} />
                       </button>
                     </div>
                   </div>

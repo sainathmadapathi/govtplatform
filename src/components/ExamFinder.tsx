@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Compass, ShieldCheck, ChevronRight, Award, Sparkles, Filter, Bell, Check } from 'lucide-react';
 import { ALL_EXAMS } from '../data/examsData';
-import { Exam } from '../types/exam';
+import { Exam, ExamQualificationLevel } from '../types/exam';
 
 interface ExamFinderProps {
   onSelectExam: (exam: Exam) => void;
@@ -39,12 +39,57 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
     'State Public Services'
   ];
 
+  // Rank of each qualification, so a graduate also sees exams that only need 12th.
+  const QUALIFICATION_RANK: Record<ExamQualificationLevel, number> = {
+    CLASS_10: 1,
+    CLASS_12: 2,
+    GRADUATION: 3,
+    POST_GRADUATION: 4
+  };
+
+  const PERSONA_LEVEL: Record<string, ExamQualificationLevel> = {
+    'Class 10th Pass': 'CLASS_10',
+    'Class 12th (MPC / Science)': 'CLASS_12',
+    'Class 12th (Commerce / Arts)': 'CLASS_12',
+    'Graduation (Any Stream)': 'GRADUATION',
+    'B.Tech / B.E (Engineering)': 'GRADUATION',
+    "Postgraduate / Master's": 'POST_GRADUATION'
+  };
+
+  const candidateRank = QUALIFICATION_RANK[PERSONA_LEVEL[selectedPersona] || 'GRADUATION'];
+
   const filteredExams = ALL_EXAMS.filter(exam => {
-    const matchesSearch = exam.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          exam.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          exam.authorityName.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesSearch;
+    const query = searchQuery.trim().toLowerCase();
+    const matchesSearch =
+      query === '' ||
+      exam.title.toLowerCase().includes(query) ||
+      exam.code.toLowerCase().includes(query) ||
+      exam.authorityName.toLowerCase().includes(query);
+
+    // A candidate qualifies if their level meets or exceeds the exam's minimum.
+    // Exams without declared metadata are never hidden.
+    const matchesPersona =
+      !exam.minimumQualification ||
+      candidateRank >= QUALIFICATION_RANK[exam.minimumQualification];
+
+    const matchesInterest =
+      !exam.careerFields ||
+      exam.careerFields.length === 0 ||
+      exam.careerFields.includes(selectedInterest as any);
+
+    return matchesSearch && matchesPersona && matchesInterest;
   });
+
+  const isFiltered =
+    searchQuery.trim() !== '' ||
+    selectedPersona !== 'Graduation (Any Stream)' ||
+    selectedInterest !== 'Government Job';
+
+  const resetFilters = () => {
+    setSelectedPersona('Graduation (Any Stream)');
+    setSelectedInterest('Government Job');
+    setSearchQuery('');
+  };
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
@@ -186,12 +231,34 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
       <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
           <h3 style={{ fontSize: '1.3rem', fontWeight: 700 }}>
-            Available Examination Guides ({filteredExams.length})
+            Available Examination Guides ({filteredExams.length} of {ALL_EXAMS.length})
           </h3>
-          <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-            Filterable examination guides database
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+              Matching “{selectedPersona}” · “{selectedInterest}”
+            </span>
+            {isFiltered && (
+              <button className="btn btn-secondary" onClick={resetFilters} style={{ fontSize: '0.78rem', padding: '5px 12px' }}>
+                Reset Filters
+              </button>
+            )}
+          </div>
         </div>
+
+        {filteredExams.length === 0 && (
+          <div className="glass-card" style={{ padding: '48px 24px', textAlign: 'center' }}>
+            <Compass size={30} color="var(--text-muted)" style={{ marginBottom: '10px' }} />
+            <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'white', marginBottom: '6px' }}>
+              No exams match these filters yet
+            </h4>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', maxWidth: '460px', margin: '0 auto 18px' }}>
+              No guide in the verified register matches “{selectedPersona}” combined with “{selectedInterest}”. More exams are added to the register as their official notifications are verified.
+            </p>
+            <button className="btn btn-primary" onClick={resetFilters} style={{ fontSize: '0.88rem' }}>
+              Reset Filters
+            </button>
+          </div>
+        )}
 
         <div className="grid-2">
           {filteredExams.map(exam => (

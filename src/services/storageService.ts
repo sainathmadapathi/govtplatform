@@ -42,7 +42,10 @@ const STORAGE_KEYS = {
   BOOKMARKS: 'govos_bookmarked_resources',
   TRACKED_EXAMS: 'govos_tracked_exams',
   NOTIFICATION_PREFERENCES: 'govos_notification_preferences',
-  NOTIFICATIONS: 'govos_candidate_notifications'
+  NOTIFICATIONS: 'govos_candidate_notifications',
+  COMPLETED_TOPICS: 'govos_completed_syllabus_topics',
+  ROADMAP_GOALS: 'govos_roadmap_goals',
+  PENDING_REPORTS: 'govos_pending_reports'
 };
 
 export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreference = {
@@ -660,6 +663,144 @@ class StorageService {
     });
 
     return mergedList;
+  }
+
+  // --- 7b. Syllabus Topic Checkboxes (per exam) ---
+
+  getCompletedTopics(examId: string): Record<string, boolean> {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.COMPLETED_TOPICS);
+      if (raw) {
+        const all = JSON.parse(raw);
+        if (all && typeof all === 'object' && all[examId]) {
+          return all[examId];
+        }
+      }
+    } catch (e) {
+      console.warn('LocalStorage parse error for completed topics:', e);
+    }
+    return {};
+  }
+
+  toggleCompletedTopic(examId: string, topicId: string): Record<string, boolean> {
+    const current = this.getCompletedTopics(examId);
+    const next = { ...current, [topicId]: !current[topicId] };
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.COMPLETED_TOPICS);
+      const all = raw ? JSON.parse(raw) : {};
+      all[examId] = next;
+      localStorage.setItem(STORAGE_KEYS.COMPLETED_TOPICS, JSON.stringify(all));
+      // Reuse the study_progress table so topic ticks survive a browser reset too.
+      this.syncProgressToSQLite(`topic:${examId}:${topicId}`, next[topicId]);
+    } catch (e) {
+      console.warn('LocalStorage save error for completed topics:', e);
+    }
+    return next;
+  }
+
+  // --- 7c. Roadmap Weekly Goal Checkboxes (per exam) ---
+
+  getRoadmapGoals(examId: string): Record<string, boolean> {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.ROADMAP_GOALS);
+      if (raw) {
+        const all = JSON.parse(raw);
+        if (all && typeof all === 'object' && all[examId]) {
+          return all[examId];
+        }
+      }
+    } catch (e) {
+      console.warn('LocalStorage parse error for roadmap goals:', e);
+    }
+    return {};
+  }
+
+  toggleRoadmapGoal(examId: string, goalKey: string): Record<string, boolean> {
+    const current = this.getRoadmapGoals(examId);
+    const next = { ...current, [goalKey]: !current[goalKey] };
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.ROADMAP_GOALS);
+      const all = raw ? JSON.parse(raw) : {};
+      all[examId] = next;
+      localStorage.setItem(STORAGE_KEYS.ROADMAP_GOALS, JSON.stringify(all));
+      this.syncProgressToSQLite(`goal:${examId}:${goalKey}`, next[goalKey]);
+    } catch (e) {
+      console.warn('LocalStorage save error for roadmap goals:', e);
+    }
+    return next;
+  }
+
+  // --- 7d. Data Accuracy Reports (queued offline, flushed when server returns) ---
+
+  private getPendingReports(): any[] {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.PENDING_REPORTS);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {
+      console.warn('LocalStorage parse error for pending reports:', e);
+    }
+    return [];
+  }
+
+  private setPendingReports(reports: any[]): void {
+    try {
+      localStorage.setItem(STORAGE_KEYS.PENDING_REPORTS, JSON.stringify(reports.slice(0, 50)));
+    } catch (e) {
+      console.warn('LocalStorage save error for pending reports:', e);
+    }
+  }
+
+  /**
+   * Sends a data-accuracy report to the admin audit queue.
+   * Falls back to a local queue when the server is unreachable, so the report is
+   * never silently discarded.
+   */
+  async submitReport(report: { entityType: string; entityId: string; description: string }): Promise<{ delivered: boolean }> {
+    const payload = { ...report, createdAt: new Date().toISOString() };
+    try {
+      const res = await fetch('/api/reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        return { delivered: true };
+      }
+    } catch {
+      // fall through to local queue
+    }
+    this.setPendingReports([payload, ...this.getPendingReports()]);
+    return { delivered: false };
+  }
+
+  /** Retries any reports queued while the server was unreachable. */
+  async flushPendingReports(): Promise<number> {
+    const pending = this.getPendingReports();
+    if (pending.length === 0) return 0;
+
+    const stillPending: any[] = [];
+    let sent = 0;
+    for (const report of pending) {
+      try {
+        const res = await fetch('/api/reports', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(report)
+        });
+        if (res.ok) {
+          sent++;
+        } else {
+          stillPending.push(report);
+        }
+      } catch {
+        stillPending.push(report);
+      }
+    }
+    this.setPendingReports(stillPending);
+    return sent;
   }
 
   // --- 8. Background SQLite Synchronization API Calls ---

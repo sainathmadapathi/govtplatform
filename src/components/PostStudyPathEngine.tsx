@@ -5,7 +5,7 @@ import {
   PlayCircle, ExternalLink, Activity, Eye, Compass, Database, RefreshCw
 } from 'lucide-react';
 import { PostStudyPath, StudyModuleRequirement, ExcludedModule, RequirementProvenanceType } from '../types/exam';
-import { ALL_POST_STUDY_PATHS } from '../data/postStudyPathsData';
+import { ALL_POST_STUDY_PATHS, getPostStudyPath } from '../data/postStudyPathsData';
 import { storageService } from '../services/storageService';
 
 interface PostStudyPathEngineProps {
@@ -23,7 +23,7 @@ export const PostStudyPathEngine: React.FC<PostStudyPathEngineProps> = ({
   const [syncStatus, setSyncStatus] = useState<string>('Local Storage & SQLite Saved');
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
-  const currentPath: PostStudyPath = ALL_POST_STUDY_PATHS[selectedPostId] || ALL_POST_STUDY_PATHS['post-aso-css'];
+  const currentPath: PostStudyPath = getPostStudyPath(selectedPostId);
 
   const handleSelectPost = (postId: string) => {
     setSelectedPostId(postId);

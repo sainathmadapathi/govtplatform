@@ -341,8 +341,8 @@ export const ALL_POST_STUDY_PATHS: Record<string, PostStudyPath> = {
   },
 
   // Post 5: Sub-Inspector (Central Bureau of Investigation - CBI)
-  'post-cbi-si': {
-    postId: 'post-cbi-si',
+  'post-si-cbi': {
+    postId: 'post-si-cbi',
     postName: 'Sub-Inspector (CBI)',
     department: 'Central Bureau of Investigation (CBI), Department of Personnel and Training',
     classification: 'Group B (Non-Gazetted)',
@@ -378,8 +378,8 @@ export const ALL_POST_STUDY_PATHS: Record<string, PostStudyPath> = {
   },
 
   // Post 6: Tax Assistant (CBDT / CBIC)
-  'post-tax-asst': {
-    postId: 'post-tax-asst',
+  'post-tax-assistant-cbdt': {
+    postId: 'post-tax-assistant-cbdt',
     postName: 'Tax Assistant (TA)',
     department: 'Central Board of Direct Taxes (CBDT) & Central Board of Indirect Taxes (CBIC)',
     classification: 'Group C',
@@ -412,8 +412,8 @@ export const ALL_POST_STUDY_PATHS: Record<string, PostStudyPath> = {
   },
 
   // Post 7: Auditor (Office of C&AG / CGA / CGDA)
-  'post-auditor': {
-    postId: 'post-auditor',
+  'post-auditor-cag': {
+    postId: 'post-auditor-cag',
     postName: 'Auditor',
     department: 'Comptroller and Auditor General of India (C&AG) / CGA',
     classification: 'Group C',
@@ -445,3 +445,34 @@ export const ALL_POST_STUDY_PATHS: Record<string, PostStudyPath> = {
     }
   }
 };
+
+/**
+ * Post ids used by earlier builds, kept so a target post already saved in a
+ * candidate's browser still resolves after the ids were aligned with examsData.
+ */
+const LEGACY_POST_ID_ALIASES: Record<string, string> = {
+  'post-cbi-si': 'post-si-cbi',
+  'post-tax-asst': 'post-tax-assistant-cbdt',
+  'post-auditor': 'post-auditor-cag',
+  // Posts that share an identical preparation path with an authored one.
+  'post-aso-mea': 'post-aso-css',
+  'post-aso-ib': 'post-aso-css',
+  'post-aso-railways': 'post-aso-css',
+  'post-ssa-dopt': 'post-aso-css',
+  'post-preventive-officer': 'post-excise',
+  'post-examiner': 'post-excise',
+  'post-si-nia': 'post-si-cbi',
+  'post-stat-inv': 'post-jso',
+  'post-tax-assistant-cbic': 'post-tax-assistant-cbdt',
+  'post-auditor-cgda': 'post-auditor-cag',
+  'post-accountant-cag': 'post-auditor-cag'
+};
+
+/** Resolves any post id (current, legacy, or equivalent) to an authored study path. */
+export function getPostStudyPath(postId: string): PostStudyPath {
+  return (
+    ALL_POST_STUDY_PATHS[postId] ||
+    ALL_POST_STUDY_PATHS[LEGACY_POST_ID_ALIASES[postId]] ||
+    ALL_POST_STUDY_PATHS['post-aso-css']
+  );
+}

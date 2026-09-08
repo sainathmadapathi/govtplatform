@@ -119,7 +119,10 @@ export interface QuestionOption {
 export interface ShortcutTrick {
   name: string;
   formula?: string;
-  explanation: string;
+  /** Long-form prose explanation of the trick. Optional: some entries use `trickSteps` instead. */
+  explanation?: string;
+  /** Condensed one-line form of the trick, used by the animated shortcut cards. */
+  trickSteps?: string;
   timeSaved: string;
 }
 
@@ -145,14 +148,22 @@ export interface PracticeQuestion {
   topicName: string;
   tier: 'TIER_1' | 'TIER_2';
   shiftInfo: string;
-  questionType: 'OFFICIAL_PYQ' | 'USER_SUBMITTED' | 'GOVOS_CREATED' | 'AI_GENERATED' | 'REFERENCE_SOURCE';
+  questionType:
+    | 'OFFICIAL_PYQ'
+    | 'USER_SUBMITTED'
+    | 'GOVOS_CREATED'
+    | 'AI_GENERATED'
+    | 'CUSTOM_AI_GENERATED'
+    | 'SECTIONAL_MOCK'
+    | 'TOPIC_DRILL'
+    | 'REFERENCE_SOURCE';
   questionText: string;
   options: QuestionOption[];
   correctOptionIndex: number;
   explanation: string;
   detailedExplanation?: DetailedExplanation;
   year?: number;
-  difficulty: 'EASY' | 'MEDIUM' | 'HARD';
+  difficulty: 'EASY' | 'MEDIUM' | 'HARD' | 'ADAPTIVE';
   provenance: DataProvenance;
 }
 
@@ -327,6 +338,63 @@ export interface RoadmapTrack {
   }[];
 }
 
+export interface AdmitCardDetails {
+  status: 'AVAILABLE' | 'NOT_YET_ANNOUNCED' | 'EXPIRED';
+  releaseDateStr: string;
+  officialPortalUrl: string;
+  loginCredentialsRequired: string[];
+  instructions: string[];
+  cityIntimationAvailable: boolean;
+  cityIntimationUrl?: string;
+  regionPortals?: {
+    regionName: string;
+    regionCode: string;
+    statesCovered: string;
+    portalUrl: string;
+    status: 'ACTIVE' | 'SOON';
+  }[];
+}
+
+export interface ExamDayChecklistItem {
+  id: string;
+  category: 'DOCUMENTS' | 'TIMING' | 'ITEMS_ALLOWED' | 'ITEMS_PROHIBITED' | 'CENTRE_INSTRUCTIONS';
+  title: string;
+  description: string;
+  isMandatory: boolean;
+}
+
+export interface ResultActionOption {
+  title: string;
+  description: string;
+  badge?: string;
+  linkSection?: number;
+  recommendedTimeline?: string;
+}
+
+export interface ResultNextStepStage {
+  status: 'QUALIFIED' | 'NOT_QUALIFIED' | 'AWAITING_RESULT' | 'SKILL_TEST' | 'DOCUMENT_VERIFICATION';
+  headline: string;
+  summary: string;
+  actions: ResultActionOption[];
+  contingencyPlan?: {
+    summary: string;
+    alternativeExams: string[];
+    weakAreaStrategy: string;
+  };
+}
+
+/** Minimum qualification a candidate needs before this exam is worth showing them. */
+export type ExamQualificationLevel = 'CLASS_10' | 'CLASS_12' | 'GRADUATION' | 'POST_GRADUATION';
+
+/** Career field buckets used by the Exam Finder discovery filters. */
+export type ExamCareerField =
+  | 'Government Job'
+  | 'Civil Services & Governance'
+  | 'Banking & Financial Sector'
+  | 'Indian Railways'
+  | 'Defence & Armed Forces'
+  | 'State Public Services';
+
 export interface Exam {
   id: string;
   code: string;
@@ -334,6 +402,10 @@ export interface Exam {
   authorityName: string;
   officialDomain: string;
   crucialEligibilityDate: string;
+  /** Minimum qualification level accepted. Used by the Exam Finder persona filter. */
+  minimumQualification?: ExamQualificationLevel;
+  /** Career fields this exam leads to. Used by the Exam Finder interest filter. */
+  careerFields?: ExamCareerField[];
   isGoldenJourney: boolean;
   isDemoData: boolean;
   overviewDescription: string;
@@ -350,6 +422,9 @@ export interface Exam {
   faqs: FAQItem[];
   applicationGuide: ApplicationGuideData;
   roadmapTracks: RoadmapTrack[];
+  admitCardDetails?: AdmitCardDetails;
+  examDayChecklist?: ExamDayChecklistItem[];
+  resultNextSteps?: ResultNextStepStage[];
 }
 
 export interface UserProfile {
@@ -397,6 +472,21 @@ export interface EligibilityDiagnostic {
   legalClauses: string[];
   plainEnglishExplanation: string;
   postVerdicts: PostVerdict[];
+}
+
+/** Trust-pipeline monitoring record for one official source endpoint (Admin Trust Panel). */
+export interface SourceHealthLog {
+  id: string;
+  endpointUrl: string;
+  authorityCode: string;
+  httpStatus: number;
+  checkedAt: string;
+  rawContentHash: string;
+  normalizedContentHash: string;
+  textChanged: boolean;
+  adminReviewStatus: 'HEALTHY' | 'CONFLICT_DETECTED' | 'REVIEWED' | 'FAILED';
+  previousValue?: string;
+  newValue?: string;
 }
 
 export interface UserReport {

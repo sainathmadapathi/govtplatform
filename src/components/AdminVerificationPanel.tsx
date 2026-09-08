@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Terminal, ShieldCheck, RefreshCw, AlertTriangle, FileText, CheckCircle2, XCircle, Database, Lock, Eye } from 'lucide-react';
 import { SourceHealthLog } from '../types/exam';
+import { ALL_EXAMS } from '../data/examsData';
 
 interface AdminVerificationPanelProps {
   onOpenProvenanceModal: (provenance: any) => void;
@@ -8,6 +9,44 @@ interface AdminVerificationPanelProps {
 
 export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ onOpenProvenanceModal }) => {
   const [activeTab, setActiveTab] = useState<'HEALTH' | 'EXTRACTION' | 'CORRIGENDUM' | 'REPORTS'>('HEALTH');
+  const [reports, setReports] = useState<any[]>([]);
+  const [reportsStatus, setReportsStatus] = useState<'IDLE' | 'LOADING' | 'OFFLINE'>('IDLE');
+
+  const loadReports = async () => {
+    setReportsStatus('LOADING');
+    try {
+      const res = await fetch('/api/reports');
+      if (res.ok) {
+        const data = await res.json();
+        setReports(Array.isArray(data.reports) ? data.reports : []);
+        setReportsStatus('IDLE');
+        return;
+      }
+    } catch {
+      // server unreachable
+    }
+    setReportsStatus('OFFLINE');
+  };
+
+  useEffect(() => {
+    if (activeTab === 'REPORTS') {
+      loadReports();
+    }
+  }, [activeTab]);
+
+  const handleResolveReport = async (id: number, status: 'RESOLVED' | 'REJECTED') => {
+    try {
+      await fetch(`/api/reports/${id}/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      setReports(prev => prev.map(r => (r.id === id ? { ...r, status } : r)));
+    } catch {
+      // offline: leave the row as-is
+    }
+  };
+
   
   const [healthLogs, setHealthLogs] = useState<SourceHealthLog[]>([
     {
@@ -46,6 +85,12 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
       adminReviewStatus: 'HEALTHY'
     }
   ]);
+
+  // Every corrigendum published across the verified exam register.
+  const allCorrigenda = ALL_EXAMS.flatMap(exam =>
+    exam.corrigendums.map(c => ({ ...c, examTitle: exam.title, examCode: exam.code }))
+  );
+  const openConflicts = healthLogs.filter(l => l.adminReviewStatus === 'CONFLICT_DETECTED');
 
   const handleApproveConflict = (id: string) => {
     setHealthLogs(prev => prev.map(log => log.id === id ? { ...log, adminReviewStatus: 'REVIEWED', textChanged: false } : log));
@@ -86,6 +131,9 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
         </button>
         <button className={`btn ${activeTab === 'CORRIGENDUM' ? 'btn-emerald' : 'btn-secondary'}`} onClick={() => setActiveTab('CORRIGENDUM')} style={{ fontSize: '0.85rem' }}>
           <AlertTriangle size={16} /> Corrigendum & Conflict Queue
+        </button>
+        <button className={`btn ${activeTab === 'REPORTS' ? 'btn-emerald' : 'btn-secondary'}`} onClick={() => setActiveTab('REPORTS')} style={{ fontSize: '0.85rem' }}>
+          <FileText size={16} /> Candidate Accuracy Reports
         </button>
         <button className={`btn ${activeTab === 'EXTRACTION' ? 'btn-emerald' : 'btn-secondary'}`} onClick={() => setActiveTab('EXTRACTION')} style={{ fontSize: '0.85rem' }}>
           <Database size={16} /> AI PDF Extraction Simulator
@@ -152,6 +200,175 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Corrigendum & Conflict Queue */}
+      {activeTab === 'CORRIGENDUM' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+          {/* Unresolved hash divergences awaiting a human verifier */}
+          <div className="glass-card" style={{ padding: '28px' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <AlertTriangle size={20} color="var(--amber)" /> Unresolved Source Conflicts ({openConflicts.length})
+            </h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '18px' }}>
+              Endpoints whose normalized content hash changed since the last audit. Each must be approved by a human verifier before the revised fact is published to candidates.
+            </p>
+
+            {openConflicts.length === 0 ? (
+              <div style={{ padding: '28px', textAlign: 'center', borderRadius: 'var(--radius-md)', background: 'rgba(16, 185, 129, 0.06)', border: '1px solid rgba(16, 185, 129, 0.25)' }}>
+                <CheckCircle2 size={32} color="var(--emerald)" style={{ marginBottom: '8px' }} />
+                <div style={{ fontWeight: 800, color: 'white', marginBottom: '4px' }}>No Open Conflicts</div>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                  Every monitored official endpoint matches its last verified snapshot.
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {openConflicts.map(log => (
+                  <div key={log.id} style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.4)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span className="badge badge-verified" style={{ fontFamily: 'var(--font-mono)' }}>{log.authorityCode}</span>
+                        <span style={{ fontWeight: 700, color: 'white', wordBreak: 'break-all' }}>{log.endpointUrl}</span>
+                      </div>
+                      <span className="badge badge-changed">{log.adminReviewStatus}</span>
+                    </div>
+
+                    <div style={{ fontSize: '0.85rem', color: '#fef3c7', marginBottom: '4px' }}>
+                      Old Fact: <span style={{ textDecoration: 'line-through' }}>{log.previousValue}</span>
+                    </div>
+                    <div style={{ fontSize: '0.85rem', color: '#34d399', fontWeight: 700, marginBottom: '12px' }}>
+                      New Fact: {log.newValue}
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                      <span>Detected: {log.checkedAt} | DOM Hash: {log.normalizedContentHash.slice(0, 16)}...</span>
+                      <button className="btn btn-emerald" onClick={() => handleApproveConflict(log.id)} style={{ fontSize: '0.75rem', padding: '6px 12px' }}>
+                        Approve &amp; Publish Corrigendum V2 <CheckCircle2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Corrigenda already published to candidate-facing guides */}
+          <div className="glass-card" style={{ padding: '28px' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <FileText size={20} color="var(--primary)" /> Published Corrigenda Register ({allCorrigenda.length})
+            </h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '18px' }}>
+              Official amendment notices already verified and live on candidate exam guides.
+            </p>
+
+            {allCorrigenda.length === 0 ? (
+              <div style={{ fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
+                No corrigenda have been published for the exams currently in the register.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {allCorrigenda.map(c => (
+                  <div key={c.examCode + '-' + c.id} style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '8px' }}>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
+                          <span className="badge badge-demo" style={{ fontSize: '0.7rem' }}>{c.examCode}</span>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{c.noticeNumber}</span>
+                        </div>
+                        <div style={{ fontSize: '1rem', fontWeight: 700, color: 'white' }}>{c.title}</div>
+                      </div>
+                      <span className={c.status === 'ACTIVE' ? 'badge badge-verified' : 'badge badge-superseded'}>{c.status}</span>
+                    </div>
+
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px', lineHeight: 1.5 }}>
+                      {c.summary}
+                    </div>
+
+                    <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-sm)', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', fontSize: '0.82rem', color: '#fef3c7', marginBottom: '10px' }}>
+                      <strong>Change Applied:</strong> {c.diffSummary}
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      <span>Published: {c.publishedDate} | Effective: {c.effectiveDate}</span>
+                      <a href={c.pdfUrl} target="_blank" rel="noreferrer" className="btn btn-outline" style={{ fontSize: '0.72rem', padding: '4px 10px' }}>
+                        <Eye size={12} /> Open Official Notice
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Candidate-Submitted Accuracy Reports */}
+      {activeTab === 'REPORTS' && (
+        <div className="glass-card" style={{ padding: '28px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '18px' }}>
+            <div>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <FileText size={20} color="var(--primary)" /> Candidate Accuracy Reports ({reports.length})
+              </h3>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', margin: 0 }}>
+                Discrepancies flagged by candidates via Report Error, queued in the SQLite audit table for human verification.
+              </p>
+            </div>
+            <button className="btn btn-secondary" onClick={loadReports} style={{ fontSize: '0.8rem' }}>
+              <RefreshCw size={14} className={reportsStatus === 'LOADING' ? 'animate-spin' : ''} /> Refresh Queue
+            </button>
+          </div>
+
+          {reportsStatus === 'OFFLINE' ? (
+            <div style={{ padding: '24px', borderRadius: 'var(--radius-md)', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.3)', fontSize: '0.88rem', color: '#fef3c7' }}>
+              <strong>Audit database unreachable.</strong> Start the GovOS server (<code style={{ fontFamily: 'var(--font-mono)' }}>python app.py</code>) to load the report queue from govos.db.
+            </div>
+          ) : reports.length === 0 ? (
+            <div style={{ padding: '28px', textAlign: 'center', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)' }}>
+              <CheckCircle2 size={30} color="var(--emerald)" style={{ marginBottom: '8px' }} />
+              <div style={{ fontWeight: 800, color: 'white', marginBottom: '4px' }}>Report Queue Empty</div>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                No candidate has flagged a data discrepancy yet.
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {reports.map(r => (
+                <div key={r.id} style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <span className="badge badge-demo" style={{ fontSize: '0.7rem' }}>{r.entityType}</span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{r.entityId}</span>
+                    </div>
+                    <span className={r.status === 'RESOLVED' ? 'badge badge-verified' : r.status === 'REJECTED' ? 'badge badge-superseded' : 'badge badge-pending'}>
+                      {r.status}
+                    </span>
+                  </div>
+
+                  <div style={{ fontSize: '0.9rem', color: '#e2e8f0', lineHeight: 1.5, marginBottom: '10px' }}>
+                    {r.description || <em style={{ color: 'var(--text-muted)' }}>No description provided.</em>}
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    <span>Submitted: {r.submittedAt}</span>
+                    {r.status === 'PENDING_REVIEW' && (
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button className="btn btn-emerald" onClick={() => handleResolveReport(r.id, 'RESOLVED')} style={{ fontSize: '0.72rem', padding: '4px 10px' }}>
+                          <CheckCircle2 size={12} /> Mark Resolved
+                        </button>
+                        <button className="btn btn-secondary" onClick={() => handleResolveReport(r.id, 'REJECTED')} style={{ fontSize: '0.72rem', padding: '4px 10px' }}>
+                          <XCircle size={12} /> Reject
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

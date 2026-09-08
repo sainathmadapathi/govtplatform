@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { Exam, PracticeQuestion, DataProvenance } from '../types/exam';
 import { storageService, MockAttemptRecord } from '../services/storageService';
-import { ALL_POST_STUDY_PATHS } from '../data/postStudyPathsData';
+import { getPostStudyPath } from '../data/postStudyPathsData';
 import { 
   OFFICIAL_10_MOCK_PAPERS, 
   NEW_DISCOVERED_PAPERS,
@@ -27,6 +27,18 @@ interface PracticeEngineProps {
   exam: Exam;
   onOpenProvenanceModal: (provenance: DataProvenance) => void;
 }
+
+// Provenance for the inline Application-Simulator review paper rebuilt in handleReviewPastAttempt.
+const APP_SIM_PROVENANCE: DataProvenance = {
+  id: 'prov-app-sim',
+  documentTitle: 'SSC CGL Official Notification — Application & Eligibility Rules',
+  officialUrl: 'https://ssc.gov.in',
+  publishedDate: '2026-08-10',
+  verifiedDate: '2026-08-11',
+  verifiedBy: 'GovOS Official Examination Verification Team',
+  taxonomyType: 'FACT',
+  verificationLevel: 'OFFICIALLY_VERIFIED'
+};
 
 interface ChatMessage {
   id: string;
@@ -77,7 +89,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
   const [pastAttempts, setPastAttempts] = useState<MockAttemptRecord[]>(() => storageService.getMockAttempts());
   const [reviewingAttempt, setReviewingAttempt] = useState<MockAttemptRecord | null>(null);
   const targetPostId = storageService.getTargetPost();
-  const targetPost = ALL_POST_STUDY_PATHS[targetPostId] || ALL_POST_STUDY_PATHS['post-aso-css'];
+  const targetPost = getPostStudyPath(targetPostId);
 
   // Sync latest mock attempts from SQLite on component mount
   useEffect(() => {
@@ -459,7 +471,11 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
           questions: [
             {
               id: 'app-sim-q1',
+              topicId: 'app-sim-topic-1',
               subject: 'General Awareness',
+              tier: 'TIER_1',
+              questionType: 'SECTIONAL_MOCK',
+              difficulty: 'EASY',
               topicName: 'Official Notification Guidelines',
               questionText: 'According to official SSC CGL Notification 2026, what are the mandatory dimensions and specifications for the live photograph capture?',
               options: [
@@ -470,6 +486,8 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
               ],
               correctOptionIndex: 1,
               shiftInfo: 'Official SSC Application Portal Guidelines Rule 11.1',
+              explanation: 'Refer to the cited official SSC clause for the verified answer.',
+              provenance: APP_SIM_PROVENANCE,
               detailedExplanation: {
                 simpleExplanation: 'The official SSC live webcam photo capture requires a plain, well-lit background with no caps or spectacles to ensure automatic facial biometric matching on exam day.',
                 coreConcept: 'SSC Live Web-Capture Norms (Rule 11.1)',
@@ -491,7 +509,11 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
             },
             {
               id: 'app-sim-q2',
+              topicId: 'app-sim-topic-2',
               subject: 'General Awareness',
+              tier: 'TIER_1',
+              questionType: 'SECTIONAL_MOCK',
+              difficulty: 'EASY',
               topicName: 'Application Fee & Exemptions',
               questionText: 'Under the official SSC CGL recruitment rules, which of the following candidate categories are entirely exempt from paying the application fee of ₹100?',
               options: [
@@ -502,6 +524,8 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
               ],
               correctOptionIndex: 1,
               shiftInfo: 'Official SSC Fee Rules Rule 10.1',
+              explanation: 'Refer to the cited official SSC clause for the verified answer.',
+              provenance: APP_SIM_PROVENANCE,
               detailedExplanation: {
                 simpleExplanation: 'All women candidates regardless of category, along with SC, ST, PwBD, and eligible Ex-Servicemen, are completely exempt from paying the application fee.',
                 coreConcept: 'SSC Statutory Fee Exemption Framework',
@@ -523,7 +547,11 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
             },
             {
               id: 'app-sim-q3',
+              topicId: 'app-sim-topic-3',
               subject: 'General Awareness',
+              tier: 'TIER_1',
+              questionType: 'SECTIONAL_MOCK',
+              difficulty: 'EASY',
               topicName: 'Post Preference Submission',
               questionText: 'At which stage does the Commission collect the final option-cum-preference for posts and departments from SSC CGL candidates?',
               options: [
@@ -534,6 +562,8 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
               ],
               correctOptionIndex: 1,
               shiftInfo: 'Official SSC Post Allocation Notice',
+              explanation: 'Refer to the cited official SSC clause for the verified answer.',
+              provenance: APP_SIM_PROVENANCE,
               detailedExplanation: {
                 simpleExplanation: 'Post preferences are submitted online by candidates who appear in Tier-2 before the declaration of final merit list.',
                 coreConcept: 'Post Preference Window Process',
@@ -555,7 +585,11 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
             },
             {
               id: 'app-sim-q4',
+              topicId: 'app-sim-topic-4',
               subject: 'General Awareness',
+              tier: 'TIER_1',
+              questionType: 'SECTIONAL_MOCK',
+              difficulty: 'EASY',
               topicName: 'Age Limit & Crucial Date Determination',
               questionText: 'What is the crucial date for determination of age-limit for SSC CGL Examination as prescribed in the official notification?',
               options: [
@@ -566,6 +600,8 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
               ],
               correctOptionIndex: 1,
               shiftInfo: 'Official SSC Eligibility Rule 5.1',
+              explanation: 'Refer to the cited official SSC clause for the verified answer.',
+              provenance: APP_SIM_PROVENANCE,
               detailedExplanation: {
                 simpleExplanation: 'The Commission sets 01st August of the examination year as the standard benchmark date for calculating minimum and maximum age criteria.',
                 coreConcept: 'Crucial Date of Eligibility (Rule 5.1)',

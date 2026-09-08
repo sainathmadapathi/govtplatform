@@ -303,6 +303,45 @@ def sync_all():
         conn.close()
         return jsonify({"status": "error", "message": str(e)}), 500
 
+@app.route('/api/reports', methods=['GET'])
+def list_reports():
+    """Return the queued data-accuracy reports for the admin Trust Panel."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT * FROM audit_reports ORDER BY submitted_at DESC LIMIT 100"
+    )
+    rows = cursor.fetchall()
+    conn.close()
+    return jsonify({
+        "reports": [
+            {
+                "id": r["id"],
+                "entityType": r["entity_type"],
+                "entityId": r["entity_id"],
+                "description": r["description"],
+                "status": r["status"],
+                "submittedAt": r["submitted_at"]
+            }
+            for r in rows
+        ]
+    })
+
+@app.route('/api/reports/<int:report_id>/status', methods=['POST'])
+def update_report_status(report_id):
+    """Let a verifier resolve or reject a queued report."""
+    data = request.get_json(silent=True) or {}
+    status = data.get('status', 'RESOLVED')
+    if status not in ('PENDING_REVIEW', 'RESOLVED', 'REJECTED'):
+        return jsonify({"error": "invalid status"}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE audit_reports SET status = ? WHERE id = ?", (status, report_id))
+    conn.commit()
+    conn.close()
+    return jsonify({"status": "updated", "report_id": report_id, "new_status": status})
+
 @app.route('/api/reports', methods=['POST'])
 def submit_report():
     data = request.get_json(silent=True) or {}
@@ -507,6 +546,8 @@ def serve_static_or_fallback(path):
     return send_from_directory(BASE_DIR, 'index.html')
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 3000))
+    # 5000 matches the /api proxy target in vite.config.ts and avoids colliding
+    # with the Vite dev server, which also listens on 3000.
+    port = int(os.environ.get('PORT', 5000))
     print(f"GovOS Unified Server + SQLite starting at http://localhost:{port}")
     app.run(host='0.0.0.0', port=port, debug=False)

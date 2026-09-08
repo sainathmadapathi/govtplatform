@@ -3,7 +3,7 @@ import { PracticeQuestion, DataProvenance, DetailedExplanation } from '../types/
 export interface MockPaper {
   id: string;
   title: string;
-  category: 'FULL_SHIFT' | 'SUBJECT_TEST' | 'TOPIC_DRILL' | 'CUSTOM_AI';
+  category: 'FULL_SHIFT' | 'SUBJECT_TEST' | 'TOPIC_DRILL' | 'SECTIONAL_MOCK' | 'CUSTOM_AI';
   examTier: 'Tier-1' | 'Tier-2';
   subject?: string;
   topic?: string;
@@ -24,7 +24,7 @@ export interface CustomTestConfig {
   selectedTopics: string[];
   numQuestions: number;
   difficulty: 'EASY' | 'MEDIUM' | 'HARD' | 'ADAPTIVE';
-  focusGoal: 'GENERAL' | 'WEAK_AREAS' | 'SPEED_BOOSTER' | 'PRE_EXAM';
+  focusGoal?: 'GENERAL' | 'WEAK_AREAS' | 'SPEED_BOOSTER' | 'PRE_EXAM';
 }
 
 const sscProvenance: DataProvenance = {

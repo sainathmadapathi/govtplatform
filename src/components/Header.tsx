@@ -76,7 +76,7 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={() => setActiveTab('EXAM_DETAIL')}
             style={{ fontSize: '0.85rem', padding: '8px 14px' }}
           >
-            <BookOpen size={16} /> 14-Section Guide {selectedExamTitle && `(${selectedExamTitle.split(' ')[0]})`}
+            <BookOpen size={16} /> Exam Guide {selectedExamTitle && `(${selectedExamTitle.split(' ')[0]})`}
           </button>
 
           <button 

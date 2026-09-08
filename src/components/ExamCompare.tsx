@@ -14,6 +14,98 @@ export const ExamCompare: React.FC<ExamCompareProps> = ({ onSelectExam }) => {
   const exam1 = ALL_EXAMS.find(e => e.id === exam1Id) || ALL_EXAMS[0];
   const exam2 = ALL_EXAMS.find(e => e.id === exam2Id) || ALL_EXAMS[1] || ALL_EXAMS[0];
 
+  // --- Facts derived from the verified exam records, not hardcoded ---
+
+  const minAgeOf = (exam: Exam) =>
+    exam.posts.length > 0 ? Math.min(...exam.posts.map(p => p.minAge)) : null;
+
+  const maxAgeOf = (exam: Exam) =>
+    exam.posts.length > 0 ? Math.max(...exam.posts.map(p => p.maxAge)) : null;
+
+  const ageRangeLabel = (exam: Exam) => {
+    const lo = minAgeOf(exam);
+    const hi = maxAgeOf(exam);
+    if (lo === null || hi === null) return 'Not specified in register';
+    const lows = Array.from(new Set(exam.posts.map(p => p.minAge)));
+    const highs = Array.from(new Set(exam.posts.map(p => p.maxAge)));
+    const suffix = lows.length > 1 || highs.length > 1 ? ' (varies by post)' : '';
+    return lo + ' \u2013 ' + hi + ' Years' + suffix;
+  };
+
+  const qualificationLabel = (exam: Exam) => {
+    switch (exam.minimumQualification) {
+      case 'CLASS_10': return 'Class 10th Pass';
+      case 'CLASS_12': return 'Class 12th Pass';
+      case 'GRADUATION': return "Bachelor's Degree (Any Stream)";
+      case 'POST_GRADUATION': return "Master's Degree";
+      default: return 'See official notification';
+    }
+  };
+
+  const payLevelLabel = (exam: Exam) => {
+    const levels = Array.from(new Set(exam.posts.map(p => p.payLevel))).filter(Boolean);
+    if (levels.length === 0) return 'Not specified in register';
+    if (levels.length === 1) return levels[0];
+    const levelNumber = (v: string) => {
+      const m = v.match(/[0-9]+/);
+      return m ? parseInt(m[0], 10) : 0;
+    };
+    const sorted = [...levels].sort((a, b) => levelNumber(a) - levelNumber(b));
+    return levels.length + ' pay levels (' + sorted[0] + ' \u2013 ' + sorted[sorted.length - 1] + ')';
+  };
+
+  const stagesLabel = (exam: Exam) => {
+    if (exam.stages.length === 0) return 'Not specified in register';
+    return exam.stages.map(st => st.stageName.split(':')[0].trim()).join(' \u2192 ');
+  };
+
+  const physicalLabel = (exam: Exam) => {
+    const count = exam.posts.filter(p => p.physicalRequired).length;
+    if (count === 0) return 'Not required for any post';
+    return 'Required for ' + count + ' of ' + exam.posts.length + ' posts';
+  };
+
+  const latestCutoffLabel = (exam: Exam) => {
+    if (exam.cutoffsHistory.length === 0) return 'No published cut-off in register';
+    const latest = [...exam.cutoffsHistory].sort((a, b) => b.year - a.year)[0];
+    return latest.tier1Cutoff + ' marks (' + latest.category + ', ' + latest.year + ')';
+  };
+
+  const nextDateLabel = (exam: Exam) => {
+    const active = exam.dates.filter(d => d.status !== 'SUPERSEDED');
+    if (active.length === 0) return 'Schedule not yet announced';
+    const sorted = [...active].sort((a, b) => a.dateTimeStr.localeCompare(b.dateTimeStr));
+    const next = sorted.find(d => d.type === 'APPLICATION_CLOSE') || sorted[0];
+    return next.label + ' \u2014 ' + next.dateTimeStr.split(' ')[0];
+  };
+
+  const rows: { label: string; render: (exam: Exam) => React.ReactNode }[] = [
+    { label: 'Conducting Authority', render: e => <strong>{e.authorityName}</strong> },
+    { label: 'Total Vacancies', render: e => e.vacanciesTotal || 'Not yet announced' },
+    { label: 'Age Limit (Unreserved)', render: e => ageRangeLabel(e) },
+    { label: 'Education Requirement', render: e => qualificationLabel(e) },
+    {
+      label: 'Pay Scale Grade',
+      render: e => <span style={{ color: '#34d399', fontWeight: 700 }}>{payLevelLabel(e)}</span>
+    },
+    { label: 'Posts in Register', render: e => e.posts.length + ' post' + (e.posts.length === 1 ? '' : 's') },
+    { label: 'Selection Stages', render: e => stagesLabel(e) },
+    { label: 'Physical / Medical Standards', render: e => physicalLabel(e) },
+    { label: 'Latest Published Cut-off', render: e => latestCutoffLabel(e) },
+    { label: 'Key Upcoming Date', render: e => nextDateLabel(e) },
+    {
+      label: 'Career Fields',
+      render: e => (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+          {(e.careerFields || []).map(f => (
+            <span key={f} className="glass-pill" style={{ fontSize: '0.72rem' }}>{f}</span>
+          ))}
+          {(!e.careerFields || e.careerFields.length === 0) && <span>Not categorised</span>}
+        </div>
+      )
+    }
+  ];
+
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
       
@@ -28,7 +120,7 @@ export const ExamCompare: React.FC<ExamCompareProps> = ({ onSelectExam }) => {
               Side-by-Side Exam Comparison Matrix
             </h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-              Compare eligibility, pay scales, stages, difficulty, and competitive intensity across exams.
+              Every row below is read directly from the verified exam register — no figure is hardcoded.
             </p>
           </div>
         </div>
@@ -66,43 +158,15 @@ export const ExamCompare: React.FC<ExamCompareProps> = ({ onSelectExam }) => {
             </tr>
           </thead>
           <tbody>
-            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-              <td style={{ padding: '16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Conducting Authority</td>
-              <td style={{ padding: '16px', fontWeight: 700 }}>{exam1.authorityName}</td>
-              <td style={{ padding: '16px', fontWeight: 700 }}>{exam2.authorityName}</td>
-            </tr>
-            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-              <td style={{ padding: '16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Minimum Age</td>
-              <td style={{ padding: '16px' }}>18 Years</td>
-              <td style={{ padding: '16px' }}>21 Years</td>
-            </tr>
-            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-              <td style={{ padding: '16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Maximum Age (General)</td>
-              <td style={{ padding: '16px' }}>27 - 30 Years (Post-wise)</td>
-              <td style={{ padding: '16px' }}>32 Years</td>
-            </tr>
-            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-              <td style={{ padding: '16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Education Requirement</td>
-              <td style={{ padding: '16px' }}>Bachelor's Degree (Any Stream)</td>
-              <td style={{ padding: '16px' }}>Bachelor's Degree (Any Stream)</td>
-            </tr>
-            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-              <td style={{ padding: '16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Pay Scale Grade</td>
-              <td style={{ padding: '16px', color: '#34d399', fontWeight: 700 }}>Pay Level 4 to 8 (₹25.5K to ₹142K)</td>
-              <td style={{ padding: '16px', color: '#34d399', fontWeight: 700 }}>Pay Level 10+ (Group A Officers)</td>
-            </tr>
-            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-              <td style={{ padding: '16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Selection Stages</td>
-              <td style={{ padding: '16px' }}>Tier 1 (Prelims) + Tier 2 (Mains)</td>
-              <td style={{ padding: '16px' }}>Prelims + Mains (Written) + Interview</td>
-            </tr>
-            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-              <td style={{ padding: '16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Competitive Intensity</td>
-              <td style={{ padding: '16px' }}><span className="badge badge-changed">High (~2.5 Million Applicants)</span></td>
-              <td style={{ padding: '16px' }}><span className="badge badge-superseded">Very High (~1.1 Million Applicants)</span></td>
-            </tr>
+            {rows.map(row => (
+              <tr key={row.label} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <td style={{ padding: '16px', fontWeight: 600, color: 'var(--text-secondary)', verticalAlign: 'top' }}>{row.label}</td>
+                <td style={{ padding: '16px', verticalAlign: 'top' }}>{row.render(exam1)}</td>
+                <td style={{ padding: '16px', verticalAlign: 'top' }}>{row.render(exam2)}</td>
+              </tr>
+            ))}
             <tr>
-              <td style={{ padding: '16px' }}>Action</td>
+              <td style={{ padding: '16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Action</td>
               <td style={{ padding: '16px' }}>
                 <button className="btn btn-primary" onClick={() => onSelectExam(exam1)} style={{ fontSize: '0.8rem', padding: '6px 12px' }}>
                   Explore {exam1.title.split(' ')[0]} <ChevronRight size={14} />
