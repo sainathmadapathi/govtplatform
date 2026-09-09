@@ -3,6 +3,7 @@ import json
 import sqlite3
 import urllib.request
 import urllib.error
+from urllib.parse import urlparse
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from flask import Flask, send_from_directory, jsonify, request
@@ -149,6 +150,37 @@ def init_database():
             priority TEXT DEFAULT 'NORMAL',
             is_read INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    # 10. Live Source Research (Tavily) — one row per search run
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS research_runs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            query TEXT NOT NULL,
+            mode TEXT NOT NULL DEFAULT 'OFFICIAL',
+            exam_id TEXT,
+            answer TEXT,
+            result_count INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    # 11. Live Source Research — individual results awaiting human review
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS research_findings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            run_id INTEGER NOT NULL,
+            title TEXT,
+            url TEXT NOT NULL,
+            snippet TEXT,
+            trust_level TEXT NOT NULL DEFAULT 'UNVERIFIED',
+            score REAL DEFAULT 0,
+            published_date TEXT,
+            extracted_text TEXT,
+            review_status TEXT NOT NULL DEFAULT 'PENDING_REVIEW',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (run_id) REFERENCES research_runs(id)
         )
     ''')
 
@@ -795,6 +827,331 @@ def mark_notification_read():
     conn.commit()
     conn.close()
     return jsonify({"status": "marked_read", "user_id": user_id, "notification_id": notif_id})
+
+# =============================================================================
+# Live Source Research pipeline (Tavily)
+#
+#   search  ->  classify every result by domain  ->  store run + findings
+#           ->  human review in the Trust Panel   ->  promote / reject
+#
+# Nothing found here reaches candidates as "verified"; it enters the audit
+# queue exactly like a candidate-submitted report would.
+# =============================================================================
+
+def _load_dotenv():
+    """Minimal .env loader (no dependency): sets keys that aren't already in the environment."""
+    path = os.path.join(BASE_DIR, '.env')
+    if not os.path.exists(path):
+        return
+    try:
+        with open(path, encoding='utf-8') as fh:
+            for line in fh:
+                line = line.strip()
+                if not line or line.startswith('#') or '=' not in line:
+                    continue
+                key, value = line.split('=', 1)
+                os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+    except OSError:
+        pass
+
+_load_dotenv()
+
+TAVILY_API_KEY = os.environ.get('TAVILY_API_KEY', '').strip()
+TAVILY_BASE_URL = os.environ.get('TAVILY_BASE_URL', 'https://api.tavily.com').rstrip('/')
+TAVILY_TIMEOUT = 45
+
+# Domains whose content is treated as OFFICIAL. Any *.gov.in / *.nic.in host is
+# official by definition; these are the non-obvious statutory bodies.
+OFFICIAL_HOSTS = {
+    'ssc.gov.in', 'upsc.gov.in', 'ibps.in', 'www.ibps.in', 'rbi.org.in', 'www.rbi.org.in',
+    'sebi.gov.in', 'www.sebi.gov.in', 'nabard.org', 'www.nabard.org', 'ncert.nic.in',
+    'egazette.gov.in', 'pib.gov.in', 'legislative.gov.in', 'ndl.iitkgp.ac.in',
+    'swayam.gov.in', 'nios.ac.in', 'www.nios.ac.in', 'mospi.gov.in', 'censusindia.gov.in',
+    'india.gov.in', 'www.india.gov.in', 'niti.gov.in', 'www.niti.gov.in', 'pmindia.gov.in',
+    'www.pmindia.gov.in', 'dopt.gov.in', 'cbic.gov.in', 'cag.gov.in', 'mea.gov.in', 'www.mea.gov.in',
+    'sscnr.nic.in', 'ssc-cr.org', 'sscwr.net', 'sscer.org', 'sscsr.gov.in', 'ssckkr.kar.nic.in',
+    'sscnwr.org', 'sscmpr.org', 'sscner.org.in',
+}
+
+# Domain list handed to Tavily for "official sources only" searches.
+OFFICIAL_SEARCH_DOMAINS = [
+    'ssc.gov.in', 'upsc.gov.in', 'ibps.in', 'egazette.gov.in', 'pib.gov.in', 'ncert.nic.in',
+    'legislative.gov.in', 'india.gov.in', 'mospi.gov.in', 'rbi.org.in', 'sebi.gov.in',
+    'sscnr.nic.in', 'ssc-cr.org', 'sscwr.net', 'sscer.org', 'sscsr.gov.in',
+    'ssckkr.kar.nic.in', 'sscnwr.org', 'sscmpr.org', 'sscner.org.in',
+]
+
+TRUSTED_PUBLIC_SUFFIXES = ('.ac.in', '.edu', '.edu.in', '.res.in', '.org.in')
+TRUSTED_PUBLIC_HOSTS = {'prsindia.org', 'www.prsindia.org', 'archive.org', 'www.archive.org'}
+
+
+def _classify_trust(url):
+    host = (urlparse(url).hostname or '').lower()
+    if host.startswith('www.') and host[4:] in OFFICIAL_HOSTS:
+        return 'OFFICIAL'
+    if host in OFFICIAL_HOSTS or host.endswith('.gov.in') or host.endswith('.nic.in') or host.endswith('.gov'):
+        return 'OFFICIAL'
+    if host in TRUSTED_PUBLIC_HOSTS or host.endswith(TRUSTED_PUBLIC_SUFFIXES):
+        return 'TRUSTED_PUBLIC'
+    return 'UNVERIFIED'
+
+
+class TavilyNotConfigured(Exception):
+    pass
+
+
+class TavilyError(Exception):
+    def __init__(self, status, detail):
+        super().__init__(detail)
+        self.status = status
+        self.detail = detail
+
+
+def _tavily_post(path, payload):
+    """POST to the Tavily REST API. Sends the key both as a bearer header (current API)
+    and in the body (older API) so either server version accepts it."""
+    if not TAVILY_API_KEY:
+        raise TavilyNotConfigured()
+    body = dict(payload)
+    body['api_key'] = TAVILY_API_KEY
+    req = urllib.request.Request(
+        TAVILY_BASE_URL + path,
+        data=json.dumps(body).encode('utf-8'),
+        headers={
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + TAVILY_API_KEY,
+            'User-Agent': 'GovOS-Research/1.0'
+        },
+        method='POST'
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=TAVILY_TIMEOUT) as resp:
+            return json.loads(resp.read().decode('utf-8'))
+    except urllib.error.HTTPError as e:
+        try:
+            detail = e.read().decode('utf-8')[:400]
+        except Exception:
+            detail = str(e)
+        raise TavilyError(e.code, detail)
+    except Exception as e:
+        raise TavilyError(0, str(e)[:200])
+
+
+def _not_configured_response():
+    return jsonify({
+        "error": "Tavily API key is not configured on the server.",
+        "setup": "Add TAVILY_API_KEY=tvly-... to the .env file next to app.py (or export it) and restart python app.py.",
+        "configured": False
+    }), 503
+
+
+def _finding_row_to_dict(r):
+    return {
+        "id": r["id"],
+        "runId": r["run_id"],
+        "title": r["title"] or r["url"],
+        "url": r["url"],
+        "snippet": r["snippet"] or "",
+        "trustLevel": r["trust_level"],
+        "score": r["score"] or 0,
+        "publishedDate": r["published_date"],
+        "reviewStatus": r["review_status"],
+        "hasExtractedText": bool(r["extracted_text"]),
+        "createdAt": r["created_at"]
+    }
+
+
+@app.route('/api/research/status', methods=['GET'])
+def research_status():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM research_runs")
+    run_count = cursor.fetchone()[0]
+    cursor.execute("SELECT COUNT(*) FROM research_findings WHERE review_status = 'PENDING_REVIEW'")
+    pending = cursor.fetchone()[0]
+    conn.close()
+    return jsonify({
+        "configured": bool(TAVILY_API_KEY),
+        "baseUrl": TAVILY_BASE_URL,
+        "officialDomains": OFFICIAL_SEARCH_DOMAINS,
+        "runCount": run_count,
+        "pendingReview": pending
+    })
+
+
+@app.route('/api/research/search', methods=['POST'])
+def research_search():
+    data = request.get_json(silent=True) or {}
+    query = (data.get('query') or '').strip()
+    if not query:
+        return jsonify({"error": "query is required"}), 400
+    mode = data.get('mode', 'OFFICIAL')
+    if mode not in ('OFFICIAL', 'NEWS', 'WEB'):
+        mode = 'OFFICIAL'
+    exam_id = data.get('exam_id') or None
+    try:
+        max_results = max(1, min(int(data.get('max_results', 8)), 20))
+    except (TypeError, ValueError):
+        max_results = 8
+
+    payload = {
+        "query": query,
+        "max_results": max_results,
+        "include_answer": True,
+        "include_raw_content": False,
+        "search_depth": "advanced" if mode == 'OFFICIAL' else "basic",
+        "topic": "news" if mode == 'NEWS' else "general",
+    }
+    if mode == 'OFFICIAL':
+        payload["include_domains"] = OFFICIAL_SEARCH_DOMAINS
+    if mode == 'NEWS':
+        payload["days"] = 30
+
+    try:
+        raw = _tavily_post('/search', payload)
+    except TavilyNotConfigured:
+        return _not_configured_response()
+    except TavilyError as e:
+        return jsonify({"error": "Tavily request failed", "status": e.status, "detail": e.detail}), 502
+
+    results = raw.get('results') or []
+    answer = raw.get('answer')
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO research_runs (query, mode, exam_id, answer, result_count) VALUES (?, ?, ?, ?, ?)",
+        (query, mode, exam_id, answer, len(results))
+    )
+    run_id = cursor.lastrowid
+    stored = []
+    for item in results:
+        url = item.get('url') or ''
+        if not url:
+            continue
+        trust = _classify_trust(url)
+        cursor.execute(
+            "INSERT INTO research_findings (run_id, title, url, snippet, trust_level, score, published_date) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (run_id, item.get('title') or url, url, (item.get('content') or '')[:1200], trust,
+             float(item.get('score') or 0), item.get('published_date'))
+        )
+        stored.append({
+            "id": cursor.lastrowid,
+            "runId": run_id,
+            "title": item.get('title') or url,
+            "url": url,
+            "snippet": (item.get('content') or '')[:1200],
+            "trustLevel": trust,
+            "score": float(item.get('score') or 0),
+            "publishedDate": item.get('published_date'),
+            "reviewStatus": "PENDING_REVIEW",
+            "hasExtractedText": False
+        })
+    conn.commit()
+    conn.close()
+
+    # Official results first, then by Tavily's relevance score.
+    order = {'OFFICIAL': 0, 'TRUSTED_PUBLIC': 1, 'UNVERIFIED': 2}
+    stored.sort(key=lambda f: (order[f['trustLevel']], -f['score']))
+
+    return jsonify({
+        "runId": run_id,
+        "query": query,
+        "mode": mode,
+        "examId": exam_id,
+        "answer": answer,
+        "results": stored,
+        "responseTime": raw.get('response_time')
+    })
+
+
+@app.route('/api/research/extract', methods=['POST'])
+def research_extract():
+    """Pull the readable text of one or more pages so a verifier can read the primary source in-app."""
+    data = request.get_json(silent=True) or {}
+    urls = data.get('urls')
+    if not isinstance(urls, list) or not urls:
+        return jsonify({"error": "urls[] is required"}), 400
+    urls = [u for u in urls if isinstance(u, str) and u.startswith(('http://', 'https://'))][:5]
+    finding_id = data.get('finding_id')
+
+    try:
+        raw = _tavily_post('/extract', {"urls": urls})
+    except TavilyNotConfigured:
+        return _not_configured_response()
+    except TavilyError as e:
+        return jsonify({"error": "Tavily request failed", "status": e.status, "detail": e.detail}), 502
+
+    out = []
+    for item in raw.get('results') or []:
+        text = (item.get('raw_content') or '')[:20000]
+        out.append({"url": item.get('url'), "rawContent": text, "chars": len(text), "failed": False})
+    for item in raw.get('failed_results') or []:
+        out.append({"url": item.get('url'), "rawContent": "", "chars": 0, "failed": True,
+                    "reason": item.get('error')})
+
+    if finding_id and out and not out[0]["failed"]:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE research_findings SET extracted_text = ? WHERE id = ?",
+                       (out[0]["rawContent"], int(finding_id)))
+        conn.commit()
+        conn.close()
+
+    return jsonify({"results": out})
+
+
+@app.route('/api/research/history', methods=['GET'])
+def research_history():
+    try:
+        limit = max(1, min(int(request.args.get('limit', 15)), 50))
+    except (TypeError, ValueError):
+        limit = 15
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM research_runs ORDER BY created_at DESC, id DESC LIMIT ?", (limit,))
+    runs = cursor.fetchall()
+    out = []
+    for run in runs:
+        cursor.execute("SELECT * FROM research_findings WHERE run_id = ? ORDER BY id", (run["id"],))
+        findings = [_finding_row_to_dict(r) for r in cursor.fetchall()]
+        out.append({
+            "id": run["id"], "query": run["query"], "mode": run["mode"], "examId": run["exam_id"],
+            "answer": run["answer"], "resultCount": run["result_count"], "createdAt": run["created_at"],
+            "findings": findings
+        })
+    conn.close()
+    return jsonify({"runs": out})
+
+
+@app.route('/api/research/findings/<int:finding_id>', methods=['GET'])
+def research_finding_detail(finding_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM research_findings WHERE id = ?", (finding_id,))
+    row = cursor.fetchone()
+    conn.close()
+    if not row:
+        return jsonify({"error": "not found"}), 404
+    d = _finding_row_to_dict(row)
+    d["extractedText"] = row["extracted_text"] or ""
+    return jsonify(d)
+
+
+@app.route('/api/research/findings/<int:finding_id>/status', methods=['POST'])
+def research_finding_status(finding_id):
+    data = request.get_json(silent=True) or {}
+    status = data.get('status', 'REVIEWED')
+    if status not in ('PENDING_REVIEW', 'REVIEWED', 'PROMOTED', 'REJECTED'):
+        return jsonify({"error": "invalid status"}), 400
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE research_findings SET review_status = ? WHERE id = ?", (status, finding_id))
+    conn.commit()
+    conn.close()
+    return jsonify({"status": "updated", "finding_id": finding_id, "new_status": status})
+
 
 # Fallback for SPA routing
 @app.route('/<path:path>')

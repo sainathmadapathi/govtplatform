@@ -83,6 +83,10 @@ import {
   Zap
 } from 'lucide-react';
 import {
+  ResearchFinding,
+  ResearchMode,
+  ResearchRun,
+  ResearchStatus,
   ResourceLinkCheck,
   ApplicationGuideData,
   CandidateNotification,
@@ -122,6 +126,7 @@ import {
   TOPIC_DRILL_TESTS
 } from './data';
 import {
+  researchService,
   calculateDetailedAge,
   evaluateCandidateEligibility,
   evaluateEligibility,
@@ -241,6 +246,15 @@ export const Header: React.FC<HeaderProps> = ({
                 {trackedCount} Tracked
               </span>
             )}
+          </button>
+
+          <button 
+            className={`btn ${activeTab === 'AI_ASSISTANT' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setActiveTab('AI_ASSISTANT')}
+            style={{ fontSize: '0.85rem', padding: '8px 14px' }}
+            title="Grounded answers from the verified database, with a live official-source search as fallback"
+          >
+            <Bot size={16} /> Ask GovOS AI
           </button>
 
           <button 
@@ -1608,6 +1622,47 @@ export const ExamCalendar: React.FC<ExamCalendarProps> = ({
 
 
 // ==========================================================================
+// Live Source Research — shared presentation helpers
+// ==========================================================================
+const researchTrustMeta = (level: ResearchFinding['trustLevel']): { label: string; color: string; bg: string; border: string } => {
+  switch (level) {
+    case 'OFFICIAL':
+      return { label: 'OFFICIAL DOMAIN', color: '#34d399', bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.35)' };
+    case 'TRUSTED_PUBLIC':
+      return { label: 'ACADEMIC / PUBLIC BODY', color: '#60a5fa', bg: 'rgba(59,130,246,0.12)', border: 'rgba(59,130,246,0.35)' };
+    default:
+      return { label: 'UNVERIFIED SOURCE', color: '#fbbf24', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.35)' };
+  }
+};
+
+const researchHost = (url: string): string => {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+};
+
+const ResearchSetupNotice: React.FC<{ setup?: string }> = ({ setup }) => (
+  <div style={{ padding: '18px 20px', borderRadius: 'var(--radius-md)', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.35)', display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+    <Lock size={18} color="#fbbf24" style={{ flexShrink: 0, marginTop: '2px' }} />
+    <div style={{ fontSize: '0.86rem', color: '#fef3c7', lineHeight: 1.5 }}>
+      <strong>Live research is not configured on this server.</strong>
+      <div style={{ marginTop: '6px', color: 'var(--text-secondary)' }}>
+        {setup || 'Add TAVILY_API_KEY=tvly-... to the .env file next to app.py and restart python app.py.'}
+      </div>
+      <div style={{ marginTop: '8px', fontFamily: 'var(--font-mono)', fontSize: '0.78rem', color: '#fbbf24' }}>
+        TAVILY_API_KEY=tvly-xxxxxxxxxxxxxxxx
+      </div>
+      <div style={{ marginTop: '6px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+        Keys are issued at tavily.com. The key stays on the server; the browser never sees it.
+      </div>
+    </div>
+  </div>
+);
+
+
+// ==========================================================================
 // AIAssistant.tsx
 // ==========================================================================
 interface AIAssistantProps {
@@ -1625,10 +1680,33 @@ interface AIChatMessage {
     clauseNumber: string;
     provenance: any;
   };
+  /** Set on a fallback reply: the question the candidate can send to a live official-domain search. */
+  liveSearchOffer?: string;
+  liveResults?: ResearchFinding[];
+  liveAnswer?: string | null;
+  liveError?: string;
+  liveSetup?: string;
 }
 
 export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal }) => {
   const [inputQuery, setInputQuery] = useState<string>('');
+  const [liveSearchingId, setLiveSearchingId] = useState<string | null>(null);
+
+  // Fallback path: run a Tavily search restricted to official government domains and
+  // attach the results to the message, clearly labelled as not yet verified.
+  const handleLiveOfficialSearch = async (messageId: string, question: string) => {
+    if (liveSearchingId) return;
+    setLiveSearchingId(messageId);
+    const outcome = await researchService.search(question, 'OFFICIAL', SSC_CGL_EXAM.id, 5);
+    setMessages(prev => prev.map(m => {
+      if (m.id !== messageId) return m;
+      if (outcome.ok) {
+        return { ...m, liveResults: outcome.data.results, liveAnswer: outcome.data.answer, liveError: undefined, liveSetup: undefined };
+      }
+      return { ...m, liveResults: [], liveError: outcome.error, liveSetup: outcome.notConfigured ? outcome.setup : undefined };
+    }));
+    setLiveSearchingId(null);
+  };
   const [messages, setMessages] = useState<AIChatMessage[]>([
     {
       id: 'm-1',
@@ -1698,7 +1776,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal 
       } else {
         // Fallback for unverified / missing topics
         verified = false;
-        responseText = `I couldn't find a verified official source for this information in the GovOS database. Please check the official notification or consult the official portal at https://ssc.gov.in.`;
+        responseText = `I couldn't find a verified official source for this information in the GovOS database. You can check the official portal at https://ssc.gov.in, or let me search official government domains live — results from a live search are shown as unverified until a GovOS verifier reviews them.`;
       }
 
       const aiMsg: AIChatMessage = {
@@ -1706,7 +1784,8 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal 
         sender: 'AI',
         text: responseText,
         isVerified: verified,
-        citation: citationData
+        citation: citationData,
+        liveSearchOffer: verified ? undefined : userText
       };
 
       setMessages(prev => [...prev, aiMsg]);
@@ -1785,6 +1864,66 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal 
                   )}
                 </div>
               )}
+
+              {/* Live official-domain search: offered only when the grounded database had no answer */}
+              {msg.liveSearchOffer && !msg.liveResults && !msg.liveError && (
+                <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                  <button
+                    className="btn btn-secondary"
+                    disabled={liveSearchingId !== null}
+                    onClick={() => handleLiveOfficialSearch(msg.id, msg.liveSearchOffer!)}
+                    style={{ fontSize: '0.78rem', padding: '6px 12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <Globe size={14} className={liveSearchingId === msg.id ? 'animate-spin' : ''} />
+                    {liveSearchingId === msg.id ? 'Searching official domains…' : 'Search official government sources live'}
+                  </button>
+                </div>
+              )}
+
+              {msg.liveError && (
+                <div style={{ marginTop: '12px' }}>
+                  {msg.liveSetup
+                    ? <ResearchSetupNotice setup={msg.liveSetup} />
+                    : <div style={{ fontSize: '0.8rem', color: '#fca5a5' }}><AlertCircle size={12} /> Live search failed: {msg.liveError}</div>}
+                </div>
+              )}
+
+              {msg.liveResults && msg.liveResults.length === 0 && !msg.liveError && (
+                <div style={{ marginTop: '12px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                  No official-domain pages matched this question.
+                </div>
+              )}
+
+              {msg.liveResults && msg.liveResults.length > 0 && (
+                <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <span className="badge badge-changed" style={{ fontSize: '0.65rem' }}>
+                      <Globe size={11} /> LIVE WEB RESULTS — NOT YET VERIFIED BY GOVOS
+                    </span>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Restricted to official government domains · queued for verifier review</span>
+                  </div>
+                  {msg.liveAnswer && (
+                    <div style={{ fontSize: '0.84rem', color: '#e2e8f0', lineHeight: 1.5, padding: '8px 10px', borderRadius: 'var(--radius-sm)', background: 'rgba(0,0,0,0.25)' }}>
+                      <strong style={{ color: '#fbbf24' }}>Search summary (unverified):</strong> {msg.liveAnswer}
+                    </div>
+                  )}
+                  {msg.liveResults.map(f => {
+                    const meta = researchTrustMeta(f.trustLevel);
+                    return (
+                      <div key={f.id} style={{ padding: '10px 12px', borderRadius: 'var(--radius-sm)', background: 'rgba(0,0,0,0.2)', border: `1px solid ${meta.border}` }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
+                          <span style={{ fontSize: '0.66rem', fontWeight: 700, color: meta.color, letterSpacing: '0.04em' }}>{meta.label} · {researchHost(f.url)}</span>
+                          <a href={f.url} target="_blank" rel="noreferrer" style={{ fontSize: '0.74rem', color: '#93c5fd', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            Open <ExternalLink size={11} />
+                          </a>
+                        </div>
+                        <div style={{ fontSize: '0.86rem', fontWeight: 700, color: 'white' }}>{f.title}</div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.45, marginTop: '3px' }}>{f.snippet.slice(0, 260)}{f.snippet.length > 260 ? '…' : ''}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -1828,7 +1967,88 @@ interface AdminVerificationPanelProps {
 }
 
 export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ onOpenProvenanceModal }) => {
-  const [activeTab, setActiveTab] = useState<'HEALTH' | 'EXTRACTION' | 'CORRIGENDUM' | 'REPORTS'>('HEALTH');
+  const [activeTab, setActiveTab] = useState<'HEALTH' | 'EXTRACTION' | 'CORRIGENDUM' | 'REPORTS' | 'RESEARCH'>('HEALTH');
+
+  // ---- Live Source Research (Tavily) ----
+  const [researchStatus, setResearchStatus] = useState<ResearchStatus | null>(null);
+  const [researchQuery, setResearchQuery] = useState<string>('');
+  const [researchMode, setResearchMode] = useState<ResearchMode>('OFFICIAL');
+  const [researchExamId, setResearchExamId] = useState<string>(ALL_EXAMS[0]?.id || '');
+  const [researchLoading, setResearchLoading] = useState<boolean>(false);
+  const [researchError, setResearchError] = useState<{ error: string; setup?: string; notConfigured?: boolean } | null>(null);
+  const [researchRun, setResearchRun] = useState<{ runId: number; query: string; mode: ResearchMode; answer?: string | null; results: ResearchFinding[] } | null>(null);
+  const [researchHistory, setResearchHistory] = useState<ResearchRun[]>([]);
+  const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(false);
+  const [extractingId, setExtractingId] = useState<number | null>(null);
+  const [extractedText, setExtractedText] = useState<Record<number, string>>({});
+  const [openExtractId, setOpenExtractId] = useState<number | null>(null);
+
+  const loadResearchMeta = async () => {
+    const [status, history] = await Promise.all([researchService.getStatus(), researchService.history(15)]);
+    setResearchStatus(status);
+    setResearchHistory(history);
+  };
+
+  useEffect(() => {
+    if (activeTab === 'RESEARCH') {
+      loadResearchMeta();
+    }
+  }, [activeTab]);
+
+  const runResearch = async (queryOverride?: string) => {
+    const q = (queryOverride ?? researchQuery).trim();
+    if (!q || researchLoading) return;
+    if (queryOverride !== undefined) setResearchQuery(queryOverride);
+    setResearchLoading(true);
+    setResearchError(null);
+    setResearchRun(null);
+    const outcome = await researchService.search(q, researchMode, researchExamId || undefined, 8);
+    if (outcome.ok) {
+      setResearchRun(outcome.data);
+      setResearchHistory(await researchService.history(15));
+      setResearchStatus(await researchService.getStatus());
+    } else {
+      setResearchError({ error: outcome.error, setup: outcome.setup, notConfigured: outcome.notConfigured });
+    }
+    setResearchLoading(false);
+  };
+
+  const extractFinding = async (f: ResearchFinding) => {
+    if (extractingId !== null) return;
+    if (extractedText[f.id]) {
+      setOpenExtractId(openExtractId === f.id ? null : f.id);
+      return;
+    }
+    setExtractingId(f.id);
+    const outcome = await researchService.extract([f.url], f.id);
+    if (outcome.ok && outcome.data[0] && !outcome.data[0].failed) {
+      setExtractedText(prev => ({ ...prev, [f.id]: outcome.data[0].rawContent }));
+      setOpenExtractId(f.id);
+    } else {
+      setExtractedText(prev => ({ ...prev, [f.id]: '' }));
+      setResearchError({ error: outcome.ok ? `Could not extract ${f.url}` : outcome.error, setup: outcome.ok ? undefined : outcome.setup, notConfigured: outcome.ok ? undefined : outcome.notConfigured });
+    }
+    setExtractingId(null);
+  };
+
+  const setFindingStatus = async (id: number, status: ResearchFinding['reviewStatus']) => {
+    const ok = await researchService.setFindingStatus(id, status);
+    if (!ok) return;
+    const patch = (list: ResearchFinding[]) => list.map(f => (f.id === id ? { ...f, reviewStatus: status } : f));
+    setResearchRun(prev => (prev ? { ...prev, results: patch(prev.results) } : prev));
+    setResearchHistory(prev => prev.map(run => ({ ...run, findings: patch(run.findings) })));
+    setResearchStatus(await researchService.getStatus());
+  };
+
+  const researchExam = ALL_EXAMS.find(e => e.id === researchExamId) || ALL_EXAMS[0];
+  const researchQuickQueries = researchExam
+    ? [
+        `${researchExam.title} official notification`,
+        `${researchExam.code.replace(/_/g, ' ')} corrigendum notice`,
+        `${researchExam.title} admit card release`,
+        `${researchExam.title} answer key result`
+      ]
+    : [];
   const [reports, setReports] = useState<any[]>([]);
   const [reportsStatus, setReportsStatus] = useState<'IDLE' | 'LOADING' | 'OFFLINE'>('IDLE');
 
@@ -1954,6 +2174,14 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
         </button>
         <button className={`btn ${activeTab === 'REPORTS' ? 'btn-emerald' : 'btn-secondary'}`} onClick={() => setActiveTab('REPORTS')} style={{ fontSize: '0.85rem' }}>
           <FileText size={16} /> Candidate Accuracy Reports
+        </button>
+        <button className={`btn ${activeTab === 'RESEARCH' ? 'btn-emerald' : 'btn-secondary'}`} onClick={() => setActiveTab('RESEARCH')} style={{ fontSize: '0.85rem' }}>
+          <Globe size={16} /> Live Source Research
+          {researchStatus && researchStatus.pendingReview > 0 && (
+            <span className="badge" style={{ fontSize: '0.62rem', background: 'rgba(245,158,11,0.2)', color: '#fbbf24', padding: '1px 6px', marginLeft: '4px' }}>
+              {researchStatus.pendingReview} to review
+            </span>
+          )}
         </button>
         <button className={`btn ${activeTab === 'EXTRACTION' ? 'btn-emerald' : 'btn-secondary'}`} onClick={() => setActiveTab('EXTRACTION')} style={{ fontSize: '0.85rem' }}>
           <Database size={16} /> AI PDF Extraction Simulator
@@ -2193,6 +2421,215 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
       )}
 
       {/* PDF Extraction Simulator */}
+      {/* Live Source Research (Tavily) */}
+      {activeTab === 'RESEARCH' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+          {/* Pipeline explainer + status */}
+          <div className="glass-card" style={{ padding: '24px', background: 'linear-gradient(135deg, rgba(59,130,246,0.10) 0%, rgba(15,23,42,0.98) 60%)', border: '1px solid rgba(59,130,246,0.3)' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' }}>
+                  <span className="badge badge-verified" style={{ fontSize: '0.68rem' }}><Globe size={12} /> LIVE SOURCE RESEARCH</span>
+                  <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>powered by Tavily search · server-side, key never leaves app.py</span>
+                </div>
+                <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'white', margin: '0 0 6px' }}>Discover and verify official sources on the live web</h3>
+                <p style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', margin: 0, maxWidth: '760px', lineHeight: 1.5 }}>
+                  Search → every result is classified by domain (official / academic / unverified) → stored in the audit database → a verifier reviews it → only then can it be promoted into the platform. Nothing here reaches candidates automatically.
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <div style={{ padding: '10px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-color)', minWidth: '120px' }}>
+                  <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Connector</div>
+                  <div style={{ fontSize: '0.95rem', fontWeight: 800, color: researchStatus?.configured ? '#34d399' : '#fbbf24' }}>
+                    {researchStatus === null ? 'Checking…' : researchStatus.configured ? 'Connected' : 'Not configured'}
+                  </div>
+                </div>
+                <div style={{ padding: '10px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-color)', minWidth: '120px' }}>
+                  <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Runs stored</div>
+                  <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'white' }}>{researchStatus?.runCount ?? '—'}</div>
+                </div>
+                <div style={{ padding: '10px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-color)', minWidth: '120px' }}>
+                  <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Awaiting review</div>
+                  <div style={{ fontSize: '0.95rem', fontWeight: 800, color: (researchStatus?.pendingReview || 0) > 0 ? '#fbbf24' : 'white' }}>{researchStatus?.pendingReview ?? '—'}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {researchStatus && !researchStatus.configured && <ResearchSetupNotice />}
+
+          {/* Query builder */}
+          <div className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+              <div style={{ position: 'relative', flex: 1, minWidth: '260px' }}>
+                <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+                <input
+                  type="text"
+                  value={researchQuery}
+                  onChange={e => setResearchQuery(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && runResearch()}
+                  placeholder="e.g. SSC CGL 2026 corrigendum application date extended"
+                  aria-label="Research query"
+                  style={{ width: '100%', padding: '11px 12px 11px 38px', borderRadius: 'var(--radius-md)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.92rem', fontFamily: 'var(--font-sans)', outline: 'none' }}
+                />
+              </div>
+              <select value={researchExamId} onChange={e => setResearchExamId(e.target.value)} aria-label="Exam context" style={{ padding: '10px 12px', borderRadius: 'var(--radius-md)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.85rem', fontFamily: 'var(--font-sans)' }}>
+                {ALL_EXAMS.map(e => <option key={e.id} value={e.id}>{e.code.replace(/_/g, ' ')}</option>)}
+              </select>
+              <button className="btn btn-emerald" onClick={() => runResearch()} disabled={researchLoading || !researchQuery.trim()} style={{ fontSize: '0.86rem', display: 'inline-flex', alignItems: 'center', gap: '6px', opacity: researchLoading ? 0.7 : 1 }}>
+                <RefreshCw size={15} className={researchLoading ? 'animate-spin' : ''} /> {researchLoading ? 'Searching…' : 'Run research'}
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginRight: '4px' }}>Scope</span>
+              {([
+                { key: 'OFFICIAL', label: 'Official domains only', hint: 'ssc.gov.in, upsc.gov.in, egazette, PIB…' },
+                { key: 'NEWS', label: 'News · last 30 days', hint: 'recent coverage, any domain' },
+                { key: 'WEB', label: 'Whole web', hint: 'unrestricted' }
+              ] as { key: ResearchMode; label: string; hint: string }[]).map(m => (
+                <button key={m.key} onClick={() => setResearchMode(m.key)} title={m.hint} style={{ padding: '6px 12px', borderRadius: 'var(--radius-full)', border: `1px solid ${researchMode === m.key ? 'var(--primary)' : 'var(--border-color)'}`, background: researchMode === m.key ? 'rgba(99,102,241,0.16)' : 'transparent', color: researchMode === m.key ? '#c7d2fe' : 'var(--text-secondary)', fontSize: '0.78rem', fontWeight: researchMode === m.key ? 700 : 500, fontFamily: 'var(--font-sans)', cursor: 'pointer' }}>
+                  {m.label}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginRight: '4px' }}>Quick checks</span>
+              {researchQuickQueries.map(q => (
+                <button key={q} onClick={() => runResearch(q)} disabled={researchLoading} style={{ padding: '5px 11px', borderRadius: 'var(--radius-full)', border: '1px dashed var(--border-color)', background: 'transparent', color: 'var(--text-secondary)', fontSize: '0.76rem', fontFamily: 'var(--font-sans)', cursor: 'pointer' }}>
+                  {q}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {researchError && (
+            researchError.notConfigured
+              ? <ResearchSetupNotice setup={researchError.setup} />
+              : (
+                <div style={{ padding: '12px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.35)', fontSize: '0.84rem', color: '#fca5a5', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <AlertTriangle size={15} /> {researchError.error}
+                </div>
+              )
+          )}
+
+          {/* Results */}
+          {researchRun && (
+            <div className="glass-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                <div>
+                  <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'white', margin: 0 }}>{researchRun.results.length} results for “{researchRun.query}”</h4>
+                  <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                    Run #{researchRun.runId} · {researchRun.mode === 'OFFICIAL' ? 'official domains only' : researchRun.mode === 'NEWS' ? 'news, last 30 days' : 'whole web'} · {researchRun.results.filter(f => f.trustLevel === 'OFFICIAL').length} official · {researchRun.results.filter(f => f.trustLevel === 'UNVERIFIED').length} unverified
+                  </div>
+                </div>
+              </div>
+
+              {researchRun.answer && (
+                <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.3)', fontSize: '0.86rem', color: '#fef3c7', lineHeight: 1.5 }}>
+                  <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#fbbf24', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Search-engine summary — unverified, for orientation only</div>
+                  {researchRun.answer}
+                </div>
+              )}
+
+              {researchRun.results.length === 0 && (
+                <div style={{ fontSize: '0.86rem', color: 'var(--text-secondary)' }}>No pages matched. Try broader wording or the “Whole web” scope.</div>
+              )}
+
+              {researchRun.results.map(f => {
+                const meta = researchTrustMeta(f.trustLevel);
+                const reviewed = f.reviewStatus !== 'PENDING_REVIEW';
+                return (
+                  <div key={f.id} style={{ padding: '16px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.025)', borderTop: `3px solid ${meta.color}`, borderRight: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)', borderLeft: '1px solid var(--border-color)', opacity: f.reviewStatus === 'REJECTED' ? 0.55 : 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '6px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <span style={{ padding: '2px 9px', borderRadius: 'var(--radius-full)', background: meta.bg, color: meta.color, fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.04em' }}>{meta.label}</span>
+                        <span style={{ fontSize: '0.74rem', color: '#93c5fd', fontFamily: 'var(--font-mono)' }}>{researchHost(f.url)}</span>
+                        {f.publishedDate && <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Clock size={11} /> {f.publishedDate}</span>}
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>relevance {Math.round(f.score * 100)}%</span>
+                      </div>
+                      <span className={`badge ${f.reviewStatus === 'PROMOTED' ? 'badge-verified' : f.reviewStatus === 'REJECTED' ? 'badge-superseded' : f.reviewStatus === 'REVIEWED' ? 'badge-changed' : 'badge-pending'}`} style={{ fontSize: '0.66rem' }}>
+                        {f.reviewStatus.replace('_', ' ')}
+                      </span>
+                    </div>
+
+                    <div style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '4px' }}>{f.title}</div>
+                    <div style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{f.snippet}</div>
+
+                    {openExtractId === f.id && extractedText[f.id] && (
+                      <div style={{ marginTop: '10px', padding: '12px', borderRadius: 'var(--radius-sm)', background: 'rgba(0,0,0,0.35)', border: '1px solid var(--border-color)', fontSize: '0.8rem', color: '#e2e8f0', lineHeight: 1.55, maxHeight: '260px', overflowY: 'auto', whiteSpace: 'pre-wrap', fontFamily: 'var(--font-mono)' }}>
+                        {extractedText[f.id]}
+                      </div>
+                    )}
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '12px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                      <a href={f.url} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ fontSize: '0.76rem', padding: '5px 11px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                        Open source <ExternalLink size={12} />
+                      </a>
+                      <button className="btn btn-secondary" onClick={() => extractFinding(f)} disabled={extractingId !== null} style={{ fontSize: '0.76rem', padding: '5px 11px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                        <Eye size={12} className={extractingId === f.id ? 'animate-spin' : ''} />
+                        {extractingId === f.id ? 'Extracting…' : extractedText[f.id] ? (openExtractId === f.id ? 'Hide extracted text' : 'Show extracted text') : 'Extract page text'}
+                      </button>
+                      <span style={{ flex: 1 }} />
+                      {!reviewed && (
+                        <>
+                          <button className="btn btn-emerald" onClick={() => setFindingStatus(f.id, 'PROMOTED')} style={{ fontSize: '0.74rem', padding: '5px 11px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                            <CheckCircle2 size={12} /> Promote as verified source
+                          </button>
+                          <button className="btn btn-secondary" onClick={() => setFindingStatus(f.id, 'REVIEWED')} style={{ fontSize: '0.74rem', padding: '5px 11px' }}>
+                            Mark reviewed
+                          </button>
+                          <button className="btn btn-secondary" onClick={() => setFindingStatus(f.id, 'REJECTED')} style={{ fontSize: '0.74rem', padding: '5px 11px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                            <XCircle size={12} /> Reject
+                          </button>
+                        </>
+                      )}
+                      {reviewed && f.reviewStatus !== 'PROMOTED' && (
+                        <button className="btn btn-secondary" onClick={() => setFindingStatus(f.id, 'PENDING_REVIEW')} style={{ fontSize: '0.74rem', padding: '5px 11px' }}>Reopen</button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+
+              <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Info size={12} /> “Promote” records the verifier's decision in the audit database. Adding the source to the candidate-facing library is still a deliberate edit to <code style={{ fontFamily: 'var(--font-mono)' }}>data.ts</code> with full provenance — by design.
+              </div>
+            </div>
+          )}
+
+          {/* History */}
+          <div style={{ borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.02)' }}>
+            <button onClick={() => setIsHistoryOpen(v => !v)} style={{ width: '100%', padding: '12px 16px', background: 'none', border: 'none', color: 'var(--text-secondary)', fontFamily: 'var(--font-sans)', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}><Database size={15} color="#60a5fa" /> Research history ({researchHistory.length} runs stored in govos.db)</span>
+              <ChevronDown size={15} style={{ transform: isHistoryOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }} />
+            </button>
+            {isHistoryOpen && (
+              <div style={{ padding: '0 16px 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {researchHistory.length === 0 && <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>No research runs yet.</div>}
+                {researchHistory.map(run => (
+                  <div key={run.id} style={{ padding: '12px 14px', borderRadius: 'var(--radius-sm)', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                      <div>
+                        <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'white' }}>{run.query}</div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                          Run #{run.id} · {run.mode} · {run.createdAt} · {run.findings.length} results · {run.findings.filter(f => f.reviewStatus === 'PENDING_REVIEW').length} pending · {run.findings.filter(f => f.reviewStatus === 'PROMOTED').length} promoted
+                        </div>
+                      </div>
+                      <button className="btn btn-secondary" onClick={() => { setResearchRun({ runId: run.id, query: run.query, mode: run.mode, answer: run.answer, results: run.findings }); setIsHistoryOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }} style={{ fontSize: '0.74rem', padding: '5px 11px' }}>
+                        Reopen results
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {activeTab === 'EXTRACTION' && (
         <div className="glass-card" style={{ padding: '28px' }}>
           <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '16px' }}>AI Notification PDF Ingestion Simulator</h3>

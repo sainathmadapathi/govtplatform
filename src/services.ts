@@ -2,6 +2,14 @@
 
 import {
   ResourceLinkCheck,
+  ResearchExtractResult,
+  ResearchFinding,
+  ResearchMode,
+  ResearchOutcome,
+  ResearchReviewStatus,
+  ResearchRun,
+  ResearchSearchResult,
+  ResearchStatus,
   CandidateNotification,
   EligibilityDiagnostic,
   Exam,
@@ -1262,3 +1270,108 @@ class StorageService {
 }
 
 export const storageService = new StorageService();
+
+/**
+ * GovOS Live Source Research — thin client over the server's Tavily pipeline.
+ * The API key never reaches the browser; every call goes through app.py, which
+ * classifies results by domain and stores them for human review.
+ */
+async function researchOutcome<T>(res: Response): Promise<ResearchOutcome<T>> {
+  let body: any = null;
+  try {
+    body = await res.json();
+  } catch {
+    body = null;
+  }
+  if (res.ok) {
+    return { ok: true, data: body as T };
+  }
+  return {
+    ok: false,
+    error: (body && (body.detail || body.error)) || `Server returned HTTP ${res.status}`,
+    setup: body && body.setup,
+    notConfigured: res.status === 503 && !!(body && body.setup)
+  };
+}
+
+export const researchService = {
+  async getStatus(): Promise<ResearchStatus | null> {
+    try {
+      const res = await fetch('/api/research/status');
+      if (res.ok) return await res.json();
+    } catch {
+      // server offline
+    }
+    return null;
+  },
+
+  async search(
+    query: string,
+    mode: ResearchMode = 'OFFICIAL',
+    examId?: string,
+    maxResults: number = 8
+  ): Promise<ResearchOutcome<ResearchSearchResult>> {
+    try {
+      const res = await fetch('/api/research/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, mode, exam_id: examId, max_results: maxResults })
+      });
+      return await researchOutcome<ResearchSearchResult>(res);
+    } catch (e: any) {
+      return { ok: false, error: `GovOS server unreachable: ${e?.message || 'network error'}` };
+    }
+  },
+
+  async extract(urls: string[], findingId?: number): Promise<ResearchOutcome<ResearchExtractResult[]>> {
+    try {
+      const res = await fetch('/api/research/extract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ urls, finding_id: findingId })
+      });
+      const outcome = await researchOutcome<{ results: ResearchExtractResult[] }>(res);
+      if (outcome.ok) return { ok: true, data: outcome.data.results || [] };
+      return outcome;
+    } catch (e: any) {
+      return { ok: false, error: `GovOS server unreachable: ${e?.message || 'network error'}` };
+    }
+  },
+
+  async history(limit: number = 15): Promise<ResearchRun[]> {
+    try {
+      const res = await fetch(`/api/research/history?limit=${limit}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.runs)) return data.runs;
+      }
+    } catch {
+      // server offline
+    }
+    return [];
+  },
+
+  async getFinding(id: number): Promise<ResearchFinding | null> {
+    try {
+      const res = await fetch(`/api/research/findings/${id}`);
+      if (res.ok) return await res.json();
+    } catch {
+      // server offline
+    }
+    return null;
+  },
+
+  async setFindingStatus(id: number, status: ResearchReviewStatus): Promise<boolean> {
+    try {
+      const res = await fetch(`/api/research/findings/${id}/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }
+};
+

@@ -228,6 +228,73 @@ export interface ResourceLinkCheck {
   checkedAt: string;
 }
 
+// --- Live Source Research (Tavily) ---
+
+/** How much a search result can be trusted, decided purely from its domain. */
+export type ResearchTrustLevel = 'OFFICIAL' | 'TRUSTED_PUBLIC' | 'UNVERIFIED';
+
+/** OFFICIAL restricts Tavily to government/statutory domains; NEWS is the last 30 days; WEB is unrestricted. */
+export type ResearchMode = 'OFFICIAL' | 'NEWS' | 'WEB';
+
+export type ResearchReviewStatus = 'PENDING_REVIEW' | 'REVIEWED' | 'PROMOTED' | 'REJECTED';
+
+export interface ResearchFinding {
+  id: number;
+  runId: number;
+  title: string;
+  url: string;
+  snippet: string;
+  trustLevel: ResearchTrustLevel;
+  score: number;
+  publishedDate?: string | null;
+  reviewStatus: ResearchReviewStatus;
+  hasExtractedText?: boolean;
+  extractedText?: string;
+  createdAt?: string;
+}
+
+export interface ResearchRun {
+  id: number;
+  query: string;
+  mode: ResearchMode;
+  examId?: string | null;
+  answer?: string | null;
+  resultCount: number;
+  createdAt: string;
+  findings: ResearchFinding[];
+}
+
+export interface ResearchStatus {
+  configured: boolean;
+  baseUrl: string;
+  officialDomains: string[];
+  runCount: number;
+  pendingReview: number;
+}
+
+export interface ResearchSearchResult {
+  runId: number;
+  query: string;
+  mode: ResearchMode;
+  examId?: string | null;
+  answer?: string | null;
+  results: ResearchFinding[];
+  responseTime?: number;
+}
+
+export interface ResearchExtractResult {
+  url: string;
+  rawContent: string;
+  chars: number;
+  failed: boolean;
+  reason?: string;
+}
+
+/** Discriminated result so callers can render a setup notice instead of a generic error. */
+export type ResearchOutcome<T> =
+  | { ok: true; data: T }
+  | { ok: false; error: string; setup?: string; notConfigured?: boolean };
+
 export interface FAQItem {
   id: string;
   question: string;

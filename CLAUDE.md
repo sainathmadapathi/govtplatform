@@ -9,7 +9,7 @@ thinner secondary datasets.
 
 ```
 govt-platform/
-├── app.py                     # Flask API + SQLite schema + static serving (one file)
+├── app.py                     # Flask API + SQLite schema + static serving + Tavily research pipeline
 ├── index.html                 # HTML shell + all global CSS
 ├── govos.db                   # SQLite database
 ├── requirements.txt           # Flask, flask-cors
@@ -17,7 +17,7 @@ govt-platform/
 ├── vite.config.ts             # dev proxy + single-file build
 ├── tsconfig.json
 ├── generate_official_pdfs.py  # one-off authoring script for public/resources PDFs
-├── .env / .gitignore
+├── .env / .gitignore          # .env holds TAVILY_API_KEY (never committed)
 ├── public/resources/          # 6 official PDFs served at /resources/<name>
 └── src/
     ├── main.tsx               # App shell, global modals, React root
@@ -107,6 +107,9 @@ Adding real questions means extending those arrays.
   physical/colour-blindness restrictions; aggregates to `ELIGIBLE | CONDITIONAL | INELIGIBLE`.
 - `calculateAge`, `calculateDetailedAge`, `getCategoryAgeRelaxation`
   (OBC +3, SC/ST +5, PwBD +10).
+- `researchService` — `getStatus`, `search(query, mode, examId?)`, `extract(urls, findingId?)`,
+  `history`, `getFinding`, `setFindingStatus`. Returns a `ResearchOutcome<T>` discriminated
+  union so the UI can render the setup notice on 503 instead of a generic error.
 
 ### `src/ui.tsx`
 All 20 components, ordered leaves-first so composites can reference them:
@@ -117,6 +120,17 @@ All 20 components, ordered leaves-first so composites can reference them:
 `PreparationPlanner` · `PostStudyPathEngine` · `PracticeEngine` ·
 `PracticeApplicationSimulator` · `ApplicationGuide` · `AdmitCardSection` ·
 `ExamDayChecklistSection` · `ResultNextStepsSection` · `ResourceLibrary` · `ExamDetailView`
+
+**Live Source Research (Tavily).** The Admin Trust Panel's "Live Source Research" tab runs a
+Tavily search (scope: official domains only / news / whole web), and every result is
+classified by domain — `OFFICIAL` (`*.gov.in`, `*.nic.in`, statutory bodies), `TRUSTED_PUBLIC`
+(`*.ac.in`, `*.edu`, PRS), or `UNVERIFIED` — stored in `research_runs` / `research_findings`,
+and reviewed by a human (promote / reviewed / reject) with optional full-text extraction.
+The `AIAssistant` offers a live official-domain search **only** on its fallback path, with
+results badged "LIVE WEB RESULTS — NOT YET VERIFIED". Nothing from research reaches
+candidates as verified; promoting a finding records the decision, and adding it to `data.ts`
+with provenance remains a deliberate edit. Shared helpers: `researchTrustMeta`,
+`ResearchSetupNotice` (shown when no key is configured).
 
 `ResourceLibrary` (Section 08): "Start here" essentials shelf, search, type-group and
 subject chips derived from the exam's own resources (so UPSC/IBPS never show empty SSC
@@ -168,7 +182,16 @@ PDFs. API: `/api/sqlite/status`, `/profile`, `/progress`, `/mock-attempts`, `/sy
 threads, 10s timeout; classifies HEALTHY / REDIRECT / BLOCKED / BROKEN / UNREACHABLE.
 Only GET results are trusted, because several portals answer HEAD with 404).
 
-Tables: `users`, `study_progress`, `mock_attempts` (with `details_json` holding
+Research pipeline (`/api/research/*`): `GET status` (configured?, run/pending counts,
+official domain list) · `POST search {query, mode, exam_id?, max_results?}` · `POST extract
+{urls, finding_id?}` · `GET history?limit` · `GET findings/<id>` · `POST findings/<id>/status`.
+Tavily is called with `urllib` (no SDK); the key is read from the environment or a minimal
+`.env` loader (`_load_dotenv`, no python-dotenv dependency) and sent both as a bearer header
+and in the body for API-version compatibility. `TAVILY_BASE_URL` can be overridden — the
+scratchpad `mock_tavily.py` used for testing relies on that. Without a key every research
+route returns 503 with a `setup` hint and the UI shows how to configure it.
+
+Tables: `users`, `study_progress`, `research_runs`, `research_findings`, `mock_attempts` (with `details_json` holding
 `userAnswers` + the whole `paperData`), `bookmarked_resources`, `candidate_notes`,
 `audit_reports`, `tracked_exams`, `notification_preferences`, `candidate_notifications`.
 `candidate_notes` has a schema but no endpoints and no frontend writers — harmless, but
