@@ -83,6 +83,7 @@ import {
   Zap
 } from 'lucide-react';
 import {
+  ResourceLinkCheck,
   ApplicationGuideData,
   CandidateNotification,
   DataProvenance,
@@ -3273,7 +3274,7 @@ export const ResourceReaderModal: React.FC<ResourceReaderModalProps> = ({
               justifyContent: 'center',
               flexShrink: 0
             }}>
-              {resource.resourceFormat === 'YOUTUBE_COURSE' ? <PlayCircle size={24} /> : <FileText size={24} />}
+              {resource.resourceFormat === 'YOUTUBE_COURSE' ? <PlayCircle size={24} /> : resource.resourceFormat === 'OFFICIAL_PORTAL' ? <Globe size={24} /> : <FileText size={24} />}
             </div>
             <div style={{ overflow: 'hidden' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
@@ -3370,7 +3371,7 @@ export const ResourceReaderModal: React.FC<ResourceReaderModalProps> = ({
               className="btn btn-outline" 
               style={{ fontSize: '0.8rem', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}
             >
-              Open Direct <ExternalLink size={14} />
+              {resource.resourceFormat === 'OFFICIAL_PORTAL' ? 'Open Official Portal' : resource.resourceFormat === 'ONLINE_TOOL' ? 'Launch Tool' : 'Open Direct'} <ExternalLink size={14} />
             </a>
 
             <button 
@@ -9504,6 +9505,504 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
 
 
 // ==========================================================================
+// ResourceLibrary.tsx — organised, searchable study-resource library (Section 08)
+// ==========================================================================
+
+type ResourceTypeGroup = 'ALL' | 'OFFICIAL' | 'BOOKS' | 'VIDEO' | 'TOOLS';
+
+const RESOURCE_TYPE_GROUPS: { key: ResourceTypeGroup; label: string; types: ResourceItem['type'][] }[] = [
+  { key: 'OFFICIAL', label: 'Official Documents & Portals', types: ['OFFICIAL_PDF', 'OFFICIAL_PORTAL'] },
+  { key: 'BOOKS', label: 'Books & Handbooks', types: ['RECOMMENDED_BOOK', 'SIMPLIFIED_GUIDE'] },
+  { key: 'VIDEO', label: 'Video Courses', types: ['VIDEO_LECTURE'] },
+  { key: 'TOOLS', label: 'Practice Tools', types: ['ONLINE_TOOL'] }
+];
+
+// Display order for subject groups: primary sources first, then foundations, then subjects.
+const RESOURCE_SUBJECT_ORDER: ResourceItem['subject'][] = [
+  'Official Gazette',
+  'Foundation Textbooks & Open Courses',
+  'General Awareness & Static GK',
+  'Current Affairs & Governance',
+  'Banking & Financial Awareness',
+  'Quantitative Aptitude',
+  'Reasoning',
+  'English Comprehension',
+  'Computer & Typing'
+];
+
+const resourceTypeLabel = (type: ResourceItem['type']): string => {
+  switch (type) {
+    case 'OFFICIAL_PDF': return 'Official Document';
+    case 'OFFICIAL_PORTAL': return 'Official Portal';
+    case 'VIDEO_LECTURE': return 'Video Course';
+    case 'RECOMMENDED_BOOK': return 'Recommended Book';
+    case 'SIMPLIFIED_GUIDE': return 'Handbook';
+    case 'ONLINE_TOOL': return 'Practice Tool';
+    default: return 'Resource';
+  }
+};
+
+const resourceTypeColor = (type: ResourceItem['type']): string => {
+  switch (type) {
+    case 'OFFICIAL_PDF':
+    case 'OFFICIAL_PORTAL': return '#34d399';
+    case 'VIDEO_LECTURE': return '#f87171';
+    case 'ONLINE_TOOL': return '#fbbf24';
+    default: return '#a5b4fc';
+  }
+};
+
+const ResourceTypeIcon: React.FC<{ type: ResourceItem['type']; size?: number }> = ({ type, size = 14 }) => {
+  const color = resourceTypeColor(type);
+  switch (type) {
+    case 'OFFICIAL_PORTAL': return <Globe size={size} color={color} />;
+    case 'VIDEO_LECTURE': return <PlayCircle size={size} color={color} />;
+    case 'ONLINE_TOOL': return <Zap size={size} color={color} />;
+    case 'RECOMMENDED_BOOK':
+    case 'SIMPLIFIED_GUIDE': return <BookOpen size={size} color={color} />;
+    default: return <FileText size={size} color={color} />;
+  }
+};
+
+const formatVerifiedDate = (iso: string): string => {
+  const d = new Date(iso + 'T00:00:00');
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+};
+
+const isExternalUrl = (value?: string): value is string => !!value && /^https?:\/\//i.test(value);
+
+interface ResourceLibraryProps {
+  exam: Exam;
+  onOpenResource: (resource: ResourceItem) => void;
+  onOpenProvenanceModal: (provenance: DataProvenance) => void;
+}
+
+export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenResource, onOpenProvenanceModal }) => {
+  const resources = exam.resources || [];
+
+  const [query, setQuery] = useState<string>('');
+  const [typeGroup, setTypeGroup] = useState<ResourceTypeGroup>('ALL');
+  const [subjectFilter, setSubjectFilter] = useState<string>('ALL');
+  const [savedOnly, setSavedOnly] = useState<boolean>(false);
+  const [bookmarkIds, setBookmarkIds] = useState<string[]>(() => storageService.getBookmarkedResourceIds());
+  const [linkChecks, setLinkChecks] = useState<Record<string, ResourceLinkCheck>>({});
+  const [isVerifying, setIsVerifying] = useState<boolean>(false);
+  const [verifySummary, setVerifySummary] = useState<string>('');
+  const [isNavigatorOpen, setIsNavigatorOpen] = useState<boolean>(false);
+
+  useEffect(() => {
+    storageService.loadBookmarksFromSQLite().then(setBookmarkIds);
+  }, []);
+
+  // A different exam means a different library: clear filters and stale link results.
+  useEffect(() => {
+    setQuery('');
+    setTypeGroup('ALL');
+    setSubjectFilter('ALL');
+    setSavedOnly(false);
+    setLinkChecks({});
+    setVerifySummary('');
+  }, [exam.id]);
+
+  // ---- derived structure -------------------------------------------------
+  const availableGroups = RESOURCE_TYPE_GROUPS.filter(g => resources.some(r => g.types.includes(r.type)));
+
+  const subjectCounts = resources.reduce<Record<string, number>>((acc, r) => {
+    acc[r.subject] = (acc[r.subject] || 0) + 1;
+    return acc;
+  }, {});
+  const availableSubjects: string[] = RESOURCE_SUBJECT_ORDER.filter(sub => subjectCounts[sub]);
+  Object.keys(subjectCounts).forEach(sub => {
+    if (!availableSubjects.includes(sub)) availableSubjects.push(sub);
+  });
+
+  const q = query.trim().toLowerCase();
+  const activeTypes = RESOURCE_TYPE_GROUPS.find(g => g.key === typeGroup)?.types;
+
+  const matches = resources.filter(r => {
+    if (activeTypes && !activeTypes.includes(r.type)) return false;
+    if (subjectFilter !== 'ALL' && r.subject !== subjectFilter) return false;
+    if (savedOnly && !bookmarkIds.includes(r.id)) return false;
+    if (q) {
+      const haystack = `${r.title} ${r.author} ${r.description} ${r.recommendedFor} ${r.officialTag || ''} ${r.subject}`.toLowerCase();
+      if (!haystack.includes(q)) return false;
+    }
+    return true;
+  });
+
+  const grouped = availableSubjects
+    .map(subject => ({ subject, items: matches.filter(r => r.subject === subject) }))
+    .filter(g => g.items.length > 0);
+
+  const essentials = resources.filter(r => r.isEssential);
+  const officialCount = resources.filter(r => r.type === 'OFFICIAL_PDF' || r.type === 'OFFICIAL_PORTAL').length;
+  const savedCount = resources.filter(r => bookmarkIds.includes(r.id)).length;
+  const isFiltered = q !== '' || typeGroup !== 'ALL' || subjectFilter !== 'ALL' || savedOnly;
+
+  const resetFilters = () => {
+    setQuery('');
+    setTypeGroup('ALL');
+    setSubjectFilter('ALL');
+    setSavedOnly(false);
+  };
+
+  // ---- bookmarks ---------------------------------------------------------
+  const toggleBookmark = (r: ResourceItem) => {
+    setBookmarkIds(storageService.toggleResourceBookmark({ id: r.id, title: r.title, type: r.type, url: r.url }));
+  };
+
+  // ---- live link verification -------------------------------------------
+  const externalUrls = Array.from(new Set(
+    resources.flatMap(r => [r.url, r.directPdfUrl, r.youtubeUrl].filter(isExternalUrl))
+  ));
+
+  const handleVerifyLinks = async () => {
+    if (externalUrls.length === 0 || isVerifying) return;
+    setIsVerifying(true);
+    setVerifySummary('');
+    const results = await storageService.verifyResourceLinks(externalUrls);
+    if (results.length === 0) {
+      setVerifySummary('Could not reach the GovOS server to run the check. Start "python app.py" and try again.');
+    } else {
+      const map: Record<string, ResourceLinkCheck> = {};
+      results.forEach(res => { map[res.url] = res; });
+      setLinkChecks(map);
+      const healthy = results.filter(res => res.status === 'HEALTHY' || res.status === 'REDIRECT').length;
+      const blocked = results.filter(res => res.status === 'BLOCKED').length;
+      const failing = results.length - healthy - blocked;
+      let summary = `${healthy} of ${results.length} external links responded normally`;
+      if (blocked > 0) summary += `, ${blocked} block automated checks`;
+      if (failing > 0) summary += `, ${failing} could not be confirmed automatically (open to check)`;
+      setVerifySummary(summary + '.');
+    }
+    setIsVerifying(false);
+  };
+
+  const linkBadge = (r: ResourceItem): { text: string; color: string; bg: string } | null => {
+    const check = linkChecks[r.url];
+    if (check) {
+      const ok = check.status === 'HEALTHY' || check.status === 'REDIRECT';
+      if (ok) return { text: `Live now · HTTP ${check.httpCode}`, color: '#34d399', bg: 'rgba(16,185,129,0.12)' };
+      if (check.status === 'BLOCKED') return { text: 'Blocks automated checks · open to confirm', color: '#fbbf24', bg: 'rgba(245,158,11,0.12)' };
+      if (check.status === 'UNREACHABLE') return { text: 'Could not reach automatically · open to confirm', color: '#fbbf24', bg: 'rgba(245,158,11,0.12)' };
+      return { text: `Link broken · HTTP ${check.httpCode}`, color: '#f87171', bg: 'rgba(239,68,68,0.12)' };
+    }
+    if (r.linkVerifiedDate) return { text: `Link verified ${formatVerifiedDate(r.linkVerifiedDate)}`, color: '#34d399', bg: 'rgba(16,185,129,0.1)' };
+    if (r.provenance?.verificationLevel === 'UNDER_VERIFICATION') return { text: 'Link check pending', color: '#fbbf24', bg: 'rgba(245,158,11,0.1)' };
+    return null;
+  };
+
+  // ---- primary action per format ----------------------------------------
+  const primaryAction = (r: ResourceItem): { label: string; href?: string; onClick?: () => void } => {
+    switch (r.resourceFormat) {
+      case 'YOUTUBE_COURSE': return { label: 'Watch in App', onClick: () => onOpenResource(r) };
+      case 'OFFICIAL_PORTAL': return { label: 'Open Official Portal', href: r.url };
+      case 'ONLINE_TOOL': return { label: 'Launch Tool', href: r.url };
+      case 'INTERACTIVE_HANDBOOK': return { label: 'Read Handbook', onClick: () => onOpenResource(r) };
+      default:
+        return r.directPdfUrl
+          ? { label: 'Read Document', onClick: () => onOpenResource(r) }
+          : { label: 'Open Document', href: r.url };
+    }
+  };
+
+  const chipStyle = (active: boolean, accent: string = 'var(--primary)'): React.CSSProperties => ({
+    padding: '6px 12px',
+    borderRadius: 'var(--radius-full)',
+    border: `1px solid ${active ? accent : 'var(--border-color)'}`,
+    background: active ? 'rgba(99, 102, 241, 0.16)' : 'transparent',
+    color: active ? '#c7d2fe' : 'var(--text-secondary)',
+    fontSize: '0.78rem',
+    fontWeight: active ? 700 : 500,
+    fontFamily: 'var(--font-sans)',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+    transition: 'all 0.15s ease'
+  });
+
+  const iconButtonStyle: React.CSSProperties = {
+    width: '32px',
+    height: '32px',
+    borderRadius: 'var(--radius-sm)',
+    border: '1px solid var(--border-color)',
+    background: 'transparent',
+    color: 'var(--text-secondary)',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    flexShrink: 0
+  };
+
+  // ---- card -------------------------------------------------------------
+  const renderCard = (r: ResourceItem) => {
+    const saved = bookmarkIds.includes(r.id);
+    const action = primaryAction(r);
+    const badge = linkBadge(r);
+    const showExternalIcon = isExternalUrl(r.youtubeUrl || r.url) && !action.href;
+    const typeColor = resourceTypeColor(r.type);
+
+    return (
+      <div
+        key={r.id}
+        style={{
+          padding: '18px',
+          borderRadius: 'var(--radius-md)',
+          background: 'rgba(255, 255, 255, 0.025)',
+          borderTop: `3px solid ${typeColor}`,
+          borderRight: `1px solid ${saved ? 'rgba(99, 102, 241, 0.45)' : 'var(--border-color)'}`,
+          borderBottom: `1px solid ${saved ? 'rgba(99, 102, 241, 0.45)' : 'var(--border-color)'}`,
+          borderLeft: `1px solid ${saved ? 'rgba(99, 102, 241, 0.45)' : 'var(--border-color)'}`,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', fontWeight: 700, color: typeColor, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            <ResourceTypeIcon type={r.type} /> {resourceTypeLabel(r.type)}
+            {r.isEssential && (
+              <span style={{ marginLeft: '6px', padding: '1px 7px', borderRadius: 'var(--radius-full)', background: 'rgba(16,185,129,0.15)', color: '#6ee7b7', fontSize: '0.66rem' }}>
+                ESSENTIAL
+              </span>
+            )}
+          </span>
+          <button
+            onClick={() => toggleBookmark(r)}
+            title={saved ? 'Remove from saved' : 'Save for later'}
+            aria-label={saved ? 'Remove from saved' : 'Save for later'}
+            style={{ ...iconButtonStyle, borderColor: saved ? 'var(--primary)' : 'var(--border-color)', color: saved ? '#a5b4fc' : 'var(--text-muted)', background: saved ? 'rgba(99,102,241,0.14)' : 'transparent' }}
+          >
+            <Bookmark size={15} fill={saved ? '#a5b4fc' : 'none'} />
+          </button>
+        </div>
+
+        <div>
+          <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', margin: '0 0 3px', lineHeight: 1.3 }}>{r.title}</h4>
+          <div style={{ fontSize: '0.78rem', color: '#93c5fd', fontWeight: 600 }}>{r.author}</div>
+        </div>
+
+        <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as any, overflow: 'hidden' }}>
+          {r.description}
+        </p>
+
+        <div style={{ fontSize: '0.78rem', color: '#86efac', lineHeight: 1.4 }}>
+          <strong style={{ color: '#6ee7b7' }}>Best for:</strong> {r.recommendedFor}
+        </div>
+
+        {(badge || r.officialTag || r.rating) && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+            {badge && (
+              <span style={{ padding: '2px 9px', borderRadius: 'var(--radius-full)', background: badge.bg, color: badge.color, fontSize: '0.7rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                <CheckCircle2 size={11} /> {badge.text}
+              </span>
+            )}
+            {r.officialTag && (
+              <span style={{ padding: '2px 9px', borderRadius: 'var(--radius-full)', background: 'rgba(255,255,255,0.05)', color: 'var(--text-secondary)', fontSize: '0.68rem', fontWeight: 600 }}>
+                {r.officialTag}
+              </span>
+            )}
+            {r.rating && (
+              <span style={{ fontSize: '0.72rem', color: '#fbbf24', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                <Star size={11} fill="#fbbf24" color="#fbbf24" /> {r.rating}
+              </span>
+            )}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: 'auto', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+          {action.href ? (
+            <a href={action.href} target="_blank" rel="noreferrer" className="btn btn-emerald" style={{ fontSize: '0.8rem', padding: '7px 14px', display: 'inline-flex', alignItems: 'center', gap: '6px', flex: 1, justifyContent: 'center' }}>
+              {action.label} <ExternalLink size={13} />
+            </a>
+          ) : (
+            <button onClick={action.onClick} className="btn btn-emerald" style={{ fontSize: '0.8rem', padding: '7px 14px', display: 'inline-flex', alignItems: 'center', gap: '6px', flex: 1, justifyContent: 'center' }}>
+              {r.resourceFormat === 'YOUTUBE_COURSE' ? <PlayCircle size={14} /> : <BookOpen size={14} />} {action.label}
+            </button>
+          )}
+
+          {r.directPdfUrl && (
+            <a href={r.directPdfUrl} download={r.downloadFileName || 'GovOS_Resource.pdf'} title="Download PDF" aria-label="Download PDF" style={iconButtonStyle}>
+              <Download size={14} />
+            </a>
+          )}
+          {showExternalIcon && (
+            <a href={r.youtubeUrl || r.url} target="_blank" rel="noreferrer" title="Open on the source site" aria-label="Open on the source site" style={iconButtonStyle}>
+              <ExternalLink size={14} />
+            </a>
+          )}
+          {action.href && (r.inAppHandbookContent || r.provenance) && (
+            <button onClick={() => onOpenResource(r)} title="Notes and details" aria-label="Notes and details" style={iconButtonStyle}>
+              <Info size={14} />
+            </button>
+          )}
+          {r.provenance && (
+            <button onClick={() => onOpenProvenanceModal(r.provenance!)} title="View source verification" aria-label="View source verification" style={{ ...iconButtonStyle, color: '#34d399' }}>
+              <ShieldCheck size={14} />
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // ---- render ---------------------------------------------------------------
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+        <div>
+          <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'white', margin: 0 }}>
+            08 — Resource Library
+          </h3>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', margin: '4px 0 0 0' }}>
+            {resources.length} resources · {officialCount} from official government sources · {savedCount} saved for later
+          </p>
+        </div>
+        <button
+          onClick={handleVerifyLinks}
+          disabled={isVerifying || externalUrls.length === 0}
+          className="btn btn-secondary"
+          title="Ask the GovOS server to request every external link and report which ones respond"
+          style={{ fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '6px', opacity: isVerifying ? 0.7 : 1 }}
+        >
+          <RefreshCw size={14} className={isVerifying ? 'animate-spin' : ''} />
+          {isVerifying ? `Checking ${externalUrls.length} links…` : `Verify all ${externalUrls.length} links now`}
+        </button>
+      </div>
+
+      {verifySummary && (
+        <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.3)', fontSize: '0.82rem', color: '#c7d2fe', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Info size={14} /> {verifySummary}
+        </div>
+      )}
+
+      {/* Start here shelf */}
+      {!isFiltered && essentials.length > 0 && (
+        <div className="glass-card" style={{ padding: '20px', background: 'linear-gradient(135deg, rgba(16,185,129,0.09) 0%, rgba(15,23,42,0.98) 60%)', border: '1px solid rgba(16,185,129,0.3)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Compass size={18} color="var(--emerald)" />
+              <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'white', margin: 0 }}>Start here — the essentials</h4>
+            </div>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+              The {essentials.length} sources every candidate should open first
+            </span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
+            {essentials.map(renderCard)}
+          </div>
+        </div>
+      )}
+
+      {/* Search & filters */}
+      <div className="glass-card" style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <div style={{ position: 'relative', flex: 1, minWidth: '240px' }}>
+            <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+            <input
+              type="text"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Search by title, author, subject or use case…"
+              aria-label="Search resources"
+              style={{ width: '100%', padding: '10px 36px 10px 38px', borderRadius: 'var(--radius-md)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.9rem', fontFamily: 'var(--font-sans)', outline: 'none' }}
+            />
+            {query && (
+              <button onClick={() => setQuery('')} aria-label="Clear search" style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex' }}>
+                <X size={15} />
+              </button>
+            )}
+          </div>
+          <button onClick={() => setSavedOnly(v => !v)} style={chipStyle(savedOnly)} aria-pressed={savedOnly}>
+            <Bookmark size={13} fill={savedOnly ? '#c7d2fe' : 'none'} /> Saved ({savedCount})
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginRight: '4px' }}>Type</span>
+          <button onClick={() => setTypeGroup('ALL')} style={chipStyle(typeGroup === 'ALL')}>All types</button>
+          {availableGroups.map(g => (
+            <button key={g.key} onClick={() => setTypeGroup(g.key)} style={chipStyle(typeGroup === g.key)}>
+              {g.label} ({resources.filter(r => g.types.includes(r.type)).length})
+            </button>
+          ))}
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginRight: '4px' }}>Subject</span>
+          <button onClick={() => setSubjectFilter('ALL')} style={chipStyle(subjectFilter === 'ALL')}>All subjects</button>
+          {availableSubjects.map(sub => (
+            <button key={sub} onClick={() => setSubjectFilter(sub)} style={chipStyle(subjectFilter === sub)}>
+              {sub} ({subjectCounts[sub]})
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Resource Navigator (existing assistant, collapsed by default) */}
+      <div style={{ borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.02)' }}>
+        <button
+          onClick={() => setIsNavigatorOpen(v => !v)}
+          style={{ width: '100%', padding: '12px 16px', background: 'none', border: 'none', color: 'var(--text-secondary)', fontFamily: 'var(--font-sans)', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+        >
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+            <Sparkles size={15} color="#60a5fa" /> Not sure what to open? Ask the Resource Navigator
+          </span>
+          <ChevronDown size={15} style={{ transform: isNavigatorOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }} />
+        </button>
+        {isNavigatorOpen && (
+          <div style={{ padding: '0 12px 12px' }}>
+            <ResourceAIAssistant resources={resources} onOpenResourceModal={onOpenResource} />
+          </div>
+        )}
+      </div>
+
+      {/* Results */}
+      {isFiltered && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+          <span>Showing <strong style={{ color: 'white' }}>{matches.length}</strong> of {resources.length} resources</span>
+          <button onClick={resetFilters} className="btn btn-secondary" style={{ fontSize: '0.76rem', padding: '4px 12px' }}>Clear filters</button>
+        </div>
+      )}
+
+      {matches.length === 0 ? (
+        <div className="glass-card" style={{ padding: '40px 24px', textAlign: 'center' }}>
+          <AlertTriangle size={26} color="var(--text-muted)" style={{ marginBottom: '8px' }} />
+          <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'white', marginBottom: '6px' }}>
+            {savedOnly && savedCount === 0 ? 'Nothing saved yet' : 'No resources match'}
+          </h4>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', maxWidth: '420px', margin: '0 auto 14px' }}>
+            {savedOnly && savedCount === 0
+              ? 'Tap the bookmark on any resource to keep it here for quick access.'
+              : 'Try a broader search term or clear a filter.'}
+          </p>
+          <button onClick={resetFilters} className="btn btn-primary" style={{ fontSize: '0.84rem' }}>Show everything</button>
+        </div>
+      ) : (
+        grouped.map(group => (
+          <section key={group.subject} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>
+              <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', margin: 0 }}>{group.subject}</h4>
+              <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>{group.items.length} resource{group.items.length === 1 ? '' : 's'}</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '14px' }}>
+              {group.items.map(renderCard)}
+            </div>
+          </section>
+        ))
+      )}
+    </div>
+  );
+};
+
+
+// ==========================================================================
 // ExamDetailView.tsx
 // ==========================================================================
 interface ExamDetailViewProps {
@@ -9539,7 +10038,6 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
     }
   }, [initialSection]);
   const [isGuideIndexOpen, setIsGuideIndexOpen] = useState<boolean>(false);
-  const [resourceSubjectFilter, setResourceSubjectFilter] = useState<string>('ALL');
   const [selectedResourceForModal, setSelectedResourceForModal] = useState<ResourceItem | null>(null);
   const [syllabusViewMode, setSyllabusViewMode] = useState<'POST_STUDY_PATH' | 'OFFICIAL_BLUEPRINT'>('POST_STUDY_PATH');
   const [completedTopics, setCompletedTopics] = useState<Record<string, boolean>>(
@@ -9575,7 +10073,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
     { num: 5, name: '05 — Exam Pattern' },
     { num: 6, name: '06 — Post Study Plan & Syllabus' },
     { num: 7, name: '07 — Study Roadmap' },
-    { num: 8, name: '08 — Trusted Resources' },
+    { num: 8, name: '08 — Resource Library' },
     { num: 9, name: '09 — CBT Practice & PYQs' },
     { num: 10, name: '10 — Cutoff History' },
     { num: 11, name: '11 — FAQs & Clauses' },
@@ -9635,12 +10133,6 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
   const goToSection = (secNum: number) => {
     setActiveSection(secNum);
   };
-
-  const filteredResources = resourceSubjectFilter === 'ALL'
-    ? exam.resources
-    : exam.resources.filter(r => r.subject === resourceSubjectFilter);
-
-  const resourceCategories = ['ALL', 'English Comprehension', 'Quantitative Aptitude', 'Reasoning', 'General Awareness & Static GK', 'Computer & Typing', 'Official Gazette'];
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -10299,147 +10791,13 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
           <PreparationPlanner exam={exam} />
         )}
 
-        {/* Section 08: Trusted Resources (Topper Consensus & Official Sources) */}
+        {/* Section 08: Resource Library (searchable, grouped, bookmarkable) */}
         {activeSection === 8 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-              <div>
-                <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'white', margin: 0 }}>
-                  08 — Most Trusted Resources (Topper Consensus & Official Standards)
-                </h3>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', margin: '4px 0 0 0' }}>
-                  Handpicked reference books, previous year question compendiums, typing simulators, and official gazettes vetted by thousands of successful candidates.
-                </p>
-              </div>
-            </div>
-
-            {/* Resource Category Filter Bar */}
-            <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
-              {resourceCategories.map(cat => (
-                <button
-                  key={cat}
-                  onClick={() => setResourceSubjectFilter(cat)}
-                  className={`btn ${resourceSubjectFilter === cat ? 'btn-primary' : 'btn-secondary'}`}
-                  style={{ fontSize: '0.82rem', padding: '6px 14px', whiteSpace: 'nowrap' }}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-
-            {/* AI Resource Navigator & Assistant */}
-            <ResourceAIAssistant 
-              resources={exam.resources || []} 
-              onOpenResourceModal={(res) => setSelectedResourceForModal(res)}
-            />
-
-            {/* Resources Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
-              {filteredResources.map(res => (
-                <div key={res.id} style={{ padding: '22px', borderRadius: 'var(--radius-md)', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '14px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
-                      <span className="badge badge-verified" style={{ fontSize: '0.72rem' }}>
-                        {res.officialTag || res.subject}
-                      </span>
-                      {res.rating && (
-                        <span style={{ fontSize: '0.78rem', color: '#fbbf24', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <Star size={13} fill="#fbbf24" color="#fbbf24" /> {res.rating}
-                        </span>
-                      )}
-                    </div>
-
-                    <h4 style={{ fontSize: '1.08rem', fontWeight: 800, color: 'white', margin: 0 }}>
-                      {res.title}
-                    </h4>
-                    
-                    <div style={{ fontSize: '0.82rem', color: '#93c5fd', fontWeight: 600 }}>
-                      Author / Sourced Body: {res.author}
-                    </div>
-
-                    <p style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>
-                      {res.description}
-                    </p>
-
-                    <div style={{ padding: '8px 10px', borderRadius: 'var(--radius-sm)', background: 'rgba(16, 185, 129, 0.06)', border: '1px solid rgba(16, 185, 129, 0.2)', fontSize: '0.8rem', color: '#86efac' }}>
-                      <strong>Recommended Use:</strong> {res.recommendedFor}
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', borderTop: '1px solid rgba(255, 255, 255, 0.06)', paddingTop: '12px' }}>
-                    {res.resourceFormat === 'YOUTUBE_COURSE' ? (
-                      <>
-                        <a 
-                          href={res.youtubeUrl || res.url} 
-                          target="_blank" 
-                          rel="noreferrer" 
-                          className="btn btn-emerald" 
-                          style={{ fontSize: '0.82rem', padding: '7px 16px', display: 'flex', alignItems: 'center', gap: '6px' }}
-                        >
-                          <PlayCircle size={16} /> Watch Direct Video on YouTube <ExternalLink size={13} />
-                        </a>
-                        <button 
-                          onClick={() => setSelectedResourceForModal(res)}
-                          className="btn btn-secondary" 
-                          style={{ fontSize: '0.8rem', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '4px' }}
-                          title="Watch Video inside App"
-                        >
-                          <Eye size={14} /> Play in App
-                        </button>
-                      </>
-                    ) : res.resourceFormat === 'ONLINE_TOOL' ? (
-                      <>
-                        <a 
-                          href={res.url} 
-                          target="_blank" 
-                          rel="noreferrer" 
-                          className="btn btn-emerald" 
-                          style={{ fontSize: '0.82rem', padding: '6px 14px', display: 'flex', alignItems: 'center', gap: '6px' }}
-                        >
-                          Launch Typing Simulator <ExternalLink size={14} />
-                        </a>
-                      </>
-                    ) : res.directPdfUrl ? (
-                      <>
-                        <button 
-                          onClick={() => setSelectedResourceForModal(res)}
-                          className="btn btn-emerald" 
-                          style={{ fontSize: '0.82rem', padding: '7px 16px', display: 'flex', alignItems: 'center', gap: '6px' }}
-                        >
-                          <BookOpen size={16} /> Read Handbook & Notes
-                        </button>
-                        <a 
-                          href={res.directPdfUrl}
-                          download={res.downloadFileName || 'GovOS_Official_Resource.pdf'}
-                          className="btn btn-outline" 
-                          style={{ fontSize: '0.8rem', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}
-                        >
-                          <Download size={14} /> Download PDF
-                        </a>
-                      </>
-                    ) : (
-                      <>
-                        <button 
-                          onClick={() => setSelectedResourceForModal(res)}
-                          className="btn btn-emerald" 
-                          style={{ fontSize: '0.82rem', padding: '6px 14px', display: 'flex', alignItems: 'center', gap: '6px' }}
-                        >
-                          <BookOpen size={15} /> Read Full Handbook & Notes
-                        </button>
-                        <button 
-                          onClick={() => setSelectedResourceForModal(res)}
-                          className="btn btn-outline" 
-                          style={{ fontSize: '0.8rem', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}
-                        >
-                          <Download size={14} /> Save / Print PDF
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          <ResourceLibrary
+            exam={exam}
+            onOpenResource={(res) => setSelectedResourceForModal(res)}
+            onOpenProvenanceModal={onOpenProvenanceModal}
+          />
         )}
 
         {/* Section 09: CBT Practice & PYQs (Embeds PracticeEngine) */}

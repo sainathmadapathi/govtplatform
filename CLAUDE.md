@@ -22,7 +22,7 @@ govt-platform/
 └── src/
     ├── main.tsx               # App shell, global modals, React root
     ├── types.ts               # every interface and union
-    ├── data.ts                # exam register + mock papers + post study paths
+    ├── data.ts                # exam register + verified resource library + mock papers + study paths
     ├── services.ts            # storage, eligibility engine, profile maths
     └── ui.tsx                 # all 20 components, in dependency order
 ```
@@ -66,8 +66,15 @@ struck-through with a corrigendum badge. **This provenance chain is the product'
 
 ### `src/data.ts`
 - `SSC_CGL_EXAM` (18 posts, 9 dates incl. one superseded, 3 stages, ~21 syllabus topics,
-  3 roadmap tracks, ~14 resources, 6 FAQs, admit-card details, full application guide),
-  `UPSC_CSE_EXAM`, `IBPS_PO_EXAM`, `ALL_EXAMS`.
+  3 roadmap tracks, 25 resources, 6 FAQs, admit-card details, full application guide),
+  `UPSC_CSE_EXAM` (15 resources), `IBPS_PO_EXAM` (12 resources), `ALL_EXAMS`.
+- **Resource library.** `officialSource()` / `pendingSource()` build `DataProvenance` for
+  external links. Every `OFFICIAL_PORTAL` entry was HTTP-checked on 2026-09-09 and carries
+  `linkVerifiedDate`; `ncert.nic.in` timed out from the authoring machine so it is marked
+  `UNDER_VERIFICATION` ("Link check pending") rather than claimed verified. `isEssential`
+  pins a resource to the "Start here" shelf. Sources are government/regulator domains only
+  (SSC, UPSC, IBPS, PIB, e-Gazette, Legislative Dept, NDLI, SWAYAM, NIOS, MoSPI, Census,
+  NITI, PM India, RBI, SEBI, DFS, NABARD).
 - `ALL_POST_STUDY_PATHS` + `getPostStudyPath(id)` — resolves current, legacy and
   equivalent post ids to an authored study path.
 - Mock repository: `OFFICIAL_10_MOCK_PAPERS`, `NEW_DISCOVERED_PAPERS`, `SUBJECT_MOCK_TESTS`,
@@ -85,7 +92,9 @@ Adding real questions means extending those arrays.
   `govos_completed_modules`, `govos_mock_attempts` (capped at 50), `govos_candidate_profile`,
   `govos_bookmarked_resources`, `govos_tracked_exams`, `govos_notification_preferences`,
   `govos_candidate_notifications`, `govos_completed_syllabus_topics`, `govos_roadmap_goals`,
-  `govos_pending_reports`. Also owns
+  `govos_pending_reports`. `toggleResourceBookmark()` / `loadBookmarksFromSQLite()` back the
+  library's Saved shelf; `verifyResourceLinks(urls)` asks the server to HTTP-check links
+  (browsers can't, because of CORS). Also owns
   `generatePersonalizedNotificationsForTrackedExams()`, which walks each tracked exam's
   dates, emits notifications with stable ids (`notif-<examId>-deadline-3d`), honours
   `eventSubscriptions` + `reminderSchedule`, and preserves `isRead`/`createdAt` across
@@ -104,7 +113,13 @@ All 20 components, ordered leaves-first so composites can reference them:
 `NotificationPreferencesModal` · `ResourceReaderModal` · `ResourceAIAssistant` ·
 `PreparationPlanner` · `PostStudyPathEngine` · `PracticeEngine` ·
 `PracticeApplicationSimulator` · `ApplicationGuide` · `AdmitCardSection` ·
-`ExamDayChecklistSection` · `ResultNextStepsSection` · `ExamDetailView`
+`ExamDayChecklistSection` · `ResultNextStepsSection` · `ResourceLibrary` · `ExamDetailView`
+
+`ResourceLibrary` (Section 08): "Start here" essentials shelf, search, type-group and
+subject chips derived from the exam's own resources (so UPSC/IBPS never show empty SSC
+filters), results grouped by subject, one primary action per card chosen by
+`resourceFormat`, bookmark toggle, per-card link-status badge, and a "Verify all links now"
+button that shows live HTTP results. The old `ResourceAIAssistant` sits inside it, collapsed.
 
 `ExamDetailView` is the hub: a 9-stage **candidate lifecycle** as primary navigation, plus a
 collapsible grouped index of **16 detail sections** as secondary reference. `sectionToStep`
@@ -144,14 +159,17 @@ param defaulting to `'default-candidate'`** — single-user by design.
 `/` and `/<path>` serve `dist/index.html` (SPA fallback); `/resources/<file>` serves the
 PDFs. API: `/api/sqlite/status`, `/profile`, `/progress`, `/mock-attempts`, `/sync-all`,
 `/tracked-exams`, `/notifications` (GET/POST/DELETE), `/notifications/read`,
-`/notifications/preferences`, plus `/api/reports` (GET/POST) and
-`/api/reports/<id>/status` (POST).
+`/notifications/preferences`, `/api/sqlite/bookmarks` (GET/POST), `/api/reports`
+(GET/POST), `/api/reports/<id>/status` (POST), and `/api/resources/verify-links`
+(POST `{urls: []}` → HEAD-then-GET each with browser-like headers and a cookie jar, 8
+threads, 10s timeout; classifies HEALTHY / REDIRECT / BLOCKED / BROKEN / UNREACHABLE.
+Only GET results are trusted, because several portals answer HEAD with 404).
 
 Tables: `users`, `study_progress`, `mock_attempts` (with `details_json` holding
 `userAnswers` + the whole `paperData`), `bookmarked_resources`, `candidate_notes`,
 `audit_reports`, `tracked_exams`, `notification_preferences`, `candidate_notifications`.
-`bookmarked_resources` and `candidate_notes` have schemas but no endpoints and no frontend
-writers — harmless, but nothing reads them.
+`candidate_notes` has a schema but no endpoints and no frontend writers — harmless, but
+nothing reads it. `bookmarked_resources` backs the Resource Library's Saved shelf.
 
 ## Known issues
 
@@ -169,5 +187,7 @@ Remaining by design, not defects:
 - **Sections 15 and 16** use component-local content. `ExamDayChecklistItem` and
   `ResultNextStepStage` exist on `Exam` as optional fields for when per-exam data is
   authored; until then the generic CBT content shows for every exam.
-- **There is no "resource link health checking" feature.** The nearest thing is the Admin
-  panel's SHA-256 monitor for official *source* endpoints.
+- **Automated link checks are conservative.** `ncert.nic.in` and `censusindia.gov.in`
+  time out for `urllib` from some networks while opening fine in a browser; the UI labels
+  these amber "Could not reach automatically · open to confirm", never red. Red is reserved
+  for a real HTTP error on GET.

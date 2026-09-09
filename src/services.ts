@@ -1,6 +1,7 @@
 // GovOS services: age/profile maths, eligibility engine, dual-persistence storage.
 
 import {
+  ResourceLinkCheck,
   CandidateNotification,
   EligibilityDiagnostic,
   Exam,
@@ -1078,6 +1079,94 @@ class StorageService {
     }
     this.setPendingReports(stillPending);
     return sent;
+  }
+
+  // --- 7e. Bookmarked Resources ("Saved for later" shelf) ---
+
+  getBookmarkedResourceIds(): string[] {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.BOOKMARKS);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {
+      console.warn('LocalStorage parse error for bookmarks:', e);
+    }
+    return [];
+  }
+
+  private setBookmarkedResourceIds(ids: string[]): void {
+    try {
+      localStorage.setItem(STORAGE_KEYS.BOOKMARKS, JSON.stringify(ids));
+    } catch (e) {
+      console.warn('LocalStorage save error for bookmarks:', e);
+    }
+  }
+
+  isResourceBookmarked(resourceId: string): boolean {
+    return this.getBookmarkedResourceIds().includes(resourceId);
+  }
+
+  /** Toggles a bookmark locally and mirrors it to SQLite. Returns the new id list. */
+  toggleResourceBookmark(resource: { id: string; title: string; type: string; url: string }): string[] {
+    const current = this.getBookmarkedResourceIds();
+    const isNowSaved = !current.includes(resource.id);
+    const updated = isNowSaved ? [...current, resource.id] : current.filter(id => id !== resource.id);
+    this.setBookmarkedResourceIds(updated);
+
+    fetch('/api/sqlite/bookmarks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        resource_id: resource.id,
+        title: resource.title,
+        resource_type: resource.type,
+        url: resource.url,
+        is_bookmarked: isNowSaved
+      })
+    }).catch(() => {
+      // Offline fallback: localStorage already holds the change
+    });
+
+    return updated;
+  }
+
+  async loadBookmarksFromSQLite(): Promise<string[]> {
+    try {
+      const res = await fetch('/api/sqlite/bookmarks');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.resource_ids)) {
+          // Union with local so an offline save is never dropped
+          const merged = Array.from(new Set([...this.getBookmarkedResourceIds(), ...data.resource_ids]));
+          this.setBookmarkedResourceIds(merged);
+          return merged;
+        }
+      }
+    } catch {
+      // Offline fallback
+    }
+    return this.getBookmarkedResourceIds();
+  }
+
+  // --- 7f. Resource Link Health Check (server performs the HTTP requests) ---
+
+  async verifyResourceLinks(urls: string[]): Promise<ResourceLinkCheck[]> {
+    try {
+      const res = await fetch('/api/resources/verify-links', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ urls })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.results)) return data.results;
+      }
+    } catch {
+      // Server unreachable: caller shows "could not verify"
+    }
+    return [];
   }
 
   // --- 8. Background SQLite Synchronization API Calls ---

@@ -1,6 +1,9 @@
 import os
 import json
 import sqlite3
+import urllib.request
+import urllib.error
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from flask import Flask, send_from_directory, jsonify, request
 from flask_cors import CORS
@@ -685,6 +688,97 @@ def handle_notifications():
         conn.commit()
         conn.close()
         return jsonify({"status": "cleared", "user_id": user_id})
+
+@app.route('/api/sqlite/bookmarks', methods=['GET', 'POST'])
+def handle_bookmarks():
+    """Candidate's saved study resources ("Saved for later" shelf)."""
+    user_id = request.args.get('user_id', 'default-candidate')
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    if request.method == 'GET':
+        cursor.execute(
+            "SELECT resource_id, title, resource_type, url, bookmarked_at "
+            "FROM bookmarked_resources WHERE user_id = ? ORDER BY bookmarked_at DESC",
+            (user_id,)
+        )
+        rows = cursor.fetchall()
+        conn.close()
+        return jsonify({
+            "user_id": user_id,
+            "resource_ids": [r["resource_id"] for r in rows],
+            "bookmarks": [
+                {"resourceId": r["resource_id"], "title": r["title"],
+                 "resourceType": r["resource_type"], "url": r["url"],
+                 "bookmarkedAt": r["bookmarked_at"]}
+                for r in rows
+            ]
+        })
+
+    data = request.get_json(silent=True) or {}
+    resource_id = data.get('resource_id')
+    if not resource_id:
+        conn.close()
+        return jsonify({"error": "resource_id is required"}), 400
+
+    if data.get('is_bookmarked', True):
+        cursor.execute(
+            "INSERT OR IGNORE INTO bookmarked_resources (user_id, resource_id, title, resource_type, url) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (user_id, resource_id, data.get('title', ''), data.get('resource_type', ''), data.get('url', ''))
+        )
+    else:
+        cursor.execute("DELETE FROM bookmarked_resources WHERE user_id = ? AND resource_id = ?",
+                       (user_id, resource_id))
+    conn.commit()
+
+    cursor.execute("SELECT resource_id FROM bookmarked_resources WHERE user_id = ?", (user_id,))
+    ids = [r["resource_id"] for r in cursor.fetchall()]
+    conn.close()
+    return jsonify({"status": "updated", "user_id": user_id, "resource_ids": ids})
+
+
+def _check_one_link(url):
+    """HEAD then GET with a browser-like UA and a cookie jar, so sites that bounce
+    through a session-cookie redirect (e.g. ASP.NET portals) resolve as a browser would."""
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36 GovOS-LinkCheck/1.0",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-IN,en;q=0.9"
+    }
+    checked_at = datetime.now().isoformat(timespec='seconds')
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor())
+    for method in ("HEAD", "GET"):
+        try:
+            req = urllib.request.Request(url, headers=headers, method=method)
+            with opener.open(req, timeout=10) as resp:
+                code = resp.getcode()
+                status = "REDIRECT" if resp.geturl() != url and code in (301, 302, 303, 307, 308) else "HEALTHY"
+                return {"url": url, "status": status, "httpCode": code, "checkedAt": checked_at}
+        except urllib.error.HTTPError as e:
+            if method == "HEAD":
+                continue  # many portals answer HEAD with 404/405 yet serve GET; only trust GET
+            status = "BLOCKED" if e.code in (401, 403, 429) else "BROKEN"
+            return {"url": url, "status": status, "httpCode": e.code, "checkedAt": checked_at}
+        except Exception:
+            if method == "HEAD":
+                continue
+            return {"url": url, "status": "UNREACHABLE", "httpCode": 0, "checkedAt": checked_at}
+    return {"url": url, "status": "UNREACHABLE", "httpCode": 0, "checkedAt": checked_at}
+
+
+@app.route('/api/resources/verify-links', methods=['POST'])
+def verify_resource_links():
+    """Live health check for study-resource URLs, run server-side (no browser CORS limits)."""
+    data = request.get_json(silent=True) or {}
+    urls = data.get('urls')
+    if not isinstance(urls, list) or not urls:
+        return jsonify({"error": "urls[] is required"}), 400
+    urls = [u for u in urls if isinstance(u, str) and u.startswith(('http://', 'https://'))][:40]
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        results = list(pool.map(_check_one_link, urls))
+    return jsonify({"results": results, "checked": len(results)})
+
 
 @app.route('/api/sqlite/notifications/read', methods=['POST'])
 def mark_notification_read():

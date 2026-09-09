@@ -186,10 +186,19 @@ export interface InAppChapter {
 export interface ResourceItem {
   id: string;
   title: string;
-  subject: 'Quantitative Aptitude' | 'English Comprehension' | 'Reasoning' | 'General Awareness & Static GK' | 'Computer & Typing' | 'Official Gazette';
+  subject:
+    | 'Quantitative Aptitude'
+    | 'English Comprehension'
+    | 'Reasoning'
+    | 'General Awareness & Static GK'
+    | 'Current Affairs & Governance'
+    | 'Banking & Financial Awareness'
+    | 'Foundation Textbooks & Open Courses'
+    | 'Computer & Typing'
+    | 'Official Gazette';
   author: string;
-  type: 'OFFICIAL_PDF' | 'SIMPLIFIED_GUIDE' | 'RECOMMENDED_BOOK' | 'VIDEO_LECTURE' | 'ONLINE_TOOL';
-  resourceFormat: 'DIRECT_PDF' | 'YOUTUBE_COURSE' | 'INTERACTIVE_HANDBOOK' | 'ONLINE_TOOL';
+  type: 'OFFICIAL_PDF' | 'OFFICIAL_PORTAL' | 'SIMPLIFIED_GUIDE' | 'RECOMMENDED_BOOK' | 'VIDEO_LECTURE' | 'ONLINE_TOOL';
+  resourceFormat: 'DIRECT_PDF' | 'YOUTUBE_COURSE' | 'INTERACTIVE_HANDBOOK' | 'ONLINE_TOOL' | 'OFFICIAL_PORTAL';
   url: string;
   directPdfUrl?: string;
   youtubeUrl?: string;
@@ -204,6 +213,19 @@ export interface ResourceItem {
   rating?: string;
   officialTag?: string;
   provenance?: DataProvenance;
+  /** Pinned to the "Start here" shelf at the top of the resource library. */
+  isEssential?: boolean;
+  /** Date (YYYY-MM-DD) the URL last returned a healthy HTTP response from GovOS's link check. */
+  linkVerifiedDate?: string;
+}
+
+export type ResourceLinkStatus = 'HEALTHY' | 'REDIRECT' | 'BLOCKED' | 'BROKEN' | 'UNREACHABLE';
+
+export interface ResourceLinkCheck {
+  url: string;
+  status: ResourceLinkStatus;
+  httpCode: number;
+  checkedAt: string;
 }
 
 export interface FAQItem {
