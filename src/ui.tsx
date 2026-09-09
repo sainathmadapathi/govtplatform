@@ -119,10 +119,12 @@ import {
   MockPaper,
   NEW_DISCOVERED_PAPERS,
   OFFICIAL_10_MOCK_PAPERS,
+  parseTestRequest,
   QUANT_TEMPLATES,
   REASONING_TEMPLATES,
   SSC_CGL_EXAM,
   SUBJECT_MOCK_TESTS,
+  TOPIC_CATALOG,
   TOPIC_DRILL_TESTS
 } from './data';
 import {
@@ -5305,61 +5307,50 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
     if (!customText) setChatInput('');
 
     setTimeout(() => {
-      const lower = query.toLowerCase();
+      const req = parseTestRequest(query);
+      const stamp = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-      // 1. Detect Subjects
-      const matchedSubjects: string[] = [];
-      if (lower.includes('quant') || lower.includes('math') || lower.includes('geometry') || lower.includes('algebra') || lower.includes('trig') || lower.includes('profit') || lower.includes('ci/si') || lower.includes('mensuration')) {
-        matchedSubjects.push('Quantitative Aptitude');
-      }
-      if (lower.includes('reasoning') || lower.includes('syllogism') || lower.includes('blood') || lower.includes('series') || lower.includes('analogy') || lower.includes('dice')) {
-        matchedSubjects.push('Reasoning & General Intelligence');
-      }
-      if (lower.includes('english') || lower.includes('grammar') || lower.includes('vocab') || lower.includes('synonym') || lower.includes('antonym') || lower.includes('voice') || lower.includes('narration')) {
-        matchedSubjects.push('English Comprehension');
-      }
-      if (lower.includes('ga') || lower.includes('gk') || lower.includes('polity') || lower.includes('constitution') || lower.includes('history') || lower.includes('geography') || lower.includes('science')) {
-        matchedSubjects.push('General Awareness');
-      }
-      if (lower.includes('computer') || lower.includes('excel') || lower.includes('hardware') || lower.includes('cpt')) {
-        matchedSubjects.push('Computer Proficiency');
+      // Nothing in the message matched a subject or a topic: ask, don't guess.
+      if (req.topics.length === 0 && req.subjects.length === 0 && req.unrecognised.length > 0) {
+        const examples = TOPIC_CATALOG.filter(t => t.generate && t.inSyllabus).slice(0, 6).map(t => t.label);
+        setChatMessages(prev => [...prev, {
+          id: `msg-bot-${Date.now()}`,
+          sender: 'assistant',
+          text: `I could not match "${req.unrecognised[0]}" to anything in the question bank, so I have not built a test — a random mix would not help you.\n\nName a topic and I will generate it, for example:\n${examples.map(e => `• ${req.numQuestions} questions on ${e.toLowerCase()}`).join('\n')}\n\nOr name a section: Quantitative Aptitude, Reasoning, English, General Awareness.`,
+          timestamp: stamp()
+        }]);
+        return;
       }
 
-      const finalSubjects = matchedSubjects.length > 0 
-        ? matchedSubjects 
-        : ['Quantitative Aptitude', 'Reasoning & General Intelligence', 'English Comprehension', 'General Awareness'];
-
-      // 2. Detect Question Count
-      const countMatch = query.match(/\b(\d+)\s*(q|qs|questions|question|problems)?\b/i);
-      let numQs = 15;
-      if (countMatch && countMatch[1]) {
-        const parsed = parseInt(countMatch[1], 10);
-        if (parsed >= 5 && parsed <= 100) {
-          numQs = parsed;
-        }
-      }
-
-      // 3. Detect Difficulty
-      let difficulty: 'EASY' | 'MEDIUM' | 'HARD' | 'ADAPTIVE' = 'MEDIUM';
-      if (lower.includes('hard') || lower.includes('tough') || lower.includes('tier-2') || lower.includes('tier 2') || lower.includes('advanced') || lower.includes('complex')) {
-        difficulty = 'HARD';
-      } else if (lower.includes('easy') || lower.includes('speed') || lower.includes('basic') || lower.includes('quick')) {
-        difficulty = 'EASY';
-      } else if (lower.includes('adaptive') || lower.includes('mixed')) {
-        difficulty = 'ADAPTIVE';
-      }
-
-      // 4. Generate Mock Paper with Intelligent Timer
       const generatedMock = generateCustomMockTest({
-        title: `AI Tailored Drill: ${finalSubjects.join(' + ')} (${numQs} Qs)`,
-        selectedSubjects: finalSubjects,
-        selectedTopics: [],
-        numQuestions: numQs,
-        difficulty,
-        focusGoal: lower.includes('weak') ? 'WEAK_AREAS' : 'GENERAL'
+        selectedSubjects: req.subjects,
+        selectedTopics: req.topics.map(t => t.key),
+        numQuestions: req.numQuestions,
+        difficulty: req.difficulty,
+        durationMinutes: req.durationMinutes,
+        focusGoal: req.focusGoal
       });
 
-      const responseText = `I have analyzed your request ("${query}") and created your tailored mock test:\n\n• Target Subjects: ${finalSubjects.join(', ')}\n• Questions: ${numQs} Questions\n• Difficulty: ${difficulty} Level\n• Intelligent Calibrated Timer: ${generatedMock.durationMinutes} Minutes\n\nClick below to start this test immediately!`;
+      const scopeLine = req.topics.length > 0
+        ? req.topics.map(t => t.label).join(' + ')
+        : req.subjects.length > 0
+          ? `${req.subjects.join(' + ')} (whole section)`
+          : 'not specified — mixed Tier-1 sections';
+
+      const lines = [
+        `Here is what I understood from "${query}":`,
+        '',
+        `• Topic: ${scopeLine}`,
+        `• Questions: ${generatedMock.totalQuestions}`,
+        `• Difficulty: ${req.difficulty}`,
+        `• Time: ${generatedMock.durationMinutes} minutes${req.durationMinutes ? ' (as you asked)' : ' (calibrated for this length)'}`
+      ];
+      if (generatedMock.generationNotes && generatedMock.generationNotes.length > 0) {
+        lines.push('');
+        generatedMock.generationNotes.forEach(n => lines.push(`— ${n}`));
+      }
+      lines.push('', 'Click below to start. Every solution names where the question came from.');
+      const responseText = lines.join('\n');
 
       const botMsg: MockChatMessage = {
         id: `msg-bot-${Date.now()}`,

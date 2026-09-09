@@ -111,10 +111,46 @@ struck-through with a corrigendum badge. **This provenance chain is the product'
 - Mock repository: `OFFICIAL_10_MOCK_PAPERS`, `NEW_DISCOVERED_PAPERS`, `SUBJECT_MOCK_TESTS`,
   `TOPIC_DRILL_TESTS`, `generateCustomMockTest(config)`.
 
-**Question content is template-cycled.** Only 11 `*_TEMPLATES` entries exist (4 reasoning,
-3 quant, 2 GA, 1 English, 1 computer); `buildFullPaperQuestions()` cycles them with
+**Full-shift papers are template-cycled.** 35 `*_TEMPLATES` entries exist (4 reasoning,
+14 GA, 15 quant, 1 English, 1 computer); `buildFullPaperQuestions()` cycles them with
 `i % len` to fill each "100-question" paper, so all papers share the same underlying items.
-Adding real questions means extending those arrays.
+Adding real past-paper questions means extending those arrays.
+
+**Custom tests are topic-scoped, not template-cycled.** `TOPIC_CATALOG` lists 34 topics —
+key, label, subject, recognition aliases, `inSyllabus`, and an optional `generate()`. Asking
+for "12 questions on calculus" must produce twelve calculus questions, so:
+
+- `parseTestRequest(query)` turns a chat message into `{subjects, topics, numQuestions,
+  difficulty, durationMinutes?, focusGoal, unrecognised}`. Aliases match on **word
+  boundaries** (plural-tolerant): substring matching read "quantum physics" as Quantitative
+  Aptitude, "Framework" as Time & Work and "Similar Triangles" as Simple Interest. The count
+  comes from a number attached to a question-word, never from "in 10 minutes". `simple` and
+  `speed` are topic words, so they are not read as difficulty.
+- `generateCustomMockTest` draws per requested topic: matching bank questions first, then
+  the topic's generator. Each bank question belongs to exactly **one** topic — the one whose
+  longest alias its name contains (`ownerOf`) — so a trigonometry question never fills a
+  speed-and-distance drill.
+- **Question sources.** 12 procedural generators (calculus, percentage, ratio, average,
+  SI/CI, profit & loss, time & work, speed-time-distance, algebra, number series,
+  coding-decoding, direction sense) build questions from seeded random values and compute
+  the answer, the distractors and the worked steps. 5 curated sets (synonyms/antonyms,
+  idioms, error spotting, active-to-passive voice, computer basics — 58 items) are written
+  and checked by hand, because language and factual items cannot be generated safely. All of
+  it is `GOVOS_AUTHORED` and renders as "GovOS practice question"; never label it official.
+- **Scarcity is stated, never hidden.** If a topic runs out the test widens to the rest of
+  that subject, then to the other Tier-1 sections, and finally stops short — a question is
+  never repeated inside one paper. Every decision lands in `generationNotes[]`, which the
+  chat prints back, plus `requestSummary` and the count of questions actually on the
+  requested topic in `description`.
+- Off-syllabus requests are honoured with a note ("Calculus is not part of the SSC CGL
+  syllabus"). A request matching nothing produces no test: the chat says so and offers
+  in-syllabus examples.
+
+A harness that re-derives every generated answer from the question text lives in the
+session scratchpad (`gen_test.ts`); the last run checked 1090 answers with 0 mismatches.
+Re-run it after touching a generator: copy it to `src/`, `npx esbuild src/__gen_test.ts
+--bundle --platform=node --format=cjs --outfile=<tmp>.cjs`, `node <tmp>.cjs`, then delete it
+(the repo keeps 5 source files).
 
 ### `src/services.ts`
 - `storageService` — the **only** place that talks to the API. localStorage is written
@@ -236,10 +272,12 @@ so run it yourself.
 
 Remaining by design, not defects:
 
-- **The "AI" features are deterministic local logic.** `AIAssistant`, `ResourceAIAssistant`
-  and the PracticeEngine chat are keyword matchers; the admin SHA-256 monitor and the PDF
-  extraction sample are fixtures. Preserve the framing; don't wire them to a model unasked.
-- **Question corpus is 11 templates** (see `data.ts` above).
+- **The "AI" features are deterministic local logic.** `AIAssistant` and
+  `ResourceAIAssistant` are keyword matchers; the PracticeEngine chat is a written parser
+  over `TOPIC_CATALOG` (no model call); the admin SHA-256 monitor and the PDF extraction
+  sample are fixtures. Preserve the framing; don't wire them to a model unasked.
+- **The past-paper corpus is 35 templates** (see `data.ts` above). Custom tests are not
+  limited to it — they generate per topic — but full shift papers still cycle these.
 - **UPSC and IBPS datasets are thin** next to SSC CGL. Views degrade gracefully (the roadmap
   shows "0 of 0 milestones"), but the data, not the code, is the limit.
 - **Sections 15 and 16** use component-local content. `ExamDayChecklistItem` and

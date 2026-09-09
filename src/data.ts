@@ -2876,6 +2876,10 @@ export interface MockPaper {
   description: string;
   provenanceTag: string;
   questions: PracticeQuestion[];
+  /** Plain-language notes about how a custom test was assembled (off-syllabus topics, generated vs bank). */
+  generationNotes?: string[];
+  /** One-line restatement of the request the generator acted on. */
+  requestSummary?: string;
 }
 
 export interface CustomTestConfig {
@@ -2885,6 +2889,8 @@ export interface CustomTestConfig {
   numQuestions: number;
   difficulty: 'EASY' | 'MEDIUM' | 'HARD' | 'ADAPTIVE';
   focusGoal?: 'GENERAL' | 'WEAK_AREAS' | 'SPEED_BOOSTER' | 'PRE_EXAM';
+  /** Explicit timer requested by the candidate, in minutes. Overrides calibration. */
+  durationMinutes?: number;
 }
 
 const sscProvenance: DataProvenance = {
@@ -4651,53 +4657,933 @@ export const TOPIC_DRILL_TESTS: MockPaper[] = [
 // ==================================================================
 // 4. MOCK TEST GENERATOR ASSISTANT ENGINE
 // ==================================================================
-export function generateCustomMockTest(config: CustomTestConfig): MockPaper {
-  const selectedSubs = config.selectedSubjects.length > 0
-    ? config.selectedSubjects
-    : ['Quantitative Aptitude', 'Reasoning & General Intelligence', 'English Comprehension', 'General Awareness'];
+// ==========================================================================
+// Topic-aware custom test generation
+//
+// A request like "12 questions on calculus" must produce twelve calculus
+// questions — not a four-subject mix. Requests are parsed into subjects,
+// topics, count, difficulty and time; questions come first from the official-
+// sourced bank (matched by topic), then from procedural generators for topics
+// the bank doesn't cover. Generated questions are labelled as GovOS-generated
+// and carry computed, verifiable answers with worked steps.
+// ==========================================================================
 
-  const targetCount = config.numQuestions || 25;
-  const questions: PracticeQuestion[] = [];
+export type TemplateQuestion = {
+  topic: string;
+  text: string;
+  options: string[];
+  correct: number;
+  exp: string;
+  detailedExp: DetailedExplanation;
+  source?: QuestionSource;
+};
 
-  let secondsPerQuestion = 36;
-  if (config.difficulty === 'HARD') secondsPerQuestion = 55;
-  else if (config.difficulty === 'EASY') secondsPerQuestion = 28;
-  else if (config.difficulty === 'MEDIUM') secondsPerQuestion = 40;
+export interface TopicSpec {
+  key: string;
+  label: string;
+  subject: string;
+  aliases: string[];
+  /** false = not in the SSC CGL syllabus; still served on request, with a note. */
+  inSyllabus: boolean;
+  /** Procedural generator, if the topic can be generated with computed answers. */
+  generate?: (difficulty: CustomTestConfig['difficulty'], rng: () => number, index: number) => TemplateQuestion;
+}
 
-  const isOnlyFastSections = selectedSubs.every(s => s === 'General Awareness' || s === 'English Comprehension');
-  if (isOnlyFastSections) {
-    secondsPerQuestion = Math.round(secondsPerQuestion * 0.6);
+const SUBJECT_QUANT = 'Quantitative Aptitude';
+const SUBJECT_REAS = 'Reasoning & General Intelligence';
+const SUBJECT_ENG = 'English Comprehension';
+const SUBJECT_GA = 'General Awareness';
+const SUBJECT_COMP = 'Computer Proficiency';
+
+const SUBJECT_ALIASES: { subject: string; aliases: string[] }[] = [
+  { subject: SUBJECT_QUANT, aliases: ['quant', 'quantitative', 'maths', 'math', 'mathematics', 'arithmetic', 'numerical'] },
+  { subject: SUBJECT_REAS, aliases: ['reasoning', 'general intelligence', 'logical', 'logic'] },
+  { subject: SUBJECT_ENG, aliases: ['english', 'comprehension', 'language'] },
+  { subject: SUBJECT_GA, aliases: ['general awareness', 'gk', 'ga', 'general knowledge', 'static gk', 'awareness'] },
+  { subject: SUBJECT_COMP, aliases: ['computer', 'computers', 'cpt', 'computer knowledge', 'it basics'] }
+];
+
+// ---- seeded RNG so a request produces varied but reproducible numbers ----------
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const pick = <T,>(rng: () => number, arr: T[]): T => arr[Math.floor(rng() * arr.length)];
+const between = (rng: () => number, lo: number, hi: number) => lo + Math.floor(rng() * (hi - lo + 1));
+const fmt = (n: number) => (Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100));
+
+/** Build four options around a correct value using distinct distractors. */
+function numericOptions(rng: () => number, correct: number, distractors: number[], unit: string = ''): { options: string[]; correct: number } {
+  const seen = new Set<number>([correct]);
+  const ds: number[] = [];
+  for (const d of distractors) {
+    if (!seen.has(d) && Number.isFinite(d)) { seen.add(d); ds.push(d); }
+    if (ds.length === 3) break;
+  }
+  let bump = 1;
+  while (ds.length < 3) {
+    const cand = correct + bump * (ds.length % 2 === 0 ? 1 : -1) * Math.max(1, Math.round(Math.abs(correct) * 0.1));
+    if (!seen.has(cand)) { seen.add(cand); ds.push(cand); }
+    bump++;
+  }
+  const all = [correct, ...ds].map(v => fmt(v) + unit);
+  // shuffle deterministically
+  const order = all.map((v, i) => ({ v, i, r: rng() })).sort((a, b) => a.r - b.r);
+  const options = order.map(o => o.v);
+  const correctIndex = order.findIndex(o => o.i === 0);
+  return { options, correct: correctIndex };
+}
+
+const generatedSource = (topicLabel: string, detail: string): QuestionSource => ({
+  label: `Generated by GovOS for this request — ${topicLabel} (${detail})`,
+  url: 'https://ssc.gov.in',
+  publisher: 'GovOS question generator; answer computed and checked at generation time',
+  kind: 'GOVOS_AUTHORED'
+});
+
+function explain(simple: string, core: string, steps: string[], takeaway: string, trick?: string, trickName?: string): DetailedExplanation {
+  const d: DetailedExplanation = {
+    simpleExplanation: simple,
+    coreConcept: core,
+    stepByStepMethod: steps,
+    crucialTakeaway: takeaway
+  };
+  // The solution card renders `explanation`; `trickSteps` feeds the animated one-liner.
+  if (trick) {
+    d.shortcutTrick = {
+      name: trickName || 'One-line method',
+      trickSteps: trick,
+      explanation: trick,
+      timeSaved: 'Saves the full working'
+    };
+  }
+  return d;
+}
+
+// ---- procedural generators ----------------------------------------------------
+const genCalculus: TopicSpec['generate'] = (difficulty, rng, index) => {
+  const hard = difficulty === 'HARD';
+  const variant = index % 5;
+  if (variant === 0) {
+    const a = between(rng, 1, hard ? 6 : 3), b = between(rng, -6, 6), c = between(rng, -9, 9), k = between(rng, 1, hard ? 6 : 4);
+    const val = 2 * a * k + b;
+    const o = numericOptions(rng, val, [a * k * k + b * k + c, 2 * a * k, 2 * a + b, val + a]);
+    const sb = b === 0 ? '' : (b > 0 ? ` + ${b}x` : ` − ${-b}x`);
+    const bTerm = b === 0 ? '' : (b > 0 ? ` + ${b}` : ` − ${-b}`);
+    const sc = c === 0 ? '' : (c > 0 ? ` + ${c}` : ` − ${-c}`);
+    return {
+      topic: 'Calculus: Derivative at a Point',
+      text: `If f(x) = ${a === 1 ? '' : a}x²${sb}${sc}, then the value of f′(${k}) is:`,
+      options: o.options, correct: o.correct,
+      exp: `f′(x) = ${2 * a}x${bTerm}; substituting x = ${k} gives ${val}.`,
+      source: generatedSource('Calculus', 'derivative at a point'),
+      detailedExp: explain(
+        'Differentiate term by term with the power rule, then put the given x-value into the derivative — not into the original function.',
+        'Power rule: d/dx(xⁿ) = n·xⁿ⁻¹; the derivative of a constant is 0.',
+        [
+          `Step 1: d/dx(${a === 1 ? '' : a}x²) = ${2 * a}x.`,
+          b === 0 ? `Step 2: the constant ${c} differentiates to 0.` : `Step 2: d/dx(${b}x) = ${b}; d/dx(${c}) = 0.`,
+          `Step 3: f′(x) = ${2 * a}x${bTerm}.`,
+          `Step 4: f′(${k}) = ${2 * a}·${k}${bTerm} = ${val}.`
+        ],
+        'Substitute into the derivative, never into f(x) — the value of f(k) is the standard trap option.',
+        'Write the derivative first, then substitute.', 'Differentiate, then substitute')
+    };
+  }
+  if (variant === 1) {
+    const a = between(rng, 1, hard ? 5 : 3) * 2, b = between(rng, -5, 5), k = between(rng, 1, hard ? 5 : 3);
+    const val = (a * k * k) / 2 + b * k;
+    const o = numericOptions(rng, val, [a * k + b, a * k * k + b * k, (a * k * k) / 2, val + k]);
+    return {
+      topic: 'Calculus: Definite Integral of a Linear Function',
+      text: `The value of ∫₀^${k} (${a}x ${b >= 0 ? '+ ' + b : '− ' + (-b)}) dx is:`,
+      options: o.options, correct: o.correct,
+      exp: `∫(${a}x + ${b})dx = ${a / 2}x² + ${b}x; evaluating from 0 to ${k} gives ${val}.`,
+      source: generatedSource('Calculus', 'definite integral'),
+      detailedExp: explain(
+        'Integrate each term (raise the power by one and divide by the new power), then subtract the value at the lower limit from the value at the upper limit.',
+        'Fundamental theorem of calculus: ∫ₐᵇ f(x)dx = F(b) − F(a) where F′ = f.',
+        [`Step 1: ∫${a}x dx = ${a / 2}x².`, `Step 2: ∫${b} dx = ${b}x.`, `Step 3: F(x) = ${a / 2}x² + ${b}x; F(0) = 0.`, `Step 4: F(${k}) = ${a / 2}·${k * k} + ${b}·${k} = ${val}.`],
+        'The lower limit 0 contributes nothing here, but always evaluate both limits.',
+        'For a polynomial from 0 to k, just evaluate the antiderivative at k.', 'Lower limit zero')
+    };
+  }
+  if (variant === 2) {
+    const k = between(rng, 2, hard ? 9 : 6);
+    const val = 2 * k;
+    const o = numericOptions(rng, val, [k, k * k, 0, k + 2]);
+    return {
+      topic: 'Calculus: Limits (Removable Discontinuity)',
+      text: `lim (x→${k}) (x² − ${k * k}) / (x − ${k}) equals:`,
+      options: o.options, correct: o.correct,
+      exp: `x² − ${k * k} = (x − ${k})(x + ${k}); cancel (x − ${k}) and substitute x = ${k}: ${k} + ${k} = ${val}.`,
+      source: generatedSource('Calculus', 'limit by factorisation'),
+      detailedExp: explain(
+        'Direct substitution gives 0/0, which means nothing yet. Factor the numerator, cancel the common factor, then substitute.',
+        'A 0/0 form is indeterminate; factorising removes the discontinuity so the limit can be read off.',
+        [`Step 1: Substituting x = ${k} gives (${k * k} − ${k * k})/(${k} − ${k}) = 0/0.`, `Step 2: x² − ${k * k} = (x − ${k})(x + ${k}).`, `Step 3: Cancel (x − ${k}): the expression becomes x + ${k}.`, `Step 4: Substitute x = ${k}: ${val}.`],
+        '0/0 means factorise, not "undefined".',
+        'lim (x→a)(x² − a²)/(x − a) = 2a — instantly.', 'Standard limit form')
+    };
+  }
+  if (variant === 3) {
+    const n = between(rng, 2, hard ? 5 : 4), k = between(rng, 1, 3);
+    const val = n * Math.pow(k, n - 1);
+    const o = numericOptions(rng, val, [Math.pow(k, n), n * Math.pow(k, n), (n - 1) * Math.pow(k, n - 1), n * k]);
+    return {
+      topic: 'Calculus: Power Rule',
+      text: `If y = x^${n}, then dy/dx at x = ${k} is:`,
+      options: o.options, correct: o.correct,
+      exp: `dy/dx = ${n}x^${n - 1}; at x = ${k} this is ${n}·${k}^${n - 1} = ${val}.`,
+      source: generatedSource('Calculus', 'power rule'),
+      detailedExp: explain(
+        'Bring the power down as a multiplier and reduce the power by one, then substitute.',
+        'Power rule: d/dx(xⁿ) = n·xⁿ⁻¹.',
+        [`Step 1: dy/dx = ${n}·x^${n - 1}.`, `Step 2: At x = ${k}: ${n}·${k}^${n - 1}.`, `Step 3: ${k}^${n - 1} = ${Math.pow(k, n - 1)}, so the value is ${val}.`],
+        'Reduce the exponent by one; forgetting that gives the n·kⁿ trap.',
+        'Multiply by the old power, subtract one from the power.', 'Power rule in one line')
+    };
+  }
+  const b = between(rng, 1, hard ? 8 : 5) * 2, c = between(rng, -6, 6);
+  const val = c + (b * b) / 4;
+  const o = numericOptions(rng, val, [c, b * b, c + b, (b * b) / 4]);
+  return {
+    topic: 'Calculus: Maximum of a Quadratic',
+    text: `The maximum value of f(x) = −x² + ${b}x ${c >= 0 ? '+ ' + c : '− ' + (-c)} is:`,
+    options: o.options, correct: o.correct,
+    exp: `f′(x) = −2x + ${b} = 0 gives x = ${b / 2}; f(${b / 2}) = −${(b * b) / 4} + ${(b * b) / 2} ${c >= 0 ? '+ ' + c : '− ' + (-c)} = ${val}.`,
+    source: generatedSource('Calculus', 'maximum via first derivative'),
+    detailedExp: explain(
+      'Set the derivative to zero to find where the curve turns, then evaluate the function there. A negative x² term means the turning point is a maximum.',
+      'Stationary point at f′(x) = 0; f″(x) = −2 < 0 confirms a maximum.',
+      [`Step 1: f′(x) = −2x + ${b}.`, `Step 2: −2x + ${b} = 0 ⇒ x = ${b / 2}.`, `Step 3: f(${b / 2}) = −(${b / 2})² + ${b}·${b / 2} ${c >= 0 ? '+ ' + c : '− ' + (-c)} = ${val}.`],
+      'Solve f′(x) = 0 for x, then substitute back into f(x) — the x-value alone is a trap option.',
+      'For −x² + bx + c the maximum is c + b²/4.', 'Vertex formula')
+  };
+};
+
+const genPercentage: TopicSpec['generate'] = (difficulty, rng, index) => {
+  const hard = difficulty === 'HARD';
+  if (index % 3 === 0) {
+    const p = pick(rng, hard ? [12, 15, 35, 45, 65] : [10, 20, 25, 40, 50]);
+    const n = between(rng, 2, hard ? 40 : 12) * (100 / (p % 25 === 0 ? 4 : p % 20 === 0 ? 5 : 20)) * (hard ? 1 : 1);
+    const base = Math.round(n / 20) * 20 || 20;
+    const val = (p * base) / 100;
+    const o = numericOptions(rng, val, [(p * base) / 10, base - val, val * 2, val + p]);
+    return {
+      topic: 'Percentage: Value of a Percentage',
+      text: `${p}% of ${base} is:`, options: o.options, correct: o.correct,
+      exp: `${p}% of ${base} = (${p}/100) × ${base} = ${fmt(val)}.`,
+      source: generatedSource('Percentage', 'percentage of a number'),
+      detailedExp: explain('Percent means "per hundred": convert the percentage to a fraction and multiply.', 'x% of N = (x/100) × N.', [`Step 1: ${p}% = ${p}/100.`, `Step 2: (${p}/100) × ${base} = ${fmt(val)}.`], 'Convert to a fraction first; common ones (25% = 1/4, 20% = 1/5) are instant.', 'Use fraction equivalents: 25% = ¼, 50% = ½, 20% = ⅕.', 'Fraction equivalents')
+    };
+  }
+  if (index % 3 === 1) {
+    const a = between(rng, 2, hard ? 60 : 20) * 10, pct = pick(rng, [10, 20, 25, 50, 75]);
+    const b = a + (a * pct) / 100;
+    const o = numericOptions(rng, pct, [pct * 2, pct / 2, 100 - pct, pct + 5], '%');
+    return {
+      topic: 'Percentage: Percentage Change',
+      text: `A value rises from ${a} to ${fmt(b)}. The percentage increase is:`, options: o.options, correct: o.correct,
+      exp: `Increase = ${fmt(b)} − ${a} = ${fmt(b - a)}; (${fmt(b - a)}/${a}) × 100 = ${pct}%.`,
+      source: generatedSource('Percentage', 'percentage change'),
+      detailedExp: explain('Find how much it changed, then express that change as a share of the original value (not the new one).', 'Percentage change = (change / original) × 100.', [`Step 1: Change = ${fmt(b)} − ${a} = ${fmt(b - a)}.`, `Step 2: Divide by the original ${a}: ${fmt((b - a) / a)}.`, `Step 3: × 100 = ${pct}%.`], 'Always divide by the original value.', 'Percentage change is always over the starting value.', 'Change over original')
+    };
+  }
+  const p = pick(rng, [25, 50, 100]);
+  const val = (100 * p) / (100 + p);
+  const o = numericOptions(rng, val, [p, 100 - p, p / 2, val + 5], '%');
+  return {
+    topic: 'Percentage: Price Rise & Consumption',
+    text: `The price of a commodity rises by ${p}%. By what percentage must consumption fall so that expenditure stays the same?`, options: o.options, correct: o.correct,
+    exp: `Required fall = (${p} / (100 + ${p})) × 100 = ${fmt(val)}%.`,
+    source: generatedSource('Percentage', 'expenditure constant'),
+    detailedExp: explain('If price goes up by p%, you must buy less to spend the same money. The cut is p out of the new price 100 + p, not p out of 100.', 'For constant expenditure, price × quantity is fixed: quantity falls by p/(100+p) × 100 %.', [`Step 1: New price = 100 + ${p} = ${100 + p} for every old 100.`, `Step 2: Required consumption = 100/${100 + p} of before.`, `Step 3: Fall = ${p}/${100 + p} × 100 = ${fmt(val)}%.`], 'The fall is smaller than the rise — never the same p%.', 'Rise p% ⇒ fall p/(100+p) × 100%.', 'Constant-expenditure formula')
+  };
+};
+
+const genRatio: TopicSpec['generate'] = (difficulty, rng, index) => {
+  const hard = difficulty === 'HARD';
+  const a = between(rng, 1, hard ? 7 : 4), b = between(rng, a + 1, hard ? 11 : 7), unitv = between(rng, 5, hard ? 120 : 40) * 10;
+  const total = (a + b) * unitv;
+  const val = index % 2 === 0 ? a * unitv : b * unitv;
+  const o = numericOptions(rng, val, [index % 2 === 0 ? b * unitv : a * unitv, total / 2, unitv, total]);
+  return {
+    topic: 'Ratio & Proportion: Dividing in a Ratio',
+    text: `₹${total} is divided between A and B in the ratio ${a} : ${b}. ${index % 2 === 0 ? 'A' : 'B'}'s share is:`, options: o.options, correct: o.correct,
+    exp: `Total parts = ${a} + ${b} = ${a + b}; one part = ${total}/${a + b} = ${unitv}; share = ${index % 2 === 0 ? a : b} × ${unitv} = ₹${val}.`,
+    source: generatedSource('Ratio & Proportion', 'division in a ratio'),
+    detailedExp: explain('Add the ratio numbers to get the total parts, find what one part is worth, then multiply by that person\'s ratio number.', 'A share = (A\'s ratio / sum of ratio) × total.', [`Step 1: Parts = ${a} + ${b} = ${a + b}.`, `Step 2: One part = ${total} ÷ ${a + b} = ${unitv}.`, `Step 3: ${index % 2 === 0 ? 'A' : 'B'} = ${index % 2 === 0 ? a : b} × ${unitv} = ₹${val}.`], 'Find the value of one part first; everything follows.', 'Total ÷ (sum of ratio) = one part.', 'Value of one part')
+  };
+};
+
+const genAverage: TopicSpec['generate'] = (difficulty, rng, index) => {
+  const n = between(rng, 4, difficulty === 'HARD' ? 9 : 6);
+  const avg = between(rng, 10, difficulty === 'HARD' ? 90 : 50);
+  if (index % 2 === 0) {
+    const newv = avg + between(rng, 5, 30) * (n + 1);
+    const newAvg = avg + (newv - avg) / (n + 1);
+    const o = numericOptions(rng, newAvg, [avg, newv, newAvg + 1, (avg + newv) / 2]);
+    return {
+      topic: 'Average: Adding a New Member',
+      text: `The average of ${n} numbers is ${avg}. If a number ${newv} is added, the new average is:`, options: o.options, correct: o.correct,
+      exp: `Old sum = ${n} × ${avg} = ${n * avg}; new sum = ${n * avg + newv}; new average = ${n * avg + newv}/${n + 1} = ${fmt(newAvg)}.`,
+      source: generatedSource('Average', 'new average after addition'),
+      detailedExp: explain('Turn the average back into a total, add the new number, divide by the new count.', 'Average = sum ÷ count.', [`Step 1: Sum = ${n} × ${avg} = ${n * avg}.`, `Step 2: New sum = ${n * avg} + ${newv} = ${n * avg + newv}.`, `Step 3: New average = ${n * avg + newv} ÷ ${n + 1} = ${fmt(newAvg)}.`], 'Work with sums, not averages, when the count changes.', 'New avg = old avg + (new value − old avg)/(n+1).', 'Shift in the average')
+    };
+  }
+  const nums = Array.from({ length: n }, () => between(rng, 5, 60));
+  const sum = nums.reduce((x, y) => x + y, 0);
+  const val = sum / n;
+  const o = numericOptions(rng, val, [sum, val + 1, val - 1, Math.max(...nums)]);
+  return {
+    topic: 'Average: Mean of a Set',
+    text: `The average of ${nums.join(', ')} is:`, options: o.options, correct: o.correct,
+    exp: `Sum = ${sum}; average = ${sum}/${n} = ${fmt(val)}.`,
+    source: generatedSource('Average', 'mean of listed numbers'),
+    detailedExp: explain('Add everything up and divide by how many numbers there are.', 'Average = sum ÷ count.', [`Step 1: Sum = ${sum}.`, `Step 2: Count = ${n}.`, `Step 3: ${sum} ÷ ${n} = ${fmt(val)}.`], 'Count the items carefully — miscounting is the usual error.')
+  };
+};
+
+const genInterest: TopicSpec['generate'] = (difficulty, rng, index) => {
+  const P = between(rng, 2, difficulty === 'HARD' ? 50 : 20) * 500;
+  if (index % 2 === 0) {
+    const R = pick(rng, [4, 5, 6, 8, 10, 12]), T = between(rng, 2, 5);
+    const val = (P * R * T) / 100;
+    const o = numericOptions(rng, val, [(P * R) / 100, val * 2, P + val, (P * T) / 100]);
+    return {
+      topic: 'Simple Interest',
+      text: `The simple interest on ₹${P} at ${R}% per annum for ${T} years is:`, options: o.options, correct: o.correct,
+      exp: `SI = P × R × T / 100 = ${P} × ${R} × ${T} / 100 = ₹${fmt(val)}.`,
+      source: generatedSource('Simple Interest', 'SI formula'),
+      detailedExp: explain('Simple interest is the same every year: principal × rate × years, divided by 100.', 'SI = PRT/100.', [`Step 1: P = ${P}, R = ${R}%, T = ${T}.`, `Step 2: ${P} × ${R} × ${T} = ${P * R * T}.`, `Step 3: ÷ 100 = ₹${fmt(val)}.`], 'SI is linear in time — double the years, double the interest.', 'Yearly interest × years.', 'Interest per year')
+    };
+  }
+  const R = pick(rng, [5, 10, 20]);
+  const A = P * Math.pow(1 + R / 100, 2);
+  const val = A - P;
+  const o = numericOptions(rng, val, [(P * R * 2) / 100, A, (P * R) / 100, val + P / 100]);
+  return {
+    topic: 'Compound Interest (2 years)',
+    text: `The compound interest on ₹${P} at ${R}% per annum for 2 years, compounded annually, is:`, options: o.options, correct: o.correct,
+    exp: `Amount = ${P}(1 + ${R}/100)² = ${fmt(A)}; CI = ${fmt(A)} − ${P} = ₹${fmt(val)}.`,
+    source: generatedSource('Compound Interest', 'two-year CI'),
+    detailedExp: explain('The second year earns interest on the first year\'s interest too. Grow the principal by the rate twice, then subtract the principal.', 'A = P(1 + R/100)ⁿ; CI = A − P.', [`Step 1: Year 1: ${P} × ${1 + R / 100} = ${fmt(P * (1 + R / 100))}.`, `Step 2: Year 2: × ${1 + R / 100} again = ${fmt(A)}.`, `Step 3: CI = ${fmt(A)} − ${P} = ₹${fmt(val)}.`], 'CI for 2 years exceeds SI by P(R/100)² — the interest on the interest.', 'CI₂ = SI₂ + P(R/100)².', 'CI over SI in 2 years')
+  };
+};
+
+const genProfitLoss: TopicSpec['generate'] = (difficulty, rng, index) => {
+  const CP = between(rng, 2, difficulty === 'HARD' ? 60 : 20) * 50;
+  const pct = pick(rng, [5, 10, 12, 15, 20, 25]);
+  if (index % 2 === 0) {
+    const SP = CP + (CP * pct) / 100;
+    const o = numericOptions(rng, SP, [CP - (CP * pct) / 100, CP + pct, SP + CP / 100, CP * (1 + pct / 10)]);
+    return {
+      topic: 'Profit & Loss: Selling Price for a Given Profit',
+      text: `An article costing ₹${CP} is sold at a profit of ${pct}%. The selling price is:`, options: o.options, correct: o.correct,
+      exp: `SP = CP × (100 + ${pct})/100 = ${CP} × ${1 + pct / 100} = ₹${fmt(SP)}.`,
+      source: generatedSource('Profit & Loss', 'selling price from profit %'),
+      detailedExp: explain('Profit percent is on the cost price. Add that percentage of the cost to the cost.', 'SP = CP(1 + p/100).', [`Step 1: Profit = ${pct}% of ${CP} = ${fmt((CP * pct) / 100)}.`, `Step 2: SP = ${CP} + ${fmt((CP * pct) / 100)} = ₹${fmt(SP)}.`], 'Profit % is always on CP unless stated otherwise.', 'Multiply CP by (100 + p)/100.', 'Single multiplier')
+    };
+  }
+  const SP = CP + (CP * pct) / 100;
+  const o = numericOptions(rng, pct, [Math.round(((SP - CP) / SP) * 100), pct * 2, 100 - pct, pct + 5], '%');
+  return {
+    topic: 'Profit & Loss: Profit Percentage',
+    text: `An article bought for ₹${CP} is sold for ₹${fmt(SP)}. The profit percentage is:`, options: o.options, correct: o.correct,
+    exp: `Profit = ${fmt(SP)} − ${CP} = ${fmt(SP - CP)}; profit % = (${fmt(SP - CP)}/${CP}) × 100 = ${pct}%.`,
+    source: generatedSource('Profit & Loss', 'profit percentage'),
+    detailedExp: explain('Find the profit in rupees, then express it as a percentage of the cost price.', 'Profit % = (SP − CP)/CP × 100.', [`Step 1: Profit = ${fmt(SP)} − ${CP} = ${fmt(SP - CP)}.`, `Step 2: ÷ CP ${CP} = ${fmt((SP - CP) / CP)}.`, `Step 3: × 100 = ${pct}%.`], 'Divide by CP, not SP — dividing by SP is the trap option.')
+  };
+};
+
+const genTimeWork: TopicSpec['generate'] = (difficulty, rng, index) => {
+  if (index % 2 === 1) {
+    const k = pick(rng, [2, 3, 4]);
+    const a = (k + 1) * between(rng, 2, difficulty === 'HARD' ? 9 : 5);
+    const val = a / (k + 1);
+    const o = numericOptions(rng, val, [a / k, a * k, a - k, val + 1], ' days');
+    return {
+      topic: 'Time & Work: Relative Efficiency',
+      text: `A alone can complete a piece of work in ${a} days. B is ${k} times as efficient as A. Working together, they will finish it in:`,
+      options: o.options, correct: o.correct,
+      exp: `A does 1/${a} per day, B does ${k}/${a}; together ${k + 1}/${a} per day, so the work takes ${a}/${k + 1} = ${fmt(val)} days.`,
+      source: generatedSource('Time & Work', 'relative efficiency'),
+      detailedExp: explain('If B is k times as efficient, B does k times as much per day. Add the daily amounts and invert.', 'Work per day adds; time = 1 ÷ (combined rate).', [`Step 1: A = 1/${a} per day.`, `Step 2: B = ${k}/${a} per day.`, `Step 3: Together = ${k + 1}/${a} per day.`, `Step 4: Time = ${a}/${k + 1} = ${fmt(val)} days.`], 'Efficiency multiplies the rate, it does not divide the days of the pair.', `Together = a/(1+k) days.`, 'Efficiency shortcut')
+    };
+  }
+  const pairs: [number, number][] = difficulty === 'HARD' ? [[12, 24], [10, 15], [20, 30], [18, 9], [15, 30], [21, 42]] : [[6, 3], [12, 24], [10, 15], [20, 30], [4, 12]];
+  const [a, b] = pick(rng, pairs);
+  const val = (a * b) / (a + b);
+  const o = numericOptions(rng, val, [(a + b) / 2, a + b, Math.min(a, b), val + 1], ' days');
+  return {
+    topic: 'Time & Work: Working Together',
+    text: `A can finish a job in ${a} days and B in ${b} days. Working together they finish it in:`, options: o.options, correct: o.correct,
+    exp: `Together per day: 1/${a} + 1/${b} = ${a + b}/${a * b}; time = ${a * b}/${a + b} = ${fmt(val)} days.`,
+    source: generatedSource('Time & Work', 'combined work'),
+    detailedExp: explain('Add the fractions of the job each does per day; the total per day inverted is the number of days.', 'Rates add: 1/T = 1/a + 1/b, so T = ab/(a + b).', [`Step 1: A does 1/${a} per day, B does 1/${b}.`, `Step 2: Together = (${b} + ${a})/${a * b} = ${a + b}/${a * b} per day.`, `Step 3: Days = ${a * b}/${a + b} = ${fmt(val)}.`], 'Never average the days — add the rates.', 'T = ab/(a+b).', 'Product over sum')
+  };
+};
+
+const genSpeed: TopicSpec['generate'] = (difficulty, rng, index) => {
+  if (index % 2 === 0) {
+    const speed = pick(rng, [36, 54, 72, 90, 108]), len = between(rng, 2, difficulty === 'HARD' ? 12 : 6) * 50;
+    const ms = (speed * 5) / 18;
+    const val = len / ms;
+    const o = numericOptions(rng, val, [len / speed, val * 2, val + 2, ms], ' s');
+    return {
+      topic: 'Speed, Time & Distance: Train Crossing a Pole',
+      text: `A ${len} m long train running at ${speed} km/h crosses a pole in:`, options: o.options, correct: o.correct,
+      exp: `${speed} km/h = ${speed} × 5/18 = ${fmt(ms)} m/s; time = ${len}/${fmt(ms)} = ${fmt(val)} s.`,
+      source: generatedSource('Speed, Time & Distance', 'train crossing a pole'),
+      detailedExp: explain('Convert km/h to m/s (multiply by 5/18), then divide the train\'s own length by that speed.', 'To cross a pole a train travels its own length; time = length ÷ speed in consistent units.', [`Step 1: ${speed} × 5/18 = ${fmt(ms)} m/s.`, `Step 2: Distance = train length = ${len} m.`, `Step 3: ${len} ÷ ${fmt(ms)} = ${fmt(val)} s.`], 'Convert units before dividing — the unconverted value is the trap.', 'km/h × 5/18 = m/s.', 'Unit conversion')
+    };
+  }
+  const t = between(rng, 2, 6), sp = pick(rng, [40, 45, 50, 60, 72, 80]);
+  const val = sp * t;
+  const o = numericOptions(rng, val, [sp + t, sp / t, val / 2, val + sp], ' km');
+  return {
+    topic: 'Speed, Time & Distance: Distance Covered',
+    text: `A car travels at ${sp} km/h for ${t} hours. The distance covered is:`, options: o.options, correct: o.correct,
+    exp: `Distance = speed × time = ${sp} × ${t} = ${val} km.`,
+    source: generatedSource('Speed, Time & Distance', 'distance = speed × time'),
+    detailedExp: explain('Multiply speed by time.', 'D = S × T.', [`Step 1: ${sp} × ${t} = ${val} km.`], 'Keep units consistent: km/h with hours.')
+  };
+};
+
+const genSeries: TopicSpec['generate'] = (difficulty, rng, index) => {
+  const kind = index % 3;
+  if (kind === 0) {
+    const a = between(rng, 2, 15), d = between(rng, 2, difficulty === 'HARD' ? 11 : 6);
+    const seq = [0, 1, 2, 3, 4].map(i => a + i * d);
+    const val = a + 5 * d;
+    const o = numericOptions(rng, val, [val + d, val - d, val + 1, seq[4] * 2]);
+    return { topic: 'Number Series: Arithmetic Progression', text: `Find the next term: ${seq.join(', ')}, ?`, options: o.options, correct: o.correct, exp: `Each term increases by ${d}; ${seq[4]} + ${d} = ${val}.`, source: generatedSource('Number Series', 'constant difference'), detailedExp: explain('Look at the gaps between neighbours; here they are all the same, so add that gap once more.', 'Arithmetic progression: constant common difference.', [`Step 1: Differences: ${seq[1] - seq[0]}, ${seq[2] - seq[1]}, … all ${d}.`, `Step 2: Next = ${seq[4]} + ${d} = ${val}.`], 'Check differences first; if constant, the series is arithmetic.') };
+  }
+  if (kind === 1) {
+    const a = between(rng, 1, 5), r = pick(rng, [2, 3]);
+    const seq = [0, 1, 2, 3].map(i => a * Math.pow(r, i));
+    const val = a * Math.pow(r, 4);
+    const o = numericOptions(rng, val, [seq[3] + (seq[3] - seq[2]), val * r, seq[3] * 2 + 1, val - a]);
+    return { topic: 'Number Series: Geometric Progression', text: `Find the next term: ${seq.join(', ')}, ?`, options: o.options, correct: o.correct, exp: `Each term is multiplied by ${r}; ${seq[3]} × ${r} = ${val}.`, source: generatedSource('Number Series', 'constant ratio'), detailedExp: explain('The gaps grow, so try ratios: each term is the previous one multiplied by the same number.', 'Geometric progression: constant common ratio.', [`Step 1: ${seq[1]}/${seq[0]} = ${r}, ${seq[2]}/${seq[1]} = ${r}.`, `Step 2: Next = ${seq[3]} × ${r} = ${val}.`], 'Growing gaps usually mean a ratio, not a difference.') };
+  }
+  const start = between(rng, 1, 5);
+  const seq = [0, 1, 2, 3, 4].map(i => (start + i) * (start + i) + 1);
+  const n = start + 5;
+  const val = n * n + 1;
+  const o = numericOptions(rng, val, [n * n, val + 2 * n, seq[4] + (seq[4] - seq[3]), val - 1]);
+  return { topic: 'Number Series: Squares Plus One', text: `Find the next term: ${seq.join(', ')}, ?`, options: o.options, correct: o.correct, exp: `Terms are n² + 1 for n = ${start}…${n - 1}; next = ${n}² + 1 = ${val}.`, source: generatedSource('Number Series', 'square pattern'), detailedExp: explain('Subtract 1 from each term and you get perfect squares of consecutive numbers.', 'Series of the form n² + k.', [`Step 1: ${seq.map(v => v - 1).join(', ')} are ${start}², ${start + 1}², …`, `Step 2: Next square is ${n}² = ${n * n}; add 1 = ${val}.`], 'When differences themselves increase by 2, think squares.') };
+};
+
+const genCoding: TopicSpec['generate'] = (difficulty, rng) => {
+  const words = ['CAT', 'DOG', 'PEN', 'BOOK', 'ROAD', 'TIME', 'LAMP', 'GATE'];
+  const w = pick(rng, words), k = between(rng, 1, difficulty === 'HARD' ? 5 : 3);
+  const shift = (s: string, n: number) => s.split('').map(ch => String.fromCharCode(((ch.charCodeAt(0) - 65 + n + 26) % 26) + 65)).join('');
+  const target = pick(rng, words.filter(x => x !== w && x.length === w.length)) || 'MAP';
+  const val = shift(target, k);
+  const distract = [shift(target, k + 1), shift(target, -k), shift(target, k + 2)];
+  const all = [val, ...distract];
+  const order = all.map((v, i) => ({ v, i, r: rng() })).sort((a, b) => a.r - b.r);
+  return { topic: 'Coding-Decoding: Letter Shift', text: `In a certain code, ${w} is written as ${shift(w, k)}. How is ${target} written in that code?`, options: order.map(o => o.v), correct: order.findIndex(o => o.i === 0), exp: `Each letter moves ${k} place${k > 1 ? 's' : ''} forward in the alphabet; apply the same shift to ${target}: ${val}.`, source: generatedSource('Coding-Decoding', 'constant letter shift'), detailedExp: explain('Compare each letter of the word with its coded letter to find the shift, then apply the same shift to the new word.', 'Letter-shift codes move every letter by a fixed number of positions.', [`Step 1: ${w[0]} → ${shift(w, k)[0]} is +${k}.`, `Step 2: Every letter shifts by +${k}.`, `Step 3: ${target} → ${val}.`], 'Confirm the shift on two letters before applying it.', 'Write A–Z with positions 1–26; add the shift.', 'Alphabet positions') };
+};
+
+const genDirection: TopicSpec['generate'] = (difficulty, rng) => {
+  const triples: [number, number, number][] = [[3, 4, 5], [6, 8, 10], [5, 12, 13], [9, 12, 15], [8, 15, 17]];
+  const [a, b, c] = pick(rng, difficulty === 'HARD' ? triples : triples.slice(0, 3));
+  const d1 = pick(rng, ['north', 'south']), d2 = pick(rng, ['east', 'west']);
+  const o = numericOptions(rng, c, [a + b, Math.abs(a - b), c + 1, a * b], ' km');
+  return { topic: 'Direction Sense: Shortest Distance', text: `A man walks ${a} km ${d1}, then turns and walks ${b} km ${d2}. How far is he from the starting point?`, options: o.options, correct: o.correct, exp: `The two legs are at right angles: distance = √(${a}² + ${b}²) = √${a * a + b * b} = ${c} km.`, source: generatedSource('Direction Sense', 'right-angle displacement'), detailedExp: explain('North/south and east/west legs meet at a right angle, so the straight-line distance is the hypotenuse.', 'Pythagoras: d = √(a² + b²).', [`Step 1: Legs ${a} and ${b} are perpendicular.`, `Step 2: ${a}² + ${b}² = ${a * a + b * b}.`, `Step 3: √${a * a + b * b} = ${c} km.`], 'Perpendicular legs ⇒ Pythagoras; the sum a + b is the trap option.', `Memorise triples: 3-4-5, 5-12-13, 8-15-17.`, 'Pythagorean triples') };
+};
+
+const genAlgebra: TopicSpec['generate'] = (difficulty, rng, index) => {
+  if (index % 2 === 0) {
+    const a = between(rng, 2, difficulty === 'HARD' ? 9 : 5), x = between(rng, 2, 12), b = between(rng, -9, 9);
+    const c = a * x + b;
+    const o = numericOptions(rng, x, [c - b, x + 1, x - 1, (c + b) / a]);
+    return { topic: 'Algebra: Linear Equation', text: `If ${a}x ${b >= 0 ? '+ ' + b : '− ' + (-b)} = ${c}, then x equals:`, options: o.options, correct: o.correct, exp: `${a}x = ${c} ${b >= 0 ? '− ' + b : '+ ' + (-b)} = ${c - b}; x = ${c - b}/${a} = ${x}.`, source: generatedSource('Algebra', 'linear equation'), detailedExp: explain('Move the constant to the other side, then divide by the coefficient of x.', 'Isolate x by inverse operations.', [`Step 1: ${a}x = ${c} ${b >= 0 ? '− ' + b : '+ ' + (-b)} = ${c - b}.`, `Step 2: x = ${c - b} ÷ ${a} = ${x}.`], 'Undo addition before division.') };
+  }
+  const r1 = between(rng, 1, 7), r2 = between(rng, r1 + 1, difficulty === 'HARD' ? 12 : 9);
+  const sum = r1 + r2, prod = r1 * r2;
+  const o = numericOptions(rng, sum, [prod, -sum, r2 - r1, sum + 1]);
+  return { topic: 'Algebra: Roots of a Quadratic', text: `The sum of the roots of x² − ${sum}x + ${prod} = 0 is:`, options: o.options, correct: o.correct, exp: `For x² + bx + c = 0, sum of roots = −b = ${sum} (the roots are ${r1} and ${r2}).`, source: generatedSource('Algebra', 'sum of roots'), detailedExp: explain('You do not need to solve the quadratic: the sum of the roots is the negative of the x-coefficient.', 'Vieta: for ax² + bx + c, sum = −b/a, product = c/a.', [`Step 1: Here a = 1, b = −${sum}, c = ${prod}.`, `Step 2: Sum = −b/a = ${sum}.`, `Step 3: Check: roots ${r1} and ${r2} multiply to ${prod}.`], 'Sum = −b/a, product = c/a — read them straight off.', 'Vieta\'s formulas skip the factorising.', 'Vieta\'s formulas') };
+};
+
+// ---- curated English & computer items -----------------------------------------
+// Language and factual items are authored, not computed: each option set was written and
+// checked by hand. They are GOVOS_AUTHORED — SSC pattern, not past questions.
+
+interface CuratedItem {
+  topic: string;
+  text: string;
+  options: string[];
+  correct: number;
+  exp: string;
+  simple: string;
+  concept: string;
+  steps: string[];
+  takeaway: string;
+  citation: string;
+}
+
+const VOCAB_ITEMS: CuratedItem[] = ([
+  ['ABANDON', 'Relinquish', ['Retain', 'Cherish', 'Secure'], 'To abandon is to give something up entirely, which is exactly what relinquish means.'],
+  ['LUCID', 'Clear', ['Opaque', 'Confusing', 'Dull'], 'Lucid writing is easily understood, so clear is the synonym; opaque and confusing are its opposites.'],
+  ['FRUGAL', 'Thrifty', ['Wasteful', 'Lavish', 'Generous'], 'Frugal means sparing with money or resources — thrifty. Lavish and wasteful are opposites.'],
+  ['CANDID', 'Frank', ['Devious', 'Guarded', 'Rude'], 'Candid means openly honest, that is frank. Being frank is not the same as being rude.'],
+  ['AUGMENT', 'Increase', ['Reduce', 'Curtail', 'Weaken'], 'To augment is to add to something, so increase is the synonym.'],
+  ['OBSOLETE', 'Outdated', ['Modern', 'Durable', 'Frequent'], 'Something obsolete has fallen out of use — outdated.'],
+  ['VOLATILE', 'Unstable', ['Steady', 'Solid', 'Reliable'], 'Volatile describes something liable to change rapidly, that is unstable.'],
+  ['METICULOUS', 'Careful', ['Careless', 'Hasty', 'Vague'], 'A meticulous worker attends to every detail — careful.'],
+  ['ALLEVIATE', 'Relieve', ['Aggravate', 'Intensify', 'Provoke'], 'To alleviate pain is to relieve it; aggravate means the opposite.'],
+  ['PRUDENT', 'Sensible', ['Reckless', 'Foolish', 'Impulsive'], 'A prudent decision is a sensible, carefully considered one.'],
+  ['TENACIOUS', 'Persistent', ['Fickle', 'Yielding', 'Timid'], 'Tenacious means holding on firmly — persistent.'],
+  ['AMBIGUOUS', 'Unclear', ['Precise', 'Definite', 'Obvious'], 'An ambiguous statement has more than one possible meaning, so it is unclear.']
+] as [string, string, string[], string][]).map(([w, ans, wrong, why]) => ({
+  topic: 'Vocabulary: Synonyms',
+  text: `Select the word most similar in meaning to the word in capitals: ${w}`,
+  options: [ans, ...wrong], correct: 0,
+  exp: why,
+  simple: 'Read the capitalised word, decide roughly what it means in your own words, then find the option closest to that meaning.',
+  concept: 'A synonym carries the same sense in the same register; it does not have to be interchangeable in every sentence.',
+  steps: [`Step 1: ${w} — recall the sense in which you have seen it used.`, `Step 2: ${why}`, `Step 3: Rule out options that mean the opposite; SSC always places one among the choices.`],
+  takeaway: 'Eliminate the antonym first — SSC synonym questions almost always include one.',
+  citation: `GovOS-authored vocabulary practice (synonym of ${w}; SSC Tier-1 English pattern, not an official past question)`
+}));
+
+const ANTONYM_ITEMS: CuratedItem[] = ([
+  ['BENEVOLENT', 'Malevolent', ['Generous', 'Kind', 'Charitable'], 'Benevolent means well-meaning and kind; its direct opposite is malevolent. The other three are synonyms.'],
+  ['SCARCE', 'Abundant', ['Rare', 'Meagre', 'Limited'], 'Scarce means in short supply, so abundant is the opposite; rare and meagre are synonyms.'],
+  ['HUMBLE', 'Arrogant', ['Modest', 'Meek', 'Unassuming'], 'Humble means modest about oneself; arrogant is the opposite.'],
+  ['EXPAND', 'Contract', ['Enlarge', 'Extend', 'Widen'], 'Expand means to grow larger; contract means to shrink. The rest are synonyms.'],
+  ['OPTIONAL', 'Compulsory', ['Voluntary', 'Elective', 'Discretionary'], 'Optional means left to choice; compulsory means required.'],
+  ['CONDEMN', 'Praise', ['Denounce', 'Criticise', 'Blame'], 'To condemn is to express strong disapproval; to praise is the opposite.'],
+  ['ASCEND', 'Descend', ['Climb', 'Rise', 'Soar'], 'Ascend means to go up; descend means to go down.'],
+  ['TEMPORARY', 'Permanent', ['Brief', 'Fleeting', 'Transient'], 'Temporary means lasting a short time; permanent means lasting indefinitely.'],
+  ['ARTIFICIAL', 'Natural', ['Synthetic', 'Manufactured', 'Imitation'], 'Artificial means made by people rather than occurring in nature.'],
+  ['TRANSPARENT', 'Opaque', ['Clear', 'Lucid', 'Evident'], 'Transparent lets light through; opaque blocks it.']
+] as [string, string, string[], string][]).map(([w, ans, wrong, why]) => ({
+  topic: 'Vocabulary: Antonyms',
+  text: `Select the word most opposite in meaning to the word in capitals: ${w}`,
+  options: [ans, ...wrong], correct: 0,
+  exp: why,
+  simple: 'Fix the meaning of the capitalised word first, then look for the option that reverses it — not one that merely differs from it.',
+  concept: 'An antonym reverses the sense. Three near-synonyms are usually offered as distractors.',
+  steps: [`Step 1: ${w} — state its meaning plainly.`, `Step 2: ${why}`, `Step 3: If three options mean much the same thing, the odd one out is the answer.`],
+  takeaway: 'When three options are synonyms of each other, the fourth is the antonym you want.',
+  citation: `GovOS-authored vocabulary practice (antonym of ${w}; SSC Tier-1 English pattern, not an official past question)`
+}));
+
+const IDIOM_ITEMS: CuratedItem[] = ([
+  ['A blessing in disguise', 'Something that seems bad at first but turns out to be good', ['A hidden threat', 'A gift given secretly', 'A promise that is never kept']],
+  ['Once in a blue moon', 'Very rarely', ['Every month without fail', 'At night only', 'Suddenly and without warning']],
+  ['Let the cat out of the bag', 'To reveal a secret unintentionally', ['To set someone free', 'To create confusion deliberately', 'To escape from danger']],
+  ['Bite the bullet', 'To endure a painful situation with courage', ['To speak angrily', 'To act in haste', 'To refuse an order']],
+  ['Turn a blind eye', 'To ignore something deliberately', ['To lose one\'s sight', 'To look for something carefully', 'To forgive an offence']],
+  ['In the same boat', 'In the same difficult situation', ['Travelling together', 'In complete agreement', 'Working for the same employer']],
+  ['Beat about the bush', 'To avoid coming to the point', ['To search everywhere', 'To attack someone verbally', 'To work very hard']],
+  ['Call it a day', 'To stop working for the time being', ['To name an occasion', 'To postpone indefinitely', 'To celebrate a success']],
+  ['Burn the midnight oil', 'To work late into the night', ['To waste resources', 'To cause a quarrel', 'To spend lavishly']],
+  ['Get cold feet', 'To become nervous and hesitant before an event', ['To fall ill suddenly', 'To be treated unkindly', 'To arrive late']]
+] as [string, string, string[]][]).map(([idiom, ans, wrong]) => ({
+  topic: 'Idioms & Phrases',
+  text: `Select the alternative that best expresses the meaning of the idiom: "${idiom}"`,
+  options: [ans, ...wrong], correct: 0,
+  exp: `"${idiom}" means: ${ans.toLowerCase()}.`,
+  simple: 'An idiom does not mean what its words literally say. Recall the whole phrase as a unit.',
+  concept: 'Idioms are fixed expressions with a settled figurative meaning; the literal reading is always offered as a distractor.',
+  steps: [`Step 1: Read the phrase as a unit, not word by word.`, `Step 2: The settled meaning is "${ans.toLowerCase()}".`, `Step 3: Reject the option that translates the words literally — it is placed there deliberately.`],
+  takeaway: 'The literal-sounding option is almost never right in an idiom question.',
+  citation: `GovOS-authored idiom practice ("${idiom}"; SSC Tier-1 English pattern, not an official past question)`
+}));
+
+const GRAMMAR_ITEMS: CuratedItem[] = ([
+  ['Each of the students', 'have submitted', 'the assignment', 'on time.', 1, '"Each" is singular however many follow it, so the verb must be "has submitted".', 'Each / every / either / neither take a singular verb.'],
+  ['The quality of the mangoes', 'were not good,', 'so the shopkeeper', 'reduced the price.', 1, 'The subject is "the quality", which is singular; "of the mangoes" only describes it. The verb must be "was".', 'The verb agrees with the head noun, not with a noun inside the of-phrase.'],
+  ['Neither the manager nor his assistants', 'was present', 'at the meeting', 'yesterday.', 1, 'With "neither ... nor", the verb agrees with the nearer subject, "assistants", so it must be "were present".', 'Proximity rule for either/or and neither/nor.'],
+  ['One of my friends', 'are going', 'to Delhi', 'next week.', 1, 'The subject is "one", not "friends", so the verb is "is going".', '"One of + plural noun" takes a singular verb.'],
+  ['The number of applicants', 'have increased', 'this year', 'considerably.', 1, '"The number of" is singular and takes "has increased"; "a number of" would be plural.', '"The number" is singular; "a number" is plural.'],
+  ['Mathematics are', 'my favourite subject', 'in the school', 'curriculum.', 0, 'Mathematics is singular despite the -s ending, so it takes "is".', 'Subjects like mathematics, physics and news are singular.'],
+  ['He is one of the best players', 'who has ever', 'represented the country', 'in hockey.', 1, 'The relative clause describes "players", which is plural, so it is "who have ever".', 'In "one of the + plural + who", the verb after who is plural.'],
+  ['Every boy and girl', 'have been', 'given a prize', 'at the function.', 1, 'Subjects joined by "and" but preceded by "every" are treated as singular: "has been".', '"Every ... and ..." takes a singular verb.'],
+  ['The committee', 'has published', 'their report', 'this morning.', 2, 'A singular verb has been used for the committee, so the pronoun must match: "its report".', 'Keep collective nouns consistently singular or plural within a sentence.'],
+  ['She is senior', 'than me', 'by three years', 'in this office.', 1, 'Adjectives of Latin origin - senior, junior, superior, prior - take "to", not "than": "senior to me".', 'Latin comparatives take "to".']
+]).map(row => {
+  const parts = [row[0] as string, row[1] as string, row[2] as string, row[3] as string];
+  const idx = row[4] as number;
+  const why = row[5] as string;
+  const rule = row[6] as string;
+  return {
+    topic: 'Grammar: Error Spotting',
+    text: `The sentence below is divided into four parts. Select the part that contains an error:\n(A) ${parts[0]} (B) ${parts[1]} (C) ${parts[2]} (D) ${parts[3]}`,
+    options: [`(A) ${parts[0]}`, `(B) ${parts[1]}`, `(C) ${parts[2]}`, `(D) ${parts[3]}`],
+    correct: idx,
+    exp: why,
+    simple: 'Find the real subject of each verb, then check the verb, the pronoun and the preposition against it. Read the parts in isolation as well as together.',
+    concept: rule,
+    steps: [`Step 1: Identify the subject of every verb in the sentence.`, `Step 2: ${why}`, `Step 3: Part (${String.fromCharCode(65 + idx)}) is therefore the faulty segment.`],
+    takeaway: rule,
+    citation: 'GovOS-authored grammar practice (SSC Tier-1 error-spotting pattern, not an official past question)'
+  };
+});
+
+const VOICE_ITEMS: CuratedItem[] = ([
+  ['The teacher praised the student.', 'The student was praised by the teacher.', ['The student is praised by the teacher.', 'The student has been praised by the teacher.', 'The student was being praised by the teacher.'], 'Simple past active becomes "was/were + past participle" in the passive.'],
+  ['They are building a new bridge.', 'A new bridge is being built by them.', ['A new bridge is built by them.', 'A new bridge was being built by them.', 'A new bridge has been built by them.'], 'Present continuous active becomes "is/are being + past participle".'],
+  ['Someone has stolen my bicycle.', 'My bicycle has been stolen.', ['My bicycle was stolen by someone.', 'My bicycle is stolen by someone.', 'My bicycle had been stolen.'], 'Present perfect active becomes "has/have been + past participle"; an indefinite agent like "someone" is dropped.'],
+  ['The manager will approve the proposal.', 'The proposal will be approved by the manager.', ['The proposal would be approved by the manager.', 'The proposal will have been approved by the manager.', 'The proposal is approved by the manager.'], 'Simple future active becomes "will be + past participle".'],
+  ['The children were watching a film.', 'A film was being watched by the children.', ['A film was watched by the children.', 'A film is being watched by the children.', 'A film had been watched by the children.'], 'Past continuous active becomes "was/were being + past participle".'],
+  ['Open the door.', 'Let the door be opened.', ['The door is opened.', 'The door was opened by you.', 'You are asked to open the door.'], 'An imperative becomes "Let + object + be + past participle".']
+] as [string, string, string[], string][]).map(([active, ans, wrong, rule]) => ({
+  topic: 'Voice: Active to Passive',
+  text: `Select the correct passive form: "${active}"`,
+  options: [ans, ...wrong], correct: 0,
+  exp: `${rule} So the passive is "${ans}"`,
+  simple: 'Move the object to the front, change the verb to the matching passive form of the same tense, and put the doer after "by" — unless the doer is vague.',
+  concept: 'The passive keeps the tense of the active sentence; only the auxiliary changes.',
+  steps: [`Step 1: Object of the active sentence becomes the subject.`, `Step 2: ${rule}`, `Step 3: The result is "${ans}"`],
+  takeaway: 'Distractors change the tense — check the auxiliary before anything else.',
+  citation: 'GovOS-authored voice-transformation practice (SSC Tier-1 pattern, not an official past question)'
+}));
+
+const COMPUTER_ITEMS: CuratedItem[] = ([
+  ['What does CPU stand for?', 'Central Processing Unit', ['Central Programming Utility', 'Computer Processing Interface', 'Control Peripheral Unit'], 'The CPU carries out the instructions of a program; it is the processor at the centre of the machine.'],
+  ['One kilobyte (KB) equals how many bytes?', '1024 bytes', ['1000 bytes', '512 bytes', '2048 bytes'], 'Storage units are powers of two: 1 KB = 2^10 = 1024 bytes.'],
+  ['Which keyboard shortcut undoes the last action in most Windows applications?', 'Ctrl + Z', ['Ctrl + Y', 'Ctrl + U', 'Ctrl + X'], 'Ctrl + Z undoes; Ctrl + Y redoes; Ctrl + X cuts.'],
+  ['Which type of memory loses its contents when the computer is switched off?', 'RAM', ['ROM', 'Hard disk', 'Flash drive'], 'RAM is volatile working memory; ROM and storage devices retain data without power.'],
+  ['In MS Excel, which formula adds the values in cells A1 to A10?', '=SUM(A1:A10)', ['=ADD(A1:A10)', '=TOTAL(A1:A10)', '=PLUS(A1:A10)'], 'SUM is the built-in addition function; the colon denotes the range.'],
+  ['Which key refreshes the current page in most web browsers?', 'F5', ['F1', 'F2', 'F12'], 'F5 reloads the page; F1 opens help and F12 opens developer tools.'],
+  ['What is the full form of URL?', 'Uniform Resource Locator', ['Universal Reference Link', 'Uniform Retrieval Language', 'User Resource Locator'], 'A URL is the address that locates a resource on the web.'],
+  ['Which of these is an operating system?', 'Linux', ['Oracle', 'MS Excel', 'Google Chrome'], 'Linux manages the hardware and runs other programs; the rest are applications or a database system.'],
+  ['In MS Word, which shortcut saves the current document?', 'Ctrl + S', ['Ctrl + P', 'Ctrl + O', 'Ctrl + N'], 'Ctrl + S saves, Ctrl + P prints, Ctrl + O opens and Ctrl + N creates a new document.'],
+  ['What does the extension .pdf stand for?', 'Portable Document Format', ['Printed Document File', 'Public Data Format', 'Personal Document File'], 'PDF preserves a document\'s layout across devices; SSC publishes its notices in this format.']
+] as [string, string, string[], string][]).map(([q, ans, wrong, why]) => ({
+  topic: 'Computer Basics',
+  text: q,
+  options: [ans, ...wrong], correct: 0,
+  exp: why,
+  simple: 'These are recall facts. Learn them as pairs — term and meaning, shortcut and action.',
+  concept: 'SSC computer-proficiency questions test standard terminology, storage units and common shortcuts.',
+  steps: [`Step 1: ${why}`, `Step 2: The remaining options are invented or belong to a different function.`],
+  takeaway: why,
+  citation: 'GovOS-authored computer-awareness practice (SSC pattern, not an official past question)'
+}));
+
+/** Serve a curated set through the generator interface: shuffled options, no repeats. */
+function curatedGenerator(items: CuratedItem[]): NonNullable<TopicSpec['generate']> {
+  return (_difficulty, rng, index) => {
+    const item = items[index % items.length];
+    const order = item.options.map((v, i) => ({ v, i, r: rng() })).sort((a, b) => a.r - b.r);
+    return {
+      topic: item.topic,
+      text: item.text,
+      options: order.map(o => o.v),
+      correct: order.findIndex(o => o.i === item.correct),
+      exp: item.exp,
+      source: { label: item.citation, url: 'https://ssc.gov.in', publisher: 'GovOS question bank — written to the SSC syllabus and paper pattern', kind: 'GOVOS_AUTHORED' },
+      detailedExp: explain(item.simple, item.concept, item.steps, item.takeaway)
+    };
+  };
+}
+
+const genSynonym = curatedGenerator(VOCAB_ITEMS.concat(ANTONYM_ITEMS));
+const genIdiom = curatedGenerator(IDIOM_ITEMS);
+const genGrammar = curatedGenerator(GRAMMAR_ITEMS);
+const genVoice = curatedGenerator(VOICE_ITEMS);
+const genComputer = curatedGenerator(COMPUTER_ITEMS);
+
+/**
+ * The topic catalogue: what a candidate may ask for, how to recognise it, and where the
+ * questions come from. Topics without a generator are served from the bank only.
+ */
+export const TOPIC_CATALOG: TopicSpec[] = [
+  // Quantitative Aptitude
+  { key: 'calculus', label: 'Calculus', subject: SUBJECT_QUANT, aliases: ['calculus', 'derivative', 'derivatives', 'differentiation', 'differentiate', 'integration', 'integral', 'integrals', 'limits', 'limit'], inSyllabus: false, generate: genCalculus },
+  { key: 'percentage', label: 'Percentage', subject: SUBJECT_QUANT, aliases: ['percentage', 'percentages', 'percent'], inSyllabus: true, generate: genPercentage },
+  { key: 'ratio', label: 'Ratio & Proportion', subject: SUBJECT_QUANT, aliases: ['ratio', 'proportion'], inSyllabus: true, generate: genRatio },
+  { key: 'average', label: 'Average', subject: SUBJECT_QUANT, aliases: ['average', 'averages', 'mean'], inSyllabus: true, generate: genAverage },
+  { key: 'interest', label: 'Simple & Compound Interest', subject: SUBJECT_QUANT, aliases: ['interest', 'simple interest', 'compound interest', 'si', 'ci', 'ci/si', 'si/ci'], inSyllabus: true, generate: genInterest },
+  { key: 'profit-loss', label: 'Profit & Loss', subject: SUBJECT_QUANT, aliases: ['profit', 'loss', 'profit and loss', 'profit & loss', 'discount'], inSyllabus: true, generate: genProfitLoss },
+  { key: 'time-work', label: 'Time & Work', subject: SUBJECT_QUANT, aliases: ['time and work', 'time & work', 'work', 'pipes', 'cistern'], inSyllabus: true, generate: genTimeWork },
+  { key: 'speed-distance', label: 'Speed, Time & Distance', subject: SUBJECT_QUANT, aliases: ['speed', 'distance', 'time and distance', 'trains', 'train', 'boats', 'streams'], inSyllabus: true, generate: genSpeed },
+  { key: 'algebra', label: 'Algebra', subject: SUBJECT_QUANT, aliases: ['algebra', 'algebraic', 'equation', 'equations', 'polynomial', 'quadratic', 'linear equation'], inSyllabus: true, generate: genAlgebra },
+  { key: 'geometry', label: 'Geometry', subject: SUBJECT_QUANT, aliases: ['geometry', 'triangle', 'triangles', 'circle', 'circles', 'rhombus', 'similar'], inSyllabus: true },
+  { key: 'trigonometry', label: 'Trigonometry', subject: SUBJECT_QUANT, aliases: ['trigonometry', 'trig', 'sin', 'cos', 'tan', 'heights and distances', 'height and distance'], inSyllabus: true },
+  { key: 'mensuration', label: 'Mensuration', subject: SUBJECT_QUANT, aliases: ['mensuration', 'volume', 'surface area', 'cone', 'cylinder', 'sphere', 'cuboid', 'frustum'], inSyllabus: true },
+  { key: 'number-system', label: 'Number System', subject: SUBJECT_QUANT, aliases: ['number system', 'numbers', 'hcf', 'lcm', 'divisibility'], inSyllabus: true },
+  { key: 'data-interpretation', label: 'Data Interpretation', subject: SUBJECT_QUANT, aliases: ['data interpretation', 'di', 'pie chart', 'bar graph', 'table chart'], inSyllabus: true },
+  // Reasoning
+  { key: 'series', label: 'Number & Letter Series', subject: SUBJECT_REAS, aliases: ['series', 'number series', 'letter series', 'sequence'], inSyllabus: true, generate: genSeries },
+  { key: 'coding', label: 'Coding-Decoding', subject: SUBJECT_REAS, aliases: ['coding', 'decoding', 'coding-decoding', 'coding decoding', 'code'], inSyllabus: true, generate: genCoding },
+  { key: 'direction', label: 'Direction Sense', subject: SUBJECT_REAS, aliases: ['direction', 'directions', 'direction sense'], inSyllabus: true, generate: genDirection },
+  { key: 'syllogism', label: 'Syllogism', subject: SUBJECT_REAS, aliases: ['syllogism', 'syllogisms', 'statements and conclusions', 'venn'], inSyllabus: true },
+  { key: 'blood-relation', label: 'Blood Relations', subject: SUBJECT_REAS, aliases: ['blood relation', 'blood relations', 'family tree', 'relation'], inSyllabus: true },
+  { key: 'analogy', label: 'Analogy & Classification', subject: SUBJECT_REAS, aliases: ['analogy', 'analogies', 'classification', 'odd one out'], inSyllabus: true },
+  { key: 'non-verbal', label: 'Non-Verbal Reasoning', subject: SUBJECT_REAS, aliases: ['non-verbal', 'non verbal', 'dice', 'mirror image', 'paper folding', 'embedded figure'], inSyllabus: true },
+  // English
+  { key: 'grammar', label: 'Grammar & Error Spotting', subject: SUBJECT_ENG, aliases: ['grammar', 'error spotting', 'error', 'tense', 'tenses', 'subject-verb', 'subject verb', 'preposition', 'prepositions', 'articles'], inSyllabus: true, generate: genGrammar },
+  { key: 'vocabulary', label: 'Vocabulary (Synonyms & Antonyms)', subject: SUBJECT_ENG, aliases: ['vocab', 'vocabulary', 'synonym', 'synonyms', 'antonym', 'antonyms', 'one word', 'spelling'], inSyllabus: true, generate: genSynonym },
+  { key: 'idioms', label: 'Idioms & Phrases', subject: SUBJECT_ENG, aliases: ['idiom', 'idioms', 'phrase', 'phrases', 'proverb', 'proverbs'], inSyllabus: true, generate: genIdiom },
+  { key: 'voice-narration', label: 'Voice & Narration', subject: SUBJECT_ENG, aliases: ['voice', 'active passive', 'passive', 'narration', 'direct indirect', 'reported speech'], inSyllabus: true, generate: genVoice },
+  { key: 'comprehension', label: 'Reading Comprehension & Cloze', subject: SUBJECT_ENG, aliases: ['comprehension', 'passage', 'cloze', 'reading'], inSyllabus: true },
+  // General Awareness
+  { key: 'polity', label: 'Indian Polity & Constitution', subject: SUBJECT_GA, aliases: ['polity', 'constitution', 'constitutional', 'article', 'articles', 'fundamental rights', 'parliament', 'president', 'directive principles'], inSyllabus: true },
+  { key: 'history', label: 'History', subject: SUBJECT_GA, aliases: ['history', 'modern history', 'ancient history', 'medieval', 'freedom struggle'], inSyllabus: true },
+  { key: 'geography', label: 'Geography', subject: SUBJECT_GA, aliases: ['geography', 'rivers', 'mountains', 'climate', 'soil'], inSyllabus: true },
+  { key: 'science', label: 'General Science', subject: SUBJECT_GA, aliases: ['science', 'physics', 'chemistry', 'biology'], inSyllabus: true },
+  { key: 'economy', label: 'Economy', subject: SUBJECT_GA, aliases: ['economy', 'economics', 'budget', 'rbi', 'inflation'], inSyllabus: true },
+  { key: 'current-affairs', label: 'Current Affairs', subject: SUBJECT_GA, aliases: ['current affairs', 'current events', 'news'], inSyllabus: true },
+  { key: 'ssc-notice', label: 'SSC CGL 2026 Notice Facts', subject: SUBJECT_GA, aliases: ['notice', 'notification', 'vacancy', 'vacancies', 'crucial date', 'application window'], inSyllabus: true },
+  // Computer
+  { key: 'computer-basics', label: 'Computer Basics', subject: SUBJECT_COMP, aliases: ['computer basics', 'hardware', 'software', 'cpu', 'memory', 'ms office', 'excel', 'word', 'internet', 'networking', 'cyber', 'cyber security'], inSyllabus: true, generate: genComputer }
+];
+
+export interface ParsedTestRequest {
+  subjects: string[];
+  topics: TopicSpec[];
+  numQuestions: number;
+  difficulty: CustomTestConfig['difficulty'];
+  durationMinutes?: number;
+  focusGoal: NonNullable<CustomTestConfig['focusGoal']>;
+  /** Words that looked like a topic request but matched nothing in the catalogue. */
+  unrecognised: string[];
+}
+
+/**
+ * Whole-word (plural-tolerant) alias match. Substring matching is wrong here: it read
+ * "quantum physics" as Quantitative Aptitude, "Framework" as Time & Work and "Similar
+ * Triangles" as Simple Interest.
+ */
+const containsAlias = (text: string, alias: string): boolean =>
+  new RegExp(`(^|[^a-z])${alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(s|es)?($|[^a-z])`, 'i').test(text);
+
+/** Turns a chat message into a structured request. */
+export function parseTestRequest(query: string): ParsedTestRequest {
+  const lower = query.toLowerCase();
+  const has = (alias: string) => containsAlias(lower, alias);
+
+  const topics = TOPIC_CATALOG.filter(t => t.aliases.some(has));
+  const subjects: string[] = [];
+  SUBJECT_ALIASES.forEach(sa => { if (sa.aliases.some(has) && !subjects.includes(sa.subject)) subjects.push(sa.subject); });
+  topics.forEach(t => { if (!subjects.includes(t.subject)) subjects.push(t.subject); });
+
+  // count: "12 questions", "12 qs", "12-question", "of 12"; a bare number not attached to a unit
+  let numQuestions = 15;
+  const explicit = lower.match(/(\d+)\s*[- ]?\s*(?:q|qs|questions?|problems?|items?|mcqs?)\b/);
+  const ofN = lower.match(/\b(?:of|with)\s+(\d+)\b/);
+  const bare = lower.match(/\b(\d+)\b(?!\s*(?:%|percent|min|mins|minute|minutes|hour|hours|marks?|days?|km|m\b|years?|sec))/);
+  const cand = explicit ? explicit[1] : ofN ? ofN[1] : bare ? bare[1] : null;
+  if (cand) {
+    const n = parseInt(cand, 10);
+    if (n >= 1 && n <= 100) numQuestions = n;
   }
 
-  const totalCalculatedMinutes = Math.max(5, Math.ceil((targetCount * secondsPerQuestion) / 60));
+  let difficulty: CustomTestConfig['difficulty'] = 'MEDIUM';
+  if (/\b(hard|tough|difficult|advanced|complex|tier[- ]?2|tier[- ]?ii)\b/.test(lower)) difficulty = 'HARD';
+  // 'simple' and 'speed' are topic words here ("simple interest", "speed and distance"),
+  // so they must not be read as a difficulty.
+  else if (/\b(easy|basic|beginner|elementary|quick|starter)\b/.test(lower)) difficulty = 'EASY';
+  else if (/\b(adaptive|mixed)\b/.test(lower)) difficulty = 'ADAPTIVE';
+
+  const timeMatch = lower.match(/(\d+)\s*[- ]?\s*(?:min|mins|minute|minutes)\b/);
+  const durationMinutes = timeMatch ? Math.max(1, Math.min(180, parseInt(timeMatch[1], 10))) : undefined;
+
+  // words after "on/about/of/for/in" that matched nothing — surfaced so the reply can say so
+  const unrecognised: string[] = [];
+  if (topics.length === 0) {
+    const m = lower.match(/\b(?:on|about|of|for|in|regarding)\s+([a-z][a-z\s&-]{2,40}?)(?=\s+(?:questions?|qs|test|drill|mock|quiz|\d)|[.,!?]|$)/);
+    if (m && m[1].trim() && !SUBJECT_ALIASES.some(sa => sa.aliases.some(a => m[1].includes(a)))) unrecognised.push(m[1].trim());
+  }
+
+  return { subjects, topics, numQuestions, difficulty, durationMinutes, focusGoal: /\bweak/.test(lower) ? 'WEAK_AREAS' : 'GENERAL', unrecognised };
+}
+
+function bankFor(subject: string): TemplateQuestion[] {
+  if (subject === SUBJECT_QUANT) return QUANT_TEMPLATES;
+  if (subject === SUBJECT_REAS) return REASONING_TEMPLATES;
+  if (subject === SUBJECT_GA) return GA_TEMPLATES;
+  if (subject === SUBJECT_COMP) return COMPUTER_TEMPLATES;
+  return ENGLISH_TEMPLATES;
+}
+
+/**
+ * Each bank question belongs to exactly one catalogue topic: the one whose longest alias
+ * its name contains. "Trigonometry: Heights and Distances" is trigonometry, not speed-and-
+ * distance; "Geometry: Circle Tangents" is geometry, not circles.
+ */
+let templateOwner: Map<TemplateQuestion, string> | null = null;
+function ownerOf(t: TemplateQuestion): string | undefined {
+  if (!templateOwner) {
+    templateOwner = new Map<TemplateQuestion, string>();
+    const all: TemplateQuestion[] = ([] as TemplateQuestion[]).concat(
+      QUANT_TEMPLATES, REASONING_TEMPLATES, GA_TEMPLATES, ENGLISH_TEMPLATES, COMPUTER_TEMPLATES);
+    all.forEach(tpl => {
+      const name = tpl.topic.toLowerCase();
+      let bestKey: string | undefined;
+      let bestLen = 0;
+      TOPIC_CATALOG.forEach(spec => {
+        [spec.label.toLowerCase(), ...spec.aliases].forEach(alias => {
+          if (alias.length >= 3 && alias.length > bestLen && containsAlias(name, alias)) {
+            bestKey = spec.key;
+            bestLen = alias.length;
+          }
+        });
+      });
+      if (bestKey) templateOwner!.set(tpl, bestKey);
+    });
+  }
+  return templateOwner.get(t);
+}
+
+function bankMatches(topic: TopicSpec): TemplateQuestion[] {
+  return bankFor(topic.subject).filter(t => ownerOf(t) === topic.key);
+}
+
+interface Supplier {
+  topic: TopicSpec;
+  bank: TemplateQuestion[];
+  cursor: number;
+  genIndex: number;
+}
+
+const makeSupplier = (topic: TopicSpec, bank: TemplateQuestion[]): Supplier => ({ topic, bank, cursor: 0, genIndex: 0 });
+
+/** Everything the catalogue can supply for a subject: its bank plus every generator in it. */
+function suppliersForSubject(subject: string): Supplier[] {
+  const out = TOPIC_CATALOG
+    .filter(t => t.subject === subject)
+    .map(t => makeSupplier(t, bankMatches(t)))
+    .filter(x => x.bank.length > 0 || x.topic.generate);
+  const claimed = new Set(out.flatMap(o => o.bank));
+  const leftovers = bankFor(subject).filter(t => !claimed.has(t));
+  if (leftovers.length > 0) {
+    out.push(makeSupplier({ key: `${subject}-other`, label: subject, subject, aliases: [], inSyllabus: true }, leftovers));
+  }
+  return out;
+}
+
+/** One unused question from a supplier: bank first, then its generator (retried for variety). */
+function drawFrom(sup: Supplier, difficulty: CustomTestConfig['difficulty'], rng: () => number, used: Set<string>): { q: TemplateQuestion; generated: boolean } | null {
+  while (sup.cursor < sup.bank.length) {
+    const cand = sup.bank[sup.cursor++];
+    if (!used.has(cand.text)) return { q: cand, generated: false };
+  }
+  if (sup.topic.generate) {
+    for (let attempt = 0; attempt < 25; attempt++) {
+      const g = sup.topic.generate(difficulty, rng, sup.genIndex++);
+      if (!used.has(g.text)) return { q: g, generated: true };
+    }
+  }
+  return null;
+}
+
+export function generateCustomMockTest(config: CustomTestConfig): MockPaper {
+  const explicitTopics = (config.selectedTopics || [])
+    .map(k => TOPIC_CATALOG.find(t => t.key === k))
+    .filter((t): t is TopicSpec => !!t);
+  const subjects = config.selectedSubjects.length > 0
+    ? config.selectedSubjects
+    : Array.from(new Set(explicitTopics.map(t => t.subject)));
+
+  const notes: string[] = [];
+  let suppliers: Supplier[];
+  let requestedLabel: string;
+
+  if (explicitTopics.length > 0) {
+    requestedLabel = explicitTopics.map(t => t.label).join(' + ');
+    const all = explicitTopics.map(t => makeSupplier(t, bankMatches(t)));
+    const empty = all.filter(sup => sup.bank.length === 0 && !sup.topic.generate);
+    suppliers = all.filter(sup => sup.bank.length > 0 || sup.topic.generate);
+    empty.forEach(e => notes.push(`GovOS has no ${e.topic.label} questions yet, so that topic could not be included.`));
+    if (suppliers.length === 0) {
+      const fallback = subjects.length > 0 ? subjects : [SUBJECT_QUANT];
+      suppliers = fallback.flatMap(suppliersForSubject);
+      notes.push(`Filled from ${fallback.join(' and ')} instead.`);
+    }
+  } else if (subjects.length > 0) {
+    requestedLabel = subjects.join(' + ');
+    suppliers = subjects.flatMap(suppliersForSubject);
+  } else {
+    requestedLabel = 'Tier-1 Mixed';
+    suppliers = [SUBJECT_QUANT, SUBJECT_REAS, SUBJECT_ENG, SUBJECT_GA].flatMap(suppliersForSubject);
+    notes.push('No subject or topic was named, so this mixes the four Tier-1 sections. Ask for a topic — for example "12 questions on percentage" — to drill one thing.');
+  }
+
+  explicitTopics.filter(t => !t.inSyllabus).forEach(t =>
+    notes.push(`${t.label} is not part of the SSC CGL syllabus. Generated for practice because you asked for it.`));
+
+  const targetCount = Math.max(1, config.numQuestions || 25);
+  const rng = mulberry32((Date.now() % 1000003) + targetCount * 7919);
+  const questions: PracticeQuestion[] = [];
+  const used = new Set<string>();
+  const subjectOf = new Map<TemplateQuestion, string>();
+  let generatedCount = 0;
+  let bankCount = 0;
+  let widening = 0;
+  let onRequestedTopic = 0;
+
+  const primaryKeys = new Set(suppliers.map(sup => sup.topic.key));
 
   for (let i = 0; i < targetCount; i++) {
-    const subj = selectedSubs[i % selectedSubs.length];
-    let template: any;
+    let drawn: { q: TemplateQuestion; generated: boolean } | null = null;
+    let from: Supplier | null = null;
 
-    if (subj === 'Quantitative Aptitude') {
-      template = QUANT_TEMPLATES[i % QUANT_TEMPLATES.length];
-    } else if (subj === 'Reasoning & General Intelligence') {
-      template = REASONING_TEMPLATES[i % REASONING_TEMPLATES.length];
-    } else if (subj === 'General Awareness') {
-      template = GA_TEMPLATES[i % GA_TEMPLATES.length];
-    } else if (subj === 'Computer Proficiency') {
-      template = COMPUTER_TEMPLATES[i % COMPUTER_TEMPLATES.length];
-    } else {
-      template = ENGLISH_TEMPLATES[i % ENGLISH_TEMPLATES.length];
+    for (let attempt = 0; attempt < suppliers.length && !drawn; attempt++) {
+      const sup = suppliers[(i + attempt) % suppliers.length];
+      drawn = drawFrom(sup, config.difficulty, rng, used);
+      if (drawn) from = sup;
     }
 
+    // The requested topics are exhausted. Widen — first to the rest of the same subject,
+    // then to the whole Tier-1 catalogue — rather than serve the same question twice.
+    while (!drawn && widening < 2) {
+      const subs = Array.from(new Set(suppliers.map(sup => sup.topic.subject)));
+      const pool = widening === 0
+        ? subs
+        : [SUBJECT_QUANT, SUBJECT_REAS, SUBJECT_ENG, SUBJECT_GA].filter(sub => !subs.includes(sub));
+      widening++;
+      const seen = new Set(suppliers.map(sup => sup.topic.key));
+      const extra = pool.flatMap(suppliersForSubject).filter(sup => !seen.has(sup.topic.key));
+      if (extra.length === 0) continue;
+      notes.push(widening === 1
+        ? `GovOS has only ${used.size} distinct ${requestedLabel} question${used.size === 1 ? '' : 's'} at the moment, so the rest come from other ${subs.join(' and ')} topics.`
+        : `That subject ran out too, so the remaining questions come from the other Tier-1 sections.`);
+      suppliers = suppliers.concat(extra);
+      for (let attempt = 0; attempt < suppliers.length && !drawn; attempt++) {
+        const sup = suppliers[(i + attempt) % suppliers.length];
+        drawn = drawFrom(sup, config.difficulty, rng, used);
+        if (drawn) from = sup;
+      }
+    }
+
+    // Nothing distinct is left anywhere: stop short rather than repeat questions.
+    if (!drawn) {
+      notes.push(`Only ${questions.length} distinct question${questions.length === 1 ? '' : 's'} exist across the whole bank for this request, so this test is ${questions.length} question${questions.length === 1 ? '' : 's'} long instead of ${targetCount}.`);
+      break;
+    }
+
+    const template = drawn.q;
+    used.add(template.text);
+    if (drawn.generated) generatedCount++; else bankCount++;
+    if (from && primaryKeys.has(from.topic.key)) onRequestedTopic++;
+
+    const subj = from ? from.topic.subject : (subjectOf.get(template) || subjects[0] || SUBJECT_QUANT);
     questions.push({
-      id: `ai-custom-q${i+1}`,
+      id: `ai-custom-q${i + 1}`,
       topicId: `custom-topic-${i}`,
       subject: subj,
       topicName: template.topic,
       tier: 'TIER_1',
-      shiftInfo: `AI Custom Drill • Q${i+1}`,
+      shiftInfo: `AI Custom Drill • Q${i + 1}`,
       questionType: 'CUSTOM_AI_GENERATED',
       difficulty: config.difficulty,
-      questionText: `[Q${i+1} • ${subj}] ${template.text}`,
-      options: template.options.map((opt: string, idx: number) => ({ id: idx, text: opt })),
+      questionText: `[Q${i + 1} • ${template.topic}] ${template.text}`,
+      options: template.options.map((opt, idx) => ({ id: idx, text: opt })),
       correctOptionIndex: template.correct,
       explanation: template.exp,
       detailedExplanation: template.detailedExp,
@@ -4705,18 +5591,40 @@ export function generateCustomMockTest(config: CustomTestConfig): MockPaper {
     });
   }
 
+  if (generatedCount > 0 && bankCount > 0) {
+    notes.push(`${bankCount} question${bankCount === 1 ? '' : 's'} from the official-sourced bank, ${generatedCount} written by the GovOS generator for this request.`);
+  } else if (generatedCount > 0) {
+    notes.push(`All ${generatedCount} questions were written by GovOS for this request, to the SSC pattern — none is an official past question, because no official-sourced question exists for this topic yet. Numerical answers are computed as the question is built; language and factual items are curated and checked by hand.`);
+  } else {
+    notes.push(`All ${bankCount} questions come from the official-sourced bank, each citing the document it was written from.`);
+  }
+
+  let secondsPerQuestion = 36;
+  if (config.difficulty === 'HARD') secondsPerQuestion = 55;
+  else if (config.difficulty === 'EASY') secondsPerQuestion = 28;
+  else if (config.difficulty === 'MEDIUM') secondsPerQuestion = 40;
+  const paperSubjects = Array.from(new Set(questions.map(q => q.subject)));
+  if (paperSubjects.every(sub => sub === SUBJECT_GA || sub === SUBJECT_ENG)) {
+    secondsPerQuestion = Math.round(secondsPerQuestion * 0.6);
+  }
+  const durationMinutes = config.durationMinutes || Math.max(3, Math.ceil((questions.length * secondsPerQuestion) / 60));
+
+  const summary = `${questions.length} ${requestedLabel} question${questions.length === 1 ? '' : 's'} · ${config.difficulty} · ${durationMinutes} min`;
+
   return {
     id: `ai-custom-mock-${Date.now()}`,
-    title: config.title || `Custom AI Diagnostic Mock (${targetCount} Qs — ${config.difficulty} Level)`,
+    title: config.title || `${requestedLabel} Drill (${questions.length} Qs)`,
     category: 'CUSTOM_AI',
     examTier: 'Tier-1',
-    totalQuestions: targetCount,
-    totalMarks: targetCount * 2,
-    durationMinutes: totalCalculatedMinutes,
+    totalQuestions: questions.length,
+    totalMarks: questions.length * 2,
+    durationMinutes,
     difficulty: config.difficulty,
-    description: `Targeted practice paper assembled by the AI Generator covering ${selectedSubs.join(', ')}. Timer calibrated for ${config.difficulty} level.`,
-    provenanceTag: `AI Tailored (${totalCalculatedMinutes} Mins)`,
-    questions
+    description: `${summary}. ${onRequestedTopic} of ${questions.length} questions are on the requested topic. ${notes.join(' ')}`,
+    provenanceTag: generatedCount > 0 && bankCount === 0 ? `GovOS-generated (${durationMinutes} Mins)` : `AI Tailored (${durationMinutes} Mins)`,
+    questions,
+    generationNotes: notes,
+    requestSummary: summary
   };
 }
 
