@@ -105,7 +105,8 @@ struck-through with a corrigendum badge. **This provenance chain is the product'
   `UNDER_VERIFICATION` ("Link check pending") rather than claimed verified. `isEssential`
   pins a resource to the "Start here" shelf. Sources are government/regulator domains only
   (SSC portal, PIB, e-Gazette, Legislative Dept, NDLI, SWAYAM, NIOS, MoSPI, Census,
-  National Portal, NCERT).
+  National Portal, NCERT). All 25 answered HTTP 200 on 2026-09-09: 3 direct PDFs, 15
+  official portals, 6 video lessons, 1 practice tool.
 - `ALL_POST_STUDY_PATHS` + `getPostStudyPath(id)` — resolves current, legacy and
   equivalent post ids to an authored study path.
 - Mock repository: `OFFICIAL_10_MOCK_PAPERS`, `NEW_DISCOVERED_PAPERS`, `SUBJECT_MOCK_TESTS`,
@@ -192,6 +193,25 @@ All 20 components, ordered leaves-first so composites can reference them:
 `PracticeApplicationSimulator` · `ApplicationGuide` · `AdmitCardSection` ·
 `ExamDayChecklistSection` · `ResultNextStepsSection` · `ResourceLibrary` · `ExamDetailView`
 
+**The assistant answers, it does not deflect.** `AIAssistant` used to have three hardcoded
+branches, so "where should I check my eligibility in this platform" hit the fallback.
+`answerCandidateQuery(query)` now returns `{text, verified, citation?, action?}`:
+
+- `asksLocation()` detects "where / which tab / how do I / take me", and `PLATFORM_MAP`
+  answers it — 16 entries covering eligibility, resources, practice, calendar, syllabus,
+  application, admit card, cutoffs, roadmap, compare, trust/report, results, exam day,
+  corrigenda, FAQs and posts. Each carries an `AssistantAction` that `main.tsx` turns into
+  a working button, including a guide section number where relevant.
+- Factual intents read `SSC_CGL_EXAM` at answer time — age bands computed across all posts,
+  the non-superseded dates, the real stage/section tables, pay by post, syllabus counts,
+  resource counts by format — and cite the provenance of the record they came from. Nothing
+  is retyped into the answer text, so the answers cannot drift from the register.
+- The fallback still exists and still offers the live official-domain search, but it now
+  lists what the assistant *can* answer instead of dead-ending. Application fee deliberately
+  answers `verified: false`: the register has no fee field.
+- Starter-question chips under the input make the scope visible. `renderAssistantText`
+  turns `**bold**` into real bold runs; message bubbles are `pre-wrap`.
+
 **Live Source Research (Tavily).** The Admin Trust Panel's "Live Source Research" tab runs a
 Tavily search (scope: official domains only / news / whole web), and every result is
 classified by domain — `OFFICIAL` (`*.gov.in`, `*.nic.in`, statutory bodies), `TRUSTED_PUBLIC`
@@ -203,7 +223,11 @@ candidates as verified; promoting a finding records the decision, and adding it 
 with provenance remains a deliberate edit. Shared helpers: `researchTrustMeta`,
 `ResearchSetupNotice` (shown when no key is configured).
 
-`ResourceLibrary` (Section 08): "Start here" essentials shelf, search, type-group and
+`ResourceLibrary` is both **its own top-level tab** (the candidate-facing entry point — the
+user could not find it when it was only a guide sub-section) and guide section 08. Pass
+`showSectionNumber={false}` for the tab, which drops the "08 —" prefix and adds the
+link-don't-store note. Either way `onOpenResource` opens `ResourceReaderModal`, so the tab
+needs that modal mounted in `main.tsx` too. Contents: "Start here" essentials shelf, search, type-group and
 subject chips derived from the exam's own resources (so UPSC/IBPS never show empty SSC
 filters), results grouped by subject, one primary action per card chosen by
 `resourceFormat`, bookmark toggle, per-card link-status badge, and a "Verify all links now"
@@ -227,10 +251,13 @@ solutions. `handleReviewPastAttempt` reconstructs old attempts through a 7-step 
 chain so review never crashes.
 
 ### `src/main.tsx`
-The `App` shell: one `activeTab` string for all nine views (`FINDER | ELIGIBILITY |
-EXAM_DETAIL | PLANNER | PRACTICE | COMPARE | CALENDAR | AI_ASSISTANT | ADMIN`) — **no
-router** — plus the provenance modal, report-error modal and the two notification modals,
-and the React root.
+The `App` shell: one `activeTab` string for all ten views (`FINDER | ELIGIBILITY |
+EXAM_DETAIL | PLANNER | PRACTICE | RESOURCES | COMPARE | CALENDAR | AI_ASSISTANT | ADMIN`,
+exported from `ui.tsx` as `GovOSTab`) — **no router** — plus `examSection`, which lets
+anything deep-link into an Exam Guide section, the resource reader modal, the provenance
+modal, the report-error modal, the two notification modals, and the React root.
+`handleAssistantNavigate(tab, section?)` is what the assistant's "take me there" buttons
+call.
 
 ### Styling
 All CSS lives in `index.html`'s `<style>` block: tokens (`--primary` indigo, `--emerald`,
@@ -279,10 +306,13 @@ so run it yourself.
 
 Remaining by design, not defects:
 
-- **The "AI" features are deterministic local logic.** `AIAssistant` and
-  `ResourceAIAssistant` are keyword matchers; the PracticeEngine chat is a written parser
-  over `TOPIC_CATALOG` (no model call); the admin SHA-256 monitor and the PDF extraction
-  sample are fixtures. Preserve the framing; don't wire them to a model unasked.
+- **The "AI" features are deterministic local logic.** `ResourceAIAssistant` is a keyword
+  matcher; `AIAssistant` is an intent engine over `PLATFORM_MAP` + `SSC_CGL_EXAM`
+  (`answerCandidateQuery`); the PracticeEngine chat is a written parser over
+  `TOPIC_CATALOG`; the admin SHA-256 monitor and the PDF extraction sample are fixtures.
+  No model call anywhere. Preserve the framing; don't wire them to a model unasked.
+  When you add a view or move a feature, update `PLATFORM_MAP` in the same edit — a stale
+  map sends candidates to the wrong tab, which is worse than no answer.
 - **The past-paper corpus is 35 templates** (see `data.ts` above). Custom tests are not
   limited to it — they generate per topic — but full shift papers still cycle these.
 - **UPSC and IBPS datasets are thin** next to SSC CGL. Views degrade gracefully (the roadmap

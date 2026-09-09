@@ -16,7 +16,8 @@ import {
   CandidateNotification,
   DataProvenance,
   Exam,
-  NotificationPreference
+  NotificationPreference,
+  ResourceItem
 } from './types';
 import {
   ALL_EXAMS,
@@ -37,11 +38,23 @@ import {
   NotificationCenterModal,
   NotificationPreferencesModal,
   PracticeEngine,
-  PreparationPlanner
+  PreparationPlanner,
+  ResourceLibrary,
+  ResourceReaderModal
 } from './ui';
 
 export const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'FINDER' | 'ELIGIBILITY' | 'EXAM_DETAIL' | 'PLANNER' | 'PRACTICE' | 'COMPARE' | 'CALENDAR' | 'AI_ASSISTANT' | 'ADMIN'>('FINDER');
+  const [activeTab, setActiveTab] = useState<'FINDER' | 'ELIGIBILITY' | 'EXAM_DETAIL' | 'PLANNER' | 'PRACTICE' | 'RESOURCES' | 'COMPARE' | 'CALENDAR' | 'AI_ASSISTANT' | 'ADMIN'>('FINDER');
+  /** Guide section to open when something deep-links into the Exam Guide (1-16). */
+  const [examSection, setExamSection] = useState<number>(1);
+  const [resourceForReader, setResourceForReader] = useState<ResourceItem | null>(null);
+
+  /** Used by the assistant: switch view, and open a specific guide section when given. */
+  const handleAssistantNavigate = (tab: 'FINDER' | 'ELIGIBILITY' | 'EXAM_DETAIL' | 'PLANNER' | 'PRACTICE' | 'RESOURCES' | 'COMPARE' | 'CALENDAR' | 'AI_ASSISTANT' | 'ADMIN', section?: number) => {
+    if (section) setExamSection(section);
+    setActiveTab(tab);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
   const [selectedExam, setSelectedExam] = useState<Exam>(SSC_CGL_EXAM);
   
   // Tracked Exams & Notifications State
@@ -190,6 +203,7 @@ export const App: React.FC = () => {
         {activeTab === 'EXAM_DETAIL' && (
           <ExamDetailView 
             exam={selectedExam}
+            initialSection={examSection}
             onOpenProvenanceModal={handleOpenProvenance}
             onOpenReportModal={handleOpenReport}
             onNavigateEligibility={() => setActiveTab('ELIGIBILITY')}
@@ -213,6 +227,15 @@ export const App: React.FC = () => {
           />
         )}
 
+        {activeTab === 'RESOURCES' && (
+          <ResourceLibrary
+            exam={selectedExam}
+            showSectionNumber={false}
+            onOpenResource={(res) => setResourceForReader(res)}
+            onOpenProvenanceModal={handleOpenProvenance}
+          />
+        )}
+
         {activeTab === 'COMPARE' && (
           <ExamCompare 
             onSelectExam={handleSelectExam}
@@ -231,6 +254,7 @@ export const App: React.FC = () => {
         {activeTab === 'AI_ASSISTANT' && (
           <AIAssistant 
             onOpenProvenanceModal={handleOpenProvenance}
+            onNavigate={handleAssistantNavigate}
           />
         )}
 
@@ -240,6 +264,14 @@ export const App: React.FC = () => {
           />
         )}
       </main>
+
+      {/* Resource reader / video player, opened from the Resources tab */}
+      {resourceForReader && (
+        <ResourceReaderModal
+          resource={resourceForReader}
+          onClose={() => setResourceForReader(null)}
+        />
+      )}
 
       {/* Field Provenance & Gazette Citation Modal */}
       {provenanceModalData && (

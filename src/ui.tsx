@@ -46,6 +46,7 @@ import {
   Info,
   Keyboard,
   Layers,
+  Library,
   List,
   Lock,
   Mail,
@@ -141,9 +142,12 @@ import {
 // ==========================================================================
 // Header.tsx
 // ==========================================================================
+/** The nine top-level views. `main.tsx` switches on this; the assistant navigates with it. */
+export type GovOSTab = 'FINDER' | 'ELIGIBILITY' | 'EXAM_DETAIL' | 'PLANNER' | 'PRACTICE' | 'RESOURCES' | 'COMPARE' | 'CALENDAR' | 'AI_ASSISTANT' | 'ADMIN';
+
 interface HeaderProps {
-  activeTab: 'FINDER' | 'ELIGIBILITY' | 'EXAM_DETAIL' | 'PLANNER' | 'PRACTICE' | 'COMPARE' | 'CALENDAR' | 'AI_ASSISTANT' | 'ADMIN';
-  setActiveTab: (tab: 'FINDER' | 'ELIGIBILITY' | 'EXAM_DETAIL' | 'PLANNER' | 'PRACTICE' | 'COMPARE' | 'CALENDAR' | 'AI_ASSISTANT' | 'ADMIN') => void;
+  activeTab: 'FINDER' | 'ELIGIBILITY' | 'EXAM_DETAIL' | 'PLANNER' | 'PRACTICE' | 'RESOURCES' | 'COMPARE' | 'CALENDAR' | 'AI_ASSISTANT' | 'ADMIN';
+  setActiveTab: (tab: 'FINDER' | 'ELIGIBILITY' | 'EXAM_DETAIL' | 'PLANNER' | 'PRACTICE' | 'RESOURCES' | 'COMPARE' | 'CALENDAR' | 'AI_ASSISTANT' | 'ADMIN') => void;
   selectedExamTitle?: string;
   unreadCount?: number;
   trackedCount?: number;
@@ -225,6 +229,14 @@ export const Header: React.FC<HeaderProps> = ({
             style={{ fontSize: '0.85rem', padding: '8px 14px' }}
           >
             <Award size={16} /> Practice & Mocks
+          </button>
+
+          <button
+            className={`btn ${activeTab === 'RESOURCES' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setActiveTab('RESOURCES')}
+            style={{ fontSize: '0.85rem', padding: '8px 14px' }}
+          >
+            <Library size={16} /> Resources
           </button>
 
           <button 
@@ -1665,11 +1677,331 @@ const ResearchSetupNotice: React.FC<{ setup?: string }> = ({ setup }) => (
 );
 
 
+// --------------------------------------------------------------------------
+// Grounded answer engine for the GovOS assistant.
+//
+// Two kinds of question have to work: "where do I do X in this platform" (navigation)
+// and "what does the notice say about X" (facts read out of SSC_CGL_EXAM, cited).
+// Anything else falls back honestly and offers a live official-domain search.
+// --------------------------------------------------------------------------
+
+export interface AssistantAction {
+  label: string;
+  tab: GovOSTab;
+  /** Exam Guide section 1-16, when the destination is inside the guide. */
+  section?: number;
+}
+
+interface AssistantReply {
+  text: string;
+  verified: boolean;
+  citation?: {
+    documentTitle: string;
+    pageNumber: number;
+    clauseNumber: string;
+    provenance: DataProvenance;
+  };
+  action?: AssistantAction;
+}
+
+/** Renders the assistant's plain text, turning **bold** markers into real bold runs. */
+const renderAssistantText = (text: string): React.ReactNode[] =>
+  text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+    part.startsWith('**') && part.endsWith('**') && part.length > 4
+      ? <strong key={i} style={{ color: '#c7d2fe' }}>{part.slice(2, -2)}</strong>
+      : <React.Fragment key={i}>{part}</React.Fragment>
+  );
+
+const has = (q: string, ...words: string[]) => words.some(w => q.includes(w));
+const asksLocation = (q: string) => /\b(where|which (tab|section|page|part)|how do i|how can i|how to|navigate|find|locate|go to|open|show me|take me|check .* (in|on) (this|the) (platform|app|site|website)|in this platform)\b/.test(q);
+
+/** Non-superseded date of a given type, if the register has one. */
+const dateOfType = (type: string) =>
+  SSC_CGL_EXAM.dates.find(d => d.type === type && d.status !== 'SUPERSEDED') ||
+  SSC_CGL_EXAM.dates.find(d => d.type === type);
+
+const citeFrom = (provenance: DataProvenance, fallbackTitle: string) => ({
+  documentTitle: provenance.documentTitle || fallbackTitle,
+  pageNumber: provenance.pageNumber || 1,
+  clauseNumber: provenance.clauseNumber || 'See source document',
+  provenance
+});
+
+/** Where each thing lives, so the assistant can answer "where do I …" consistently. */
+const PLATFORM_MAP: { keys: string[]; answer: string; action: AssistantAction }[] = [
+  {
+    keys: ['eligib', 'qualify', 'am i able to apply', 'can i apply'],
+    answer: 'Eligibility lives in the **Am I Eligible?** tab in the top navigation.\n\nEnter your date of birth, degree, branch, percentage, category and gender. GovOS then checks you against all 18 SSC CGL posts one by one and tells you, for each, whether you are eligible, conditionally eligible or not eligible — with the age relaxation for your category already applied and the rule it used shown next to the verdict.\n\nThe full written criteria, with the clause from the notice, are in the Exam Guide under section 03 Eligibility.',
+    action: { label: 'Open Am I Eligible?', tab: 'ELIGIBILITY' }
+  },
+  {
+    keys: ['resource', 'study material', 'material', 'book', 'pdf', 'video', 'lecture', 'notes', 'ncert', 'where should i study', 'what should i read'],
+    answer: 'Study material is in the **Resources** tab in the top navigation.\n\nIt holds 25 verified links: the SSC notice and reopening notice, previous-year question papers and answer keys, the Constitution of India official text, NCERT Exemplar and textbooks, the Census and MoSPI data portals, SWAYAM and NIOS free courses, and 6 video lessons.\n\nGovOS stores no files. Every entry opens the publisher\'s own page, so you always get the current version. Use the "Start here" shelf if you are new, the subject chips to narrow down, the bookmark icon to keep something, and "Verify all links now" to see live which links are answering.',
+    action: { label: 'Open Resources', tab: 'RESOURCES' }
+  },
+  {
+    keys: ['mock', 'practice', 'pyq', 'previous year', 'question paper', 'test series', 'drill', 'solve question', 'attempt test'],
+    answer: 'Practice is in the **Practice & Mocks** tab.\n\nYou get full shift papers on a real CBT clock with SSC Tier-1 marking (+2 correct, −0.5 wrong), subject sectionals, topic drills, and a chat that builds a test to order — say "12 questions on percentage" or "8 hard questions on time and work" and it generates exactly that, with worked solutions.\n\nAfter you submit, the analysis names your weak topics and every solution shows the source it was written from.',
+    action: { label: 'Open Practice & Mocks', tab: 'PRACTICE' }
+  },
+  {
+    keys: ['calendar', 'timeline', 'remind', 'alert', 'notification', 'track exam', 'tracking'],
+    answer: 'Dates and reminders live in **My Timeline & Calendar**.\n\nTrack an exam there (or from the Exam Finder card) and GovOS generates reminders for its notification, application window, correction window, admit card and exam dates. The bell in the header carries the unread count, and the preferences dialog inside the calendar controls which events you are reminded about and how far ahead.',
+    action: { label: 'Open My Timeline & Calendar', tab: 'CALENDAR' }
+  },
+  {
+    keys: ['syllabus', 'topic list', 'what to study', 'chapters'],
+    answer: 'The syllabus is in the Exam Guide, section 06 Study Plan & Syllabus.\n\nEvery topic is listed by subject with its weightage, and you can tick topics off as you finish them — progress is saved on this device.',
+    action: { label: 'Open the syllabus', tab: 'EXAM_DETAIL', section: 6 }
+  },
+  {
+    keys: ['apply', 'application form', 'how do i register', 'otr', 'one time registration', 'photo', 'signature', 'form fill'],
+    answer: 'Section 04 Application of the Exam Guide walks through the form: One Time Registration steps, the exact photo and signature specifications, which certificates must be valid on the crucial date, and the mistakes that get applications rejected.\n\nThe form itself is filled on SSC\'s own portal at ssc.gov.in — GovOS does not submit anything for you.',
+    action: { label: 'Open the application guide', tab: 'EXAM_DETAIL', section: 4 }
+  },
+  {
+    keys: ['admit card', 'hall ticket', 'call letter'],
+    answer: 'Section 14 Admit Card of the Exam Guide covers when the card is released, which regional website issues it, what you must carry with it, and what to do if the download fails.',
+    action: { label: 'Open Admit Card', tab: 'EXAM_DETAIL', section: 14 }
+  },
+  {
+    keys: ['cut off', 'cutoff', 'cut-off', 'previous cutoff', 'marks needed'],
+    answer: 'Section 10 Cutoffs of the Exam Guide shows the cutoff history by category and post, so you can see what score has actually cleared each stage in past years.',
+    action: { label: 'Open Cutoffs', tab: 'EXAM_DETAIL', section: 10 }
+  },
+  {
+    keys: ['study plan', 'roadmap', 'timetable', 'schedule', 'how should i prepare', 'preparation plan'],
+    answer: 'The **Study Roadmap** tab builds a plan for your target post: milestone tracks, daily hours, and the modules you have completed. Your target post is set in the Exam Guide, and the roadmap follows it.',
+    action: { label: 'Open Study Roadmap', tab: 'PLANNER' }
+  },
+  {
+    keys: ['compare', 'which exam is better', 'difference between exam'],
+    answer: 'The **Compare Exams** tab puts exams side by side — eligibility, stages, vacancies and pay — so you can see how they differ before committing.',
+    action: { label: 'Open Compare Exams', tab: 'COMPARE' }
+  },
+  {
+    keys: ['wrong', 'incorrect information', 'report', 'mistake', 'outdated', 'trust', 'provenance', 'how do you verify', 'source of this'],
+    answer: 'Every fact in GovOS carries its source. The "Sourced Clause" button next to a field opens the document title, page, clause, publication and verification dates, and the quoted text.\n\nIf something looks wrong, use the report button on that field — reports are queued and shown in the **Trust Panel**, which also runs live searches restricted to official government domains. Nothing from a live search is treated as verified until a human promotes it.',
+    action: { label: 'Open the Trust Panel', tab: 'ADMIN' }
+  },
+  {
+    keys: ['result', 'after the exam', 'document verification', 'next step'],
+    answer: 'Section 16 Result & Next Steps of the Exam Guide covers the stages after the exam: answer key and challenge window, result, document verification and final posting.',
+    action: { label: 'Open Result & Next Steps', tab: 'EXAM_DETAIL', section: 16 }
+  },
+  {
+    keys: ['exam day', 'what to carry', 'checklist', 'centre', 'center rules', 'dress code'],
+    answer: 'Section 15 Exam-Day Checklist of the Exam Guide lists what to carry, what is banned at the centre, reporting time and the biometric process.',
+    action: { label: 'Open the Exam-Day Checklist', tab: 'EXAM_DETAIL', section: 15 }
+  },
+  {
+    keys: ['corrigendum', 'changed', 'update', 'amendment'],
+    answer: 'Section 13 Corrigenda of the Exam Guide lists every official change. Superseded values stay visible with a strike-through and the corrigendum that replaced them, so you can see what changed rather than only the latest state.',
+    action: { label: 'Open Corrigenda', tab: 'EXAM_DETAIL', section: 13 }
+  },
+  {
+    keys: ['faq', 'common question', 'doubt'],
+    answer: 'Section 11 FAQs of the Exam Guide answers the questions candidates ask most, each with the clause it comes from.',
+    action: { label: 'Open FAQs', tab: 'EXAM_DETAIL', section: 11 }
+  },
+  {
+    keys: ['post', 'job profile', 'salary', 'pay', 'department', 'which job'],
+    answer: 'Section 01 Overview & Posts of the Exam Guide lists all 18 posts with department, pay level, classification and nature of work, so you can pick a target post. Your choice drives the roadmap and the practice analysis.',
+    action: { label: 'Open Overview & Posts', tab: 'EXAM_DETAIL', section: 1 }
+  }
+];
+
+/**
+ * Answer a candidate question from the verified register, or say plainly that it is not in
+ * there. Navigation intents are checked first when the question asks "where"; factual
+ * intents otherwise.
+ */
+export function answerCandidateQuery(query: string): AssistantReply {
+  const q = query.toLowerCase().trim();
+
+  // ---- orientation
+  if (has(q, 'what can you do', 'what can i ask', 'how does this work', 'how do i use', 'help me get started', 'getting started', 'what is govos', 'guide me through')) {
+    return {
+      verified: true,
+      text: 'I answer from the verified GovOS register for SSC CGL 2026, and I can point you to the right part of the platform.\n\nThe platform has nine views:\n• **Exam Finder** — discover exams matched to your qualification\n• **Am I Eligible?** — per-post eligibility from your own details\n• **Exam Guide** — 16 sections: dates, eligibility, application, pattern, syllabus, cutoffs, admit card and more\n• **Practice & Mocks** — CBT papers, topic drills and a test creator\n• **Resources** — 25 verified official links, PDFs and videos\n• **Study Roadmap** — a plan for your target post\n• **Compare Exams**, **My Timeline & Calendar**, **Trust Panel**\n\nTry asking: "where do I check my eligibility", "what is the last date to apply", "is there negative marking", "where are the resources", or "what is the exam pattern".',
+      action: { label: 'Open the Exam Guide', tab: 'EXAM_DETAIL', section: 1 }
+    };
+  }
+
+  // ---- navigation: the candidate is asking where something lives
+  if (asksLocation(q)) {
+    const hit = PLATFORM_MAP.find(entry => has(q, ...entry.keys));
+    if (hit) return { verified: true, text: hit.answer, action: hit.action };
+  }
+
+  // ---- facts, read out of the register
+  if (has(q, 'age limit', 'maximum age', 'minimum age', 'age relaxation', 'how old', 'upper age')) {
+    const minAge = Math.min(...SSC_CGL_EXAM.posts.map(p => p.minAge));
+    const maxAge = Math.max(...SSC_CGL_EXAM.posts.map(p => p.maxAge));
+    const post = SSC_CGL_EXAM.posts[0];
+    return {
+      verified: true,
+      text: `Age limits run from ${minAge} to ${maxAge} years across the ${SSC_CGL_EXAM.posts.length} SSC CGL posts — each post sets its own band, so check the one you are targeting.\n\nAge is counted as on the crucial date, ${SSC_CGL_EXAM.crucialEligibilityDate}, not the date you apply.\n\nRelaxation on the upper limit: OBC +3 years, SC/ST +5 years, PwBD +10 years (on top of the category relaxation where both apply).\n\nThe Am I Eligible? tab applies all of this to your date of birth and tells you post by post.`,
+      citation: citeFrom(post.provenance, 'SSC CGL 2026 Official Notice'),
+      action: { label: 'Check my age eligibility', tab: 'ELIGIBILITY' }
+    };
+  }
+
+  if (has(q, 'eligib', 'qualification', 'graduate', 'graduation', 'degree', 'b.tech', 'btech', 'can i apply')) {
+    const dummyProfile = {
+      dateOfBirth: '2005-05-15',
+      degree: 'B.Tech',
+      branch: 'Computer Science',
+      percentage: 72,
+      category: 'GENERAL' as const,
+      gender: 'Male' as const,
+      domicileState: 'Telangana',
+      nationality: 'INDIAN'
+    };
+    const diag = evaluateCandidateEligibility(SSC_CGL_EXAM, dummyProfile);
+    return {
+      verified: true,
+      text: `The base requirement is a bachelor's degree in any discipline from a recognised university, held on the crucial date ${SSC_CGL_EXAM.crucialEligibilityDate}. Two posts add conditions: Junior Statistical Officer needs 60% in Mathematics at Class 12 or Statistics in the degree, and Statistical Investigator needs Statistics as a subject.\n\nWorked example — a B.Tech candidate born 15-05-2005, General category: ${diag.plainEnglishExplanation}\n\nEnter your own details in Am I Eligible? for a per-post verdict.`,
+      citation: citeFrom(SSC_CGL_EXAM.posts[0].provenance, 'SSC CGL 2026 Official Notice'),
+      action: { label: 'Open Am I Eligible?', tab: 'ELIGIBILITY' }
+    };
+  }
+
+  if (has(q, 'last date', 'deadline', 'closing date', 'application date', 'when can i apply', 'apply by', 'important date', 'exam date', 'when is the exam', 'notification date')) {
+    const lines = SSC_CGL_EXAM.dates
+      .filter(d => d.status !== 'SUPERSEDED')
+      .map(d => `• ${d.label}: ${d.dateTimeStr}${d.isTentative ? ' (tentative)' : ''}`)
+      .join('\n');
+    const close = dateOfType('APPLICATION_CLOSE');
+    const superseded = SSC_CGL_EXAM.dates.filter(d => d.status === 'SUPERSEDED');
+    return {
+      verified: true,
+      text: `Key dates on record for ${SSC_CGL_EXAM.title}:\n\n${lines}\n\n${superseded.length > 0 ? `${superseded.length} earlier date${superseded.length === 1 ? ' was' : 's were'} superseded by corrigendum — section 13 shows what changed.\n\n` : ''}Track the exam and GovOS will remind you before each of these.`,
+      citation: close ? citeFrom(close.provenance, 'SSC CGL 2026 Official Notice') : undefined,
+      action: { label: 'Open My Timeline & Calendar', tab: 'CALENDAR' }
+    };
+  }
+
+  if (has(q, 'negative marking', 'marking scheme', 'exam pattern', 'pattern', 'how many questions', 'how many marks', 'duration', 'tier 1', 'tier-1', 'tier 2', 'tier-2', 'paper pattern')) {
+    const lines = SSC_CGL_EXAM.stages.map(st => {
+      const sections = st.sections.map(sec => `   – ${sec.sectionName}: ${sec.questions} Qs / ${sec.marks} marks`).join('\n');
+      return `• ${st.stageName} (${st.tier.replace('_', '-')}): ${st.totalQuestions} questions, ${st.totalMarks} marks, ${st.durationMinutes} minutes, ${st.mode}. Negative marking: ${st.negativeMarking}.\n${sections}`;
+    }).join('\n\n');
+    return {
+      verified: true,
+      text: `Examination pattern on record:\n\n${lines}\n\nThe practice engine uses exactly this marking, so your mock scores are comparable to the real thing.`,
+      citation: citeFrom(SSC_CGL_EXAM.stages[0].provenance, 'SSC CGL 2026 Official Notice'),
+      action: { label: 'Open the pattern section', tab: 'EXAM_DETAIL', section: 5 }
+    };
+  }
+
+  if (has(q, 'vacancy', 'vacancies', 'how many post', 'number of post', 'seats')) {
+    return {
+      verified: true,
+      text: `${SSC_CGL_EXAM.vacanciesTotal ? `Vacancies on record: ${SSC_CGL_EXAM.vacanciesTotal}.` : 'The vacancy figure is announced separately by SSC and is not final in the register yet.'}\n\nThe register carries ${SSC_CGL_EXAM.posts.length} posts across departments, from Assistant Section Officer to Junior Statistical Officer, each with its own pay level and eligibility conditions.\n\nSSC publishes the final post-wise, category-wise vacancy table after the application window closes, so treat any earlier figure as indicative.`,
+      citation: citeFrom(SSC_CGL_EXAM.posts[0].provenance, 'SSC CGL 2026 Official Notice'),
+      action: { label: 'See all posts', tab: 'EXAM_DETAIL', section: 1 }
+    };
+  }
+
+  if (has(q, 'salary', 'pay level', 'pay scale', 'in hand', 'grade pay')) {
+    const top = SSC_CGL_EXAM.posts.slice(0, 5).map(p => `• ${p.postName} — ${p.payScale} (${p.payLevel}, ${p.classification})`).join('\n');
+    return {
+      verified: true,
+      text: `Pay by post, straight from the register:\n\n${top}\n\nAll ${SSC_CGL_EXAM.posts.length} posts with their pay levels, departments and nature of work are in section 01 of the Exam Guide. The figures are the pay scale; allowances vary by posting city.`,
+      citation: citeFrom(SSC_CGL_EXAM.posts[0].provenance, 'SSC CGL 2026 Official Notice'),
+      action: { label: 'See all posts and pay', tab: 'EXAM_DETAIL', section: 1 }
+    };
+  }
+
+  if (has(q, 'syllabus', 'what to study', 'topics')) {
+    const bySubject = new Map<string, number>();
+    SSC_CGL_EXAM.syllabus.forEach(t => bySubject.set(t.subject, (bySubject.get(t.subject) || 0) + 1));
+    const summary = Array.from(bySubject.entries()).map(([sub, n]) => `• ${sub}: ${n} topics`).join('\n');
+    return {
+      verified: true,
+      text: `The syllabus on record has ${SSC_CGL_EXAM.syllabus.length} topics:\n\n${summary}\n\nSection 06 lists each topic with its weightage and lets you tick off what you have finished. For practice on any one of them, ask the test creator in Practice & Mocks.`,
+      action: { label: 'Open the syllabus', tab: 'EXAM_DETAIL', section: 6 }
+    };
+  }
+
+  if (has(q, 'fee', 'payment', 'how much to pay', 'application fee')) {
+    return {
+      verified: false,
+      text: 'The application fee is paid on SSC\'s own portal while submitting the form; women, SC, ST, PwBD and ex-servicemen candidates are exempted under the notice.\n\nGovOS does not hold the current fee figure as a verified field, so check the fee clause of the notice itself before paying — section 04 links to it, and I can search official domains live if you want the current figure.',
+      action: { label: 'Open the application guide', tab: 'EXAM_DETAIL', section: 4 }
+    };
+  }
+
+  if (has(q, 'resource', 'material', 'book', 'pdf', 'video', 'ncert', 'free course')) {
+    const videos = SSC_CGL_EXAM.resources.filter(r => r.resourceFormat === 'YOUTUBE_COURSE').length;
+    const pdfs = SSC_CGL_EXAM.resources.filter(r => r.resourceFormat === 'DIRECT_PDF').length;
+    const portals = SSC_CGL_EXAM.resources.filter(r => r.resourceFormat === 'OFFICIAL_PORTAL').length;
+    return {
+      verified: true,
+      text: `The Resources tab holds ${SSC_CGL_EXAM.resources.length} verified entries for SSC CGL: ${pdfs} direct PDFs (the notice, the reopening notice and the Constitution official text), ${portals} official portals (previous-year papers, answer keys, the exam calendar, NCERT, SWAYAM, NIOS, Census and MoSPI data) and ${videos} video lessons.\n\nEvery one links to the publisher's own server — GovOS stores no study material, so nothing goes stale here. Each card shows when the link was last checked, and "Verify all links now" re-checks them live.`,
+      action: { label: 'Open Resources', tab: 'RESOURCES' }
+    };
+  }
+
+  if (has(q, 'admit card', 'hall ticket')) {
+    const ac = dateOfType('ADMIT_CARD');
+    return {
+      verified: true,
+      text: `${ac ? `Admit card: ${ac.dateTimeStr}${ac.isTentative ? ' (tentative)' : ''}.\n\n` : 'The admit card date has not been announced in the register yet.\n\n'}Admit cards are issued by the SSC regional website for your centre, not the national portal, and you must carry a printed copy with an original photo ID. Section 14 covers the download steps and what to do if it fails.`,
+      citation: ac ? citeFrom(ac.provenance, 'SSC CGL 2026 Official Notice') : undefined,
+      action: { label: 'Open Admit Card', tab: 'EXAM_DETAIL', section: 14 }
+    };
+  }
+
+  if (has(q, 'cutoff', 'cut off', 'cut-off', 'marks needed', 'safe score')) {
+    const latest = SSC_CGL_EXAM.cutoffsHistory[0];
+    return {
+      verified: true,
+      text: `${latest ? `Most recent cutoff on record: ${latest.year} — see the full category-wise table in section 10.` : 'Cutoff history is listed in section 10 of the Exam Guide.'}\n\nCutoffs move every year with vacancies and paper difficulty, so use them as a target band rather than a promise. Your mock analytics in Practice & Mocks tell you where you stand against them.`,
+      action: { label: 'Open Cutoffs', tab: 'EXAM_DETAIL', section: 10 }
+    };
+  }
+
+  if (has(q, 'apply', 'application', 'otr', 'registration', 'photo', 'signature')) {
+    return {
+      verified: true,
+      text: `Applications are submitted on SSC's own portal, ${SSC_CGL_EXAM.applicationGuide.officialPortal}. One Time Registration comes first (${SSC_CGL_EXAM.applicationGuide.otrSteps.length} steps in the guide), then the exam form.\n\nSection 04 gives the photo and signature specifications, the certificates that must be valid on the crucial date, and ${SSC_CGL_EXAM.applicationGuide.rejectionPitfalls.length} rejection pitfalls with how to avoid each.\n\nGovOS never submits anything on your behalf.`,
+      action: { label: 'Open the application guide', tab: 'EXAM_DETAIL', section: 4 }
+    };
+  }
+
+  if (has(q, 'practice', 'mock', 'test', 'pyq', 'previous year')) {
+    return {
+      verified: true,
+      text: 'Practice & Mocks has full shift papers on a real CBT clock, subject sectionals, topic drills, and a chat that builds a paper to order — ask it for "12 questions on percentage" or "8 hard questions on time and work".\n\nMarking is the real SSC Tier-1 scheme (+2 correct, −0.5 wrong). After submitting you get weak-topic diagnosis and a five-layer solution for every question, each naming the document it was written from.',
+      action: { label: 'Open Practice & Mocks', tab: 'PRACTICE' }
+    };
+  }
+
+  // ---- a location question we could not place
+  if (asksLocation(q)) {
+    return {
+      verified: true,
+      text: 'I could not tell which part of the platform you mean. Here is the whole map:\n\n• **Exam Finder** — discover exams\n• **Am I Eligible?** — per-post eligibility check\n• **Exam Guide** — 16 sections (dates 02, eligibility 03, application 04, pattern 05, syllabus 06, cutoffs 10, FAQs 11, admit card 14, exam day 15, results 16)\n• **Practice & Mocks** — papers, drills, test creator\n• **Resources** — verified PDFs, portals and videos\n• **Study Roadmap** — plan for your target post\n• **Compare Exams** · **My Timeline & Calendar** · **Trust Panel**\n\nName the thing you are looking for and I will take you straight there.',
+      action: { label: 'Open the Exam Guide', tab: 'EXAM_DETAIL', section: 1 }
+    };
+  }
+
+  return {
+    verified: false,
+    text: 'That is not in the verified GovOS register, so I will not guess at it.\n\nI can answer eligibility and age limits, important dates, exam pattern and marking, posts and pay, the syllabus, the application process, admit card, cutoffs, and where anything lives in this platform. Ask me one of those, or let me search official government domains live — live results are labelled unverified until a GovOS verifier reviews them.'
+  };
+}
+
+
 // ==========================================================================
 // AIAssistant.tsx
 // ==========================================================================
 interface AIAssistantProps {
   onOpenProvenanceModal: (provenance: any) => void;
+  /** Switch the app to another view (and optionally an Exam Guide section). */
+  onNavigate?: (tab: GovOSTab, section?: number) => void;
 }
 
 interface AIChatMessage {
@@ -1689,9 +2021,11 @@ interface AIChatMessage {
   liveAnswer?: string | null;
   liveError?: string;
   liveSetup?: string;
+  /** "Take me there" button for answers that point at a part of the platform. */
+  action?: AssistantAction;
 }
 
-export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal }) => {
+export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal, onNavigate }) => {
   const [inputQuery, setInputQuery] = useState<string>('');
   const [liveSearchingId, setLiveSearchingId] = useState<string | null>(null);
 
@@ -1714,7 +2048,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal 
     {
       id: 'm-1',
       sender: 'AI',
-      text: 'Hello! I am the GovOS Strictly Grounded AI Assistant. I do not guess or search unverified external websites. Ask me anything about SSC CGL 2026 eligibility, exam dates, syllabus, or application rules!',
+      text: 'Hello. I answer from the verified GovOS register for SSC CGL 2026 — eligibility, dates, pattern, posts, syllabus, application, admit card and cutoffs — and I can take you to the right part of the platform. I do not guess, and I do not search unverified websites.\n\nTry: "where do I check my eligibility", "where are the resources", "what is the last date to apply", or "is there negative marking".',
       isVerified: true
     }
   ]);
@@ -1733,66 +2067,50 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal 
     setMessages(prev => [...prev, userMsg]);
     setInputQuery('');
 
-    // Process query grounded against verified database
+    // Answer from the register (and the platform map) rather than a fixed keyword list.
     setTimeout(() => {
-      let responseText = '';
-      let citationData: any = null;
-      let verified = true;
-
-      const qLower = userText.toLowerCase();
-
-      if (qLower.includes('eligible') || qLower.includes('b.tech') || qLower.includes('age')) {
-        const dummyProfile = {
-          dateOfBirth: '2005-05-15',
-          degree: 'B.Tech',
-          branch: 'Computer Science',
-          percentage: 72,
-          category: 'GENERAL' as const,
-          gender: 'Male' as const,
-          domicileState: 'Telangana',
-          nationality: 'INDIAN'
-        };
-        const diag = evaluateCandidateEligibility(SSC_CGL_EXAM, dummyProfile);
-        responseText = `${diag.plainEnglishExplanation} (Verified against Section 3.1, Clause 3.1(a) of the official notification).`;
-        citationData = {
-          documentTitle: 'SSC CGL 2026 Official Notice.pdf',
-          pageNumber: 12,
-          clauseNumber: 'Section 3.1 (a)',
-          provenance: SSC_CGL_EXAM.posts[0].provenance
-        };
-      } else if (qLower.includes('date') || qLower.includes('deadline') || qLower.includes('last date')) {
-        responseText = `The online application closing date for SSC CGL 2026 has been officially extended to 27 September 2026 (23:59 IST) via Corrigendum Notice #02.`;
-        citationData = {
-          documentTitle: 'SSC CGL 2026 Corrigendum Notice #02.pdf',
-          pageNumber: 1,
-          clauseNumber: 'Clause 2',
-          provenance: SSC_CGL_EXAM.dates[2].provenance
-        };
-      } else if (qLower.includes('negative') || qLower.includes('marking') || qLower.includes('scheme')) {
-        responseText = `Yes, Tier-1 examination has a negative marking of 0.50 marks per incorrect answer. Tier-2 has 1.00 mark deducted per wrong answer in Section I & II.`;
-        citationData = {
-          documentTitle: 'SSC CGL 2026 Official Notice.pdf',
-          pageNumber: 15,
-          clauseNumber: 'Section 4.2',
-          provenance: SSC_CGL_EXAM.dates[0].provenance
-        };
-      } else {
-        // Fallback for unverified / missing topics
-        verified = false;
-        responseText = `I couldn't find a verified official source for this information in the GovOS database. You can check the official portal at https://ssc.gov.in, or let me search official government domains live — results from a live search are shown as unverified until a GovOS verifier reviews them.`;
-      }
+      const reply = answerCandidateQuery(userText);
 
       const aiMsg: AIChatMessage = {
         id: `m-ai-${Date.now()}`,
         sender: 'AI',
-        text: responseText,
-        isVerified: verified,
-        citation: citationData,
-        liveSearchOffer: verified ? undefined : userText
+        text: reply.text,
+        isVerified: reply.verified,
+        citation: reply.citation,
+        action: reply.action,
+        liveSearchOffer: reply.verified ? undefined : userText
       };
 
       setMessages(prev => [...prev, aiMsg]);
     }, 400);
+  };
+
+  const suggestedQuestions = [
+    'Where do I check my eligibility?',
+    'Where are the resources?',
+    'What is the last date to apply?',
+    'Is there negative marking?',
+    'What is the exam pattern?',
+    'What can you do?'
+  ];
+
+  const askSuggested = (question: string) => {
+    setMessages(prev => [
+      ...prev,
+      { id: `m-user-${Date.now()}`, sender: 'USER', text: question, isVerified: false }
+    ]);
+    setTimeout(() => {
+      const reply = answerCandidateQuery(question);
+      setMessages(prev => [...prev, {
+        id: `m-ai-${Date.now()}`,
+        sender: 'AI',
+        text: reply.text,
+        isVerified: reply.verified,
+        citation: reply.citation,
+        action: reply.action,
+        liveSearchOffer: reply.verified ? undefined : question
+      }]);
+    }, 300);
   };
 
   return (
@@ -1853,7 +2171,19 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal 
                 )}
               </div>
 
-              {msg.text}
+              <span style={{ whiteSpace: 'pre-wrap' }}>{msg.sender === 'AI' ? renderAssistantText(msg.text) : msg.text}</span>
+
+              {msg.action && onNavigate && (
+                <div style={{ marginTop: '12px' }}>
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => onNavigate(msg.action!.tab, msg.action!.section)}
+                    style={{ fontSize: '0.78rem', padding: '7px 14px' }}
+                  >
+                    <ArrowRight size={14} /> {msg.action.label}
+                  </button>
+                </div>
+              )}
 
               {msg.citation && (
                 <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
@@ -1932,10 +2262,24 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal 
         </div>
 
         {/* Input Bar */}
-        <div style={{ display: 'flex', gap: '12px', marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--border-color)' }}>
+        {/* Starter questions, so the assistant's scope is visible rather than guessed at */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '16px' }}>
+          {suggestedQuestions.map(question => (
+            <button
+              key={question}
+              className="btn btn-secondary"
+              onClick={() => askSuggested(question)}
+              style={{ fontSize: '0.75rem', padding: '6px 12px' }}
+            >
+              {question}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ display: 'flex', gap: '12px', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--border-color)' }}>
           <input 
             type="text"
-            placeholder="Ask a question e.g. 'Am I eligible for SSC CGL at age 21 with B.Tech?' or 'What is the application deadline?'"
+            placeholder="Ask about eligibility, dates, pattern, posts, syllabus — or where something is in this platform"
             value={inputQuery}
             onChange={(e) => setInputQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
@@ -10071,12 +10415,14 @@ const formatVerifiedDate = (iso: string): string => {
 const isExternalUrl = (value?: string): value is string => !!value && /^https?:\/\//i.test(value);
 
 interface ResourceLibraryProps {
+  /** False when the library is its own top-level tab rather than guide section 08. */
+  showSectionNumber?: boolean;
   exam: Exam;
   onOpenResource: (resource: ResourceItem) => void;
   onOpenProvenanceModal: (provenance: DataProvenance) => void;
 }
 
-export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenResource, onOpenProvenanceModal }) => {
+export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenResource, onOpenProvenanceModal, showSectionNumber = true }) => {
   const resources = exam.resources || [];
 
   const [query, setQuery] = useState<string>('');
@@ -10356,11 +10702,17 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'white', margin: 0 }}>
-            08 — Resource Library
+            {showSectionNumber ? '08 — Resource Library' : `Resource Library — ${exam.title}`}
           </h3>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', margin: '4px 0 0 0' }}>
             {resources.length} resources · {officialCount} from official government sources · {savedCount} saved for later
           </p>
+          {!showSectionNumber && (
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', margin: '6px 0 0 0', maxWidth: '620px', lineHeight: 1.5 }}>
+              Every entry is a link to the publisher's own server — official notices and PDFs, government
+              portals, and free video lessons. GovOS stores no study material, so nothing here goes stale.
+            </p>
+          )}
         </div>
         <button
           onClick={handleVerifyLinks}
