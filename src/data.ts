@@ -5326,7 +5326,7 @@ export const TOPIC_CATALOG: TopicSpec[] = [
   { key: 'analogy', label: 'Analogy & Classification', subject: SUBJECT_REAS, aliases: ['analogy', 'analogies', 'classification', 'odd one out'], inSyllabus: true },
   { key: 'non-verbal', label: 'Non-Verbal Reasoning', subject: SUBJECT_REAS, aliases: ['non-verbal', 'non verbal', 'dice', 'mirror image', 'paper folding', 'embedded figure'], inSyllabus: true },
   // English
-  { key: 'grammar', label: 'Grammar & Error Spotting', subject: SUBJECT_ENG, aliases: ['grammar', 'error spotting', 'error', 'tense', 'tenses', 'subject-verb', 'subject verb', 'preposition', 'prepositions', 'articles'], inSyllabus: true, generate: genGrammar },
+  { key: 'grammar', label: 'Grammar & Error Spotting', subject: SUBJECT_ENG, aliases: ['grammar', 'error spotting', 'error', 'tense', 'tenses', 'subject-verb', 'subject verb', 'preposition', 'prepositions', 'article usage', 'sentence correction'], inSyllabus: true, generate: genGrammar },
   { key: 'vocabulary', label: 'Vocabulary (Synonyms & Antonyms)', subject: SUBJECT_ENG, aliases: ['vocab', 'vocabulary', 'synonym', 'synonyms', 'antonym', 'antonyms', 'one word', 'spelling'], inSyllabus: true, generate: genSynonym },
   { key: 'idioms', label: 'Idioms & Phrases', subject: SUBJECT_ENG, aliases: ['idiom', 'idioms', 'phrase', 'phrases', 'proverb', 'proverbs'], inSyllabus: true, generate: genIdiom },
   { key: 'voice-narration', label: 'Voice & Narration', subject: SUBJECT_ENG, aliases: ['voice', 'active passive', 'passive', 'narration', 'direct indirect', 'reported speech'], inSyllabus: true, generate: genVoice },
@@ -5365,7 +5365,12 @@ const containsAlias = (text: string, alias: string): boolean =>
 /** Turns a chat message into a structured request. */
 export function parseTestRequest(query: string): ParsedTestRequest {
   const lower = query.toLowerCase();
-  const has = (alias: string) => containsAlias(lower, alias);
+  // "speed drill" and friends describe the pace, not the topic: strip them before matching
+  // so a "speed drill on Indian Polity" does not pull in speed-time-distance questions.
+  const topicText = lower
+    .replace(/\b(speed|quick|rapid|timed|lightning)\s+(drill|test|round|booster|practice|session|paper|mock|quiz)\b/g, ' ')
+    .replace(/\bspeed\s+booster\b/g, ' ');
+  const has = (alias: string) => containsAlias(topicText, alias);
 
   const topics = TOPIC_CATALOG.filter(t => t.aliases.some(has));
   const subjects: string[] = [];
@@ -5438,6 +5443,22 @@ function ownerOf(t: TemplateQuestion): string | undefined {
     });
   }
   return templateOwner.get(t);
+}
+
+/** The catalogue topic a free-text topic name belongs to (longest alias wins). */
+export function matchTopicByName(name: string): TopicSpec | undefined {
+  const lower = name.toLowerCase();
+  let best: TopicSpec | undefined;
+  let bestLen = 0;
+  TOPIC_CATALOG.forEach(spec => {
+    [spec.label.toLowerCase(), ...spec.aliases].forEach(alias => {
+      if (alias.length >= 3 && alias.length > bestLen && containsAlias(lower, alias)) {
+        best = spec;
+        bestLen = alias.length;
+      }
+    });
+  });
+  return best;
 }
 
 function bankMatches(topic: TopicSpec): TemplateQuestion[] {

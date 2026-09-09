@@ -118,6 +118,7 @@ import {
   getPostStudyPath,
   MockPaper,
   NEW_DISCOVERED_PAPERS,
+  matchTopicByName,
   OFFICIAL_10_MOCK_PAPERS,
   parseTestRequest,
   QUANT_TEMPLATES,
@@ -5310,8 +5311,42 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
       const req = parseTestRequest(query);
       const stamp = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+      // "Test my weak areas": read the topics actually scored below 60% in past attempts.
+      let topicKeys = req.topics.map(t => t.key);
+      let requestNote = '';
+      if (req.focusGoal === 'WEAK_AREAS' && topicKeys.length === 0) {
+        const stats = new Map<string, { correct: number; total: number; label: string }>();
+        pastAttempts.forEach(att => {
+          const paper = att.paperData || att.details?.paperData;
+          const answers = att.userAnswers || att.details?.userAnswers || {};
+          if (!paper || !Array.isArray(paper.questions)) return;
+          paper.questions.forEach((pq: any, qIdx: number) => {
+            const given = (answers as Record<number, number>)[qIdx];
+            if (given === undefined || given === null) return;
+            const spec = matchTopicByName(String(pq.topicName || ''));
+            if (!spec) return;
+            const row = stats.get(spec.key) || { correct: 0, total: 0, label: spec.label };
+            row.total += 1;
+            if (given === pq.correctOptionIndex) row.correct += 1;
+            stats.set(spec.key, row);
+          });
+        });
+        const weak = Array.from(stats.entries())
+          .filter(([, r]) => r.correct / r.total < 0.6)
+          .sort((a, b) => (a[1].correct / a[1].total) - (b[1].correct / b[1].total))
+          .slice(0, 4);
+        if (weak.length > 0) {
+          topicKeys = weak.map(([key]) => key);
+          requestNote = `Built from your own results: you are below 60% on ${weak.map(([, r]) => `${r.label} (${Math.round((r.correct / r.total) * 100)}%)`).join(', ')}.`;
+        } else {
+          requestNote = stats.size > 0
+            ? 'Nothing in your past attempts is below 60%, so this is a broad Tier-1 mix rather than a targeted drill.'
+            : 'You have no answered questions on record yet, so there are no weak topics to target. Take this mixed test and I can aim the next one at what you miss.';
+        }
+      }
+
       // Nothing in the message matched a subject or a topic: ask, don't guess.
-      if (req.topics.length === 0 && req.subjects.length === 0 && req.unrecognised.length > 0) {
+      if (topicKeys.length === 0 && req.subjects.length === 0 && req.focusGoal !== 'WEAK_AREAS' && req.unrecognised.length > 0) {
         const examples = TOPIC_CATALOG.filter(t => t.generate && t.inSyllabus).slice(0, 6).map(t => t.label);
         setChatMessages(prev => [...prev, {
           id: `msg-bot-${Date.now()}`,
@@ -5324,15 +5359,15 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
 
       const generatedMock = generateCustomMockTest({
         selectedSubjects: req.subjects,
-        selectedTopics: req.topics.map(t => t.key),
+        selectedTopics: topicKeys,
         numQuestions: req.numQuestions,
         difficulty: req.difficulty,
         durationMinutes: req.durationMinutes,
         focusGoal: req.focusGoal
       });
 
-      const scopeLine = req.topics.length > 0
-        ? req.topics.map(t => t.label).join(' + ')
+      const scopeLine = topicKeys.length > 0
+        ? generatedMock.title.replace(/ Drill \(\d+ Qs\)$/, '')
         : req.subjects.length > 0
           ? `${req.subjects.join(' + ')} (whole section)`
           : 'not specified — mixed Tier-1 sections';
@@ -5345,6 +5380,9 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
         `• Difficulty: ${req.difficulty}`,
         `• Time: ${generatedMock.durationMinutes} minutes${req.durationMinutes ? ' (as you asked)' : ' (calibrated for this length)'}`
       ];
+      if (requestNote) {
+        lines.push('', requestNote);
+      }
       if (generatedMock.generationNotes && generatedMock.generationNotes.length > 0) {
         lines.push('');
         generatedMock.generationNotes.forEach(n => lines.push(`— ${n}`));

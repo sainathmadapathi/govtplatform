@@ -145,6 +145,13 @@ for "12 questions on calculus" must produce twelve calculus questions, so:
 - Off-syllabus requests are honoured with a note ("Calculus is not part of the SSC CGL
   syllabus"). A request matching nothing produces no test: the chat says so and offers
   in-syllabus examples.
+- Pace words are stripped before topic matching, so a "speed drill on Indian Polity" is not
+  read as speed-time-distance. Watch for aliases that belong to two topics: "articles" means
+  constitutional articles here, so grammar claims "article usage" instead.
+- **"Test my weak areas"** (the fourth quick-prompt pill) reads `pastAttempts`, tallies
+  answered questions by catalogue topic via `matchTopicByName`, and drills the four topics
+  below 60%, naming each with its accuracy. With no answered questions on record it says so
+  and gives a mixed test instead of pretending to personalise.
 
 A harness that re-derives every generated answer from the question text lives in the
 session scratchpad (`gen_test.ts`); the last run checked 1090 answers with 0 mismatches.
