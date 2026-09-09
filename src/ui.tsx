@@ -1736,7 +1736,7 @@ const PLATFORM_MAP: { keys: string[]; answer: string; action: AssistantAction }[
   },
   {
     keys: ['resource', 'study material', 'material', 'book', 'pdf', 'video', 'lecture', 'notes', 'ncert', 'where should i study', 'what should i read'],
-    answer: 'Study material is in the **Resources** tab in the top navigation.\n\nIt holds 25 verified links: the SSC notice and reopening notice, previous-year question papers and answer keys, the Constitution of India official text, NCERT Exemplar and textbooks, the Census and MoSPI data portals, SWAYAM and NIOS free courses, and 6 video lessons.\n\nGovOS stores no files. Every entry opens the publisher\'s own page, so you always get the current version. Use the "Start here" shelf if you are new, the subject chips to narrow down, the bookmark icon to keep something, and "Verify all links now" to see live which links are answering.',
+    answer: 'Study material is in the **Resources** tab in the top navigation.\n\nIt holds the SSC notice and reopening notice, previous-year question papers and answer keys, the Constitution of India official text, India Code, NCERT Exemplar and textbooks, the Census, MoSPI and RBI data portals, SWAYAM, NPTEL and NIOS free courses, single video lessons, and the free YouTube channels most SSC candidates follow — each labelled with its subscriber count and marked as coaching content, not an official source.\n\nGovOS stores no files. Every entry opens the publisher\'s own page, so you always get the current version. Use the "Start here" shelf if you are new, the subject chips to narrow down, the bookmark icon to keep something, and "Verify all links now" to see live which links are answering.',
     action: { label: 'Open Resources', tab: 'RESOURCES' }
   },
   {
@@ -1934,7 +1934,7 @@ export function answerCandidateQuery(query: string): AssistantReply {
   }
 
   if (has(q, 'resource', 'material', 'book', 'pdf', 'video', 'ncert', 'free course')) {
-    const videos = SSC_CGL_EXAM.resources.filter(r => r.resourceFormat === 'YOUTUBE_COURSE').length;
+    const videos = SSC_CGL_EXAM.resources.filter(r => r.resourceFormat === 'YOUTUBE_COURSE' || r.resourceFormat === 'YOUTUBE_CHANNEL').length;
     const pdfs = SSC_CGL_EXAM.resources.filter(r => r.resourceFormat === 'DIRECT_PDF').length;
     const portals = SSC_CGL_EXAM.resources.filter(r => r.resourceFormat === 'OFFICIAL_PORTAL').length;
     return {
@@ -4056,14 +4056,14 @@ export const ResourceReaderModal: React.FC<ResourceReaderModalProps> = ({
             <div style={{
               padding: '8px',
               borderRadius: 'var(--radius-sm)',
-              background: resource.resourceFormat === 'YOUTUBE_COURSE' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(59, 130, 246, 0.15)',
-              color: resource.resourceFormat === 'YOUTUBE_COURSE' ? '#ef4444' : 'var(--primary)',
+              background: resource.resourceFormat === 'YOUTUBE_COURSE' || resource.resourceFormat === 'YOUTUBE_CHANNEL' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(59, 130, 246, 0.15)',
+              color: resource.resourceFormat === 'YOUTUBE_COURSE' || resource.resourceFormat === 'YOUTUBE_CHANNEL' ? '#ef4444' : 'var(--primary)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               flexShrink: 0
             }}>
-              {resource.resourceFormat === 'YOUTUBE_COURSE' ? <PlayCircle size={24} /> : resource.resourceFormat === 'OFFICIAL_PORTAL' ? <Globe size={24} /> : <FileText size={24} />}
+              {resource.resourceFormat === 'YOUTUBE_COURSE' || resource.resourceFormat === 'YOUTUBE_CHANNEL' ? <PlayCircle size={24} /> : resource.resourceFormat === 'OFFICIAL_PORTAL' ? <Globe size={24} /> : <FileText size={24} />}
             </div>
             <div style={{ overflow: 'hidden' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
@@ -4186,7 +4186,7 @@ export const ResourceReaderModal: React.FC<ResourceReaderModalProps> = ({
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
           
           {/* 1. YOUTUBE COURSE EMBED & DIRECT VIDEO PLAYER */}
-          {resource.resourceFormat === 'YOUTUBE_COURSE' && (
+          {resource.resourceFormat === 'YOUTUBE_COURSE' && resource.youtubeEmbedId && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', padding: '24px' }}>
               
               {/* Native YouTube Video Player */}
@@ -4201,7 +4201,7 @@ export const ResourceReaderModal: React.FC<ResourceReaderModalProps> = ({
                 boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
               }}>
                 <iframe
-                  src={`https://www.youtube-nocookie.com/embed/${resource.youtubeEmbedId || '6OW1mJTLms0'}?rel=0&autoplay=1`}
+                  src={`https://www.youtube-nocookie.com/embed/${resource.youtubeEmbedId}?rel=0&autoplay=1`}
                   title={resource.title}
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
@@ -10546,6 +10546,7 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
   const primaryAction = (r: ResourceItem): { label: string; href?: string; onClick?: () => void } => {
     switch (r.resourceFormat) {
       case 'YOUTUBE_COURSE': return { label: 'Watch in App', onClick: () => onOpenResource(r) };
+      case 'YOUTUBE_CHANNEL': return { label: 'Open channel on YouTube', href: r.url };
       case 'OFFICIAL_PORTAL': return { label: 'Open Official Portal', href: r.url };
       case 'ONLINE_TOOL': return { label: 'Launch Tool', href: r.url };
       case 'INTERACTIVE_HANDBOOK': return { label: 'Read Handbook', onClick: () => onOpenResource(r) };
@@ -10670,7 +10671,7 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
             </a>
           ) : (
             <button onClick={action.onClick} className="btn btn-emerald" style={{ fontSize: '0.8rem', padding: '7px 14px', display: 'inline-flex', alignItems: 'center', gap: '6px', flex: 1, justifyContent: 'center' }}>
-              {r.resourceFormat === 'YOUTUBE_COURSE' ? <PlayCircle size={14} /> : <BookOpen size={14} />} {action.label}
+              {r.resourceFormat === 'YOUTUBE_COURSE' || r.resourceFormat === 'YOUTUBE_CHANNEL' ? <PlayCircle size={14} /> : <BookOpen size={14} />} {action.label}
             </button>
           )}
 

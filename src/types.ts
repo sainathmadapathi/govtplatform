@@ -198,7 +198,7 @@ export interface ResourceItem {
     | 'Official Gazette';
   author: string;
   type: 'OFFICIAL_PDF' | 'OFFICIAL_PORTAL' | 'SIMPLIFIED_GUIDE' | 'RECOMMENDED_BOOK' | 'VIDEO_LECTURE' | 'ONLINE_TOOL';
-  resourceFormat: 'DIRECT_PDF' | 'YOUTUBE_COURSE' | 'INTERACTIVE_HANDBOOK' | 'ONLINE_TOOL' | 'OFFICIAL_PORTAL';
+  resourceFormat: 'DIRECT_PDF' | 'YOUTUBE_COURSE' | 'YOUTUBE_CHANNEL' | 'INTERACTIVE_HANDBOOK' | 'ONLINE_TOOL' | 'OFFICIAL_PORTAL';
   url: string;
   directPdfUrl?: string;
   youtubeUrl?: string;

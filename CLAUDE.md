@@ -105,8 +105,22 @@ struck-through with a corrigendum badge. **This provenance chain is the product'
   `UNDER_VERIFICATION` ("Link check pending") rather than claimed verified. `isEssential`
   pins a resource to the "Start here" shelf. Sources are government/regulator domains only
   (SSC portal, PIB, e-Gazette, Legislative Dept, NDLI, SWAYAM, NIOS, MoSPI, Census,
-  National Portal, NCERT). All 25 answered HTTP 200 on 2026-09-09: 3 direct PDFs, 15
-  official portals, 6 video lessons, 1 practice tool.
+  National Portal, NCERT, India Code, Sansad, RBI, NPTEL). **38 entries, all answering HTTP 200
+  on 2026-09-09**: 3 direct PDFs, 20 official portals, 6 single video lessons, 8 YouTube
+  channels, 1 practice tool.
+- **Coaching content is listed, and labelled as such.** The eight most-followed free SSC
+  YouTube channels (Adda247 SSC, Gagan Pratap, Rakesh Yadav, Rankers Gurukul, SSC Wallah,
+  Parmar SSC, Piyush Varshney, English With Rani Mam) are in the library because candidates
+  actually use them, but they are not government sources. `communitySource()` records them as
+  `RECOMMENDATION` / `UNDER_VERIFICATION`, with the subscriber count and check date as the
+  stated basis, an explicit "GovOS does not endorse this and has not fact-checked its
+  lessons", and the rule that the SSC notice governs where they disagree. Channel identity
+  was confirmed by fetching each channel page, not assumed from memory. PRS Legislative
+  Research is listed the same way: useful, widely cited, not official.
+- **`YOUTUBE_CHANNEL` vs `YOUTUBE_COURSE`.** A channel has no single video to embed, so it
+  opens on YouTube; only a `YOUTUBE_COURSE` with a real `youtubeEmbedId` plays in the reader.
+  The player used to fall back to a hardcoded video id when the field was missing, which
+  silently showed the wrong lesson; it now renders only with a real id.
 - `ALL_POST_STUDY_PATHS` + `getPostStudyPath(id)` — resolves current, legacy and
   equivalent post ids to an authored study path.
 - Mock repository: `OFFICIAL_10_MOCK_PAPERS`, `NEW_DISCOVERED_PAPERS`, `SUBJECT_MOCK_TESTS`,

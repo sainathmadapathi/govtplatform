@@ -35,6 +35,28 @@ const officialSource = (
   excerptText: `Official source reachable at ${officialUrl}. The content is published and maintained by the issuing authority; GovOS links to the primary source rather than copying it.`
 });
 
+/**
+ * A free third-party source candidates widely use. It is NOT a government publication, so it
+ * is recorded as a RECOMMENDATION under verification: GovOS confirms only that the channel
+ * exists, is free, and was reachable on the check date.
+ */
+const communitySource = (
+  id: string,
+  documentTitle: string,
+  url: string,
+  audience: string
+): DataProvenance => ({
+  id,
+  documentTitle,
+  officialUrl: url,
+  publishedDate: CHECK_DATE,
+  verifiedDate: CHECK_DATE,
+  verifiedBy: `GovOS Link Verification — channel reachable and identity confirmed on ${CHECK_DATE}`,
+  taxonomyType: 'RECOMMENDATION',
+  verificationLevel: 'UNDER_VERIFICATION',
+  excerptText: `Free coaching content, not a government publication. GovOS lists it because it is widely followed by SSC candidates (${audience}, checked ${CHECK_DATE}) and costs nothing to watch; GovOS does not endorse it, is not affiliated with it, and has not fact-checked its lessons. Where a lesson disagrees with the SSC notice, the notice is right.`
+});
+
 const pendingSource = (
   id: string,
   documentTitle: string,
@@ -2016,6 +2038,201 @@ export const SSC_CGL_EXAM: Exam = {
       recommendedFor: 'Starting the Tier-2 Computer Knowledge module (Section-III).',
       description: 'First class of a computer-awareness revision series aimed at SSC CGL, CHSL and railway examinations. Free to watch on YouTube; GovOS links to it and does not host it.',
       linkVerifiedDate: CHECK_DATE,
+    },
+    // --- 3. Free YouTube channels candidates widely follow (coaching, not official) ---
+    // Subscriber counts were read from public channel statistics on the check date and are
+    // recorded as evidence of reach, not of quality. Each entry links to the channel itself
+    // rather than one video, so it stays useful as the channel publishes new material.
+    {
+      id: 'res-yt-adda247-ssc',
+      title: 'Adda247 SSC — free full-syllabus classes and PYQ sessions',
+      subject: 'Foundation Textbooks & Open Courses',
+      author: 'Adda247 SSC (YouTube channel)',
+      type: 'VIDEO_LECTURE',
+      resourceFormat: 'YOUTUBE_CHANNEL',
+      url: 'https://www.youtube.com/channel/UCAyYBPzFioHUxvVZEn4rMJA',
+      youtubeUrl: 'https://www.youtube.com/channel/UCAyYBPzFioHUxvVZEn4rMJA',
+      officialTag: 'FREE ON YOUTUBE · ~11M SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      recommendedFor: 'Following a structured free batch across all four Tier-1 subjects.',
+      description: 'The largest SSC-focused free channel on YouTube, running daily live classes, previous-year question sessions and strategy videos across reasoning, quantitative aptitude, English and general awareness. Free to watch; paid courses are advertised alongside, which you can ignore. Coaching content — where it disagrees with the SSC notice, the notice governs.',
+      linkVerifiedDate: CHECK_DATE,
+      provenance: communitySource('prov-res-yt-adda247', 'Adda247 SSC YouTube channel', 'https://www.youtube.com/channel/UCAyYBPzFioHUxvVZEn4rMJA', 'about 11 million subscribers')
+    },
+    {
+      id: 'res-yt-ssc-wallah',
+      title: 'SSC Wallah (Physics Wallah) — free complete-syllabus batches',
+      subject: 'Foundation Textbooks & Open Courses',
+      author: 'SSC Wallah (YouTube channel, Physics Wallah)',
+      type: 'VIDEO_LECTURE',
+      resourceFormat: 'YOUTUBE_CHANNEL',
+      url: 'https://www.youtube.com/channel/UCcaEVV7A47J4k9GFcqOOYkg',
+      youtubeUrl: 'https://www.youtube.com/channel/UCcaEVV7A47J4k9GFcqOOYkg',
+      officialTag: 'FREE ON YOUTUBE · ~2.5M SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      recommendedFor: 'A second opinion when one teacher\'s explanation of a topic does not land.',
+      description: 'Physics Wallah\'s SSC channel: subject-wise lectures, previous-year solutions and full free batches for CGL, CHSL, MTS and GD. Useful as an alternative explanation when a topic has not clicked elsewhere. Coaching content, not a government source.',
+      linkVerifiedDate: CHECK_DATE,
+      provenance: communitySource('prov-res-yt-sscwallah', 'SSC Wallah YouTube channel', 'https://www.youtube.com/channel/UCcaEVV7A47J4k9GFcqOOYkg', 'about 2.5 million subscribers')
+    },
+    {
+      id: 'res-yt-gagan-pratap',
+      title: 'Gagan Pratap Maths — quantitative aptitude and advanced maths',
+      subject: 'Quantitative Aptitude',
+      author: 'Gagan Pratap Maths (YouTube channel)',
+      type: 'VIDEO_LECTURE',
+      resourceFormat: 'YOUTUBE_CHANNEL',
+      url: 'https://www.youtube.com/channel/UCS2rhpz4RJEmb9CV7TPzBIg',
+      youtubeUrl: 'https://www.youtube.com/channel/UCS2rhpz4RJEmb9CV7TPzBIg',
+      officialTag: 'FREE ON YOUTUBE · ~5.7M SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      recommendedFor: 'Speed methods for geometry, algebra and trigonometry at Tier-2 difficulty.',
+      description: 'The most-followed maths channel among SSC candidates, known for short methods and hard-question practice in geometry, algebra, trigonometry and mensuration. Best used after your fundamentals are in place — the pace assumes you know the basics. Coaching content, not a government source.',
+      linkVerifiedDate: CHECK_DATE,
+      provenance: communitySource('prov-res-yt-gaganpratap', 'Gagan Pratap Maths YouTube channel', 'https://www.youtube.com/channel/UCS2rhpz4RJEmb9CV7TPzBIg', 'about 5.7 million subscribers')
+    },
+    {
+      id: 'res-yt-rakesh-yadav',
+      title: 'Rakesh Yadav — classroom-style maths from the basics',
+      subject: 'Quantitative Aptitude',
+      author: 'Rakesh Yadav (YouTube channel, Rakesh Yadav Readers Publication)',
+      type: 'VIDEO_LECTURE',
+      resourceFormat: 'YOUTUBE_CHANNEL',
+      url: 'https://www.youtube.com/channel/UCOyT274gK_v2Xu6TXV5RgtQ',
+      youtubeUrl: 'https://www.youtube.com/channel/UCOyT274gK_v2Xu6TXV5RgtQ',
+      officialTag: 'FREE ON YOUTUBE · ~5.8M SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      recommendedFor: 'Building arithmetic and advanced-maths fundamentals from zero.',
+      description: 'Long-running classroom-style maths teaching for SSC exams, working through chapters slowly from first principles. The usual recommendation for candidates who need the basics rebuilt rather than speed tricks. Coaching content, not a government source.',
+      linkVerifiedDate: CHECK_DATE,
+      provenance: communitySource('prov-res-yt-rakeshyadav', 'Rakesh Yadav YouTube channel', 'https://www.youtube.com/channel/UCOyT274gK_v2Xu6TXV5RgtQ', 'about 5.8 million subscribers')
+    },
+    {
+      id: 'res-yt-rankers-gurukul',
+      title: 'SelectionWay SSC (Rankers Gurukul) — maths series by Aditya Ranjan',
+      subject: 'Quantitative Aptitude',
+      author: 'SelectionWay SSC (RANKERS GURUKUL) (YouTube channel) — Aditya Ranjan',
+      type: 'VIDEO_LECTURE',
+      resourceFormat: 'YOUTUBE_CHANNEL',
+      url: 'https://www.youtube.com/channel/UCnoFgtSgG9PPAmwzG2P00JA',
+      youtubeUrl: 'https://www.youtube.com/channel/UCnoFgtSgG9PPAmwzG2P00JA',
+      officialTag: 'FREE ON YOUTUBE · COACHING, NOT OFFICIAL',
+      recommendedFor: 'Working through a maths topic in order, day by day, in Hindi.',
+      description: 'Hindi-medium maths series taught in sequence, topic by topic, by a teacher selected through SSC CGL himself. The percentage session already in this library comes from this channel; the channel link gives you the rest of the series. Coaching content, not a government source.',
+      linkVerifiedDate: CHECK_DATE,
+      provenance: communitySource('prov-res-yt-rankersgurukul', 'SelectionWay SSC (Rankers Gurukul) YouTube channel', 'https://www.youtube.com/channel/UCnoFgtSgG9PPAmwzG2P00JA', 'a widely followed SSC maths channel')
+    },
+    {
+      id: 'res-yt-piyush-varshney',
+      title: 'Reasoning By Piyush Varshney — full reasoning syllabus',
+      subject: 'Reasoning',
+      author: 'Reasoning By Piyush Varshney (YouTube channel)',
+      type: 'VIDEO_LECTURE',
+      resourceFormat: 'YOUTUBE_CHANNEL',
+      url: 'https://www.youtube.com/channel/UCyoOKrfVu89ZAGwYqQAyM8A',
+      youtubeUrl: 'https://www.youtube.com/channel/UCyoOKrfVu89ZAGwYqQAyM8A',
+      officialTag: 'FREE ON YOUTUBE · ~1.8M SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      recommendedFor: 'Syllogism, blood relations, series, coding-decoding and non-verbal practice.',
+      description: 'The reasoning channel SSC candidates most often name, covering the Tier-1 reasoning syllabus topic by topic with previous-year questions. Reasoning is the fastest section to convert into marks, and this is a complete free course for it. Coaching content, not a government source.',
+      linkVerifiedDate: CHECK_DATE,
+      provenance: communitySource('prov-res-yt-piyushvarshney', 'Reasoning By Piyush Varshney YouTube channel', 'https://www.youtube.com/channel/UCyoOKrfVu89ZAGwYqQAyM8A', 'about 1.8 million subscribers')
+    },
+    {
+      id: 'res-yt-rani-mam',
+      title: 'English With Rani Mam — grammar rules and vocabulary',
+      subject: 'English Comprehension',
+      author: 'English With Rani Mam (YouTube channel)',
+      type: 'VIDEO_LECTURE',
+      resourceFormat: 'YOUTUBE_CHANNEL',
+      url: 'https://www.youtube.com/channel/UCvagVtkTsj3ASMTlhcIc-7A',
+      youtubeUrl: 'https://www.youtube.com/channel/UCvagVtkTsj3ASMTlhcIc-7A',
+      officialTag: 'FREE ON YOUTUBE · ~3.3M SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      recommendedFor: 'Daily grammar and vocabulary practice for Tier-1 and Tier-2 English.',
+      description: 'Grammar rules, error spotting, vocabulary and comprehension for SSC and bank exams, taught rule by rule with exam examples. The 60-rules session already in this library is from this channel; the channel link gives you the daily practice around it. Coaching content, not a government source.',
+      linkVerifiedDate: CHECK_DATE,
+      provenance: communitySource('prov-res-yt-ranimam', 'English With Rani Mam YouTube channel', 'https://www.youtube.com/channel/UCvagVtkTsj3ASMTlhcIc-7A', 'about 3.3 million subscribers')
+    },
+    {
+      id: 'res-yt-parmar-ssc',
+      title: 'PARMAR SSC — general awareness and previous-year GK',
+      subject: 'General Awareness & Static GK',
+      author: 'PARMAR SSC (YouTube channel)',
+      type: 'VIDEO_LECTURE',
+      resourceFormat: 'YOUTUBE_CHANNEL',
+      url: 'https://www.youtube.com/channel/UCXPwWsvqwU18UKpsZD4bODw',
+      youtubeUrl: 'https://www.youtube.com/channel/UCXPwWsvqwU18UKpsZD4bODw',
+      officialTag: 'FREE ON YOUTUBE · ~2.5M SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      recommendedFor: 'Static GK revision built around questions SSC has actually asked.',
+      description: 'General awareness taught around previous-year SSC questions rather than open-ended syllabus reading, which is what makes the section tractable. The borders session already in this library is from this channel. Verify any constitutional or statistical claim against the Constitution text and the official data portals also listed here. Coaching content, not a government source.',
+      linkVerifiedDate: CHECK_DATE,
+      provenance: communitySource('prov-res-yt-parmarssc', 'PARMAR SSC YouTube channel', 'https://www.youtube.com/channel/UCXPwWsvqwU18UKpsZD4bODw', 'about 2.5 million subscribers')
+    },
+    // --- 4. Further free government, statutory and academic sources ---
+    {
+      id: 'res-india-code',
+      title: 'India Code — official repository of Central Acts',
+      subject: 'Official Gazette',
+      author: 'Legislative Department, Ministry of Law and Justice (Government of India)',
+      type: 'OFFICIAL_PORTAL',
+      resourceFormat: 'OFFICIAL_PORTAL',
+      url: 'https://indiacode.nic.in',
+      officialTag: 'GOVERNMENT OF INDIA — MINISTRY OF LAW AND JUSTICE',
+      recommendedFor: 'Checking the actual text of an Act a general-awareness question refers to.',
+      description: 'The Government of India\'s own database of Central Acts with their amendments. When a coaching video or a question paper cites an Act, this is where you confirm what it actually says. Free, no registration.',
+      linkVerifiedDate: CHECK_DATE,
+      provenance: officialSource('prov-res-india-code', 'India Code — Digital Repository of Central Acts', 'https://indiacode.nic.in', 200)
+    },
+    {
+      id: 'res-sansad',
+      title: 'Parliament of India — Sansad official portal',
+      subject: 'Current Affairs & Governance',
+      author: 'Lok Sabha and Rajya Sabha Secretariats (Parliament of India)',
+      type: 'OFFICIAL_PORTAL',
+      resourceFormat: 'OFFICIAL_PORTAL',
+      url: 'https://sansad.in',
+      officialTag: 'PARLIAMENT OF INDIA — OFFICIAL',
+      recommendedFor: 'Polity questions about Parliament: sessions, members, committees and procedure.',
+      description: 'The official portal of both Houses of Parliament — sessions, members, committees, questions and legislative business. The primary source for the parliamentary side of the polity syllabus, and for current affairs about bills in progress.',
+      linkVerifiedDate: CHECK_DATE,
+      provenance: officialSource('prov-res-sansad', 'Parliament of India official portal', 'https://sansad.in', 200)
+    },
+    {
+      id: 'res-rbi',
+      title: 'Reserve Bank of India — official website',
+      subject: 'Banking & Financial Awareness',
+      author: 'Reserve Bank of India',
+      type: 'OFFICIAL_PORTAL',
+      resourceFormat: 'OFFICIAL_PORTAL',
+      url: 'https://www.rbi.org.in',
+      officialTag: 'RESERVE BANK OF INDIA — OFFICIAL',
+      recommendedFor: 'Repo rate, monetary policy and banking terms asked in general awareness.',
+      description: 'The central bank\'s own site: current policy rates, press releases, and the plain-language explanations under its financial-education pages. General-awareness questions on banking are best answered from here rather than from a coaching PDF that may predate the last policy change.',
+      linkVerifiedDate: CHECK_DATE,
+      provenance: officialSource('prov-res-rbi', 'Reserve Bank of India official website', 'https://www.rbi.org.in', 200)
+    },
+    {
+      id: 'res-nptel',
+      title: 'NPTEL — free courses from the IITs and IISc',
+      subject: 'Foundation Textbooks & Open Courses',
+      author: 'NPTEL (Ministry of Education, Government of India)',
+      type: 'OFFICIAL_PORTAL',
+      resourceFormat: 'OFFICIAL_PORTAL',
+      url: 'https://nptel.ac.in',
+      officialTag: 'GOVERNMENT OF INDIA — MINISTRY OF EDUCATION',
+      recommendedFor: 'Rebuilding a mathematics or statistics foundation properly, especially for JSO.',
+      description: 'Government-funded free course library taught by IIT and IISc faculty. Slower and deeper than exam coaching, and the most useful free source if you are targeting Junior Statistical Officer and need real statistics rather than exam shortcuts. Video lectures and notes are free; certification is optional and paid.',
+      linkVerifiedDate: CHECK_DATE,
+      provenance: officialSource('prov-res-nptel', 'NPTEL — National Programme on Technology Enhanced Learning', 'https://nptel.ac.in', 200, 'RECOMMENDATION')
+    },
+    {
+      id: 'res-prs-india',
+      title: 'PRS Legislative Research — bill and act summaries',
+      subject: 'Current Affairs & Governance',
+      author: 'PRS Legislative Research (independent, non-profit)',
+      type: 'OFFICIAL_PORTAL',
+      resourceFormat: 'OFFICIAL_PORTAL',
+      url: 'https://prsindia.org',
+      officialTag: 'INDEPENDENT NON-PROFIT · WIDELY CITED · NOT A GOVERNMENT SITE',
+      recommendedFor: 'Understanding what a new bill or act actually changes, in plain English.',
+      description: 'Independent non-profit that tracks every bill in Parliament and publishes short, neutral summaries of what it changes. Not a government body, so treat it as explanation rather than authority — but it is the clearest free bridge between a news headline and the legal text on India Code.',
+      linkVerifiedDate: CHECK_DATE,
+      provenance: communitySource('prov-res-prs', 'PRS Legislative Research', 'https://prsindia.org', 'the most widely cited independent legislative tracker in India')
     },
     {
       id: 'res-comp-typing-tool',
