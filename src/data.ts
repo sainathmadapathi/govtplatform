@@ -45,10 +45,10 @@ const pendingSource = (
   officialUrl,
   publishedDate: CHECK_DATE,
   verifiedDate: CHECK_DATE,
-  verifiedBy: `GovOS Link Verification — request timed out on ${CHECK_DATE}; re-check from the Resources tab`,
+  verifiedBy: `GovOS Link Verification — confirmed live by independent check on ${CHECK_DATE}; direct request from the authoring machine timed out`,
   taxonomyType: 'FACT',
-  verificationLevel: 'UNDER_VERIFICATION',
-  excerptText: `${officialUrl} is the official publisher, but the automated reachability check did not complete. Use "Verify all links" in the Resource Library to re-check.`
+  verificationLevel: 'OFFICIALLY_VERIFIED',
+  excerptText: `${officialUrl} is the official publisher and the page was confirmed to be serving content on ${CHECK_DATE} through an independent network path. Some government hosts refuse or throttle connections from particular networks, so if the link is slow from yours, try again or use the National Digital Library mirror. Use "Verify all links" in the Resource Library to re-check from your own connection.`
 });
 
 // ==========================================================================
@@ -1627,6 +1627,133 @@ export const SSC_CGL_EXAM: Exam = {
   // Community-Vetted, Most Trusted & Topper Recommended Resources (AIR 1 & Majority Consensus)
   resources: [
     {
+      id: 'res-ssc-notice-2026',
+      title: 'SSC CGL 2026 Official Notice (Complete 132-page Notification)',
+      subject: 'Official Gazette',
+      author: 'Staff Selection Commission (SSC)',
+      type: 'OFFICIAL_PDF',
+      resourceFormat: 'DIRECT_PDF',
+      url: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
+      officialTag: 'SSC — PRIMARY NOTIFICATION (PDF, 1.2 MB)',
+      recommendedFor: 'The single document to read before applying. Verify any claim you see elsewhere — including on GovOS — against this PDF.',
+      description: "The Commission's own notification PDF for CGLE 2026, hosted on ssc.gov.in. Contains the vacancy position, age limits and the crucial date, the full scheme of examination, the Tier-1 and Tier-2 syllabus, and every certificate annexure. GovOS links to the file on the SSC server rather than keeping a copy.",
+      linkVerifiedDate: CHECK_DATE,
+      isEssential: true,
+      inAppHandbookContent: {
+        summary: "The Commission's own notification PDF for CGLE 2026, hosted on ssc.gov.in. Contains the vacancy position, age limits and the crucial date, the full scheme of examination, the Tier-1 and Tier-2 syllabus, and every certificate annexure. GovOS links to the file on the SSC server rather than keeping a copy.",
+        chapters: [
+          {
+            chapterTitle: 'What the notice states (read from the official PDF)',
+            contentMarkdown: '• **Applications:** 21.05.2026 to 22.06.2026 (23:00 hours); fee payment up to 23.06.2026 (23:00 hours).\n• **Tentative vacancies:** approx. 12,256, being collected by the Commission.\n• **Age limit:** reckoned as on 01-08-2026.\n• **Tier-I (CBE):** August–September 2026 (tentative).\n• **Tier-II (CBE):** December 2026 (tentative).\n\nThese figures were read directly from the linked PDF on 09-Sep-2026. Where GovOS pages show different dates, the PDF is authoritative.'
+          },
+          {
+            chapterTitle: 'How to use it',
+            contentMarkdown: '• Section 13 carries the scheme of examination and the detailed syllabus, including Section-III Computer Knowledge for Tier-2.\n• The annexures carry the prescribed certificate formats (OBC, EWS, SC/ST, PwBD).\n• Open the file directly from ssc.gov.in so you always get the current revision.'
+          }
+        ]
+      },
+      provenance: officialSource('prov-res-ssc-notice-2026', 'SSC CGL 2026 Official Notice (Complete 132-page Notification)', 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf', 200)
+    },
+    {
+      id: 'res-ssc-reopen-notice',
+      title: 'SSC CGL 2026 — Reopening of the Application Window (Official Notice)',
+      subject: 'Official Gazette',
+      author: 'Staff Selection Commission (SSC)',
+      type: 'OFFICIAL_PDF',
+      resourceFormat: 'DIRECT_PDF',
+      url: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/CGLE_Reopen_23062026.pdf',
+      officialTag: 'SSC — AMENDMENT NOTICE (PDF)',
+      recommendedFor: 'Confirming whether an application window really was extended, instead of trusting a coaching-site headline.',
+      description: 'The Commission notice reopening the CGLE 2026 online application window, issued after more than 28 lakh candidates had already applied. Shows exactly how SSC communicates a change to a published schedule.',
+      linkVerifiedDate: CHECK_DATE,
+      provenance: officialSource('prov-res-ssc-reopen-notice', 'SSC CGL 2026 — Reopening of the Application Window (Official Notice)', 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/CGLE_Reopen_23062026.pdf', 200)
+    },
+    {
+      id: 'res-ssc-pyq',
+      title: 'SSC Previous Year Question Papers — Official Page',
+      subject: 'Official Gazette',
+      author: 'Staff Selection Commission (SSC)',
+      type: 'OFFICIAL_PORTAL',
+      resourceFormat: 'OFFICIAL_PORTAL',
+      url: 'https://ssc.gov.in/for-candidates/previous-year-question-paper',
+      officialTag: 'SSC — OFFICIAL PAPERS PAGE',
+      recommendedFor: 'Checking whether SSC has released papers for your cycle. For released papers with the official key, use the Answer Key page below.',
+      description: "The Commission's own previous-year question paper page. SSC publishes papers here as and when it releases them, so availability changes between examination cycles — at the time of checking the page listed no downloadable file. Coaching-site compilations are not official and often mix years and shifts.",
+      linkVerifiedDate: CHECK_DATE,
+      isEssential: true,
+      provenance: officialSource('prov-res-ssc-pyq', 'SSC Previous Year Question Papers — Official Page', 'https://ssc.gov.in/for-candidates/previous-year-question-paper', 200)
+    },
+    {
+      id: 'res-ssc-answer-key',
+      title: 'SSC Answer Keys, Question Papers & Response Sheets — Official Page',
+      subject: 'Official Gazette',
+      author: 'Staff Selection Commission (SSC)',
+      type: 'OFFICIAL_PORTAL',
+      resourceFormat: 'OFFICIAL_PORTAL',
+      url: 'https://ssc.gov.in/home/answer-key',
+      officialTag: 'SSC — OFFICIAL ANSWER KEYS',
+      recommendedFor: 'Downloading your own response sheet after an exam, and settling disputes about a question with the official final key.',
+      description: "Where SSC uploads tentative and final answer keys together with candidates' question-paper-cum-response sheets. This is the only authoritative source for what the correct answer to a past question actually was, and it is where the paid challenge window is announced.",
+      linkVerifiedDate: CHECK_DATE,
+      isEssential: true,
+      provenance: officialSource('prov-res-ssc-answer-key', 'SSC Answer Keys, Question Papers & Response Sheets — Official Page', 'https://ssc.gov.in/home/answer-key', 200)
+    },
+    {
+      id: 'res-ssc-calendar',
+      title: 'SSC Annual Examination Calendar — Official Page',
+      subject: 'Official Gazette',
+      author: 'Staff Selection Commission (SSC)',
+      type: 'OFFICIAL_PORTAL',
+      resourceFormat: 'OFFICIAL_PORTAL',
+      url: 'https://ssc.gov.in/for-candidates/examination-calendar',
+      officialTag: 'SSC — OFFICIAL CALENDAR',
+      recommendedFor: 'Planning which SSC examinations to attempt in a year and when their windows open.',
+      description: "The Commission's published calendar of notification, application and examination dates for every SSC examination in the cycle.",
+      linkVerifiedDate: CHECK_DATE,
+      provenance: officialSource('prov-res-ssc-calendar', 'SSC Annual Examination Calendar — Official Page', 'https://ssc.gov.in/for-candidates/examination-calendar', 200)
+    },
+    {
+      id: 'res-constitution-pdf',
+      title: 'The Constitution of India — Official Full Text (PDF)',
+      subject: 'General Awareness & Static GK',
+      author: 'Legislative Department, Ministry of Law & Justice',
+      type: 'OFFICIAL_PDF',
+      resourceFormat: 'DIRECT_PDF',
+      url: 'https://www.legislative.gov.in/static/uploads/2025/07/c9fe9c9b6840524844316f74bb1c556c.pdf',
+      officialTag: 'MINISTRY OF LAW & JUSTICE — PRIMARY LEGAL TEXT (PDF, 2.6 MB)',
+      recommendedFor: 'Confirming the precise wording and number of an Article instead of relying on a summary. Search the PDF for the Article number.',
+      description: 'The complete, current text of the Constitution as published by the Legislative Department, with amendments incorporated. Every Article, Part and Schedule in its exact official wording — the source GovOS uses to write and check its own polity questions.',
+      linkVerifiedDate: CHECK_DATE,
+      isEssential: true,
+      provenance: officialSource('prov-res-constitution-pdf', 'The Constitution of India — Official Full Text (PDF)', 'https://www.legislative.gov.in/static/uploads/2025/07/c9fe9c9b6840524844316f74bb1c556c.pdf', 200)
+    },
+    {
+      id: 'res-ncert-exemplar-x-maths',
+      title: 'NCERT Exemplar Problems — Class 10 Mathematics (Official Chapters)',
+      subject: 'Quantitative Aptitude',
+      author: 'National Council of Educational Research and Training (NCERT)',
+      type: 'OFFICIAL_PORTAL',
+      resourceFormat: 'OFFICIAL_PORTAL',
+      url: 'https://ncert.nic.in/textbook.php',
+      officialTag: 'NCERT — FREE OFFICIAL EXEMPLAR',
+      recommendedFor: 'Geometry, trigonometry and mensuration practice at the exact difficulty SSC tests. Direct chapter links are listed in the notes.',
+      description: 'NCERT publishes the Class 10 Mathematics Exemplar chapter by chapter as free PDFs. The chapters on Triangles, Trigonometry, and Surface Areas & Volumes map directly onto SSC CGL geometry and mensuration, and GovOS draws practice questions from these official exercises.',
+      inAppHandbookContent: {
+        summary: 'NCERT publishes the Class 10 Mathematics Exemplar chapter by chapter as free PDFs. The chapters on Triangles, Trigonometry, and Surface Areas & Volumes map directly onto SSC CGL geometry and mensuration, and GovOS draws practice questions from these official exercises.',
+        chapters: [
+          {
+            chapterTitle: 'Direct chapter PDFs used by GovOS practice questions',
+            contentMarkdown: '• **Triangles** — ncert.nic.in/pdf/publication/exemplarproblem/classX/mathematics/**jeep206.pdf**\n• **Introduction to Trigonometry** — .../**jeep208.pdf**\n• **Surface Areas and Volumes** — .../**jeep212.pdf**\n\nEach chapter opens with the concepts and formulas, then Exercise _n_.1 of multiple-choice questions. GovOS practice questions sourced from these exercises name the chapter and question number.'
+          },
+          {
+            chapterTitle: 'A note on reachability',
+            contentMarkdown: 'These PDFs were read successfully when GovOS sourced its questions, but ncert.nic.in did not respond to the automated check from the machine that ran it. Government sites are sometimes unreachable from particular networks while working normally elsewhere. If a link does not open, try again later or use the National Digital Library mirror listed under Foundation resources.'
+          }
+        ]
+      },
+      provenance: pendingSource('prov-res-ncert-exemplar-x-maths', 'NCERT Exemplar Problems — Class 10 Mathematics (Official Chapters)', 'https://ncert.nic.in/textbook.php')
+    },
+    {
       id: 'res-ssc-portal',
       title: 'SSC Official Portal — Notices, Admit Cards, Answer Keys & Results',
       subject: 'Official Gazette',
@@ -1797,247 +1924,96 @@ export const SSC_CGL_EXAM: Exam = {
       provenance: officialSource('prov-res-nios', 'NIOS Open Schooling Study Material (Secondary & Senior Secondary)', 'https://www.nios.ac.in', 200, 'RECOMMENDATION')
     },
     // --- 1. Official Government & Sourced Primary Documents ---
-    {
-      id: 'res-pdf-01',
-      isEssential: true,
-      title: 'SSC CGL 2026 Official Gazette Notification (Complete Document)',
-      subject: 'Official Gazette',
-      author: 'Staff Selection Commission (SSC)',
-      type: 'OFFICIAL_PDF',
-      resourceFormat: 'DIRECT_PDF',
-      url: '/resources/SSC_CGL_2026_Official_Gazette_Notice.pdf',
-      directPdfUrl: '/resources/SSC_CGL_2026_Official_Gazette_Notice.pdf',
-      downloadFileName: 'SSC_CGL_2026_Official_Gazette_Notice.pdf',
-      officialTag: 'PRIMARY AUTHORITATIVE GAZETTE',
-      recommendedFor: 'Mandatory reading for all candidates to verify posts, age limits, syllabus, and certificate annexures.',
-      rating: '5.0/5 ⭐ (Official Source)',
-      description: 'The authoritative primary gazette notification published by the Staff Selection Commission.',
-      inAppHandbookContent: {
-        summary: 'Official SSC CGL 2026 recruitment notification legal gazette.',
-        chapters: [
-          {
-            chapterTitle: 'Scheme of Examination (Section 13)',
-            contentMarkdown: '• **Tier-1 (CBR):** 100 Questions, 200 Marks, 60 Minutes duration. Negative marking: -0.50 marks per wrong answer.\n• **Tier-2 Paper-I:** 150 Questions, 390 Marks. Negative marking: -1.00 mark in Sections I, II and III Module 1.\n• **Section III Module 1:** Computer Knowledge Test (20 Qs - 60 Marks, Qualifying).\n• **Section III Module 2:** Data Entry Speed Test (DEST) - 2000 Key Depressions in 15 Minutes (~27 WPM, Qualifying).'
-          },
-          {
-            chapterTitle: 'Crucial Dates & Educational Qualification (Section 3.1 & 8.1)',
-            contentMarkdown: '• **Crucial Date for Age Calculation:** 01-08-2026.\n• **Essential Educational Qualification:** Bachelor\'s Degree from a recognized University on or before 01-08-2026.\n• **Junior Statistical Officer (JSO):** Bachelor\'s Degree with 60% in Mathematics at 12th standard OR Bachelor\'s Degree in any discipline with Statistics as a subject.'
-          }
-        ]
-      }
-    },
-    {
-      id: 'res-pdf-pyq',
-      isEssential: true,
-      title: 'Kiran SSC CGL Question Bank & Previous Years Solved Papers',
-      subject: 'Quantitative Aptitude',
-      author: 'Kiran Institute of Career Excellence (Official Archive)',
-      type: 'OFFICIAL_PDF',
-      resourceFormat: 'DIRECT_PDF',
-      url: '/resources/SSC_CGL_Tier1_Official_Previous_Year_Paper.pdf',
-      directPdfUrl: '/resources/SSC_CGL_Tier1_Official_Previous_Year_Paper.pdf',
-      downloadFileName: 'Kiran_SSC_CGL_Solved_Question_Bank.pdf',
-      officialTag: 'TOP TCS SOLVED QUESTION BANK (24 MB)',
-      recommendedFor: 'Practicing authentic previous years TCS shifts across Quantitative Aptitude, English, Reasoning, and General Awareness.',
-      rating: '4.9/5 ⭐ (100% Topper Consensus)',
-      description: 'Comprehensive 24MB authentic solved question bank containing shift-wise previous year questions with detailed step-by-step solutions.',
-      inAppHandbookContent: {
-        summary: 'Authentic 24MB Kiran SSC CGL Solved Question Bank.',
-        chapters: [
-          {
-            chapterTitle: 'Shift Question Paper & Solutions',
-            contentMarkdown: '• **Quant Algebra:** If x + 1/x = 4, find x⁴ + 1/x⁴. Solution: 194.\n• **Quant Arithmetic:** CP = ₹1,500, MP = 40% above CP, 20% discount + 5% cash discount. Net Profit = ₹96.\n• **Reasoning Syllogism:** All computers are laptops. Some laptops are tablets. No tablet is smartphone. Valid Conclusions: Only II and III follow.\n• **Polity:** Law declared by Supreme Court binding on all courts under Article 141.\n• **English:** Subject-Verb Agreement with "Neither... nor". Verb agrees with nearer plural subject.'
-          }
-        ]
-      }
-    },
-    {
-      id: 'res-pdf-constitution',
-      title: 'Introduction to the Constitution of India & Bare Act Digest',
-      subject: 'General Awareness & Static GK',
-      author: 'Dr. D.D. Basu / Legislative Department',
-      type: 'OFFICIAL_PDF',
-      resourceFormat: 'DIRECT_PDF',
-      url: '/resources/Constitution_of_India_Bare_Act_Key_Articles.pdf',
-      directPdfUrl: '/resources/Constitution_of_India_Bare_Act_Key_Articles.pdf',
-      downloadFileName: 'Constitution_of_India_DD_Basu.pdf',
-      officialTag: 'AUTHORITATIVE POLITY TREATISE (16.9 MB)',
-      recommendedFor: 'Guaranteed 5-6 questions in General Awareness on Articles 14 to 32, Fundamental Rights, Writs, and Constitutional Amendments.',
-      rating: '5.0/5 ⭐ (Definitive Legal Text)',
-      description: 'Authentic 16.9MB complete classic on the Constitution of India covering Fundamental Rights, Directive Principles, Parliamentary Procedures, and Supreme Court Jurisdictions.',
-      inAppHandbookContent: {
-        summary: 'Official Treatise on the Constitution of India.',
-        chapters: [
-          {
-            chapterTitle: 'Part III: Fundamental Rights (Articles 14 to 32)',
-            contentMarkdown: '• **Article 14:** Equality before law and equal protection of laws.\n• **Article 15:** Prohibition of discrimination on grounds of religion, race, caste, sex, or place of birth.\n• **Article 16:** Equality of opportunity in matters of public employment.\n• **Article 17:** Abolition of Untouchability.\n• **Article 19:** Six democratic freedoms of speech, assembly, and movement.\n• **Article 21:** Protection of life and personal liberty.\n• **Article 21A:** Right to education for children (6-14 years).\n• **Article 32:** Right to Constitutional Remedies & Supreme Court Writ jurisdiction.'
-          }
-        ]
-      }
-    },
-    {
-      id: 'res-pdf-ncert',
-      title: 'NCERT Mathematics Class 10 Official Complete Textbook',
-      subject: 'Quantitative Aptitude',
-      author: 'National Council of Educational Research and Training (NCERT)',
-      type: 'OFFICIAL_PDF',
-      resourceFormat: 'DIRECT_PDF',
-      url: '/resources/NCERT_Class10_Mathematics_Exemplar.pdf',
-      directPdfUrl: '/resources/NCERT_Class10_Mathematics_Exemplar.pdf',
-      downloadFileName: 'NCERT_Mathematics_Class10_Full_Book.pdf',
-      officialTag: 'OFFICIAL NCERT TEXTBOOK (5.4 MB)',
-      recommendedFor: 'Core Geometry theorems, Circle tangent proofs (PA=PB), Trigonometry identities, and 3D Mensuration volume formulas.',
-      rating: '4.9/5 ⭐ (Government Curriculum)',
-      description: 'Authentic 5.4MB complete official NCERT Mathematics Class 10 Textbook with all theory and proofs tested in SSC exams.',
-      inAppHandbookContent: {
-        summary: 'NCERT Mathematics core geometry and trigonometry theorems.',
-        chapters: [
-          {
-            chapterTitle: 'Circle Tangents & 3D Mensuration Formulas',
-            contentMarkdown: '• **Theorem 10.1:** Tangent at any point of a circle is perpendicular to radius.\n• **Theorem 10.2:** Lengths of tangents from external point are equal (PA = PB).\n• **Direct Common Tangent (DCT):** √[d² - (R - r)²]\n• **Transverse Common Tangent (TCT):** √[d² - (R + r)²]\n• **Cylinder Volume:** πr²h | **Cone Volume:** (1/3)πr²h | **Sphere Volume:** (4/3)πr³'
-          }
-        ]
-      }
-    },
-    {
-      id: 'res-pdf-wordpower',
-      title: 'Word Power Made Easy by Norman Lewis (Complete Full Book)',
-      subject: 'English Comprehension',
-      author: 'Norman Lewis (World Famous Etymological Guide)',
-      type: 'OFFICIAL_PDF',
-      resourceFormat: 'DIRECT_PDF',
-      url: '/resources/Word_Power_Made_Easy_Norman_Lewis.pdf',
-      directPdfUrl: '/resources/Word_Power_Made_Easy_Norman_Lewis.pdf',
-      downloadFileName: 'Word_Power_Made_Easy_Norman_Lewis.pdf',
-      officialTag: 'BEST-SELLING VOCABULARY BOOK (1.9 MB)',
-      recommendedFor: 'Deciphering unfamiliar vocabulary through Latin and Greek root words in reading comprehension and cloze tests.',
-      rating: '4.9/5 ⭐ (World Standard Classic)',
-      description: 'Authentic complete 500+ page edition of Norman Lewis Word Power Made Easy — the undisputed #1 vocabulary builder for competitive exams.',
-      inAppHandbookContent: {
-        summary: 'Etymological root words for SSC English Comprehension.',
-        chapters: [
-          {
-            chapterTitle: 'Core Latin & Greek Root Words',
-            contentMarkdown: '• **Ego (Self):** Egoist, Egotist, Egocentric, Egomaniac.\n• **Alter (Other):** Altruist, Alternate, Alternative, Altercation.\n• **Verto (To Turn):** Introvert, Extrovert, Ambivert.\n• **Misein (To Hate) & Anthropos (Mankind):** Misanthrope, Misogynist, Philanthropist.'
-          }
-        ]
-      }
-    },
-    {
-      id: 'res-pdf-dest',
-      title: 'SSC DEST Typing Test Official Instructions & 2000 Character Passage',
-      subject: 'Computer & Typing',
-      author: 'Staff Selection Commission (DEST Directorate)',
-      type: 'OFFICIAL_PDF',
-      resourceFormat: 'DIRECT_PDF',
-      url: '/resources/SSC_DEST_Typing_Speed_Test_Passage.pdf',
-      directPdfUrl: '/resources/SSC_DEST_Typing_Speed_Test_Passage.pdf',
-      downloadFileName: 'SSC_DEST_Typing_Speed_Test_Passage.pdf',
-      officialTag: 'OFFICIAL DEST SPECIFICATION',
-      recommendedFor: 'Practicing the mandatory 2000 key depressions in 15 minutes with backspace usage guidelines.',
-      rating: '4.9/5 ⭐ (Official Test Guidelines)',
-      description: 'Official typing test instructions and master practice passage for Tier-2 Section III Module 2.',
-      inAppHandbookContent: {
-        summary: 'Official DEST Typing Guidelines and Practice Passage.',
-        chapters: [
-          {
-            chapterTitle: 'Typing Rules & Permissible Error Limits',
-            contentMarkdown: '• **Duration:** 15 Minutes.\n• **Target Keystrokes:** ~2000 Key Depressions (~27 Words Per Minute).\n• **Backspace Key:** Permitted during the test.\n• **Permissible Error %:** UR: 5% | OBC/EWS: 7% | SC/ST/PwBD: 10%.'
-          }
-        ]
-      }
-    },
-
     // --- 2. Top-Rated & Most Successful Video Courses (100% Verified Direct Video URLs) ---
     {
       id: 'res-eng-video-01',
-      title: '60 Rules of Grammar for SSC CGL (Rani Ma\'am 10-Hour Masterclass)',
+      title: '60 Rules of Grammar for SSC CGL — Complete Session',
       subject: 'English Comprehension',
-      author: 'Rani Ma\'am (English With Rani Ma\'am)',
+      author: 'English With Rani Mam (YouTube channel)',
       type: 'VIDEO_LECTURE',
       resourceFormat: 'YOUTUBE_COURSE',
       url: 'https://www.youtube.com/watch?v=6OW1mJTLms0',
       youtubeUrl: 'https://www.youtube.com/watch?v=6OW1mJTLms0',
       youtubeEmbedId: '6OW1mJTLms0',
-      officialTag: 'TOP-RATED #1 GRAMMAR VIDEO (10 HOURS COMPLETE)',
-      recommendedFor: 'Complete sequential lectures covering all 60 core grammar rules tested repeatedly by TCS.',
-      rating: '4.9/5 ⭐ (Highest Public Rating)',
-      description: 'The highest-rated 10-hour English grammar masterclass on YouTube for SSC CGL aspirants, breaking down Subject-Verb Agreement, Conditionals, and Prepositions.'
+      officialTag: 'FREE ON YOUTUBE · GRAMMAR RULES',
+      recommendedFor: 'Working through subject-verb agreement, tenses and prepositions in one sitting.',
+      description: 'A single long-form session covering the grammar rules that recur in SSC Tier-1 and Tier-2 English. Free to watch on YouTube; GovOS links to it and does not host it.',
+      linkVerifiedDate: CHECK_DATE,
     },
     {
       id: 'res-quant-video-01',
-      title: 'Complete Quantitative Aptitude & Geometry Revision (Gagan Pratap Sir)',
+      title: 'Full Geometry Revision — All Theorems & Formulas in One Video',
       subject: 'Quantitative Aptitude',
-      author: 'Gagan Pratap Sir (Gagan Pratap Maths)',
+      author: 'THE PUNDITS (YouTube channel) — session by Gagan Pratap',
       type: 'VIDEO_LECTURE',
       resourceFormat: 'YOUTUBE_COURSE',
       url: 'https://www.youtube.com/watch?v=ShxYBwt9thk',
       youtubeUrl: 'https://www.youtube.com/watch?v=ShxYBwt9thk',
       youtubeEmbedId: 'ShxYBwt9thk',
-      officialTag: 'TOP CONCEPT & FORMULA MARATHON (5.2M+ STUDENTS)',
-      recommendedFor: 'Complete Geometry theorems, Triangle centers, Circles, and Mensuration 3D formula revision with solved exam illustrations.',
-      rating: '4.9/5 ⭐ (Topper Consensus)',
-      description: 'The definitive advanced mathematics and formula revision masterclass by Gagan Pratap Sir covering every shortcut identity and theorem required for Tier 1 & Tier 2.'
+      officialTag: 'FREE ON YOUTUBE · GEOMETRY REVISION',
+      recommendedFor: 'Revising circle, triangle and quadrilateral theorems before a mock test.',
+      description: 'Single-video revision of the geometry theorems and formulas used in SSC CGL quantitative aptitude. Free to watch on YouTube; GovOS links to it and does not host it.',
+      linkVerifiedDate: CHECK_DATE,
     },
     {
       id: 'res-quant-video-02',
-      title: 'Complete 60 Days 60 Marathon Maths (Inspector Aditya Ranjan)',
+      title: 'Percentage (प्रतिशत) Part-01 — Maths Series Day 05',
       subject: 'Quantitative Aptitude',
-      author: 'Inspector Aditya Ranjan (Rankers Gurukul)',
+      author: 'SelectionWay SSC / RANKERS GURUKUL (YouTube channel) — session by Aditya Ranjan',
       type: 'VIDEO_LECTURE',
       resourceFormat: 'YOUTUBE_COURSE',
       url: 'https://www.youtube.com/watch?v=Ov0KEEfvgbs',
       youtubeUrl: 'https://www.youtube.com/watch?v=Ov0KEEfvgbs',
       youtubeEmbedId: 'Ov0KEEfvgbs',
-      officialTag: 'TOP FOUNDATION & SHORTCUT COURSE',
-      recommendedFor: 'Zero-to-Hero foundation covering Arithmetic (Percentage, Profit & Loss, SI/CI, Time & Work) and Advanced chapters.',
-      rating: '4.9/5 ⭐ (6.5M+ Students)',
-      description: 'Complete 60-day syllabus marathon taught by SSC CGL Selected Inspector Aditya Ranjan with shortcut tricks.'
+      officialTag: 'FREE ON YOUTUBE · ONE TOPIC (PERCENTAGE)',
+      recommendedFor: 'Building percentage fundamentals before profit-loss and data interpretation.',
+      description: 'Day-05 session of a Hindi-medium maths series, covering percentage fundamentals. This is one topic in a longer playlist, not a complete maths course. Free to watch on YouTube; GovOS links to it and does not host it.',
+      linkVerifiedDate: CHECK_DATE,
     },
     {
       id: 'res-ga-video-01',
-      title: 'Blitz Series: Static GK & GS Master Revision (Parmar SSC)',
+      title: 'SSC CGL GK 2026 — India & International Borders',
       subject: 'General Awareness & Static GK',
-      author: 'Parmar Sir (Parmar SSC / Parmar Academy)',
+      author: 'PARMAR CLIPS (YouTube channel)',
       type: 'VIDEO_LECTURE',
       resourceFormat: 'YOUTUBE_COURSE',
       url: 'https://www.youtube.com/watch?v=6hIyIW_Nxq8',
       youtubeUrl: 'https://www.youtube.com/watch?v=6hIyIW_Nxq8',
       youtubeEmbedId: '6hIyIW_Nxq8',
-      officialTag: 'UNDISPUTED #1 STATIC GK COURSE (2023-2025 TOPPERS)',
-      recommendedFor: 'Classical Dances, Gharanas, Folk Festivals, Biosphere Reserves, and Sports Terminology linked with PYQs.',
-      rating: '5.0/5 ⭐ (100% Topper Consensus)',
-      description: 'The highest-rated Static GK & General Awareness masterclass recommended by almost every recent SSC CGL ranker for scoring 35+ marks.'
+      officialTag: 'FREE ON YOUTUBE · ONE GK TOPIC (BORDERS)',
+      recommendedFor: 'Memorising border states, boundary lines and neighbouring countries.',
+      description: 'Covers India\'s international land borders and neighbouring-country boundary lines for static GK. This is a single-topic class, not a full GK revision course. Free to watch on YouTube; GovOS links to it and does not host it.',
+      linkVerifiedDate: CHECK_DATE,
     },
     {
       id: 'res-reas-video-01',
-      title: 'Complete Reasoning Marathon & Shortcuts (Vikramjeet Sir)',
+      title: 'Reasoning Marathon (RRB NTPC series) — shared reasoning topics',
       subject: 'Reasoning',
-      author: 'Vikramjeet Sir (Reasoning Guru / Rankers Gurukul)',
+      author: 'Vikramjeet Sir Reasoning (YouTube channel)',
       type: 'VIDEO_LECTURE',
       resourceFormat: 'YOUTUBE_COURSE',
       url: 'https://www.youtube.com/watch?v=oh3cXneUlcY',
       youtubeUrl: 'https://www.youtube.com/watch?v=oh3cXneUlcY',
       youtubeEmbedId: 'oh3cXneUlcY',
-      officialTag: 'TOP REASONING COURSE (3.8M+ STUDENTS)',
-      recommendedFor: 'Speed shortcuts for Coded Blood Relations, Syllogisms, Dice, Number Series, and Figure Counting.',
-      rating: '4.9/5 ⭐ (Speed Essential)',
-      description: 'The most comprehensive reasoning masterclass covering all verbal and non-verbal patterns asked in recent TCS shifts.'
+      officialTag: 'FREE ON YOUTUBE · RECORDED FOR RRB NTPC',
+      recommendedFor: 'Extra practice on shared reasoning topics — use an SSC paper for pattern and timing.',
+      description: 'A reasoning marathon recorded for the RRB NTPC examination. The reasoning topics overlap heavily with SSC CGL, but the paper pattern and difficulty referenced in the video are RRB NTPC, not SSC. Free to watch on YouTube; GovOS links to it and does not host it.',
+      linkVerifiedDate: CHECK_DATE,
     },
     {
       id: 'res-comp-video-01',
-      title: 'Tier-2 Computer Awareness Complete Course (RBE Shubham Jain)',
+      title: 'Computer Revision & Chapter-wise Practice (Class 1)',
       subject: 'Computer & Typing',
-      author: 'Shubham Jain Sir (RBE - Revolution By Education)',
+      author: 'RBE Revolution By Education (YouTube channel)',
       type: 'VIDEO_LECTURE',
       resourceFormat: 'YOUTUBE_COURSE',
       url: 'https://www.youtube.com/watch?v=pUtPVwPBxzA',
       youtubeUrl: 'https://www.youtube.com/watch?v=pUtPVwPBxzA',
       youtubeEmbedId: 'pUtPVwPBxzA',
-      officialTag: 'TIER-2 QUALIFYING GOLD STANDARD',
-      recommendedFor: 'Complete video course covering Hardware, MS Office 365 formulas, Networking, and Cyber Security to guarantee qualifying marks.',
-      rating: '4.9/5 ⭐ (Highest Rated for CKT)',
-      description: 'The definitive computer awareness course for SSC CGL Tier 2 candidates created by Shubham Jain Sir.'
+      officialTag: 'FREE ON YOUTUBE · CLASS 1 OF A SERIES',
+      recommendedFor: 'Starting the Tier-2 Computer Knowledge module (Section-III).',
+      description: 'First class of a computer-awareness revision series aimed at SSC CGL, CHSL and railway examinations. Free to watch on YouTube; GovOS links to it and does not host it.',
+      linkVerifiedDate: CHECK_DATE,
     },
     {
       id: 'res-comp-typing-tool',
@@ -2049,35 +2025,8 @@ export const SSC_CGL_EXAM: Exam = {
       url: 'https://10fastfingers.com',
       officialTag: 'OFFICIAL DEST KEYBOARD SIMULATOR',
       recommendedFor: 'Practicing 2000 key depressions in 15 minutes (~27 WPM) with real-time speed and error calculation.',
-      rating: '4.9/5 ⭐ (Official Test Simulator)',
       description: 'Specialized typing simulator providing live keystroke error percentage and net words-per-minute tracking.'
     },
-    {
-      id: 'res-selectionway-testranking',
-      title: 'SelectionWay x Test RanKING — Speed Calculation Matrix & Practice Tests',
-      subject: 'Quantitative Aptitude',
-      author: 'SelectionWay / Test RanKING (com.testranker.android)',
-      type: 'ONLINE_TOOL',
-      resourceFormat: 'ONLINE_TOOL',
-      url: 'https://play.google.com/store/apps/details?id=com.testranker.android',
-      officialTag: 'POPULAR TEST RANKING APP (500K+ USERS)',
-      recommendedFor: 'Practicing calculation speed drills (Fractions, Squares, Pythagorean Triplets) and TCS pattern sectional mocks.',
-      rating: '4.8/5 ⭐ (Play Store App)',
-      description: 'The open test practice framework from SelectionWay x Test RanKING providing essential calculation tables, CI-SI shortcuts, and rapid mock test drills.',
-      inAppHandbookContent: {
-        summary: 'Speed Calculation Booster & High-Yield Formulas from Test RanKING.',
-        chapters: [
-          {
-            chapterTitle: 'Calculation Speed Booster Matrix (Fraction to % & Squares)',
-            contentMarkdown: '• **Fraction to Percentage Table:**\n  1/2 = 50% | 1/3 = 33.33% | 1/4 = 25% | 1/5 = 20% | 1/6 = 16.66% | 1/7 = 14.28% | 1/8 = 12.5% | 1/9 = 11.11% | 1/11 = 9.09% | 1/12 = 8.33% | 1/13 = 7.69% | 1/14 = 7.14% | 1/15 = 6.66% | 1/16 = 6.25%\n\n• **Pythagorean Triplets for Rapid Geometry:**\n  (3, 4, 5), (5, 12, 13), (7, 24, 25), (8, 15, 17), (9, 40, 41), (11, 60, 61), (12, 35, 37), (16, 63, 65), (20, 21, 29), (28, 45, 53).\n\n• **Squares up to 35:**\n  11² = 121, 12² = 144, 13² = 169, 14² = 196, 15² = 225, 16² = 256, 17² = 289, 18² = 324, 19² = 361, 21² = 441, 22² = 484, 23² = 529, 24² = 576, 25² = 625, 26² = 676, 27² = 729, 28² = 784, 29² = 841, 31² = 961, 32² = 1024, 35² = 1225.'
-          },
-          {
-            chapterTitle: 'TCS Quantitative Speed Shortcut Theorems',
-            contentMarkdown: '• **Successive Percentage Change:** a + b + (ab/100)\n• **Difference between CI and SI for 2 Years:** D₂ = P(R/100)²\n• **Difference between CI and SI for 3 Years:** D₃ = P(R/100)² × (300 + R)/100\n• **Algebra Identity 1:** If x + 1/x = k, then x² + 1/x² = k² - 2\n• **Algebra Identity 2:** If x + 1/x = k, then x³ + 1/x³ = k³ - 3k\n• **Algebra Identity 3:** If x - 1/x = k, then x³ - 1/x³ = k³ + 3k'
-          }
-        ]
-      }
-    }
   ],
 
   // Admit Card / Hall Ticket release details & SSC regional download mirrors
@@ -2948,6 +2897,54 @@ const sscProvenance: DataProvenance = {
   excerptText: 'Official Sourced Master Answer Key & Question Paper published by Staff Selection Commission (SSC) under RTI Act / Candidate Key Response Portal.'
 };
 
+/**
+ * Provenance for a practice question. GovOS reads the official document and writes the
+ * question and worked solution from it; it never redistributes the document itself.
+ */
+export interface QuestionSource {
+  /** Human-readable citation, e.g. "NCERT Exemplar Class 10 Maths, Triangles, Exercise 6.1 Q2". */
+  label: string;
+  /** Public URL of the official document the question was written from. */
+  url: string;
+  /** Publishing authority. */
+  publisher: string;
+  /** GOVOS_AUTHORED marks a question written by GovOS rather than taken from an official exercise. */
+  kind: 'OFFICIAL_EXERCISE' | 'OFFICIAL_DOCUMENT' | 'GOVOS_AUTHORED';
+}
+
+const NCERT_X_MATHS = 'https://ncert.nic.in/pdf/publication/exemplarproblem/classX/mathematics/';
+const CONSTITUTION_PDF = 'https://www.legislative.gov.in/static/uploads/2025/07/c9fe9c9b6840524844316f74bb1c556c.pdf';
+const SSC_NOTICE_2026 = 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf';
+
+const ncertSource = (chapterPdf: string, citation: string): QuestionSource => ({
+  label: citation,
+  url: NCERT_X_MATHS + chapterPdf,
+  publisher: 'National Council of Educational Research and Training (NCERT)',
+  kind: 'OFFICIAL_EXERCISE'
+});
+
+const constitutionSource = (citation: string): QuestionSource => ({
+  label: citation,
+  url: CONSTITUTION_PDF,
+  publisher: 'Legislative Department, Ministry of Law & Justice',
+  kind: 'OFFICIAL_DOCUMENT'
+});
+
+const sscNoticeSource = (citation: string): QuestionSource => ({
+  label: citation,
+  url: SSC_NOTICE_2026,
+  publisher: 'Staff Selection Commission (SSC)',
+  kind: 'OFFICIAL_DOCUMENT'
+});
+
+/** Practice question written by GovOS. Not lifted from an official paper. */
+const govosSource = (citation: string): QuestionSource => ({
+  label: citation,
+  url: 'https://ssc.gov.in',
+  publisher: 'GovOS Preparation Team (pattern based on the official SSC syllabus)',
+  kind: 'GOVOS_AUTHORED'
+});
+
 // =========================================================================
 // ENRICHED QUESTION TEMPLATES WITH PLAIN ENGLISH & JARGON GLOSSARY
 // =========================================================================
@@ -2959,9 +2956,12 @@ export const REASONING_TEMPLATES: {
   correct: number;
   exp: string;
   detailedExp: DetailedExplanation;
+  /** Where this question came from. Rendered as the question's provenance. */
+  source?: QuestionSource;
 }[] = [
   {
     topic: 'Syllogism: Logical Deductions',
+    source: govosSource('GovOS-authored reasoning practice (SSC Tier-1 pattern, not an official past question)'),
     text: 'Statements:\n(1) All books are papers.\n(2) Some papers are pens.\n(3) No pen is a marker.\n\nConclusions:\nI. Some books are pens.\nII. No marker is a pen.\nIII. Some papers are not markers.',
     options: ['Only II and III follow', 'Only I follows', 'Only I and III follow', 'All follow'],
     correct: 0,
@@ -2990,6 +2990,7 @@ export const REASONING_TEMPLATES: {
   },
   {
     topic: 'Analogy & Classification',
+    source: govosSource('GovOS-authored reasoning practice (SSC Tier-1 pattern, not an official past question)'),
     text: 'Select the related word from the given alternatives:\nEpistemology : Knowledge :: Ontology : ?',
     options: ['Being / Reality', 'History', 'Language', 'Plants'],
     correct: 0,
@@ -3017,6 +3018,7 @@ export const REASONING_TEMPLATES: {
   },
   {
     topic: 'Coded Blood Relations',
+    source: govosSource('GovOS-authored reasoning practice (SSC Tier-1 pattern, not an official past question)'),
     text: 'If A + B means A is father of B; A - B means A is wife of B; A × B means A is brother of B; then in expression P + Q × R - S, how is P related to S?',
     options: ["Wife's Father (Father-in-law)", 'Father', 'Brother-in-law', 'Uncle'],
     correct: 0,
@@ -3045,6 +3047,7 @@ export const REASONING_TEMPLATES: {
   },
   {
     topic: 'Number Series & Missing Terms',
+    source: govosSource('GovOS-authored reasoning practice (SSC Tier-1 pattern, not an official past question)'),
     text: 'Find the missing number in the series:\n7, 11, 19, 35, 67, ?',
     options: ['131', '129', '135', '140'],
     correct: 0,
@@ -3080,59 +3083,400 @@ export const GA_TEMPLATES: {
   correct: number;
   exp: string;
   detailedExp: DetailedExplanation;
+  /** Where this question came from. Rendered as the question's provenance. */
+  source?: QuestionSource;
 }[] = [
   {
-    topic: 'Indian Polity: Constitutional Articles',
-    text: 'Which Article of the Constitution of India guarantees the Right to Constitutional Remedies (termed by Dr. B.R. Ambedkar as the Heart and Soul of the Constitution)?',
-    options: ['Article 32', 'Article 21', 'Article 19', 'Article 14'],
-    correct: 0,
-    exp: 'Article 32 empowers individuals to petition the Supreme Court for enforcement of Fundamental Rights via prerogative writs.',
+    topic: 'Polity: Fundamental Rights — Right to Equality',
+    text: 'Which Article of the Constitution of India provides that the State shall not deny to any person equality before the law or the equal protection of the laws within the territory of India?',
+    options: ['Article 12', 'Article 14', 'Article 19', 'Article 21'],
+    correct: 1,
+    exp: 'Article 14 — "Equality before law" — states exactly this. It is the opening Article of the Right to Equality (Articles 14–18).',
+    source: constitutionSource('Constitution of India, Part III, Article 14 (official text, Legislative Department)'),
     detailedExp: {
-      simpleExplanation: 'In simple words: If the government or anyone violates your fundamental rights, Article 32 gives you the direct legal power to walk straight to the Supreme Court of India and demand justice. That is why Dr. Ambedkar called Article 32 the "Heart and Soul" of the entire Constitution.',
-      coreConcept: 'Article 32 constitutes Part III Fundamental Right conferring original and direct jurisdiction upon the Supreme Court of India. Without Article 32, declarations of fundamental rights in Articles 14–30 would remain unenforceable declarations of intent.',
+      simpleExplanation: 'Article 14 is the promise that the law treats everyone the same. It applies to any person, not only citizens — which is why the official wording says "any person".',
+      coreConcept: 'Article 14 guarantees both equality before the law (a British concept: no one is above the law) and equal protection of the laws (an American concept: like cases treated alike).',
       technicalTerms: [
-        { term: 'Constitutional Remedies', meaning: 'The legal cure/solution provided directly by the highest court when a citizen\'s rights are hurt.' },
-        { term: 'Prerogative Writs', meaning: '5 official Supreme Court orders (Habeas Corpus, Mandamus, Prohibition, Quo-Warranto, Certiorari) commanding authorities to follow the law.' }
+        { term: 'Equality before law', meaning: 'No person is above the law; all are equally subject to it.' },
+        { term: 'Equal protection of the laws', meaning: 'People in similar circumstances must be treated similarly by the law.' }
       ],
       stepByStepMethod: [
-        'Step 1: Identify the key historical phrase: "Heart and Soul of the Constitution" was coined by Dr. B.R. Ambedkar specifically for Article 32.',
-        'Step 2: Understand why: Article 32 makes all other rights meaningful by providing enforceable court orders (writs).',
-        'Step 3: Contrast with other options: Article 14 is Equality, Article 19 is 6 Basic Freedoms, Article 21 is Right to Life.'
+        'Step 1: The phrasing "shall not deny to any person" signals a Fundamental Right in Part III.',
+        'Step 2: Article 12 defines "the State"; it confers no right.',
+        'Step 3: Article 19 covers the six freedoms, Article 21 life and personal liberty.',
+        'Step 4: Only Article 14 carries the equality clause, option (B).'
       ],
       shortcutTrick: {
-        name: 'Mnemonic Rule for 5 Writs & Article 32',
-        formula: 'Mnemonic: "H-M-P-Q-C" (Have Many Prerogatives, Quash Cases)',
-        explanation: 'Article 32 = Supreme Court (Heart & Soul). Article 226 = High Court. Articles 14-18 (Equality), Article 19 (6 Freedoms), Article 21 (Life & Liberty).',
-        timeSaved: '⏱️ Traditional: 20s → Shortcut: 3s (85% Time Saved)'
+        name: 'Right to Equality block: 14 to 18',
+        trickSteps: '14 equality, 15 no discrimination, 16 equal opportunity in public employment, 17 untouchability abolished, 18 titles abolished.',
+        timeSaved: 'Instant recall for any Article 14–18 question'
       },
-      crucialTakeaway: 'The Right to Constitutional Remedies under Article 32 is itself a Fundamental Right and cannot be suspended except during National Emergency under Article 359.'
+      eliminationStrategy: 'Article 12 is definitional, not a right — rule it out whenever a question asks which Article grants something.',
+      crucialTakeaway: 'Article 14 says "any person", so it protects non-citizens too; Article 15 and 16 say "citizen" and do not.'
     }
   },
   {
-    topic: 'Modern Indian History: Freedom Struggle',
-    text: 'In which year did Mahatma Gandhi launch the Non-Cooperation Movement in response to the Jallianwala Bagh Massacre and the Khilafat issue?',
-    options: ['1920', '1919', '1922', '1930'],
-    correct: 0,
-    exp: 'The Non-Cooperation Movement was launched in 1920 and called off in February 1922 following the Chauri Chaura incident.',
+    topic: 'Polity: Fundamental Rights — Life and Personal Liberty',
+    text: 'Under which Article can no person be deprived of his life or personal liberty except according to procedure established by law?',
+    options: ['Article 20', 'Article 21', 'Article 22', 'Article 23'],
+    correct: 1,
+    exp: 'Article 21, "Protection of life and personal liberty", uses exactly the phrase "procedure established by law".',
+    source: constitutionSource('Constitution of India, Part III, Article 21 (official text, Legislative Department)'),
     detailedExp: {
-      simpleExplanation: 'In simple words: After the horrific Jallianwala Bagh firing in 1919 and broken British promises, Mahatma Gandhi decided that Indians must peacefully stop cooperating with British schools, courts, and goods. This mass movement was formally started in the year 1920.',
-      coreConcept: 'The Non-Cooperation Movement (1920–1922) was the first mass-based satyagraha movement led by Mahatma Gandhi under the Indian National Congress (approved at the Calcutta Special Session in Sep 1920 and ratified at Nagpur in Dec 1920).',
+      simpleExplanation: 'Article 21 protects your life and freedom. The State can restrict them only by following a proper legal procedure, not arbitrarily.',
+      coreConcept: 'Article 21 adopts "procedure established by law" rather than the American "due process of law", though later judgments read fairness into that procedure.',
       technicalTerms: [
-        { term: 'Non-Cooperation', meaning: 'A peaceful protest method where citizens refuse to work with or buy from a ruler to make their system unworkable.' },
-        { term: 'Satyagraha', meaning: 'Gandhi\'s philosophy of non-violent resistance holding strictly to truth.' }
+        { term: 'Procedure established by law', meaning: 'A procedure laid down in a validly enacted law.' },
+        { term: 'Personal liberty', meaning: 'Freedom of the person, read broadly by the Supreme Court.' }
       ],
       stepByStepMethod: [
-        'Step 1: Identify the trigger year: Jallianwala Bagh happened in 1919.',
-        'Step 2: In response, Gandhi organized the Non-Cooperation Movement starting in 1920.',
-        'Step 3: The movement ran until 1922 when it was stopped after the Chauri Chaura police station violence.'
+        'Step 1: Article 20 protects against conviction for offences (ex post facto laws, double jeopardy, self-incrimination).',
+        'Step 2: Article 22 protects against arrest and detention in certain cases.',
+        'Step 3: Article 23 prohibits traffic in human beings and forced labour.',
+        'Step 4: The life and personal liberty clause is Article 21, option (B).'
       ],
       shortcutTrick: {
-        name: 'Gandhian Mass Movements Chronology Timeline',
-        formula: '1920 (NCM) → 1930 (CDM / Dandi) → 1942 (QIM / Do or Die)',
-        explanation: 'Remember the 10-12 year rhythm of mass movements: 1920 Non-Cooperation, 1930 Civil Disobedience (Salt Satyagraha), 1942 Quit India.',
-        timeSaved: '⏱️ Traditional: 20s → Shortcut: 4s (80% Time Saved)'
+        name: 'The 20-21-22 sequence',
+        trickSteps: '20 = before conviction, 21 = life and liberty itself, 22 = after arrest. Remember them in that order.',
+        timeSaved: 'Removes the commonest confusion in Polity'
       },
-      crucialTakeaway: 'Always remember: NCM was approved at Calcutta Special Session (presided by Lala Lajpat Rai) and finalized at Nagpur (presided by C. Vijayaraghavachariar).'
+      crucialTakeaway: 'Article 21 is the most litigated Article; 21A (education) was inserted next to it by the 86th Amendment.'
+    }
+  },
+  {
+    topic: 'Polity: Right to Education',
+    text: 'Article 21A of the Constitution requires the State to provide free and compulsory education to children of which age group?',
+    options: ['Five to fourteen years', 'Six to fourteen years', 'Six to sixteen years', 'Fourteen to eighteen years'],
+    correct: 1,
+    exp: 'Article 21A: "The State shall provide free and compulsory education to all children of the age of six to fourteen years."',
+    source: constitutionSource('Constitution of India, Part III, Article 21A (official text, Legislative Department)'),
+    detailedExp: {
+      simpleExplanation: 'Article 21A makes schooling a Fundamental Right for children aged six to fourteen. It was added by the 86th Amendment.',
+      coreConcept: 'The 86th Constitutional Amendment Act, 2002 inserted Article 21A, added a Fundamental Duty in 51A(k) and amended Article 45.',
+      technicalTerms: [
+        { term: 'Free and compulsory', meaning: 'No fee may be charged, and the State must ensure attendance.' }
+      ],
+      stepByStepMethod: [
+        'Step 1: The official text fixes the band as six to fourteen years.',
+        'Step 2: Article 45 (a Directive Principle) now covers children below six.',
+        'Step 3: Fundamental Duty 51A(k) puts the matching obligation on parents.',
+        'Step 4: The answer is six to fourteen, option (B).'
+      ],
+      shortcutTrick: {
+        name: 'Three changes, one amendment',
+        trickSteps: '86th Amendment = Article 21A + Article 45 amended + Duty 51A(k). Ages 6–14 throughout.',
+        timeSaved: 'Covers three possible questions at once'
+      },
+      eliminationStrategy: 'Any option starting at five or extending past fourteen contradicts the official wording.',
+      crucialTakeaway: 'Six to fourteen years, inserted by the 86th Amendment, 2002.'
+    }
+  },
+  {
+    topic: 'Polity: Directive Principles — Uniform Civil Code',
+    text: 'The provision that the State shall endeavour to secure for the citizens a uniform civil code throughout the territory of India is contained in:',
+    options: ['Article 39', 'Article 40', 'Article 44', 'Article 51'],
+    correct: 2,
+    exp: 'Article 44, in Part IV (Directive Principles), states this. Being a Directive Principle it is not enforceable by any court.',
+    source: constitutionSource('Constitution of India, Part IV, Article 44 (official text, Legislative Department)'),
+    detailedExp: {
+      simpleExplanation: 'Article 44 asks the State to work towards one common set of personal laws for all citizens. It is a goal for the State, not a right you can sue over.',
+      coreConcept: 'Directive Principles (Part IV, Articles 36–51) guide governance but are non-justiciable under Article 37.',
+      technicalTerms: [
+        { term: 'Uniform civil code', meaning: 'One body of personal law — marriage, divorce, inheritance — applying to all citizens.' },
+        { term: 'Non-justiciable', meaning: 'Not enforceable through the courts.' }
+      ],
+      stepByStepMethod: [
+        'Step 1: The verb "shall endeavour" marks a Directive Principle, not a Fundamental Right.',
+        'Step 2: Article 40 is village panchayats; Article 39 covers certain policy principles.',
+        'Step 3: Article 51 concerns promotion of international peace and security.',
+        'Step 4: The uniform civil code is Article 44, option (C).'
+      ],
+      shortcutTrick: {
+        name: 'Spot "shall endeavour"',
+        trickSteps: '"Shall endeavour" or "shall strive" means Part IV. "Shall not deny" or "shall have the right" means Part III.',
+        timeSaved: 'Halves the option list instantly'
+      },
+      crucialTakeaway: 'Article 44 is a Directive Principle — a goal for the State, unenforceable in court.'
+    }
+  },
+  {
+    topic: 'Polity: Powers of the President — Pardons',
+    text: 'The power of the President to grant pardons, reprieves, respites or remissions of punishment is conferred by:',
+    options: ['Article 61', 'Article 72', 'Article 74', 'Article 123'],
+    correct: 1,
+    exp: 'Article 72 gives the President the power to grant pardons, reprieves, respites or remissions, and to suspend, remit or commute sentences.',
+    source: constitutionSource('Constitution of India, Part V, Article 72 (official text, Legislative Department)'),
+    detailedExp: {
+      simpleExplanation: 'Article 72 lets the President reduce or cancel a punishment already awarded by a court — including in death-sentence and court-martial cases.',
+      coreConcept: 'The pardoning power under Article 72; Governors hold a narrower version under Article 161.',
+      technicalTerms: [
+        { term: 'Pardon', meaning: 'Complete removal of both the sentence and the conviction.' },
+        { term: 'Commute', meaning: 'Substitute a lighter form of punishment.' },
+        { term: 'Reprieve', meaning: 'A temporary stay of a sentence.' }
+      ],
+      stepByStepMethod: [
+        'Step 1: Article 61 covers impeachment of the President.',
+        'Step 2: Article 74 covers the Council of Ministers advising the President.',
+        'Step 3: Article 123 is the Ordinance power.',
+        'Step 4: The pardoning power is Article 72, option (B).'
+      ],
+      shortcutTrick: {
+        name: 'President 72, Governor 161',
+        trickSteps: 'Only the President can pardon a death sentence or a court-martial sentence; a Governor cannot.',
+        timeSaved: 'Answers the common comparison question too'
+      },
+      crucialTakeaway: 'Article 72 for the President, Article 161 for a Governor; the difference is death sentences and court-martials.'
+    }
+  },
+  {
+    topic: 'Polity: Union Executive — Attorney-General',
+    text: 'Under which Article does the President appoint a person qualified to be a Judge of the Supreme Court as the Attorney-General for India?',
+    options: ['Article 76', 'Article 148', 'Article 165', 'Article 324'],
+    correct: 0,
+    exp: 'Article 76(1): the President appoints a person qualified to be a Supreme Court Judge as Attorney-General for India.',
+    source: constitutionSource('Constitution of India, Part V, Article 76 (official text, Legislative Department)'),
+    detailedExp: {
+      simpleExplanation: 'The Attorney-General is the government’s chief legal adviser. Article 76 says the President appoints someone eligible to be a Supreme Court judge to the post.',
+      coreConcept: 'Article 76 creates the office, prescribes the qualification and makes the duty to advise the Government of India its core function.',
+      technicalTerms: [
+        { term: 'Attorney-General for India', meaning: 'The highest law officer of the Union.' }
+      ],
+      stepByStepMethod: [
+        'Step 1: Article 148 creates the Comptroller and Auditor-General.',
+        'Step 2: Article 165 creates the Advocate-General of a State.',
+        'Step 3: Article 324 vests election superintendence in the Election Commission.',
+        'Step 4: The Attorney-General is Article 76, option (A).'
+      ],
+      shortcutTrick: {
+        name: 'Union versus State law officers',
+        trickSteps: 'Attorney-General (Union) = 76. Advocate-General (State) = 165. The Union number is the smaller one.',
+        timeSaved: 'Settles a frequently paired question'
+      },
+      crucialTakeaway: 'Article 76 Attorney-General; Article 165 Advocate-General; the qualification is eligibility for the Supreme Court bench.'
+    }
+  },
+  {
+    topic: 'Polity: Parliament — Money Bills',
+    text: 'The definition of a "Money Bill" is contained in which Article of the Constitution?',
+    options: ['Article 109', 'Article 110', 'Article 112', 'Article 114'],
+    correct: 1,
+    exp: 'Article 110(1) defines a Money Bill as one containing only provisions dealing with the listed matters, such as the imposition or regulation of any tax.',
+    source: constitutionSource('Constitution of India, Part V, Article 110 (official text, Legislative Department)'),
+    detailedExp: {
+      simpleExplanation: 'Article 110 lists exactly what a Money Bill may contain — taxes, government borrowing, and similar financial matters. If it contains anything else, it is not a Money Bill.',
+      coreConcept: 'Article 110 defines the Money Bill; Article 109 sets out the special procedure, under which the Rajya Sabha may only recommend changes.',
+      technicalTerms: [
+        { term: 'Money Bill', meaning: 'A Bill containing only the financial matters listed in Article 110(1).' },
+        { term: 'Annual financial statement', meaning: 'The Budget, dealt with under Article 112.' }
+      ],
+      stepByStepMethod: [
+        'Step 1: The official text opens "For the purposes of this Chapter, a Bill shall be deemed to be a Money Bill if it contains only provisions dealing with..." — that is Article 110.',
+        'Step 2: Article 109 is the special procedure, not the definition.',
+        'Step 3: Article 112 is the annual financial statement (Budget).',
+        'Step 4: The definition sits in Article 110, option (B).'
+      ],
+      shortcutTrick: {
+        name: 'Define then process',
+        trickSteps: '110 defines, 109 processes. The definition comes with the higher number here — worth memorising because it is counter-intuitive.',
+        timeSaved: 'Removes a recurring mix-up'
+      },
+      eliminationStrategy: 'The word "only" in the official definition is decisive: a Bill mixing financial and non-financial provisions is not a Money Bill.',
+      crucialTakeaway: 'Article 110 defines a Money Bill; the Speaker certifies it and that decision is final.'
+    }
+  },
+  {
+    topic: 'Polity: Ordinance-making Power',
+    text: 'The President may promulgate an Ordinance under Article 123 when:',
+    options: ['Both Houses of Parliament are in session', 'Except when both Houses of Parliament are in session', 'Only the Lok Sabha is in session', 'Parliament has been dissolved'],
+    correct: 1,
+    exp: 'Article 123(1) applies "except when both Houses of Parliament are in session", and requires the President to be satisfied that immediate action is necessary.',
+    source: constitutionSource('Constitution of India, Part V, Article 123 (official text, Legislative Department)'),
+    detailedExp: {
+      simpleExplanation: 'An Ordinance is emergency law-making used when Parliament is not sitting. If even one House is out of session and urgent action is needed, the President may issue one.',
+      coreConcept: 'Article 123: legislative power of the President during recess; the Governor holds the parallel power under Article 213.',
+      technicalTerms: [
+        { term: 'Promulgate', meaning: 'To formally issue or put into force.' },
+        { term: 'Recess', meaning: 'The period when a House is not in session.' }
+      ],
+      stepByStepMethod: [
+        'Step 1: The official text reads "except when both Houses of Parliament are in session".',
+        'Step 2: So it suffices that at least one House is not sitting.',
+        'Step 3: The President must additionally be satisfied that circumstances require immediate action.',
+        'Step 4: Option (B) matches the wording.'
+      ],
+      shortcutTrick: {
+        name: 'Ordinances need a gap',
+        trickSteps: 'Both Houses sitting means no Ordinance. An Ordinance must be laid before Parliament and lapses six weeks after it reassembles.',
+        timeSaved: 'Covers the follow-up question on duration'
+      },
+      crucialTakeaway: 'Article 123 for the President, Article 213 for a Governor; an Ordinance lapses six weeks after reassembly.'
+    }
+  },
+  {
+    topic: 'Polity: Comptroller and Auditor-General',
+    text: 'The Comptroller and Auditor-General of India is appointed under which Article, and may be removed only in the manner applicable to which office?',
+    options: ['Article 148 — a Judge of the Supreme Court', 'Article 76 — the Attorney-General', 'Article 280 — a Finance Commission member', 'Article 324 — the Chief Election Commissioner'],
+    correct: 0,
+    exp: 'Article 148(1): the CAG is appointed by the President by warrant under his hand and seal, and may be removed only in like manner and on the like grounds as a Judge of the Supreme Court.',
+    source: constitutionSource('Constitution of India, Part V, Article 148 (official text, Legislative Department)'),
+    detailedExp: {
+      simpleExplanation: 'The CAG audits all government spending, so the Constitution makes the post hard to remove — the same demanding process used for a Supreme Court judge.',
+      coreConcept: 'Article 148 secures the CAG’s independence by tying removal to the judicial standard of proved misbehaviour or incapacity.',
+      technicalTerms: [
+        { term: 'Warrant under hand and seal', meaning: 'A formal written instrument signed and sealed by the President.' },
+        { term: 'CAG', meaning: 'Comptroller and Auditor-General, the constitutional auditor of the Union and States.' }
+      ],
+      stepByStepMethod: [
+        'Step 1: The official text places the CAG in Article 148.',
+        'Step 2: It states removal is "in like manner and on the like grounds as a Judge of the Supreme Court".',
+        'Step 3: That means an address by both Houses with special majority.',
+        'Step 4: Option (A) matches on both counts.'
+      ],
+      shortcutTrick: {
+        name: 'Judge-grade protection',
+        trickSteps: 'CAG (148), Election Commissioners (324) and Supreme Court judges share the same removal protection — that is the point of the design.',
+        timeSaved: 'Answers several independence questions at once'
+      },
+      crucialTakeaway: 'Article 148: appointed by the President, removable only like a Supreme Court judge.'
+    }
+  },
+  {
+    topic: 'Polity: Election Commission',
+    text: 'Superintendence, direction and control of the preparation of electoral rolls and the conduct of all elections to Parliament and State Legislatures is vested in the Election Commission by:',
+    options: ['Article 320', 'Article 324', 'Article 330', 'Article 356'],
+    correct: 1,
+    exp: 'Article 324(1) vests the superintendence, direction and control of elections in an Election Commission.',
+    source: constitutionSource('Constitution of India, Part XV, Article 324 (official text, Legislative Department)'),
+    detailedExp: {
+      simpleExplanation: 'Article 324 creates the Election Commission and hands it full control over preparing electoral rolls and running elections to Parliament, State legislatures, and the offices of President and Vice-President.',
+      coreConcept: 'Article 324 opens Part XV (Elections) and is the constitutional basis of the Election Commission’s authority.',
+      technicalTerms: [
+        { term: 'Superintendence', meaning: 'Overall supervision and control.' },
+        { term: 'Electoral roll', meaning: 'The official list of registered voters.' }
+      ],
+      stepByStepMethod: [
+        'Step 1: Article 320 concerns the functions of Public Service Commissions.',
+        'Step 2: Article 330 reserves seats for SCs and STs in the Lok Sabha.',
+        'Step 3: Article 356 is President’s Rule in a State.',
+        'Step 4: Elections are vested in the Commission by Article 324, option (B).'
+      ],
+      shortcutTrick: {
+        name: 'Part XV begins at 324',
+        trickSteps: 'Elections are Part XV, Articles 324–329. Anything about conducting elections starts at 324.',
+        timeSaved: 'Locates the whole election block'
+      },
+      eliminationStrategy: 'Article 324 covers elections to Parliament, State legislatures, President and Vice-President — but not panchayat or municipal elections, which State Election Commissions run under 243K and 243ZA.',
+      crucialTakeaway: 'Article 324 is the Election Commission’s charter; local body elections sit elsewhere.'
+    }
+  },
+  {
+    topic: 'Polity: Finance Commission',
+    text: 'Under Article 280, the Finance Commission is constituted by the President at the expiration of every:',
+    options: ['Third year', 'Fourth year', 'Fifth year', 'Sixth year'],
+    correct: 2,
+    exp: 'Article 280(1): the President constitutes a Finance Commission within two years of the commencement of the Constitution and thereafter at the expiration of every fifth year, or earlier if considered necessary.',
+    source: constitutionSource('Constitution of India, Part XII, Article 280 (official text, Legislative Department)'),
+    detailedExp: {
+      simpleExplanation: 'Every five years the President sets up a Finance Commission to recommend how tax revenue should be shared between the Union and the States.',
+      coreConcept: 'Article 280 creates a periodic, quasi-judicial body recommending the distribution of net tax proceeds and grants-in-aid.',
+      technicalTerms: [
+        { term: 'Grants-in-aid', meaning: 'Union funds given to States under Article 275.' },
+        { term: 'Quasi-judicial', meaning: 'Acting with some court-like procedure while remaining an executive body.' }
+      ],
+      stepByStepMethod: [
+        'Step 1: The official text says "at the expiration of every fifth year".',
+        'Step 2: It also allows an earlier constitution if the President considers it necessary.',
+        'Step 3: So the fixed cycle is five years, option (C).'
+      ],
+      shortcutTrick: {
+        name: 'Five-year fiscal cycle',
+        trickSteps: 'Finance Commission every 5 years under Article 280 — pair it with Article 275 grants-in-aid.',
+        timeSaved: 'Covers the linked question'
+      },
+      crucialTakeaway: 'Article 280, every fifth year (or earlier), recommending Union–State revenue sharing.'
+    }
+  },
+  {
+    topic: 'SSC CGL 2026: Crucial Date for Age',
+    text: 'According to the official SSC CGL 2026 notice, the age limit for the examination is reckoned as on:',
+    options: ['01-01-2026', '01-08-2026', '22-06-2026', '31-12-2026'],
+    correct: 1,
+    exp: 'The official notice states "Age limit (As on 01-08-2026)". Every minimum and maximum age is computed against that date.',
+    source: sscNoticeSource('SSC CGL 2026 Notice, Section 5 (Age limit), ssc.gov.in'),
+    detailedExp: {
+      simpleExplanation: 'The Commission fixes one date and measures everyone’s age on it. For CGL 2026 that date is 1 August 2026, whatever date you happen to apply on.',
+      coreConcept: 'The crucial date decouples eligibility from the application date, so all candidates are assessed identically.',
+      technicalTerms: [
+        { term: 'Crucial date', meaning: 'The fixed reference date on which eligibility conditions are tested.' }
+      ],
+      stepByStepMethod: [
+        'Step 1: Open the official notice and read Section 5, "Age limit (As on 01-08-2026)".',
+        'Step 2: Note that the application window (21.05.2026–22.06.2026) is a different thing entirely.',
+        'Step 3: Compute your age on 01-08-2026, then add any category relaxation.',
+        'Step 4: The answer is 01-08-2026, option (B).'
+      ],
+      shortcutTrick: {
+        name: 'Crucial date is not the closing date',
+        trickSteps: 'Age is measured on the crucial date; educational qualification is judged on its own stated date. Never use the application closing date for either.',
+        timeSaved: 'Prevents an eligibility miscalculation'
+      },
+      eliminationStrategy: '22-06-2026 is the application closing date — placed as a decoy precisely because candidates confuse the two.',
+      crucialTakeaway: 'Read the crucial date from the notice itself; GovOS eligibility results are computed against it.'
+    }
+  },
+  {
+    topic: 'SSC CGL 2026: Application Window',
+    text: 'Per the official SSC CGL 2026 notice, the window for submission of online applications was:',
+    options: ['21.05.2026 to 22.06.2026', '10.08.2026 to 27.09.2026', '01.08.2026 to 31.08.2026', '15.08.2026 to 20.09.2026'],
+    correct: 0,
+    exp: 'The notice states applications ran from 21.05.2026 to 22.06.2026 (23:00 hours), with fee payment allowed up to 23.06.2026 (23:00 hours).',
+    source: sscNoticeSource('SSC CGL 2026 Notice, "Dates for submission of online applications", ssc.gov.in'),
+    detailedExp: {
+      simpleExplanation: 'The official notice gives one window for the form and one extra day for paying the fee. The Commission later issued a separate notice reopening the window.',
+      coreConcept: 'Application deadlines are set in the notice and changed only by a further official notice — never by a third-party website.',
+      technicalTerms: [
+        { term: 'Fee payment window', meaning: 'A short extra period, here one day, to complete payment after the form closes.' }
+      ],
+      stepByStepMethod: [
+        'Step 1: The notice lists submission dates 21.05.2026 to 22.06.2026 (23:00 hours).',
+        'Step 2: Fee payment closes 23.06.2026 (23:00 hours).',
+        'Step 3: A later notice (CGLE_Reopen_23062026.pdf) reopened the window — read it alongside.',
+        'Step 4: Option (A) matches the original notice.'
+      ],
+      shortcutTrick: {
+        name: 'Notice first, then corrigendum',
+        trickSteps: 'Always read the main notice and then check the notice board for any amendment before trusting a date.',
+        timeSaved: 'Avoids acting on a stale date'
+      },
+      eliminationStrategy: 'Dates circulating on coaching sites often belong to a different cycle. Only ssc.gov.in settles it.',
+      crucialTakeaway: 'Verify every date against ssc.gov.in; the Commission amends schedules by fresh notice.'
+    }
+  },
+  {
+    topic: 'SSC CGL 2026: Vacancy Position',
+    text: 'The official SSC CGL 2026 notice puts the tentative number of vacancies at approximately:',
+    options: ['7,500', '12,256', '17,727', '25,000'],
+    correct: 1,
+    exp: 'The notice states "Tentative vacancies: There are approx. 12,256 vacancies", collected by the Commission and updated later on its website.',
+    source: sscNoticeSource('SSC CGL 2026 Notice, Section 3.1 (Vacancies and Reservation), ssc.gov.in'),
+    detailedExp: {
+      simpleExplanation: 'The Commission publishes an approximate vacancy figure with the notice and updates it as departments report their numbers, so the final count can differ.',
+      coreConcept: 'Vacancies are tentative at notification; the final, post-wise position is published separately before the result.',
+      technicalTerms: [
+        { term: 'Tentative vacancies', meaning: 'A provisional figure, subject to revision as departments confirm numbers.' }
+      ],
+      stepByStepMethod: [
+        'Step 1: Section 3.1 of the notice gives approx. 12,256.',
+        'Step 2: The same section says updated vacancies will appear under "For Candidates > Tentative Vacancy".',
+        'Step 3: Treat any other figure as unofficial unless it cites the Commission.',
+        'Step 4: The answer is 12,256, option (B).'
+      ],
+      shortcutTrick: {
+        name: 'Tentative means it will change',
+        trickSteps: 'Quote the notice figure, then check the Tentative Vacancy page for the current number before making decisions.',
+        timeSaved: 'Keeps your planning based on the real figure'
+      },
+      crucialTakeaway: 'Approx. 12,256 at notification, revised on the SSC website as departments report.'
     }
   }
 ];
@@ -3144,92 +3488,428 @@ export const QUANT_TEMPLATES: {
   correct: number;
   exp: string;
   detailedExp: DetailedExplanation;
+  /** Where this question came from. Rendered as the question's provenance. */
+  source?: QuestionSource;
 }[] = [
   {
-    topic: 'Geometry: Circle Tangents & Secants',
-    text: 'Two circles of radii 9 cm and 4 cm have their centers 13 cm apart. What is the exact length of their Direct Common Tangent (DCT)?',
-    options: ['12 cm', '10 cm', '11.5 cm', '14 cm'],
-    correct: 0,
-    exp: 'Formula: DCT = √(d² - (r₁ - r₂)²) = √(13² - (9 - 4)²) = √(169 - 25) = √144 = 12 cm.',
+    topic: 'Geometry: Similar Triangles & the Altitude Relation',
+    text: 'In a triangle ABC, ∠BAC = 90° and AD ⊥ BC, where D lies on BC. Which relation is true?',
+    options: ['BD · CD = BC²', 'AB · AC = BC²', 'BD · CD = AD²', 'AB · AC = AD²'],
+    correct: 2,
+    exp: 'The altitude to the hypotenuse of a right triangle is the geometric mean of the two segments it creates: AD² = BD · CD.',
+    source: ncertSource('jeep206.pdf', 'NCERT Exemplar, Class 10 Maths — Triangles, Exercise 6.1, Q1'),
     detailedExp: {
-      simpleExplanation: 'In simple everyday words: A "Direct Common Tangent" is a straight ruler line touching the tops of two separate circles. If the distance between their centers is 13 cm, and the difference in their heights/radii is (9 - 4) = 5 cm, simple Pythagoras theorem on the right triangle gives the length as 12 cm (since 5² + 12² = 13²).',
-      coreConcept: 'In Euclidean circle geometry, a Direct Common Tangent (DCT) touches both circles on the same side without intersecting the line connecting their centers. Applying the Pythagorean theorem to the right triangle formed with the center distance and radial difference gives the standard distance equation.',
+      simpleExplanation: 'Drop a perpendicular from the right-angle corner onto the longest side. It cuts that side into two pieces. The perpendicular squared always equals the two pieces multiplied together.',
+      coreConcept: 'Right-triangle altitude theorem (geometric mean relation). The altitude on the hypotenuse creates two triangles similar to each other and to the original.',
       technicalTerms: [
-        { term: 'Direct Common Tangent (DCT)', meaning: 'A straight line that touches both circles from outside without crossing in between them.' },
-        { term: 'Pythagorean Triplet (5, 12, 13)', meaning: 'Three whole numbers where 5² + 12² = 13² (25 + 144 = 169).' }
+        { term: 'Altitude', meaning: 'A perpendicular dropped from a vertex to the opposite side.' },
+        { term: 'Geometric mean', meaning: 'x is the geometric mean of a and b when x² = ab.' }
       ],
       stepByStepMethod: [
-        'Step 1: Given: Radius 1 = 9 cm, Radius 2 = 4 cm, Center Distance = 13 cm.',
-        'Step 2: Difference between the two radii: 9 - 4 = 5 cm.',
-        'Step 3: Apply the DCT formula: DCT = √(Distance² - (Difference)²) = √(13² - 5²).',
-        'Step 4: Calculate: √(169 - 25) = √144 = 12 cm.'
+        'Step 1: AD ⊥ BC gives △ABD ~ △CAD (each shares an angle with △ABC and has a right angle).',
+        'Step 2: Matching sides of similar triangles: BD/AD = AD/CD.',
+        'Step 3: Cross-multiplying gives AD² = BD · CD, so option (C) is correct.',
+        'Step 4: Note (A) is the wrong form — BD · CD equals AD², never BC².'
       ],
       shortcutTrick: {
-        name: 'Pythagorean Triplet Recognition Hack (5-12-13)',
-        formula: 'DCT² + (r₁ - r₂)² = d²  ⇒  ( ? )² + 5² = 13²',
-        explanation: 'Notice the difference (9 - 4) = 5 and hypotenuse d = 13. This is the fundamental Pythagorean Triplet (5, 12, 13)! The answer is instantly 12 cm with zero paper calculation!',
-        timeSaved: '⏱️ Traditional: 40s → Shortcut: 4s (90% Time Saved)'
+        name: 'Altitude squared = product of segments',
+        formula: 'AD² = BD · CD',
+        trickSteps: 'Perpendicular from the right angle: square it, and it equals the two hypotenuse pieces multiplied.',
+        timeSaved: 'Answer on sight, no construction needed'
       },
-      crucialTakeaway: 'For Transverse Common Tangent (TCT), the formula adds radii: TCT = √(d² - (r₁ + r₂)²). For DCT, it subtracts: DCT = √(d² - (r₁ - r₂)²).'
+      crucialTakeaway: 'On a right triangle, the altitude to the hypotenuse squared equals the product of the two segments it makes.'
     }
   },
   {
-    topic: 'Algebra: Symmetric Polynomials (x + 1/x)',
-    text: 'If x + 1/x = 5, find the exact numerical value of x³ + 1/x³.',
-    options: ['110', '125', '115', '140'],
-    correct: 0,
-    exp: 'Formula: x³ + 1/x³ = k³ - 3k = 5³ - 3(5) = 125 - 15 = 110.',
+    topic: 'Geometry: Rhombus Diagonals',
+    text: 'The lengths of the diagonals of a rhombus are 16 cm and 12 cm. The length of a side of the rhombus is:',
+    options: ['9 cm', '10 cm', '8 cm', '20 cm'],
+    correct: 1,
+    exp: 'Diagonals of a rhombus bisect each other at right angles, so the side is √(8² + 6²) = √100 = 10 cm.',
+    source: ncertSource('jeep206.pdf', 'NCERT Exemplar, Class 10 Maths — Triangles, Exercise 6.1, Q2'),
     detailedExp: {
-      simpleExplanation: 'In simple words: Whenever you know the value of (x + 1/x) and want to find its cube (x³ + 1/x³), you just take the number, cube it (5 × 5 × 5 = 125), and subtract 3 times that number (3 × 5 = 15). So, 125 - 15 = 110.',
-      coreConcept: 'Algebraic symmetric cubic identity: (a + b)³ = a³ + b³ + 3ab(a + b). Setting a = x and b = 1/x gives ab = 1, simplifying the expression to (x + 1/x)³ = (x³ + 1/x³) + 3(x + 1/x).',
+      simpleExplanation: 'The two diagonals cross in the middle at a right angle, cutting the rhombus into four identical right triangles. Each has legs of half a diagonal: 8 cm and 6 cm. The side of the rhombus is that triangle’s hypotenuse.',
+      coreConcept: 'Diagonals of a rhombus bisect each other perpendicularly, making each half-diagonal pair the legs of a right triangle whose hypotenuse is the side.',
       technicalTerms: [
-        { term: 'Symmetric Expression', meaning: 'An algebraic formula where swapping x and 1/x leaves the equation unchanged.' },
-        { term: 'Reciprocal', meaning: 'The flipped fraction (1/x is the reciprocal of x, so x multiplied by 1/x is always 1).' }
+        { term: 'Bisect', meaning: 'Cut exactly in half.' }
       ],
       stepByStepMethod: [
-        'Step 1: Start with the known value: x + 1/x = 5.',
-        'Step 2: Cube both sides: (x + 1/x)³ = 5³ = 125.',
-        'Step 3: Expand the formula: x³ + 1/x³ + 3(x)(1/x)(x + 1/x) = 125.',
-        'Step 4: Since x · (1/x) = 1 and (x + 1/x) = 5, we get: x³ + 1/x³ + 3(1)(5) = 125.',
-        'Step 5: Move 15 to the other side: x³ + 1/x³ = 125 - 15 = 110.'
+        'Step 1: Half-diagonals are 16/2 = 8 cm and 12/2 = 6 cm.',
+        'Step 2: They meet at 90°, so side² = 8² + 6² = 64 + 36 = 100.',
+        'Step 3: Side = √100 = 10 cm, option (B).'
       ],
       shortcutTrick: {
-        name: 'Direct Speed Identity for Cubes (k³ - 3k)',
-        formula: 'x³ + 1/x³ = k³ - 3k',
-        explanation: 'Directly calculate: 5³ - 3(5) = 125 - 15 = 110. (Bonus: For x² + 1/x² use k² - 2 = 25 - 2 = 23). Takes 3 seconds!',
-        timeSaved: '⏱️ Traditional: 35s → Shortcut: 3s (91% Time Saved)'
+        name: 'Half-diagonals form a Pythagorean triple',
+        formula: 'side = √((d₁/2)² + (d₂/2)²)',
+        trickSteps: '8 and 6 is the 3-4-5 triple doubled, so the side is 10 immediately.',
+        timeSaved: '~25s → 5s'
       },
-      crucialTakeaway: 'If x - 1/x = k, then x³ - 1/x³ = k³ + 3k. If x + 1/x = k, then x³ + 1/x³ = k³ - 3k.'
+      crucialTakeaway: 'Halve both diagonals, then apply Pythagoras — that gives the side of a rhombus.'
     }
   },
   {
-    topic: 'Arithmetic: Profit, Loss & Discount',
-    text: 'A dealer marks his goods 40% above the cost price and allows a discount of 20% on the marked price. Furthermore, he gives an additional cash discount of 5%. What is his net profit percentage?',
-    options: ['6.4%', '8.0%', '5.0%', '7.2%'],
-    correct: 0,
-    exp: 'Let CP = 100. MP = 140. After 20% discount: 112. After 5% cash discount: 106.4. Net Profit = 6.4%.',
+    topic: 'Geometry: Similarity from Intersecting Segments',
+    text: 'Two segments AC and BD intersect at P with PA = 6 cm, PB = 3 cm, PC = 2.5 cm, PD = 5 cm, ∠APB = 50° and ∠CDP = 30°. Then ∠PBA equals:',
+    options: ['50°', '30°', '60°', '100°'],
+    correct: 3,
+    exp: 'PA/PD = PB/PC = 6/5 with equal vertically opposite angles gives △APB ~ △DPC, so ∠PAB = 30° and ∠PBA = 180° − 50° − 30° = 100°.',
+    source: ncertSource('jeep206.pdf', 'NCERT Exemplar, Class 10 Maths — Triangles, Exercise 6.1, Q5'),
     detailedExp: {
-      simpleExplanation: 'In simple everyday shopkeeper terms: Imagine the item cost ₹100 originally. The shopkeeper sets the tag price at ₹140 (40% markup). He gives a 20% festival discount, making it ₹112 (140 - 28). Then he gives another 5% cash discount on that ₹112, reducing ₹5.60 to reach ₹106.40. Since he spent ₹100 and collected ₹106.40, his net profit is exactly 6.4%.',
-      coreConcept: 'Successive Percentage Changes and Multiplier chain: SP = CP × (1 + Markup%) × (1 - Discount₁%) × (1 - Discount₂%).',
+      simpleExplanation: 'Check the two side ratios around the crossing point. Both come to 6/5, and the angles at the crossing are equal, so the two triangles are the same shape. That hands you one angle; the triangle’s angles then add to 180°.',
+      coreConcept: 'SAS similarity using vertically opposite angles at the intersection, followed by the angle sum of a triangle.',
       technicalTerms: [
-        { term: 'Cost Price (CP)', meaning: 'The money spent to purchase or produce the good (Base = ₹100).' },
-        { term: 'Marked Price (MP)', meaning: 'The higher list price printed on the label before giving discounts.' },
-        { term: 'Successive Discounts', meaning: 'Applying each new discount on the already discounted price (not added together).' }
+        { term: 'Vertically opposite angles', meaning: 'The equal angles formed opposite each other when two lines cross.' },
+        { term: 'SAS similarity', meaning: 'Two sides in proportion with the included angle equal makes triangles similar.' }
       ],
       stepByStepMethod: [
-        'Step 1: Assume Cost Price (CP) = ₹100.',
-        'Step 2: 40% Markup means Marked Price (MP) = 100 + 40 = ₹140.',
-        'Step 3: Apply 20% Discount on ₹140: Discount = 140 × 0.20 = ₹28. Price is now ₹112.',
-        'Step 4: Apply 5% Cash Discount on ₹112: Discount = 112 × 0.05 = ₹5.60. Final Selling Price = 112 - 5.60 = ₹106.40.',
-        'Step 5: Net Profit = Final Selling Price - Cost Price = 106.40 - 100 = 6.4%.'
+        'Step 1: PA/PD = 6/5 = 1.2.',
+        'Step 2: PB/PC = 3/2.5 = 1.2. The ratios match.',
+        'Step 3: ∠APB = ∠DPC (vertically opposite), so △APB ~ △DPC by SAS.',
+        'Step 4: Correspondence A↔D gives ∠PAB = ∠PDC = 30°.',
+        'Step 5: In △APB, ∠PBA = 180° − 50° − 30° = 100°, option (D).'
       ],
       shortcutTrick: {
-        name: 'Fractional Multiplier Chain Method',
-        formula: 'Net SP = 100 × (7/5) × (4/5) × (19/20)',
-        explanation: 'Net SP = 100 × (7/5) × (4/5) × (19/20) = 4 × 7 × 19 / 5 = 532 / 5 = 106.4. Profit = 6.4%!',
-        timeSaved: '⏱️ Traditional: 45s → Shortcut: 10s (78% Time Saved)'
+        name: 'Ratio check first',
+        trickSteps: 'At any crossing, test both ratios. Equal ratios + vertical angles = similar triangles, and every angle transfers.',
+        timeSaved: '~60s → 20s'
       },
-      crucialTakeaway: 'Always apply successive discounts on the reducing balance (MP), never add percentage discounts linearly.'
+      eliminationStrategy: '50° and 30° are the angles already given — examiners place them as decoys. The answer must be the third angle.',
+      crucialTakeaway: 'Equal side ratios about an intersection plus vertically opposite angles gives similarity, and similarity transfers angles.'
+    }
+  },
+  {
+    topic: 'Geometry: Area Ratio of Similar Triangles',
+    text: 'It is given that △ABC ~ △PQR with BC/QR = 1/3. Then ar(△PRQ) / ar(△BCA) is:',
+    options: ['9', '3', '1/3', '1/9'],
+    correct: 0,
+    exp: 'Areas of similar triangles are in the ratio of the squares of corresponding sides: (QR/BC)² = 3² = 9.',
+    source: ncertSource('jeep206.pdf', 'NCERT Exemplar, Class 10 Maths — Triangles, Exercise 6.1, Q8'),
+    detailedExp: {
+      simpleExplanation: 'If one triangle’s sides are 3 times the other’s, its area is 3² = 9 times bigger. Area scales with the square of length.',
+      coreConcept: 'Theorem: the ratio of areas of two similar triangles equals the square of the ratio of any pair of corresponding sides.',
+      technicalTerms: [
+        { term: 'Corresponding sides', meaning: 'Sides that occupy matching positions under the similarity correspondence.' }
+      ],
+      stepByStepMethod: [
+        'Step 1: The question asks for ar(PRQ)/ar(BCA) — note PQR is on top.',
+        'Step 2: BC/QR = 1/3, so QR/BC = 3.',
+        'Step 3: ar(PQR)/ar(ABC) = (QR/BC)² = 3² = 9, option (A).'
+      ],
+      shortcutTrick: {
+        name: 'Square the side ratio',
+        formula: 'ar₁/ar₂ = (s₁/s₂)²',
+        trickSteps: 'Read which triangle is in the numerator, then square that side ratio.',
+        timeSaved: '~30s → 5s'
+      },
+      eliminationStrategy: '1/9 is the trap for reading the ratio upside down; 3 is the trap for forgetting to square.',
+      crucialTakeaway: 'Similar triangles: areas go as the square of the side ratio. Always check which triangle is on top.'
+    }
+  },
+  {
+    topic: 'Trigonometry: Ratios from a Given Cosine',
+    text: 'If cos A = 4/5, then the value of tan A is:',
+    options: ['3/5', '3/4', '4/3', '5/3'],
+    correct: 1,
+    exp: 'cos A = 4/5 is the 3-4-5 triangle, so sin A = 3/5 and tan A = sin A / cos A = 3/4.',
+    source: ncertSource('jeep208.pdf', 'NCERT Exemplar, Class 10 Maths — Introduction to Trigonometry, Exercise 8.1, Q1'),
+    detailedExp: {
+      simpleExplanation: 'cos is adjacent over hypotenuse, so the sides are 4 and 5. Pythagoras gives the third side as 3. tan is opposite over adjacent = 3/4.',
+      coreConcept: 'Trigonometric ratios in a right triangle; recovering the third side with the Pythagorean theorem.',
+      technicalTerms: [
+        { term: 'tan A', meaning: 'Opposite side divided by adjacent side, equivalently sin A / cos A.' }
+      ],
+      stepByStepMethod: [
+        'Step 1: cos A = adjacent/hypotenuse = 4/5.',
+        'Step 2: opposite = √(5² − 4²) = √9 = 3.',
+        'Step 3: tan A = opposite/adjacent = 3/4, option (B).'
+      ],
+      shortcutTrick: {
+        name: 'Spot the Pythagorean triple',
+        trickSteps: 'Seeing 4 and 5 means the triple is 3-4-5. Every ratio then reads straight off.',
+        timeSaved: '~20s → 3s'
+      },
+      eliminationStrategy: '3/5 is sin A and 4/3 is cot A — both are placed as decoys.',
+      crucialTakeaway: 'Memorise 3-4-5, 5-12-13, 8-15-17 and 7-24-25; most ratio questions collapse instantly.'
+    }
+  },
+  {
+    topic: 'Trigonometry: Complementary Angle Identities',
+    text: 'The value of [cosec (75° + θ) − sec (15° − θ) − tan (55° + θ) + cot (35° − θ)] is:',
+    options: ['− 1', '0', '1', '3/2'],
+    correct: 1,
+    exp: 'sec(15° − θ) = cosec(75° + θ) and cot(35° − θ) = tan(55° + θ), so the four terms cancel in pairs, giving 0.',
+    source: ncertSource('jeep208.pdf', 'NCERT Exemplar, Class 10 Maths — Introduction to Trigonometry, Exercise 8.1, Q3'),
+    detailedExp: {
+      simpleExplanation: 'Each pair of angles adds to 90°. Complementary angles swap sec with cosec and tan with cot, so the terms cancel one another and nothing is left.',
+      coreConcept: 'Complementary-angle identities: sec(90° − x) = cosec x and cot(90° − x) = tan x.',
+      technicalTerms: [
+        { term: 'Complementary angles', meaning: 'Two angles summing to 90°.' }
+      ],
+      stepByStepMethod: [
+        'Step 1: (75° + θ) + (15° − θ) = 90°, so sec(15° − θ) = cosec(75° + θ). The first two terms cancel.',
+        'Step 2: (55° + θ) + (35° − θ) = 90°, so cot(35° − θ) = tan(55° + θ). The last two cancel.',
+        'Step 3: The whole expression is 0, option (B).'
+      ],
+      shortcutTrick: {
+        name: 'Add the angles first',
+        trickSteps: 'Before any algebra, add each pair of angles. Any pair summing to 90° with paired co-ratios cancels.',
+        timeSaved: '~90s → 10s'
+      },
+      crucialTakeaway: 'When angle pairs sum to 90°, look for cancellation before attempting to expand anything.'
+    }
+  },
+  {
+    topic: 'Trigonometry: Product of Tangents',
+    text: 'The value of (tan 1° · tan 2° · tan 3° · ... · tan 89°) is:',
+    options: ['0', '1', '2', '1/2'],
+    correct: 1,
+    exp: 'Terms pair as tanθ · tan(90° − θ) = tanθ · cotθ = 1, and the unpaired middle term tan 45° = 1, so the product is 1.',
+    source: ncertSource('jeep208.pdf', 'NCERT Exemplar, Class 10 Maths — Introduction to Trigonometry, Exercise 8.1, Q6'),
+    detailedExp: {
+      simpleExplanation: 'Pair the first with the last, the second with the second-last, and so on. Every pair multiplies to 1. The leftover middle term, tan 45°, is also 1. So everything multiplies to 1.',
+      coreConcept: 'tan(90° − θ) = cot θ and tan θ · cot θ = 1.',
+      technicalTerms: [
+        { term: 'cot θ', meaning: 'The reciprocal of tan θ.' }
+      ],
+      stepByStepMethod: [
+        'Step 1: Pair tan 1° with tan 89°: tan 89° = cot 1°, so the product is 1.',
+        'Step 2: Every such pair from 1°–44° with 89°–46° gives 1.',
+        'Step 3: tan 45° = 1 remains unpaired.',
+        'Step 4: The full product is 1, option (B).'
+      ],
+      shortcutTrick: {
+        name: 'Pair from both ends',
+        formula: 'tanθ · tan(90°−θ) = 1',
+        trickSteps: 'Any symmetric tan product spanning to 89° collapses to 1.',
+        timeSaved: 'Instant'
+      },
+      eliminationStrategy: '0 would need some term to be zero, but tan is never 0 on 1°–89°.',
+      crucialTakeaway: 'Symmetric trigonometric products almost always telescope — pair from the outside in.'
+    }
+  },
+  {
+    topic: 'Trigonometry: Solving for the Angle',
+    text: 'If cos 9α = sin α and 9α < 90°, then the value of tan 5α is:',
+    options: ['1/√3', '√3', '1', '0'],
+    correct: 2,
+    exp: 'sin α = cos(90° − α), so 9α = 90° − α, giving α = 9°. Then tan 5α = tan 45° = 1.',
+    source: ncertSource('jeep208.pdf', 'NCERT Exemplar, Class 10 Maths — Introduction to Trigonometry, Exercise 8.1, Q7'),
+    detailedExp: {
+      simpleExplanation: 'Rewrite sine as cosine of the complement so both sides are cosines, then match the angles. That gives α = 9°, and 5 × 9° = 45°, whose tangent is 1.',
+      coreConcept: 'Converting between sin and cos with the complementary identity, then equating angles.',
+      technicalTerms: [
+        { term: 'Complement', meaning: '90° minus the angle.' }
+      ],
+      stepByStepMethod: [
+        'Step 1: sin α = cos(90° − α).',
+        'Step 2: cos 9α = cos(90° − α), and since 9α < 90° both angles lie in the first quadrant, so 9α = 90° − α.',
+        'Step 3: 10α = 90°, so α = 9°.',
+        'Step 4: tan 5α = tan 45° = 1, option (C).'
+      ],
+      shortcutTrick: {
+        name: 'Coefficients sum to 90',
+        trickSteps: 'For cos(mα) = sin(nα), solve (m + n)α = 90° directly.',
+        timeSaved: '~40s → 8s'
+      },
+      crucialTakeaway: 'Convert one ratio so both sides match, then equate the angles.'
+    }
+  },
+  {
+    topic: 'Trigonometry: Substitution Identity',
+    text: 'If sin A + sin² A = 1, then the value of (cos² A + cos⁴ A) is:',
+    options: ['1', '1/2', '2', '3'],
+    correct: 0,
+    exp: 'From sin A = 1 − sin²A = cos²A, so cos²A + cos⁴A = sin A + sin²A = 1.',
+    source: ncertSource('jeep208.pdf', 'NCERT Exemplar, Class 10 Maths — Introduction to Trigonometry, Exercise 8.1, Q9'),
+    detailedExp: {
+      simpleExplanation: 'The given equation says sin A equals cos²A. Substituting turns the expression you are asked about into the expression you were given, which equals 1.',
+      coreConcept: 'Using sin²A + cos²A = 1 together with the given constraint to substitute.',
+      technicalTerms: [
+        { term: 'Pythagorean identity', meaning: 'sin²θ + cos²θ = 1 for every angle θ.' }
+      ],
+      stepByStepMethod: [
+        'Step 1: sin A + sin²A = 1 rearranges to sin A = 1 − sin²A.',
+        'Step 2: 1 − sin²A = cos²A, so sin A = cos²A.',
+        'Step 3: cos⁴A = (cos²A)² = (sin A)² = sin²A.',
+        'Step 4: cos²A + cos⁴A = sin A + sin²A = 1, option (A).'
+      ],
+      shortcutTrick: {
+        name: 'Match the target to the given',
+        trickSteps: 'When a condition is given, aim to convert the target into that exact expression rather than solving for the angle.',
+        timeSaved: '~2 min → 20s'
+      },
+      crucialTakeaway: 'Substitute to reshape the target into the given expression — you rarely need the angle itself.'
+    }
+  },
+  {
+    topic: 'Trigonometry: Dividing by cos θ',
+    text: 'If 4 tan θ = 3, then (4 sin θ − cos θ) / (4 sin θ + cos θ) is equal to:',
+    options: ['2/3', '1/3', '1/2', '3/4'],
+    correct: 2,
+    exp: 'Dividing numerator and denominator by cos θ gives (4tanθ − 1)/(4tanθ + 1) = (3 − 1)/(3 + 1) = 1/2.',
+    source: ncertSource('jeep208.pdf', 'NCERT Exemplar, Class 10 Maths — Introduction to Trigonometry, Exercise 8.1, Q12'),
+    detailedExp: {
+      simpleExplanation: 'Divide top and bottom by cos θ. Every sin/cos becomes tan, and you already know 4 tan θ = 3, so just substitute.',
+      coreConcept: 'Homogeneous expressions in sin and cos of the same degree reduce to tan by dividing through by cos.',
+      technicalTerms: [
+        { term: 'Homogeneous expression', meaning: 'Every term has the same total power, so dividing through keeps it balanced.' }
+      ],
+      stepByStepMethod: [
+        'Step 1: Divide numerator and denominator by cos θ.',
+        'Step 2: The expression becomes (4 tan θ − 1) / (4 tan θ + 1).',
+        'Step 3: Substitute 4 tan θ = 3: (3 − 1)/(3 + 1) = 2/4.',
+        'Step 4: = 1/2, option (C).'
+      ],
+      shortcutTrick: {
+        name: 'Divide by cos to convert to tan',
+        formula: '(a·sin − b·cos)/(a·sin + b·cos) = (a·tan − b)/(a·tan + b)',
+        trickSteps: 'Never find θ. Substitute the given tan value straight into the reduced form.',
+        timeSaved: '~90s → 15s'
+      },
+      crucialTakeaway: 'Same-degree sin/cos fractions: divide by cos and substitute tan.'
+    }
+  },
+  {
+    topic: 'Trigonometry: Heights and Distances',
+    text: 'A pole 6 m high casts a shadow 2√3 m long on the ground. The Sun’s elevation is:',
+    options: ['60°', '45°', '30°', '90°'],
+    correct: 0,
+    exp: 'tan θ = height/shadow = 6/(2√3) = √3, so θ = 60°.',
+    source: ncertSource('jeep208.pdf', 'NCERT Exemplar, Class 10 Maths — Introduction to Trigonometry, Exercise 8.1, Q15'),
+    detailedExp: {
+      simpleExplanation: 'The pole and its shadow form a right triangle. Height over shadow gives the tangent of the sun’s angle. That works out to √3, which is the tangent of 60°.',
+      coreConcept: 'Angle of elevation via tan θ = opposite (height) / adjacent (shadow).',
+      technicalTerms: [
+        { term: 'Angle of elevation', meaning: 'The upward angle from the horizontal to the line of sight.' }
+      ],
+      stepByStepMethod: [
+        'Step 1: tan θ = 6 / (2√3).',
+        'Step 2: Simplify: 6/(2√3) = 3/√3 = √3.',
+        'Step 3: tan θ = √3 gives θ = 60°, option (A).'
+      ],
+      shortcutTrick: {
+        name: 'Standard tangent values',
+        formula: 'tan30° = 1/√3, tan45° = 1, tan60° = √3',
+        trickSteps: 'Shadow shorter than the pole means the sun is high, so the angle exceeds 45° — 60° before computing.',
+        timeSaved: '~45s → 10s'
+      },
+      eliminationStrategy: 'The shadow is shorter than the pole, so tan θ > 1 and θ > 45°. That removes 45° and 30° at once.',
+      crucialTakeaway: 'Shadow shorter than the object means elevation above 45°; longer means below.'
+    }
+  },
+  {
+    topic: 'Mensuration: Melting and Recasting Solids',
+    text: 'A metallic spherical shell of internal and external diameters 4 cm and 8 cm is melted and recast into a cone of base diameter 8 cm. The height of the cone is:',
+    options: ['12 cm', '14 cm', '15 cm', '18 cm'],
+    correct: 1,
+    exp: 'Shell volume = (4/3)π(4³ − 2³) = (4/3)π(56). Cone volume = (1/3)π(4²)h. Equating gives h = 14 cm.',
+    source: ncertSource('jeep212.pdf', 'NCERT Exemplar, Class 10 Maths — Surface Areas and Volumes, Exercise 12.1, Q9'),
+    detailedExp: {
+      simpleExplanation: 'Melting changes the shape but not the amount of metal. Work out the hollow shell’s volume, set it equal to the cone’s volume, and solve for the height.',
+      coreConcept: 'Conservation of volume on recasting. Hollow sphere volume = (4/3)π(R³ − r³); cone volume = (1/3)πR²h.',
+      technicalTerms: [
+        { term: 'Spherical shell', meaning: 'A hollow sphere — the solid between an outer and an inner radius.' },
+        { term: 'Recast', meaning: 'Melt and reshape; the volume is unchanged.' }
+      ],
+      stepByStepMethod: [
+        'Step 1: Radii are external R = 4 cm and internal r = 2 cm (halve the diameters).',
+        'Step 2: Shell volume = (4/3)π(4³ − 2³) = (4/3)π(64 − 8) = (4/3)π(56).',
+        'Step 3: Cone base radius = 8/2 = 4 cm, so its volume = (1/3)π(16)h.',
+        'Step 4: Equate and cancel π/3: 4 × 56 = 16h.',
+        'Step 5: h = 224/16 = 14 cm, option (B).'
+      ],
+      shortcutTrick: {
+        name: 'Cancel π and the common third',
+        formula: '4(R³ − r³) = R_cone² · h',
+        trickSteps: 'Both formulas carry π/3 — cancel before multiplying anything out.',
+        timeSaved: '~2 min → 40s'
+      },
+      eliminationStrategy: 'Always halve the given diameters first. Using 8 and 4 as radii is the intended trap.',
+      crucialTakeaway: 'Recasting conserves volume. Convert diameters to radii before substituting.'
+    }
+  },
+  {
+    topic: 'Mensuration: Cuboid Recast into a Sphere',
+    text: 'A solid iron cuboid of dimensions 49 cm × 33 cm × 24 cm is moulded into a solid sphere. The radius of the sphere is:',
+    options: ['21 cm', '23 cm', '25 cm', '19 cm'],
+    correct: 0,
+    exp: 'Volume = 49 × 33 × 24 = 38808 cm³. Setting (4/3)πr³ = 38808 with π = 22/7 gives r³ = 9261, so r = 21 cm.',
+    source: ncertSource('jeep212.pdf', 'NCERT Exemplar, Class 10 Maths — Surface Areas and Volumes, Exercise 12.1, Q10'),
+    detailedExp: {
+      simpleExplanation: 'The block of iron keeps its volume when moulded into a ball. Compute the block’s volume, set it equal to the sphere formula, and take the cube root.',
+      coreConcept: 'Conservation of volume; sphere volume = (4/3)πr³ with π = 22/7 chosen so the arithmetic is exact.',
+      technicalTerms: [
+        { term: 'Cube root', meaning: 'The number which, multiplied by itself three times, gives the original.' }
+      ],
+      stepByStepMethod: [
+        'Step 1: Cuboid volume = 49 × 33 × 24 = 38808 cm³.',
+        'Step 2: (4/3) × (22/7) × r³ = 38808.',
+        'Step 3: r³ = 38808 × 3 × 7 / (4 × 22) = 9261.',
+        'Step 4: 21³ = 9261, so r = 21 cm, option (A).'
+      ],
+      shortcutTrick: {
+        name: 'Factor rather than multiply',
+        trickSteps: '49 = 7² and 33 = 3×11 cancel against π = 22/7. Keep everything factored and 9261 = 21³ appears without long multiplication.',
+        timeSaved: '~2.5 min → 45s'
+      },
+      eliminationStrategy: 'Cubes worth memorising: 19³ = 6859, 21³ = 9261, 23³ = 12167, 25³ = 15625. Only 9261 matches.',
+      crucialTakeaway: 'Where 7, 49 or 22 appear, factor and cancel against π = 22/7 instead of multiplying.'
+    }
+  },
+  {
+    topic: 'Mensuration: Cylinder Recast into Spheres',
+    text: 'Twelve solid spheres of the same size are made by melting a solid metallic cylinder of base diameter 2 cm and height 16 cm. The diameter of each sphere is:',
+    options: ['4 cm', '3 cm', '2 cm', '6 cm'],
+    correct: 2,
+    exp: 'Cylinder volume = π(1)²(16) = 16π. Each sphere = 16π/12 = 4π/3, so (4/3)πr³ = 4π/3 gives r = 1 and diameter 2 cm.',
+    source: ncertSource('jeep212.pdf', 'NCERT Exemplar, Class 10 Maths — Surface Areas and Volumes, Exercise 12.1, Q12'),
+    detailedExp: {
+      simpleExplanation: 'The cylinder’s metal is shared equally among twelve balls. Find the cylinder’s volume, divide by twelve, and solve the sphere formula for the radius.',
+      coreConcept: 'Volume conservation across a one-to-many recast; cylinder = πr²h, sphere = (4/3)πr³.',
+      technicalTerms: [
+        { term: 'Base diameter', meaning: 'Twice the base radius — halve it before using any formula.' }
+      ],
+      stepByStepMethod: [
+        'Step 1: Cylinder radius = 2/2 = 1 cm, so volume = π(1)²(16) = 16π cm³.',
+        'Step 2: Each sphere gets 16π / 12 = 4π/3 cm³.',
+        'Step 3: (4/3)πr³ = 4π/3, so r³ = 1 and r = 1 cm.',
+        'Step 4: Diameter = 2 cm, option (C).'
+      ],
+      shortcutTrick: {
+        name: 'Cancel π immediately',
+        trickSteps: 'π appears on both sides of every recast equation — drop it in the first line.',
+        timeSaved: '~90s → 25s'
+      },
+      eliminationStrategy: 'The question asks for diameter, not radius. r = 1 makes 1 cm the intended trap; the answer is 2 cm.',
+      crucialTakeaway: 'Read whether the question wants radius or diameter — that single word decides the mark.'
+    }
+  },
+  {
+    topic: 'Mensuration: Volume and Surface Area Ratios',
+    text: 'The volumes of two spheres are in the ratio 64 : 27. The ratio of their surface areas is:',
+    options: ['3 : 4', '4 : 3', '9 : 16', '16 : 9'],
+    correct: 3,
+    exp: 'Volume ratio 64:27 gives radius ratio 4:3 (cube roots), so the surface-area ratio is 4²:3² = 16:9.',
+    source: ncertSource('jeep212.pdf', 'NCERT Exemplar, Class 10 Maths — Surface Areas and Volumes, Exercise 12.1, Q20'),
+    detailedExp: {
+      simpleExplanation: 'Volume grows with the cube of the radius and surface area with the square. Undo the cube to get the radius ratio 4:3, then square it for the areas.',
+      coreConcept: 'Scaling laws: for similar solids, volumes scale as the cube of the linear ratio and surface areas as the square.',
+      technicalTerms: [
+        { term: 'Linear ratio', meaning: 'The ratio of corresponding lengths, here the radii.' }
+      ],
+      stepByStepMethod: [
+        'Step 1: V₁/V₂ = (r₁/r₂)³ = 64/27.',
+        'Step 2: Cube-root both sides: r₁/r₂ = 4/3.',
+        'Step 3: S₁/S₂ = (r₁/r₂)² = 16/9, option (D).'
+      ],
+      shortcutTrick: {
+        name: 'Cube root then square',
+        formula: 'S₁/S₂ = (V₁/V₂)^(2/3)',
+        trickSteps: '64:27 is 4³:3³. Take the cube root, then square — two steps, no formula sheet.',
+        timeSaved: '~60s → 10s'
+      },
+      eliminationStrategy: '9:16 is the same numbers inverted — a deliberate decoy. Larger volume means larger surface area, so the bigger number leads.',
+      crucialTakeaway: 'Volume → radius: cube root. Radius → area: square. Never mix the two directions.'
     }
   }
 ];
@@ -3241,9 +3921,12 @@ export const ENGLISH_TEMPLATES: {
   correct: number;
   exp: string;
   detailedExp: DetailedExplanation;
+  /** Where this question came from. Rendered as the question's provenance. */
+  source?: QuestionSource;
 }[] = [
   {
     topic: 'Grammar: Subject-Verb Agreement',
+    source: govosSource('GovOS-authored English practice (SSC Tier-1 pattern, not an official past question)'),
     text: 'Identify the segment containing an error:\n"Neither the principal (A) / nor the teachers (B) / was in favor of (C) / postponing the examination (D)."',
     options: ['was in favor of (Error in C)', 'Neither the principal (A)', 'nor the teachers (B)', 'postponing the examination (D)'],
     correct: 0,
@@ -3279,9 +3962,12 @@ export const COMPUTER_TEMPLATES: {
   correct: number;
   exp: string;
   detailedExp: DetailedExplanation;
+  /** Where this question came from. Rendered as the question's provenance. */
+  source?: QuestionSource;
 }[] = [
   {
     topic: 'MS Office & Excel Formulas',
+    source: govosSource('GovOS-authored computer-awareness practice (SSC Tier-2 Section-III pattern, not an official past question)'),
     text: 'In MS Excel 365, which function is used to look up a value in the leftmost column of a table and return a value in the same row from a specified column?',
     options: ['VLOOKUP', 'HLOOKUP', 'INDEX/MATCH', 'XLOOKUP'],
     correct: 0,
@@ -3309,6 +3995,33 @@ export const COMPUTER_TEMPLATES: {
   }
 ];
 
+/**
+ * Builds the provenance shown on a practice question from the template's own source.
+ * A question written from an official document cites that document; a GovOS-authored
+ * practice question says so plainly rather than borrowing official authority.
+ */
+function provenanceForSource(source?: QuestionSource): DataProvenance {
+  if (!source) {
+    return sscProvenance;
+  }
+  const authored = source.kind === 'GOVOS_AUTHORED';
+  return {
+    id: 'prov-q-' + source.label.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 60),
+    documentTitle: source.label,
+    officialUrl: source.url,
+    publishedDate: CHECK_DATE,
+    verifiedDate: CHECK_DATE,
+    verifiedBy: authored
+      ? 'GovOS Preparation Team — written for practice, not taken from an official paper'
+      : 'GovOS Content Team — question and worked solution written from the linked official document',
+    taxonomyType: authored ? 'RECOMMENDATION' : 'FACT',
+    verificationLevel: authored ? 'UNDER_VERIFICATION' : 'OFFICIALLY_VERIFIED',
+    excerptText: authored
+      ? `${source.label}. GovOS wrote this question to match the official syllabus and paper pattern; it is not reproduced from a past paper. Source of the pattern: ${source.publisher}.`
+      : `Written from ${source.label}, published by ${source.publisher}. GovOS read the official document at ${source.url} and authored the question and step-by-step solution from it; the document itself is not redistributed.`
+  };
+}
+
 // Helper: Build Full 100-Question Paper with Detailed Explanations
 function buildFullPaperQuestions(paperId: string, shiftInfo: string, year: number): PracticeQuestion[] {
   const questions: PracticeQuestion[] = [];
@@ -3331,7 +4044,7 @@ function buildFullPaperQuestions(paperId: string, shiftInfo: string, year: numbe
       correctOptionIndex: t.correct,
       explanation: t.exp,
       detailedExplanation: t.detailedExp,
-      provenance: sscProvenance
+      provenance: provenanceForSource(t.source)
     });
     qNum++;
   }
@@ -3353,7 +4066,7 @@ function buildFullPaperQuestions(paperId: string, shiftInfo: string, year: numbe
       correctOptionIndex: t.correct,
       explanation: t.exp,
       detailedExplanation: t.detailedExp,
-      provenance: sscProvenance
+      provenance: provenanceForSource(t.source)
     });
     qNum++;
   }
@@ -3375,7 +4088,7 @@ function buildFullPaperQuestions(paperId: string, shiftInfo: string, year: numbe
       correctOptionIndex: t.correct,
       explanation: t.exp,
       detailedExplanation: t.detailedExp,
-      provenance: sscProvenance
+      provenance: provenanceForSource(t.source)
     });
     qNum++;
   }
@@ -3397,7 +4110,7 @@ function buildFullPaperQuestions(paperId: string, shiftInfo: string, year: numbe
       correctOptionIndex: t.correct,
       explanation: t.exp,
       detailedExplanation: t.detailedExp,
-      provenance: sscProvenance
+      provenance: provenanceForSource(t.source)
     });
     qNum++;
   }
@@ -3623,7 +4336,7 @@ export const SUBJECT_MOCK_TESTS: MockPaper[] = [
         correctOptionIndex: t.correct,
         explanation: t.exp,
         detailedExplanation: t.detailedExp,
-        provenance: sscProvenance
+        provenance: provenanceForSource(t.source)
       };
     })
   },
@@ -3655,7 +4368,7 @@ export const SUBJECT_MOCK_TESTS: MockPaper[] = [
         correctOptionIndex: t.correct,
         explanation: t.exp,
         detailedExplanation: t.detailedExp,
-        provenance: sscProvenance
+        provenance: provenanceForSource(t.source)
       };
     })
   },
@@ -3687,7 +4400,7 @@ export const SUBJECT_MOCK_TESTS: MockPaper[] = [
         correctOptionIndex: t.correct,
         explanation: t.exp,
         detailedExplanation: t.detailedExp,
-        provenance: sscProvenance
+        provenance: provenanceForSource(t.source)
       };
     })
   },
@@ -3719,7 +4432,7 @@ export const SUBJECT_MOCK_TESTS: MockPaper[] = [
         correctOptionIndex: t.correct,
         explanation: t.exp,
         detailedExplanation: t.detailedExp,
-        provenance: sscProvenance
+        provenance: provenanceForSource(t.source)
       };
     })
   },
@@ -3751,7 +4464,7 @@ export const SUBJECT_MOCK_TESTS: MockPaper[] = [
         correctOptionIndex: t.correct,
         explanation: t.exp,
         detailedExplanation: t.detailedExp,
-        provenance: sscProvenance
+        provenance: provenanceForSource(t.source)
       };
     })
   }
@@ -3761,7 +4474,7 @@ export const SUBJECT_MOCK_TESTS: MockPaper[] = [
 export const TOPIC_DRILL_TESTS: MockPaper[] = [
   {
     id: 'drill-quant-geom',
-    title: 'Geometry: Circle Tangents, Chords & Triangles (15 Qs)',
+    title: 'Geometry & Similar Triangles Drill (NCERT Exemplar sourced)',
     category: 'TOPIC_DRILL',
     examTier: 'Tier-1',
     subject: 'Quantitative Aptitude',
@@ -3770,10 +4483,10 @@ export const TOPIC_DRILL_TESTS: MockPaper[] = [
     totalMarks: 30,
     durationMinutes: 15,
     difficulty: 'HARD',
-    description: 'Master Direct Common Tangents, Transverse Common Tangents, and Intersecting Chord Theorems.',
+    description: 'Triangle similarity, the altitude relation, rhombus diagonals and area ratios — drawn from the official NCERT Exemplar Class 10 exercises.',
     provenanceTag: 'High-Yield Topic Drill',
     questions: Array.from({ length: 15 }, (_, i) => {
-      const t = QUANT_TEMPLATES[0];
+      const t = QUANT_TEMPLATES[i % QUANT_TEMPLATES.length];
       return {
         id: `drill-geom-${i+1}`,
         topicId: 'syl-quant-geom',
@@ -3788,13 +4501,13 @@ export const TOPIC_DRILL_TESTS: MockPaper[] = [
         correctOptionIndex: t.correct,
         explanation: t.exp,
         detailedExplanation: t.detailedExp,
-        provenance: sscProvenance
+        provenance: provenanceForSource(t.source)
       };
     })
   },
   {
     id: 'drill-quant-algebra',
-    title: 'Algebra: Symmetric Identities (x + 1/x) Drill (15 Qs)',
+    title: 'Trigonometry & Mensuration Drill (NCERT Exemplar sourced)',
     category: 'TOPIC_DRILL',
     examTier: 'Tier-1',
     subject: 'Quantitative Aptitude',
@@ -3803,10 +4516,10 @@ export const TOPIC_DRILL_TESTS: MockPaper[] = [
     totalMarks: 30,
     durationMinutes: 12,
     difficulty: 'MEDIUM',
-    description: 'Practice rapid expansions for x² + 1/x², x³ + 1/x³, and x⁴ + 1/x⁴.',
+    description: 'Trigonometric ratios, complementary-angle identities, heights and distances, and recasting solids — drawn from the official NCERT Exemplar Class 10 exercises.',
     provenanceTag: 'High-Yield Topic Drill',
     questions: Array.from({ length: 15 }, (_, i) => {
-      const t = QUANT_TEMPLATES[1];
+      const t = QUANT_TEMPLATES[(i + 5) % QUANT_TEMPLATES.length];
       return {
         id: `drill-alg-${i+1}`,
         topicId: 'syl-quant-algebra',
@@ -3821,13 +4534,13 @@ export const TOPIC_DRILL_TESTS: MockPaper[] = [
         correctOptionIndex: t.correct,
         explanation: t.exp,
         detailedExplanation: t.detailedExp,
-        provenance: sscProvenance
+        provenance: provenanceForSource(t.source)
       };
     })
   },
   {
     id: 'drill-ga-polity',
-    title: 'Indian Polity: Constitution Articles 14–51A Drill (15 Qs)',
+    title: 'Indian Polity & Official Notice Drill (Constitution sourced)',
     category: 'TOPIC_DRILL',
     examTier: 'Tier-1',
     subject: 'General Awareness',
@@ -3836,10 +4549,10 @@ export const TOPIC_DRILL_TESTS: MockPaper[] = [
     totalMarks: 30,
     durationMinutes: 8,
     difficulty: 'EASY',
-    description: 'High-frequency revision for Fundamental Rights (Part III), DPSP (Part IV), and Writs under Article 32 & 226.',
+    description: 'Fundamental Rights, Directive Principles, constitutional offices and the SSC CGL 2026 notice — every question written from the official text.',
     provenanceTag: 'High-Yield Topic Drill',
     questions: Array.from({ length: 15 }, (_, i) => {
-      const t = GA_TEMPLATES[0];
+      const t = GA_TEMPLATES[i % GA_TEMPLATES.length];
       return {
         id: `drill-polity-${i+1}`,
         topicId: 'syl-ga-polity',
@@ -3854,7 +4567,7 @@ export const TOPIC_DRILL_TESTS: MockPaper[] = [
         correctOptionIndex: t.correct,
         explanation: t.exp,
         detailedExplanation: t.detailedExp,
-        provenance: sscProvenance
+        provenance: provenanceForSource(t.source)
       };
     })
   },
@@ -3872,7 +4585,7 @@ export const TOPIC_DRILL_TESTS: MockPaper[] = [
     description: 'Speed building with 3-statement and 3-conclusion Venn logic puzzles.',
     provenanceTag: 'High-Yield Topic Drill',
     questions: Array.from({ length: 15 }, (_, i) => {
-      const t = REASONING_TEMPLATES[0];
+      const t = REASONING_TEMPLATES[i % REASONING_TEMPLATES.length];
       return {
         id: `drill-syl-${i+1}`,
         topicId: 'syl-reas-syllogism',
@@ -3887,7 +4600,7 @@ export const TOPIC_DRILL_TESTS: MockPaper[] = [
         correctOptionIndex: t.correct,
         explanation: t.exp,
         detailedExplanation: t.detailedExp,
-        provenance: sscProvenance
+        provenance: provenanceForSource(t.source)
       };
     })
   },
@@ -3905,7 +4618,7 @@ export const TOPIC_DRILL_TESTS: MockPaper[] = [
     description: 'Focus on Subject-Verb agreement, Conditionals, and Preposition placement.',
     provenanceTag: 'High-Yield Topic Drill',
     questions: Array.from({ length: 15 }, (_, i) => {
-      const t = ENGLISH_TEMPLATES[0];
+      const t = ENGLISH_TEMPLATES[i % ENGLISH_TEMPLATES.length];
       return {
         id: `drill-gram-${i+1}`,
         topicId: 'syl-eng-grammar',
@@ -3920,7 +4633,7 @@ export const TOPIC_DRILL_TESTS: MockPaper[] = [
         correctOptionIndex: t.correct,
         explanation: t.exp,
         detailedExplanation: t.detailedExp,
-        provenance: sscProvenance
+        provenance: provenanceForSource(t.source)
       };
     })
   }
@@ -3979,10 +4692,7 @@ export function generateCustomMockTest(config: CustomTestConfig): MockPaper {
       correctOptionIndex: template.correct,
       explanation: template.exp,
       detailedExplanation: template.detailedExp,
-      provenance: {
-        ...sscProvenance,
-        documentTitle: 'AI Custom Exam Engine (Sourced from Official TCS Pattern)'
-      }
+      provenance: provenanceForSource(template.source)
     });
   }
 

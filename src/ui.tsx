@@ -7009,6 +7009,38 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                           </div>
                         )}
 
+                        {/* 6. 📄 WHERE THIS QUESTION CAME FROM */}
+                        {q.provenance && (
+                          <div style={{ padding: '12px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+                            <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5, flex: 1, minWidth: '240px' }}>
+                              <strong style={{ color: q.provenance.verificationLevel === 'OFFICIALLY_VERIFIED' ? '#34d399' : '#fbbf24' }}>
+                                {q.provenance.verificationLevel === 'OFFICIALLY_VERIFIED' ? '📄 Written from the official source:' : '✍️ GovOS practice question:'}
+                              </strong>{' '}
+                              {q.provenance.documentTitle}
+                            </div>
+                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                              {/^https?:\/\//.test(q.provenance.officialUrl) && (
+                                <a
+                                  href={q.provenance.officialUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="btn btn-secondary"
+                                  style={{ fontSize: '0.74rem', padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                                >
+                                  Open source <ExternalLink size={11} />
+                                </a>
+                              )}
+                              <button
+                                onClick={() => onOpenProvenanceModal(q.provenance)}
+                                className="btn btn-outline"
+                                style={{ fontSize: '0.74rem', padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                              >
+                                <ShieldCheck size={11} /> Provenance
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
                         {/* Fallback Explanation if Detailed Object Not Present */}
                         {!det && (
                           <div style={{ padding: '16px 18px', borderRadius: 'var(--radius-sm)', background: 'rgba(0,0,0,0.3)', fontSize: '0.95rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>

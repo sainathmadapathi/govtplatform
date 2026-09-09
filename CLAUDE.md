@@ -16,9 +16,9 @@ govt-platform/
 ├── package.json               # React, lucide-react, Vite
 ├── vite.config.ts             # dev proxy + single-file build
 ├── tsconfig.json
-├── generate_official_pdfs.py  # one-off authoring script for public/resources PDFs
+
 ├── .env / .gitignore          # .env holds TAVILY_API_KEY (never committed)
-├── public/resources/          # 6 official PDFs served at /resources/<name>
+
 └── src/
     ├── main.tsx               # App shell, global modals, React root
     ├── types.ts               # every interface and union
@@ -37,11 +37,39 @@ npm run dev                # Vite dev server on :3000, proxies /api -> :5000
 python app.py              # Flask API + static server on :5000 (override with PORT)
 npm run build              # -> dist/index.html, fully self-contained
 npx tsc --noEmit           # type check (NOT part of build — currently clean, keep it so)
-python generate_official_pdfs.py   # regenerate public/resources PDFs (needs reportlab)
+
 ```
 
 For development run both servers. For production, `npm run build` then `python app.py`
 serves the built frontend and the API together on 5000.
+
+## Content policy: link, don't store
+
+GovOS stores **no study material**. Every PDF and video in the Resource Library is a link
+to the publisher's own server (ssc.gov.in, legislative.gov.in, ncert.nic.in, YouTube), so
+nothing is redistributed and nothing goes stale in the repo. `public/` and
+`generate_official_pdfs.py` were removed along with 48 MB of stored PDFs; there is no
+`/resources/<file>` route any more.
+
+The **only** content GovOS holds is the practice question bank, and each question carries a
+`QuestionSource` naming the official document it was written from. `provenanceForSource()`
+turns that into the question's `DataProvenance`, and every solution card shows
+"Written from the official source: …" with an **Open source** link to the real document.
+
+Two kinds of question exist, and the UI distinguishes them:
+
+- **Sourced** (`OFFICIAL_EXERCISE` / `OFFICIAL_DOCUMENT`) — written by reading the official
+  PDF. 15 quantitative questions come from NCERT Exemplar Class 10 Maths (Triangles
+  `jeep206.pdf`, Trigonometry `jeep208.pdf`, Surface Areas & Volumes `jeep212.pdf`), and 14
+  general-awareness questions from the Constitution of India official text plus the SSC CGL
+  2026 notice. Every numeric answer was verified computationally before being committed.
+- **GovOS-authored** (`GOVOS_AUTHORED`) — reasoning, English and computer questions written
+  to the official syllabus and paper pattern, not taken from a past paper. These render as
+  "GovOS practice question" and carry `UNDER_VERIFICATION`, never official authority.
+
+When adding questions, read the official source and cite it; never copy a paper wholesale,
+and never label an authored question as officially sourced.
+
 
 ## Architecture
 
@@ -71,7 +99,7 @@ struck-through with a corrigendum badge. **This provenance chain is the product'
   content**; UPSC and IBPS are skeletons (3/1 posts, one resource each). Do not extend
   them with SSC-derived material — treat SSC CGL as the sole content exam until told
   otherwise.
-- **Resource library (SSC CGL only).** `officialSource()` / `pendingSource()` build
+- **Resource library (SSC CGL only), links only.** `officialSource()` / `pendingSource()` build
   `DataProvenance` for external links. Every `OFFICIAL_PORTAL` entry was HTTP-checked on 2026-09-09 and carries
   `linkVerifiedDate`; `ncert.nic.in` timed out from the authoring machine so it is marked
   `UNDER_VERIFICATION` ("Link check pending") rather than claimed verified. `isEssential`
@@ -223,7 +251,8 @@ Remaining by design, not defects:
   (28 lakh+ applicants), then a reopening. The platform shows a 10-08-2026 notification, an
   Aug–Sept window and a corrigendum to 27-09-2026. Not changed — the user decides; use the Trust
   Panel's Live Source Research quick check to re-verify before editing.
-- **Automated link checks are conservative.** `ncert.nic.in` and `censusindia.gov.in`
-  time out for `urllib` from some networks while opening fine in a browser; the UI labels
-  these amber "Could not reach automatically · open to confirm", never red. Red is reserved
-  for a real HTTP error on GET.
+- **Automated link checks are conservative.** `ncert.nic.in` and `censusindia.gov.in` are
+  slow or refuse connections from some networks while serving normally from others — both
+  were confirmed live on 2026-09-09 through an independent path. The UI marks anything it
+  cannot reach as amber "Could not reach automatically · open to confirm", never red; red is
+  reserved for a real HTTP error on GET. 22 of 24 resource links verified directly.

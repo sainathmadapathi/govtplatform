@@ -228,13 +228,10 @@ def serve_index():
         return send_from_directory(DIST_DIR, 'index.html')
     return send_from_directory(BASE_DIR, 'index.html')
 
-@app.route('/resources/<path:filename>')
-def serve_resources(filename):
-    """Serve authentic downloaded PDF documents from public/resources"""
-    res_dir = os.path.join(BASE_DIR, 'public', 'resources')
-    if os.path.exists(os.path.join(res_dir, filename)):
-        return send_from_directory(res_dir, filename)
-    return jsonify({"error": "File not found"}), 404
+# NOTE: GovOS deliberately stores no study material. Every PDF and video in the
+# Resource Library is a link to the official publisher's own server, so there is no
+# /resources/<file> route to serve. Question banks are the only content GovOS holds,
+# and each question cites the official document it was written from.
 
 # --- SQLite REST API Endpoints ---
 
