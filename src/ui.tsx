@@ -1713,7 +1713,7 @@ const renderAssistantText = (text: string): React.ReactNode[] =>
   );
 
 const has = (q: string, ...words: string[]) => words.some(w => q.includes(w));
-const asksLocation = (q: string) => /\b(where|which (tab|section|page|part)|how do i|how can i|how to|navigate|find|locate|go to|open|show me|take me|check .* (in|on) (this|the) (platform|app|site|website)|in this platform)\b/.test(q);
+const asksLocation = (q: string) => /\b(where|which (tab|section|page|part)|how do i|how can i|how should i|how to|what should i|navigate|find|locate|go to|open|show me|take me|check .* (in|on) (this|the) (platform|app|site|website)|in this platform)\b/.test(q);
 
 /** Non-superseded date of a given type, if the register has one. */
 const dateOfType = (type: string) =>
@@ -1978,6 +1978,11 @@ export function answerCandidateQuery(query: string): AssistantReply {
       action: { label: 'Open Practice & Mocks', tab: 'PRACTICE' }
     };
   }
+
+  // Not phrased as a location question, but plainly about a part of the platform
+  // ("study plan", "roadmap", "compare exams") — route it rather than fall back.
+  const routed = PLATFORM_MAP.find(entry => has(q, ...entry.keys));
+  if (routed) return { verified: true, text: routed.answer, action: routed.action };
 
   // ---- a location question we could not place
   if (asksLocation(q)) {
