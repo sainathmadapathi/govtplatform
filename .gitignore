@@ -9,3 +9,6 @@ dist/
 archive/
 
 
+
+# Stray downloads: study material is linked, never stored (see CLAUDE.md)
+*.pdf
