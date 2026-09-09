@@ -1976,7 +1976,7 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
   const [researchExamId, setResearchExamId] = useState<string>(ALL_EXAMS[0]?.id || '');
   const [researchLoading, setResearchLoading] = useState<boolean>(false);
   const [researchError, setResearchError] = useState<{ error: string; setup?: string; notConfigured?: boolean } | null>(null);
-  const [researchRun, setResearchRun] = useState<{ runId: number; query: string; mode: ResearchMode; answer?: string | null; results: ResearchFinding[] } | null>(null);
+  const [researchRun, setResearchRun] = useState<{ runId: number; query: string; mode: ResearchMode; answer?: string | null; results: ResearchFinding[]; filteredOut?: number } | null>(null);
   const [researchHistory, setResearchHistory] = useState<ResearchRun[]>([]);
   const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(false);
   const [extractingId, setExtractingId] = useState<number | null>(null);
@@ -2522,7 +2522,7 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
                 <div>
                   <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'white', margin: 0 }}>{researchRun.results.length} results for “{researchRun.query}”</h4>
                   <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                    Run #{researchRun.runId} · {researchRun.mode === 'OFFICIAL' ? 'official domains only' : researchRun.mode === 'NEWS' ? 'news, last 30 days' : 'whole web'} · {researchRun.results.filter(f => f.trustLevel === 'OFFICIAL').length} official · {researchRun.results.filter(f => f.trustLevel === 'UNVERIFIED').length} unverified
+                    Run #{researchRun.runId} · {researchRun.mode === 'OFFICIAL' ? 'official domains only' : researchRun.mode === 'NEWS' ? 'news, last 30 days' : 'whole web'} · {researchRun.results.filter(f => f.trustLevel === 'OFFICIAL').length} official · {researchRun.results.filter(f => f.trustLevel === 'UNVERIFIED').length} unverified{researchRun.filteredOut ? ` · ${researchRun.filteredOut} non-official result${researchRun.filteredOut === 1 ? '' : 's'} filtered out` : ''}
                   </div>
                 </div>
               </div>

@@ -190,6 +190,10 @@ Tavily is called with `urllib` (no SDK); the key is read from the environment or
 and in the body for API-version compatibility. `TAVILY_BASE_URL` can be overridden — the
 scratchpad `mock_tavily.py` used for testing relies on that. Without a key every research
 route returns 503 with a `setup` hint and the UI shows how to configure it.
+**Tavily's `include_domains` is advisory in practice** — a live OFFICIAL-scope run returned five
+coaching sites alongside one ssc.gov.in notice — so `research_search` enforces the scope
+server-side (only OFFICIAL-classified results are kept/stored) and returns `filteredOut`.
+The key lives in the gitignored `.env`; the user adds it themselves.
 
 Tables: `users`, `study_progress`, `research_runs`, `research_findings`, `mock_attempts` (with `details_json` holding
 `userAnswers` + the whole `paperData`), `bookmarked_resources`, `candidate_notes`,
@@ -213,6 +217,12 @@ Remaining by design, not defects:
 - **Sections 15 and 16** use component-local content. `ExamDayChecklistItem` and
   `ResultNextStepStage` exist on `Exam` as optional fields for when per-exam data is
   authored; until then the generic CBT content shows for every exam.
+- **SSC CGL 2026 dates in `data.ts` contradict the official record.** A live research run on
+  2026-09-09 surfaced SSC's real notice (`ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/`
+  `CGLE_Reopen_23062026.pdf`): notification published 21.05.2026, applications 21.05–22.06.2026
+  (28 lakh+ applicants), then a reopening. The platform shows a 10-08-2026 notification, an
+  Aug–Sept window and a corrigendum to 27-09-2026. Not changed — the user decides; use the Trust
+  Panel's Live Source Research quick check to re-verify before editing.
 - **Automated link checks are conservative.** `ncert.nic.in` and `censusindia.gov.in`
   time out for `urllib` from some networks while opening fine in a browser; the UI labels
   these amber "Could not reach automatically · open to confirm", never red. Red is reserved

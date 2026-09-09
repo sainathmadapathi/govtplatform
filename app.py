@@ -1025,11 +1025,17 @@ def research_search():
     )
     run_id = cursor.lastrowid
     stored = []
-    for item in results:
-        url = item.get('url') or ''
-        if not url:
-            continue
-        trust = _classify_trust(url)
+    # Tavily's include_domains is advisory in practice: live runs returned coaching
+    # sites under OFFICIAL scope. Enforce the promise here and report what was dropped.
+    classified = [(item, _classify_trust(item.get('url') or '')) for item in results if item.get('url')]
+    filtered_out = 0
+    if mode == 'OFFICIAL':
+        kept = [(item, trust) for item, trust in classified if trust == 'OFFICIAL']
+        filtered_out = len(classified) - len(kept)
+        classified = kept
+        cursor.execute("UPDATE research_runs SET result_count = ? WHERE id = ?", (len(classified), run_id))
+    for item, trust in classified:
+        url = item['url']
         cursor.execute(
             "INSERT INTO research_findings (run_id, title, url, snippet, trust_level, score, published_date) "
             "VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -1062,6 +1068,7 @@ def research_search():
         "examId": exam_id,
         "answer": answer,
         "results": stored,
+        "filteredOut": filtered_out,
         "responseTime": raw.get('response_time')
     })
 

@@ -279,6 +279,8 @@ export interface ResearchSearchResult {
   examId?: string | null;
   answer?: string | null;
   results: ResearchFinding[];
+  /** Results Tavily returned that were dropped because OFFICIAL scope only keeps official domains. */
+  filteredOut?: number;
   responseTime?: number;
 }
 
