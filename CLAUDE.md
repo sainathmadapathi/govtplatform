@@ -67,14 +67,17 @@ struck-through with a corrigendum badge. **This provenance chain is the product'
 ### `src/data.ts`
 - `SSC_CGL_EXAM` (18 posts, 9 dates incl. one superseded, 3 stages, ~21 syllabus topics,
   3 roadmap tracks, 25 resources, 6 FAQs, admit-card details, full application guide),
-  `UPSC_CSE_EXAM` (15 resources), `IBPS_PO_EXAM` (12 resources), `ALL_EXAMS`.
-- **Resource library.** `officialSource()` / `pendingSource()` build `DataProvenance` for
-  external links. Every `OFFICIAL_PORTAL` entry was HTTP-checked on 2026-09-09 and carries
+  `UPSC_CSE_EXAM`, `IBPS_PO_EXAM`, `ALL_EXAMS`. **Only SSC CGL has real, authored
+  content**; UPSC and IBPS are skeletons (3/1 posts, one resource each). Do not extend
+  them with SSC-derived material — treat SSC CGL as the sole content exam until told
+  otherwise.
+- **Resource library (SSC CGL only).** `officialSource()` / `pendingSource()` build
+  `DataProvenance` for external links. Every `OFFICIAL_PORTAL` entry was HTTP-checked on 2026-09-09 and carries
   `linkVerifiedDate`; `ncert.nic.in` timed out from the authoring machine so it is marked
   `UNDER_VERIFICATION` ("Link check pending") rather than claimed verified. `isEssential`
   pins a resource to the "Start here" shelf. Sources are government/regulator domains only
-  (SSC, UPSC, IBPS, PIB, e-Gazette, Legislative Dept, NDLI, SWAYAM, NIOS, MoSPI, Census,
-  NITI, PM India, RBI, SEBI, DFS, NABARD).
+  (SSC portal, PIB, e-Gazette, Legislative Dept, NDLI, SWAYAM, NIOS, MoSPI, Census,
+  National Portal, NCERT).
 - `ALL_POST_STUDY_PATHS` + `getPostStudyPath(id)` — resolves current, legacy and
   equivalent post ids to an authored study path.
 - Mock repository: `OFFICIAL_10_MOCK_PAPERS`, `NEW_DISCOVERED_PAPERS`, `SUBJECT_MOCK_TESTS`,
