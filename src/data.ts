@@ -1729,29 +1729,30 @@ export const SSC_CGL_EXAM: Exam = {
     },
     {
       id: 'res-ncert-exemplar-x-maths',
-      title: 'NCERT Exemplar Problems — Class 10 Mathematics (Official Chapters)',
+      title: 'NCERT Exemplar Problems — Class 10 Mathematics (NCERT\'s free edition)',
       subject: 'Quantitative Aptitude',
       author: 'National Council of Educational Research and Training (NCERT)',
       type: 'OFFICIAL_PORTAL',
       resourceFormat: 'OFFICIAL_PORTAL',
-      url: 'https://ncert.nic.in/textbook.php',
-      officialTag: 'NCERT — FREE OFFICIAL EXEMPLAR',
+      url: 'https://archive.org/details/ncert-jeep2',
+      officialTag: 'NCERT — FREE OFFICIAL EXEMPLAR (ARCHIVE MIRROR)',
+      linkVerifiedDate: CHECK_DATE,
       recommendedFor: 'Geometry, trigonometry and mensuration practice at the exact difficulty SSC tests. Direct chapter links are listed in the notes.',
-      description: 'NCERT publishes the Class 10 Mathematics Exemplar chapter by chapter as free PDFs. The chapters on Triangles, Trigonometry, and Surface Areas & Volumes map directly onto SSC CGL geometry and mensuration, and GovOS draws practice questions from these official exercises.',
+      description: 'NCERT publishes the Class 10 Mathematics Exemplar free of charge. Because ncert.nic.in refuses connections from many networks, GovOS links to NCERT\'s own upload of the book on the Internet Archive (creator: NCERT, collection ncert-textbooks), which serves the identical chapter files. The Triangles, Trigonometry, and Surface Areas & Volumes chapters map directly onto SSC CGL geometry and mensuration, and GovOS practice questions are written from their exercises.',
       inAppHandbookContent: {
         summary: 'NCERT publishes the Class 10 Mathematics Exemplar chapter by chapter as free PDFs. The chapters on Triangles, Trigonometry, and Surface Areas & Volumes map directly onto SSC CGL geometry and mensuration, and GovOS draws practice questions from these official exercises.',
         chapters: [
           {
-            chapterTitle: 'Direct chapter PDFs used by GovOS practice questions',
-            contentMarkdown: '• **Triangles** — ncert.nic.in/pdf/publication/exemplarproblem/classX/mathematics/**jeep206.pdf**\n• **Introduction to Trigonometry** — .../**jeep208.pdf**\n• **Surface Areas and Volumes** — .../**jeep212.pdf**\n\nEach chapter opens with the concepts and formulas, then Exercise _n_.1 of multiple-choice questions. GovOS practice questions sourced from these exercises name the chapter and question number.'
+            chapterTitle: 'Chapter PDFs used by GovOS practice questions (these open)',
+            contentMarkdown: 'Read in the browser (no download needed):\n• **Triangles** — archive.org/details/ncert-jeep2/**jeep206**\n• **Introduction to Trigonometry** — archive.org/details/ncert-jeep2/**jeep208**\n• **Surface Areas and Volumes** — archive.org/details/ncert-jeep2/**jeep212**\n\nDirect PDFs use the same names under archive.org/download/ncert-jeep2/ (e.g. jeep206.pdf).\n\nEach chapter opens with the concepts and formulas, then Exercise _n_.1 of multiple-choice questions. GovOS questions written from these exercises name the chapter and question number, and every solution card links to the chapter.'
           },
           {
-            chapterTitle: 'A note on reachability',
-            contentMarkdown: 'These PDFs were read successfully when GovOS sourced its questions, but ncert.nic.in did not respond to the automated check from the machine that ran it. Government sites are sometimes unreachable from particular networks while working normally elsewhere. If a link does not open, try again later or use the National Digital Library mirror listed under Foundation resources.'
+            chapterTitle: 'Why not ncert.nic.in directly?',
+            contentMarkdown: 'The canonical files live at ncert.nic.in/pdf/publication/exemplarproblem/classX/mathematics/, but that host times out from many Indian networks (it did from the machine GovOS was built on). NCERT uploaded the same book to the Internet Archive under its own name, and that copy opens reliably, so GovOS links there. The Ministry of Education\'s DIKSHA platform (diksha.gov.in/ncert) also carries NCERT textbooks.'
           }
         ]
       },
-      provenance: pendingSource('prov-res-ncert-exemplar-x-maths', 'NCERT Exemplar Problems — Class 10 Mathematics (Official Chapters)', 'https://ncert.nic.in/textbook.php')
+      provenance: officialSource('prov-res-ncert-exemplar-x-maths', 'NCERT Exemplar Problems — Class 10 Mathematics (NCERT upload on the Internet Archive)', 'https://archive.org/details/ncert-jeep2', 200)
     },
     {
       id: 'res-ssc-portal',
@@ -1783,17 +1784,18 @@ export const SSC_CGL_EXAM: Exam = {
     },
     {
       id: 'res-ncert-textbooks',
-      title: 'NCERT Textbooks — Classes 6 to 12 (Free Official Editions)',
+      title: 'NCERT Textbooks — Classes 6 to 12 on DIKSHA (Ministry of Education)',
       subject: 'Foundation Textbooks & Open Courses',
-      author: 'National Council of Educational Research and Training (NCERT)',
+      author: 'NCERT, distributed on DIKSHA by the Ministry of Education',
       type: 'OFFICIAL_PORTAL',
       resourceFormat: 'OFFICIAL_PORTAL',
-      url: 'https://ncert.nic.in/textbook.php',
-      officialTag: 'GOVERNMENT OF INDIA — MINISTRY OF EDUCATION',
+      url: 'https://diksha.gov.in/ncert',
+      linkVerifiedDate: CHECK_DATE,
+      officialTag: 'GOVERNMENT OF INDIA — MINISTRY OF EDUCATION (DIKSHA)',
       recommendedFor: 'History, Geography, Polity, Economy and Science foundations for General Awareness; Class 9–10 Mathematics for Arithmetic and Geometry basics.',
-      description: 'The complete official NCERT textbook library, downloadable chapter by chapter at no cost. The single most-cited foundation source for General Awareness across Indian competitive examinations.',
+      description: 'The complete NCERT textbook library for Classes 6–12, free of charge, on DIKSHA — the Ministry of Education\'s official digital platform. NCERT\'s own site (ncert.nic.in) hosts the same books but times out from many networks, so GovOS links to DIKSHA, which opens. The single most-cited foundation source for General Awareness across Indian competitive examinations.',
       isEssential: true,
-      provenance: pendingSource('prov-res-ncert', 'NCERT Textbook Portal', 'https://ncert.nic.in/textbook.php')
+      provenance: officialSource('prov-res-ncert', 'NCERT textbooks on DIKSHA (Ministry of Education)', 'https://diksha.gov.in/ncert', 200)
     },
     {
       id: 'res-constitution-official',
@@ -1855,17 +1857,17 @@ export const SSC_CGL_EXAM: Exam = {
     },
     {
       id: 'res-census-india',
-      title: 'Census of India — Official Population & Demographic Data',
+      title: 'Census of India — Official Demographic Data (via Open Government Data platform)',
       subject: 'General Awareness & Static GK',
-      author: 'Office of the Registrar General & Census Commissioner, MHA',
+      author: 'Office of the Registrar General & Census Commissioner, MHA — datasets on data.gov.in (MeitY)',
       type: 'OFFICIAL_PORTAL',
       resourceFormat: 'OFFICIAL_PORTAL',
-      url: 'https://censusindia.gov.in',
+      url: 'https://data.gov.in/catalogs?query=census',
       officialTag: 'MINISTRY OF HOME AFFAIRS — OFFICIAL STATISTICS',
       recommendedFor: 'Memorising state-wise literacy, sex ratio and population ranks that recur in General Awareness.',
-      description: 'Official demographic statistics: population, literacy, sex ratio and density by state and district. The only authoritative source for census-based questions.',
+      description: 'Official demographic statistics — population, literacy, sex ratio and density by state and district — published as open datasets on data.gov.in, the Government of India Open Government Data platform. The Census Commissioner site (censusindia.gov.in) is the canonical source but times out from many networks, so GovOS links to the data.gov.in catalogue, which opens reliably.',
       linkVerifiedDate: CHECK_DATE,
-      provenance: officialSource('prov-res-census-india', 'Census of India — Official Population & Demographic Data', 'https://censusindia.gov.in', 200, 'FACT')
+      provenance: officialSource('prov-res-census-india', 'Census of India datasets on data.gov.in (Open Government Data platform)', 'https://data.gov.in/catalogs?query=census', 200)
     },
     {
       id: 'res-india-gov',
@@ -2912,14 +2914,21 @@ export interface QuestionSource {
   kind: 'OFFICIAL_EXERCISE' | 'OFFICIAL_DOCUMENT' | 'GOVOS_AUTHORED';
 }
 
-const NCERT_X_MATHS = 'https://ncert.nic.in/pdf/publication/exemplarproblem/classX/mathematics/';
+// ncert.nic.in refuses connections from many Indian networks. NCERT's own upload of this
+// book on the Internet Archive (creator: NCERT, collection: ncert-textbooks) serves the
+// identical chapter files under the same file codes, and it opens.
+// Reader URL: archive.org/details/ncert-jeep2/<file> opens that chapter in the in-browser
+// viewer (no save dialog). The direct PDF is archive.org/download/ncert-jeep2/<file>.pdf.
+const NCERT_X_MATHS = 'https://archive.org/details/ncert-jeep2/';
+const NCERT_X_MATHS_PDF = 'https://archive.org/download/ncert-jeep2/';
+const NCERT_X_MATHS_CANONICAL = 'https://ncert.nic.in/pdf/publication/exemplarproblem/classX/mathematics/';
 const CONSTITUTION_PDF = 'https://www.legislative.gov.in/static/uploads/2025/07/c9fe9c9b6840524844316f74bb1c556c.pdf';
 const SSC_NOTICE_2026 = 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf';
 
 const ncertSource = (chapterPdf: string, citation: string): QuestionSource => ({
   label: citation,
-  url: NCERT_X_MATHS + chapterPdf,
-  publisher: 'National Council of Educational Research and Training (NCERT)',
+  url: NCERT_X_MATHS + chapterPdf.replace(/\.pdf$/, ''),
+  publisher: `National Council of Educational Research and Training (NCERT) — opens in the Internet Archive reader for NCERT's own upload; direct PDF: ${NCERT_X_MATHS_PDF}${chapterPdf}; canonical file: ${NCERT_X_MATHS_CANONICAL}${chapterPdf}`,
   kind: 'OFFICIAL_EXERCISE'
 });
 

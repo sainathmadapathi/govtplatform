@@ -251,8 +251,15 @@ Remaining by design, not defects:
   (28 lakh+ applicants), then a reopening. The platform shows a 10-08-2026 notification, an
   Aug–Sept window and a corrigendum to 27-09-2026. Not changed — the user decides; use the Trust
   Panel's Live Source Research quick check to re-verify before editing.
-- **Automated link checks are conservative.** `ncert.nic.in` and `censusindia.gov.in` are
-  slow or refuse connections from some networks while serving normally from others — both
-  were confirmed live on 2026-09-09 through an independent path. The UI marks anything it
-  cannot reach as amber "Could not reach automatically · open to confirm", never red; red is
-  reserved for a real HTTP error on GET. 22 of 24 resource links verified directly.
+- **Government hosts are intermittent from Indian networks; links must open for the candidate.**
+  `ncert.nic.in` timed out in the user's own browser (ERR_CONNECTION_TIMED_OUT) even though it
+  answered Tavily, so every NCERT link now points at a host that answers: the question
+  sources and the Exemplar entry use NCERT's own upload on the Internet Archive
+  (`archive.org/download/ncert-jeep2/jeepNNN.pdf`, creator NCERT, collection ncert-textbooks —
+  identical file codes), and the textbook-portal entry uses DIKSHA (`diksha.gov.in/ncert`,
+  Ministry of Education). Census likewise links to the data.gov.in census catalogue with
+  censusindia.gov.in named as canonical. `egazette.gov.in` occasionally exceeds the checker's
+  10 s timeout but answers in under a second on retry, so it stays. Rule going forward: a link
+  that fails from the candidate's network is replaced or removed, never kept on the strength
+  of working elsewhere. The UI marks anything it cannot reach amber "open to confirm", never
+  red; red is reserved for a real HTTP error on GET.
