@@ -49,7 +49,7 @@ export interface PostRequirement {
   payLevel: string;
   payScale: string;
   gradePay?: number;
-  classification: 'Group B (Gazetted)' | 'Group B (Non-Gazetted)' | 'Group C';
+  classification: 'Group A (Gazetted)' | 'Group B (Gazetted)' | 'Group B (Non-Gazetted)' | 'Group C';
   minAge: number;
   maxAge: number;
   specialQualification?: string;
@@ -488,6 +488,14 @@ export type ExamCareerField =
   | 'Defence & Armed Forces'
   | 'State Public Services';
 
+export type ExamCategoryTag =
+  | 'CIVIL_SERVICES'
+  | 'STATE_PSC'
+  | 'STAFF_SELECTION'
+  | 'BANKING'
+  | 'RAILWAYS'
+  | 'DEFENCE';
+
 export interface Exam {
   id: string;
   code: string;
@@ -499,6 +507,8 @@ export interface Exam {
   minimumQualification?: ExamQualificationLevel;
   /** Career fields this exam leads to. Used by the Exam Finder interest filter. */
   careerFields?: ExamCareerField[];
+  /** Major exam cluster category used for behavioral recommendation and transfer learning */
+  categoryTag?: ExamCategoryTag;
   isGoldenJourney: boolean;
   isDemoData: boolean;
   overviewDescription: string;
@@ -729,3 +739,42 @@ export interface LiveResourceStatus {
   feedIntervalHours: number;
   healthIntervalHours: number;
 }
+
+// ============================================================================
+// Time-Aware Behaviour-Based Recommendations
+// (Inspired by Time-Decayed Bayesian Personalized Ranking Principles)
+// ============================================================================
+
+export type UserInteractionType =
+  | 'SEARCH'
+  | 'VIEW'
+  | 'BOOKMARK'
+  | 'FOLLOW'
+  | 'RESOURCE_ACCESS'
+  | 'SYLLABUS_READ';
+
+export interface UserInteractionEvent {
+  id: string;
+  type: UserInteractionType;
+  targetId?: string;
+  targetType?: 'EXAM' | 'RESOURCE' | 'TOPIC' | 'SEARCH_QUERY';
+  examId?: string;
+  categoryTag?: ExamCategoryTag;
+  timestamp: number;
+  metadata?: Record<string, any>;
+}
+
+export interface ExamRecommendation {
+  exam: Exam;
+  /**
+   * Normalized recommendation relevance score (0 - 100).
+   * Represents relative relevance derived from candidate behavioral signals, time decay,
+   * exam cluster affinity, and educational profile information.
+   * NOT a probability of selection or an eligibility guarantee.
+   */
+  score: number;
+  reasons: string[];
+  matchStrength: 'STRONG' | 'MODERATE' | 'EXPLORATORY';
+  primarySignal: string;
+}
+

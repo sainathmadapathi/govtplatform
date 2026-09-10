@@ -141,6 +141,10 @@ export const App: React.FC = () => {
   const handleSelectExam = (exam: Exam) => {
     setSelectedExam(exam);
     setActiveTab('EXAM_DETAIL');
+    storageService.recordInteraction({
+      type: 'VIEW',
+      examId: exam.id
+    });
   };
 
   const handleOpenProvenance = (provenance: DataProvenance) => {

@@ -109,7 +109,9 @@ import {
   UserProfile,
   ChannelUploadFeed,
   ResourceAddition,
-  SscNoticeFeed
+  SscNoticeFeed,
+  ExamRecommendation,
+  UserInteractionEvent
 } from './types';
 import {
   ALL_EXAMS,
@@ -140,7 +142,11 @@ import {
   evaluateEligibility,
   getCategoryAgeRelaxation,
   MockAttemptRecord,
-  storageService
+  storageService,
+  INTERACTION_WEIGHTS,
+  INTERACTION_HALF_LIVES_HOURS,
+  SIGNAL_STRENGTH_MULTIPLIER,
+  RECOMMENDATION_HALF_LIFE_HOURS
 } from './services';
 
 // ==========================================================================
@@ -349,6 +355,139 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
   const [ageInput, setAgeInput] = useState<number>(21);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
+  // --- Smarter Personalized Recommendations (Time-Decayed BPR) ---
+  const [recommendations, setRecommendations] = useState<ExamRecommendation[]>(() =>
+    storageService.getPersonalizedRecommendations(ALL_EXAMS)
+  );
+  const [interactions, setInteractions] = useState<UserInteractionEvent[]>(() =>
+    storageService.getUserInteractions()
+  );
+  const [bookmarkedIds, setBookmarkedIds] = useState<string[]>(() =>
+    storageService.getBookmarkedExams()
+  );
+  const [showInteractionsModal, setShowInteractionsModal] = useState<boolean>(false);
+  const [simulationNotice, setSimulationNotice] = useState<string | null>(null);
+
+  const refreshRecommendations = () => {
+    setRecommendations(storageService.getPersonalizedRecommendations(ALL_EXAMS));
+    setInteractions(storageService.getUserInteractions());
+    setBookmarkedIds(storageService.getBookmarkedExams());
+  };
+
+  useEffect(() => {
+    refreshRecommendations();
+  }, [trackedExamIds]);
+
+  const handleToggleBookmark = (examId: string) => {
+    const updated = storageService.toggleBookmarkExam(examId);
+    setBookmarkedIds(updated);
+    refreshRecommendations();
+  };
+
+  const handleSearchChange = (val: string) => {
+    setSearchQuery(val);
+    if (val.trim().length >= 3) {
+      const q = val.trim().toLowerCase();
+      const matched = ALL_EXAMS.find(e =>
+        e.title.toLowerCase().includes(q) ||
+        e.code.toLowerCase().includes(q) ||
+        e.authorityName.toLowerCase().includes(q)
+      );
+      if (matched) {
+        storageService.recordInteraction({
+          type: 'SEARCH',
+          examId: matched.id,
+          metadata: { query: val.trim() }
+        });
+        refreshRecommendations();
+      }
+    }
+  };
+
+  const runSimulationPreset = (preset: 'CIVIL_SERVICES_TARGET' | 'COMMITMENT_TEST' | 'BANKING' | 'STAFF_SELECTION' | 'RESET') => {
+    if (preset === 'RESET') {
+      storageService.clearUserInteractions();
+      setSimulationNotice('Activity history cleared! Recommendations reset to default profile prior.');
+      refreshRecommendations();
+      setTimeout(() => setSimulationNotice(null), 4000);
+      return;
+    }
+
+    if (preset === 'CIVIL_SERVICES_TARGET') {
+      // User recently: Viewed -> UPSC, Saved -> APPSC Group 1, Read -> Civil Services syllabus
+      storageService.clearUserInteractions();
+      storageService.recordInteraction({
+        type: 'VIEW',
+        examId: 'exam-upsc-cse-2026',
+        metadata: { title: 'UPSC CSE 2026 Guide & Scheme' }
+      });
+      storageService.recordInteraction({
+        type: 'BOOKMARK',
+        examId: 'exam-appsc-group1-2026',
+        metadata: { title: 'APPSC Group-I Notification Bookmarked' }
+      });
+      storageService.recordInteraction({
+        type: 'SYLLABUS_READ',
+        examId: 'exam-upsc-cse-2026',
+        metadata: { section: '06 - Civil Services General Studies Syllabus & Blueprint' }
+      });
+      setSimulationNotice('🎯 Target Scenario Applied: Viewed UPSC + Saved APPSC Gr 1 + Read CS Syllabus! GovOS recommends: 1. UPSC CSE, 2. APPSC Group 1, 3. APPSC Group 2.');
+      refreshRecommendations();
+      setTimeout(() => setSimulationNotice(null), 5000);
+    } else if (preset === 'COMMITMENT_TEST') {
+      // Candidate Activity: FOLLOW UPSC (180d, 2x) + BOOKMARK APPSC Group 1 (60d, 1.5x) vs VIEW IBPS PO once (3d, 1x)
+      storageService.clearUserInteractions();
+      storageService.recordInteraction({
+        type: 'FOLLOW',
+        examId: 'exam-upsc-cse-2026',
+        metadata: { action: 'Tracked UPSC CSE in Timeline (T½=180d, 2.0x signal)' }
+      });
+      storageService.recordInteraction({
+        type: 'BOOKMARK',
+        examId: 'exam-appsc-group1-2026',
+        metadata: { action: 'Saved APPSC Group-I to Shortlist (T½=60d, 1.5x signal)' }
+      });
+      storageService.recordInteraction({
+        type: 'VIEW',
+        examId: 'exam-ibps-po-2026',
+        metadata: { action: 'Exploratory View of IBPS PO (T½=3d, 1.0x signal)' }
+      });
+      setSimulationNotice('🎯 Commitment Dominance Applied: Long-term tracking (Follow UPSC + Bookmark APPSC Gr 1) massively outranks transient clicks (View IBPS PO)!');
+      refreshRecommendations();
+      setTimeout(() => setSimulationNotice(null), 5000);
+    } else if (preset === 'BANKING') {
+      storageService.clearUserInteractions();
+      storageService.recordInteraction({
+        type: 'VIEW',
+        examId: 'exam-ibps-po-2026',
+        metadata: { title: 'IBPS PO 2026 Guide' }
+      });
+      storageService.recordInteraction({
+        type: 'FOLLOW',
+        examId: 'exam-ibps-po-2026',
+        metadata: { action: 'Tracked in timeline' }
+      });
+      setSimulationNotice('🏦 Applied Banking Focus: Viewed & Tracked IBPS PO!');
+      refreshRecommendations();
+      setTimeout(() => setSimulationNotice(null), 5000);
+    } else if (preset === 'STAFF_SELECTION') {
+      storageService.clearUserInteractions();
+      storageService.recordInteraction({
+        type: 'VIEW',
+        examId: 'exam-ssc-cgl-2026',
+        metadata: { title: 'SSC CGL 2026 Golden Journey' }
+      });
+      storageService.recordInteraction({
+        type: 'SYLLABUS_READ',
+        examId: 'exam-ssc-cgl-2026',
+        metadata: { section: '06 - Tier 1 & Tier 2 Syllabus' }
+      });
+      setSimulationNotice('📋 Applied Staff Selection Focus: Viewed & Studied SSC CGL Blueprint!');
+      refreshRecommendations();
+      setTimeout(() => setSimulationNotice(null), 5000);
+    }
+  };
+
   const personas = [
     'Class 10th Pass',
     'Class 12th (MPC / Science)',
@@ -454,6 +593,420 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
         </div>
       </div>
 
+      {/* Recommended for You Shelf (Time-Decayed BPR) */}
+      <div className="glass-card" style={{ padding: '28px', border: '1px solid rgba(99, 102, 241, 0.35)', background: 'linear-gradient(135deg, rgba(17, 24, 39, 0.95) 0%, rgba(30, 27, 75, 0.45) 100%)' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px', marginBottom: '20px' }}>
+          <div>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '4px 12px', borderRadius: '999px', background: 'rgba(99, 102, 241, 0.15)', border: '1px solid rgba(99, 102, 241, 0.3)', marginBottom: '10px' }}>
+              <Sparkles size={14} color="#818cf8" />
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#a5b4fc', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                AI Behavioral Recommendation Engine · Time-Aware Multi-Tier Decay (Inspired by Time-Decayed BPR Principles)
+              </span>
+            </div>
+            <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white', margin: '0 0 6px' }}>
+              Recommended for You 🎯
+            </h3>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: '0 0 8px', maxWidth: '680px' }}>
+              Personalized recommendations based on your real-time actions — searched queries, viewed guides, bookmarked notifications, and syllabus reading sessions with multi-tiered time decay and commitment signal weights.
+            </p>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', color: '#94a3b8', background: 'rgba(255, 255, 255, 0.04)', padding: '5px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(255, 255, 255, 0.08)', marginBottom: '4px' }}>
+              <Info size={13} color="#818cf8" />
+              <span>
+                <strong>Match % Advisory:</strong> Normalized behavioral relevance (0–100%) from your engagement patterns. It is <em>not</em> a probability of selection or an eligibility guarantee.
+              </span>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <button 
+              className="btn btn-secondary"
+              onClick={() => setShowInteractionsModal(true)}
+              style={{ fontSize: '0.82rem', padding: '8px 14px', display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              <Activity size={15} color="var(--primary)" />
+              Activity Log ({interactions.length})
+            </button>
+          </div>
+        </div>
+
+        {/* Behavioral Simulation Toolbar */}
+        <div style={{ padding: '14px 18px', background: 'rgba(0, 0, 0, 0.35)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', marginBottom: '22px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Zap size={16} color="var(--amber)" />
+              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#fbbf24' }}>
+                Behaviour Simulation Lab:
+              </span>
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                Test candidate interaction sequences in 1 click:
+              </span>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button
+              className="btn btn-emerald"
+              onClick={() => runSimulationPreset('CIVIL_SERVICES_TARGET')}
+              style={{ fontSize: '0.78rem', padding: '7px 14px' }}
+              title="Viewed UPSC + Saved APPSC Gr 1 + Read CS syllabus -> Recommends UPSC CSE, APPSC Gr 1, APPSC Gr 2"
+            >
+              ✨ Target Test: Viewed UPSC + Saved APPSC 1 + Read CS Syllabus
+            </button>
+            <button
+              className="btn btn-primary"
+              onClick={() => runSimulationPreset('COMMITMENT_TEST')}
+              style={{ fontSize: '0.78rem', padding: '7px 14px' }}
+              title="Follow UPSC + Bookmark APPSC Gr 1 vs View IBPS PO (Demonstrates explicit tracking anchor vs fleeting view)"
+            >
+              🎯 Commitment Dominance (Follow UPSC + Save APPSC vs View IBPS)
+            </button>
+            <button
+              className="btn btn-secondary"
+              onClick={() => runSimulationPreset('BANKING')}
+              style={{ fontSize: '0.78rem', padding: '7px 14px' }}
+            >
+              🏦 Banking Focus (IBPS PO)
+            </button>
+            <button
+              className="btn btn-secondary"
+              onClick={() => runSimulationPreset('STAFF_SELECTION')}
+              style={{ fontSize: '0.78rem', padding: '7px 14px' }}
+            >
+              📋 Staff Selection (SSC CGL)
+            </button>
+            <button
+              className="btn btn-secondary"
+              onClick={() => runSimulationPreset('RESET')}
+              style={{ fontSize: '0.78rem', padding: '7px 14px', color: '#f87171' }}
+            >
+              <RotateCcw size={13} /> Reset Behaviour
+            </button>
+          </div>
+
+          {simulationNotice && (
+            <div className="animate-fade-in" style={{ marginTop: '10px', padding: '8px 12px', borderRadius: 'var(--radius-sm)', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#34d399', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <CheckCircle2 size={15} />
+              {simulationNotice}
+            </div>
+          )}
+        </div>
+
+        {/* Recommendation Cards Grid */}
+        <div className="grid-3">
+          {recommendations.slice(0, 3).map((rec) => {
+            const isRecTracked = trackedExamIds.includes(rec.exam.id);
+            const isRecBookmarked = bookmarkedIds.includes(rec.exam.id);
+            const matchPercent = Math.round(rec.score * 100);
+
+            const strengthBorder = rec.matchStrength === 'STRONG'
+              ? 'rgba(16, 185, 129, 0.45)'
+              : rec.matchStrength === 'MODERATE'
+              ? 'rgba(245, 158, 11, 0.45)'
+              : 'rgba(99, 102, 241, 0.35)';
+
+            return (
+              <div
+                key={rec.exam.id}
+                className="glass-card"
+                style={{
+                  padding: '22px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  border: `1px solid ${strengthBorder}`,
+                  background: 'rgba(17, 24, 39, 0.85)',
+                  position: 'relative'
+                }}
+              >
+                <div>
+                  {/* Top Badges */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '12px' }}>
+                    <span
+                      style={{
+                        padding: '4px 10px',
+                        borderRadius: '999px',
+                        fontSize: '0.78rem',
+                        fontWeight: 800,
+                        background: rec.matchStrength === 'STRONG' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(99, 102, 241, 0.2)',
+                        color: rec.matchStrength === 'STRONG' ? '#34d399' : '#a5b4fc',
+                        border: `1px solid ${strengthBorder}`,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px'
+                      }}
+                    >
+                      <Sparkles size={12} />
+                      {matchPercent}% Match
+                    </span>
+
+                    <span
+                      className="badge"
+                      style={{
+                        fontSize: '0.68rem',
+                        background: rec.matchStrength === 'STRONG' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                        color: rec.matchStrength === 'STRONG' ? '#34d399' : '#fbbf24',
+                        border: `1px solid ${strengthBorder}`
+                      }}
+                    >
+                      {rec.matchStrength === 'STRONG' ? '🔥 HIGH AFFINITY' : rec.matchStrength === 'MODERATE' ? '⚡ MODERATE' : '🧭 EXPLORE'}
+                    </span>
+                  </div>
+
+                  <h4 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'white', marginBottom: '4px', lineHeight: 1.3 }}>
+                    {rec.exam.title}
+                  </h4>
+                  <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '14px', fontWeight: 500 }}>
+                    {rec.exam.authorityName}
+                  </div>
+
+                  {/* Primary Signal Pill */}
+                  <div style={{ padding: '6px 10px', borderRadius: 'var(--radius-sm)', background: 'rgba(0, 0, 0, 0.3)', border: '1px solid var(--border-color)', marginBottom: '14px', fontSize: '0.76rem', color: '#e0e7ff', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Target size={13} color="var(--primary)" />
+                    <span style={{ fontWeight: 600 }}>{rec.primarySignal}</span>
+                  </div>
+
+                  {/* Explainable Reasons */}
+                  <div style={{ marginBottom: '18px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.04em' }}>
+                      Why GovOS Recommends This:
+                    </span>
+                    {rec.reasons.map((reason, rIdx) => (
+                      <div key={rIdx} style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', fontSize: '0.82rem', color: '#cbd5e1', lineHeight: 1.35 }}>
+                        <span style={{ color: '#34d399', fontWeight: 800 }}>✓</span>
+                        <span>{reason}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Card Actions */}
+                <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    {onToggleTrackExam && (
+                      <button
+                        className={`btn ${isRecTracked ? 'btn-emerald' : 'btn-secondary'}`}
+                        onClick={() => onToggleTrackExam(rec.exam.id)}
+                        style={{ padding: '6px 10px', fontSize: '0.78rem' }}
+                        title={isRecTracked ? 'Currently tracked' : 'Track exam'}
+                      >
+                        {isRecTracked ? <><Check size={13} /> Tracked</> : <><Bell size={13} /> Track</>}
+                      </button>
+                    )}
+                    <button
+                      className={`btn ${isRecBookmarked ? 'btn-amber' : 'btn-secondary'}`}
+                      onClick={() => handleToggleBookmark(rec.exam.id)}
+                      style={{ padding: '6px 10px', fontSize: '0.78rem', background: isRecBookmarked ? 'rgba(245, 158, 11, 0.2)' : undefined, color: isRecBookmarked ? '#fbbf24' : undefined, borderColor: isRecBookmarked ? 'rgba(245, 158, 11, 0.4)' : undefined }}
+                      title={isRecBookmarked ? 'Saved in bookmarks' : 'Bookmark'}
+                    >
+                      <Bookmark size={13} fill={isRecBookmarked ? 'currentColor' : 'none'} />
+                      {isRecBookmarked ? 'Saved' : 'Save'}
+                    </button>
+                  </div>
+
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => {
+                      storageService.recordInteraction({
+                        type: 'VIEW',
+                        examId: rec.exam.id
+                      });
+                      onSelectExam(rec.exam);
+                    }}
+                    style={{ padding: '6px 14px', fontSize: '0.8rem' }}
+                  >
+                    Guide <ChevronRight size={14} />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Candidate Advisory: Match % Interpretation & Ranking Hierarchy */}
+        <div style={{ marginTop: '20px', padding: '12px 16px', borderRadius: 'var(--radius-sm)', background: 'rgba(99, 102, 241, 0.08)', border: '1px solid rgba(99, 102, 241, 0.22)', fontSize: '0.78rem', color: '#cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '780px' }}>
+            <ShieldCheck size={16} color="#818cf8" style={{ flexShrink: 0 }} />
+            <span>
+              <strong>Candidate Advisory:</strong> Match % indicates algorithmic relevance derived from interaction history and exam cluster affinity (strictly enforcing <code style={{ color: '#c7d2fe' }}>Direct Interest &gt; Transferred Affinity &gt; Profile Prior</code>). It is an aid to discover relevant exams without pushing loosely related clusters, and is <em>not</em> a probability of selection or legal eligibility guarantee.
+            </span>
+          </div>
+          <button
+            className="btn btn-secondary"
+            onClick={() => setShowInteractionsModal(true)}
+            style={{ fontSize: '0.74rem', padding: '5px 12px', background: 'rgba(99, 102, 241, 0.15)', borderColor: 'rgba(99, 102, 241, 0.35)', color: '#c7d2fe', display: 'inline-flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}
+          >
+            <Activity size={13} />
+            Diagnostics &amp; Formula
+          </button>
+        </div>
+      </div>
+
+      {/* Activity History & BPR Diagnostics Modal */}
+      {showInteractionsModal && (
+        <div
+          className="modal-backdrop animate-fade-in"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.75)',
+            backdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px'
+          }}
+          onClick={() => setShowInteractionsModal(false)}
+        >
+          <div
+            className="glass-card"
+            style={{
+              maxWidth: '720px',
+              width: '100%',
+              maxHeight: '85vh',
+              overflowY: 'auto',
+              padding: '28px',
+              background: '#0f172a',
+              border: '1px solid rgba(99, 102, 241, 0.4)',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Activity size={22} color="var(--primary)" />
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', margin: 0 }}>
+                  Candidate Interaction History & Behavioral Diagnostics
+                </h3>
+              </div>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setShowInteractionsModal(false)}
+                style={{ padding: '6px', borderRadius: '50%' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{ padding: '16px', borderRadius: 'var(--radius-md)', background: 'rgba(99, 102, 241, 0.08)', border: '1px solid rgba(99, 102, 241, 0.25)', marginBottom: '18px', fontSize: '0.85rem', color: '#cbd5e1', lineHeight: 1.5 }}>
+              <p style={{ margin: '0 0 6px', fontWeight: 700, color: 'white' }}>
+                📐 Time-Aware Behavioral Scoring (Inspired by Time-Decayed BPR Principles):
+              </p>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.82rem', color: '#a5b4fc', marginBottom: '8px' }}>
+                Score(e) = InteractionWeight × decay(type, Δt) × SignalStrength + AffinityTransfer
+              </div>
+              <p style={{ margin: '0 0 8px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                Differentiated half-lives reflect real government exam preparation cycles (weeks/months) so that serious commitments don't prematurely decay:
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px', fontSize: '0.75rem' }}>
+                <span className="glass-pill" style={{ borderColor: 'rgba(16, 185, 129, 0.4)', color: '#34d399' }}>
+                  🎯 FOLLOW: T½ = 180d · 2.0x (Exam cycle)
+                </span>
+                <span className="glass-pill" style={{ borderColor: 'rgba(245, 158, 11, 0.4)', color: '#fbbf24' }}>
+                  ⭐ BOOKMARK: T½ = 60d · 1.5x (Shortlist)
+                </span>
+                <span className="glass-pill">
+                  📖 SYLLABUS_READ: T½ = 21d · 1.3x (Curriculum)
+                </span>
+                <span className="glass-pill">
+                  📂 RESOURCE: T½ = 14d · 1.2x (PYQ/Notes)
+                </span>
+                <span className="glass-pill">
+                  👁️ VIEW: T½ = 3d · 1.0x (Exploration)
+                </span>
+                <span className="glass-pill">
+                  🔍 SEARCH: T½ = 1d · 1.0x (Query)
+                </span>
+              </div>
+              <div style={{ marginTop: '12px', padding: '10px 12px', background: 'rgba(0, 0, 0, 0.35)', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(255, 255, 255, 0.08)', fontSize: '0.76rem', color: '#cbd5e1', lineHeight: 1.45 }}>
+                <strong style={{ color: '#818cf8' }}>Strict Ranking Hierarchy:</strong> Direct Interest &gt; Transferred Affinity &gt; Profile Prior. Transferred scores from related exams are capped at ≤70% of the lead direct score so that cluster affinity never overpowers candidate actions. Match % is a normalized recommendation relevance score (0–100%) and neither an eligibility check nor a selection guarantee.
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                Recorded Activity Events ({interactions.length})
+              </span>
+              {interactions.length > 0 && (
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    storageService.clearUserInteractions();
+                    refreshRecommendations();
+                  }}
+                  style={{ fontSize: '0.75rem', padding: '4px 10px', color: '#f87171' }}
+                >
+                  <Trash2 size={13} /> Clear All Events
+                </button>
+              )}
+            </div>
+
+            {interactions.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                No interaction events recorded yet. Try browsing exams, reading syllabus blueprints, or using the Simulation Lab!
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {interactions.map((ev) => {
+                  const targetExam = ALL_EXAMS.find(e => e.id === ev.examId);
+                  const elapsedMinutes = Math.round((Date.now() - ev.timestamp) / 60000);
+                  const timeLabel = elapsedMinutes < 1 ? 'Just now' : elapsedMinutes < 60 ? `${elapsedMinutes}m ago` : `${Math.round(elapsedMinutes / 60)}h ago`;
+                  const weight = INTERACTION_WEIGHTS[ev.type] || 1.0;
+                  const mult = SIGNAL_STRENGTH_MULTIPLIER[ev.type] || 1.0;
+
+                  return (
+                    <div
+                      key={ev.id}
+                      style={{
+                        padding: '10px 14px',
+                        borderRadius: 'var(--radius-sm)',
+                        background: 'rgba(255, 255, 255, 0.03)',
+                        border: '1px solid var(--border-color)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '12px',
+                        fontSize: '0.82rem'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span
+                          className="badge"
+                          style={{
+                            fontSize: '0.68rem',
+                            padding: '3px 8px',
+                            background: ev.type === 'FOLLOW' ? 'rgba(16, 185, 129, 0.2)' : ev.type === 'BOOKMARK' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(99, 102, 241, 0.2)',
+                            color: ev.type === 'FOLLOW' ? '#34d399' : ev.type === 'BOOKMARK' ? '#fbbf24' : '#a5b4fc'
+                          }}
+                        >
+                          {ev.type} (+{(weight * mult).toFixed(1)})
+                        </span>
+                        <div>
+                          <div style={{ fontWeight: 700, color: 'white' }}>
+                            {targetExam ? targetExam.title : ev.examId}
+                          </div>
+                          {ev.metadata && (
+                            <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                              {ev.metadata.title || ev.metadata.action || ev.metadata.section || ev.metadata.query || JSON.stringify(ev.metadata)}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <span style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                        {timeLabel}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Discovery Filter Engine: "I am a..." + "What do you want?" */}
       <div className="glass-card" style={{ padding: '28px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
@@ -540,7 +1093,7 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
             type="text"
             placeholder="Search exam title or authority e.g. SSC CGL, UPSC, IBPS..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             style={{
               width: '100%',
               padding: '14px 16px 14px 48px',
@@ -660,8 +1213,24 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
                   )}
 
                   <button 
+                    className={`btn ${bookmarkedIds.includes(exam.id) ? 'btn-amber' : 'btn-secondary'}`}
+                    onClick={() => handleToggleBookmark(exam.id)}
+                    title={bookmarkedIds.includes(exam.id) ? 'Saved in bookmarks' : 'Bookmark this exam'}
+                    style={{ padding: '8px 12px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '6px', background: bookmarkedIds.includes(exam.id) ? 'rgba(245, 158, 11, 0.2)' : undefined, color: bookmarkedIds.includes(exam.id) ? '#fbbf24' : undefined, borderColor: bookmarkedIds.includes(exam.id) ? 'rgba(245, 158, 11, 0.4)' : undefined }}
+                  >
+                    <Bookmark size={14} fill={bookmarkedIds.includes(exam.id) ? 'currentColor' : 'none'} />
+                    {bookmarkedIds.includes(exam.id) ? 'Saved' : 'Save'}
+                  </button>
+
+                  <button 
                     className={`btn ${exam.isGoldenJourney ? 'btn-emerald' : 'btn-primary'}`}
-                    onClick={() => onSelectExam(exam)}
+                    onClick={() => {
+                      storageService.recordInteraction({
+                        type: 'VIEW',
+                        examId: exam.id
+                      });
+                      onSelectExam(exam);
+                    }}
                     style={{ padding: '8px 16px', fontSize: '0.85rem' }}
                   >
                     Guide <ChevronRight size={16} />
@@ -4048,8 +4617,29 @@ export const NotificationPreferencesModal: React.FC<NotificationPreferencesModal
 
 
 // ==========================================================================
-// ResourceReaderModal.tsx
 // ==========================================================================
+// ResourceReaderModal.tsx — Direct Authentic Resource Viewer (Zero AI Generated Content)
+// ==========================================================================
+
+export const isPdfResource = (r?: ResourceItem | null): boolean => {
+  if (!r) return false;
+  const direct = r.directPdfUrl || '';
+  const url = r.url || '';
+  return (
+    Boolean(direct) ||
+    url.toLowerCase().endsWith('.pdf') ||
+    url.toLowerCase().includes('.pdf?') ||
+    url.toLowerCase().includes('.pdf#') ||
+    (r.resourceFormat === 'DIRECT_PDF' && Boolean(direct || url.toLowerCase().includes('.pdf'))) ||
+    (r.type === 'OFFICIAL_PDF' && Boolean(direct || url.toLowerCase().includes('.pdf')))
+  );
+};
+
+export const getDirectPdfUrl = (r?: ResourceItem | null): string => {
+  if (!r) return '';
+  return r.directPdfUrl || (r.url && r.url.toLowerCase().includes('.pdf') ? r.url : (r.type === 'OFFICIAL_PDF' && r.url.toLowerCase().includes('.pdf') ? r.url : ''));
+};
+
 interface ResourceReaderModalProps {
   resource: ResourceItem | null;
   onClose: () => void;
@@ -4059,88 +4649,19 @@ export const ResourceReaderModal: React.FC<ResourceReaderModalProps> = ({
   resource,
   onClose
 }) => {
-  const [activeChapterIndex, setActiveChapterIndex] = useState<number>(0);
-  const [viewMode, setViewMode] = useState<'PDF_VIEW' | 'CHAPTERS'>('CHAPTERS');
-
   if (!resource) return null;
 
-  const chapters: InAppChapter[] = resource.inAppHandbookContent?.chapters || [
-    {
-      chapterTitle: 'Overview & Essential Sourced Notes',
-      contentMarkdown: resource.description
-    }
-  ];
+  const isPdf = isPdfResource(resource);
+  const pdfUrl = getDirectPdfUrl(resource);
+  const isYouTubeChannel = resource.resourceFormat === 'YOUTUBE_CHANNEL';
+  const isYouTubeCourse = resource.resourceFormat === 'YOUTUBE_COURSE';
 
-  const currentChapter = chapters[activeChapterIndex] || chapters[0];
-
-  const handlePrintOrDownload = () => {
-    // Generate clean printable window for instant direct PDF save
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <title>${resource.title} - GovOS Official Study Material</title>
-            <style>
-              body {
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-                line-height: 1.6;
-                color: #111827;
-                padding: 40px;
-                max-width: 900px;
-                margin: 0 auto;
-              }
-              h1 { color: #1e3a8a; border-bottom: 2px solid #3b82f6; padding-bottom: 8px; }
-              h2 { color: #1e40af; margin-top: 24px; }
-              h3 { color: #1f2937; }
-              .meta-box { background: #f3f4f6; border-left: 4px solid #10b981; padding: 12px 16px; margin-bottom: 24px; }
-              table { width: 100%; border-collapse: collapse; margin: 16px 0; }
-              th, td { border: 1px solid #d1d5db; padding: 8px 12px; text-align: left; }
-              th { background: #f9fafb; font-weight: bold; }
-              code { background: #e5e7eb; padding: 2px 6px; border-radius: 4px; font-family: monospace; }
-              pre { background: #f3f4f6; padding: 12px; border-radius: 6px; overflow-x: auto; }
-              ul { padding-left: 20px; }
-              li { margin-bottom: 6px; }
-              @media print {
-                body { padding: 0; }
-                .no-print { display: none; }
-              }
-            </style>
-          </head>
-          <body>
-            <div class="meta-box">
-              <div style="font-size: 12px; text-transform: uppercase; color: #6b7280; font-weight: bold;">
-                GovOS 100% Authoritative Sourced Study Material
-              </div>
-              <h1 style="margin: 8px 0;">${resource.title}</h1>
-              <div><strong>Subject / Module:</strong> ${resource.subject} | <strong>Source / Author:</strong> ${resource.author}</div>
-              <div><strong>Rating:</strong> ${resource.rating}</div>
-            </div>
-
-            <div>
-              ${chapters.map((ch, idx) => `
-                <div style="margin-bottom: 30px; page-break-inside: avoid;">
-                  <h2>Chapter ${idx + 1}: ${ch.chapterTitle}</h2>
-                  <div>${ch.contentMarkdown.replace(/\n/g, '<br/>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/`([^`]+)`/g, '<code>$1</code>')}</div>
-                </div>
-              `).join('')}
-            </div>
-
-            <div style="margin-top: 40px; border-top: 1px solid #d1d5db; padding-top: 12px; font-size: 11px; color: #9ca3af; text-align: center;">
-              Downloaded from GovOS — Complete Candidate Lifecycle Platform.
-            </div>
-            <script>
-              window.onload = function() {
-                window.print();
-              };
-            </script>
-          </body>
-        </html>
-      `);
-      printWindow.document.close();
-    }
-  };
+  let hostname = '';
+  try {
+    hostname = new URL(pdfUrl || resource.url).hostname.replace('www.', '');
+  } catch {
+    hostname = resource.author;
+  }
 
   return (
     <div style={{
@@ -4161,7 +4682,7 @@ export const ResourceReaderModal: React.FC<ResourceReaderModalProps> = ({
         className="glass-card"
         style={{
           width: '100%',
-          maxWidth: '1100px',
+          maxWidth: '1150px',
           height: '92vh',
           display: 'flex',
           flexDirection: 'column',
@@ -4180,20 +4701,21 @@ export const ResourceReaderModal: React.FC<ResourceReaderModalProps> = ({
           alignItems: 'center',
           justifyContent: 'space-between',
           background: 'rgba(15, 23, 42, 0.95)',
-          gap: '16px'
+          gap: '16px',
+          flexWrap: 'wrap'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', overflow: 'hidden', flex: 1, minWidth: '280px' }}>
             <div style={{
               padding: '8px',
               borderRadius: 'var(--radius-sm)',
-              background: resource.resourceFormat === 'YOUTUBE_COURSE' || resource.resourceFormat === 'YOUTUBE_CHANNEL' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(59, 130, 246, 0.15)',
-              color: resource.resourceFormat === 'YOUTUBE_COURSE' || resource.resourceFormat === 'YOUTUBE_CHANNEL' ? '#ef4444' : 'var(--primary)',
+              background: isYouTubeCourse || isYouTubeChannel ? 'rgba(239, 68, 68, 0.15)' : isPdf ? 'rgba(16, 185, 129, 0.15)' : 'rgba(59, 130, 246, 0.15)',
+              color: isYouTubeCourse || isYouTubeChannel ? '#ef4444' : isPdf ? '#34d399' : 'var(--primary)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               flexShrink: 0
             }}>
-              {resource.resourceFormat === 'YOUTUBE_COURSE' || resource.resourceFormat === 'YOUTUBE_CHANNEL' ? <PlayCircle size={24} /> : resource.resourceFormat === 'OFFICIAL_PORTAL' ? <Globe size={24} /> : <FileText size={24} />}
+              {isYouTubeCourse || isYouTubeChannel ? <PlayCircle size={24} /> : isPdf ? <FileText size={24} /> : <Globe size={24} />}
             </div>
             <div style={{ overflow: 'hidden' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
@@ -4205,12 +4727,15 @@ export const ResourceReaderModal: React.FC<ResourceReaderModalProps> = ({
                     {resource.officialTag}
                   </span>
                 )}
+                <span className="badge" style={{ background: 'rgba(255, 255, 255, 0.06)', color: 'var(--text-muted)', fontSize: '0.7rem' }}>
+                  {isPdf ? 'DIRECT OFFICIAL PDF' : isYouTubeChannel ? 'YOUTUBE CHANNEL' : isYouTubeCourse ? 'VIDEO COURSE' : 'OFFICIAL PORTAL'}
+                </span>
               </div>
               <h3 style={{ 
                 fontSize: '1.15rem', 
                 fontWeight: 800, 
                 color: 'white', 
-                margin: '2px 0 0 0',
+                margin: '3px 0 0 0',
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis'
@@ -4221,77 +4746,52 @@ export const ResourceReaderModal: React.FC<ResourceReaderModalProps> = ({
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-            {/* View Mode Toggle if direct PDF is available */}
-            {resource.directPdfUrl && (
-              <div style={{ display: 'flex', background: 'rgba(255,255,255,0.06)', borderRadius: 'var(--radius-md)', padding: '2px' }}>
-                <button
-                  onClick={() => setViewMode('PDF_VIEW')}
-                  style={{
-                    padding: '5px 10px',
-                    fontSize: '0.78rem',
-                    borderRadius: 'var(--radius-sm)',
-                    border: 'none',
-                    background: viewMode === 'PDF_VIEW' ? 'var(--primary)' : 'transparent',
-                    color: 'white',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px'
-                  }}
+            {/* Direct authentic action buttons depending on resource format */}
+            {isPdf ? (
+              <>
+                <a 
+                  href={pdfUrl} 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  className="btn btn-emerald" 
+                  style={{ fontSize: '0.8rem', padding: '6px 14px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                  title="Open authentic official PDF directly on publisher server"
                 >
-                  <Eye size={13} /> Original PDF
-                </button>
-                <button
-                  onClick={() => setViewMode('CHAPTERS')}
-                  style={{
-                    padding: '5px 10px',
-                    fontSize: '0.78rem',
-                    borderRadius: 'var(--radius-sm)',
-                    border: 'none',
-                    background: viewMode === 'CHAPTERS' ? 'var(--primary)' : 'transparent',
-                    color: 'white',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px'
-                  }}
+                  <FileText size={14} /> Open Official PDF <ExternalLink size={13} />
+                </a>
+                <a 
+                  href={pdfUrl} 
+                  download={resource.downloadFileName || `${resource.title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn btn-secondary" 
+                  style={{ fontSize: '0.8rem', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                  title="Download genuine official PDF"
                 >
-                  <BookOpen size={13} /> Structured Notes
-                </button>
-              </div>
-            )}
-
-            {/* Direct Download Button */}
-            {resource.directPdfUrl ? (
+                  <Download size={14} /> Download PDF
+                </a>
+              </>
+            ) : isYouTubeChannel || isYouTubeCourse ? (
               <a 
-                href={resource.directPdfUrl} 
-                download={resource.downloadFileName || 'GovOS_Official_Resource.pdf'}
-                className="btn btn-emerald" 
-                style={{ fontSize: '0.8rem', padding: '6px 14px', display: 'flex', alignItems: 'center', gap: '6px' }}
-                title="Download genuine official PDF directly"
+                href={resource.youtubeUrl || resource.url} 
+                target="_blank" 
+                rel="noreferrer" 
+                className="btn" 
+                style={{ background: '#ef4444', color: 'white', fontWeight: 700, fontSize: '0.8rem', padding: '6px 14px', display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none' }}
               >
-                <Download size={14} /> Download PDF
+                <PlayCircle size={15} /> {isYouTubeChannel ? 'Open Channel on YouTube' : 'Watch on YouTube'} <ExternalLink size={13} />
               </a>
             ) : (
-              <button 
-                onClick={handlePrintOrDownload} 
-                className="btn btn-emerald" 
-                style={{ fontSize: '0.8rem', padding: '6px 14px', display: 'flex', alignItems: 'center', gap: '6px' }}
-                title="Print or Save as PDF directly"
+              <a 
+                href={resource.url} 
+                target="_blank" 
+                rel="noreferrer" 
+                className="btn btn-primary" 
+                style={{ fontSize: '0.8rem', padding: '6px 14px', display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none' }}
               >
-                <Download size={14} /> Save / Print PDF
-              </button>
+                <Globe size={14} /> {resource.resourceFormat === 'ONLINE_TOOL' ? 'Launch Tool' : 'Open Official Portal'} <ExternalLink size={13} />
+              </a>
             )}
-
-            <a 
-              href={resource.directPdfUrl || resource.youtubeUrl || resource.url} 
-              target="_blank" 
-              rel="noreferrer" 
-              className="btn btn-outline" 
-              style={{ fontSize: '0.8rem', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}
-            >
-              {resource.resourceFormat === 'OFFICIAL_PORTAL' ? 'Open Official Portal' : resource.resourceFormat === 'ONLINE_TOOL' ? 'Launch Tool' : 'Open Direct'} <ExternalLink size={14} />
-            </a>
 
             <button 
               onClick={onClose}
@@ -4315,11 +4815,61 @@ export const ResourceReaderModal: React.FC<ResourceReaderModalProps> = ({
         {/* Modal Body */}
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
           
-          {/* 1. YOUTUBE COURSE EMBED & DIRECT VIDEO PLAYER */}
-          {resource.resourceFormat === 'YOUTUBE_COURSE' && resource.youtubeEmbedId && (
+          {/* 1. DIRECT OFFICIAL PDF VIEWER */}
+          {isPdf && (
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: '560px', flex: 1 }}>
+              {/* Notice Bar */}
+              <div style={{ padding: '12px 24px', background: 'rgba(16, 185, 129, 0.08)', borderBottom: '1px solid rgba(16, 185, 129, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <ShieldCheck size={18} color="#34d399" style={{ flexShrink: 0 }} />
+                  <span style={{ fontSize: '0.82rem', color: '#e2e8f0' }}>
+                    <strong>Authoritative Open-Source / Government Document:</strong> Hosted directly at <code style={{ color: '#a5b4fc', fontFamily: 'var(--font-mono)' }}>{hostname}</code>. Zero AI-generated or modified text.
+                  </span>
+                </div>
+                <a
+                  href={pdfUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn btn-emerald"
+                  style={{ fontSize: '0.76rem', padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                >
+                  Direct Open <ExternalLink size={12} />
+                </a>
+              </div>
+
+              {/* Embedded Document Frame */}
+              <div style={{ flex: 1, width: '100%', minHeight: '520px', background: '#0f172a', position: 'relative' }}>
+                <iframe 
+                  src={`${pdfUrl}#toolbar=1&navpanes=0`} 
+                  title={resource.title}
+                  style={{ width: '100%', height: '100%', minHeight: '520px', border: 'none', background: '#0f172a' }}
+                />
+              </div>
+
+              {/* Verified Meta Footer */}
+              <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border-color)', background: 'rgba(15, 23, 42, 0.95)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', fontSize: '0.82rem' }}>
+                <div style={{ color: 'var(--text-secondary)' }}>
+                  <strong style={{ color: 'white' }}>Published By:</strong> {resource.author} • {resource.description}
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <a
+                    href={pdfUrl}
+                    download={resource.downloadFileName || `${resource.title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn btn-secondary"
+                    style={{ fontSize: '0.76rem', padding: '5px 12px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                  >
+                    <Download size={13} /> Direct Download
+                  </a>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 2. YOUTUBE COURSE EMBED & DIRECT VIDEO PLAYER */}
+          {!isPdf && isYouTubeCourse && resource.youtubeEmbedId && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', padding: '24px' }}>
-              
-              {/* Native YouTube Video Player */}
               <div style={{ 
                 position: 'relative', 
                 paddingBottom: '56.25%', 
@@ -4346,7 +4896,6 @@ export const ResourceReaderModal: React.FC<ResourceReaderModalProps> = ({
                 />
               </div>
 
-              {/* Direct Video Launch Bar & Details */}
               <div style={{ 
                 padding: '20px 24px', 
                 borderRadius: 'var(--radius-md)', 
@@ -4366,7 +4915,7 @@ export const ResourceReaderModal: React.FC<ResourceReaderModalProps> = ({
                     {resource.title}
                   </h3>
                   <div style={{ fontSize: '0.85rem', color: '#93c5fd' }}>
-                    Educator: <strong>{resource.author}</strong> • {resource.rating}
+                    Educator: <strong>{resource.author}</strong> {resource.rating ? `• ${resource.rating}` : ''}
                   </div>
                 </div>
 
@@ -4385,14 +4934,14 @@ export const ResourceReaderModal: React.FC<ResourceReaderModalProps> = ({
                     display: 'flex',
                     alignItems: 'center',
                     gap: '8px',
-                    boxShadow: '0 8px 20px -4px rgba(239, 68, 68, 0.4)'
+                    boxShadow: '0 8px 20px -4px rgba(239, 68, 68, 0.4)',
+                    textDecoration: 'none'
                   }}
                 >
                   <PlayCircle size={18} /> Open Direct Video on YouTube <ExternalLink size={14} />
                 </a>
               </div>
 
-              {/* Study Tips Box */}
               <div style={{ 
                 padding: '16px 20px', 
                 borderRadius: 'var(--radius-md)', 
@@ -4409,176 +4958,115 @@ export const ResourceReaderModal: React.FC<ResourceReaderModalProps> = ({
                   {resource.recommendedFor}
                 </p>
               </div>
-
             </div>
           )}
 
-          {/* 2. DIRECT ORIGINAL PDF VIEWER */}
-          {resource.resourceFormat !== 'YOUTUBE_COURSE' && viewMode === 'PDF_VIEW' && resource.directPdfUrl && (
-            <div style={{ width: '100%', height: '100%', minHeight: '560px', flex: 1 }}>
-              <iframe 
-                src={`${resource.directPdfUrl}#toolbar=1&navpanes=0`} 
-                title={resource.title}
-                style={{ width: '100%', height: '100%', minHeight: '560px', border: 'none', background: '#374151' }}
-              />
-            </div>
-          )}
-
-          {/* 3. STRUCTURED CHAPTER DIGEST READER */}
-          {resource.resourceFormat !== 'YOUTUBE_COURSE' && (viewMode === 'CHAPTERS' || !resource.directPdfUrl) && (
-            <div style={{ display: 'grid', gridTemplateColumns: chapters.length > 1 ? '260px 1fr' : '1fr', minHeight: '480px', flex: 1 }}>
-              
-              {/* Table of Chapters Sidebar */}
-              {chapters.length > 1 && (
-                <div style={{ 
-                  borderRight: '1px solid var(--border-color)', 
-                  background: 'rgba(0, 0, 0, 0.2)', 
-                  padding: '16px 12px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '6px',
-                  overflowY: 'auto'
-                }}>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px', paddingLeft: '8px' }}>
-                    Table of Contents ({chapters.length} Modules)
-                  </div>
-                  {chapters.map((ch, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => setActiveChapterIndex(idx)}
-                      style={{
-                        padding: '10px 12px',
-                        borderRadius: 'var(--radius-md)',
-                        textAlign: 'left',
-                        background: activeChapterIndex === idx ? 'rgba(59, 130, 246, 0.15)' : 'transparent',
-                        border: activeChapterIndex === idx ? '1px solid var(--primary)' : '1px solid transparent',
-                        color: activeChapterIndex === idx ? '#93c5fd' : 'var(--text-secondary)',
-                        fontSize: '0.85rem',
-                        fontWeight: activeChapterIndex === idx ? 700 : 500,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        transition: 'all 0.15s ease'
-                      }}
-                    >
-                      <span style={{ 
-                        width: '20px', 
-                        height: '20px', 
-                        borderRadius: '50%', 
-                        background: activeChapterIndex === idx ? 'var(--primary)' : 'rgba(255,255,255,0.06)',
-                        color: 'white',
-                        fontSize: '0.7rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0
-                      }}>
-                        {idx + 1}
-                      </span>
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {ch.chapterTitle}
-                      </span>
-                    </button>
-                  ))}
+          {/* 3. YOUTUBE CHANNEL DIRECT ACCESS VIEW */}
+          {!isPdf && isYouTubeChannel && (
+            <div style={{ padding: '36px 24px', display: 'flex', flexDirection: 'column', gap: '22px', maxWidth: '820px', margin: '0 auto', width: '100%' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '24px', borderRadius: 'var(--radius-md)', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)' }}>
+                <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(239, 68, 68, 0.2)', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <PlayCircle size={32} />
                 </div>
-              )}
-
-              {/* Chapter Content Pane */}
-              <div style={{ padding: '28px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
-                  <div>
-                    <span style={{ fontSize: '0.78rem', color: '#93c5fd', fontWeight: 700, textTransform: 'uppercase' }}>
-                      Chapter {activeChapterIndex + 1} of {chapters.length}
-                    </span>
-                    <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'white', margin: '4px 0 0 0' }}>
-                      {currentChapter.chapterTitle}
-                    </h2>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    {activeChapterIndex > 0 && (
-                      <button 
-                        className="btn btn-secondary" 
-                        onClick={() => setActiveChapterIndex(prev => prev - 1)}
-                        style={{ fontSize: '0.8rem', padding: '6px 12px' }}
-                      >
-                        <ArrowLeft size={14} /> Previous
-                      </button>
-                    )}
-                    {activeChapterIndex < chapters.length - 1 && (
-                      <button 
-                        className="btn btn-primary" 
-                        onClick={() => setActiveChapterIndex(prev => prev + 1)}
-                        style={{ fontSize: '0.8rem', padding: '6px 12px' }}
-                      >
-                        Next <ArrowRight size={14} />
-                      </button>
-                    )}
+                <div>
+                  <span className="badge" style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#fca5a5', fontSize: '0.74rem', marginBottom: '6px' }}>
+                    VERIFIED EDUCATIONAL YOUTUBE CHANNEL
+                  </span>
+                  <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'white', margin: '4px 0' }}>
+                    {resource.title}
+                  </h3>
+                  <div style={{ fontSize: '0.88rem', color: '#93c5fd' }}>
+                    Educator / Channel: <strong>{resource.author}</strong> {resource.rating ? `• Rating: ${resource.rating}` : ''}
                   </div>
                 </div>
-
-                {/* Rich Markdown / HTML Text Render */}
-                <div 
-                  style={{ 
-                    fontSize: '0.95rem', 
-                    lineHeight: 1.8, 
-                    color: '#e2e8f0',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '12px'
-                  }}
-                  dangerouslySetInnerHTML={{
-                    __html: currentChapter.contentMarkdown
-                      .replace(/\n\n/g, '<br/><br/>')
-                      .replace(/\n• /g, '<br/>• ')
-                      .replace(/\n1\. /g, '<br/>1. ')
-                      .replace(/\n2\. /g, '<br/>2. ')
-                      .replace(/\n3\. /g, '<br/>3. ')
-                      .replace(/\n4\. /g, '<br/>4. ')
-                      .replace(/\n5\. /g, '<br/>5. ')
-                      .replace(/\n6\. /g, '<br/>6. ')
-                      .replace(/\n7\. /g, '<br/>7. ')
-                      .replace(/\n8\. /g, '<br/>8. ')
-                      .replace(/\n9\. /g, '<br/>9. ')
-                      .replace(/\n10\. /g, '<br/>10. ')
-                      .replace(/\*\*(.*?)\*\*/g, '<strong style="color: #60a5fa;">$1</strong>')
-                      .replace(/`([^`]+)`/g, '<code style="background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 4px; color: #fbbf24; font-size: 0.9em;">$1</code>')
-                  }}
-                />
-
-                <div style={{
-                  marginTop: '20px',
-                  padding: '14px 18px',
-                  borderRadius: 'var(--radius-md)',
-                  background: 'rgba(59, 130, 246, 0.08)',
-                  border: '1px solid rgba(59, 130, 246, 0.2)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  flexWrap: 'wrap',
-                  gap: '12px'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <CheckCircle2 size={16} color="var(--accent)" />
-                    <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                      Authoritative legal source referenced directly.
-                    </span>
-                  </div>
-                  {resource.directPdfUrl && (
-                    <a
-                      href={resource.directPdfUrl}
-                      download={resource.downloadFileName || 'GovOS_Official_Resource.pdf'}
-                      className="btn btn-emerald"
-                      style={{ fontSize: '0.8rem', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}
-                    >
-                      <Download size={14} /> Download PDF File
-                    </a>
-                  )}
-                </div>
-
               </div>
 
+              <div style={{ padding: '22px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'white', margin: 0 }}>About This Channel & Coursework</h4>
+                <p style={{ fontSize: '0.92rem', color: '#cbd5e1', lineHeight: 1.65, margin: 0 }}>
+                  {resource.description}
+                </p>
+                <div style={{ fontSize: '0.86rem', color: '#86efac', lineHeight: 1.5, marginTop: '6px' }}>
+                  <strong style={{ color: '#6ee7b7' }}>Recommended Preparation Strategy:</strong> {resource.recommendedFor}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: '8px' }}>
+                <a
+                  href={resource.youtubeUrl || resource.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn"
+                  style={{
+                    background: '#ef4444',
+                    color: 'white',
+                    fontWeight: 800,
+                    fontSize: '1rem',
+                    padding: '14px 32px',
+                    borderRadius: 'var(--radius-md)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    boxShadow: '0 10px 25px -5px rgba(239, 68, 68, 0.4)',
+                    textDecoration: 'none'
+                  }}
+                >
+                  <PlayCircle size={20} /> Open {resource.author} on YouTube <ExternalLink size={16} />
+                </a>
+              </div>
+            </div>
+          )}
+
+          {/* 4. OFFICIAL PORTAL / ONLINE TOOL DIRECT ACCESS */}
+          {!isPdf && !isYouTubeChannel && !isYouTubeCourse && (
+            <div style={{ padding: '36px 24px', display: 'flex', flexDirection: 'column', gap: '22px', maxWidth: '820px', margin: '0 auto', width: '100%' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '24px', borderRadius: 'var(--radius-md)', background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.25)' }}>
+                <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(59, 130, 246, 0.2)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Globe size={30} />
+                </div>
+                <div>
+                  <span className="badge" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', fontSize: '0.74rem', marginBottom: '6px' }}>
+                    {resource.officialTag || 'OFFICIAL PORTAL'}
+                  </span>
+                  <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'white', margin: '4px 0' }}>
+                    {resource.title}
+                  </h3>
+                  <div style={{ fontSize: '0.88rem', color: '#93c5fd' }}>
+                    Authority: <strong>{resource.author}</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ padding: '22px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'white', margin: 0 }}>Official Source Information</h4>
+                <p style={{ fontSize: '0.92rem', color: '#cbd5e1', lineHeight: 1.65, margin: 0 }}>
+                  {resource.description}
+                </p>
+                <div style={{ fontSize: '0.86rem', color: '#86efac', lineHeight: 1.5, marginTop: '6px' }}>
+                  <strong style={{ color: '#6ee7b7' }}>Recommended Usage:</strong> {resource.recommendedFor}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: '8px' }}>
+                <a
+                  href={resource.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn btn-primary"
+                  style={{
+                    fontWeight: 800,
+                    fontSize: '1rem',
+                    padding: '14px 32px',
+                    borderRadius: 'var(--radius-md)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    textDecoration: 'none'
+                  }}
+                >
+                  <Globe size={18} /> Open Official Portal ({hostname}) <ExternalLink size={16} />
+                </a>
+              </div>
             </div>
           )}
 
@@ -4814,40 +5302,72 @@ export const ResourceAIAssistant: React.FC<ResourceAIAssistantProps> = ({
                             target="_blank" 
                             rel="noreferrer" 
                             className="btn btn-emerald" 
-                            style={{ fontSize: '0.75rem', padding: '5px 12px', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                            style={{ fontSize: '0.75rem', padding: '5px 12px', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', textDecoration: 'none' }}
                           >
-                            <PlayCircle size={14} /> Watch Direct Video on YouTube <ExternalLink size={11} />
+                            <PlayCircle size={14} /> Watch Video on YouTube <ExternalLink size={11} />
                           </a>
                         </>
-                      ) : res.directPdfUrl ? (
+                      ) : isPdfResource(res) ? (
                         <>
                           <a 
-                            href={res.directPdfUrl} 
-                            download={res.downloadFileName || 'GovOS_Official_Resource.pdf'}
+                            href={getDirectPdfUrl(res)} 
+                            target="_blank" 
+                            rel="noreferrer"
                             className="btn btn-emerald" 
-                            style={{ fontSize: '0.75rem', padding: '4px 10px', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                            style={{ fontSize: '0.75rem', padding: '5px 12px', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', textDecoration: 'none' }}
                           >
-                            <Download size={13} /> Download PDF
+                            <FileText size={13} /> Open Official PDF <ExternalLink size={11} />
                           </a>
                           <a 
-                            href={res.directPdfUrl} 
+                            href={getDirectPdfUrl(res)} 
+                            download={res.downloadFileName || 'GovOS_Official_Resource.pdf'}
                             target="_blank"
                             rel="noreferrer"
                             className="btn btn-secondary" 
                             style={{ fontSize: '0.75rem', padding: '4px 8px' }}
-                            title="Read in Browser"
+                            title="Download Official PDF"
+                          >
+                            <Download size={13} />
+                          </a>
+                          <button 
+                            onClick={() => onOpenResourceModal(res)}
+                            className="btn btn-secondary" 
+                            style={{ fontSize: '0.75rem', padding: '4px 8px' }}
+                            title="Preview Document in App"
                           >
                             <BookOpen size={12} />
-                          </a>
+                          </button>
                         </>
-                      ) : (
-                        <button 
-                          onClick={() => onOpenResourceModal(res)}
-                          className="btn btn-emerald" 
-                          style={{ fontSize: '0.75rem', padding: '4px 10px', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                      ) : res.resourceFormat === 'YOUTUBE_CHANNEL' ? (
+                        <a 
+                          href={res.youtubeUrl || res.url} 
+                          target="_blank" 
+                          rel="noreferrer" 
+                          className="btn" 
+                          style={{ background: '#ef4444', color: 'white', fontWeight: 700, fontSize: '0.75rem', padding: '5px 12px', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', textDecoration: 'none' }}
                         >
-                          <BookOpen size={13} /> Open Material
-                        </button>
+                          <PlayCircle size={14} /> Open Channel on YouTube <ExternalLink size={11} />
+                        </a>
+                      ) : (
+                        <>
+                          <a 
+                            href={res.url} 
+                            target="_blank"
+                            rel="noreferrer"
+                            className="btn btn-emerald" 
+                            style={{ fontSize: '0.75rem', padding: '4px 10px', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', textDecoration: 'none' }}
+                          >
+                            <ExternalLink size={13} /> Open Official Portal
+                          </a>
+                          <button 
+                            onClick={() => onOpenResourceModal(res)}
+                            className="btn btn-secondary" 
+                            style={{ fontSize: '0.75rem', padding: '4px 8px' }}
+                            title="View Info"
+                          >
+                            <Info size={12} />
+                          </button>
+                        </>
                       )}
                     </div>
                   </div>
@@ -10774,15 +11294,16 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
   // ---- primary action per format ----------------------------------------
   const primaryAction = (r: ResourceItem): { label: string; href?: string; onClick?: () => void } => {
     switch (r.resourceFormat) {
-      case 'YOUTUBE_COURSE': return { label: 'Watch in App', onClick: () => onOpenResource(r) };
-      case 'YOUTUBE_CHANNEL': return { label: 'Open channel on YouTube', href: r.url };
+      case 'YOUTUBE_COURSE': return { label: 'Watch Video Course', onClick: () => onOpenResource(r) };
+      case 'YOUTUBE_CHANNEL': return { label: 'Open Channel on YouTube', href: r.youtubeUrl || r.url };
       case 'OFFICIAL_PORTAL': return { label: 'Open Official Portal', href: r.url };
       case 'ONLINE_TOOL': return { label: 'Launch Tool', href: r.url };
       case 'INTERACTIVE_HANDBOOK': return { label: 'Read Handbook', onClick: () => onOpenResource(r) };
       default:
-        return r.directPdfUrl
-          ? { label: 'Read Document', onClick: () => onOpenResource(r) }
-          : { label: 'Open Document', href: r.url };
+        if (isPdfResource(r)) {
+          return { label: 'Open Official PDF', href: getDirectPdfUrl(r) };
+        }
+        return { label: 'Open Official Source', href: r.url };
     }
   };
 
@@ -10923,10 +11444,15 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
             </button>
           )}
 
-          {r.directPdfUrl && (
-            <a href={r.directPdfUrl} download={r.downloadFileName || 'GovOS_Resource.pdf'} title="Download PDF" aria-label="Download PDF" style={iconButtonStyle}>
+          {isPdfResource(r) && (
+            <a href={getDirectPdfUrl(r)} download={r.downloadFileName || `${r.title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`} target="_blank" rel="noreferrer" title="Download Official PDF" aria-label="Download Official PDF" style={iconButtonStyle}>
               <Download size={14} />
             </a>
+          )}
+          {isPdfResource(r) && (
+            <button onClick={() => onOpenResource(r)} title="Preview Document in App" aria-label="Preview Document in App" style={iconButtonStyle}>
+              <BookOpen size={14} />
+            </button>
           )}
           {showExternalIcon && (
             <a href={r.youtubeUrl || r.url} target="_blank" rel="noreferrer" title="Open on the source site" aria-label="Open on the source site" style={iconButtonStyle}>
@@ -11217,6 +11743,42 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
     setCompletedTopics(storageService.toggleCompletedTopic(exam.id, id));
   };
 
+  const [isBookmarked, setIsBookmarked] = useState<boolean>(() => storageService.isBookmarked(exam.id));
+
+  useEffect(() => {
+    setIsBookmarked(storageService.isBookmarked(exam.id));
+  }, [exam.id]);
+
+  const handleToggleBookmark = () => {
+    const updated = storageService.toggleBookmarkExam(exam.id);
+    setIsBookmarked(updated.includes(exam.id));
+  };
+
+  // Real-time behavioral signal collection for Time-Decayed BPR
+  useEffect(() => {
+    storageService.recordInteraction({
+      type: 'VIEW',
+      examId: exam.id,
+      metadata: { action: `Opened ${exam.title} Guide` }
+    });
+  }, [exam.id]);
+
+  useEffect(() => {
+    if (activeSection === 6) {
+      storageService.recordInteraction({
+        type: 'SYLLABUS_READ',
+        examId: exam.id,
+        metadata: { section: '06 - Post Study Plan & Syllabus Blueprint' }
+      });
+    } else if (activeSection === 8 || activeSection === 12) {
+      storageService.recordInteraction({
+        type: 'RESOURCE_ACCESS',
+        examId: exam.id,
+        metadata: { section: activeSection === 8 ? '08 - Resource Library' : '12 - Official Commission Links' }
+      });
+    }
+  }, [exam.id, activeSection]);
+
   const activeCorrigendum = exam.corrigendums.find(c => c.status === 'ACTIVE');
 
   const sections = [
@@ -11330,10 +11892,32 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                 {isTracked ? <><Check size={16} /> Tracking</> : <><Bell size={16} /> Track Exam</>}
               </button>
             )}
+            <button 
+              className={`btn ${isBookmarked ? 'btn-amber' : 'btn-secondary'}`}
+              onClick={handleToggleBookmark}
+              style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px', background: isBookmarked ? 'rgba(245, 158, 11, 0.2)' : undefined, color: isBookmarked ? '#fbbf24' : undefined, borderColor: isBookmarked ? 'rgba(245, 158, 11, 0.4)' : undefined }}
+              title={isBookmarked ? 'Exam saved in bookmarks' : 'Bookmark this exam'}
+            >
+              <Bookmark size={16} fill={isBookmarked ? 'currentColor' : 'none'} />
+              {isBookmarked ? 'Bookmarked' : 'Bookmark'}
+            </button>
             <button className="btn btn-secondary" onClick={() => onOpenReportModal('Exam', exam.id)} style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <Flag size={16} /> Report Error
             </button>
-            <a href={exam.officialDomain} target="_blank" rel="noreferrer" className="btn btn-emerald" style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <a 
+              href={exam.officialDomain} 
+              target="_blank" 
+              rel="noreferrer" 
+              className="btn btn-emerald" 
+              style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+              onClick={() => {
+                storageService.recordInteraction({
+                  type: 'RESOURCE_ACCESS',
+                  examId: exam.id,
+                  metadata: { target: exam.officialDomain, action: 'Opened Official Domain Portal' }
+                });
+              }}
+            >
               Official Website <ExternalLink size={16} />
             </a>
           </div>

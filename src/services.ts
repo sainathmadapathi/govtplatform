@@ -22,7 +22,11 @@ import {
   LiveResourceStatus,
   ResourceAddition,
   ResourceHealthSync,
-  SscNoticeFeed
+  SscNoticeFeed,
+  ExamCategoryTag,
+  ExamRecommendation,
+  UserInteractionEvent,
+  UserInteractionType
 } from './types';
 
 // ==========================================================================
@@ -336,7 +340,8 @@ const STORAGE_KEYS = {
   NOTIFICATIONS: 'govos_candidate_notifications',
   COMPLETED_TOPICS: 'govos_completed_syllabus_topics',
   ROADMAP_GOALS: 'govos_roadmap_goals',
-  PENDING_REPORTS: 'govos_pending_reports'
+  PENDING_REPORTS: 'govos_pending_reports',
+  USER_INTERACTIONS: 'govos_user_interactions'
 };
 
 export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreference = {
@@ -538,6 +543,52 @@ class StorageService {
       // Offline fallback
     }
 
+    if (isNowTracked) {
+      this.recordInteraction({
+        type: 'FOLLOW',
+        examId: examId
+      });
+    }
+
+    return updated;
+  }
+
+  // --- 4b. Bookmarked Exams ---
+  getBookmarkedExams(): string[] {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.BOOKMARKS);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {
+      console.warn('LocalStorage parse error for bookmarked exams:', e);
+    }
+    return [];
+  }
+
+  isBookmarked(examId: string): boolean {
+    return this.getBookmarkedExams().includes(examId);
+  }
+
+  toggleBookmarkExam(examId: string): string[] {
+    const current = this.getBookmarkedExams();
+    let updated: string[];
+    const isNowBookmarked = !current.includes(examId);
+    if (current.includes(examId)) {
+      updated = current.filter(id => id !== examId);
+    } else {
+      updated = [...current, examId];
+      this.recordInteraction({
+        type: 'BOOKMARK',
+        examId: examId
+      });
+    }
+    try {
+      localStorage.setItem(STORAGE_KEYS.BOOKMARKS, JSON.stringify(updated));
+    } catch (e) {
+      console.warn('LocalStorage save error for bookmarked exams:', e);
+    }
     return updated;
   }
 
@@ -1261,6 +1312,112 @@ class StorageService {
     }
   }
 
+  // --- 8. Behavioral Interaction History & Recommendations (Time-Decayed BPR) ---
+
+  getUserInteractions(): UserInteractionEvent[] {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.USER_INTERACTIONS);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {
+      console.warn('LocalStorage parse error for user interactions:', e);
+    }
+    return [];
+  }
+
+  recordInteraction(event: Omit<UserInteractionEvent, 'id' | 'timestamp'>): UserInteractionEvent {
+    const fullEvent: UserInteractionEvent = {
+      targetId: event.targetId || event.examId || 'unknown',
+      targetType: event.targetType || 'EXAM',
+      ...event,
+      id: `act-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      timestamp: Date.now()
+    };
+
+    try {
+      const current = this.getUserInteractions();
+      // Keep most recent 100 interaction events
+      const updated = [fullEvent, ...current.filter(e => e.id !== fullEvent.id)].slice(0, 100);
+      localStorage.setItem(STORAGE_KEYS.USER_INTERACTIONS, JSON.stringify(updated));
+      this.syncInteractionToSQLite(fullEvent);
+    } catch (e) {
+      console.warn('LocalStorage save error for user interaction:', e);
+    }
+
+    return fullEvent;
+  }
+
+  clearUserInteractions(): void {
+    try {
+      localStorage.removeItem(STORAGE_KEYS.USER_INTERACTIONS);
+      fetch(`/api/sqlite/interactions?user_id=${this.userId}`, { method: 'DELETE' }).catch(() => {});
+    } catch (e) {
+      console.warn('Error clearing user interactions:', e);
+    }
+  }
+
+  async syncInteractionToSQLite(event: UserInteractionEvent): Promise<void> {
+    try {
+      await fetch('/api/sqlite/interactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...event, user_id: this.userId })
+      });
+    } catch {
+      // Offline fallback
+    }
+  }
+
+  async loadInteractionsFromSQLite(): Promise<UserInteractionEvent[]> {
+    try {
+      const res = await fetch(`/api/sqlite/interactions?user_id=${this.userId}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.interactions)) {
+          const local = this.getUserInteractions();
+          const localIds = new Set(local.map(i => i.id));
+          const merged = [...local, ...data.interactions.filter((i: UserInteractionEvent) => !localIds.has(i.id))]
+            .sort((a, b) => b.timestamp - a.timestamp)
+            .slice(0, 100);
+          localStorage.setItem(STORAGE_KEYS.USER_INTERACTIONS, JSON.stringify(merged));
+          return merged;
+        }
+      }
+    } catch {
+      // Offline fallback
+    }
+    return this.getUserInteractions();
+  }
+
+  getProfile(): UserProfile | null {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.PROFILE);
+      if (raw) return JSON.parse(raw);
+    } catch (e) {
+      console.warn('LocalStorage parse error for profile:', e);
+    }
+    return null;
+  }
+
+  saveProfile(profile: UserProfile): void {
+    try {
+      localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(profile));
+      this.syncProfileToSQLite({
+        category: profile.category,
+        qualification: profile.degree
+      });
+    } catch (e) {
+      console.warn('LocalStorage save error for profile:', e);
+    }
+  }
+
+  getPersonalizedRecommendations(allExams: Exam[], profile?: UserProfile, referenceTime?: number): ExamRecommendation[] {
+    const interactions = this.getUserInteractions();
+    return computePersonalizedRecommendations(allExams, interactions, profile || this.getProfile() || undefined, referenceTime);
+  }
+
   async checkSQLiteHealth(): Promise<any> {
     try {
       const res = await fetch('/api/sqlite/status');
@@ -1272,6 +1429,344 @@ class StorageService {
       return { status: 'offline' };
     }
   }
+}
+
+// ============================================================================
+// Time-Aware Behaviour-Based Recommendation Engine
+// (Inspired by Time-Decayed Bayesian Personalized Ranking Principles)
+// ============================================================================
+
+export const INTERACTION_WEIGHTS: Record<UserInteractionType, number> = {
+  FOLLOW: 4.0,           // Explicitly tracking exam in timeline
+  BOOKMARK: 3.5,         // Bookmarking exam or key study resource
+  SYLLABUS_READ: 5.0,    // Deep reading of exam blueprint / syllabus (active preparation)
+  RESOURCE_ACCESS: 4.0,  // Accessing exam study material, PYQ, or portal
+  VIEW: 2.5,             // Opening full exam guide
+  SEARCH: 1.5            // Searching exam keywords or career goals
+};
+
+/**
+ * Interaction-specific half-life decay in hours tailored to competitive exam preparation cycles:
+ * - SEARCH: 24h (1 day) - immediate, temporary curiosity query
+ * - VIEW: 72h (3 days) - fleeting exploratory guide overview
+ * - RESOURCE_ACCESS: 336h (14 days / 2 weeks) - targeted study notes/PYQ material
+ * - SYLLABUS_READ: 504h (21 days / 3 weeks) - in-depth curriculum examination
+ * - BOOKMARK: 1440h (60 days / 2 months) - deliberate shortlisting interest
+ * - FOLLOW: 4320h (180 days / 6 months) - active exam-cycle timeline tracking
+ */
+export const INTERACTION_HALF_LIVES_HOURS: Record<UserInteractionType, number> = {
+  SEARCH: 24,            // 1 day
+  VIEW: 72,              // 3 days
+  RESOURCE_ACCESS: 336,  // 14 days (2 weeks)
+  SYLLABUS_READ: 504,    // 21 days (3 weeks)
+  BOOKMARK: 1440,        // 60 days (2 months)
+  FOLLOW: 4320           // 180 days (6 months)
+};
+
+/**
+ * Intrinsic signal strength multiplier capturing commitment fidelity:
+ * High-commitment explicit tracking actions (FOLLOW, BOOKMARK, SYLLABUS_READ) carry significantly higher
+ * persistence and fidelity than transient exploratory clicks (VIEW, SEARCH).
+ */
+export const SIGNAL_STRENGTH_MULTIPLIER: Record<UserInteractionType, number> = {
+  FOLLOW: 1.6,           // Active goal commitment: 4.0 * 1.6 = 6.4 base
+  BOOKMARK: 1.4,         // High-intent shortlisting: 3.5 * 1.4 = 4.9 base
+  SYLLABUS_READ: 1.6,    // Deep curriculum engagement: 5.0 * 1.6 = 8.0 base
+  RESOURCE_ACCESS: 1.3,  // Specific material consumption: 4.0 * 1.3 = 5.2 base
+  VIEW: 1.0,             // Passive guide exploration: 2.5 * 1.0 = 2.5 base
+  SEARCH: 1.0            // Discovery keyword query: 1.5 * 1.0 = 1.5 base
+};
+
+/** Legacy default half-life (maintained for backwards compatibility) */
+export const RECOMMENDATION_HALF_LIFE_HOURS = 48;
+
+export function calculateTimeDecay(
+  timestamp: number, 
+  type?: UserInteractionType, 
+  customHalfLife?: number,
+  referenceTime?: number
+): number {
+  if (!timestamp || isNaN(timestamp) || timestamp <= 0) return 0.0;
+  const now = referenceTime !== undefined ? referenceTime : Date.now();
+  const elapsedHours = Math.max(0, (now - timestamp) / (1000 * 60 * 60));
+  const halfLife = customHalfLife || (type && INTERACTION_HALF_LIVES_HOURS[type] ? INTERACTION_HALF_LIVES_HOURS[type] : RECOMMENDATION_HALF_LIFE_HOURS);
+  return Math.pow(2, -elapsedHours / halfLife);
+}
+
+/**
+ * Domain & Category similarity matrix between exams for transfer learning.
+ * Computes cross-exam affinity based on Commission type, Administrative level, and Syllabus overlap.
+ */
+export function getExamAffinitySimilarity(examA: Exam, examB: Exam): number {
+  if (examA.id === examB.id) return 1.0;
+
+  let similarity = 0.0;
+
+  // 1. Same Commission / Authority (e.g. APPSC Group 1 & APPSC Group 2 sister exams)
+  if (examA.authorityName && examB.authorityName && examA.authorityName === examB.authorityName) {
+    similarity += 0.35;
+  }
+
+  // 2. Category cluster alignment (e.g. Civil Services & State PSC)
+  const isCivilServicesA = examA.categoryTag === 'CIVIL_SERVICES' || examA.categoryTag === 'STATE_PSC';
+  const isCivilServicesB = examB.categoryTag === 'CIVIL_SERVICES' || examB.categoryTag === 'STATE_PSC';
+
+  if (isCivilServicesA && isCivilServicesB) {
+    if (examA.categoryTag === examB.categoryTag) {
+      similarity += 0.50; // Same category, e.g. State PSC & State PSC
+    } else {
+      similarity += 0.40; // Civil Services & State PSC (e.g. UPSC CSE & APPSC Group 1)
+    }
+  }
+
+  // 3. Career fields overlap
+  const fieldsA = examA.careerFields || [];
+  const fieldsB = examB.careerFields || [];
+  const sharedFields = fieldsA.filter(f => fieldsB.includes(f));
+  if (sharedFields.length > 0) {
+    similarity += 0.15 * Math.min(2, sharedFields.length);
+  }
+
+  // 4. Educational requirement overlap (Graduation)
+  if (examA.minimumQualification && examA.minimumQualification === examB.minimumQualification) {
+    similarity += 0.05;
+  }
+
+  // 5. Aptitude CBT cluster (SSC CGL & IBPS PO)
+  const isCbtSpeedA = examA.categoryTag === 'STAFF_SELECTION' || examA.categoryTag === 'BANKING';
+  const isCbtSpeedB = examB.categoryTag === 'STAFF_SELECTION' || examB.categoryTag === 'BANKING';
+  if (isCbtSpeedA && isCbtSpeedB) {
+    similarity += 0.40;
+  }
+
+  return Math.min(1.0, Math.max(0.0, similarity));
+}
+
+/**
+ * Computes personalized exam recommendations based on user interaction history
+ * with time-decay and collaborative category transfer.
+ */
+export function computePersonalizedRecommendations(
+  allExams: Exam[],
+  interactions: UserInteractionEvent[],
+  profile?: UserProfile,
+  referenceTime?: number
+): ExamRecommendation[] {
+  if (!allExams || !Array.isArray(allExams) || allExams.length === 0) return [];
+
+  // Map exam IDs to accumulators tracking direct, transferred, and profile components
+  const examScores: Record<string, {
+    directScore: number;
+    transferScore: number;
+    profileScore: number;
+    totalScore: number;
+    directHits: number;
+    relatedHits: number;
+    recentActions: string[];
+    topSignal: string;
+  }> = {};
+
+  allExams.forEach(e => {
+    examScores[e.id] = {
+      directScore: 0,
+      transferScore: 0,
+      profileScore: 0,
+      totalScore: 0,
+      directHits: 0,
+      relatedHits: 0,
+      recentActions: [],
+      topSignal: 'Discovery Baseline'
+    };
+  });
+
+  const validInteractions = Array.isArray(interactions) ? interactions : [];
+  const sortedInteractions = [...validInteractions]
+    .filter(ev => ev && typeof ev === 'object' && ev.timestamp && !isNaN(ev.timestamp) && ev.timestamp > 0)
+    .sort((a, b) => b.timestamp - a.timestamp);
+
+  // 1. Process DIRECT behavioral interactions with time decay and commitment multipliers
+  for (const event of sortedInteractions) {
+    if (!event.type || !INTERACTION_WEIGHTS[event.type]) continue;
+    const weight = INTERACTION_WEIGHTS[event.type] || 1.0;
+    const decay = calculateTimeDecay(event.timestamp, event.type, undefined, referenceTime);
+    if (isNaN(decay) || decay <= 0) continue;
+    const signalStrength = SIGNAL_STRENGTH_MULTIPLIER[event.type] || 1.0;
+    const eventScore = weight * decay * signalStrength;
+    if (isNaN(eventScore) || eventScore <= 0) continue;
+
+    // Check direct target exam
+    let directTargetExam: Exam | undefined = undefined;
+    if (event.examId) {
+      directTargetExam = allExams.find(e => e.id === event.examId);
+    } else if (event.targetType === 'EXAM') {
+      directTargetExam = allExams.find(e => e.id === event.targetId);
+    }
+
+    if (directTargetExam) {
+      const targetId = directTargetExam.id;
+      const targetAcc = examScores[targetId];
+
+      if (targetAcc) {
+        targetAcc.directScore += eventScore;
+        targetAcc.directHits++;
+
+        let actionDesc = '';
+        if (event.type === 'VIEW') actionDesc = `Viewed ${directTargetExam.title}`;
+        else if (event.type === 'BOOKMARK') actionDesc = `Saved ${directTargetExam.title}`;
+        else if (event.type === 'FOLLOW') actionDesc = `Tracking ${directTargetExam.title} in timeline`;
+        else if (event.type === 'SYLLABUS_READ') actionDesc = `Read ${directTargetExam.title} syllabus`;
+        else if (event.type === 'RESOURCE_ACCESS') actionDesc = `Explored ${directTargetExam.title} resources`;
+
+        if (actionDesc && !targetAcc.recentActions.includes(actionDesc) && targetAcc.recentActions.length < 3) {
+          targetAcc.recentActions.push(actionDesc);
+        }
+      }
+    }
+
+    // Check query matches if SEARCH
+    if (event.type === 'SEARCH') {
+      const q = (event.metadata?.query || event.targetId || '').toLowerCase().trim();
+      for (const exam of allExams) {
+        const titleMatch = exam.title.toLowerCase().includes(q) || exam.code.toLowerCase().includes(q);
+        const authMatch = exam.authorityName.toLowerCase().includes(q);
+        const civilMatch = (q.includes('civil') || q.includes('upsc') || q.includes('ias') || q.includes('appsc') || q.includes('psc') || q.includes('group 1') || q.includes('group 2')) &&
+                           (exam.categoryTag === 'CIVIL_SERVICES' || exam.categoryTag === 'STATE_PSC');
+        const sscMatch = (q.includes('ssc') || q.includes('cgl')) && exam.categoryTag === 'STAFF_SELECTION';
+        const bankMatch = (q.includes('bank') || q.includes('ibps') || q.includes('po')) && exam.categoryTag === 'BANKING';
+
+        if (titleMatch || authMatch || civilMatch || sscMatch || bankMatch) {
+          const acc = examScores[exam.id];
+          if (acc) {
+            acc.directScore += eventScore;
+            acc.directHits++;
+            const actionText = `Searched "${event.targetId}"`;
+            if (!acc.recentActions.includes(actionText) && acc.recentActions.length < 3) {
+              acc.recentActions.push(actionText);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // 2. Transferred Affinity pass with strict Hierarchy Enforcement:
+  // DirectInterest > TransferredAffinity > ProfilePrior
+  const maxDirectScore = Math.max(...Object.values(examScores).map(a => a.directScore), 0);
+  // An un-interacted exam's transfer cannot exceed 80% of the active lead direct engagement
+  const MAX_TRANSFER_CAP = maxDirectScore > 0 ? maxDirectScore * 0.80 : 0;
+
+  for (const sourceExam of allExams) {
+    const sourceAcc = examScores[sourceExam.id];
+    if (!sourceAcc || sourceAcc.directScore <= 0) continue;
+
+    for (const targetExam of allExams) {
+      if (targetExam.id === sourceExam.id) continue;
+      const affinity = getExamAffinitySimilarity(sourceExam, targetExam);
+      if (affinity > 0.3) {
+        // Damping factor 0.65 guarantees transferred interest remains subordinate to direct source
+        const transferContribution = sourceAcc.directScore * affinity * 0.65;
+        const targetAcc = examScores[targetExam.id];
+        if (targetAcc) {
+          targetAcc.transferScore += transferContribution;
+          targetAcc.relatedHits++;
+
+          let relatedReason = '';
+          if (sourceExam.categoryTag === 'CIVIL_SERVICES' || sourceExam.categoryTag === 'STATE_PSC') {
+            relatedReason = `Related to ${sourceExam.code.replace(/_/g, ' ')} (Civil & State Services)`;
+          } else if (sourceExam.categoryTag === 'STAFF_SELECTION' || sourceExam.categoryTag === 'BANKING') {
+            relatedReason = `Overlapping CBT syllabus with ${sourceExam.code.replace(/_/g, ' ')}`;
+          }
+
+          if (relatedReason && !targetAcc.recentActions.includes(relatedReason) && targetAcc.recentActions.length < 3) {
+            targetAcc.recentActions.push(relatedReason);
+          }
+        }
+      }
+    }
+  }
+
+  // Cap transfer for exams without direct interaction so pure transfer never eclipses direct interest
+  for (const exam of allExams) {
+    const acc = examScores[exam.id];
+    if (!acc) continue;
+    if (MAX_TRANSFER_CAP > 0 && acc.directHits === 0) {
+      acc.transferScore = Math.min(acc.transferScore, MAX_TRANSFER_CAP);
+    }
+  }
+
+  // 3. Add profile prior (cold start fallback & gentle tiebreaker: 1.0 - 1.5 pts)
+  for (const exam of allExams) {
+    const acc = examScores[exam.id];
+    if (!acc) continue;
+
+    if (profile) {
+      if (exam.minimumQualification === 'GRADUATION') {
+        acc.profileScore += 1.5;
+      }
+      if (exam.isGoldenJourney) {
+        acc.profileScore += 0.5;
+      }
+    }
+
+    acc.totalScore = acc.directScore + acc.transferScore + acc.profileScore;
+  }
+
+  // 4. Normalise and sort recommendations
+  // Normalization floor ensures faded/decayed micro-actions don't artificially blow up to 100%
+  const activeDenominator = maxDirectScore > 0 ? Math.max(...Object.values(examScores).map(a => a.totalScore), 5.0) : Math.max(...Object.values(examScores).map(a => a.totalScore), 1.0);
+
+  const recommendations: ExamRecommendation[] = allExams.map(exam => {
+    const acc = examScores[exam.id] || { directScore: 0, transferScore: 0, profileScore: 0, totalScore: 0, directHits: 0, relatedHits: 0, recentActions: [], topSignal: '' };
+    const normalisedScore = Math.min(100, Math.round((acc.totalScore / activeDenominator) * 100));
+
+    let matchStrength: ExamRecommendation['matchStrength'] = 'EXPLORATORY';
+    if (normalisedScore >= 70 && (acc.directScore >= 2.5 || acc.directHits >= 1)) matchStrength = 'STRONG';
+    else if (normalisedScore >= 40 && (acc.directScore >= 1.0 || acc.transferScore >= 2.0)) matchStrength = 'MODERATE';
+
+    const reasons: string[] = [];
+    if (acc.recentActions.length > 0) {
+      reasons.push(...acc.recentActions);
+    }
+
+    if (reasons.length === 0) {
+      if (exam.categoryTag === 'CIVIL_SERVICES' || exam.categoryTag === 'STATE_PSC') {
+        reasons.push('Premier Civil Services recruitment matching Graduate qualification');
+      } else if (exam.categoryTag === 'STAFF_SELECTION') {
+        reasons.push('High-volume Central Ministries recruitment with verified CBT curriculum');
+      } else if (exam.categoryTag === 'BANKING') {
+        reasons.push('Fast-track Public Sector Banking probationary officer examination');
+      } else {
+        reasons.push('Verified recruitment examination matching graduation eligibility');
+      }
+    }
+
+    let primarySignal = 'Active Exploration';
+    if (acc.directHits > 0 && acc.relatedHits > 0) primarySignal = 'Direct Engagement + Cluster Affinity';
+    else if (acc.directHits > 0) primarySignal = 'Direct Candidate Action';
+    else if (acc.relatedHits > 0) primarySignal = 'Transferred Cluster Affinity';
+    else primarySignal = 'Academic Profile Baseline';
+
+    return {
+      exam,
+      score: normalisedScore,
+      reasons,
+      matchStrength,
+      primarySignal
+    };
+  });
+
+  recommendations.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    // Tie-breaker: direct engagement always outranks transferred engagement
+    const accA = examScores[a.exam.id];
+    const accB = examScores[b.exam.id];
+    if (accB && accA && accB.directHits !== accA.directHits) {
+      return accB.directHits - accA.directHits;
+    }
+    return 0;
+  });
+
+  return recommendations;
 }
 
 export const storageService = new StorageService();

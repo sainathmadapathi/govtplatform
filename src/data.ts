@@ -153,6 +153,7 @@ export const SSC_CGL_EXAM: Exam = {
   crucialEligibilityDate: '2026-08-01',
   minimumQualification: 'GRADUATION',
   careerFields: ['Government Job', 'Civil Services & Governance'],
+  categoryTag: 'STAFF_SELECTION',
   isGoldenJourney: true,
   isDemoData: false,
   overviewDescription:
@@ -1656,6 +1657,8 @@ export const SSC_CGL_EXAM: Exam = {
       type: 'OFFICIAL_PDF',
       resourceFormat: 'DIRECT_PDF',
       url: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
+      directPdfUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
+      downloadFileName: 'Notice_of_adv_cgl_2026.pdf',
       officialTag: 'SSC — PRIMARY NOTIFICATION (PDF, 1.2 MB)',
       recommendedFor: 'The single document to read before applying. Verify any claim you see elsewhere — including on GovOS — against this PDF.',
       description: "The Commission's own notification PDF for CGLE 2026, hosted on ssc.gov.in. Contains the vacancy position, age limits and the crucial date, the full scheme of examination, the Tier-1 and Tier-2 syllabus, and every certificate annexure. GovOS links to the file on the SSC server rather than keeping a copy.",
@@ -1684,6 +1687,8 @@ export const SSC_CGL_EXAM: Exam = {
       type: 'OFFICIAL_PDF',
       resourceFormat: 'DIRECT_PDF',
       url: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/CGLE_Reopen_23062026.pdf',
+      directPdfUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/CGLE_Reopen_23062026.pdf',
+      downloadFileName: 'CGLE_Reopen_23062026.pdf',
       officialTag: 'SSC — AMENDMENT NOTICE (PDF)',
       recommendedFor: 'Confirming whether an application window really was extended, instead of trusting a coaching-site headline.',
       description: 'The Commission notice reopening the CGLE 2026 online application window, issued after more than 28 lakh candidates had already applied. Shows exactly how SSC communicates a change to a published schedule.',
@@ -1742,6 +1747,8 @@ export const SSC_CGL_EXAM: Exam = {
       type: 'OFFICIAL_PDF',
       resourceFormat: 'DIRECT_PDF',
       url: 'https://www.legislative.gov.in/static/uploads/2025/07/c9fe9c9b6840524844316f74bb1c556c.pdf',
+      directPdfUrl: 'https://www.legislative.gov.in/static/uploads/2025/07/c9fe9c9b6840524844316f74bb1c556c.pdf',
+      downloadFileName: 'Constitution_of_India_Official.pdf',
       officialTag: 'MINISTRY OF LAW & JUSTICE — PRIMARY LEGAL TEXT (PDF, 2.6 MB)',
       recommendedFor: 'Confirming the precise wording and number of an Article instead of relying on a summary. Search the PDF for the Article number.',
       description: 'The complete, current text of the Constitution as published by the Legislative Department, with amendments incorporated. Every Article, Part and Schedule in its exact official wording — the source GovOS uses to write and check its own polity questions.',
@@ -2353,6 +2360,7 @@ export const UPSC_CSE_EXAM: Exam = {
   crucialEligibilityDate: '2026-08-01',
   minimumQualification: 'GRADUATION',
   careerFields: ['Civil Services & Governance', 'Government Job'],
+  categoryTag: 'CIVIL_SERVICES',
   isGoldenJourney: false,
   isDemoData: false,
   overviewDescription: 'The Civil Services Examination (CSE) is a premier nationwide competitive examination conducted by UPSC for recruitment to higher Civil Services of the Government of India, including IAS, IFS, IPS, and IRS.',
@@ -2643,15 +2651,15 @@ export const UPSC_CSE_EXAM: Exam = {
   resources: [
     {
       id: 'res-upsc-notif',
-      title: 'UPSC CSE 2026 Official Gazette Notification',
+      title: 'UPSC CSE 2026 Examination Portal & Official Notices',
       subject: 'Official Gazette',
       author: 'UPSC Examination Branch',
-      type: 'OFFICIAL_PDF',
-      resourceFormat: 'DIRECT_PDF',
-      url: 'https://upsc.gov.in',
-      description: 'The authoritative official notification covering rules, posts, and complete syllabus.',
-      recommendedFor: 'Mandatory reading for all civil services aspirants.',
-      officialTag: 'OFFICIAL UPSC GAZETTE'
+      type: 'OFFICIAL_PORTAL',
+      resourceFormat: 'OFFICIAL_PORTAL',
+      url: 'https://upsc.gov.in/examinations/active-exams',
+      description: 'The authoritative official examination portal covering active examinations, official notification notices, rules, and syllabi directly from UPSC.',
+      recommendedFor: 'Mandatory portal for all civil services aspirants to access official notices and application links.',
+      officialTag: 'OFFICIAL UPSC EXAMINATION PORTAL'
     }
   ],
   faqs: [
@@ -2734,6 +2742,7 @@ export const IBPS_PO_EXAM: Exam = {
   crucialEligibilityDate: '2026-08-01',
   minimumQualification: 'GRADUATION',
   careerFields: ['Banking & Financial Sector', 'Government Job'],
+  categoryTag: 'BANKING',
   isGoldenJourney: false,
   isDemoData: false,
   overviewDescription: 'Common Recruitment Process for selection of Probationary Officers / Management Trainees across 11 participating public sector banks including PNB, Bank of Baroda, Canara Bank, and Union Bank of India.',
@@ -3016,15 +3025,15 @@ export const IBPS_PO_EXAM: Exam = {
   resources: [
     {
       id: 'res-ibps-guide',
-      title: 'IBPS CRP PO/MT-XVI Official Handbook',
+      title: 'IBPS CRP PO/MT Official Recruitment Portal',
       subject: 'Official Gazette',
       author: 'IBPS Central Recruitment Division',
-      type: 'OFFICIAL_PDF',
-      resourceFormat: 'DIRECT_PDF',
-      url: 'https://ibps.in',
-      description: 'Official brochure containing participating banks vacancy charts and exam patterns.',
+      type: 'OFFICIAL_PORTAL',
+      resourceFormat: 'OFFICIAL_PORTAL',
+      url: 'https://www.ibps.in',
+      description: 'The official IBPS portal hosting genuine CRP PO/MT recruitment notices, participating bank vacancies, and candidate guidelines.',
       recommendedFor: 'Banking aspirants targeting Scale-I PO recruitments.',
-      officialTag: 'OFFICIAL IBPS BROCHURE'
+      officialTag: 'OFFICIAL IBPS PORTAL'
     }
   ],
   faqs: [
@@ -3071,7 +3080,626 @@ export const IBPS_PO_EXAM: Exam = {
   ]
 };
 
-export const ALL_EXAMS: Exam[] = [SSC_CGL_EXAM, UPSC_CSE_EXAM, IBPS_PO_EXAM];
+// ============================================================================
+// APPSC GROUP-I & GROUP-II SERVICES (STATE CIVIL SERVICES) 2026
+// ============================================================================
+
+const appscProvenance: DataProvenance = {
+  id: 'prov-appsc-01',
+  documentTitle: 'APPSC Group-I & Group-II Services General Recruitment Notification 2026',
+  officialUrl: 'https://psc.ap.gov.in',
+  pageNumber: 1,
+  clauseNumber: 'Notification No. 12/2026',
+  publishedDate: '2026-01-10',
+  verifiedDate: '2026-01-12',
+  verifiedBy: 'Senior State Verification Officer #404',
+  taxonomyType: 'FACT',
+  verificationLevel: 'OFFICIALLY_VERIFIED',
+  excerptText: 'Andhra Pradesh Public Service Commission invites online applications for executive posts in Group-I and Group-II Services from eligible graduates.'
+};
+
+export const APPSC_GROUP1_EXAM: Exam = {
+  id: 'exam-appsc-group1-2026',
+  code: 'APPSC_GROUP1_2026',
+  title: 'APPSC Group-I Services Examination 2026',
+  authorityName: 'Andhra Pradesh Public Service Commission (APPSC)',
+  officialDomain: 'https://psc.ap.gov.in',
+  crucialEligibilityDate: '2026-07-01',
+  minimumQualification: 'GRADUATION',
+  careerFields: ['State Public Services', 'Civil Services & Governance', 'Government Job'],
+  categoryTag: 'STATE_PSC',
+  isGoldenJourney: false,
+  isDemoData: false,
+  overviewDescription: 'Premier State Civil Services examination in Andhra Pradesh recruiting for top administrative leadership posts including Deputy Collector, DSP, Commercial Tax Officer, and Regional Transport Officer.',
+  vacanciesTotal: '89 (Direct Recruitment)',
+  posts: [
+    {
+      id: 'post-appsc-deputy-collector',
+      postName: 'Deputy Collector (Civil Services Executive)',
+      department: 'Revenue Department (Andhra Pradesh)',
+      payLevel: 'Scale ₹61,960 - ₹1,51,990',
+      payScale: '₹61,960 – ₹1,51,990',
+      classification: 'Group A (Gazetted)',
+      minAge: 18,
+      maxAge: 42,
+      natureOfWork: 'District administration, revenue collection, law & order coordination, and disaster management.',
+      provenance: appscProvenance
+    },
+    {
+      id: 'post-appsc-dsp',
+      postName: 'Deputy Superintendent of Police (DSP - Category 2)',
+      department: 'Home (Police) Department',
+      payLevel: 'Scale ₹61,960 - ₹1,51,990',
+      payScale: '₹61,960 – ₹1,51,990',
+      classification: 'Group A (Gazetted)',
+      minAge: 21,
+      maxAge: 30,
+      physicalRequired: true,
+      physicalNote: 'Height: Male 167.6 cm, Female 152.5 cm. Chest: 86.3 cm with 5 cm expansion.',
+      natureOfWork: 'Sub-divisional police administration, crime supervision, and public security maintenance.',
+      provenance: appscProvenance
+    },
+    {
+      id: 'post-appsc-cto',
+      postName: 'Commercial Tax Officer (CTO)',
+      department: 'Commercial Taxes Department',
+      payLevel: 'Scale ₹61,960 - ₹1,51,990',
+      payScale: '₹61,960 – ₹1,51,990',
+      classification: 'Group A (Gazetted)',
+      minAge: 18,
+      maxAge: 42,
+      natureOfWork: 'State GST assessments, enforcement, tax audits, and revenue collection.',
+      provenance: appscProvenance
+    }
+  ],
+  dates: [
+    {
+      id: 'date-appsc1-notif',
+      type: 'NOTIFICATION',
+      label: 'Official Group-I Notification Release',
+      dateTimeStr: '2026-01-10 10:00:00',
+      timezone: 'Asia/Kolkata (IST)',
+      isTentative: false,
+      status: 'AVAILABLE',
+      provenance: appscProvenance
+    },
+    {
+      id: 'date-appsc1-app-close',
+      type: 'APPLICATION_CLOSE',
+      label: 'Application Window Closing Date',
+      dateTimeStr: '2026-02-28 23:59:00',
+      timezone: 'Asia/Kolkata (IST)',
+      isTentative: false,
+      status: 'AVAILABLE',
+      provenance: appscProvenance
+    },
+    {
+      id: 'date-appsc1-prelims',
+      type: 'EXAM_TIER1',
+      label: 'Preliminary Screening Test (Objective CBT)',
+      dateTimeStr: '2026-04-19 10:00:00',
+      timezone: 'Asia/Kolkata (IST)',
+      isTentative: false,
+      status: 'AVAILABLE',
+      provenance: appscProvenance
+    },
+    {
+      id: 'date-appsc1-mains',
+      type: 'EXAM_TIER2',
+      label: 'Main Written Examination (Descriptive)',
+      dateTimeStr: '2026-09-15 09:00:00',
+      timezone: 'Asia/Kolkata (IST)',
+      isTentative: true,
+      status: 'AVAILABLE',
+      provenance: appscProvenance
+    }
+  ],
+  globalRuleGroup: {
+    id: 'rg-appsc1-global',
+    operator: 'AND',
+    rules: [
+      {
+        id: 'rule-appsc1-age-min',
+        ruleType: 'AGE_MIN',
+        operator: '>=',
+        ruleValue: 18,
+        category: 'GENERAL',
+        provenance: appscProvenance
+      },
+      {
+        id: 'rule-appsc1-age-max',
+        ruleType: 'AGE_MAX',
+        operator: '<=',
+        ruleValue: 42,
+        category: 'GENERAL',
+        provenance: appscProvenance
+      },
+      {
+        id: 'rule-appsc1-deg',
+        ruleType: 'DEGREE_REQUIRED',
+        operator: '=',
+        ruleValue: ['Bachelor Degree', 'Graduation', 'B.Tech', 'B.Sc', 'B.Com', 'B.A'],
+        category: 'GENERAL',
+        provenance: appscProvenance
+      }
+    ]
+  },
+  stages: [
+    {
+      id: 'stage-appsc1-pre',
+      stageNumber: 1,
+      stageName: 'Preliminary Screening Test (Objective Type CBT)',
+      tier: 'TIER_1',
+      durationMinutes: 120,
+      totalQuestions: 120,
+      totalMarks: 120,
+      negativeMarking: '-0.33 marks per incorrect response (1/3rd penalty)',
+      mode: 'Online CBT / OMR based Screening Test',
+      qualifyingNature: 'Shortlisting for Mains examination (1:50 ratio).',
+      sections: [
+        {
+          sectionName: 'General Studies & Mental Ability',
+          modules: ['Indian History & Geography', 'Polity & Constitution', 'Indian & AP Economy', 'Science & Technology', 'Mental Ability & Data Interpretation'],
+          questions: 120,
+          marks: 120,
+          durationMinutes: 120,
+          negativeMarking: '-0.33'
+        }
+      ],
+      provenance: appscProvenance
+    },
+    {
+      id: 'stage-appsc1-mains',
+      stageNumber: 2,
+      stageName: 'Main Written Examination (Conventional Descriptive Papers)',
+      tier: 'TIER_2',
+      durationMinutes: 900,
+      totalQuestions: 35,
+      totalMarks: 750,
+      negativeMarking: 'No negative marking in descriptive papers',
+      mode: 'Offline Pen-and-Paper Descriptive Examination',
+      qualifyingNature: 'Marks counted for Interview shortlisting and final merit list.',
+      sections: [
+        {
+          sectionName: 'General Essay, History & Geography, Polity & Law, Economy, Science & Technology',
+          modules: ['Paper I: General Essay', 'Paper II: History & AP Culture', 'Paper III: Indian Constitution & Governance', 'Paper IV: Economy & Development', 'Paper V: Science, Technology & Environment'],
+          questions: 35,
+          marks: 750,
+          durationMinutes: 900,
+          negativeMarking: 'None'
+        }
+      ],
+      provenance: appscProvenance
+    }
+  ],
+  syllabus: [
+    {
+      id: 'syl-appsc1-gs',
+      subject: 'General Awareness',
+      tier: 'TIER_1',
+      topicName: 'Indian Polity, Governance & AP Reorganisation Act',
+      weightagePercentage: 35,
+      avgQuestions: 40,
+      isHighYield: true,
+      officialProvenance: appscProvenance
+    },
+    {
+      id: 'syl-appsc1-econ',
+      subject: 'General Awareness',
+      tier: 'TIER_1',
+      topicName: 'Indian Economy & AP Socio-Economic Survey',
+      weightagePercentage: 35,
+      avgQuestions: 40,
+      isHighYield: true,
+      officialProvenance: appscProvenance
+    },
+    {
+      id: 'syl-appsc1-reason',
+      subject: 'Reasoning & General Intelligence',
+      tier: 'TIER_1',
+      topicName: 'Mental Ability, Logical Reasoning & Data Interpretation',
+      weightagePercentage: 30,
+      avgQuestions: 40,
+      isHighYield: true,
+      officialProvenance: appscProvenance
+    }
+  ],
+  practiceQuestions: [
+    {
+      id: 'q-appsc1-01',
+      topicId: 'syl-appsc1-gs',
+      subject: 'General Awareness',
+      topicName: 'Indian Polity & Governance',
+      tier: 'TIER_1',
+      shiftInfo: 'APPSC Group-I Prelims 2024',
+      questionType: 'OFFICIAL_PYQ',
+      questionText: 'Under which Article of the Constitution of India is the Finance Commission of India constituted?',
+      options: [
+        { id: 0, text: 'Article 280' },
+        { id: 1, text: 'Article 324' },
+        { id: 2, text: 'Article 312' },
+        { id: 3, text: 'Article 356' }
+      ],
+      correctOptionIndex: 0,
+      explanation: 'Article 280 provides for the constitution of the Finance Commission by the President of India every fifth year.',
+      difficulty: 'MEDIUM',
+      provenance: appscProvenance
+    }
+  ],
+  corrigendums: [],
+  cutoffsHistory: [
+    {
+      year: 2024,
+      category: 'General (UR)',
+      tier1Cutoff: 84.50,
+      provenance: appscProvenance
+    }
+  ],
+  resources: [
+    {
+      id: 'res-appsc1-portal',
+      title: 'APPSC Group-I Official Information Portal',
+      subject: 'Official Gazette',
+      author: 'APPSC Recruitment Board',
+      type: 'OFFICIAL_PORTAL',
+      resourceFormat: 'OFFICIAL_PORTAL',
+      url: 'https://psc.ap.gov.in',
+      description: 'Official portal for APPSC notifications, web notes, syllabus PDFs, and OTR registration.',
+      recommendedFor: 'Essential primary portal for AP State Civil Services candidates.',
+      officialTag: 'OFFICIAL STATE COMMISSION'
+    }
+  ],
+  faqs: [
+    {
+      id: 'faq-appsc1-01',
+      question: 'What is the upper age limit for General category in APPSC Group-I?',
+      answer: 'The upper age limit is 42 years for General category candidates (except for DSP which has a maximum age of 30 years). Age relaxations apply for reserved categories.',
+      officialClause: 'Para 5, Age Concessions',
+      provenance: appscProvenance
+    }
+  ],
+  applicationGuide: {
+    officialPortal: 'https://psc.ap.gov.in',
+    otrSteps: [
+      {
+        stepNumber: 1,
+        title: 'One Time Profile Registration (OTPR)',
+        portalUrl: 'https://psc.ap.gov.in',
+        instructions: ['Register OTPR with Aadhaar verification', 'Fill personal and educational credentials', 'Generate APPSC OTPR ID'],
+        mandatoryFields: ['Full Name', 'DoB', 'Aadhaar UID', 'Mobile', 'Email'],
+        commonMistakesToAvoid: ['Incorrect district local candidature declaration']
+      }
+    ],
+    photoRules: {
+      documentType: 'Photograph',
+      dimensions: '3.5 cm x 4.5 cm',
+      fileFormat: 'JPG / JPEG',
+      fileSize: '50 KB max',
+      rules: ['Recent colour photo taken against light background'],
+      sampleDescription: 'Front face clear passport photo'
+    },
+    signatureRules: {
+      documentType: 'Signature',
+      dimensions: '3.5 cm x 1.5 cm',
+      fileFormat: 'JPG / JPEG',
+      fileSize: '30 KB max',
+      rules: ['Black ink on white paper'],
+      sampleDescription: 'Signature in running handwriting'
+    },
+    certificateRules: [],
+    rejectionPitfalls: []
+  },
+  roadmapTracks: [
+    {
+      id: 'TRACK_180_DAYS',
+      name: '6-Month APPSC Group-I Integrated Pathway',
+      subtitle: 'Integrated Prelims-cum-Mains state administration syllabus schedule',
+      targetDailyHours: 7,
+      suitableFor: 'Aspirants targeting Andhra Pradesh Administrative Leadership (Group-I)',
+      phases: [],
+      dailyTimetable: []
+    }
+  ]
+};
+
+export const APPSC_GROUP2_EXAM: Exam = {
+  id: 'exam-appsc-group2-2026',
+  code: 'APPSC_GROUP2_2026',
+  title: 'APPSC Group-II Services Examination 2026',
+  authorityName: 'Andhra Pradesh Public Service Commission (APPSC)',
+  officialDomain: 'https://psc.ap.gov.in',
+  crucialEligibilityDate: '2026-07-01',
+  minimumQualification: 'GRADUATION',
+  careerFields: ['State Public Services', 'Civil Services & Governance', 'Government Job'],
+  categoryTag: 'STATE_PSC',
+  isGoldenJourney: false,
+  isDemoData: false,
+  overviewDescription: 'Recruitment examination for Group-II Executive and Non-Executive positions in Andhra Pradesh State Subordinate Services including Municipal Commissioner, Sub-Registrar, and Assistant Section Officer (ASO).',
+  vacanciesTotal: '897 (Executive & Non-Executive)',
+  posts: [
+    {
+      id: 'post-appsc-municipal-commissioner',
+      postName: 'Municipal Commissioner Grade-III',
+      department: 'Municipal Administration & Urban Development',
+      payLevel: 'Scale ₹40,970 - ₹1,24,380',
+      payScale: '₹40,970 – ₹1,24,380',
+      classification: 'Group B (Non-Gazetted)',
+      minAge: 18,
+      maxAge: 42,
+      natureOfWork: 'Urban local body civic governance, municipal works, and public sanitation administration.',
+      provenance: appscProvenance
+    },
+    {
+      id: 'post-appsc-sub-registrar',
+      postName: 'Sub-Registrar Grade-II',
+      department: 'Registration & Stamps Department',
+      payLevel: 'Scale ₹40,970 - ₹1,24,380',
+      payScale: '₹40,970 – ₹1,24,380',
+      classification: 'Group B (Non-Gazetted)',
+      minAge: 20,
+      maxAge: 42,
+      natureOfWork: 'Property registration, stamp duty collection, and document registration supervision.',
+      provenance: appscProvenance
+    },
+    {
+      id: 'post-appsc-aso-sec',
+      postName: 'Assistant Section Officer (Secretariat ASO)',
+      department: 'AP Secretariat Subordinate Service',
+      payLevel: 'Scale ₹34,580 - ₹1,07,210',
+      payScale: '₹34,580 – ₹1,07,210',
+      classification: 'Group B (Non-Gazetted)',
+      minAge: 18,
+      maxAge: 42,
+      natureOfWork: 'Secretariat executive file processing, government orders formulation, and ministerial documentation.',
+      provenance: appscProvenance
+    }
+  ],
+  dates: [
+    {
+      id: 'date-appsc2-notif',
+      type: 'NOTIFICATION',
+      label: 'Official Group-II Notification Release',
+      dateTimeStr: '2026-01-15 10:00:00',
+      timezone: 'Asia/Kolkata (IST)',
+      isTentative: false,
+      status: 'AVAILABLE',
+      provenance: appscProvenance
+    },
+    {
+      id: 'date-appsc2-app-close',
+      type: 'APPLICATION_CLOSE',
+      label: 'Application Window Closing Date',
+      dateTimeStr: '2026-03-05 23:59:00',
+      timezone: 'Asia/Kolkata (IST)',
+      isTentative: false,
+      status: 'AVAILABLE',
+      provenance: appscProvenance
+    },
+    {
+      id: 'date-appsc2-prelims',
+      type: 'EXAM_TIER1',
+      label: 'Preliminary Screening Test (Objective CBT - 150 Mins)',
+      dateTimeStr: '2026-05-05 10:00:00',
+      timezone: 'Asia/Kolkata (IST)',
+      isTentative: false,
+      status: 'AVAILABLE',
+      provenance: appscProvenance
+    },
+    {
+      id: 'date-appsc2-mains',
+      type: 'EXAM_TIER2',
+      label: 'Main Examination (Objective CBT - 2 Papers, 300 Marks)',
+      dateTimeStr: '2026-10-20 09:30:00',
+      timezone: 'Asia/Kolkata (IST)',
+      isTentative: true,
+      status: 'AVAILABLE',
+      provenance: appscProvenance
+    }
+  ],
+  globalRuleGroup: {
+    id: 'rg-appsc2-global',
+    operator: 'AND',
+    rules: [
+      {
+        id: 'rule-appsc2-age-min',
+        ruleType: 'AGE_MIN',
+        operator: '>=',
+        ruleValue: 18,
+        category: 'GENERAL',
+        provenance: appscProvenance
+      },
+      {
+        id: 'rule-appsc2-age-max',
+        ruleType: 'AGE_MAX',
+        operator: '<=',
+        ruleValue: 42,
+        category: 'GENERAL',
+        provenance: appscProvenance
+      },
+      {
+        id: 'rule-appsc2-deg',
+        ruleType: 'DEGREE_REQUIRED',
+        operator: '=',
+        ruleValue: ['Bachelor Degree', 'Graduation', 'B.Tech', 'B.Sc', 'B.Com', 'B.A', 'BCA'],
+        category: 'GENERAL',
+        provenance: appscProvenance
+      }
+    ]
+  },
+  stages: [
+    {
+      id: 'stage-appsc2-pre',
+      stageNumber: 1,
+      stageName: 'Preliminary Examination (Screening CBT - 150 Questions, 150 Marks)',
+      tier: 'TIER_1',
+      durationMinutes: 150,
+      totalQuestions: 150,
+      totalMarks: 150,
+      negativeMarking: '-0.33 marks per wrong answer (1/3rd penalty)',
+      mode: 'Online CBT Examination',
+      qualifyingNature: 'Shortlisting for Mains (1:50 ratio).',
+      sections: [
+        {
+          sectionName: 'General Studies & Mental Ability',
+          modules: ['Indian History (30Q)', 'Geography (30Q)', 'Indian Society (30Q)', 'Current Affairs (30Q)', 'Mental Ability (30Q)'],
+          questions: 150,
+          marks: 150,
+          durationMinutes: 150,
+          negativeMarking: '-0.33'
+        }
+      ],
+      provenance: appscProvenance
+    },
+    {
+      id: 'stage-appsc2-mains',
+      stageNumber: 2,
+      stageName: 'Main Examination (Objective CBT - 2 Papers, 300 Marks)',
+      tier: 'TIER_2',
+      durationMinutes: 300,
+      totalQuestions: 300,
+      totalMarks: 300,
+      negativeMarking: '-0.33 marks per wrong answer in objective questions',
+      mode: 'Online CBT Examination',
+      qualifyingNature: 'Marks counted for final selection & post ranking.',
+      sections: [
+        {
+          sectionName: 'Paper I: Social History of AP & Indian Constitution',
+          modules: ['Social & Cultural History of AP', 'Overview of Indian Constitution & Amendments'],
+          questions: 150,
+          marks: 150,
+          durationMinutes: 150,
+          negativeMarking: '-0.33'
+        },
+        {
+          sectionName: 'Paper II: Indian & AP Economy, Science & Technology',
+          modules: ['Structure of Indian Economy & Planning', 'AP Economy & Resources', 'Science & Technology Ecosystem'],
+          questions: 150,
+          marks: 150,
+          durationMinutes: 150,
+          negativeMarking: '-0.33'
+        }
+      ],
+      provenance: appscProvenance
+    }
+  ],
+  syllabus: [
+    {
+      id: 'syl-appsc2-hist-const',
+      subject: 'General Awareness',
+      tier: 'TIER_1',
+      topicName: 'Social History of AP & Indian Constitution',
+      weightagePercentage: 50,
+      avgQuestions: 150,
+      isHighYield: true,
+      officialProvenance: appscProvenance
+    },
+    {
+      id: 'syl-appsc2-econ-sci',
+      subject: 'General Awareness',
+      tier: 'TIER_1',
+      topicName: 'Indian & AP Economy, Science & Technology',
+      weightagePercentage: 50,
+      avgQuestions: 150,
+      isHighYield: true,
+      officialProvenance: appscProvenance
+    }
+  ],
+  practiceQuestions: [
+    {
+      id: 'q-appsc2-01',
+      topicId: 'syl-appsc2-hist-const',
+      subject: 'General Awareness',
+      topicName: 'Social History of AP & Indian Constitution',
+      tier: 'TIER_1',
+      shiftInfo: 'APPSC Group-II Prelims 2024',
+      questionType: 'OFFICIAL_PYQ',
+      questionText: 'Which Constitutional Amendment Act introduced the 103rd Amendment providing 10% reservation for Economically Weaker Sections (EWS)?',
+      options: [
+        { id: 0, text: '101st Amendment Act' },
+        { id: 1, text: '102nd Amendment Act' },
+        { id: 2, text: '103rd Amendment Act' },
+        { id: 3, text: '104th Amendment Act' }
+      ],
+      correctOptionIndex: 2,
+      explanation: 'The 103rd Constitutional Amendment Act, 2019 introduced Article 15(6) and 16(6) providing up to 10% reservation for Economically Weaker Sections (EWS).',
+      difficulty: 'MEDIUM',
+      provenance: appscProvenance
+    }
+  ],
+  corrigendums: [],
+  cutoffsHistory: [
+    {
+      year: 2024,
+      category: 'General (UR)',
+      tier1Cutoff: 92.25,
+      provenance: appscProvenance
+    }
+  ],
+  resources: [
+    {
+      id: 'res-appsc2-guide',
+      title: 'APPSC Group-II Official Syllabus & Scheme Handbook',
+      subject: 'Official Gazette',
+      author: 'APPSC Executive Commission',
+      type: 'OFFICIAL_PORTAL',
+      resourceFormat: 'OFFICIAL_PORTAL',
+      url: 'https://psc.ap.gov.in',
+      description: 'Authoritative scheme of examination and syllabus for Group-II executive and non-executive posts.',
+      recommendedFor: 'All APPSC Group-II executive aspirants.',
+      officialTag: 'OFFICIAL STATE COMMISSION'
+    }
+  ],
+  faqs: [
+    {
+      id: 'faq-appsc2-01',
+      question: 'Is there negative marking in APPSC Group-II Examination?',
+      answer: 'Yes, for each wrong answer in objective multiple-choice questions, one-third (1/3rd or 0.33) of the marks assigned to that question are deducted as penalty.',
+      officialClause: 'Para 4, Scheme of Examination',
+      provenance: appscProvenance
+    }
+  ],
+  applicationGuide: {
+    officialPortal: 'https://psc.ap.gov.in',
+    otrSteps: [],
+    photoRules: {
+      documentType: 'Photograph',
+      dimensions: '3.5 cm x 4.5 cm',
+      fileFormat: 'JPG / JPEG',
+      fileSize: '50 KB max',
+      rules: ['Recent colour photo with clear face visibility'],
+      sampleDescription: 'Passport photo'
+    },
+    signatureRules: {
+      documentType: 'Signature',
+      dimensions: '3.5 cm x 1.5 cm',
+      fileFormat: 'JPG / JPEG',
+      fileSize: '30 KB max',
+      rules: ['Black ink on white paper'],
+      sampleDescription: 'Clear signature'
+    },
+    certificateRules: [],
+    rejectionPitfalls: []
+  },
+  roadmapTracks: [
+    {
+      id: 'TRACK_90_DAYS',
+      name: '90-Day APPSC Group-II Fast-Track Roadmap',
+      subtitle: 'Targeted syllabus coverage and daily objective question practice',
+      targetDailyHours: 6,
+      suitableFor: 'Graduates aiming for Municipal Commissioner & ASO posts',
+      phases: [],
+      dailyTimetable: []
+    }
+  ]
+};
+
+export const ALL_EXAMS: Exam[] = [
+  SSC_CGL_EXAM,
+  UPSC_CSE_EXAM,
+  IBPS_PO_EXAM,
+  APPSC_GROUP1_EXAM,
+  APPSC_GROUP2_EXAM
+];
 
 
 // ==========================================================================
@@ -5619,7 +6247,7 @@ export function parseTestRequest(query: string): ParsedTestRequest {
   const unrecognised: string[] = [];
   if (topics.length === 0) {
     const m = lower.match(/\b(?:on|about|of|for|in|regarding)\s+([a-z][a-z\s&-]{2,40}?)(?=\s+(?:questions?|qs|test|drill|mock|quiz|\d)|[.,!?]|$)/);
-    if (m && m[1].trim() && !SUBJECT_ALIASES.some(sa => sa.aliases.some(a => m[1].includes(a)))) unrecognised.push(m[1].trim());
+    if (m && m[1].trim() && !SUBJECT_ALIASES.some(sa => sa.aliases.some(a => containsAlias(m[1], a)))) unrecognised.push(m[1].trim());
   }
 
   return { subjects, topics, numQuestions, difficulty, durationMinutes, focusGoal: /\bweak/.test(lower) ? 'WEAK_AREAS' : 'GENERAL', unrecognised };

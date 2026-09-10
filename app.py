@@ -236,6 +236,26 @@ def init_database():
         )
     ''')
 
+    # 13. Candidate Behavioral Interactions (Time-Decayed BPR)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS user_interactions (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            type TEXT NOT NULL,
+            target_id TEXT NOT NULL,
+            target_type TEXT NOT NULL,
+            exam_id TEXT,
+            category_tag TEXT,
+            timestamp INTEGER NOT NULL,
+            metadata_json TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_user_interactions_user_time 
+        ON user_interactions(user_id, timestamp DESC)
+    ''')
+
     conn.commit()
     conn.close()
     print(f"[SQLite] Database initialized at: {DB_FILE}")
@@ -860,6 +880,78 @@ def mark_notification_read():
     conn.commit()
     conn.close()
     return jsonify({"status": "marked_read", "user_id": user_id, "notification_id": notif_id})
+
+
+@app.route('/api/sqlite/interactions', methods=['GET'])
+def get_user_interactions():
+    user_id = request.args.get('user_id', 'default-candidate')
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT id, user_id, type, target_id, target_type, exam_id, category_tag, timestamp, metadata_json
+        FROM user_interactions
+        WHERE user_id = ?
+        ORDER BY timestamp DESC
+        LIMIT 100
+    ''', (user_id,))
+    rows = cursor.fetchall()
+    conn.close()
+    items = []
+    for r in rows:
+        meta = None
+        if r['metadata_json']:
+            try:
+                meta = json.loads(r['metadata_json'])
+            except:
+                meta = None
+        items.append({
+            'id': r['id'],
+            'type': r['type'],
+            'targetId': r['target_id'],
+            'targetType': r['target_type'],
+            'examId': r['exam_id'],
+            'categoryTag': r['category_tag'],
+            'timestamp': r['timestamp'],
+            'metadata': meta
+        })
+    return jsonify({'interactions': items})
+
+
+@app.route('/api/sqlite/interactions', methods=['POST'])
+def save_user_interaction():
+    data = request.get_json(silent=True) or {}
+    user_id = data.get('user_id') or request.args.get('user_id', 'default-candidate')
+    event_id = data.get('id') or f"act-{int(time.time()*1000)}"
+    ev_type = data.get('type') or 'VIEW'
+    target_id = data.get('targetId') or data.get('target_id') or ''
+    target_type = data.get('targetType') or data.get('target_type') or 'EXAM'
+    exam_id = data.get('examId') or data.get('exam_id')
+    category_tag = data.get('categoryTag') or data.get('category_tag')
+    timestamp = data.get('timestamp') or int(time.time() * 1000)
+    meta_json = json.dumps(data.get('metadata')) if data.get('metadata') else None
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT OR REPLACE INTO user_interactions
+        (id, user_id, type, target_id, target_type, exam_id, category_tag, timestamp, metadata_json)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (event_id, user_id, ev_type, target_id, target_type, exam_id, category_tag, timestamp, meta_json))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True, 'id': event_id}), 201
+
+
+@app.route('/api/sqlite/interactions', methods=['DELETE'])
+def clear_user_interactions():
+    user_id = request.args.get('user_id', 'default-candidate')
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM user_interactions WHERE user_id = ?', (user_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True, 'cleared_for': user_id})
+
 
 # =============================================================================
 # Live Source Research pipeline (Tavily)
