@@ -117,6 +117,33 @@ struck-through with a corrigendum badge. **This provenance chain is the product'
   lessons", and the rule that the SSC notice governs where they disagree. Channel identity
   was confirmed by fetching each channel page, not assumed from memory. PRS Legislative
   Research is listed the same way: useful, widely cited, not official.
+- **The library is not static.** Four things refresh on the server without a code edit
+  (see `app.py` → "Live resources"):
+  1. **SSC's own notice board**, read from the portal's public API
+     (`ssc.gov.in/api/general-website/portal/notice-boards` with the site's own attribute list;
+     attachments become `ssc.gov.in/api/attachment/<path>` links). Shown as a "Latest from SSC's
+     notice board" shelf at the top of the SSC library, CGL-filtered by headline with an
+     "All SSC notices" toggle. Official by construction — it is SSC's board — so it carries a
+     LIVE · OFFICIAL badge and the fetch time. Cached 6 h.
+  2. **Channel uploads** from each YouTube channel's public Atom feed
+     (`youtube.com/feeds/videos.xml?channel_id=UC…`, no API key). The three newest appear on
+     the channel card with the fetch time. Cached 6 h per channel.
+  3. **Link health on a schedule.** The library registers its URLs on load
+     (`POST /api/resources/health/sync`); a daemon thread re-checks anything older than 12 h and
+     stores results in `resource_link_health`, so badges are current without clicking. New
+     URLs are checked in the background and the page re-polls once after 15 s. "Verify all
+     links now" forces a sweep (`/health/recheck`) and stores it for the next visitor.
+  4. **Verifier additions.** A PROMOTED research finding gets "Add to Resource Library" in the
+     Trust Panel (`POST /api/resources/additions`). It appears in the library immediately via
+     `additionToResource()`, labelled "ADDED <date> · VERIFIER-APPROVED FROM LIVE SOURCE
+     RESEARCH" with provenance naming the finding, and its link joins the health schedule.
+     `…/retire` hides it again. This is the only path by which research reaches candidates,
+     and it is a deliberate second click after Promote.
+  The background loop wakes hourly and refreshes only what is past its own interval, so
+  upstream sites are not hammered; a failed refresh keeps serving the last good copy and says
+  so (`stale`/`error`). Everything lives in three tables: `resource_link_health`,
+  `live_feed_cache`, `resource_additions`. The static list in `data.ts` remains the seed and
+  the fallback when the server is down.
 - **`YOUTUBE_CHANNEL` vs `YOUTUBE_COURSE`.** A channel has no single video to embed, so it
   opens on YouTube; only a `YOUTUBE_COURSE` with a real `youtubeEmbedId` plays in the reader.
   The player used to fall back to a hardcoded video id when the field was missing, which
@@ -196,6 +223,9 @@ Re-run it after touching a generator: copy it to `src/`, `npx esbuild src/__gen_
 - `researchService` — `getStatus`, `search(query, mode, examId?)`, `extract(urls, findingId?)`,
   `history`, `getFinding`, `setFindingStatus`. Returns a `ResearchOutcome<T>` discriminated
   union so the UI can render the setup notice on 503 instead of a generic error.
+- `resourceLiveService` — `healthSync`, `recheck`, `sscNotices`, `channelUploads`, `additions`,
+  `addResource`, `retireResource`, `status`. Every call swallows network errors and returns
+  null/empty, so the library degrades to its static seed when the server is down.
 
 ### `src/ui.tsx`
 All 20 components, ordered leaves-first so composites can reference them:
@@ -294,6 +324,13 @@ PDFs. API: `/api/sqlite/status`, `/profile`, `/progress`, `/mock-attempts`, `/sy
 threads, 10s timeout; classifies HEALTHY / REDIRECT / BLOCKED / BROKEN / UNREACHABLE.
 Only GET results are trusted, because several portals answer HEAD with 404).
 
+Live resources (`/api/resources/*`): `POST health/sync {urls}` (register + current health,
+background-checks new URLs) · `POST health/recheck {urls}` (immediate sweep, stored) ·
+`GET live/ssc-notices?scope=cgl|all&limit=N` · `GET live/channel-uploads?ids=UC…,UC…` ·
+`GET live/status` · `GET|POST additions` · `POST additions/<id>/retire`. Feeds are cached in
+`live_feed_cache` for 6 h, health in `resource_link_health` for 12 h; `_start_background_refresh()`
+runs the hourly daemon from `__main__`.
+
 Research pipeline (`/api/research/*`): `GET status` (configured?, run/pending counts,
 official domain list) · `POST search {query, mode, exam_id?, max_results?}` · `POST extract
 {urls, finding_id?}` · `GET history?limit` · `GET findings/<id>` · `POST findings/<id>/status`.
@@ -307,7 +344,8 @@ coaching sites alongside one ssc.gov.in notice — so `research_search` enforces
 server-side (only OFFICIAL-classified results are kept/stored) and returns `filteredOut`.
 The key lives in the gitignored `.env`; the user adds it themselves.
 
-Tables: `users`, `study_progress`, `research_runs`, `research_findings`, `mock_attempts` (with `details_json` holding
+Tables: `users`, `study_progress`, `research_runs`, `research_findings`, `resource_link_health`,
+`live_feed_cache`, `resource_additions`, `mock_attempts` (with `details_json` holding
 `userAnswers` + the whole `paperData`), `bookmarked_resources`, `candidate_notes`,
 `audit_reports`, `tracked_exams`, `notification_preferences`, `candidate_notifications`.
 `candidate_notes` has a schema but no endpoints and no frontend writers — harmless, but

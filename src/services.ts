@@ -17,7 +17,12 @@ import {
   NotificationPreference,
   PostRequirement,
   PostVerdict,
-  UserProfile
+  UserProfile,
+  ChannelUploadFeed,
+  LiveResourceStatus,
+  ResourceAddition,
+  ResourceHealthSync,
+  SscNoticeFeed
 } from './types';
 
 // ==========================================================================
@@ -1375,3 +1380,113 @@ export const researchService = {
   }
 };
 
+// ==========================================================================
+// Live resources — the Resource Library's server-refreshed parts
+// ==========================================================================
+export const resourceLiveService = {
+  /** Register the library's links for scheduled checking; returns what the server knows now. */
+  async healthSync(urls: string[]): Promise<ResourceHealthSync | null> {
+    try {
+      const res = await fetch('/api/resources/health/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ urls })
+      });
+      if (res.ok) return await res.json();
+    } catch {
+      // server offline: the library shows its last static verification dates instead
+    }
+    return null;
+  },
+
+  /** Force an immediate sweep; results are stored so the next visitor sees them too. */
+  async recheck(urls: string[]): Promise<ResourceLinkCheck[]> {
+    try {
+      const res = await fetch('/api/resources/health/recheck', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ urls })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.results)) return data.results;
+      }
+    } catch {
+      // caller shows "could not verify"
+    }
+    return [];
+  },
+
+  async sscNotices(scope: 'cgl' | 'all' = 'cgl', limit: number = 8): Promise<SscNoticeFeed | null> {
+    try {
+      const res = await fetch(`/api/resources/live/ssc-notices?scope=${scope}&limit=${limit}`);
+      if (res.ok) return await res.json();
+    } catch {
+      // server offline
+    }
+    return null;
+  },
+
+  async channelUploads(channelIds: string[]): Promise<Record<string, ChannelUploadFeed>> {
+    if (channelIds.length === 0) return {};
+    try {
+      const res = await fetch(`/api/resources/live/channel-uploads?ids=${encodeURIComponent(channelIds.join(','))}`);
+      if (res.ok) {
+        const data = await res.json();
+        return data.channels || {};
+      }
+    } catch {
+      // server offline
+    }
+    return {};
+  },
+
+  async additions(): Promise<ResourceAddition[]> {
+    try {
+      const res = await fetch('/api/resources/additions');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.additions)) return data.additions;
+      }
+    } catch {
+      // server offline
+    }
+    return [];
+  },
+
+  async addResource(payload: { title: string; url: string; subject?: string; resourceFormat?: string; author?: string; description?: string; findingId?: number; addedFrom?: string }): Promise<ResourceAddition | null> {
+    try {
+      const res = await fetch('/api/resources/additions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return data.addition || null;
+      }
+    } catch {
+      // server offline
+    }
+    return null;
+  },
+
+  async retireResource(id: string): Promise<boolean> {
+    try {
+      const res = await fetch(`/api/resources/additions/${encodeURIComponent(id)}/retire`, { method: 'POST' });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  },
+
+  async status(): Promise<LiveResourceStatus | null> {
+    try {
+      const res = await fetch('/api/resources/live/status');
+      if (res.ok) return await res.json();
+    } catch {
+      // server offline
+    }
+    return null;
+  }
+};

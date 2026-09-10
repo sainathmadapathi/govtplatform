@@ -3,7 +3,10 @@ import json
 import sqlite3
 import urllib.request
 import urllib.error
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlencode
+import threading
+import time
+import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from flask import Flask, send_from_directory, jsonify, request
@@ -199,6 +202,39 @@ def init_database():
             INSERT OR IGNORE INTO tracked_exams (user_id, exam_id)
             VALUES (?, ?)
         ''', ('default-candidate', 'exam-ssc-cgl-2026'))
+
+    # --- live resources: link health, feed caches, verifier-added entries ---
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS resource_link_health (
+            url TEXT PRIMARY KEY,
+            status TEXT NOT NULL DEFAULT 'PENDING',
+            http_code INTEGER DEFAULT 0,
+            checked_at TEXT
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS live_feed_cache (
+            cache_key TEXT PRIMARY KEY,
+            payload_json TEXT NOT NULL,
+            fetched_at TEXT NOT NULL,
+            error TEXT
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS resource_additions (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            url TEXT NOT NULL,
+            subject TEXT NOT NULL,
+            resource_format TEXT NOT NULL,
+            author TEXT,
+            description TEXT,
+            added_at TEXT NOT NULL,
+            added_from TEXT NOT NULL,
+            finding_id INTEGER,
+            retired INTEGER NOT NULL DEFAULT 0
+        )
+    ''')
 
     conn.commit()
     conn.close()
@@ -1157,6 +1193,340 @@ def research_finding_status(finding_id):
     return jsonify({"status": "updated", "finding_id": finding_id, "new_status": status})
 
 
+# =============================================================================
+# Live resources
+#
+# The Resource Library must not be a static list. Three things keep it current:
+#   1. SSC's own notice board, read from the portal's public API (official by construction);
+#   2. each YouTube channel's public upload feed (no API key);
+#   3. a scheduled re-check of every resource link, so health badges are always recent.
+# Plus verifier-added entries, so a promoted research finding can reach candidates without
+# a code edit. Everything is cached in SQLite and refreshed on a timer, so page loads are
+# fast and the upstream sites are not hammered.
+# =============================================================================
+
+FEED_MAX_AGE_SECONDS = 6 * 3600      # SSC notices and channel uploads
+HEALTH_MAX_AGE_SECONDS = 12 * 3600   # link re-check
+SSC_NOTICE_API = 'https://ssc.gov.in/api/general-website/portal/notice-boards'
+SSC_ATTACHMENT_BASE = 'https://ssc.gov.in/api/attachment/'
+_LIVE_UA = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36 GovOS-LiveFeed/1.0",
+    "Accept": "application/json, application/xml, text/xml, */*"
+}
+_health_lock = threading.Lock()
+_health_running = False
+
+
+def _now_iso():
+    return datetime.now().isoformat(timespec='seconds')
+
+
+def _age_seconds(iso_str):
+    try:
+        return (datetime.now() - datetime.fromisoformat(iso_str)).total_seconds()
+    except Exception:
+        return float('inf')
+
+
+def _cache_get(key, max_age):
+    conn = get_db_connection()
+    row = conn.execute('SELECT payload_json, fetched_at, error FROM live_feed_cache WHERE cache_key = ?', (key,)).fetchone()
+    conn.close()
+    if not row:
+        return None
+    return {"payload": json.loads(row["payload_json"]), "fetchedAt": row["fetched_at"], "error": row["error"],
+            "stale": _age_seconds(row["fetched_at"]) > max_age}
+
+
+def _cache_put(key, payload, error=None):
+    conn = get_db_connection()
+    conn.execute('INSERT OR REPLACE INTO live_feed_cache (cache_key, payload_json, fetched_at, error) VALUES (?, ?, ?, ?)',
+                 (key, json.dumps(payload), _now_iso(), error))
+    conn.commit()
+    conn.close()
+
+
+def _fetch_ssc_notices():
+    """Latest page of SSC's notice board, newest first, with each attachment as an absolute URL."""
+    params = {'page': 1, 'limit': 40, 'key': 'createdAt', 'order': 'DESC', 'isPaginationRequired': 'true',
+              'isAttachment': 'true', 'language': 'english',
+              'attributes': 'id,headline,examId,contentType,startDate,endDate,language,createdAt'}
+    req = urllib.request.Request(SSC_NOTICE_API + '?' + urlencode(params), headers=_LIVE_UA)
+    with urllib.request.urlopen(req, timeout=25) as resp:
+        data = json.loads(resp.read().decode('utf-8', 'ignore'))
+    items = []
+    for row in data.get('data') or []:
+        headline = ' '.join((row.get('headline') or '').split())
+        files = []
+        for att in row.get('attachments') or []:
+            path = (att.get('path') or '').replace('\\', '/')
+            if not path:
+                continue
+            files.append({"name": att.get('fileName') or path.rsplit('/', 1)[-1],
+                          "url": SSC_ATTACHMENT_BASE + path,
+                          "sizeKb": int((att.get('size') or 0) / 1024)})
+        low = headline.lower()
+        items.append({"id": row.get('id'), "headline": headline, "createdAt": (row.get('createdAt') or '')[:10],
+                      "files": files,
+                      "isCgl": 'combined graduate level' in low or 'cgl' in low})
+    return items
+
+
+def _fetch_channel_uploads(channel_id):
+    """Newest uploads from a YouTube channel's public Atom feed."""
+    req = urllib.request.Request(f'https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}', headers=_LIVE_UA)
+    with urllib.request.urlopen(req, timeout=20) as resp:
+        root = ET.fromstring(resp.read())
+    ns = {'a': 'http://www.w3.org/2005/Atom', 'yt': 'http://www.youtube.com/xml/schemas/2015'}
+    out = []
+    for entry in root.findall('a:entry', ns)[:4]:
+        vid = entry.findtext('yt:videoId', default='', namespaces=ns)
+        if not vid:
+            continue
+        out.append({"videoId": vid,
+                    "title": entry.findtext('a:title', default='', namespaces=ns),
+                    "published": entry.findtext('a:published', default='', namespaces=ns)[:10],
+                    "url": f'https://www.youtube.com/watch?v={vid}'})
+    return out
+
+
+def _ssc_notices_cached(force=False):
+    cached = _cache_get('ssc-notices', FEED_MAX_AGE_SECONDS)
+    if cached and not cached["stale"] and not force:
+        return cached
+    try:
+        items = _fetch_ssc_notices()
+        _cache_put('ssc-notices', items)
+        return {"payload": items, "fetchedAt": _now_iso(), "error": None, "stale": False}
+    except Exception as e:
+        # keep serving the last good copy, but say it is stale
+        if cached:
+            cached["error"] = f'refresh failed: {e}'
+            return cached
+        return {"payload": [], "fetchedAt": None, "error": str(e), "stale": True}
+
+
+def _channel_uploads_cached(channel_ids, force=False):
+    result = {}
+    to_fetch = []
+    for cid in channel_ids:
+        cached = _cache_get(f'yt-{cid}', FEED_MAX_AGE_SECONDS)
+        if cached and not cached["stale"] and not force:
+            result[cid] = {"items": cached["payload"], "fetchedAt": cached["fetchedAt"]}
+        else:
+            to_fetch.append((cid, cached))
+    if to_fetch:
+        def one(pair):
+            cid, cached = pair
+            try:
+                items = _fetch_channel_uploads(cid)
+                _cache_put(f'yt-{cid}', items)
+                return cid, {"items": items, "fetchedAt": _now_iso()}
+            except Exception as e:
+                if cached:
+                    return cid, {"items": cached["payload"], "fetchedAt": cached["fetchedAt"], "error": str(e)}
+                return cid, {"items": [], "fetchedAt": None, "error": str(e)}
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            for cid, val in pool.map(one, to_fetch):
+                result[cid] = val
+    return result
+
+
+def _health_rows(urls=None):
+    conn = get_db_connection()
+    if urls:
+        marks = ','.join('?' * len(urls))
+        rows = conn.execute(f'SELECT url, status, http_code, checked_at FROM resource_link_health WHERE url IN ({marks})', urls).fetchall()
+    else:
+        rows = conn.execute('SELECT url, status, http_code, checked_at FROM resource_link_health').fetchall()
+    conn.close()
+    return [{"url": r["url"], "status": r["status"], "httpCode": r["http_code"], "checkedAt": r["checked_at"]} for r in rows]
+
+
+def _store_health(results):
+    conn = get_db_connection()
+    for r in results:
+        conn.execute('INSERT OR REPLACE INTO resource_link_health (url, status, http_code, checked_at) VALUES (?, ?, ?, ?)',
+                     (r["url"], r["status"], r["httpCode"], r["checkedAt"]))
+    conn.commit()
+    conn.close()
+
+
+def _recheck_links(urls):
+    """Check a list of URLs and persist the results; guarded so only one sweep runs at a time."""
+    global _health_running
+    with _health_lock:
+        if _health_running:
+            return False
+        _health_running = True
+    try:
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            results = list(pool.map(_check_one_link, urls))
+        _store_health(results)
+        print(f"[LiveResources] link health: {len(results)} checked at {_now_iso()}")
+        return True
+    finally:
+        with _health_lock:
+            _health_running = False
+
+
+def _health_due():
+    """URLs never checked, or checked longer ago than the interval."""
+    rows = _health_rows()
+    return [r["url"] for r in rows if not r["checkedAt"] or _age_seconds(r["checkedAt"]) > HEALTH_MAX_AGE_SECONDS]
+
+
+def _background_refresh_loop():
+    time.sleep(20)  # let the server come up first
+    while True:
+        try:
+            due = _health_due()
+            if due:
+                _recheck_links(due[:80])
+            _ssc_notices_cached()
+            conn = get_db_connection()
+            keys = [r["cache_key"][3:] for r in conn.execute("SELECT cache_key FROM live_feed_cache WHERE cache_key LIKE 'yt-%'").fetchall()]
+            conn.close()
+            if keys:
+                _channel_uploads_cached(keys)
+        except Exception as e:
+            print(f"[LiveResources] background refresh error: {e}")
+        time.sleep(3600)  # re-evaluate hourly; each feed refreshes only once its own interval has passed
+
+
+def _start_background_refresh():
+    t = threading.Thread(target=_background_refresh_loop, name='govos-live-refresh', daemon=True)
+    t.start()
+
+
+@app.route('/api/resources/live/status', methods=['GET'])
+def live_resources_status():
+    ssc = _cache_get('ssc-notices', FEED_MAX_AGE_SECONDS)
+    rows = _health_rows()
+    checked = [r["checkedAt"] for r in rows if r["checkedAt"]]
+    return jsonify({
+        "sscFetchedAt": ssc["fetchedAt"] if ssc else None,
+        "healthLastRun": max(checked) if checked else None,
+        "healthTracked": len(rows),
+        "healthPending": len([r for r in rows if not r["checkedAt"]]),
+        "feedIntervalHours": FEED_MAX_AGE_SECONDS // 3600,
+        "healthIntervalHours": HEALTH_MAX_AGE_SECONDS // 3600
+    })
+
+
+@app.route('/api/resources/health/sync', methods=['POST'])
+def resource_health_sync():
+    """Register the library's URLs for scheduled checking and return what is known now.
+    New URLs are checked in the background; the client polls again shortly after."""
+    data = request.get_json(silent=True) or {}
+    urls = [u for u in (data.get('urls') or []) if isinstance(u, str) and u.startswith(('http://', 'https://'))][:120]
+    if not urls:
+        return jsonify({"error": "urls[] is required"}), 400
+    conn = get_db_connection()
+    for u in urls:
+        conn.execute('INSERT OR IGNORE INTO resource_link_health (url, status, http_code, checked_at) VALUES (?, ?, ?, ?)', (u, 'PENDING', 0, None))
+    conn.commit()
+    conn.close()
+    rows = _health_rows(urls)
+    pending = [r["url"] for r in rows if not r["checkedAt"]]
+    if pending and not _health_running:
+        threading.Thread(target=_recheck_links, args=(pending[:80],), daemon=True).start()
+    checked = [r["checkedAt"] for r in rows if r["checkedAt"]]
+    return jsonify({"results": [r for r in rows if r["checkedAt"]], "pending": len(pending),
+                    "lastRun": max(checked) if checked else None, "intervalHours": HEALTH_MAX_AGE_SECONDS // 3600})
+
+
+@app.route('/api/resources/health/recheck', methods=['POST'])
+def resource_health_recheck():
+    """Force an immediate sweep of the given URLs (the library's "Verify all links now")."""
+    data = request.get_json(silent=True) or {}
+    urls = [u for u in (data.get('urls') or []) if isinstance(u, str) and u.startswith(('http://', 'https://'))][:80]
+    if not urls:
+        return jsonify({"error": "urls[] is required"}), 400
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        results = list(pool.map(_check_one_link, urls))
+    _store_health(results)
+    return jsonify({"results": results, "checked": len(results)})
+
+
+@app.route('/api/resources/live/ssc-notices', methods=['GET'])
+def live_ssc_notices():
+    scope = (request.args.get('scope') or 'cgl').lower()
+    limit = max(1, min(40, int(request.args.get('limit') or 8)))
+    force = request.args.get('refresh') == '1'
+    cached = _ssc_notices_cached(force=force)
+    items = cached["payload"]
+    if scope == 'cgl':
+        items = [i for i in items if i["isCgl"]]
+    return jsonify({"items": items[:limit], "total": len(cached["payload"]), "scope": scope,
+                    "fetchedAt": cached["fetchedAt"], "stale": cached["stale"], "error": cached["error"],
+                    "source": "https://ssc.gov.in/notice-board", "intervalHours": FEED_MAX_AGE_SECONDS // 3600})
+
+
+@app.route('/api/resources/live/channel-uploads', methods=['GET'])
+def live_channel_uploads():
+    ids = [i.strip() for i in (request.args.get('ids') or '').split(',') if i.strip().startswith('UC')][:16]
+    if not ids:
+        return jsonify({"channels": {}})
+    return jsonify({"channels": _channel_uploads_cached(ids, force=request.args.get('refresh') == '1'),
+                    "intervalHours": FEED_MAX_AGE_SECONDS // 3600})
+
+
+def _addition_row(r):
+    return {"id": r["id"], "title": r["title"], "url": r["url"], "subject": r["subject"],
+            "resourceFormat": r["resource_format"], "author": r["author"], "description": r["description"],
+            "addedAt": r["added_at"], "addedFrom": r["added_from"], "findingId": r["finding_id"]}
+
+
+@app.route('/api/resources/additions', methods=['GET', 'POST'])
+def resource_additions():
+    if request.method == 'GET':
+        conn = get_db_connection()
+        rows = conn.execute('SELECT * FROM resource_additions WHERE retired = 0 ORDER BY added_at DESC').fetchall()
+        conn.close()
+        return jsonify({"additions": [_addition_row(r) for r in rows]})
+    data = request.get_json(silent=True) or {}
+    title = (data.get('title') or '').strip()
+    url = (data.get('url') or '').strip()
+    if not title or not url.startswith(('http://', 'https://')):
+        return jsonify({"error": "title and an http(s) url are required"}), 400
+    lower = url.lower()
+    fmt = data.get('resourceFormat') or ('DIRECT_PDF' if lower.endswith('.pdf') else 'OFFICIAL_PORTAL')
+    row = {
+        "id": f"add-{int(time.time() * 1000)}",
+        "title": title[:200],
+        "url": url,
+        "subject": data.get('subject') or 'Official Gazette',
+        "resource_format": fmt,
+        "author": (data.get('author') or urlparse(url).netloc)[:160],
+        "description": (data.get('description') or f'Added by the GovOS verifier from a live official-domain search on {_now_iso()[:10]}.')[:1200],
+        "added_at": _now_iso(),
+        "added_from": data.get('addedFrom') or 'TRUST_PANEL',
+        "finding_id": data.get('findingId')
+    }
+    conn = get_db_connection()
+    conn.execute("""INSERT INTO resource_additions (id, title, url, subject, resource_format, author, description, added_at, added_from, finding_id)
+                    VALUES (:id, :title, :url, :subject, :resource_format, :author, :description, :added_at, :added_from, :finding_id)""", row)
+    conn.commit()
+    conn.close()
+    _store_health([_check_one_link(url)])
+    conn = get_db_connection()
+    saved = conn.execute('SELECT * FROM resource_additions WHERE id = ?', (row["id"],)).fetchone()
+    conn.close()
+    return jsonify({"addition": _addition_row(saved), "health": _health_rows([url])})
+
+
+@app.route('/api/resources/additions/<addition_id>/retire', methods=['POST'])
+def retire_resource_addition(addition_id):
+    conn = get_db_connection()
+    cur = conn.execute('UPDATE resource_additions SET retired = 1 WHERE id = ?', (addition_id,))
+    conn.commit()
+    conn.close()
+    if cur.rowcount == 0:
+        return jsonify({"error": "not found"}), 404
+    return jsonify({"retired": addition_id})
+
+
 # Fallback for SPA routing
 @app.route('/<path:path>')
 def serve_static_or_fallback(path):
@@ -1173,4 +1543,5 @@ if __name__ == '__main__':
     # with the Vite dev server, which also listens on 3000.
     port = int(os.environ.get('PORT', 5000))
     print(f"GovOS Unified Server + SQLite starting at http://localhost:{port}")
+    _start_background_refresh()
     app.run(host='0.0.0.0', port=port, debug=False)

@@ -654,3 +654,78 @@ export interface TrackedExamRecord {
   examId: string;
   trackedAt: string;
 }
+
+// --- Live resources (server-refreshed, cached in SQLite) --------------------------------
+
+/** One attachment on an SSC notice-board entry, as an absolute link on ssc.gov.in. */
+export interface SscNoticeFile {
+  name: string;
+  url: string;
+  sizeKb: number;
+}
+
+/** An entry from SSC's own notice board, read from the portal's public API. */
+export interface SscNotice {
+  id: string;
+  headline: string;
+  /** YYYY-MM-DD */
+  createdAt: string;
+  files: SscNoticeFile[];
+  isCgl: boolean;
+}
+
+export interface SscNoticeFeed {
+  items: SscNotice[];
+  total: number;
+  scope: 'cgl' | 'all';
+  fetchedAt: string | null;
+  stale: boolean;
+  error: string | null;
+  source: string;
+  intervalHours: number;
+}
+
+/** A recent upload from a YouTube channel's public Atom feed. */
+export interface ChannelUpload {
+  videoId: string;
+  title: string;
+  /** YYYY-MM-DD */
+  published: string;
+  url: string;
+}
+
+export interface ChannelUploadFeed {
+  items: ChannelUpload[];
+  fetchedAt: string | null;
+  error?: string;
+}
+
+/** A resource the verifier added at runtime from the Trust Panel — no code edit involved. */
+export interface ResourceAddition {
+  id: string;
+  title: string;
+  url: string;
+  subject: string;
+  resourceFormat: ResourceItem['resourceFormat'];
+  author: string;
+  description: string;
+  addedAt: string;
+  addedFrom: string;
+  findingId?: number | null;
+}
+
+export interface ResourceHealthSync {
+  results: ResourceLinkCheck[];
+  pending: number;
+  lastRun: string | null;
+  intervalHours: number;
+}
+
+export interface LiveResourceStatus {
+  sscFetchedAt: string | null;
+  healthLastRun: string | null;
+  healthTracked: number;
+  healthPending: number;
+  feedIntervalHours: number;
+  healthIntervalHours: number;
+}

@@ -106,7 +106,10 @@ import {
   RoadmapTrack,
   SourceHealthLog,
   StudyModuleRequirement,
-  UserProfile
+  UserProfile,
+  ChannelUploadFeed,
+  ResourceAddition,
+  SscNoticeFeed
 } from './types';
 import {
   ALL_EXAMS,
@@ -131,6 +134,7 @@ import {
 } from './data';
 import {
   researchService,
+  resourceLiveService,
   calculateDetailedAge,
   evaluateCandidateEligibility,
   evaluateEligibility,
@@ -1736,7 +1740,7 @@ const PLATFORM_MAP: { keys: string[]; answer: string; action: AssistantAction }[
   },
   {
     keys: ['resource', 'study material', 'material', 'book', 'pdf', 'video', 'lecture', 'notes', 'ncert', 'where should i study', 'what should i read'],
-    answer: 'Study material is in the **Resources** tab in the top navigation.\n\nIt holds the SSC notice and reopening notice, previous-year question papers and answer keys, the Constitution of India official text, India Code, NCERT Exemplar and textbooks, the Census, MoSPI and RBI data portals, SWAYAM, NPTEL and NIOS free courses, single video lessons, and the free YouTube channels most SSC candidates follow — each labelled with its subscriber count and marked as coaching content, not an official source.\n\nGovOS stores no files. Every entry opens the publisher\'s own page, so you always get the current version. Use the "Start here" shelf if you are new, the subject chips to narrow down, the bookmark icon to keep something, and "Verify all links now" to see live which links are answering.',
+    answer: 'Study material is in the **Resources** tab in the top navigation.\n\nAt the top it shows the latest entries from SSC\'s own notice board, read live from ssc.gov.in. Below that it holds the SSC notice and reopening notice, previous-year question papers and answer keys, the Constitution of India official text, India Code, NCERT Exemplar and textbooks, the Census, MoSPI and RBI data portals, SWAYAM, NPTEL and NIOS free courses, single video lessons, and the free YouTube channels most SSC candidates follow — each labelled with its subscriber count and marked as coaching content, not an official source.\n\nGovOS stores no files. Every entry opens the publisher\'s own page, so you always get the current version. Use the "Start here" shelf if you are new, the subject chips to narrow down, the bookmark icon to keep something, and "Verify all links now" to see live which links are answering.',
     action: { label: 'Open Resources', tab: 'RESOURCES' }
   },
   {
@@ -2334,11 +2338,31 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
   const [extractingId, setExtractingId] = useState<number | null>(null);
   const [extractedText, setExtractedText] = useState<Record<number, string>>({});
   const [openExtractId, setOpenExtractId] = useState<number | null>(null);
+  const [libraryAdditions, setLibraryAdditions] = useState<ResourceAddition[]>([]);
+  const [addingId, setAddingId] = useState<number | null>(null);
+
+  /** Publish a promoted finding to the candidate-facing library, at runtime, labelled as verifier-approved. */
+  const addFindingToLibrary = async (f: ResearchFinding) => {
+    if (addingId !== null) return;
+    setAddingId(f.id);
+    const added = await resourceLiveService.addResource({
+      title: f.title,
+      url: f.url,
+      findingId: f.id,
+      addedFrom: 'LIVE_RESEARCH',
+      description: f.snippet
+        ? `${f.snippet.slice(0, 600)} — added by the GovOS verifier from a live official-domain search.`
+        : undefined
+    });
+    if (added) setLibraryAdditions(prev => [added, ...prev]);
+    setAddingId(null);
+  };
 
   const loadResearchMeta = async () => {
-    const [status, history] = await Promise.all([researchService.getStatus(), researchService.history(15)]);
+    const [status, history, adds] = await Promise.all([researchService.getStatus(), researchService.history(15), resourceLiveService.additions()]);
     setResearchStatus(status);
     setResearchHistory(history);
+    setLibraryAdditions(adds);
   };
 
   useEffect(() => {
@@ -2925,6 +2949,15 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
                         {extractingId === f.id ? 'Extracting…' : extractedText[f.id] ? (openExtractId === f.id ? 'Hide extracted text' : 'Show extracted text') : 'Extract page text'}
                       </button>
                       <span style={{ flex: 1 }} />
+                      {f.reviewStatus === 'PROMOTED' && (
+                        libraryAdditions.some(a => a.findingId === f.id || a.url === f.url)
+                          ? <span className="badge badge-verified" style={{ fontSize: '0.66rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}><CheckCircle2 size={11} /> In Resource Library</span>
+                          : (
+                            <button className="btn btn-primary" disabled={addingId !== null} onClick={() => addFindingToLibrary(f)} style={{ fontSize: '0.74rem', padding: '5px 11px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                              <Library size={12} /> {addingId === f.id ? 'Adding…' : 'Add to Resource Library'}
+                            </button>
+                          )
+                      )}
                       {!reviewed && (
                         <>
                           <button className="btn btn-emerald" onClick={() => setFindingStatus(f.id, 'PROMOTED')} style={{ fontSize: '0.74rem', padding: '5px 11px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
@@ -2947,7 +2980,7 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
               })}
 
               <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Info size={12} /> “Promote” records the verifier's decision in the audit database. Adding the source to the candidate-facing library is still a deliberate edit to <code style={{ fontFamily: 'var(--font-mono)' }}>data.ts</code> with full provenance — by design.
+                <Info size={12} /> “Promote” records the verifier's decision. “Add to Resource Library” then publishes the source to candidates immediately, labelled as verifier-approved, and the GovOS server re-checks its link on schedule. Nothing reaches the library without that explicit second step.
               </div>
             </div>
           )}
@@ -10427,8 +10460,48 @@ interface ResourceLibraryProps {
   onOpenProvenanceModal: (provenance: DataProvenance) => void;
 }
 
+/** YouTube channel id from a /channel/UC… URL, or null. */
+const channelIdOf = (url: string): string | null => {
+  const m = url.match(/\/channel\/(UC[\w-]+)/);
+  return m ? m[1] : null;
+};
+
+const formatFetched = (iso: string | null | undefined): string =>
+  iso ? new Date(iso).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'not yet';
+
+/** A verifier-added entry rendered through the same card as the static library. */
+const additionToResource = (a: ResourceAddition): ResourceItem => ({
+  id: a.id,
+  title: a.title,
+  subject: a.subject as ResourceItem['subject'],
+  author: a.author,
+  type: a.resourceFormat === 'DIRECT_PDF'
+    ? 'OFFICIAL_PDF'
+    : a.resourceFormat === 'YOUTUBE_COURSE' || a.resourceFormat === 'YOUTUBE_CHANNEL'
+      ? 'VIDEO_LECTURE'
+      : 'OFFICIAL_PORTAL',
+  resourceFormat: a.resourceFormat,
+  url: a.url,
+  description: a.description,
+  recommendedFor: 'Added after a live official-domain search and a verifier\'s review. Open it to confirm it fits what you need.',
+  officialTag: `ADDED ${a.addedAt.slice(0, 10)} · VERIFIER-APPROVED FROM LIVE SOURCE RESEARCH`,
+  provenance: {
+    id: `prov-${a.id}`,
+    documentTitle: a.title,
+    officialUrl: a.url,
+    publishedDate: a.addedAt.slice(0, 10),
+    verifiedDate: a.addedAt.slice(0, 10),
+    verifiedBy: 'GovOS verifier — promoted in the Trust Panel after a live official-domain search',
+    taxonomyType: 'FACT',
+    verificationLevel: 'OFFICIALLY_VERIFIED',
+    excerptText: `Added to the library at runtime from Live Source Research${a.findingId ? ` finding #${a.findingId}` : ''}, not from a code edit. The GovOS server re-checks this link on its schedule; the badge on the card shows the latest result.`
+  }
+});
+
 export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenResource, onOpenProvenanceModal, showSectionNumber = true }) => {
-  const resources = exam.resources || [];
+  const [additions, setAdditions] = useState<ResourceAddition[]>([]);
+  // The static register plus whatever the verifier has added at runtime.
+  const resources: ResourceItem[] = [...(exam.resources || []), ...additions.map(additionToResource)];
 
   const [query, setQuery] = useState<string>('');
   const [typeGroup, setTypeGroup] = useState<ResourceTypeGroup>('ALL');
@@ -10439,6 +10512,10 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
   const [isVerifying, setIsVerifying] = useState<boolean>(false);
   const [verifySummary, setVerifySummary] = useState<string>('');
   const [isNavigatorOpen, setIsNavigatorOpen] = useState<boolean>(false);
+  const [sscFeed, setSscFeed] = useState<SscNoticeFeed | null>(null);
+  const [noticeScope, setNoticeScope] = useState<'cgl' | 'all'>('cgl');
+  const [channelFeeds, setChannelFeeds] = useState<Record<string, ChannelUploadFeed>>({});
+  const [healthMeta, setHealthMeta] = useState<{ lastRun: string | null; pending: number; intervalHours: number } | null>(null);
 
   useEffect(() => {
     storageService.loadBookmarksFromSQLite().then(setBookmarkIds);
@@ -10506,11 +10583,66 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
     resources.flatMap(r => [r.url, r.directPdfUrl, r.youtubeUrl].filter(isExternalUrl))
   ));
 
+  const channelIds = Array.from(new Set(resources.map(r => channelIdOf(r.url)).filter((c): c is string => !!c)));
+  const isSscExam = exam.id.includes('ssc');
+
+  const applyHealth = (health: { results: ResourceLinkCheck[]; lastRun: string | null; pending: number; intervalHours: number }) => {
+    const map: Record<string, ResourceLinkCheck> = {};
+    health.results.forEach(res => { map[res.url] = res; });
+    setLinkChecks(prev => ({ ...prev, ...map }));
+    setHealthMeta({ lastRun: health.lastRun, pending: health.pending, intervalHours: health.intervalHours });
+  };
+
+  // Live parts of the library: stored link health (checked on the server's schedule),
+  // channel uploads, and entries the verifier added at runtime.
+  useEffect(() => {
+    let cancelled = false;
+    let retry: ReturnType<typeof setTimeout> | undefined;
+    const load = async () => {
+      const adds = await resourceLiveService.additions();
+      if (cancelled) return;
+      setAdditions(adds);
+      const urls = Array.from(new Set([
+        ...(exam.resources || []).flatMap(r => [r.url, r.directPdfUrl, r.youtubeUrl].filter(isExternalUrl)),
+        ...adds.map(a => a.url)
+      ])) as string[];
+      const ids = Array.from(new Set([...(exam.resources || []), ...adds].map(r => channelIdOf(r.url)).filter((c): c is string => !!c)));
+      const [health, uploads] = await Promise.all([
+        resourceLiveService.healthSync(urls),
+        resourceLiveService.channelUploads(ids)
+      ]);
+      if (cancelled) return;
+      setChannelFeeds(uploads);
+      if (health) {
+        applyHealth(health);
+        if (health.pending > 0) {
+          // new links are checked in the background; ask again once they have had time
+          retry = setTimeout(async () => {
+            const again = await resourceLiveService.healthSync(urls);
+            if (again && !cancelled) applyHealth(again);
+          }, 15000);
+        }
+      }
+    };
+    load();
+    return () => { cancelled = true; if (retry) clearTimeout(retry); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exam.id]);
+
+  // SSC's own notice board, scoped to CGL or all of SSC.
+  useEffect(() => {
+    if (!isSscExam) { setSscFeed(null); return; }
+    let cancelled = false;
+    resourceLiveService.sscNotices(noticeScope, 8).then(feed => { if (!cancelled) setSscFeed(feed); });
+    return () => { cancelled = true; };
+  }, [exam.id, noticeScope, isSscExam]);
+
   const handleVerifyLinks = async () => {
     if (externalUrls.length === 0 || isVerifying) return;
     setIsVerifying(true);
     setVerifySummary('');
-    const results = await storageService.verifyResourceLinks(externalUrls);
+    const results = await resourceLiveService.recheck(externalUrls);
+    if (results.length > 0) setHealthMeta(prev => ({ lastRun: new Date().toISOString(), pending: 0, intervalHours: prev?.intervalHours || 12 }));
     if (results.length === 0) {
       setVerifySummary('Could not reach the GovOS server to run the check. Start "python app.py" and try again.');
     } else {
@@ -10644,6 +10776,25 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
           <strong style={{ color: '#6ee7b7' }}>Best for:</strong> {r.recommendedFor}
         </div>
 
+        {r.resourceFormat === 'YOUTUBE_CHANNEL' && (() => {
+          const cid = channelIdOf(r.url);
+          const feed = cid ? channelFeeds[cid] : undefined;
+          if (!feed || feed.items.length === 0) return null;
+          return (
+            <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '8px' }}>
+              <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#fca5a5', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}>
+                Latest uploads · fetched {formatFetched(feed.fetchedAt)}
+              </div>
+              {feed.items.slice(0, 3).map(v => (
+                <a key={v.videoId} href={v.url} target="_blank" rel="noreferrer" title={v.title} style={{ display: 'flex', gap: '8px', fontSize: '0.78rem', color: '#e2e8f0', textDecoration: 'none', lineHeight: 1.35, padding: '3px 0' }}>
+                  <span style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', flexShrink: 0 }}>{v.published.slice(5)}</span>
+                  <span style={{ display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical' as any, overflow: 'hidden' }}>{v.title}</span>
+                </a>
+              ))}
+            </div>
+          );
+        })()}
+
         {(badge || r.officialTag || r.rating) && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
             {badge && (
@@ -10713,12 +10864,14 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', margin: '4px 0 0 0' }}>
             {resources.length} resources · {officialCount} from official government sources · {savedCount} saved for later
           </p>
-          {!showSectionNumber && (
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', margin: '6px 0 0 0', maxWidth: '620px', lineHeight: 1.5 }}>
-              Every entry is a link to the publisher's own server — official notices and PDFs, government
-              portals, and free video lessons. GovOS stores no study material, so nothing here goes stale.
-            </p>
-          )}
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', margin: '6px 0 0 0', maxWidth: '700px', lineHeight: 1.5 }}>
+            Kept current automatically: SSC's notice board and channel uploads refresh every {sscFeed?.intervalHours || 6} h, and every link is
+            re-checked every {healthMeta?.intervalHours || 12} h on the GovOS server.
+            {healthMeta
+              ? ` Links last checked ${formatFetched(healthMeta.lastRun)}${healthMeta.pending > 0 ? ` · ${healthMeta.pending} still being checked` : ''}.`
+              : ' Start python app.py to enable the live checks.'}
+            {!showSectionNumber && ' GovOS stores no study material: every entry opens the publisher\'s own server.'}
+          </p>
         </div>
         <button
           onClick={handleVerifyLinks}
@@ -10735,6 +10888,54 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
       {verifySummary && (
         <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.3)', fontSize: '0.82rem', color: '#c7d2fe', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Info size={14} /> {verifySummary}
+        </div>
+      )}
+
+      {/* Live: SSC's own notice board */}
+      {isSscExam && !isFiltered && sscFeed && (sscFeed.items.length > 0 || sscFeed.total > 0 || sscFeed.error) && (
+        <div className="glass-card" style={{ padding: '20px', background: 'linear-gradient(135deg, rgba(99,102,241,0.10) 0%, rgba(15,23,42,0.98) 60%)', border: '1px solid rgba(99,102,241,0.35)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <Bell size={18} color="#a5b4fc" />
+              <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'white', margin: 0 }}>Latest from SSC's notice board</h4>
+              <span className="badge badge-verified" style={{ fontSize: '0.62rem' }}>LIVE · OFFICIAL</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <button onClick={() => setNoticeScope('cgl')} style={chipStyle(noticeScope === 'cgl')}>CGL only</button>
+              <button onClick={() => setNoticeScope('all')} style={chipStyle(noticeScope === 'all')}>All SSC notices</button>
+            </div>
+          </div>
+
+          {sscFeed.error && sscFeed.items.length === 0 && (
+            <div style={{ fontSize: '0.84rem', color: '#fbbf24' }}>Could not reach SSC's notice board just now ({sscFeed.error}). It is retried automatically.</div>
+          )}
+          {!sscFeed.error && sscFeed.items.length === 0 && (
+            <div style={{ fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
+              None of SSC's latest {sscFeed.total} board entries mention CGL. Switch to "All SSC notices" to see the rest.
+            </div>
+          )}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {sscFeed.items.map(n => (
+              <div key={n.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '10px 12px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.74rem', color: '#a5b4fc', fontFamily: 'var(--font-mono)', flexShrink: 0, paddingTop: '2px' }}>{n.createdAt}</span>
+                <div style={{ flex: 1, minWidth: '220px', fontSize: '0.88rem', color: 'white', lineHeight: 1.45 }}>{n.headline}</div>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  {n.files.map(f => (
+                    <a key={f.url} href={f.url} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ fontSize: '0.74rem', padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                      <FileText size={12} /> PDF{f.sizeKb ? ` · ${f.sizeKb} KB` : ''}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ marginTop: '10px', fontSize: '0.74rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+            <Info size={12} />
+            Read from ssc.gov.in's own notice-board API, fetched {formatFetched(sscFeed.fetchedAt)}{sscFeed.stale ? ' (could not refresh; showing the last copy)' : ''} · refreshes every {sscFeed.intervalHours} h · every file opens on ssc.gov.in.
+            <a href={sscFeed.source} target="_blank" rel="noreferrer" style={{ color: '#a5b4fc', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>Open the full board <ExternalLink size={11} /></a>
+          </div>
         </div>
       )}
 
