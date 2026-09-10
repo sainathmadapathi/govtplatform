@@ -1717,6 +1717,76 @@ const renderAssistantText = (text: string): React.ReactNode[] =>
   );
 
 const has = (q: string, ...words: string[]) => words.some(w => q.includes(w));
+
+/** Query flattened for matching: lowercase, punctuation and hyphens become spaces. */
+const normaliseQuery = (s: string) => s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+
+/** Whole-word match, tolerant of plurals and of stems written deliberately short ("eligib"). */
+const matchesWord = (qWords: string[], word: string): boolean =>
+  qWords.some(w =>
+    w === word ||
+    w === `${word}s` || w === `${word}es` ||
+    (word.endsWith('s') && w === word.slice(0, -1)) ||
+    (word.length >= 5 && w.startsWith(word))
+  );
+
+/**
+ * How well one key describes the query.
+ *
+ * A multi-word key scores far above any single word, because it is a far more specific
+ * statement of intent: "application practice" means the form simulator, while "practice"
+ * alone means almost nothing. The words of a multi-word key need not be adjacent —
+ * "application mock practice" still means the simulator — but adjacency scores higher.
+ */
+const scoreKey = (qWords: string[], qNorm: string, key: string): number => {
+  const parts = normaliseQuery(key).split(' ').filter(Boolean);
+  if (parts.length === 0) return 0;
+  if (parts.length === 1) {
+    return matchesWord(qWords, parts[0]) ? 1 + Math.min(parts[0].length, 12) * 0.12 : 0;
+  }
+  if (!parts.every(part => matchesWord(qWords, part))) return 0;
+  return (qNorm.includes(parts.join(' ')) ? 6 : 4) + parts.length * 1.5;
+};
+
+const scoreKeys = (query: string, keys: string[]): number => {
+  const qNorm = normaliseQuery(query);
+  const qWords = qNorm.split(' ').filter(Boolean);
+  return keys.reduce((total, key) => total + scoreKey(qWords, qNorm, key), 0);
+};
+
+/** The best-scoring entry of a keyed table — never merely the first one that matches. */
+function bestMatch<T extends { keys: string[] }>(query: string, table: T[]): { entry: T; score: number } | null {
+  let bestEntry: T | null = null;
+  let bestScore = 0;
+  for (const entry of table) {
+    const score = scoreKeys(query, entry.keys);
+    if (score > bestScore) {
+      bestEntry = entry;
+      bestScore = score;
+    }
+  }
+  return bestEntry ? { entry: bestEntry, score: bestScore } : null;
+}
+
+/**
+ * Factual intents, scored the same way, so where a branch sits in this file no longer
+ * decides which question it answers.
+ */
+const FACT_INTENTS: { id: string; keys: string[] }[] = [
+  { id: 'age', keys: ['age limit', 'maximum age', 'minimum age', 'age relaxation', 'how old', 'upper age', 'age criteria'] },
+  { id: 'eligibility', keys: ['eligib', 'qualification', 'graduate', 'graduation', 'degree', 'b tech', 'btech', 'can i apply'] },
+  { id: 'dates', keys: ['last date', 'deadline', 'closing date', 'application date', 'when can i apply', 'apply by', 'important date', 'exam date', 'when is the exam', 'notification date'] },
+  { id: 'pattern', keys: ['negative marking', 'marking scheme', 'exam pattern', 'pattern', 'how many questions', 'how many marks', 'duration', 'tier 1', 'tier 2', 'paper pattern'] },
+  { id: 'vacancy', keys: ['vacancy', 'vacancies', 'how many post', 'number of post', 'seats'] },
+  { id: 'pay', keys: ['salary', 'pay level', 'pay scale', 'in hand', 'grade pay'] },
+  { id: 'syllabus', keys: ['syllabus', 'what to study', 'topics'] },
+  { id: 'fee', keys: ['fee', 'payment', 'how much to pay', 'application fee'] },
+  { id: 'resources', keys: ['resource', 'material', 'book', 'pdf', 'video', 'ncert', 'free course'] },
+  { id: 'admitCard', keys: ['admit card', 'hall ticket'] },
+  { id: 'cutoff', keys: ['cutoff', 'cut off', 'marks needed', 'safe score'] },
+  { id: 'apply', keys: ['apply', 'application', 'otr', 'registration', 'photo', 'signature'] },
+  { id: 'practice', keys: ['practice', 'mock', 'test', 'pyq', 'previous year'] }
+];
 const asksLocation = (q: string) => /\b(where|which (tab|section|page|part)|how do i|how can i|how should i|how to|what should i|navigate|find|locate|go to|open|show me|take me|check .* (in|on) (this|the) (platform|app|site|website)|in this platform)\b/.test(q);
 
 /** Non-superseded date of a given type, if the register has one. */
@@ -1745,7 +1815,7 @@ const PLATFORM_MAP: { keys: string[]; answer: string; action: AssistantAction }[
   },
   {
     keys: ['mock', 'practice', 'pyq', 'previous year', 'question paper', 'test series', 'drill', 'solve question', 'attempt test'],
-    answer: 'Practice is in the **Practice & Mocks** tab.\n\nYou get full shift papers on a real CBT clock with SSC Tier-1 marking (+2 correct, −0.5 wrong), subject sectionals, topic drills, and a chat that builds a test to order — say "12 questions on percentage" or "8 hard questions on time and work" and it generates exactly that, with worked solutions.\n\nAfter you submit, the analysis names your weak topics and every solution shows the source it was written from.',
+    answer: 'Practice is in the **Practice & Mocks** tab.\n\nYou get full shift papers on a real CBT clock with SSC Tier-1 marking (+2 correct, −0.5 wrong), subject sectionals, topic drills, and a chat that builds a test to order — say "12 questions on percentage" or "8 hard questions on time and work" and it generates exactly that, with worked solutions.\n\nAfter you submit, the analysis names your weak topics and every solution shows the source it was written from.\n\nIf you meant practising the **application form** rather than questions, that is the Application Practice Simulator in Exam Guide section 04.',
     action: { label: 'Open Practice & Mocks', tab: 'PRACTICE' }
   },
   {
@@ -1757,6 +1827,29 @@ const PLATFORM_MAP: { keys: string[]; answer: string; action: AssistantAction }[
     keys: ['syllabus', 'topic list', 'what to study', 'chapters'],
     answer: 'The syllabus is in the Exam Guide, section 06 Study Plan & Syllabus.\n\nEvery topic is listed by subject with its weightage, and you can tick topics off as you finish them — progress is saved on this device.',
     action: { label: 'Open the syllabus', tab: 'EXAM_DETAIL', section: 6 }
+  },
+  {
+    // "application practice" / "application mock" is the form simulator, not question practice.
+    keys: ['application practice', 'practice application', 'application simulator', 'application mock',
+      'mock application', 'application form practice', 'practice form', 'form practice', 'dummy application',
+      'form simulator', 'simulator', 'practice filling', 'fill the form', 'form drill'],
+    answer: 'The **Practice Mock Application Simulator** is inside the Exam Guide, section 04 Application & Docs, and that section opens on it by default — the button reads "Practice Mock Application Simulator (Fill → Submit → Spot Mistakes)".\n\nIt is a dummy SSC application form. You fill it in, and GovOS checks your photo and signature specifications, fee exemption, post preferences and eligibility declarations against the notice, then names every mistake — before one of them costs you the real form.\n\nThat is form practice, not question practice. For question papers, sectionals and mock tests, use Practice & Mocks.',
+    action: { label: 'Open the Application Practice Simulator', tab: 'EXAM_DETAIL', section: 4 }
+  },
+  {
+    keys: ['past test', 'my score', 'my result', 'previous attempt', 'test history', 'past attempt', 'my performance', 'analytics', 'weak area', 'weak topic'],
+    answer: 'Your attempts are in **Practice & Mocks** under "Past Tests History" — every test you have submitted, with score, accuracy and date.\n\nOpen one to review each question with its full solution, or tell the test creator "test my weak areas" and it will build a drill from the topics you are scoring below 60% on.',
+    action: { label: 'Open Practice & Mocks', tab: 'PRACTICE' }
+  },
+  {
+    keys: ['saved', 'bookmark', 'shortlist', 'starred', 'my list'],
+    answer: 'Anything you bookmark with the flag icon on a resource card lands on the **Saved** shelf in the Resources tab — click "Saved" above the results to filter to it.\n\nBookmarks are kept on this device and mirrored into the GovOS database, so they survive a reload.',
+    action: { label: 'Open Resources', tab: 'RESOURCES' }
+  },
+  {
+    keys: ['target post', 'set my post', 'choose post', 'change post', 'my post'],
+    answer: 'Your target post is set in the Exam Guide, section 01 Overview & Posts — open a post and choose it as your target.\n\nEverything personal follows that choice: the roadmap milestones, the daily-hours plan, and the way your practice results are analysed.',
+    action: { label: 'Open Overview & Posts', tab: 'EXAM_DETAIL', section: 1 }
   },
   {
     keys: ['apply', 'application form', 'how do i register', 'otr', 'one time registration', 'photo', 'signature', 'form fill'],
@@ -1832,14 +1925,19 @@ export function answerCandidateQuery(query: string): AssistantReply {
     };
   }
 
-  // ---- navigation: the candidate is asking where something lives
-  if (asksLocation(q)) {
-    const hit = PLATFORM_MAP.find(entry => has(q, ...entry.keys));
-    if (hit) return { verified: true, text: hit.answer, action: hit.action };
+  // ---- which part of the platform, and which fact, does this question best describe?
+  const nav = bestMatch(q, PLATFORM_MAP);
+  const fact = bestMatch(q, FACT_INTENTS);
+  const factId = fact ? fact.entry.id : '';
+
+  // Answer with navigation when the candidate asks where something is, or when a specific
+  // multi-word request ("application practice") outscores whatever single words also matched.
+  if (nav && (asksLocation(q) || (nav.score >= 6 && nav.score > (fact ? fact.score : 0)))) {
+    return { verified: true, text: nav.entry.answer, action: nav.entry.action };
   }
 
   // ---- facts, read out of the register
-  if (has(q, 'age limit', 'maximum age', 'minimum age', 'age relaxation', 'how old', 'upper age')) {
+  if (factId === 'age') {
     const minAge = Math.min(...SSC_CGL_EXAM.posts.map(p => p.minAge));
     const maxAge = Math.max(...SSC_CGL_EXAM.posts.map(p => p.maxAge));
     const post = SSC_CGL_EXAM.posts[0];
@@ -1851,7 +1949,7 @@ export function answerCandidateQuery(query: string): AssistantReply {
     };
   }
 
-  if (has(q, 'eligib', 'qualification', 'graduate', 'graduation', 'degree', 'b.tech', 'btech', 'can i apply')) {
+  if (factId === 'eligibility') {
     const dummyProfile = {
       dateOfBirth: '2005-05-15',
       degree: 'B.Tech',
@@ -1871,7 +1969,7 @@ export function answerCandidateQuery(query: string): AssistantReply {
     };
   }
 
-  if (has(q, 'last date', 'deadline', 'closing date', 'application date', 'when can i apply', 'apply by', 'important date', 'exam date', 'when is the exam', 'notification date')) {
+  if (factId === 'dates') {
     const lines = SSC_CGL_EXAM.dates
       .filter(d => d.status !== 'SUPERSEDED')
       .map(d => `• ${d.label}: ${d.dateTimeStr}${d.isTentative ? ' (tentative)' : ''}`)
@@ -1886,7 +1984,7 @@ export function answerCandidateQuery(query: string): AssistantReply {
     };
   }
 
-  if (has(q, 'negative marking', 'marking scheme', 'exam pattern', 'pattern', 'how many questions', 'how many marks', 'duration', 'tier 1', 'tier-1', 'tier 2', 'tier-2', 'paper pattern')) {
+  if (factId === 'pattern') {
     const lines = SSC_CGL_EXAM.stages.map(st => {
       const sections = st.sections.map(sec => `   – ${sec.sectionName}: ${sec.questions} Qs / ${sec.marks} marks`).join('\n');
       return `• ${st.stageName} (${st.tier.replace('_', '-')}): ${st.totalQuestions} questions, ${st.totalMarks} marks, ${st.durationMinutes} minutes, ${st.mode}. Negative marking: ${st.negativeMarking}.\n${sections}`;
@@ -1899,7 +1997,7 @@ export function answerCandidateQuery(query: string): AssistantReply {
     };
   }
 
-  if (has(q, 'vacancy', 'vacancies', 'how many post', 'number of post', 'seats')) {
+  if (factId === 'vacancy') {
     return {
       verified: true,
       text: `${SSC_CGL_EXAM.vacanciesTotal ? `Vacancies on record: ${SSC_CGL_EXAM.vacanciesTotal}.` : 'The vacancy figure is announced separately by SSC and is not final in the register yet.'}\n\nThe register carries ${SSC_CGL_EXAM.posts.length} posts across departments, from Assistant Section Officer to Junior Statistical Officer, each with its own pay level and eligibility conditions.\n\nSSC publishes the final post-wise, category-wise vacancy table after the application window closes, so treat any earlier figure as indicative.`,
@@ -1908,7 +2006,7 @@ export function answerCandidateQuery(query: string): AssistantReply {
     };
   }
 
-  if (has(q, 'salary', 'pay level', 'pay scale', 'in hand', 'grade pay')) {
+  if (factId === 'pay') {
     const top = SSC_CGL_EXAM.posts.slice(0, 5).map(p => `• ${p.postName} — ${p.payScale} (${p.payLevel}, ${p.classification})`).join('\n');
     return {
       verified: true,
@@ -1918,7 +2016,7 @@ export function answerCandidateQuery(query: string): AssistantReply {
     };
   }
 
-  if (has(q, 'syllabus', 'what to study', 'topics')) {
+  if (factId === 'syllabus') {
     const bySubject = new Map<string, number>();
     SSC_CGL_EXAM.syllabus.forEach(t => bySubject.set(t.subject, (bySubject.get(t.subject) || 0) + 1));
     const summary = Array.from(bySubject.entries()).map(([sub, n]) => `• ${sub}: ${n} topics`).join('\n');
@@ -1929,7 +2027,7 @@ export function answerCandidateQuery(query: string): AssistantReply {
     };
   }
 
-  if (has(q, 'fee', 'payment', 'how much to pay', 'application fee')) {
+  if (factId === 'fee') {
     return {
       verified: false,
       text: 'The application fee is paid on SSC\'s own portal while submitting the form; women, SC, ST, PwBD and ex-servicemen candidates are exempted under the notice.\n\nGovOS does not hold the current fee figure as a verified field, so check the fee clause of the notice itself before paying — section 04 links to it, and I can search official domains live if you want the current figure.',
@@ -1937,7 +2035,7 @@ export function answerCandidateQuery(query: string): AssistantReply {
     };
   }
 
-  if (has(q, 'resource', 'material', 'book', 'pdf', 'video', 'ncert', 'free course')) {
+  if (factId === 'resources') {
     const videos = SSC_CGL_EXAM.resources.filter(r => r.resourceFormat === 'YOUTUBE_COURSE' || r.resourceFormat === 'YOUTUBE_CHANNEL').length;
     const pdfs = SSC_CGL_EXAM.resources.filter(r => r.resourceFormat === 'DIRECT_PDF').length;
     const portals = SSC_CGL_EXAM.resources.filter(r => r.resourceFormat === 'OFFICIAL_PORTAL').length;
@@ -1948,7 +2046,7 @@ export function answerCandidateQuery(query: string): AssistantReply {
     };
   }
 
-  if (has(q, 'admit card', 'hall ticket')) {
+  if (factId === 'admitCard') {
     const ac = dateOfType('ADMIT_CARD');
     return {
       verified: true,
@@ -1958,7 +2056,7 @@ export function answerCandidateQuery(query: string): AssistantReply {
     };
   }
 
-  if (has(q, 'cutoff', 'cut off', 'cut-off', 'marks needed', 'safe score')) {
+  if (factId === 'cutoff') {
     const latest = SSC_CGL_EXAM.cutoffsHistory[0];
     return {
       verified: true,
@@ -1967,7 +2065,7 @@ export function answerCandidateQuery(query: string): AssistantReply {
     };
   }
 
-  if (has(q, 'apply', 'application', 'otr', 'registration', 'photo', 'signature')) {
+  if (factId === 'apply') {
     return {
       verified: true,
       text: `Applications are submitted on SSC's own portal, ${SSC_CGL_EXAM.applicationGuide.officialPortal}. One Time Registration comes first (${SSC_CGL_EXAM.applicationGuide.otrSteps.length} steps in the guide), then the exam form.\n\nSection 04 gives the photo and signature specifications, the certificates that must be valid on the crucial date, and ${SSC_CGL_EXAM.applicationGuide.rejectionPitfalls.length} rejection pitfalls with how to avoid each.\n\nGovOS never submits anything on your behalf.`,
@@ -1975,7 +2073,7 @@ export function answerCandidateQuery(query: string): AssistantReply {
     };
   }
 
-  if (has(q, 'practice', 'mock', 'test', 'pyq', 'previous year')) {
+  if (factId === 'practice') {
     return {
       verified: true,
       text: 'Practice & Mocks has full shift papers on a real CBT clock, subject sectionals, topic drills, and a chat that builds a paper to order — ask it for "12 questions on percentage" or "8 hard questions on time and work".\n\nMarking is the real SSC Tier-1 scheme (+2 correct, −0.5 wrong). After submitting you get weak-topic diagnosis and a five-layer solution for every question, each naming the document it was written from.',
@@ -1985,8 +2083,7 @@ export function answerCandidateQuery(query: string): AssistantReply {
 
   // Not phrased as a location question, but plainly about a part of the platform
   // ("study plan", "roadmap", "compare exams") — route it rather than fall back.
-  const routed = PLATFORM_MAP.find(entry => has(q, ...entry.keys));
-  if (routed) return { verified: true, text: routed.answer, action: routed.action };
+  if (nav) return { verified: true, text: nav.entry.answer, action: nav.entry.action };
 
   // ---- a location question we could not place
   if (asksLocation(q)) {

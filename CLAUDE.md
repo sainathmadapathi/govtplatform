@@ -242,10 +242,21 @@ branches, so "where should I check my eligibility in this platform" hit the fall
 `answerCandidateQuery(query)` now returns `{text, verified, citation?, action?}`:
 
 - `asksLocation()` detects "where / which tab / how do I / take me", and `PLATFORM_MAP`
-  answers it — 16 entries covering eligibility, resources, practice, calendar, syllabus,
-  application, admit card, cutoffs, roadmap, compare, trust/report, results, exam day,
-  corrigenda, FAQs and posts. Each carries an `AssistantAction` that `main.tsx` turns into
-  a working button, including a guide section number where relevant.
+  answers it — 20 entries covering eligibility, resources, practice, the application
+  simulator, past attempts, saved items, target post, calendar, syllabus, application,
+  admit card, cutoffs, roadmap, compare, trust/report, results, exam day, corrigenda, FAQs
+  and posts. Each carries an `AssistantAction` that `main.tsx` turns into a working button,
+  including a guide section number where relevant.
+- **Intents are scored, never first-match.** `bestMatch()` picks the highest-scoring entry
+  in `PLATFORM_MAP` and in `FACT_INTENTS`; `scoreKey()` gives a multi-word key roughly four
+  times a single word's weight, and its words need not be adjacent. This is what makes
+  "where is application mock practice" reach the Application Practice Simulator instead of
+  Practice & Mocks: taking the first entry containing any keyword meant a generic
+  "practice" beat a specific "application practice". Navigation wins when the question asks
+  where something is, or when a multi-word phrase scores 6+ and beats the factual match;
+  otherwise the winning `FACT_INTENTS` id selects the branch, so where a branch sits in the
+  file no longer decides what it answers. **Add keys as phrases, not lone words** — a lone
+  word competes badly and drags unrelated questions in.
 - Factual intents read `SSC_CGL_EXAM` at answer time — age bands computed across all posts,
   the non-superseded dates, the real stage/section tables, pay by post, syllabus counts,
   resource counts by format — and cite the provenance of the record they came from. Nothing
