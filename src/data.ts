@@ -5544,8 +5544,8 @@ const SUBJECT_ALIASES: { subject: string; aliases: string[] }[] = [
   { subject: SUBJECT_QUANT, aliases: ['quant', 'quantitative', 'maths', 'math', 'mathematics', 'arithmetic', 'numerical'] },
   { subject: SUBJECT_REAS, aliases: ['reasoning', 'general intelligence', 'logical', 'logic'] },
   { subject: SUBJECT_ENG, aliases: ['english', 'comprehension', 'language'] },
-  { subject: SUBJECT_GA, aliases: ['general awareness', 'gk', 'ga', 'general knowledge', 'static gk', 'awareness'] },
-  { subject: SUBJECT_COMP, aliases: ['computer', 'computers', 'cpt', 'computer knowledge', 'it basics'] }
+  { subject: SUBJECT_GA, aliases: ['general awareness', 'gk', 'ga', 'general knowledge', 'static gk', 'general studies', 'gs'] },
+  { subject: SUBJECT_COMP, aliases: ['computer', 'computers', 'cpt', 'computer knowledge', 'computer awareness', 'computer proficiency', 'it basics'] }
 ];
 
 // ---- seeded RNG so a request produces varied but reproducible numbers ----------
@@ -6228,17 +6228,16 @@ const collapseRepeats = (w: string) => w.replace(/(.)\1+/g, '$1');
 
 /** Levenshtein distance for short words; enough for typo forgiveness. */
 function editDistance(a: string, b: string): number {
-  const prev: number[] = Array.from({ length: b.length + 1 }, (_, i) => i);
+  // optimal string alignment: a swapped pair ("avreage") costs one edit, not two
+  const d: number[][] = Array.from({ length: a.length + 1 }, (_, i) => Array.from({ length: b.length + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0)));
   for (let i = 1; i <= a.length; i++) {
-    let diag = prev[0];
-    prev[0] = i;
     for (let j = 1; j <= b.length; j++) {
-      const tmp = prev[j];
-      prev[j] = Math.min(prev[j] + 1, prev[j - 1] + 1, diag + (a[i - 1] === b[j - 1] ? 0 : 1));
-      diag = tmp;
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost);
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
     }
   }
-  return prev[b.length];
+  return d[a.length][b.length];
 }
 
 /**
@@ -6246,7 +6245,7 @@ function editDistance(a: string, b: string): number {
  * or one edit away for words of 5+ letters, two for 9+. Short words stay exact so
  * "si" and "ci" cannot drift.
  */
-const fuzzyWordEq = (typed: string, want: string): boolean => {
+export const fuzzyWordEq = (typed: string, want: string): boolean => {
   if (typed === want) return true;
   if (want.length < 4) return false;
   if (collapseRepeats(typed) === collapseRepeats(want)) return true;
@@ -6293,7 +6292,12 @@ export function parseTestRequest(query: string): ParsedTestRequest {
   const noteCorrections = (diffs: { typed: string; readAs: string }[]) =>
     diffs.forEach(d => { if (!corrections.some(c => c.typed === d.typed)) corrections.push(d); });
 
-  let topics = TOPIC_CATALOG.filter(t => t.aliases.some(has));
+  const matchedAlias = new Map<string, string>();
+  let topics = TOPIC_CATALOG.filter(t => {
+    const alias = [...t.aliases].sort((a, b) => b.length - a.length).find(has);
+    if (alias) matchedAlias.set(t.key, alias);
+    return !!alias;
+  });
   const subjects: string[] = [];
   SUBJECT_ALIASES.forEach(sa => { if (sa.aliases.some(has) && !subjects.includes(sa.subject)) subjects.push(sa.subject); });
 
@@ -6314,6 +6318,12 @@ export function parseTestRequest(query: string): ParsedTestRequest {
       }
     });
   }
+  // "hindi grammar" names Hindi, not English grammar: a longer off-syllabus phrase that contains
+  // another topic's matched alias wins, and the contained topic is dropped.
+  topics = topics.filter(t => {
+    const mine = matchedAlias.get(t.key) || '';
+    return !topics.some(other => other !== t && !other.inSyllabus && (matchedAlias.get(other.key) || '').length > mine.length && (matchedAlias.get(other.key) || '').includes(mine));
+  });
   topics.forEach(t => { if (!subjects.includes(t.subject)) subjects.push(t.subject); });
 
   // count: "12 questions", "12 qs", "12-question", "of 12"; a bare number not attached to a unit
@@ -6339,9 +6349,20 @@ export function parseTestRequest(query: string): ParsedTestRequest {
 
   // words after "on/about/of/for/in" that matched nothing — surfaced so the reply can say so
   const unrecognised: string[] = [];
-  if (topics.length === 0) {
+  if (topics.length === 0 && subjects.length === 0) {
     const m = lower.match(/\b(?:on|about|of|for|in|regarding)\s+([a-z][a-z\s&-]{2,40}?)(?=\s+(?:questions?|qs|test|drill|mock|quiz|\d)|[.,!?]|$)/);
-    if (m && m[1].trim() && !SUBJECT_ALIASES.some(sa => sa.aliases.some(a => containsAlias(m[1], a)))) unrecognised.push(m[1].trim());
+    if (m && m[1].trim()) {
+      unrecognised.push(m[1].trim());
+    } else {
+      // "cooking recipes 10 questions": strip everything that is request grammar; what is left is the topic
+      const generic = new Set(['question', 'questions', 'q', 'qs', 'mcq', 'mcqs', 'test', 'tests', 'mock', 'mocks', 'drill', 'quiz', 'paper', 'set',
+        'make', 'me', 'a', 'an', 'the', 'give', 'create', 'generate', 'build', 'want', 'i', 'need', 'please', 'some', 'practice', 'practise',
+        'on', 'of', 'for', 'about', 'in', 'with', 'and', 'from', 'to', 'my', 'series', 'level', 'wise',
+        'hard', 'easy', 'medium', 'tough', 'difficult', 'advanced', 'basic', 'simple', 'quick', 'speed', 'full', 'mixed', 'adaptive', 'random',
+        'minute', 'minutes', 'min', 'mins', 'timer', 'time', 'timed', 'tier', 'exam', 'ssc', 'cgl', 'chsl']);
+      const leftover = lower.replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(w => w && !/^\d+$/.test(w) && !generic.has(w));
+      if (leftover.length > 0) unrecognised.push(leftover.join(' '));
+    }
   }
 
   return { subjects, topics, numQuestions, difficulty, durationMinutes, focusGoal: /\bweak/.test(lower) ? 'WEAK_AREAS' : 'GENERAL', unrecognised, corrections };
@@ -6400,6 +6421,9 @@ export function matchTopicByName(name: string): TopicSpec | undefined {
   return best;
 }
 
+/** True when the bank or a generator can supply questions for the topic. */
+export const topicHasSupply = (topic: TopicSpec): boolean => !!topic.generate || bankMatches(topic).length > 0;
+
 function bankMatches(topic: TopicSpec): TemplateQuestion[] {
   return bankFor(topic.subject).filter(t => ownerOf(t) === topic.key);
 }
@@ -6416,7 +6440,7 @@ const makeSupplier = (topic: TopicSpec, bank: TemplateQuestion[]): Supplier => (
 /** Everything the catalogue can supply for a subject: its bank plus every generator in it. */
 function suppliersForSubject(subject: string): Supplier[] {
   const out = TOPIC_CATALOG
-    .filter(t => t.subject === subject)
+    .filter(t => t.subject === subject && t.inSyllabus)
     .map(t => makeSupplier(t, bankMatches(t)))
     .filter(x => x.bank.length > 0 || x.topic.generate);
   const claimed = new Set(out.flatMap(o => o.bank));
@@ -6441,6 +6465,13 @@ function drawFrom(sup: Supplier, difficulty: CustomTestConfig['difficulty'], rng
   }
   return null;
 }
+
+/** Same suppliers, different starting point, so a mixed test does not always open on the same topic. */
+const rotateStart = <T,>(arr: T[]): T[] => {
+  if (arr.length < 2) return arr;
+  const k = Math.floor(Math.random() * arr.length);
+  return [...arr.slice(k), ...arr.slice(0, k)];
+};
 
 export function generateCustomMockTest(config: CustomTestConfig): MockPaper {
   const explicitTopics = (config.selectedTopics || [])
@@ -6469,10 +6500,10 @@ export function generateCustomMockTest(config: CustomTestConfig): MockPaper {
     }
   } else if (subjects.length > 0) {
     requestedLabel = subjects.join(' + ');
-    suppliers = subjects.flatMap(suppliersForSubject);
+    suppliers = rotateStart(subjects.flatMap(suppliersForSubject));
   } else {
     requestedLabel = 'Tier-1 Mixed';
-    suppliers = [SUBJECT_QUANT, SUBJECT_REAS, SUBJECT_ENG, SUBJECT_GA].flatMap(suppliersForSubject);
+    suppliers = rotateStart([SUBJECT_QUANT, SUBJECT_REAS, SUBJECT_ENG, SUBJECT_GA].flatMap(suppliersForSubject));
     notes.push('No subject or topic was named, so this mixes the four Tier-1 sections. Ask for a topic — for example "12 questions on percentage" — to drill one thing.');
   }
 

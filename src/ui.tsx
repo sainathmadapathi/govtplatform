@@ -132,7 +132,9 @@ import {
   SSC_CGL_EXAM,
   SUBJECT_MOCK_TESTS,
   TOPIC_CATALOG,
-  TOPIC_DRILL_TESTS
+  TOPIC_DRILL_TESTS,
+  fuzzyWordEq,
+  topicHasSupply
 } from './data';
 import {
   researchService,
@@ -2307,28 +2309,37 @@ const matchesWord = (qWords: string[], word: string): boolean =>
  * alone means almost nothing. The words of a multi-word key need not be adjacent —
  * "application mock practice" still means the simulator — but adjacency scores higher.
  */
-const scoreKey = (qWords: string[], qNorm: string, key: string): number => {
+/** Like matchesWord, but forgiving a typo ("negetive"); used only when exact matching found nothing. */
+const matchesWordLoose = (qWords: string[], word: string): boolean =>
+  matchesWord(qWords, word) || qWords.some(w =>
+    fuzzyWordEq(w, word) ||
+    (w.endsWith('s') && fuzzyWordEq(w.slice(0, -1), word)) ||
+    (w.endsWith('es') && fuzzyWordEq(w.slice(0, -2), word))
+  );
+
+const scoreKey = (qWords: string[], qNorm: string, key: string, loose: boolean = false): number => {
+  const match = loose ? matchesWordLoose : matchesWord;
   const parts = normaliseQuery(key).split(' ').filter(Boolean);
   if (parts.length === 0) return 0;
   if (parts.length === 1) {
-    return matchesWord(qWords, parts[0]) ? 1 + Math.min(parts[0].length, 12) * 0.12 : 0;
+    return match(qWords, parts[0]) ? 1 + Math.min(parts[0].length, 12) * 0.12 : 0;
   }
-  if (!parts.every(part => matchesWord(qWords, part))) return 0;
+  if (!parts.every(part => match(qWords, part))) return 0;
   return (qNorm.includes(parts.join(' ')) ? 6 : 4) + parts.length * 1.5;
 };
 
-const scoreKeys = (query: string, keys: string[]): number => {
+const scoreKeys = (query: string, keys: string[], loose: boolean = false): number => {
   const qNorm = normaliseQuery(query);
   const qWords = qNorm.split(' ').filter(Boolean);
-  return keys.reduce((total, key) => total + scoreKey(qWords, qNorm, key), 0);
+  return keys.reduce((total, key) => total + scoreKey(qWords, qNorm, key, loose), 0);
 };
 
 /** The best-scoring entry of a keyed table — never merely the first one that matches. */
-function bestMatch<T extends { keys: string[] }>(query: string, table: T[]): { entry: T; score: number } | null {
+function bestMatch<T extends { keys: string[] }>(query: string, table: T[], loose: boolean = false): { entry: T; score: number } | null {
   let bestEntry: T | null = null;
   let bestScore = 0;
   for (const entry of table) {
-    const score = scoreKeys(query, entry.keys);
+    const score = scoreKeys(query, entry.keys, loose);
     if (score > bestScore) {
       bestEntry = entry;
       bestScore = score;
@@ -2342,15 +2353,15 @@ function bestMatch<T extends { keys: string[] }>(query: string, table: T[]): { e
  * decides which question it answers.
  */
 const FACT_INTENTS: { id: string; keys: string[] }[] = [
-  { id: 'age', keys: ['age limit', 'maximum age', 'minimum age', 'age relaxation', 'how old', 'upper age', 'age criteria'] },
+  { id: 'age', keys: ['age limit', 'maximum age', 'minimum age', 'age relaxation', 'how old', 'upper age', 'age criteria', 'crucial date', 'age as on'] },
   { id: 'eligibility', keys: ['eligib', 'qualification', 'graduate', 'graduation', 'degree', 'b tech', 'btech', 'can i apply'] },
-  { id: 'dates', keys: ['last date', 'deadline', 'closing date', 'application date', 'when can i apply', 'apply by', 'important date', 'exam date', 'when is the exam', 'notification date'] },
+  { id: 'dates', keys: ['last date', 'deadline', 'closing date', 'application date', 'when can i apply', 'apply by', 'important date', 'exam date', 'when is the exam', 'notification date', 'tier 1 exam', 'tier 2 exam', 'when is tier', 'exam schedule', 'exam month', 'which month'] },
   { id: 'pattern', keys: ['negative marking', 'marking scheme', 'exam pattern', 'pattern', 'how many questions', 'how many marks', 'duration', 'tier 1', 'tier 2', 'paper pattern'] },
   { id: 'vacancy', keys: ['vacancy', 'vacancies', 'how many post', 'number of post', 'seats'] },
   { id: 'pay', keys: ['salary', 'pay level', 'pay scale', 'in hand', 'grade pay'] },
   { id: 'syllabus', keys: ['syllabus', 'what to study', 'topics'] },
   { id: 'fee', keys: ['fee', 'payment', 'how much to pay', 'application fee'] },
-  { id: 'resources', keys: ['resource', 'material', 'book', 'pdf', 'video', 'ncert', 'free course'] },
+  { id: 'resources', keys: ['resource', 'material', 'book', 'pdf', 'video', 'ncert', 'free course', 'youtube', 'channel', 'coaching', 'teacher'] },
   { id: 'admitCard', keys: ['admit card', 'hall ticket'] },
   { id: 'cutoff', keys: ['cutoff', 'cut off', 'marks needed', 'safe score'] },
   { id: 'apply', keys: ['apply', 'application', 'otr', 'registration', 'photo', 'signature'] },
@@ -2378,7 +2389,7 @@ const PLATFORM_MAP: { keys: string[]; answer: string; action: AssistantAction }[
     action: { label: 'Open Am I Eligible?', tab: 'ELIGIBILITY' }
   },
   {
-    keys: ['resource', 'study material', 'material', 'book', 'pdf', 'video', 'lecture', 'notes', 'ncert', 'where should i study', 'what should i read'],
+    keys: ['resource', 'study material', 'material', 'book', 'pdf', 'video', 'lecture', 'notes', 'ncert', 'where should i study', 'what should i read', 'youtube', 'channel', 'channels', 'coaching', 'teacher', 'best channel'],
     answer: 'Study material is in the **Resources** tab in the top navigation.\n\nAt the top it shows the latest entries from SSC\'s own notice board, read live from ssc.gov.in. Below that it holds the SSC notice and reopening notice, previous-year question papers and answer keys, the Constitution of India official text, India Code, NCERT Exemplar and textbooks, the Census, MoSPI and RBI data portals, SWAYAM, NPTEL and NIOS free courses, single video lessons, and the free YouTube channels most SSC candidates follow — each labelled with its subscriber count and marked as coaching content, not an official source.\n\nGovOS stores no files. Every entry opens the publisher\'s own page, so you always get the current version. Use the "Start here" shelf if you are new, the subject chips to narrow down, the bookmark icon to keep something, and "Verify all links now" to see live which links are answering.',
     action: { label: 'Open Resources', tab: 'RESOURCES' }
   },
@@ -2485,6 +2496,17 @@ const PLATFORM_MAP: { keys: string[]; answer: string; action: AssistantAction }[
 export function answerCandidateQuery(query: string): AssistantReply {
   const q = query.toLowerCase().trim();
 
+  // ---- small talk: answer like a person, then say what this assistant is for
+  if (/^(hi|hii|hello|hey|namaste|namaskar|good (morning|afternoon|evening))\b[\s!.]*$/.test(q)) {
+    return {
+      verified: true,
+      text: 'Hello. I answer from the verified SSC CGL 2026 register — eligibility, dates, pattern, posts, syllabus, application, admit card, cutoffs — and I can take you to any part of this platform.\n\nAsk something like "am I eligible", "last date to apply", or "where are the resources".'
+    };
+  }
+  if (/^(thanks|thank you|thankyou|thx|ok|okay|great|nice|got it|cool)\b[\s!.]*$/.test(q)) {
+    return { verified: true, text: 'You are welcome. Ask whenever you need a date, a rule, or where something is.' };
+  }
+
   // ---- orientation
   if (has(q, 'what can you do', 'what can i ask', 'how does this work', 'how do i use', 'help me get started', 'getting started', 'what is govos', 'guide me through')) {
     return {
@@ -2495,8 +2517,9 @@ export function answerCandidateQuery(query: string): AssistantReply {
   }
 
   // ---- which part of the platform, and which fact, does this question best describe?
-  const nav = bestMatch(q, PLATFORM_MAP);
-  const fact = bestMatch(q, FACT_INTENTS);
+  // exact first; only if nothing at all matched, try again forgiving typos
+  const nav = bestMatch(q, PLATFORM_MAP) || bestMatch(q, PLATFORM_MAP, true);
+  const fact = bestMatch(q, FACT_INTENTS) || bestMatch(q, FACT_INTENTS, true);
   const factId = fact ? fact.entry.id : '';
 
   // Answer with navigation when the candidate asks where something is, or when a specific
@@ -2576,7 +2599,10 @@ export function answerCandidateQuery(query: string): AssistantReply {
   }
 
   if (factId === 'pay') {
-    const top = SSC_CGL_EXAM.posts.slice(0, 5).map(p => `• ${p.postName} — ${p.payScale} (${p.payLevel}, ${p.classification})`).join('\n');
+    const generic = new Set(['assistant', 'officer', 'junior', 'senior', 'grade', 'in', 'of', 'the', 'and', 'ii', 'iii']);
+    const named = SSC_CGL_EXAM.posts.filter(p => normaliseQuery(p.postName).split(' ').some(w => w.length >= 3 && !generic.has(w) && normaliseQuery(q).split(' ').includes(w)));
+    const shown = named.length > 0 ? named : SSC_CGL_EXAM.posts.slice(0, 5);
+    const top = shown.map(p => `• ${p.postName} — ${p.payScale} (${p.payLevel}, ${p.classification})`).join('\n');
     return {
       verified: true,
       text: `Pay by post, straight from the register:\n\n${top}\n\nAll ${SSC_CGL_EXAM.posts.length} posts with their pay levels, departments and nature of work are in section 01 of the Exam Guide. The figures are the pay scale; allowances vary by posting city.`,
@@ -5136,7 +5162,7 @@ const NAVIGATOR_SUBJECT_WORDS: { subject: ResourceItem['subject']; words: string
   { subject: 'General Awareness & Static GK', words: ['gk', 'ga', 'awareness', 'static', 'polity', 'constitution', 'history', 'geography', 'science', 'census', 'borders'] },
   { subject: 'Current Affairs & Governance', words: ['current', 'affairs', 'news', 'governance', 'parliament', 'bill', 'bills', 'pib', 'press'] },
   { subject: 'Banking & Financial Awareness', words: ['banking', 'bank', 'rbi', 'economy', 'economic', 'financial', 'finance', 'repo'] },
-  { subject: 'Foundation Textbooks & Open Courses', words: ['ncert', 'textbook', 'textbooks', 'exemplar', 'foundation', 'course', 'courses', 'nptel', 'swayam', 'nios', 'diksha', 'library'] },
+  { subject: 'Foundation Textbooks & Open Courses', words: ['ncert', 'textbook', 'textbooks', 'exemplar', 'foundation', 'course', 'courses', 'nptel', 'swayam', 'nios', 'diksha', 'library', 'science', 'physics', 'chemistry', 'biology', 'class'] },
   { subject: 'Computer & Typing', words: ['computer', 'computers', 'typing', 'dest', 'keyboard', 'excel', 'office', 'cpt'] },
   { subject: 'Official Gazette', words: ['notice', 'notification', 'gazette', 'calendar', 'answer', 'key', 'pyq', 'previous', 'result', 'results', 'act', 'acts', 'code', 'legislative'] }
 ];
@@ -5218,18 +5244,24 @@ function scoreResourceForQuery(r: ResourceItem, reading: NavigatorReading, qNorm
   });
 
   if (reading.subjects.length > 0) {
-    if (reading.directSubjects.includes(r.subject)) score += 4;       // named outright
+    if (reading.directSubjects.includes(r.subject)) score += 4.25;    // named outright (the .25 breaks ties its way)
     else if (reading.subjects.includes(r.subject)) score += 2;        // inferred from a topic word
     else if (termHits === 0) return 0;                                 // a subject was named and this is not it
+    else if (reading.directSubjects.length > 0) score = Math.min(score, 3.5); // never above a named-subject entry
   }
 
   if (reading.format) {
+    // asked-for format (row) vs what the entry is (column): a PDF request should never rank a
+    // channel above a document portal, and a video request should still surface channels
     const group = resourceFormatGroup(r);
-    if (group === reading.format) score += 3;
-    else if (reading.format === 'VIDEO' && group === 'CHANNEL') score += 2;   // a channel is where videos live
-    else if (reading.format === 'CHANNEL' && group === 'VIDEO') score += 1;
-    else if (reading.format === 'PDF' && group === 'PORTAL' && r.subject === 'Official Gazette') score += 1; // papers/keys live on portals
-    else score -= 2;
+    const table: Record<NavigatorFormat, Partial<Record<NavigatorFormat, number>>> = {
+      PDF:     { PDF: 3, PORTAL: 0, VIDEO: -3, CHANNEL: -3, TOOL: -3 },
+      VIDEO:   { VIDEO: 3, CHANNEL: 2, PDF: -3, PORTAL: -3, TOOL: -3 },
+      CHANNEL: { CHANNEL: 3, VIDEO: 1, PDF: -3, PORTAL: -3, TOOL: -3 },
+      PORTAL:  { PORTAL: 3, PDF: 1, VIDEO: -2, CHANNEL: -2, TOOL: -1 },
+      TOOL:    { TOOL: 3, PORTAL: -1, PDF: -2, VIDEO: -2, CHANNEL: -2 }
+    };
+    score += table[reading.format][group] ?? -2;
   }
 
   if (r.isEssential) score += 0.5;
@@ -5311,7 +5343,9 @@ export const ResourceAIAssistant: React.FC<ResourceAIAssistantProps> = ({
     let replyText: string;
     if (results.length > 0) {
       const best = results[0].resource;
-      replyText = `${readingLine}\n\n**${results.length === 1 ? 'One entry fits' : `${results.length} entries fit`}**, best first — ${best.title} (${best.author}).${results.length > 1 ? ' The rest are close matches.' : ''} Every link opens on the publisher\'s own site.`;
+      const formatMissing = reading.format && !results.some(x => resourceFormatGroup(x.resource) === reading.format);
+      const formatNote = formatMissing ? ` There is no ${navigatorFormatLabel[reading.format as NavigatorFormat]} for that in the library, so these are the closest other kinds.` : '';
+      replyText = `${readingLine}${formatNote}\n\n**${results.length === 1 ? 'One entry fits' : `${results.length} entries fit`}**, best first — ${best.title} (${best.author}).${results.length > 1 ? ' The rest are close matches.' : ''} Every link opens on the publisher\'s own site.`;
     } else {
       const subjectHint = reading.subjects.length > 0
         ? ` The library has ${resources.filter(r => reading.subjects.includes(r.subject)).length} entries under ${reading.subjects.join(' / ')}, but none that mention ${reading.terms.length ? `"${reading.terms.join(' ')}"` : 'that'}.`
@@ -6279,6 +6313,122 @@ export const PostStudyPathEngine: React.FC<PostStudyPathEngineProps> = ({
 };
 
 
+/** What the test-creator chat decides for one message: a reply, and a paper when one was built. */
+export interface PracticePlan {
+  kind: 'BUILT' | 'OFF_SYLLABUS' | 'NO_MATCH';
+  text: string;
+  paper?: MockPaper;
+}
+
+/**
+ * Turn a chat message into a test (or an honest refusal). Pure, so it can be exercised
+ * outside React: the component only wraps the result in a message bubble.
+ */
+export function planPracticeRequest(query: string, pastAttempts: MockAttemptRecord[]): PracticePlan {
+  const req = parseTestRequest(query);
+
+  // "Test my weak areas": read the topics actually scored below 60% in past attempts.
+  let topicKeys = req.topics.map(t => t.key);
+  let requestNote = '';
+  if (req.focusGoal === 'WEAK_AREAS' && topicKeys.length === 0) {
+    const stats = new Map<string, { correct: number; total: number; label: string }>();
+    pastAttempts.forEach(att => {
+      const paper = att.paperData || att.details?.paperData;
+      const answers = att.userAnswers || att.details?.userAnswers || {};
+      if (!paper || !Array.isArray(paper.questions)) return;
+      paper.questions.forEach((pq: any, qIdx: number) => {
+        const given = (answers as Record<number, number>)[qIdx];
+        if (given === undefined || given === null) return;
+        const spec = matchTopicByName(String(pq.topicName || ''));
+        if (!spec) return;
+        const row = stats.get(spec.key) || { correct: 0, total: 0, label: spec.label };
+        row.total += 1;
+        if (given === pq.correctOptionIndex) row.correct += 1;
+        stats.set(spec.key, row);
+      });
+    });
+    const weak = Array.from(stats.entries())
+      .filter(([, r]) => r.correct / r.total < 0.6)
+      .sort((a, b) => (a[1].correct / a[1].total) - (b[1].correct / b[1].total))
+      .slice(0, 4);
+    if (weak.length > 0) {
+      topicKeys = weak.map(([key]) => key);
+      requestNote = `Built from your own results: you are below 60% on ${weak.map(([, r]) => `${r.label} (${Math.round((r.correct / r.total) * 100)}%)`).join(', ')}.`;
+    } else {
+      requestNote = stats.size > 0
+        ? 'Nothing in your past attempts is below 60%, so this is a broad Tier-1 mix rather than a targeted drill.'
+        : 'You have no answered questions on record yet, so there are no weak topics to target. Take this mixed test and I can aim the next one at what you miss.';
+    }
+  }
+
+  // Every named topic is outside the SSC CGL syllabus and cannot be generated: say so plainly.
+  const offSyllabus = req.topics.filter(t => !t.inSyllabus && !t.generate);
+  if (req.topics.length > 0 && offSyllabus.length === req.topics.length) {
+    const nearest = Array.from(new Set(offSyllabus.map(t => t.subject)))
+      .flatMap(sub => TOPIC_CATALOG.filter(t => t.subject === sub && t.inSyllabus && (t.generate || matchTopicByName(t.label))).slice(0, 4))
+      .map(t => t.label);
+    return {
+      kind: 'OFF_SYLLABUS',
+      text: `${offSyllabus.map(t => t.label).join(' and ')} ${offSyllabus.length === 1 ? 'is' : 'are'} NOT part of the SSC CGL syllabus, so GovOS has no questions on it and I have not built a test — time spent there would not move your score.\n\nThe nearest topics that are in the syllabus:\n${nearest.map(n => `• ${req.numQuestions} questions on ${n.toLowerCase()}`).join('\n')}\n\nThe full syllabus is in the Exam Guide, section 06.`
+    };
+  }
+
+  // In the syllabus, but GovOS has nothing on it yet: say so rather than hand over other topics.
+  const unsupplied = req.topics.filter(t => t.inSyllabus && !topicHasSupply(t));
+  if (req.topics.length > 0 && req.topics.every(t => unsupplied.includes(t) || offSyllabus.includes(t))) {
+    const subjectsHit = Array.from(new Set(unsupplied.map(t => t.subject)));
+    const available = subjectsHit
+      .flatMap(sub => TOPIC_CATALOG.filter(t => t.subject === sub && t.inSyllabus && topicHasSupply(t)).slice(0, 5))
+      .map(t => t.label);
+    return {
+      kind: 'NO_MATCH',
+      text: `${unsupplied.map(t => t.label).join(' and ')} ${unsupplied.length === 1 ? 'is' : 'are'} in the SSC CGL syllabus, but GovOS has no questions on it yet — I have not built a test, rather than hand you questions on something else and call it ${unsupplied[0].label}.\n\n${available.length > 0 ? `In ${subjectsHit.join(' and ')} I can build right now:\n${available.map(a => `• ${req.numQuestions} questions on ${a.toLowerCase()}`).join('\n')}` : 'Name another topic and I will build it.'}\n\nFor ${unsupplied[0].label} itself, the Resources tab has the official sources to read from.`
+    };
+  }
+
+  // Nothing in the message matched a subject or a topic: ask, don't guess.
+  if (topicKeys.length === 0 && req.subjects.length === 0 && req.focusGoal !== 'WEAK_AREAS' && req.unrecognised.length > 0) {
+    const examples = TOPIC_CATALOG.filter(t => t.generate && t.inSyllabus).slice(0, 6).map(t => t.label);
+    return {
+      kind: 'NO_MATCH',
+      text: `I could not match "${req.unrecognised[0]}" to any topic in the SSC CGL syllabus or the question bank — it may be spelled differently from how I know it, or it may be outside the syllabus. I have not built a test, because a random mix would not help you.\n\nName a topic and I will generate it, for example:\n${examples.map(e => `• ${req.numQuestions} questions on ${e.toLowerCase()}`).join('\n')}\n\nOr name a section: Quantitative Aptitude, Reasoning, English, General Awareness.`
+    };
+  }
+
+  const generatedMock = generateCustomMockTest({
+    selectedSubjects: req.subjects,
+    selectedTopics: topicKeys,
+    numQuestions: req.numQuestions,
+    difficulty: req.difficulty,
+    durationMinutes: req.durationMinutes,
+    focusGoal: req.focusGoal
+  });
+
+  const scopeLine = topicKeys.length > 0
+    ? generatedMock.title.replace(/ Drill \(\d+ Qs\)$/, '')
+    : req.subjects.length > 0
+      ? `${req.subjects.join(' + ')} (whole section)`
+      : 'not specified — mixed Tier-1 sections';
+
+  const lines = [
+    `Here is what I understood from "${query}":`,
+    ...(req.corrections.length > 0 ? [`(I read ${req.corrections.map(c => `"${c.typed}" as "${c.readAs}"`).join(', ')}.)`] : []),
+    '',
+    `• Topic: ${scopeLine}`,
+    `• Questions: ${generatedMock.totalQuestions}`,
+    `• Difficulty: ${req.difficulty}`,
+    `• Time: ${generatedMock.durationMinutes} minutes${req.durationMinutes ? ' (as you asked)' : ' (calibrated for this length)'}`
+  ];
+  if (requestNote) lines.push('', requestNote);
+  if (generatedMock.generationNotes && generatedMock.generationNotes.length > 0) {
+    lines.push('');
+    generatedMock.generationNotes.forEach(n => lines.push(`— ${n}`));
+  }
+  lines.push('', 'Click below to start. Every solution names where the question came from.');
+
+  return { kind: 'BUILT', text: lines.join('\n'), paper: generatedMock };
+}
+
 // ==========================================================================
 // PracticeEngine.tsx
 // ==========================================================================
@@ -6464,112 +6614,14 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
     if (!customText) setChatInput('');
 
     setTimeout(() => {
-      const req = parseTestRequest(query);
-      const stamp = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-      // "Test my weak areas": read the topics actually scored below 60% in past attempts.
-      let topicKeys = req.topics.map(t => t.key);
-      let requestNote = '';
-      if (req.focusGoal === 'WEAK_AREAS' && topicKeys.length === 0) {
-        const stats = new Map<string, { correct: number; total: number; label: string }>();
-        pastAttempts.forEach(att => {
-          const paper = att.paperData || att.details?.paperData;
-          const answers = att.userAnswers || att.details?.userAnswers || {};
-          if (!paper || !Array.isArray(paper.questions)) return;
-          paper.questions.forEach((pq: any, qIdx: number) => {
-            const given = (answers as Record<number, number>)[qIdx];
-            if (given === undefined || given === null) return;
-            const spec = matchTopicByName(String(pq.topicName || ''));
-            if (!spec) return;
-            const row = stats.get(spec.key) || { correct: 0, total: 0, label: spec.label };
-            row.total += 1;
-            if (given === pq.correctOptionIndex) row.correct += 1;
-            stats.set(spec.key, row);
-          });
-        });
-        const weak = Array.from(stats.entries())
-          .filter(([, r]) => r.correct / r.total < 0.6)
-          .sort((a, b) => (a[1].correct / a[1].total) - (b[1].correct / b[1].total))
-          .slice(0, 4);
-        if (weak.length > 0) {
-          topicKeys = weak.map(([key]) => key);
-          requestNote = `Built from your own results: you are below 60% on ${weak.map(([, r]) => `${r.label} (${Math.round((r.correct / r.total) * 100)}%)`).join(', ')}.`;
-        } else {
-          requestNote = stats.size > 0
-            ? 'Nothing in your past attempts is below 60%, so this is a broad Tier-1 mix rather than a targeted drill.'
-            : 'You have no answered questions on record yet, so there are no weak topics to target. Take this mixed test and I can aim the next one at what you miss.';
-        }
-      }
-
-      // Every named topic is outside the SSC CGL syllabus and cannot be generated: say so plainly.
-      const offSyllabus = req.topics.filter(t => !t.inSyllabus && !t.generate);
-      if (req.topics.length > 0 && offSyllabus.length === req.topics.length) {
-        const nearest = Array.from(new Set(offSyllabus.map(t => t.subject)))
-          .flatMap(sub => TOPIC_CATALOG.filter(t => t.subject === sub && t.inSyllabus && (t.generate || matchTopicByName(t.label))).slice(0, 4))
-          .map(t => t.label);
-        setChatMessages(prev => [...prev, {
-          id: `msg-bot-${Date.now()}`,
-          sender: 'assistant',
-          text: `${offSyllabus.map(t => t.label).join(' and ')} ${offSyllabus.length === 1 ? 'is' : 'are'} NOT part of the SSC CGL syllabus, so GovOS has no questions on it and I have not built a test — time spent there would not move your score.\n\nThe nearest topics that are in the syllabus:\n${nearest.map(n => `• ${req.numQuestions} questions on ${n.toLowerCase()}`).join('\n')}\n\nThe full syllabus is in the Exam Guide, section 06.`,
-          timestamp: stamp()
-        }]);
-        return;
-      }
-
-      // Nothing in the message matched a subject or a topic: ask, don't guess.
-      if (topicKeys.length === 0 && req.subjects.length === 0 && req.focusGoal !== 'WEAK_AREAS' && req.unrecognised.length > 0) {
-        const examples = TOPIC_CATALOG.filter(t => t.generate && t.inSyllabus).slice(0, 6).map(t => t.label);
-        setChatMessages(prev => [...prev, {
-          id: `msg-bot-${Date.now()}`,
-          sender: 'assistant',
-          text: `I could not match "${req.unrecognised[0]}" to any topic in the SSC CGL syllabus or the question bank — it may be spelled differently from how I know it, or it may be outside the syllabus. I have not built a test, because a random mix would not help you.\n\nName a topic and I will generate it, for example:\n${examples.map(e => `• ${req.numQuestions} questions on ${e.toLowerCase()}`).join('\n')}\n\nOr name a section: Quantitative Aptitude, Reasoning, English, General Awareness.`,
-          timestamp: stamp()
-        }]);
-        return;
-      }
-
-      const generatedMock = generateCustomMockTest({
-        selectedSubjects: req.subjects,
-        selectedTopics: topicKeys,
-        numQuestions: req.numQuestions,
-        difficulty: req.difficulty,
-        durationMinutes: req.durationMinutes,
-        focusGoal: req.focusGoal
-      });
-
-      const scopeLine = topicKeys.length > 0
-        ? generatedMock.title.replace(/ Drill \(\d+ Qs\)$/, '')
-        : req.subjects.length > 0
-          ? `${req.subjects.join(' + ')} (whole section)`
-          : 'not specified — mixed Tier-1 sections';
-
-      const lines = [
-        `Here is what I understood from "${query}":`,
-        ...(req.corrections.length > 0 ? [`(I read ${req.corrections.map(c => `"${c.typed}" as "${c.readAs}"`).join(', ')}.)`] : []),
-        '',
-        `• Topic: ${scopeLine}`,
-        `• Questions: ${generatedMock.totalQuestions}`,
-        `• Difficulty: ${req.difficulty}`,
-        `• Time: ${generatedMock.durationMinutes} minutes${req.durationMinutes ? ' (as you asked)' : ' (calibrated for this length)'}`
-      ];
-      if (requestNote) {
-        lines.push('', requestNote);
-      }
-      if (generatedMock.generationNotes && generatedMock.generationNotes.length > 0) {
-        lines.push('');
-        generatedMock.generationNotes.forEach(n => lines.push(`— ${n}`));
-      }
-      lines.push('', 'Click below to start. Every solution names where the question came from.');
-      const responseText = lines.join('\n');
-
+      const plan = planPracticeRequest(query, pastAttempts);
       const botMsg: MockChatMessage = {
         id: `msg-bot-${Date.now()}`,
         sender: 'assistant',
-        text: responseText,
+        text: plan.text,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        proposedTest: generatedMock
+        proposedTest: plan.paper
       };
-
       setChatMessages(prev => [...prev, botMsg]);
     }, 400);
   };

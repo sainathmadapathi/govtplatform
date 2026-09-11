@@ -179,6 +179,14 @@ for "12 questions on calculus" must produce twelve calculus questions, so:
   idioms, error spotting, active-to-passive voice, computer basics — 58 items) are written
   and checked by hand, because language and factual items cannot be generated safely. All of
   it is `GOVOS_AUTHORED` and renders as "GovOS practice question"; never label it official.
+- **A topic with nothing to serve is refused, not substituted.** `topicHasSupply()` is true
+  when the bank or a generator can supply it. If every named topic lacks supply, the chat
+  says "X is in the SSC CGL syllabus, but GovOS has no questions on it yet", lists what it
+  can build in that subject, and builds nothing — "history 10 questions" must not quietly
+  become a polity test. Subject fills (`suppliersForSubject`) exclude off-syllabus topics,
+  so a mixed Tier-1 test never opens on calculus, and `rotateStart` varies the opening topic.
+  A request with no recognisable topic in any phrasing ("cooking recipes 10 questions")
+  strips request grammar and reports the leftover words as unrecognised.
 - **Scarcity is stated, never hidden.** If a topic runs out the test widens to the rest of
   that subject, then to the other Tier-1 sections, and finally stops short — a question is
   never repeated inside one paper. Every decision lands in `generationNotes[]`, which the
@@ -276,6 +284,18 @@ branches, so "where should I check my eligibility in this platform" hit the fall
   answers `verified: false`: the register has no fee field.
 - Starter-question chips under the input make the scope visible. `renderAssistantText`
   turns `**bold**` into real bold runs; message bubbles are `pre-wrap`.
+- Greetings and thanks get a human reply, not "not in the register". Typos are forgiven on a
+  second pass only (`bestMatch(…, loose=true)` runs when the exact pass matched nothing),
+  plural-stripped first so "resourses" reaches Resources. A post named in a pay question
+  ("tax assistant") is listed first.
+
+**All three chats are testable headlessly.** `answerCandidateQuery`, `planPracticeRequest`
+(the test creator's whole decision: BUILT / OFF_SYLLABUS / NO_MATCH, pulled out of the
+component so it can be exercised) and `rankResourcesForQuery` are pure exports. The
+scratchpad `all_bots_test.tsx` runs ~130 phrasings across them — typos, Hinglish, filler
+words, off-topic — and prints destination/kind/top results; copy it into `src/`, bundle with
+esbuild (`--jsx=automatic`), run, delete. Every behavioural fix in this area came from
+reading that output, and it is the fastest way to see a regression.
 
 **Live Source Research (Tavily).** The Admin Trust Panel's "Live Source Research" tab runs a
 Tavily search (scope: official domains only / news / whole web), and every result is
