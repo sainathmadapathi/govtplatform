@@ -250,6 +250,11 @@ selected exam/post, then the candidate's own data, then the register.
   band; with no profile it asks for date of birth, degree and category rather than answering
   in general. Pay lists the target post first when no post is named. "What should I study?"
   names the target post and its special qualification, or asks the candidate to choose one.
+- **An answer about one entry hands over the entry.** `AssistantReply.resourceLink` carries
+  the title, URL and a label matched to the kind ("Launch the tool", "Open the PDF", "Watch
+  the video"), and the chat renders it as a direct button. `namedResourceAnswer()` sets it,
+  and any section answer whose action points at Resources picks it up too — describing which
+  tab to open, when the thing itself is one click away, is not an answer.
 - **Four kinds of claim, four badges.** `AssistantReply.sourceKind` is OFFICIAL (from the
   register, cited), PLATFORM (how GovOS works), GUIDANCE (derived advice — "not an official
   rule"), CLARIFY (a question back) or UNVERIFIED (not in the register; live search offered).

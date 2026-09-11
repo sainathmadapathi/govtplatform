@@ -2287,6 +2287,8 @@ interface AssistantReply {
   unresolved?: boolean;
   /** What this turn was about, recorded so the next message can inherit it. */
   subject?: string;
+  /** The exact entry the answer is about, so the chat can link straight to it. */
+  resourceLink?: { title: string; url: string; label: string };
   citation?: {
     documentTitle: string;
     pageNumber: number;
@@ -2443,6 +2445,20 @@ function editDistanceShort(a: string, b: string): number {
   return d[a.length][b.length];
 }
 
+/** What the button should say for a given kind of entry. */
+const resourceActionLabel = (r: ResourceItem): string => {
+  switch (r.resourceFormat) {
+    case 'DIRECT_PDF': return 'Open the PDF';
+    case 'ONLINE_TOOL': return 'Launch the tool';
+    case 'YOUTUBE_COURSE': return 'Watch the video';
+    case 'YOUTUBE_CHANNEL': return 'Open the channel';
+    default: return 'Open the official page';
+  }
+};
+
+/** A direct link to one entry, for an answer that is about that entry. */
+const linkFor = (r: ResourceItem) => ({ title: r.title, url: r.url, label: resourceActionLabel(r) });
+
 /** Words that point back at the conversation instead of naming anything. */
 const DEICTIC_WORDS = /\b(it|its|this|that|these|those|them|they|there|same|again|instead|one|ones)\b/;
 
@@ -2505,7 +2521,10 @@ function namedResourceAnswer(q: string, minScore: number = 6): { reply: Assistan
   const others = results.slice(1, 3).map(x => x.resource.title);
   const reply: AssistantReply = {
     verified: true,
-    text: `That is in the **Resources** tab: **${top.title}** — ${top.author}.${others.length > 0 ? `\n\nAlso there: ${others.join('; ')}.` : ''}\n\nOpen Resources to reach it. Every entry opens on the publisher's own site, and each card shows when its link was last checked.`,
+    sourceKind: top.provenance?.verificationLevel === 'OFFICIALLY_VERIFIED' ? 'OFFICIAL' : 'GUIDANCE',
+    subject: top.subject,
+    resourceLink: linkFor(top),
+    text: `**${top.title}** — ${top.author}.${top.recommendedFor ? `\n\nBest for: ${top.recommendedFor}` : ''}${others.length > 0 ? `\n\nAlso in the library: ${others.join('; ')}.` : ''}\n\nThe link below opens it on the publisher's own site; the card in Resources shows when it was last checked.`,
     action: { label: 'Open Resources', tab: 'RESOURCES' }
   };
   return { reply, score: results[0].score };
@@ -2598,7 +2617,7 @@ const PLATFORM_MAP: { keys: string[]; answer: string; action: AssistantAction }[
   },
   {
     keys: ['typing', 'typing test', 'typing speed', 'typing practice', 'typing tool', 'dest', 'data entry speed test', 'keyboard', 'wpm', 'key depressions'],
-    answer: 'The typing practice tool is in the **Resources** tab, under Computer & Typing — a keyboard speed test you can use for DEST practice.\n\nThe Data Entry Speed Test itself is Section III, Module 2 of Tier-2: qualifying, so it does not add to your merit score, but you still have to clear it. Section 05 Exam Pattern shows exactly where it sits.\n\nGovOS does not host the tool; the card opens it on its own site.',
+    answer: 'Here is the typing practice tool — the link below opens it directly.\n\nIt is what you want for the Data Entry Speed Test, which is Section III Module 2 of Tier-2 and qualifying. The full card, with the link check date, is in Resources under Computer & Typing.',
     action: { label: 'Open Resources', tab: 'RESOURCES' }
   },
   {
@@ -2795,7 +2814,15 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
   // Answer with navigation when the candidate asks where something is, or when a specific
   // multi-word request ("application practice") outscores whatever single words also matched.
   if (nav && (asksLocation(q) || (nav.score >= 6 && nav.score > (fact ? fact.score : 0)))) {
-    return { verified: true, sourceKind: 'PLATFORM', text: nav.entry.answer, action: nav.entry.action };
+    // If that section answer is really about one entry, hand over the entry as well.
+    const item = nav.entry.action.tab === 'RESOURCES' ? namedResourceAnswer(q, 6) : null;
+    return {
+      verified: true,
+      sourceKind: 'PLATFORM',
+      text: nav.entry.answer,
+      action: nav.entry.action,
+      resourceLink: item ? item.reply.resourceLink : undefined
+    };
   }
 
   // One generic word ("test", "date") is not understanding the question. When that is the
@@ -3088,6 +3115,7 @@ interface AIChatMessage {
   /** "Take me there" button for answers that point at a part of the platform. */
   action?: AssistantAction;
   sourceKind?: AssistantSourceKind;
+  resourceLink?: { title: string; url: string; label: string };
 }
 
 export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal, onNavigate, exam = SSC_CGL_EXAM }) => {
@@ -3153,6 +3181,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal,
         sourceKind: reply.sourceKind,
         citation: reply.citation,
         action: reply.action,
+        resourceLink: reply.resourceLink,
         liveSearchOffer: reply.verified ? undefined : userText
       };
 
@@ -3192,6 +3221,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal,
         sourceKind: reply.sourceKind,
         citation: reply.citation,
         action: reply.action,
+        resourceLink: reply.resourceLink,
         liveSearchOffer: reply.verified ? undefined : question
       }]);
     }, 300);
@@ -3262,6 +3292,21 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal,
               </div>
 
               <span style={{ whiteSpace: 'pre-wrap' }}>{msg.sender === 'AI' ? renderAssistantText(msg.text) : msg.text}</span>
+
+              {msg.resourceLink && (
+                <div style={{ marginTop: '12px' }}>
+                  <a
+                    href={msg.resourceLink.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn btn-emerald"
+                    title={msg.resourceLink.title}
+                    style={{ fontSize: '0.78rem', padding: '7px 14px', display: 'inline-flex', alignItems: 'center', gap: '6px', textDecoration: 'none' }}
+                  >
+                    {msg.resourceLink.label} <ExternalLink size={13} />
+                  </a>
+                </div>
+              )}
 
               {msg.action && onNavigate && (
                 <div style={{ marginTop: '12px' }}>
