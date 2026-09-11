@@ -29,6 +29,7 @@ import {
 import {
   AdminVerificationPanel,
   AIAssistant,
+  GovOSTab,
   EligibilityCalculator,
   ExamCalendar,
   ExamCompare,
@@ -49,13 +50,44 @@ export const App: React.FC = () => {
   const [examSection, setExamSection] = useState<number>(1);
   const [resourceForReader, setResourceForReader] = useState<ResourceItem | null>(null);
 
-  /** Used by the assistant: switch view, and open a specific guide section when given. */
-  const handleAssistantNavigate = (tab: 'FINDER' | 'ELIGIBILITY' | 'EXAM_DETAIL' | 'PLANNER' | 'PRACTICE' | 'RESOURCES' | 'COMPARE' | 'CALENDAR' | 'AI_ASSISTANT' | 'ADMIN', section?: number) => {
-    if (section) setExamSection(section);
-    setActiveTab(tab);
+  /**
+   * The exam the candidate is working inside - the context every exam-scoped feature reads.
+   * Restored from the last session, so reopening GovOS lands where they left off.
+   */
+  const [selectedExam, setSelectedExam] = useState<Exam>(() => {
+    const savedId = storageService.getCurrentExamId();
+    return ALL_EXAMS.find(e => e.id === savedId) || SSC_CGL_EXAM;
+  });
+
+  /**
+   * Every navigation request goes through here.
+   *
+   * Practice, Resources and the Study Roadmap used to be top-level tabs as well as sections
+   * of the exam they describe. They now live only inside the exam, so a request for one of
+   * those tabs is translated into the exam page at the matching section. The tab ids stay
+   * part of GovOSTab, which keeps every existing assistant action, notification and button
+   * working without a rewrite.
+   */
+  const EXAM_SCOPED_TABS: Partial<Record<GovOSTab, number>> = {
+    PRACTICE: 9,    // Practice & PYQs
+    RESOURCES: 8,   // Resources
+    PLANNER: 7      // Study Roadmap
+  };
+
+  const navigate = (tab: GovOSTab, section?: number) => {
+    const movedTo = EXAM_SCOPED_TABS[tab];
+    if (movedTo !== undefined) {
+      setExamSection(section || movedTo);
+      setActiveTab('EXAM_DETAIL');
+    } else {
+      if (section) setExamSection(section);
+      setActiveTab(tab);
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
-  const [selectedExam, setSelectedExam] = useState<Exam>(SSC_CGL_EXAM);
+
+  /** Used by the assistant's "take me there" buttons. */
+  const handleAssistantNavigate = navigate;
   
   // Tracked Exams & Notifications State
   const [trackedExamIds, setTrackedExamIds] = useState<string[]>(() => storageService.getTrackedExams());
@@ -125,21 +157,35 @@ export const App: React.FC = () => {
     setNotifications(updated);
   };
 
+  /**
+   * A notification is always about one exam, so it opens that exam at the section it names.
+   * actionPayload.section was already being written by the generator and ignored here; it is
+   * honoured now, with a sensible section per action type as the fallback.
+   */
   const handleNotificationAction = (notif: CandidateNotification) => {
     const targetExam = ALL_EXAMS.find(e => e.id === notif.examId) || ALL_EXAMS[0];
     setSelectedExam(targetExam);
-    
-    if (notif.actionType === 'CALENDAR' || notif.actionType === 'TIMELINE') {
-      setActiveTab('CALENDAR');
-    } else {
-      setActiveTab('EXAM_DETAIL');
-    }
+    storageService.setCurrentExamId(targetExam.id);
+
+    const byType: Record<CandidateNotification['actionType'], number> = {
+      EXAM_DETAIL: 1,
+      APPLICATION_GUIDE: 4,
+      CALENDAR: 2,
+      TIMELINE: 2,
+      ADMIT_CARD: 14,
+      RESULT: 16
+    };
+    const section = notif.actionPayload?.section || byType[notif.actionType] || 1;
+    navigate('EXAM_DETAIL', section);
 
     setIsNotificationsModalOpen(false);
   };
 
   const handleSelectExam = (exam: Exam) => {
     setSelectedExam(exam);
+    storageService.setCurrentExamId(exam.id);
+    // A different exam opens at its own overview, not at whichever section was last read.
+    setExamSection(1);
     setActiveTab('EXAM_DETAIL');
     storageService.recordInteraction({
       type: 'VIEW',
@@ -178,7 +224,7 @@ export const App: React.FC = () => {
       {/* Top Header */}
       <Header 
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={navigate}
         selectedExamTitle={selectedExam.title}
         unreadCount={unreadCount}
         trackedCount={trackedExamIds.length}
@@ -218,6 +264,10 @@ export const App: React.FC = () => {
           />
         )}
 
+        {/* PLANNER / PRACTICE / RESOURCES now live inside the exam page (sections 07, 09, 08)
+            and navigate() sends every request there. These renders stay as a safety net, so a
+            path that sets the tab directly still shows the real feature rather than a blank
+            screen - they mount the very same components the exam page mounts. */}
         {activeTab === 'PLANNER' && (
           <PreparationPlanner 
             exam={selectedExam}
@@ -246,6 +296,7 @@ export const App: React.FC = () => {
           />
         )}
 
+        {/* Cross-exam calendar. A single exam's own timeline is section 02 of that exam. */}
         {activeTab === 'CALENDAR' && (
           <ExamCalendar 
             onSelectExam={handleSelectExam}

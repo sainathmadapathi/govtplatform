@@ -334,6 +334,7 @@ export interface MockAttemptRecord {
 }
 
 const STORAGE_KEYS = {
+  CURRENT_EXAM: 'govos_current_exam_id',
   TARGET_POST: 'govos_target_post_id',
   DAILY_HOURS: 'govos_daily_study_hours',
   RESULT_ENTRY: 'govos_result_entry',
@@ -388,6 +389,27 @@ class StorageService {
       return localStorage.getItem(STORAGE_KEYS.TARGET_POST) || '';
     } catch {
       return '';
+    }
+  }
+
+  /**
+   * The exam the candidate is currently working inside. Every exam-scoped feature —
+   * resources, practice, mocks, timeline, application, both chats — is handed this exam,
+   * so "when is it?" means this exam and nothing else. Empty until they open one.
+   */
+  getCurrentExamId(): string {
+    try {
+      return localStorage.getItem(STORAGE_KEYS.CURRENT_EXAM) || '';
+    } catch {
+      return '';
+    }
+  }
+
+  setCurrentExamId(examId: string): void {
+    try {
+      localStorage.setItem(STORAGE_KEYS.CURRENT_EXAM, examId);
+    } catch (e) {
+      console.warn('LocalStorage save error:', e);
     }
   }
 

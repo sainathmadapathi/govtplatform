@@ -226,6 +226,14 @@ resolved against `exam.posts`), the saved `UserProfile`, the journey stage, and 
 turns for that chat. Priority is the platform's: the message, then the thread, then the
 selected exam/post, then the candidate's own data, then the register.
 
+- **Every chat is scoped to the exam in hand, visibly.** `AIAssistant` shows a "current exam
+  context" strip naming the exam and saying that naming another exam switches it;
+  `ResourceAIAssistant` names the library it is searching. `namedResourceAnswer`, `dateOfType`
+  and the live official-domain search all take the exam from context instead of reading
+  `SSC_CGL_EXAM`. One guard matters: the navigator weights a term by how few entries carry
+  it, which means nothing in a library of one or two — every word is then "rare" and the
+  single entry answers everything — so `namedResourceAnswer` refuses to claim the candidate
+  named a document when the exam's library holds fewer than 5 entries.
 - `conversationService` keeps up to 12 turns per channel (`ASSISTANT` | `PRACTICE` |
   `RESOURCES`) in `govos_chat_history`. A turn records what the assistant took it to be
   about (`subject`), and for the practice chat what it built (`topics`, `count`,
@@ -389,15 +397,73 @@ defaults to Upcoming (All and Completed are one click away), and the month chips
 from the events actually present — the old hardcoded `['FEB','MAR',…]` list with a "2026"
 label could not survive the year turning.
 
-`ExamDetailView` is the hub: a 9-stage **candidate lifecycle** as primary navigation, plus a
-collapsible grouped index of **16 detail sections** as secondary reference. `sectionToStep`
-keeps the lifecycle in sync with whichever section is open.
+## The exam is the unit of navigation
+
+Everything that belongs to one exam lives inside that exam. Resources, Practice, Mocks, the
+Timeline, the Application guide and both chats read the **current exam** and show only its
+content; a candidate inside UPSC never meets SSC material.
+
+`ExamDetailView` is that page: a 9-stage **candidate lifecycle** ("what should I do next?"),
+then the exam's **13 parts** as the section row, then a quieter "Also in this exam" row for
+the four reference sections. `sectionToStep` keeps the lifecycle in sync with what is open.
+
+```
+<exam>
+├── Overview            ├── Resources
+├── Dates & Timeline    ├── Practice & PYQs
+├── Eligibility & Posts ├── Mock Tests
+├── Application & Docs  ├── Admit Card
+├── Exam Pattern        ├── Exam Day
+├── Syllabus            └── Results & Next Steps
+└── Study Roadmap
+   also in this exam: FAQs · Corrigenda · Official Links · Cutoff History
+```
+
+`EXAM_SECTIONS` and `REFERENCE_SECTIONS` (top of the ExamDetailView block in `ui.tsx`) are
+the whole structure; add a part by adding an entry and a render block, not by renumbering.
 
 **Section numbers are the app's deep-link vocabulary** (notification `actionPayload:
-{section: N}` and the `initialSection` prop target them):
-1 Overview/Posts · 2 Dates · 3 Eligibility · 4 Application · 5 Pattern · 6 Study Plan+Syllabus ·
-7 Roadmap · 8 Resources · 9 Practice · 10 Cutoffs · 11 FAQs · 12 Links · 13 Corrigenda ·
-14 Admit Card · 15 Exam-Day Checklist · 16 Result Next Steps.
+{section: N}`, `AssistantAction.section` and the `initialSection` prop target them), so a
+section's `num` is its **stable id, not its position**. The ids therefore keep their
+historical values and Mock Tests took a fresh number rather than pushing the others along:
+1 Overview · 2 Dates & Timeline · 3 Eligibility & Posts · 4 Application & Documents ·
+5 Exam Pattern · 6 Syllabus · 7 Study Roadmap · 8 Resources · 9 Practice & PYQs ·
+**17 Mock Tests** · 14 Admit Card · 15 Exam Day · 16 Results & Next Steps, with reference
+sections 10 Cutoffs · 11 FAQs · 12 Official Links · 13 Corrigenda.
+
+**Global navigation is what genuinely spans exams.** The header's first row is the platform
+(Find Exam · the current exam · Ask GovOS AI · Trust Panel · the notification bell); the
+second, quieter row is "across all exams" (Am I Eligible? · Compare Exams · All-Exam
+Calendar). Practice, Resources and the Study Roadmap used to be top-level tabs **as well as**
+sections of the exam they describe, so a candidate met the same feature twice under two
+names; they are now only inside the exam.
+
+**Nothing was renamed away.** `GovOSTab` still carries `PRACTICE`, `RESOURCES` and `PLANNER`,
+and `navigate(tab, section?)` in `main.tsx` — the single entry point every button, assistant
+action and notification goes through — translates them into `EXAM_DETAIL` at sections 9, 8
+and 7. `main.tsx` still renders those three tabs as a safety net for any path that sets the
+tab directly. When you move a feature, update `EXAM_SCOPED_TABS` and `PLATFORM_MAP` in the
+same edit.
+
+**One engine, two doors.** `PracticeEngine` takes `scope`: `PRACTICE` offers PYQ shift
+papers, subject sectionals and topic drills; `MOCKS` opens on the AI test creator; `ALL` is
+the untouched original. Both always keep `ACTIVE_TEST` and `PAST_ANALYTICS`, so a test
+started in either can be sat, submitted and reviewed, and one Past Tests History serves both.
+The question bank, the CBT clock, the scoring, the attempt records and the review chain are
+literally the same code — only the tab row differs.
+
+**Section 02 is the exam's own timeline**, not a copy of the calendar: it reads `exam.dates`
+against a clock that re-reads itself every minute, puts what is still ahead first with a NEXT
+banner, and hides completed milestones behind a toggle. A **`SUPERSEDED` date is never the
+"next" milestone** — it is still listed, struck through, because the corrigendum that
+replaced it is part of the record, but announcing it would send the candidate at a deadline
+that no longer exists. The cross-exam view (`ExamCalendar`, the All-Exam Calendar button)
+still covers every exam at once; that is the one timeline that cannot belong to a single exam.
+
+**The current exam is stored** (`storageService.getCurrentExamId()` /
+`setCurrentExamId()`, key `govos_current_exam_id`), so reopening GovOS lands where the
+candidate left off, and `handleSelectExam` resets the open section to the new exam's
+Overview.
 
 `PracticeEngine` is the largest component: six views (`PAPERS_LIST`, `SUBJECT_TESTS`,
 `TOPIC_DRILLS`, `AI_CHAT_ASSISTANT`, `ACTIVE_TEST`, `PAST_ANALYTICS`), a real CBT clock that
@@ -407,7 +473,7 @@ solutions. `handleReviewPastAttempt` reconstructs old attempts through a 7-step 
 chain so review never crashes.
 
 ### `src/main.tsx`
-The `App` shell: one `activeTab` string for all ten views (`FINDER | ELIGIBILITY |
+The `App` shell: one `activeTab` string for all ten views (three of which are now reached through `navigate()` inside the exam page rather than from the header) (`FINDER | ELIGIBILITY |
 EXAM_DETAIL | PLANNER | PRACTICE | RESOURCES | COMPARE | CALENDAR | AI_ASSISTANT | ADMIN`,
 exported from `ui.tsx` as `GovOSTab`) — **no router** — plus `examSection`, which lets
 anything deep-link into an Exam Guide section, the resource reader modal, the provenance

@@ -213,127 +213,125 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Global Navigation */}
-        <nav style={{ display: 'flex', alignItems: 'center', gap: '6px', overflowX: 'auto', padding: '4px' }}>
-          <button 
-            className={`btn ${activeTab === 'FINDER' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setActiveTab('FINDER')}
-            style={{ fontSize: '0.85rem', padding: '8px 14px' }}
-          >
-            <Compass size={16} /> Exam Finder
-          </button>
-          
-          <button 
-            className={`btn ${activeTab === 'ELIGIBILITY' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setActiveTab('ELIGIBILITY')}
-            style={{ fontSize: '0.85rem', padding: '8px 14px' }}
-          >
-            <CheckCircle2 size={16} /> Am I Eligible?
-          </button>
+        {/* Global Navigation.
+            Row 1 is the platform: find an exam, work inside it, ask the assistant, audit.
+            Row 2 is what genuinely spans exams. Anything belonging to one exam — resources,
+            practice, mocks, timeline, application — lives inside that exam's page now, so it
+            is not offered twice under two different names. */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+          <nav style={{ display: 'flex', alignItems: 'center', gap: '6px', overflowX: 'auto', padding: '2px' }}>
+            <button
+              className={`btn ${activeTab === 'FINDER' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setActiveTab('FINDER')}
+              style={{ fontSize: '0.85rem', padding: '8px 14px' }}
+            >
+              <Compass size={16} /> Find Exam
+            </button>
 
-          <button 
-            className={`btn ${activeTab === 'EXAM_DETAIL' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setActiveTab('EXAM_DETAIL')}
-            style={{ fontSize: '0.85rem', padding: '8px 14px' }}
-          >
-            <BookOpen size={16} /> Exam Guide {selectedExamTitle && `(${selectedExamTitle.split(' ')[0]})`}
-          </button>
+            <button
+              className={`btn ${activeTab === 'EXAM_DETAIL' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setActiveTab('EXAM_DETAIL')}
+              title={selectedExamTitle ? `Everything for ${selectedExamTitle}: dates, eligibility, application, syllabus, resources, practice, mocks, admit card, results` : 'Open the exam workspace'}
+              style={{ fontSize: '0.85rem', padding: '8px 14px' }}
+            >
+              <BookOpen size={16} /> {selectedExamTitle || 'My Exam'}
+            </button>
 
-          <button 
-            className={`btn ${activeTab === 'PRACTICE' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setActiveTab('PRACTICE')}
-            style={{ fontSize: '0.85rem', padding: '8px 14px' }}
-          >
-            <Award size={16} /> Practice & Mocks
-          </button>
+            <button
+              className={`btn ${activeTab === 'AI_ASSISTANT' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setActiveTab('AI_ASSISTANT')}
+              style={{ fontSize: '0.85rem', padding: '8px 14px' }}
+              title="Grounded answers from the verified database, with a live official-source search as fallback"
+            >
+              <Bot size={16} /> Ask GovOS AI
+            </button>
 
-          <button
-            className={`btn ${activeTab === 'RESOURCES' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setActiveTab('RESOURCES')}
-            style={{ fontSize: '0.85rem', padding: '8px 14px' }}
-          >
-            <Library size={16} /> Resources
-          </button>
+            <button
+              className={`btn ${activeTab === 'ADMIN' ? 'btn-emerald' : 'btn-secondary'}`}
+              onClick={() => setActiveTab('ADMIN')}
+              style={{ fontSize: '0.85rem', padding: '8px 14px' }}
+            >
+              <Terminal size={16} /> Trust Panel
+            </button>
 
-          <button 
-            className={`btn ${activeTab === 'COMPARE' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setActiveTab('COMPARE')}
-            style={{ fontSize: '0.85rem', padding: '8px 14px' }}
-          >
-            <Scale size={16} /> Compare Exams
-          </button>
+            {/* Candidate Notification Bell */}
+            <button
+              className="btn btn-secondary"
+              onClick={onOpenNotifications}
+              title="Candidate Notifications & Alerts"
+              style={{
+                position: 'relative',
+                padding: '8px 12px',
+                marginLeft: '4px',
+                border: unreadCount > 0 ? '1px solid rgba(99, 102, 241, 0.5)' : '1px solid var(--border-color)',
+                background: unreadCount > 0 ? 'rgba(99, 102, 241, 0.12)' : 'rgba(255, 255, 255, 0.04)'
+              }}
+            >
+              <Bell size={18} color={unreadCount > 0 ? '#818cf8' : 'white'} />
+              {unreadCount > 0 && (
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: '-4px',
+                    right: '-4px',
+                    background: '#ef4444',
+                    color: 'white',
+                    borderRadius: '50%',
+                    width: '18px',
+                    height: '18px',
+                    fontSize: '0.65rem',
+                    fontWeight: 800,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 0 10px rgba(239, 68, 68, 0.8)'
+                  }}
+                >
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </button>
+          </nav>
 
-          <button 
-            className={`btn ${activeTab === 'CALENDAR' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => {
-              if (onOpenTimeline) onOpenTimeline();
-              setActiveTab('CALENDAR');
-            }}
-            style={{ fontSize: '0.85rem', padding: '8px 14px', display: 'flex', alignItems: 'center', gap: '6px' }}
-          >
-            <Calendar size={16} /> My Timeline & Calendar
-            {trackedCount > 0 && (
-              <span className="badge" style={{ fontSize: '0.65rem', background: 'rgba(99,102,241,0.25)', color: '#a5b4fc', padding: '1px 6px' }}>
-                {trackedCount} Tracked
-              </span>
-            )}
-          </button>
+          <nav style={{ display: 'flex', alignItems: 'center', gap: '6px', overflowX: 'auto', padding: '2px' }}>
+            <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap', marginRight: '2px' }}>
+              Across all exams
+            </span>
 
-          <button 
-            className={`btn ${activeTab === 'AI_ASSISTANT' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setActiveTab('AI_ASSISTANT')}
-            style={{ fontSize: '0.85rem', padding: '8px 14px' }}
-            title="Grounded answers from the verified database, with a live official-source search as fallback"
-          >
-            <Bot size={16} /> Ask GovOS AI
-          </button>
+            <button
+              className={`btn ${activeTab === 'ELIGIBILITY' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setActiveTab('ELIGIBILITY')}
+              style={{ fontSize: '0.78rem', padding: '5px 11px' }}
+            >
+              <CheckCircle2 size={14} /> Am I Eligible?
+            </button>
 
-          <button 
-            className={`btn ${activeTab === 'ADMIN' ? 'btn-emerald' : 'btn-secondary'}`}
-            onClick={() => setActiveTab('ADMIN')}
-            style={{ fontSize: '0.85rem', padding: '8px 14px' }}
-          >
-            <Terminal size={16} /> Trust Panel
-          </button>
+            <button
+              className={`btn ${activeTab === 'COMPARE' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setActiveTab('COMPARE')}
+              style={{ fontSize: '0.78rem', padding: '5px 11px' }}
+            >
+              <Scale size={14} /> Compare Exams
+            </button>
 
-          {/* Candidate Notification Bell */}
-          <button 
-            className="btn btn-secondary"
-            onClick={onOpenNotifications}
-            title="Candidate Notifications & Alerts"
-            style={{ 
-              position: 'relative', 
-              padding: '8px 12px', 
-              marginLeft: '4px',
-              border: unreadCount > 0 ? '1px solid rgba(99, 102, 241, 0.5)' : '1px solid var(--border-color)',
-              background: unreadCount > 0 ? 'rgba(99, 102, 241, 0.12)' : 'rgba(255, 255, 255, 0.04)'
-            }}
-          >
-            <Bell size={18} color={unreadCount > 0 ? '#818cf8' : 'white'} />
-            {unreadCount > 0 && (
-              <span 
-                style={{
-                  position: 'absolute',
-                  top: '-4px',
-                  right: '-4px',
-                  background: '#ef4444',
-                  color: 'white',
-                  borderRadius: '50%',
-                  width: '18px',
-                  height: '18px',
-                  fontSize: '0.65rem',
-                  fontWeight: 800,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: '0 0 10px rgba(239, 68, 68, 0.8)'
-                }}
-              >
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </span>
-            )}
-          </button>
-        </nav>
+            <button
+              className={`btn ${activeTab === 'CALENDAR' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => {
+                if (onOpenTimeline) onOpenTimeline();
+                setActiveTab('CALENDAR');
+              }}
+              title="Milestones across every exam in the register. A single exam's own timeline is inside that exam."
+              style={{ fontSize: '0.78rem', padding: '5px 11px', display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              <Calendar size={14} /> All-Exam Calendar
+              {trackedCount > 0 && (
+                <span className="badge" style={{ fontSize: '0.62rem', background: 'rgba(99,102,241,0.25)', color: '#a5b4fc', padding: '1px 6px' }}>
+                  {trackedCount} Tracked
+                </span>
+              )}
+            </button>
+          </nav>
+        </div>
       </div>
     </header>
   );
@@ -2515,7 +2513,7 @@ const assistantVocab = (): Set<string> => {
     'registration', 'corrigendum', 'cutoff', 'result', 'answer', 'paper', 'papers', 'practice', 'typing', 'documents',
     'certificate', 'category', 'relaxation', 'marking', 'negative', 'pattern', 'question', 'questions', 'resources',
     'calendar', 'timeline', 'roadmap', 'bookmark', 'simulator'].forEach(w => vocab.add(w));
-  SSC_CGL_EXAM.resources.forEach(r => { add(r.title); add(r.subject); });
+  ALL_EXAMS.forEach(ex => (ex.resources || []).forEach(r => { add(r.title); add(r.subject); }));
   assistantVocabulary = vocab;
   return vocab;
 };
@@ -2641,8 +2639,15 @@ const needsInheritedSubject = (q: string): boolean =>
  * The candidate named a specific thing that lives in the library ("typing test tool",
  * "constitution pdf"). Answering with the item beats answering with the section.
  */
-function namedResourceAnswer(q: string, minScore: number = 6): { reply: AssistantReply; score: number } | null {
-  const { results } = rankResourcesForQuery(q, SSC_CGL_EXAM.resources, 3);
+function namedResourceAnswer(q: string, minScore: number = 6, exam: Exam = SSC_CGL_EXAM): { reply: AssistantReply; score: number } | null {
+  // Only this exam's library. A candidate inside UPSC must not be handed an SSC document.
+  const library = exam.resources || [];
+  // Scoring weights a term by how few entries carry it, which says nothing in a library of
+  // one or two: every word is then "rare" and the single entry answers everything. Claiming
+  // the candidate named a specific document needs a library big enough for the match to
+  // mean something; below that, a section answer is the honest one.
+  if (library.length < 5) return null;
+  const { results } = rankResourcesForQuery(q, library, 3);
   if (results.length === 0 || results[0].score < minScore) return null;
   const top = results[0].resource;
   const others = results.slice(1, 3).map(x => x.resource.title);
@@ -2652,7 +2657,7 @@ function namedResourceAnswer(q: string, minScore: number = 6): { reply: Assistan
     subject: top.subject,
     resourceLink: linkFor(top),
     text: `**${top.title}** — ${top.author}.${top.recommendedFor ? `\n\nBest for: ${top.recommendedFor}` : ''}${others.length > 0 ? `\n\nAlso in the library: ${others.join('; ')}.` : ''}\n\nThe link below opens it on the publisher's own site; the card in Resources shows when it was last checked.`,
-    action: { label: 'Open Resources', tab: 'RESOURCES' }
+    action: { label: 'Open Resources', tab: 'EXAM_DETAIL', section: 8 }
   };
   return { reply, score: results[0].score };
 }
@@ -2695,10 +2700,10 @@ const FACT_INTENTS: { id: string; keys: string[] }[] = [
 ];
 const asksLocation = (q: string) => /\b(where|which (tab|section|page|part)|how do i|how can i|how should i|how to|what should i|navigate|find|locate|go to|open|show me|take me|check .* (in|on) (this|the) (platform|app|site|website)|in this platform)\b/.test(q);
 
-/** Non-superseded date of a given type, if the register has one. */
-const dateOfType = (type: string) =>
-  SSC_CGL_EXAM.dates.find(d => d.type === type && d.status !== 'SUPERSEDED') ||
-  SSC_CGL_EXAM.dates.find(d => d.type === type);
+/** Non-superseded date of a given type for the exam in hand, if the register has one. */
+const dateOfType = (type: string, exam: Exam = SSC_CGL_EXAM) =>
+  exam.dates.find(d => d.type === type && d.status !== 'SUPERSEDED') ||
+  exam.dates.find(d => d.type === type);
 
 const citeFrom = (provenance: DataProvenance, fallbackTitle: string) => ({
   documentTitle: provenance.documentTitle || fallbackTitle,
@@ -2711,23 +2716,23 @@ const citeFrom = (provenance: DataProvenance, fallbackTitle: string) => ({
 const PLATFORM_MAP: { keys: string[]; answer: string; action: AssistantAction }[] = [
   {
     keys: ['eligib', 'qualify', 'am i able to apply', 'can i apply'],
-    answer: 'Eligibility lives in the **Am I Eligible?** tab in the top navigation.\n\nEnter your date of birth, degree, branch, percentage, category and gender. GovOS then checks you against all {posts} {exam} posts one by one and tells you, for each, whether you are eligible, conditionally eligible or not eligible — with the age relaxation for your category already applied and the rule it used shown next to the verdict.\n\nThe full written criteria, with the clause from the notice, are in the Exam Guide under section 03 Eligibility.',
+    answer: 'Eligibility lives in the **Am I Eligible?** button on the "across all exams" row of the top bar.\n\nEnter your date of birth, degree, branch, percentage, category and gender. GovOS then checks you against all {posts} {exam} posts one by one and tells you, for each, whether you are eligible, conditionally eligible or not eligible — with the age relaxation for your category already applied and the rule it used shown next to the verdict.\n\nThe full written criteria, with the clause from the notice, are in the Exam Guide under section 03 Eligibility.',
     action: { label: 'Open Am I Eligible?', tab: 'ELIGIBILITY' }
   },
   {
     keys: ['resource', 'study material', 'material', 'book', 'pdf', 'video', 'lecture', 'notes', 'ncert', 'where should i study', 'what should i read', 'youtube', 'channel', 'channels', 'coaching', 'teacher', 'best channel'],
-    answer: 'Study material is in the **Resources** tab in the top navigation.\n\nAt the top it shows the latest entries from SSC\'s own notice board, read live from ssc.gov.in. Below that it holds the SSC notice and reopening notice, previous-year question papers and answer keys, the Constitution of India official text, India Code, NCERT Exemplar and textbooks, the Census, MoSPI and RBI data portals, SWAYAM, NPTEL and NIOS free courses, single video lessons, and the free YouTube channels most SSC candidates follow — each labelled with its subscriber count and marked as coaching content, not an official source.\n\nGovOS stores no files. Every entry opens the publisher\'s own page, so you always get the current version. Use the "Start here" shelf if you are new, the subject chips to narrow down, the bookmark icon to keep something, and "Verify all links now" to see live which links are answering.',
-    action: { label: 'Open Resources', tab: 'RESOURCES' }
+    answer: 'Study material is **Resources**, inside the {exam} page — open the exam and pick Resources from its section row.\n\nAt the top it shows the latest entries from SSC\'s own notice board, read live from ssc.gov.in. Below that it holds the SSC notice and reopening notice, previous-year question papers and answer keys, the Constitution of India official text, India Code, NCERT Exemplar and textbooks, the Census, MoSPI and RBI data portals, SWAYAM, NPTEL and NIOS free courses, single video lessons, and the free YouTube channels most SSC candidates follow — each labelled with its subscriber count and marked as coaching content, not an official source.\n\nGovOS stores no files. Every entry opens the publisher\'s own page, so you always get the current version. Use the "Start here" shelf if you are new, the subject chips to narrow down, the bookmark icon to keep something, and "Verify all links now" to see live which links are answering.',
+    action: { label: 'Open Resources', tab: 'EXAM_DETAIL', section: 8 }
   },
   {
     keys: ['mock', 'practice', 'pyq', 'previous year', 'question paper', 'test series', 'drill', 'solve question', 'attempt test'],
-    answer: 'Practice is in the **Practice & Mocks** tab.\n\nYou get full shift papers on a real CBT clock with SSC Tier-1 marking (+2 correct, −0.5 wrong), subject sectionals, topic drills, and a chat that builds a test to order — say "12 questions on percentage" or "8 hard questions on time and work" and it generates exactly that, with worked solutions.\n\nAfter you submit, the analysis names your weak topics and every solution shows the source it was written from.\n\nIf you meant practising the **application form** rather than questions, that is the Application Practice Simulator in Exam Guide section 04.',
-    action: { label: 'Open Practice & Mocks', tab: 'PRACTICE' }
+    answer: 'Practice lives inside the {exam} page, in two sections.\n\n**Practice & PYQs** has the full previous-year shift papers on a real CBT clock with SSC Tier-1 marking (+2 correct, −0.5 wrong), subject sectionals and topic drills.\n\n**Mock Tests** has the chat that builds a paper to order — say "12 questions on percentage" or "8 hard questions on time and work" and it generates exactly that, with worked solutions.\n\nEither way, after you submit the analysis names your weak topics, every solution shows the source it was written from, and the attempt is kept in Past Tests History for review.\n\nIf you meant practising the **application form** rather than questions, that is the Application Practice Simulator in Application & Documents.',
+    action: { label: 'Open Practice & PYQs', tab: 'EXAM_DETAIL', section: 9 }
   },
   {
     keys: ['calendar', 'timeline', 'remind', 'alert', 'notification', 'track exam', 'tracking'],
-    answer: 'Dates and reminders live in **My Timeline & Calendar**.\n\nTrack an exam there (or from the Exam Finder card) and GovOS generates reminders for its notification, application window, correction window, admit card and exam dates. The bell in the header carries the unread count, and the preferences dialog inside the calendar controls which events you are reminded about and how far ahead.',
-    action: { label: 'Open My Timeline & Calendar', tab: 'CALENDAR' }
+    answer: '**Dates & Timeline** inside the {exam} page holds this exam\'s own milestones, counted against the clock — what is still ahead first, what has passed behind a toggle.\n\nUse "Alert Me" there (or the Track button on the Exam Finder card) and GovOS generates reminders for the notification, application window, correction window, admit card and exam dates. The bell in the header carries the unread count.\n\nFor milestones across every exam at once, use **All-Exam Calendar** on the "across all exams" row of the top bar.',
+    action: { label: 'Open Dates & Timeline', tab: 'EXAM_DETAIL', section: 2 }
   },
   {
     keys: ['syllabus', 'topic list', 'what to study', 'chapters'],
@@ -2739,23 +2744,23 @@ const PLATFORM_MAP: { keys: string[]; answer: string; action: AssistantAction }[
     keys: ['application practice', 'practice application', 'application simulator', 'application mock',
       'mock application', 'application form practice', 'practice form', 'form practice', 'dummy application',
       'form simulator', 'simulator', 'practice filling', 'fill the form', 'form drill'],
-    answer: 'The **Practice Mock Application Simulator** is inside the Exam Guide, section 04 Application & Docs, and that section opens on it by default — the button reads "Practice Mock Application Simulator (Fill → Submit → Spot Mistakes)".\n\nIt is a dummy SSC application form. You fill it in, and GovOS checks your photo and signature specifications, fee exemption, post preferences and eligibility declarations against the notice, then names every mistake — before one of them costs you the real form.\n\nThat is form practice, not question practice. For question papers, sectionals and mock tests, use Practice & Mocks.',
+    answer: 'The **Practice Mock Application Simulator** is inside the Exam Guide, section 04 Application & Docs, and that section opens on it by default — the button reads "Practice Mock Application Simulator (Fill → Submit → Spot Mistakes)".\n\nIt is a dummy SSC application form. You fill it in, and GovOS checks your photo and signature specifications, fee exemption, post preferences and eligibility declarations against the notice, then names every mistake — before one of them costs you the real form.\n\nThat is form practice, not question practice. For question papers and sectionals use **Practice & PYQs**, and for a paper built to your own specification use **Mock Tests**.',
     action: { label: 'Open the Application Practice Simulator', tab: 'EXAM_DETAIL', section: 4 }
   },
   {
     keys: ['typing', 'typing test', 'typing speed', 'typing practice', 'typing tool', 'dest', 'data entry speed test', 'keyboard', 'wpm', 'key depressions'],
     answer: 'Here is the typing practice tool — the link below opens it directly.\n\nIt is what you want for the Data Entry Speed Test, which is Section III Module 2 of Tier-2 and qualifying. The full card, with the link check date, is in Resources under Computer & Typing.',
-    action: { label: 'Open Resources', tab: 'RESOURCES' }
+    action: { label: 'Open Resources', tab: 'EXAM_DETAIL', section: 8 }
   },
   {
     keys: ['past test', 'my score', 'my result', 'previous attempt', 'test history', 'past attempt', 'my performance', 'analytics', 'weak area', 'weak topic'],
-    answer: 'Your attempts are in **Practice & Mocks** under "Past Tests History" — every test you have submitted, with score, accuracy and date.\n\nOpen one to review each question with its full solution, or tell the test creator "test my weak areas" and it will build a drill from the topics you are scoring below 60% on.',
-    action: { label: 'Open Practice & Mocks', tab: 'PRACTICE' }
+    answer: 'Your attempts are under **Past Tests History**, which is in both **Practice & PYQs** and **Mock Tests** — every test you have submitted, with score, accuracy and date.\n\nOpen one to review each question with its full solution, or tell the test creator "test my weak areas" and it will build a drill from the topics you are scoring below 60% on.',
+    action: { label: 'Open Practice & PYQs', tab: 'EXAM_DETAIL', section: 9 }
   },
   {
     keys: ['saved', 'bookmark', 'shortlist', 'starred', 'my list'],
     answer: 'Anything you bookmark with the flag icon on a resource card lands on the **Saved** shelf in the Resources tab — click "Saved" above the results to filter to it.\n\nBookmarks are kept on this device and mirrored into the GovOS database, so they survive a reload.',
-    action: { label: 'Open Resources', tab: 'RESOURCES' }
+    action: { label: 'Open Resources', tab: 'EXAM_DETAIL', section: 8 }
   },
   {
     keys: ['target post', 'set my post', 'choose post', 'change post', 'my post'],
@@ -2780,7 +2785,7 @@ const PLATFORM_MAP: { keys: string[]; answer: string; action: AssistantAction }[
   {
     keys: ['study plan', 'roadmap', 'timetable', 'schedule', 'how should i prepare', 'preparation plan'],
     answer: 'The **Study Roadmap** tab builds a plan for your target post: milestone tracks, daily hours, and the modules you have completed. Your target post is set in the Exam Guide, and the roadmap follows it.',
-    action: { label: 'Open Study Roadmap', tab: 'PLANNER' }
+    action: { label: 'Open Study Roadmap', tab: 'EXAM_DETAIL', section: 7 }
   },
   {
     keys: ['compare', 'which exam is better', 'difference between exam'],
@@ -2918,7 +2923,7 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
   if (has(q, 'what can you do', 'what can i ask', 'how does this work', 'how do i use', 'help me get started', 'getting started', 'what is govos', 'guide me through')) {
     return {
       verified: true,
-      text: fillCounts('I answer from the verified GovOS register for {exam}, and I can point you to the right part of the platform.\n\nThe platform has nine views:\n• **Exam Finder** — discover exams matched to your qualification\n• **Am I Eligible?** — per-post eligibility from your own details\n• **Exam Guide** — 16 sections: dates, eligibility, application, pattern, syllabus, cutoffs, admit card and more\n• **Practice & Mocks** — CBT papers, topic drills and a test creator\n• **Resources** — {resources} verified official links, PDFs and videos\n• **Study Roadmap** — a plan for your target post\n• **Compare Exams**, **My Timeline & Calendar**, **Trust Panel**\n\nTry asking: "where do I check my eligibility", "what is the last date to apply", "is there negative marking", "where are the resources", or "what is the exam pattern".', exam),
+      text: fillCounts('I answer from the verified GovOS register for {exam}, and I can point you to the right part of the platform.\n\nAlmost everything lives inside the exam you have open. The {exam} page has 13 parts:\n• **Overview** · **Dates & Timeline** · **Eligibility & Posts** · **Application & Documents**\n• **Exam Pattern** · **Syllabus** · **Study Roadmap** · **Resources** ({resources} verified links, PDFs and videos)\n• **Practice & PYQs** · **Mock Tests** · **Admit Card** · **Exam Day** · **Results & Next Steps**\n\nAcross all exams the top bar also has **Find Exam**, **Am I Eligible?**, **Compare Exams**, **All-Exam Calendar** and the **Trust Panel**.\n\nTry asking: "where do I check my eligibility", "what is the last date to apply", "is there negative marking", "where are the resources", or "what is the exam pattern".', exam),
       action: { label: 'Open the Exam Guide', tab: 'EXAM_DETAIL', section: 1 }
     };
   }
@@ -2934,7 +2939,7 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
   // instead of the admit-card answer.
   const confidentIntent = Math.max(nav ? nav.score : 0, fact ? fact.score : 0) >= 6;
   if (!confidentIntent) {
-    const stronglyNamed = namedResourceAnswer(q, 10);
+    const stronglyNamed = namedResourceAnswer(q, 10, exam);
     if (stronglyNamed) return stronglyNamed.reply;
   }
 
@@ -2942,7 +2947,12 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
   // multi-word request ("application practice") outscores whatever single words also matched.
   if (nav && (asksLocation(q) || (nav.score >= 6 && nav.score > (fact ? fact.score : 0)))) {
     // If that section answer is really about one entry, hand over the entry as well.
-    const item = nav.entry.action.tab === 'RESOURCES' ? namedResourceAnswer(q, 6) : null;
+    // Resources is section 08 of the exam now, so recognise it by section as well as by the
+    // legacy tab id — otherwise a "where is the constitution pdf" answer stops handing over
+    // the document itself.
+    const pointsAtResources = nav.entry.action.tab === 'RESOURCES'
+      || (nav.entry.action.tab === 'EXAM_DETAIL' && nav.entry.action.section === 8);
+    const item = pointsAtResources ? namedResourceAnswer(q, 6, exam) : null;
     return {
       verified: true,
       sourceKind: 'PLATFORM',
@@ -2957,7 +2967,7 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
   // candidate actually named before falling back on a generic section answer.
   const bestScore = Math.max(nav ? nav.score : 0, fact ? fact.score : 0);
   if (bestScore < 3 && contentWordsOf(q).length >= 2) {
-    const named = namedResourceAnswer(q);
+    const named = namedResourceAnswer(q, 6, exam);
     if (named) return named.reply;
   }
 
@@ -3009,11 +3019,11 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
       },
       APPLICATION_CLOSED: {
         line: `The application window has closed. From here it is preparation: work the syllabus for ${post} and take timed papers so your speed is exam-ready.`,
-        action: { label: 'Open Practice & Mocks', tab: 'PRACTICE' }
+        action: { label: 'Open Practice & PYQs', tab: 'EXAM_DETAIL', section: 9 }
       },
       PRE_EXAM: {
         line: `The form is behind you; the exam is ahead. Take full papers on the clock, review every mistake, and check the admit card and exam-day rules a week before.`,
-        action: { label: 'Open Practice & Mocks', tab: 'PRACTICE' }
+        action: { label: 'Open Practice & PYQs', tab: 'EXAM_DETAIL', section: 9 }
       },
       POST_EXAM: {
         line: `Tier-1 is done. Watch for the answer key and the challenge window, then the result — section 16 sets out each stage.`,
@@ -3037,9 +3047,9 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
       sourceKind: 'GUIDANCE',
       subject: post ? `studying for ${post.postName}` : 'what to study',
       text: post
-        ? `For **${post.postName}** (${post.department}), the Study Roadmap builds the plan: milestone tracks, daily hours and the modules you have finished.\n\n${post.specialQualification ? `This post has its own condition — ${post.specialQualification} — so give that subject early time. ` : ''}Section 06 lists all ${exam.syllabus.length} syllabus topics with weightage, and Practice & Mocks tells you which of them you are weakest on after a paper or two.`
+        ? `For **${post.postName}** (${post.department}), the Study Roadmap builds the plan: milestone tracks, daily hours and the modules you have finished.\n\n${post.specialQualification ? `This post has its own condition — ${post.specialQualification} — so give that subject early time. ` : ''}Syllabus lists all ${exam.syllabus.length} topics with weightage, and Practice & PYQs tells you which of them you are weakest on after a paper or two.`
         : `Set a target post first, in section 01 Overview & Posts — the plan, the daily hours and the practice analysis all follow that choice.\n\nWithout it I would be guessing at which subjects matter most to you. The syllabus itself is in section 06, with all ${exam.syllabus.length} topics by weightage.`,
-      action: post ? { label: 'Open Study Roadmap', tab: 'PLANNER' } : { label: 'Choose a target post', tab: 'EXAM_DETAIL', section: 1 }
+      action: post ? { label: 'Open Study Roadmap', tab: 'EXAM_DETAIL', section: 7 } : { label: 'Choose a target post', tab: 'EXAM_DETAIL', section: 1 }
     };
   }
 
@@ -3074,13 +3084,13 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
       .filter(d => d.status !== 'SUPERSEDED')
       .map(d => `• ${d.label}: ${d.dateTimeStr}${d.isTentative ? ' (tentative)' : ''}`)
       .join('\n');
-    const close = dateOfType('APPLICATION_CLOSE');
+    const close = dateOfType('APPLICATION_CLOSE', exam);
     const superseded = exam.dates.filter(d => d.status === 'SUPERSEDED');
     return {
       verified: true,
       text: `Key dates on record for ${exam.title}:\n\n${lines}\n\n${typeof ctx.daysToApplicationClose === 'number' ? (ctx.daysToApplicationClose >= 0 ? `The application window closes in ${ctx.daysToApplicationClose} day${ctx.daysToApplicationClose === 1 ? '' : 's'}.\n\n` : `The application window closed ${Math.abs(ctx.daysToApplicationClose)} day${Math.abs(ctx.daysToApplicationClose) === 1 ? '' : 's'} ago.\n\n`) : ''}${superseded.length > 0 ? `${superseded.length} earlier date${superseded.length === 1 ? ' was' : 's were'} superseded by corrigendum — section 13 shows what changed.\n\n` : ''}Track the exam and GovOS will remind you before each of these.`,
       citation: close ? citeFrom(close.provenance, 'SSC CGL 2026 Official Notice') : undefined,
-      action: { label: 'Open My Timeline & Calendar', tab: 'CALENDAR' }
+      action: { label: 'Open Dates & Timeline', tab: 'EXAM_DETAIL', section: 2 }
     };
   }
 
@@ -3126,7 +3136,7 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
     const summary = Array.from(bySubject.entries()).map(([sub, n]) => `• ${sub}: ${n} topics`).join('\n');
     return {
       verified: true,
-      text: `The syllabus on record has ${exam.syllabus.length} topics:\n\n${summary}\n\nSection 06 lists each topic with its weightage and lets you tick off what you have finished. For practice on any one of them, ask the test creator in Practice & Mocks.`,
+      text: `The syllabus on record has ${exam.syllabus.length} topics:\n\n${summary}\n\nThe Syllabus section lists each topic with its weightage and lets you tick off what you have finished. For practice on any one of them, ask the test creator in Mock Tests.`,
       action: { label: 'Open the syllabus', tab: 'EXAM_DETAIL', section: 6 }
     };
   }
@@ -3146,12 +3156,12 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
     return {
       verified: true,
       text: `The Resources tab holds ${exam.resources.length} verified entries for SSC CGL: ${pdfs} direct PDFs (the notice, the reopening notice and the Constitution official text), ${portals} official portals (previous-year papers, answer keys, the exam calendar, NCERT, SWAYAM, NIOS, Census and MoSPI data) and ${videos} video lessons.\n\nEvery one links to the publisher's own server — GovOS stores no study material, so nothing goes stale here. Each card shows when the link was last checked, and "Verify all links now" re-checks them live.`,
-      action: { label: 'Open Resources', tab: 'RESOURCES' }
+      action: { label: 'Open Resources', tab: 'EXAM_DETAIL', section: 8 }
     };
   }
 
   if (factId === 'admitCard') {
-    const ac = dateOfType('ADMIT_CARD');
+    const ac = dateOfType('ADMIT_CARD', exam);
     return {
       verified: true,
       text: `${ac ? `Admit card: ${ac.dateTimeStr}${ac.isTentative ? ' (tentative)' : ''}.\n\n` : 'The admit card date has not been announced in the register yet.\n\n'}Admit cards are issued by the SSC regional website for your centre, not the national portal, and you must carry a printed copy with an original photo ID. Section 14 covers the download steps and what to do if it fails.`,
@@ -3164,7 +3174,7 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
     const latest = exam.cutoffsHistory[0];
     return {
       verified: true,
-      text: `${latest ? `Most recent cutoff on record: ${latest.year} — see the full category-wise table in section 10.` : 'Cutoff history is listed in section 10 of the Exam Guide.'}\n\nCutoffs move every year with vacancies and paper difficulty, so use them as a target band rather than a promise. Your mock analytics in Practice & Mocks tell you where you stand against them.`,
+      text: `${latest ? `Most recent cutoff on record: ${latest.year} — see the full category-wise table in section 10.` : 'Cutoff history is listed in section 10 of the Exam Guide.'}\n\nCutoffs move every year with vacancies and paper difficulty, so use them as a target band rather than a promise. Your mock analytics in Practice & PYQs tell you where you stand against them.`,
       action: { label: 'Open Cutoffs', tab: 'EXAM_DETAIL', section: 10 }
     };
   }
@@ -3180,8 +3190,8 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
   if (factId === 'practice') {
     return {
       verified: true,
-      text: 'Practice & Mocks has full shift papers on a real CBT clock, subject sectionals, topic drills, and a chat that builds a paper to order — ask it for "12 questions on percentage" or "8 hard questions on time and work".\n\nMarking is the real SSC Tier-1 scheme (+2 correct, −0.5 wrong). After submitting you get weak-topic diagnosis and a five-layer solution for every question, each naming the document it was written from.',
-      action: { label: 'Open Practice & Mocks', tab: 'PRACTICE' }
+      text: '**Practice & PYQs** has the full shift papers on a real CBT clock, subject sectionals and topic drills; **Mock Tests** has the chat that builds a paper to order — ask it for "12 questions on percentage" or "8 hard questions on time and work".\n\nMarking is the real SSC Tier-1 scheme (+2 correct, −0.5 wrong). After submitting you get weak-topic diagnosis and a five-layer solution for every question, each naming the document it was written from.',
+      action: { label: 'Open Practice & PYQs', tab: 'EXAM_DETAIL', section: 9 }
     };
   }
 
@@ -3190,14 +3200,14 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
   if (nav) return { verified: true, sourceKind: 'PLATFORM', text: fillCounts(nav.entry.answer, exam), action: nav.entry.action };
 
   // Last chance before refusing: did they name something in the library?
-  const namedLate = namedResourceAnswer(q);
+  const namedLate = namedResourceAnswer(q, 6, exam);
   if (namedLate) return namedLate.reply;
 
   // ---- a location question we could not place
   if (asksLocation(q)) {
     return {
       verified: true,
-      text: 'I could not tell which part of the platform you mean. Here is the whole map:\n\n• **Exam Finder** — discover exams\n• **Am I Eligible?** — per-post eligibility check\n• **Exam Guide** — 16 sections (dates 02, eligibility 03, application 04, pattern 05, syllabus 06, cutoffs 10, FAQs 11, admit card 14, exam day 15, results 16)\n• **Practice & Mocks** — papers, drills, test creator\n• **Resources** — verified PDFs, portals and videos\n• **Study Roadmap** — plan for your target post\n• **Compare Exams** · **My Timeline & Calendar** · **Trust Panel**\n\nName the thing you are looking for and I will take you straight there.',
+      text: 'I could not tell which part of the platform you mean. Here is the whole map:\n\nInside the {exam} page:\n• **Overview** — the profile and every post\n• **Dates & Timeline** — milestones counted against the clock\n• **Eligibility & Posts** — the written rules\n• **Application & Documents** — the guide and the form simulator\n• **Exam Pattern** · **Syllabus** · **Study Roadmap**\n• **Resources** — verified PDFs, portals and videos\n• **Practice & PYQs** — shift papers, sectionals, drills, past attempts\n• **Mock Tests** — a paper built to your specification\n• **Admit Card** · **Exam Day** · **Results & Next Steps**\n• Also in the exam: FAQs, Corrigenda, Official Links, Cutoff History\n\nAcross all exams: **Find Exam** · **Am I Eligible?** · **Compare Exams** · **All-Exam Calendar** · **Trust Panel**\n\nName the thing you are looking for and I will take you straight there.',
       action: { label: 'Open the Exam Guide', tab: 'EXAM_DETAIL', section: 1 }
     };
   }
@@ -3254,7 +3264,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal,
   const handleLiveOfficialSearch = async (messageId: string, question: string) => {
     if (liveSearchingId) return;
     setLiveSearchingId(messageId);
-    const outcome = await researchService.search(question, 'OFFICIAL', SSC_CGL_EXAM.id, 5);
+    const outcome = await researchService.search(question, 'OFFICIAL', exam.id, 5);
     setMessages(prev => prev.map(m => {
       if (m.id !== messageId) return m;
       if (outcome.ok) {
@@ -3371,6 +3381,19 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal,
               Queries strictly restricted to the Verified Database & Deterministic Rule Engine. Unverified queries trigger fallback alerts.
             </p>
           </div>
+        </div>
+
+        {/* The exam in hand, stated. "When is it?" means this exam until you name another. */}
+        <div style={{ marginTop: '16px', paddingTop: '14px', borderTop: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            Current exam context
+          </span>
+          <span className="badge badge-verified" style={{ fontSize: '0.72rem' }}>
+            <BookOpen size={12} /> {exam.title}
+          </span>
+          <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+            Questions like “when is it?” or “am I eligible?” are answered for this exam. Name another exam in your message to ask about that one instead.
+          </span>
         </div>
       </div>
 
@@ -5896,7 +5919,7 @@ export const ResourceAIAssistant: React.FC<ResourceAIAssistantProps> = ({
     {
       id: 'msg-welcome',
       sender: 'AI',
-      text: 'Tell me what you are looking for — a subject, a topic, a document, or a kind of resource — and I will pick the matching entries from the library and say why. Try "geometry video", "constitution pdf", "previous year papers" or "reasoning channel".',
+      text: `Tell me what you are looking for — a subject, a topic, a document, or a kind of resource — and I will pick the matching entries from${exam ? ` the ${exam.title} library` : ' the library'} and say why. Try "geometry video", "constitution pdf", "previous year papers" or "reasoning channel".`,
       timestamp: 'Just now'
     }
   ]);
@@ -7098,9 +7121,19 @@ export function planPracticeRequest(query: string, pastAttempts: MockAttemptReco
 // ==========================================================================
 // PracticeEngine.tsx
 // ==========================================================================
+/**
+ * Which doors of the engine are open.
+ *   ALL      — every view (the engine as it has always been)
+ *   PRACTICE — previous-year shift papers, sectionals, topic drills, past attempts
+ *   MOCKS    — build a mock to your own specification, plus past attempts
+ * The engine itself is identical in all three; only the tab row differs.
+ */
+export type PracticeScope = 'ALL' | 'PRACTICE' | 'MOCKS';
+
 interface PracticeEngineProps {
   exam: Exam;
   onOpenProvenanceModal: (provenance: DataProvenance) => void;
+  scope?: PracticeScope;
 }
 
 // Provenance for the inline Application-Simulator review paper rebuilt in handleReviewPastAttempt.
@@ -7123,9 +7156,18 @@ interface MockChatMessage {
   proposedTest?: MockPaper;
 }
 
-export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProvenanceModal }) => {
+export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProvenanceModal, scope = 'ALL' }) => {
+  // Which views this door offers. ACTIVE_TEST and PAST_ANALYTICS are always reachable, so a
+  // test started in one section can still be sat, submitted and reviewed.
+  const showsPapers = scope !== 'MOCKS';
+  const showsSectionals = scope !== 'MOCKS';
+  const showsDrills = scope !== 'MOCKS';
+  const showsCreator = scope !== 'PRACTICE';
+  // The register stores codes as SSC_CGL_2026; a heading should read it back as a name.
+  const examShortName = (exam.code || exam.title).replace(/_/g, ' ');
+
   // Navigation & Modes
-  const [activePracticeTab, setActivePracticeTab] = useState<'PAPERS_LIST' | 'SUBJECT_TESTS' | 'TOPIC_DRILLS' | 'AI_CHAT_ASSISTANT' | 'ACTIVE_TEST' | 'PAST_ANALYTICS'>('PAPERS_LIST');
+  const [activePracticeTab, setActivePracticeTab] = useState<'PAPERS_LIST' | 'SUBJECT_TESTS' | 'TOPIC_DRILLS' | 'AI_CHAT_ASSISTANT' | 'ACTIVE_TEST' | 'PAST_ANALYTICS'>(scope === 'MOCKS' ? 'AI_CHAT_ASSISTANT' : 'PAPERS_LIST');
   
   // Available Papers List (Starts with 10 official papers, can auto-sync newly discovered ones)
   const [availablePapers, setAvailablePapers] = useState<MockPaper[]>(OFFICIAL_10_MOCK_PAPERS);
@@ -7787,14 +7829,23 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
               </span>
             </div>
             <h3 style={{ fontSize: '1.45rem', fontWeight: 800, color: 'white', margin: 0 }}>
-              Practice Questions, Full Shift Papers & Detailed Solutions
+              {scope === 'MOCKS'
+                ? `${examShortName} Mock Tests — Built To Your Specification`
+                : scope === 'PRACTICE'
+                  ? `${examShortName} Practice & Previous Year Papers`
+                  : 'Practice Questions, Full Shift Papers & Detailed Solutions'}
             </h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', margin: '4px 0 0 0' }}>
-              Attempt authentic previous years shift papers, sectionals, topic drills, or chat with AI. Every test features step-by-step solutions with animated speed shortcut cards.
+              {scope === 'MOCKS'
+                ? 'Describe the mock you want — subjects, topics, number of questions, difficulty, duration — and the engine assembles it, times it on the real CBT clock and marks it to the official scheme. Your attempts are kept with everything else in Past Tests History.'
+                : scope === 'PRACTICE'
+                  ? 'Attempt authentic previous years shift papers, subject sectionals and topic drills. Every test features step-by-step solutions with animated speed shortcut cards, and every attempt is kept for review.'
+                  : 'Attempt authentic previous years shift papers, sectionals, topic drills, or chat with AI. Every test features step-by-step solutions with animated speed shortcut cards.'}
             </p>
           </div>
 
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            {showsPapers && (
             <button
               onClick={handleAutoSyncPapers}
               disabled={isSyncingPapers}
@@ -7804,6 +7855,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
               <RefreshCw size={14} className={isSyncingPapers ? 'animate-spin' : ''} />
               {isSyncingPapers ? 'Checking Repositories...' : '🔄 Sync Latest Sourced Papers'}
             </button>
+            )}
 
             {isTestStarted && (
               <button onClick={handleResetTest} className="btn btn-secondary" style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -7821,16 +7873,19 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
           </div>
         )}
 
-        {/* 5 Main Navigation Tabs */}
+        {/* Navigation tabs — which appear depends on the section this engine was opened from */}
         <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+          {showsPapers && (
           <button
             onClick={() => { setActivePracticeTab('PAPERS_LIST'); setIsTestStarted(false); }}
             className={`btn ${activePracticeTab === 'PAPERS_LIST' ? 'btn-primary' : 'btn-secondary'}`}
             style={{ fontSize: '0.85rem', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}
           >
-            <List size={15} /> 📑 Shift Papers ({availablePapers.length})
+            <List size={15} /> 📑 PYQ Shift Papers ({availablePapers.length})
           </button>
+          )}
 
+          {showsCreator && (
           <button
             onClick={() => { setActivePracticeTab('AI_CHAT_ASSISTANT'); setIsTestStarted(false); }}
             className={`btn ${activePracticeTab === 'AI_CHAT_ASSISTANT' ? 'btn-emerald' : 'btn-secondary'}`}
@@ -7838,7 +7893,9 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
           >
             <MessageSquare size={15} /> 💬 Chat With AI Test Creator
           </button>
+          )}
 
+          {showsSectionals && (
           <button
             onClick={() => { setActivePracticeTab('SUBJECT_TESTS'); setIsTestStarted(false); }}
             className={`btn ${activePracticeTab === 'SUBJECT_TESTS' ? 'btn-primary' : 'btn-secondary'}`}
@@ -7846,7 +7903,9 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
           >
             <Target size={15} /> 🎯 Subject Sectionals (25 Qs)
           </button>
+          )}
 
+          {showsDrills && (
           <button
             onClick={() => { setActivePracticeTab('TOPIC_DRILLS'); setIsTestStarted(false); }}
             className={`btn ${activePracticeTab === 'TOPIC_DRILLS' ? 'btn-primary' : 'btn-secondary'}`}
@@ -7854,6 +7913,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
           >
             <Zap size={15} /> ⚡ Topic Drills (15 Qs)
           </button>
+          )}
 
           <button
             onClick={() => setActivePracticeTab('PAST_ANALYTICS')}
@@ -12662,7 +12722,8 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
             {resources.length} resources · {officialCount} from official government sources · {savedCount} saved for later
           </p>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', margin: '6px 0 0 0', maxWidth: '700px', lineHeight: 1.5 }}>
-            Kept current automatically: SSC's notice board and channel uploads refresh every {sscFeed?.intervalHours || 6} h, and every link is
+            {/* The notice-board shelf only exists for SSC, so only say so there. */}
+            Kept current automatically: {isSscExam ? `SSC's notice board and channel uploads refresh every ${sscFeed?.intervalHours || 6} h, and every link is` : 'every link is'}
             re-checked every {healthMeta?.intervalHours || 12} h on the GovOS server.
             {healthMeta
               ? ` Links last checked ${formatFetched(healthMeta.lastRun)}${healthMeta.pending > 0 ? ` · ${healthMeta.pending} still being checked` : ''}.`
@@ -12859,6 +12920,43 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
 // ==========================================================================
 // ExamDetailView.tsx
 // ==========================================================================
+/**
+ * The 13 parts every exam has, in the order a candidate meets them.
+ *
+ * `num` is the section's stable id, not its position: notifications (`actionPayload:
+ * {section: N}`), the assistant's navigation actions and every internal jump address
+ * sections by number. The ids therefore keep their historical values — Admit Card is still
+ * 14 — and only the grouping and the names are new. Mock Tests takes a fresh number (17)
+ * for the same reason.
+ */
+const EXAM_SECTIONS = [
+  { num: 1, label: 'Overview', icon: Info },
+  { num: 2, label: 'Dates & Timeline', icon: Calendar },
+  { num: 3, label: 'Eligibility & Posts', icon: UserCheck },
+  { num: 4, label: 'Application & Documents', icon: FileText },
+  { num: 5, label: 'Exam Pattern', icon: Layers },
+  { num: 6, label: 'Syllabus', icon: Compass },
+  { num: 7, label: 'Study Roadmap', icon: Target },
+  { num: 8, label: 'Resources', icon: Library },
+  { num: 9, label: 'Practice & PYQs', icon: Award },
+  { num: 17, label: 'Mock Tests', icon: Zap },
+  { num: 14, label: 'Admit Card', icon: Download },
+  { num: 15, label: 'Exam Day', icon: CheckSquare },
+  { num: 16, label: 'Results & Next Steps', icon: Flame }
+];
+
+/**
+ * Reference material that belongs to the exam but is not a step in the journey. Each keeps
+ * its own section number and its own content; `under` says which of the 13 parts it backs
+ * up, so it reads as part of that part rather than as a fourteenth tab.
+ */
+const REFERENCE_SECTIONS = [
+  { num: 11, label: 'FAQs & Official Clauses', icon: HelpCircle, under: 'Overview' },
+  { num: 13, label: 'Corrigenda Log', icon: RefreshCw, under: 'Dates & Timeline' },
+  { num: 12, label: 'Official Portals & Links', icon: Globe, under: 'Application & Documents' },
+  { num: 10, label: 'Cutoff History', icon: TrendingUp, under: 'Results & Next Steps' }
+];
+
 interface ExamDetailViewProps {
   exam: Exam;
   onOpenProvenanceModal: (provenance: DataProvenance) => void;
@@ -12885,6 +12983,14 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
   onSelectAlternativeExam
 }) => {
   const [activeSection, setActiveSection] = useState<number>(initialSection || 1);
+  // This exam's timeline is read against the real clock, re-read every minute, so a deadline
+  // moves from tomorrow to today to done with the page left open.
+  const [nowTs, setNowTs] = useState<number>(() => Date.now());
+  useEffect(() => {
+    const tick = setInterval(() => setNowTs(Date.now()), 60000);
+    return () => clearInterval(tick);
+  }, []);
+  const [showPastDates, setShowPastDates] = useState<boolean>(false);
 
   useEffect(() => {
     if (initialSection) {
@@ -12955,23 +13061,10 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
 
   const activeCorrigendum = exam.corrigendums.find(c => c.status === 'ACTIVE');
 
+  // Every addressable section of this exam, main parts and reference alike.
   const sections = [
-    { num: 1, name: '01 — Overview & Posts' },
-    { num: 2, name: '02 — Dates & Timeline' },
-    { num: 3, name: '03 — Eligibility Rules' },
-    { num: 4, name: '04 — Application & Docs' },
-    { num: 5, name: '05 — Exam Pattern' },
-    { num: 6, name: '06 — Post Study Plan & Syllabus' },
-    { num: 7, name: '07 — Study Roadmap' },
-    { num: 8, name: '08 — Resource Library' },
-    { num: 9, name: '09 — CBT Practice & PYQs' },
-    { num: 10, name: '10 — Cutoff History' },
-    { num: 11, name: '11 — FAQs & Clauses' },
-    { num: 12, name: '12 — Official Links' },
-    { num: 13, name: '13 — Corrigenda Log' },
-    { num: 14, name: '14 — Admit Card & Hall Ticket' },
-    { num: 15, name: '15 — Exam-Day Checklist' },
-    { num: 16, name: '16 — Result & Next Steps' }
+    ...EXAM_SECTIONS.map(sec => ({ num: sec.num, name: sec.label })),
+    ...REFERENCE_SECTIONS.map(sec => ({ num: sec.num, name: sec.label }))
   ];
 
   // PRIMARY NAVIGATION — the candidate journey ("What should I do next?").
@@ -12982,7 +13075,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
     { num: 3, label: 'Application & Docs', action: 'Fill the form without rejection', sec: 4, icon: FileText, alsoSee: [] },
     { num: 4, label: 'Syllabus Blueprint', action: 'See exactly what to study', sec: 6, icon: Compass, alsoSee: [] },
     { num: 5, label: 'Study Roadmap', action: 'Follow a day-by-day plan', sec: 7, icon: Calendar, alsoSee: [8] },
-    { num: 6, label: 'CBT PYQ Practice', action: 'Attempt real shift papers', sec: 9, icon: Award, alsoSee: [10] },
+    { num: 6, label: 'Practice & Mocks', action: 'Attempt real shift papers and build mocks', sec: 9, icon: Award, alsoSee: [17, 10] },
     { num: 7, label: 'Admit Card Download', action: 'Get your hall ticket & city slip', sec: 14, icon: Download, alsoSee: [] },
     { num: 8, label: 'Exam-Day Checklist', action: 'Carry the right documents', sec: 15, icon: CheckSquare, alsoSee: [] },
     { num: 9, label: 'Result & Next Steps', action: 'Plan your move after the result', sec: 16, icon: Flame, alsoSee: [10] }
@@ -12996,7 +13089,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
     4: 3,
     6: 4,
     7: 5, 8: 5,
-    9: 6, 10: 6,
+    9: 6, 10: 6, 17: 6,
     14: 7,
     15: 8,
     16: 9
@@ -13228,96 +13321,93 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
         </div>
       </div>
 
-      {/* ================= SECONDARY NAVIGATION: DETAILED EXAM GUIDE INDEX ================= */}
-      {/* Reference lookup, deliberately quieter than the lifecycle above. */}
-      <div style={{
-        borderRadius: 'var(--radius-md)',
-        background: 'rgba(255, 255, 255, 0.02)',
-        border: '1px solid var(--border-color)',
-        padding: '14px 18px'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+      {/* ================= EXAM SECTION NAVIGATION ================= */}
+      {/* The 13 parts of this exam. Everything exam-scoped is reached from here. */}
+      <div className="glass-card" style={{ padding: '18px 20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-            <BookOpen size={16} color="var(--text-muted)" style={{ flexShrink: 0 }} />
+            <BookOpen size={16} color="var(--text-muted)" />
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                Detailed Exam Guide · Reference
+                {exam.title} · everything for this exam
               </div>
               <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                Currently reading:{' '}
-                <strong style={{ color: '#cbd5e1' }}>{activeSectionMeta?.name || 'Section 01'}</strong>
+                Reading: <strong style={{ color: '#cbd5e1' }}>{activeSectionMeta?.name || 'Overview'}</strong>
                 {activeStep && (
                   <span style={{ color: 'var(--text-muted)' }}> · supports “{activeStep.label}”</span>
                 )}
               </div>
             </div>
           </div>
-
-          <button
-            onClick={() => setIsGuideIndexOpen(prev => !prev)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 12px',
-              borderRadius: 'var(--radius-sm)',
-              background: 'transparent',
-              border: '1px solid var(--border-color)',
-              color: 'var(--text-secondary)',
-              fontSize: '0.78rem',
-              fontWeight: 600,
-              fontFamily: 'var(--font-sans)',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap'
-            }}
-          >
-            {isGuideIndexOpen ? 'Hide' : 'Browse'} all {sections.length} detail sections
-            <ChevronDown
-              size={14}
-              style={{ transform: isGuideIndexOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }}
-            />
-          </button>
         </div>
 
-        {isGuideIndexOpen && (
-          <div className="animate-fade-in" style={{ marginTop: '16px', paddingTop: '14px', borderTop: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            {sectionGroups.map(group => (
-              <div key={group.title}>
-                <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
-                  {group.title}
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                  {group.nums.map(num => {
-                    const sec = sections.find(s => s.num === num);
-                    if (!sec) return null;
-                    const isActive = activeSection === num;
-                    return (
-                      <button
-                        key={num}
-                        onClick={() => goToSection(num)}
-                        style={{
-                          padding: '6px 12px',
-                          borderRadius: 'var(--radius-sm)',
-                          background: isActive ? 'rgba(99, 102, 241, 0.14)' : 'transparent',
-                          border: isActive ? '1px solid rgba(99, 102, 241, 0.55)' : '1px solid var(--border-color)',
-                          color: isActive ? '#a5b4fc' : 'var(--text-secondary)',
-                          fontSize: '0.76rem',
-                          fontWeight: isActive ? 700 : 500,
-                          fontFamily: 'var(--font-sans)',
-                          cursor: 'pointer',
-                          whiteSpace: 'nowrap',
-                          transition: 'all 0.15s ease'
-                        }}
-                      >
-                        {sec.name}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+          {EXAM_SECTIONS.map(sec => {
+            const isActive = activeSection === sec.num;
+            const SecIcon = sec.icon;
+            return (
+              <button
+                key={sec.num}
+                onClick={() => goToSection(sec.num)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '7px',
+                  padding: '8px 13px',
+                  borderRadius: 'var(--radius-sm)',
+                  background: isActive ? 'rgba(99, 102, 241, 0.16)' : 'rgba(255, 255, 255, 0.025)',
+                  border: isActive ? '1px solid rgba(99, 102, 241, 0.6)' : '1px solid var(--border-color)',
+                  color: isActive ? '#a5b4fc' : 'var(--text-secondary)',
+                  fontSize: '0.82rem',
+                  fontWeight: isActive ? 700 : 500,
+                  fontFamily: 'var(--font-sans)',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <SecIcon size={14} color={isActive ? '#a5b4fc' : 'var(--text-muted)'} />
+                {sec.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Reference material, named by the part it backs up rather than hidden in an index. */}
+        <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+          <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            Also in this exam
+          </span>
+          {REFERENCE_SECTIONS.map(sec => {
+            const isActive = activeSection === sec.num;
+            const SecIcon = sec.icon;
+            return (
+              <button
+                key={sec.num}
+                onClick={() => goToSection(sec.num)}
+                title={`Reference for ${sec.under}`}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '5px 11px',
+                  borderRadius: 'var(--radius-sm)',
+                  background: isActive ? 'rgba(99, 102, 241, 0.14)' : 'transparent',
+                  border: isActive ? '1px solid rgba(99, 102, 241, 0.55)' : '1px solid var(--border-color)',
+                  color: isActive ? '#a5b4fc' : 'var(--text-muted)',
+                  fontSize: '0.76rem',
+                  fontWeight: isActive ? 700 : 500,
+                  fontFamily: 'var(--font-sans)',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                <SecIcon size={12} />
+                {sec.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Section Content Views */}
@@ -13445,57 +13535,145 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
           </div>
         )}
 
-        {/* Section 02: Dates & Timeline */}
-        {activeSection === 2 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'white', margin: 0 }}>
-              02 — Official Examination Dates & Corrigenda Timeline
-            </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {exam.dates.map(d => (
-                <div key={d.id} style={{ padding: '16px 20px', borderRadius: 'var(--radius-md)', background: d.status === 'SUPERSEDED' ? 'rgba(239, 68, 68, 0.05)' : 'rgba(255,255,255,0.03)', border: d.status === 'SUPERSEDED' ? '1px dashed rgba(239, 68, 68, 0.3)' : '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '1rem', fontWeight: 700, color: d.status === 'SUPERSEDED' ? '#fca5a5' : 'white', textDecoration: d.status === 'SUPERSEDED' ? 'line-through' : 'none' }}>
-                        {d.label}
-                      </span>
-                      {d.status === 'SUPERSEDED' && (
-                        <span className="badge badge-superseded" style={{ fontSize: '0.7rem' }}>SUPERSEDED BY CORRIGENDUM</span>
-                      )}
-                    </div>
-                    <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                      Timezone: {d.timezone} {d.isTentative && '(Tentative Schedule)'}
-                    </div>
-                  </div>
+        {/* Section 02: Dates & Timeline — this exam only, read against the real clock */}
+        {activeSection === 2 && (() => {
+          // Split the exam's own dates on the clock. Superseded entries stay visible, struck
+          // through, because a corrigendum is part of the record.
+          const milestones = exam.dates
+            .map(d => ({ d, when: relativeWhen(d.dateTimeStr, nowTs), time: milestoneTime(d.dateTimeStr) }))
+            .sort((a, b) => a.time - b.time);
+          const upcoming = milestones.filter(m => !m.when.isPast);
+          const past = milestones.filter(m => m.when.isPast);
+          // A superseded date is still shown, struck through, because the corrigendum that
+          // replaced it is part of the record — but it must never be announced as what is
+          // coming next. The candidate would prepare for a deadline that no longer exists.
+          const next = upcoming.find(m => m.d.status !== 'SUPERSEDED');
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '1.05rem', fontWeight: 800, fontFamily: 'var(--font-mono)', color: d.status === 'SUPERSEDED' ? '#fca5a5' : 'var(--primary)' }}>
-                      {d.dateTimeStr}
+          const renderMilestone = (m: typeof milestones[number]) => {
+            const d = m.d;
+            const isNext = next && d.id === next.d.id;
+            return (
+              <div key={d.id} style={{ padding: '16px 20px', borderRadius: 'var(--radius-md)', background: d.status === 'SUPERSEDED' ? 'rgba(239, 68, 68, 0.05)' : isNext ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255,255,255,0.03)', border: d.status === 'SUPERSEDED' ? '1px dashed rgba(239, 68, 68, 0.3)' : isNext ? '1px solid rgba(16, 185, 129, 0.45)' : '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    {isNext && (
+                      <span className="badge badge-verified" style={{ fontSize: '0.68rem' }}>NEXT</span>
+                    )}
+                    <span style={{ fontSize: '1rem', fontWeight: 700, color: d.status === 'SUPERSEDED' ? '#fca5a5' : 'white', textDecoration: d.status === 'SUPERSEDED' ? 'line-through' : 'none' }}>
+                      {d.label}
                     </span>
-                    {d.type === 'ADMIT_CARD' && (
-                      <button className="btn btn-primary" onClick={() => setActiveSection(14)} style={{ fontSize: '0.75rem', padding: '4px 10px' }}>
-                        Admit Card Portal →
-                      </button>
+                    {d.status === 'SUPERSEDED' && (
+                      <span className="badge badge-superseded" style={{ fontSize: '0.7rem' }}>SUPERSEDED BY CORRIGENDUM</span>
                     )}
-                    {(d.type === 'EXAM_TIER1' || d.type === 'EXAM_TIER2') && (
-                      <button className="btn btn-secondary" onClick={() => setActiveSection(15)} style={{ fontSize: '0.75rem', padding: '4px 10px' }}>
-                        Exam Checklist →
-                      </button>
+                  </div>
+                  <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                    {m.when.text && (
+                      <strong style={{ color: m.when.isPast ? 'var(--text-muted)' : '#6ee7b7' }}>{m.when.text}</strong>
                     )}
-                    {d.type === 'RESULT' && (
-                      <button className="btn btn-emerald" onClick={() => setActiveSection(16)} style={{ fontSize: '0.75rem', padding: '4px 10px' }}>
-                        Result Next Steps →
-                      </button>
-                    )}
-                    <button className="btn btn-outline" onClick={() => onOpenProvenanceModal(d.provenance)} style={{ fontSize: '0.75rem', padding: '4px 10px' }}>
-                      <ShieldCheck size={13} /> Sourced Clause
-                    </button>
+                    {m.when.text ? ' · ' : ''}Timezone: {d.timezone} {d.isTentative && '(Tentative Schedule)'}
                   </div>
                 </div>
-              ))}
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '1.05rem', fontWeight: 800, fontFamily: 'var(--font-mono)', color: d.status === 'SUPERSEDED' ? '#fca5a5' : 'var(--primary)' }}>
+                    {d.dateTimeStr}
+                  </span>
+                  {d.type === 'ADMIT_CARD' && (
+                    <button className="btn btn-primary" onClick={() => setActiveSection(14)} style={{ fontSize: '0.75rem', padding: '4px 10px' }}>
+                      Admit Card Portal →
+                    </button>
+                  )}
+                  {(d.type === 'EXAM_TIER1' || d.type === 'EXAM_TIER2') && (
+                    <button className="btn btn-secondary" onClick={() => setActiveSection(15)} style={{ fontSize: '0.75rem', padding: '4px 10px' }}>
+                      Exam Checklist →
+                    </button>
+                  )}
+                  {d.type === 'RESULT' && (
+                    <button className="btn btn-emerald" onClick={() => setActiveSection(16)} style={{ fontSize: '0.75rem', padding: '4px 10px' }}>
+                      Result Next Steps →
+                    </button>
+                  )}
+                  <button className="btn btn-outline" onClick={() => onOpenProvenanceModal(d.provenance)} style={{ fontSize: '0.75rem', padding: '4px 10px' }}>
+                    <ShieldCheck size={13} /> Sourced Clause
+                  </button>
+                </div>
+              </div>
+            );
+          };
+
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'white', margin: 0 }}>
+                    Dates & Timeline — {exam.title}
+                  </h3>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', margin: '4px 0 0' }}>
+                    Only this exam's milestones, counted against the clock. {upcoming.length} still ahead, {past.length} already passed.
+                  </p>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {onToggleTrack && (
+                    <button
+                      className={`btn ${isTracked ? 'btn-emerald' : 'btn-secondary'}`}
+                      onClick={onToggleTrack}
+                      style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                      title={isTracked ? 'Deadline alerts are on for this exam' : 'Get deadline alerts for this exam'}
+                    >
+                      {isTracked ? <><Check size={15} /> Alerts On</> : <><Bell size={15} /> Alert Me</>}
+                    </button>
+                  )}
+                  {exam.corrigendums.length > 0 && (
+                    <button className="btn btn-secondary" onClick={() => setActiveSection(13)} style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <RefreshCw size={15} /> Corrigenda ({exam.corrigendums.length})
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {next && (
+                <div style={{ padding: '16px 20px', borderRadius: 'var(--radius-md)', background: 'rgba(16, 185, 129, 0.10)', border: '1px solid rgba(16, 185, 129, 0.4)', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                  <Clock size={20} color="var(--emerald)" />
+                  <div>
+                    <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                      Next milestone
+                    </div>
+                    <div style={{ fontSize: '1rem', fontWeight: 800, color: '#6ee7b7' }}>
+                      {next.d.label} — {next.when.text}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {upcoming.length === 0 ? (
+                <div style={{ padding: '22px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                  Every date the register holds for this exam has passed. The next cycle's dates appear here as soon as the commission publishes them.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {upcoming.map(renderMilestone)}
+                </div>
+              )}
+
+              {past.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <button
+                    onClick={() => setShowPastDates(prev => !prev)}
+                    style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: 'var(--radius-sm)', background: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', fontSize: '0.78rem', fontWeight: 600, fontFamily: 'var(--font-sans)', cursor: 'pointer' }}
+                  >
+                    {showPastDates ? 'Hide' : 'Show'} {past.length} completed milestone{past.length === 1 ? '' : 's'}
+                    <ChevronDown size={14} style={{ transform: showPastDates ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }} />
+                  </button>
+                  {showPastDates && (
+                    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '12px', opacity: 0.75 }}>
+                      {past.map(renderMilestone)}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Section 03: Eligibility Rules */}
         {activeSection === 3 && (
@@ -13712,10 +13890,20 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
           />
         )}
 
-        {/* Section 09: CBT Practice & PYQs (Embeds PracticeEngine) */}
+        {/* Section 09: Practice & PYQs (Embeds PracticeEngine, practice door) */}
         {activeSection === 9 && (
-          <PracticeEngine 
+          <PracticeEngine
             exam={exam}
+            scope="PRACTICE"
+            onOpenProvenanceModal={onOpenProvenanceModal}
+          />
+        )}
+
+        {/* Section 17: Mock Tests (the same engine, opened at the test creator) */}
+        {activeSection === 17 && (
+          <PracticeEngine
+            exam={exam}
+            scope="MOCKS"
             onOpenProvenanceModal={onOpenProvenanceModal}
           />
         )}
