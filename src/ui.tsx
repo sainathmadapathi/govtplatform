@@ -111,7 +111,9 @@ import {
   ResourceAddition,
   SscNoticeFeed,
   ExamRecommendation,
-  UserInteractionEvent
+  UserInteractionEvent,
+  ChatContext,
+  ConversationTurn
 } from './types';
 import {
   ALL_EXAMS,
@@ -137,6 +139,8 @@ import {
   topicHasSupply
 } from './data';
 import {
+  buildChatContext,
+  conversationService,
   researchService,
   resourceLiveService,
   calculateDetailedAge,
@@ -2267,9 +2271,22 @@ export interface AssistantAction {
   section?: number;
 }
 
+/**
+ * What sort of claim an answer is — the safety rule in one field.
+ * OFFICIAL: read from the verified register, cited. PLATFORM: how GovOS itself works.
+ * GUIDANCE: derived advice, true of the register but not a quote from it.
+ * CLARIFY: a question back. UNVERIFIED: not in the register; live search offered.
+ */
+export type AssistantSourceKind = 'OFFICIAL' | 'PLATFORM' | 'GUIDANCE' | 'CLARIFY' | 'UNVERIFIED';
+
 interface AssistantReply {
   text: string;
   verified: boolean;
+  sourceKind?: AssistantSourceKind;
+  /** True when the assistant could not place the question at all. */
+  unresolved?: boolean;
+  /** What this turn was about, recorded so the next message can inherit it. */
+  subject?: string;
   citation?: {
     documentTitle: string;
     pageNumber: number;
@@ -2426,9 +2443,56 @@ function editDistanceShort(a: string, b: string): number {
   return d[a.length][b.length];
 }
 
+/** Words that point back at the conversation instead of naming anything. */
+const DEICTIC_WORDS = /\b(it|its|this|that|these|those|them|they|there|same|again|instead|one|ones)\b/;
+
+/**
+ * Expand a follow-up with the subject the conversation already settled on, so "when is it?"
+ * and "what about this post?" carry their meaning. Returns null when there is nothing to
+ * inherit — an invented subject would be worse than a clarifying question.
+ */
+export function resolveWithHistory(message: string, history: ConversationTurn[]): { text: string; inherited: string } | null {
+  const lastSubject = [...history].reverse().find(t => t.role === 'assistant' && t.subject)?.subject;
+  const lastUserWords = [...history].reverse()
+    .filter(t => t.role === 'user')
+    .map(t => contentWordsOf(t.text))
+    .find(words => words.length > 0);
+  const inherited = lastSubject || (lastUserWords ? lastUserWords.join(' ') : '');
+  if (!inherited) return null;
+  return { text: `${message} ${inherited}`.trim(), inherited };
+}
+
+/** A short phrase naming what each intent is about, recorded on the turn for follow-ups. */
+const FACT_SUBJECTS: Record<string, string> = {
+  targetPost: 'your target post',
+  nextStep: 'what to do next',
+  studyPlan: 'what to study',
+  age: 'the age limits',
+  eligibility: 'eligibility',
+  dates: 'the important dates',
+  pattern: 'the exam pattern',
+  vacancy: 'the vacancies',
+  pay: 'the pay by post',
+  syllabus: 'the syllabus',
+  fee: 'the application fee',
+  resources: 'the resources',
+  admitCard: 'the admit card',
+  cutoff: 'the cutoffs',
+  apply: 'the application process',
+  practice: 'practice and mock tests'
+};
+
 /** Content words of a question: what the assistant has to account for before answering. */
 const contentWordsOf = (q: string): string[] =>
   normaliseQuery(q).split(' ').filter(w => w.length > 2 && !ASSISTANT_FILLER.has(w) && !/^\d+$/.test(w));
+
+/**
+ * True when a message names nothing of its own — "when is it?", "what about that?" — and so
+ * has to borrow its subject from the conversation. A message that does name something
+ * ("am I eligible?") must NOT borrow, or it would answer the previous question again.
+ */
+const needsInheritedSubject = (q: string): boolean =>
+  contentWordsOf(q).filter(w => !DEICTIC_WORDS.test(w)).length === 0;
 
 /**
  * The candidate named a specific thing that lives in the library ("typing test tool",
@@ -2466,6 +2530,9 @@ function bestMatch<T extends { keys: string[] }>(query: string, table: T[], loos
  * decides which question it answers.
  */
 const FACT_INTENTS: { id: string; keys: string[] }[] = [
+  { id: 'targetPost', keys: ['this post', 'that post', 'my post', 'my target post', 'the post i selected', 'my selected post', 'about this post'] },
+  { id: 'nextStep', keys: ['what should i do next', 'what next', 'next step', 'what now', 'where do i start', 'how do i start', 'where should i begin', 'what to do now', 'guide me'] },
+  { id: 'studyPlan', keys: ['what should i study', 'what to study first', 'where should i start studying', 'how should i study', 'study first', 'what should i prepare'] },
   { id: 'age', keys: ['age limit', 'maximum age', 'minimum age', 'age relaxation', 'how old', 'upper age', 'age criteria', 'crucial date', 'age as on'] },
   { id: 'eligibility', keys: ['eligib', 'qualification', 'graduate', 'graduation', 'degree', 'b tech', 'btech', 'can i apply'] },
   { id: 'dates', keys: ['last date', 'deadline', 'closing date', 'application date', 'when can i apply', 'apply by', 'important date', 'exam date', 'when is the exam', 'notification date', 'tier 1 exam', 'tier 2 exam', 'when is tier', 'exam schedule', 'exam month', 'which month'] },
@@ -2611,7 +2678,28 @@ const PLATFORM_MAP: { keys: string[]; answer: string; action: AssistantAction }[
  * there. Navigation intents are checked first when the question asks "where"; factual
  * intents otherwise.
  */
-export function answerCandidateQuery(query: string): AssistantReply {
+/** Context for a chat with nothing selected yet: the reference exam and no conversation. */
+export const defaultChatContext = (exam: Exam = SSC_CGL_EXAM): ChatContext => ({
+  channel: 'ASSISTANT',
+  exam,
+  stage: 'BEFORE_NOTIFICATION',
+  history: []
+});
+
+/** Another exam named in the message, when the candidate switches subject mid-conversation. */
+function examNamedIn(q: string, current: Exam): Exam | null {
+  const words = normaliseQuery(q).split(' ').filter(Boolean);
+  const hit = ALL_EXAMS.find(ex => {
+    if (ex.id === current.id) return false;
+    const code = normaliseQuery(ex.code || '').split(' ').filter(w => w.length >= 3);
+    const title = normaliseQuery(ex.title).split(' ').filter(w => w.length >= 4 && !['exam', 'examination', 'level', 'combined'].includes(w));
+    return [...code, ...title].some(w => words.includes(w));
+  });
+  return hit || null;
+}
+
+export function answerCandidateQuery(query: string, context?: ChatContext): AssistantReply {
+  const ctx = context || defaultChatContext();
   const raw = query.toLowerCase().trim();
 
   // ---- small talk: answer like a person, then say what this assistant is for
@@ -2625,17 +2713,61 @@ export function answerCandidateQuery(query: string): AssistantReply {
     return { verified: true, text: 'You are welcome. Ask whenever you need a date, a rule, or where something is.' };
   }
 
+  // The candidate named a different exam: answer about that one and say so, rather than
+  // silently keeping the old context.
+  const switched = examNamedIn(raw, ctx.exam);
+  const active: ChatContext = switched ? { ...ctx, exam: switched, targetPost: undefined } : ctx;
+
   // Everything else is answered from the typo-corrected question, and the reply opens by
   // saying what was corrected — a silent correction would hide a wrong guess.
   const corrected = correctAssistantQuery(raw);
-  const reply = answerCorrectedQuery(corrected.text);
-  if (corrected.corrections.length === 0) return reply;
-  const note = `(I read ${corrected.corrections.map(c => `"${c.typed}" as "${c.readAs}"`).join(', ')}.)\n\n`;
-  return { ...reply, text: note + reply.text };
+  let reply: AssistantReply | null = null;
+
+  // A message that names nothing of its own is a follow-up: give it the conversation's
+  // subject before answering, rather than letting a stray word decide.
+  if (needsInheritedSubject(corrected.text) && active.history.length > 0) {
+    const inheritedFirst = resolveWithHistory(corrected.text, active.history);
+    if (inheritedFirst) {
+      const answered = answerCorrectedQuery(inheritedFirst.text, active);
+      if (!answered.unresolved) {
+        reply = { ...answered, text: `Taking that as a follow-up about ${inheritedFirst.inherited}.\n\n${answered.text}` };
+      }
+    }
+  }
+  if (!reply) reply = answerCorrectedQuery(corrected.text, active);
+
+  // Still nothing placed? Try the conversation's subject as a last resort.
+  if (reply.unresolved && active.history.length > 0) {
+    const expanded = resolveWithHistory(corrected.text, active.history);
+    if (expanded) {
+      const retry = answerCorrectedQuery(expanded.text, active);
+      if (!retry.unresolved) {
+        reply = { ...retry, text: `Taking that as a follow-up about ${expanded.inherited}.\n\n${retry.text}` };
+      }
+    }
+  }
+
+  // Name the subject of the turn, so the next message can inherit it.
+  if (!reply.subject) {
+    const factHit = bestMatch(corrected.text, FACT_INTENTS) || bestMatch(corrected.text, FACT_INTENTS, true);
+    const navHit = bestMatch(corrected.text, PLATFORM_MAP) || bestMatch(corrected.text, PLATFORM_MAP, true);
+    const subject = (factHit && FACT_SUBJECTS[factHit.entry.id]) || (navHit && navHit.entry.keys[0]) || undefined;
+    if (subject) reply = { ...reply, subject };
+  }
+
+  const prefix: string[] = [];
+  if (corrected.corrections.length > 0) {
+    prefix.push(`(I read ${corrected.corrections.map(c => `"${c.typed}" as "${c.readAs}"`).join(', ')}.)`);
+  }
+  if (switched) {
+    prefix.push(`(Switching to ${switched.title}. Say the name again to go back to ${ctx.exam.title}.)`);
+  }
+  return prefix.length > 0 ? { ...reply, text: `${prefix.join('\n')}\n\n${reply.text}` } : reply;
 }
 
 /** The grounded answer for a question whose spelling has already been repaired. */
-function answerCorrectedQuery(q: string): AssistantReply {
+function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
+  const exam = ctx.exam;
   // ---- orientation
   if (has(q, 'what can you do', 'what can i ask', 'how does this work', 'how do i use', 'help me get started', 'getting started', 'what is govos', 'guide me through')) {
     return {
@@ -2651,15 +2783,19 @@ function answerCorrectedQuery(q: string): AssistantReply {
   const fact = bestMatch(q, FACT_INTENTS) || bestMatch(q, FACT_INTENTS, true);
   const factId = fact ? fact.entry.id : '';
 
-  // Naming a specific entry in the library beats any section-level answer: "where can I
-  // find the constitution pdf" wants that document, not a tour of the Resources tab.
-  const stronglyNamed = namedResourceAnswer(q, 10);
-  if (stronglyNamed) return stronglyNamed.reply;
+  // Naming a specific entry in the library beats a section-level answer — but only when no
+  // intent matched confidently, or "what about the admit card" would return a portal link
+  // instead of the admit-card answer.
+  const confidentIntent = Math.max(nav ? nav.score : 0, fact ? fact.score : 0) >= 6;
+  if (!confidentIntent) {
+    const stronglyNamed = namedResourceAnswer(q, 10);
+    if (stronglyNamed) return stronglyNamed.reply;
+  }
 
   // Answer with navigation when the candidate asks where something is, or when a specific
   // multi-word request ("application practice") outscores whatever single words also matched.
   if (nav && (asksLocation(q) || (nav.score >= 6 && nav.score > (fact ? fact.score : 0)))) {
-    return { verified: true, text: nav.entry.answer, action: nav.entry.action };
+    return { verified: true, sourceKind: 'PLATFORM', text: nav.entry.answer, action: nav.entry.action };
   }
 
   // One generic word ("test", "date") is not understanding the question. When that is the
@@ -2673,61 +2809,136 @@ function answerCorrectedQuery(q: string): AssistantReply {
 
   // ---- facts, read out of the register
   if (factId === 'age') {
-    const minAge = Math.min(...SSC_CGL_EXAM.posts.map(p => p.minAge));
-    const maxAge = Math.max(...SSC_CGL_EXAM.posts.map(p => p.maxAge));
-    const post = SSC_CGL_EXAM.posts[0];
+    const minAge = Math.min(...exam.posts.map(p => p.minAge));
+    const maxAge = Math.max(...exam.posts.map(p => p.maxAge));
+    const post = exam.posts[0];
     return {
       verified: true,
-      text: `Age limits run from ${minAge} to ${maxAge} years across the ${SSC_CGL_EXAM.posts.length} SSC CGL posts — each post sets its own band, so check the one you are targeting.\n\nAge is counted as on the crucial date, ${SSC_CGL_EXAM.crucialEligibilityDate}, not the date you apply.\n\nRelaxation on the upper limit: OBC +3 years, SC/ST +5 years, PwBD +10 years (on top of the category relaxation where both apply).\n\nThe Am I Eligible? tab applies all of this to your date of birth and tells you post by post.`,
+      text: `Age limits run from ${minAge} to ${maxAge} years across the ${exam.posts.length} SSC CGL posts — each post sets its own band, so check the one you are targeting.\n\nAge is counted as on the crucial date, ${exam.crucialEligibilityDate}, not the date you apply.\n\nRelaxation on the upper limit: OBC +3 years, SC/ST +5 years, PwBD +10 years (on top of the category relaxation where both apply).\n\nThe Am I Eligible? tab applies all of this to your date of birth and tells you post by post.`,
       citation: citeFrom(post.provenance, 'SSC CGL 2026 Official Notice'),
       action: { label: 'Check my age eligibility', tab: 'ELIGIBILITY' }
     };
   }
 
-  if (factId === 'eligibility') {
-    const dummyProfile = {
-      dateOfBirth: '2005-05-15',
-      degree: 'B.Tech',
-      branch: 'Computer Science',
-      percentage: 72,
-      category: 'GENERAL' as const,
-      gender: 'Male' as const,
-      domicileState: 'Telangana',
-      nationality: 'INDIAN'
-    };
-    const diag = evaluateCandidateEligibility(SSC_CGL_EXAM, dummyProfile);
+  if (factId === 'targetPost') {
+    const post = ctx.targetPost;
+    if (!post) {
+      return {
+        verified: true,
+        sourceKind: 'CLARIFY',
+        subject: 'your target post',
+        text: `You have not set a target post yet, so I do not know which one you mean. Pick one in section 01 Overview & Posts — ${exam.title} has ${exam.posts.length} — and the roadmap, the daily-hours plan and your practice analysis all follow that choice.`,
+        action: { label: 'Choose a target post', tab: 'EXAM_DETAIL', section: 1 }
+      };
+    }
     return {
       verified: true,
-      text: `The base requirement is a bachelor's degree in any discipline from a recognised university, held on the crucial date ${SSC_CGL_EXAM.crucialEligibilityDate}. Two posts add conditions: Junior Statistical Officer needs 60% in Mathematics at Class 12 or Statistics in the degree, and Statistical Investigator needs Statistics as a subject.\n\nWorked example — a B.Tech candidate born 15-05-2005, General category: ${diag.plainEnglishExplanation}\n\nEnter your own details in Am I Eligible? for a per-post verdict.`,
-      citation: citeFrom(SSC_CGL_EXAM.posts[0].provenance, 'SSC CGL 2026 Official Notice'),
+      sourceKind: 'OFFICIAL',
+      subject: `your target post, ${post.postName}`,
+      text: `Your target post is **${post.postName}** — ${post.department}${post.ministry ? `, ${post.ministry}` : ''}.\n\n• Pay: ${post.payScale} (${post.payLevel})\n• Classification: ${post.classification}\n• Age: ${post.minAge}–${post.maxAge} years before category relaxation${post.specialQualification ? `\n• Extra requirement: ${post.specialQualification}` : ''}${post.physicalRequired ? '\n• Physical standards apply to this post' : ''}\n\n${post.natureOfWork ? `What the job is: ${post.natureOfWork}` : 'Section 01 has the full job profile.'}`,
+      citation: citeFrom(post.provenance, `${exam.title} Official Notice`),
+      action: { label: 'Open Overview & Posts', tab: 'EXAM_DETAIL', section: 1 }
+    };
+  }
+
+  if (factId === 'nextStep') {
+    const close = ctx.daysToApplicationClose;
+    const post = ctx.targetPost ? `your target post, ${ctx.targetPost.postName}` : 'a target post (set one in section 01 so the roadmap and analysis follow it)';
+    const byStage: Record<string, { line: string; action: AssistantAction }> = {
+      BEFORE_NOTIFICATION: {
+        line: `Applications for ${exam.title} have not opened yet. Use the time on the syllabus and on ${post}, and track the exam so GovOS tells you the day the window opens.`,
+        action: { label: 'Open the syllabus', tab: 'EXAM_DETAIL', section: 6 }
+      },
+      APPLICATION_OPEN: {
+        line: `Applications are open${typeof close === 'number' ? ` and close in ${close} day${close === 1 ? '' : 's'}` : ''}. Apply first — everything else can wait until the form is submitted. Section 04 lists the photo and signature rules and the mistakes that get forms rejected.`,
+        action: { label: 'Open the application guide', tab: 'EXAM_DETAIL', section: 4 }
+      },
+      APPLICATION_CLOSED: {
+        line: `The application window has closed. From here it is preparation: work the syllabus for ${post} and take timed papers so your speed is exam-ready.`,
+        action: { label: 'Open Practice & Mocks', tab: 'PRACTICE' }
+      },
+      PRE_EXAM: {
+        line: `The form is behind you; the exam is ahead. Take full papers on the clock, review every mistake, and check the admit card and exam-day rules a week before.`,
+        action: { label: 'Open Practice & Mocks', tab: 'PRACTICE' }
+      },
+      POST_EXAM: {
+        line: `Tier-1 is done. Watch for the answer key and the challenge window, then the result — section 16 sets out each stage.`,
+        action: { label: 'Open Result & Next Steps', tab: 'EXAM_DETAIL', section: 16 }
+      }
+    };
+    const chosen = byStage[ctx.stage] || byStage.BEFORE_NOTIFICATION;
+    return {
+      verified: true,
+      sourceKind: 'GUIDANCE',
+      subject: 'what to do next',
+      text: `You are at the **${ctx.stage.replace(/_/g, ' ').toLowerCase()}** stage of ${exam.title}, going by the dates on record.\n\n${chosen.line}`,
+      action: chosen.action
+    };
+  }
+
+  if (factId === 'studyPlan') {
+    const post = ctx.targetPost;
+    return {
+      verified: true,
+      sourceKind: 'GUIDANCE',
+      subject: post ? `studying for ${post.postName}` : 'what to study',
+      text: post
+        ? `For **${post.postName}** (${post.department}), the Study Roadmap builds the plan: milestone tracks, daily hours and the modules you have finished.\n\n${post.specialQualification ? `This post has its own condition — ${post.specialQualification} — so give that subject early time. ` : ''}Section 06 lists all ${exam.syllabus.length} syllabus topics with weightage, and Practice & Mocks tells you which of them you are weakest on after a paper or two.`
+        : `Set a target post first, in section 01 Overview & Posts — the plan, the daily hours and the practice analysis all follow that choice.\n\nWithout it I would be guessing at which subjects matter most to you. The syllabus itself is in section 06, with all ${exam.syllabus.length} topics by weightage.`,
+      action: post ? { label: 'Open Study Roadmap', tab: 'PLANNER' } : { label: 'Choose a target post', tab: 'EXAM_DETAIL', section: 1 }
+    };
+  }
+
+  if (factId === 'eligibility') {
+    const profile = ctx.profile;
+    if (!profile) {
+      return {
+        verified: true,
+        sourceKind: 'CLARIFY',
+        subject: 'eligibility',
+        text: `I can check this properly rather than in general — but I need your details first: date of birth, degree, and category. Enter them in **Am I Eligible?** and GovOS checks you against all ${exam.posts.length} ${exam.title} posts, one by one, with your category's age relaxation applied.\n\nThe rule itself: a bachelor's degree in any discipline, held on the crucial date ${exam.crucialEligibilityDate}. Two posts add conditions — Junior Statistical Officer needs 60% in Mathematics at Class 12 or Statistics in the degree, and Statistical Investigator needs Statistics as a subject.`,
+        citation: citeFrom(exam.posts[0].provenance, `${exam.title} Official Notice`),
+        action: { label: 'Open Am I Eligible?', tab: 'ELIGIBILITY' }
+      };
+    }
+    const diag = evaluateCandidateEligibility(exam, profile);
+    const targetLine = ctx.targetPost
+      ? `\n\nFor your target post, ${ctx.targetPost.postName}: age band ${ctx.targetPost.minAge}–${ctx.targetPost.maxAge} before relaxation${ctx.targetPost.specialQualification ? `, and it also requires ${ctx.targetPost.specialQualification}` : ''}.`
+      : '';
+    return {
+      verified: true,
+      sourceKind: 'OFFICIAL',
+      subject: 'eligibility',
+      text: `Checked against your saved details (${profile.degree}, ${profile.category}, born ${profile.dateOfBirth}) for ${exam.title}:\n\n${diag.plainEnglishExplanation}${targetLine}\n\nOpen Am I Eligible? for the full post-by-post verdict and the clause behind each one.`,
+      citation: citeFrom(exam.posts[0].provenance, `${exam.title} Official Notice`),
       action: { label: 'Open Am I Eligible?', tab: 'ELIGIBILITY' }
     };
   }
 
   if (factId === 'dates') {
-    const lines = SSC_CGL_EXAM.dates
+    const lines = exam.dates
       .filter(d => d.status !== 'SUPERSEDED')
       .map(d => `• ${d.label}: ${d.dateTimeStr}${d.isTentative ? ' (tentative)' : ''}`)
       .join('\n');
     const close = dateOfType('APPLICATION_CLOSE');
-    const superseded = SSC_CGL_EXAM.dates.filter(d => d.status === 'SUPERSEDED');
+    const superseded = exam.dates.filter(d => d.status === 'SUPERSEDED');
     return {
       verified: true,
-      text: `Key dates on record for ${SSC_CGL_EXAM.title}:\n\n${lines}\n\n${superseded.length > 0 ? `${superseded.length} earlier date${superseded.length === 1 ? ' was' : 's were'} superseded by corrigendum — section 13 shows what changed.\n\n` : ''}Track the exam and GovOS will remind you before each of these.`,
+      text: `Key dates on record for ${exam.title}:\n\n${lines}\n\n${typeof ctx.daysToApplicationClose === 'number' ? (ctx.daysToApplicationClose >= 0 ? `The application window closes in ${ctx.daysToApplicationClose} day${ctx.daysToApplicationClose === 1 ? '' : 's'}.\n\n` : `The application window closed ${Math.abs(ctx.daysToApplicationClose)} day${Math.abs(ctx.daysToApplicationClose) === 1 ? '' : 's'} ago.\n\n`) : ''}${superseded.length > 0 ? `${superseded.length} earlier date${superseded.length === 1 ? ' was' : 's were'} superseded by corrigendum — section 13 shows what changed.\n\n` : ''}Track the exam and GovOS will remind you before each of these.`,
       citation: close ? citeFrom(close.provenance, 'SSC CGL 2026 Official Notice') : undefined,
       action: { label: 'Open My Timeline & Calendar', tab: 'CALENDAR' }
     };
   }
 
   if (factId === 'pattern') {
-    const lines = SSC_CGL_EXAM.stages.map(st => {
+    const lines = exam.stages.map(st => {
       const sections = st.sections.map(sec => `   – ${sec.sectionName}: ${sec.questions} Qs / ${sec.marks} marks`).join('\n');
       return `• ${st.stageName} (${st.tier.replace('_', '-')}): ${st.totalQuestions} questions, ${st.totalMarks} marks, ${st.durationMinutes} minutes, ${st.mode}. Negative marking: ${st.negativeMarking}.\n${sections}`;
     }).join('\n\n');
     return {
       verified: true,
       text: `Examination pattern on record:\n\n${lines}\n\nThe practice engine uses exactly this marking, so your mock scores are comparable to the real thing.`,
-      citation: citeFrom(SSC_CGL_EXAM.stages[0].provenance, 'SSC CGL 2026 Official Notice'),
+      citation: citeFrom(exam.stages[0].provenance, 'SSC CGL 2026 Official Notice'),
       action: { label: 'Open the pattern section', tab: 'EXAM_DETAIL', section: 5 }
     };
   }
@@ -2735,32 +2946,33 @@ function answerCorrectedQuery(q: string): AssistantReply {
   if (factId === 'vacancy') {
     return {
       verified: true,
-      text: `${SSC_CGL_EXAM.vacanciesTotal ? `Vacancies on record: ${SSC_CGL_EXAM.vacanciesTotal}.` : 'The vacancy figure is announced separately by SSC and is not final in the register yet.'}\n\nThe register carries ${SSC_CGL_EXAM.posts.length} posts across departments, from Assistant Section Officer to Junior Statistical Officer, each with its own pay level and eligibility conditions.\n\nSSC publishes the final post-wise, category-wise vacancy table after the application window closes, so treat any earlier figure as indicative.`,
-      citation: citeFrom(SSC_CGL_EXAM.posts[0].provenance, 'SSC CGL 2026 Official Notice'),
+      text: `${exam.vacanciesTotal ? `Vacancies on record: ${exam.vacanciesTotal}.` : 'The vacancy figure is announced separately by SSC and is not final in the register yet.'}\n\nThe register carries ${exam.posts.length} posts across departments, from Assistant Section Officer to Junior Statistical Officer, each with its own pay level and eligibility conditions.\n\nSSC publishes the final post-wise, category-wise vacancy table after the application window closes, so treat any earlier figure as indicative.`,
+      citation: citeFrom(exam.posts[0].provenance, 'SSC CGL 2026 Official Notice'),
       action: { label: 'See all posts', tab: 'EXAM_DETAIL', section: 1 }
     };
   }
 
   if (factId === 'pay') {
     const generic = new Set(['assistant', 'officer', 'junior', 'senior', 'grade', 'in', 'of', 'the', 'and', 'ii', 'iii']);
-    const named = SSC_CGL_EXAM.posts.filter(p => normaliseQuery(p.postName).split(' ').some(w => w.length >= 3 && !generic.has(w) && normaliseQuery(q).split(' ').includes(w)));
-    const shown = named.length > 0 ? named : SSC_CGL_EXAM.posts.slice(0, 5);
+    const named = exam.posts.filter(p => normaliseQuery(p.postName).split(' ').some(w => w.length >= 3 && !generic.has(w) && normaliseQuery(q).split(' ').includes(w)));
+    // no post named in the question: answer for the one the candidate is actually targeting
+    const shown = named.length > 0 ? named : ctx.targetPost ? [ctx.targetPost, ...exam.posts.filter(p => p.id !== ctx.targetPost!.id).slice(0, 3)] : exam.posts.slice(0, 5);
     const top = shown.map(p => `• ${p.postName} — ${p.payScale} (${p.payLevel}, ${p.classification})`).join('\n');
     return {
       verified: true,
-      text: `Pay by post, straight from the register:\n\n${top}\n\nAll ${SSC_CGL_EXAM.posts.length} posts with their pay levels, departments and nature of work are in section 01 of the Exam Guide. The figures are the pay scale; allowances vary by posting city.`,
-      citation: citeFrom(SSC_CGL_EXAM.posts[0].provenance, 'SSC CGL 2026 Official Notice'),
+      text: `Pay by post, straight from the register:\n\n${top}\n\nAll ${exam.posts.length} posts with their pay levels, departments and nature of work are in section 01 of the Exam Guide. The figures are the pay scale; allowances vary by posting city.`,
+      citation: citeFrom(exam.posts[0].provenance, 'SSC CGL 2026 Official Notice'),
       action: { label: 'See all posts and pay', tab: 'EXAM_DETAIL', section: 1 }
     };
   }
 
   if (factId === 'syllabus') {
     const bySubject = new Map<string, number>();
-    SSC_CGL_EXAM.syllabus.forEach(t => bySubject.set(t.subject, (bySubject.get(t.subject) || 0) + 1));
+    exam.syllabus.forEach(t => bySubject.set(t.subject, (bySubject.get(t.subject) || 0) + 1));
     const summary = Array.from(bySubject.entries()).map(([sub, n]) => `• ${sub}: ${n} topics`).join('\n');
     return {
       verified: true,
-      text: `The syllabus on record has ${SSC_CGL_EXAM.syllabus.length} topics:\n\n${summary}\n\nSection 06 lists each topic with its weightage and lets you tick off what you have finished. For practice on any one of them, ask the test creator in Practice & Mocks.`,
+      text: `The syllabus on record has ${exam.syllabus.length} topics:\n\n${summary}\n\nSection 06 lists each topic with its weightage and lets you tick off what you have finished. For practice on any one of them, ask the test creator in Practice & Mocks.`,
       action: { label: 'Open the syllabus', tab: 'EXAM_DETAIL', section: 6 }
     };
   }
@@ -2774,12 +2986,12 @@ function answerCorrectedQuery(q: string): AssistantReply {
   }
 
   if (factId === 'resources') {
-    const videos = SSC_CGL_EXAM.resources.filter(r => r.resourceFormat === 'YOUTUBE_COURSE' || r.resourceFormat === 'YOUTUBE_CHANNEL').length;
-    const pdfs = SSC_CGL_EXAM.resources.filter(r => r.resourceFormat === 'DIRECT_PDF').length;
-    const portals = SSC_CGL_EXAM.resources.filter(r => r.resourceFormat === 'OFFICIAL_PORTAL').length;
+    const videos = exam.resources.filter(r => r.resourceFormat === 'YOUTUBE_COURSE' || r.resourceFormat === 'YOUTUBE_CHANNEL').length;
+    const pdfs = exam.resources.filter(r => r.resourceFormat === 'DIRECT_PDF').length;
+    const portals = exam.resources.filter(r => r.resourceFormat === 'OFFICIAL_PORTAL').length;
     return {
       verified: true,
-      text: `The Resources tab holds ${SSC_CGL_EXAM.resources.length} verified entries for SSC CGL: ${pdfs} direct PDFs (the notice, the reopening notice and the Constitution official text), ${portals} official portals (previous-year papers, answer keys, the exam calendar, NCERT, SWAYAM, NIOS, Census and MoSPI data) and ${videos} video lessons.\n\nEvery one links to the publisher's own server — GovOS stores no study material, so nothing goes stale here. Each card shows when the link was last checked, and "Verify all links now" re-checks them live.`,
+      text: `The Resources tab holds ${exam.resources.length} verified entries for SSC CGL: ${pdfs} direct PDFs (the notice, the reopening notice and the Constitution official text), ${portals} official portals (previous-year papers, answer keys, the exam calendar, NCERT, SWAYAM, NIOS, Census and MoSPI data) and ${videos} video lessons.\n\nEvery one links to the publisher's own server — GovOS stores no study material, so nothing goes stale here. Each card shows when the link was last checked, and "Verify all links now" re-checks them live.`,
       action: { label: 'Open Resources', tab: 'RESOURCES' }
     };
   }
@@ -2795,7 +3007,7 @@ function answerCorrectedQuery(q: string): AssistantReply {
   }
 
   if (factId === 'cutoff') {
-    const latest = SSC_CGL_EXAM.cutoffsHistory[0];
+    const latest = exam.cutoffsHistory[0];
     return {
       verified: true,
       text: `${latest ? `Most recent cutoff on record: ${latest.year} — see the full category-wise table in section 10.` : 'Cutoff history is listed in section 10 of the Exam Guide.'}\n\nCutoffs move every year with vacancies and paper difficulty, so use them as a target band rather than a promise. Your mock analytics in Practice & Mocks tell you where you stand against them.`,
@@ -2806,7 +3018,7 @@ function answerCorrectedQuery(q: string): AssistantReply {
   if (factId === 'apply') {
     return {
       verified: true,
-      text: `Applications are submitted on SSC's own portal, ${SSC_CGL_EXAM.applicationGuide.officialPortal}. One Time Registration comes first (${SSC_CGL_EXAM.applicationGuide.otrSteps.length} steps in the guide), then the exam form.\n\nSection 04 gives the photo and signature specifications, the certificates that must be valid on the crucial date, and ${SSC_CGL_EXAM.applicationGuide.rejectionPitfalls.length} rejection pitfalls with how to avoid each.\n\nGovOS never submits anything on your behalf.`,
+      text: `Applications are submitted on SSC's own portal, ${exam.applicationGuide.officialPortal}. One Time Registration comes first (${exam.applicationGuide.otrSteps.length} steps in the guide), then the exam form.\n\nSection 04 gives the photo and signature specifications, the certificates that must be valid on the crucial date, and ${exam.applicationGuide.rejectionPitfalls.length} rejection pitfalls with how to avoid each.\n\nGovOS never submits anything on your behalf.`,
       action: { label: 'Open the application guide', tab: 'EXAM_DETAIL', section: 4 }
     };
   }
@@ -2821,7 +3033,7 @@ function answerCorrectedQuery(q: string): AssistantReply {
 
   // Not phrased as a location question, but plainly about a part of the platform
   // ("study plan", "roadmap", "compare exams") — route it rather than fall back.
-  if (nav) return { verified: true, text: nav.entry.answer, action: nav.entry.action };
+  if (nav) return { verified: true, sourceKind: 'PLATFORM', text: nav.entry.answer, action: nav.entry.action };
 
   // Last chance before refusing: did they name something in the library?
   const namedLate = namedResourceAnswer(q);
@@ -2838,6 +3050,8 @@ function answerCorrectedQuery(q: string): AssistantReply {
 
   return {
     verified: false,
+    sourceKind: 'UNVERIFIED',
+    unresolved: true,
     text: 'That is not in the verified GovOS register, so I will not guess at it.\n\nI can answer eligibility and age limits, important dates, exam pattern and marking, posts and pay, the syllabus, the application process, admit card, cutoffs, and where anything lives in this platform. Ask me one of those, or let me search official government domains live — live results are labelled unverified until a GovOS verifier reviews them.'
   };
 }
@@ -2850,6 +3064,8 @@ interface AIAssistantProps {
   onOpenProvenanceModal: (provenance: any) => void;
   /** Switch the app to another view (and optionally an Exam Guide section). */
   onNavigate?: (tab: GovOSTab, section?: number) => void;
+  /** The exam the candidate is looking at; answers and follow-ups are scoped to it. */
+  exam?: Exam;
 }
 
 interface AIChatMessage {
@@ -2871,9 +3087,10 @@ interface AIChatMessage {
   liveSetup?: string;
   /** "Take me there" button for answers that point at a part of the platform. */
   action?: AssistantAction;
+  sourceKind?: AssistantSourceKind;
 }
 
-export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal, onNavigate }) => {
+export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal, onNavigate, exam = SSC_CGL_EXAM }) => {
   const [inputQuery, setInputQuery] = useState<string>('');
   const [liveSearchingId, setLiveSearchingId] = useState<string | null>(null);
 
@@ -2915,15 +3132,25 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal,
     setMessages(prev => [...prev, userMsg]);
     setInputQuery('');
 
-    // Answer from the register (and the platform map) rather than a fixed keyword list.
+    // Answer from the register, the conversation so far, and what the candidate has selected.
     setTimeout(() => {
-      const reply = answerCandidateQuery(userText);
+      const ctx = buildChatContext(exam, 'ASSISTANT');
+      const reply = answerCandidateQuery(userText, ctx);
+      conversationService.append('ASSISTANT', { role: 'user', text: userText, examId: exam.id });
+      conversationService.append('ASSISTANT', {
+        role: 'assistant',
+        text: reply.text,
+        subject: reply.subject,
+        intent: reply.sourceKind,
+        examId: exam.id
+      });
 
       const aiMsg: AIChatMessage = {
         id: `m-ai-${Date.now()}`,
         sender: 'AI',
         text: reply.text,
         isVerified: reply.verified,
+        sourceKind: reply.sourceKind,
         citation: reply.citation,
         action: reply.action,
         liveSearchOffer: reply.verified ? undefined : userText
@@ -2932,6 +3159,11 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal,
       setMessages(prev => [...prev, aiMsg]);
     }, 400);
   };
+
+  // A different exam means "it" no longer refers to the same thing: start the thread again.
+  useEffect(() => {
+    conversationService.clear('ASSISTANT');
+  }, [exam.id]);
 
   const suggestedQuestions = [
     'Where do I check my eligibility?',
@@ -2948,12 +3180,16 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal,
       { id: `m-user-${Date.now()}`, sender: 'USER', text: question, isVerified: false }
     ]);
     setTimeout(() => {
-      const reply = answerCandidateQuery(question);
+      const ctx = buildChatContext(exam, 'ASSISTANT');
+      const reply = answerCandidateQuery(question, ctx);
+      conversationService.append('ASSISTANT', { role: 'user', text: question, examId: exam.id });
+      conversationService.append('ASSISTANT', { role: 'assistant', text: reply.text, subject: reply.subject, intent: reply.sourceKind, examId: exam.id });
       setMessages(prev => [...prev, {
         id: `m-ai-${Date.now()}`,
         sender: 'AI',
         text: reply.text,
         isVerified: reply.verified,
+        sourceKind: reply.sourceKind,
         citation: reply.citation,
         action: reply.action,
         liveSearchOffer: reply.verified ? undefined : question
@@ -3006,17 +3242,23 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal,
                   {msg.sender === 'USER' ? 'CANDIDATE' : 'GOVOS GROUNDED AI'}
                 </span>
                 
-                {msg.sender === 'AI' && (
-                  msg.isVerified ? (
-                    <span className="badge badge-verified" style={{ fontSize: '0.65rem' }}>
-                      <ShieldCheck size={12} /> VERIFIED FACT
+                {msg.sender === 'AI' && (() => {
+                  // Four different kinds of claim must not wear the same badge.
+                  const kind = msg.sourceKind || (msg.isVerified ? 'OFFICIAL' : 'UNVERIFIED');
+                  const meta: Record<AssistantSourceKind, { label: string; cls: string }> = {
+                    OFFICIAL: { label: 'VERIFIED FROM THE OFFICIAL RECORD', cls: 'badge-verified' },
+                    PLATFORM: { label: 'HOW GOVOS WORKS', cls: 'badge-demo' },
+                    GUIDANCE: { label: 'GOVOS GUIDANCE — NOT AN OFFICIAL RULE', cls: 'badge-pending' },
+                    CLARIFY: { label: 'NEEDS YOUR DETAILS', cls: 'badge-pending' },
+                    UNVERIFIED: { label: 'NOT IN THE VERIFIED REGISTER', cls: 'badge-changed' }
+                  };
+                  const chosen = meta[kind];
+                  return (
+                    <span className={`badge ${chosen.cls}`} style={{ fontSize: '0.65rem' }}>
+                      {kind === 'OFFICIAL' ? <ShieldCheck size={12} /> : <AlertCircle size={12} />} {chosen.label}
                     </span>
-                  ) : (
-                    <span className="badge badge-changed" style={{ fontSize: '0.65rem' }}>
-                      <AlertCircle size={12} /> FALLBACK WARNING
-                    </span>
-                  )
-                )}
+                  );
+                })()}
               </div>
 
               <span style={{ whiteSpace: 'pre-wrap' }}>{msg.sender === 'AI' ? renderAssistantText(msg.text) : msg.text}</span>
@@ -5257,6 +5499,8 @@ export const ResourceReaderModal: React.FC<ResourceReaderModalProps> = ({
 interface ResourceAIAssistantProps {
   resources: ResourceItem[];
   onOpenResourceModal: (resource: ResourceItem) => void;
+  /** Active exam, so the thread resets when the candidate switches. */
+  exam?: Exam;
 }
 
 interface ResourceChatMessage {
@@ -5291,7 +5535,9 @@ interface NavigatorReading {
 const NAVIGATOR_STOPWORDS = new Set(['give', 'me', 'the', 'a', 'an', 'of', 'for', 'to', 'i', 'want', 'need', 'show', 'open', 'find',
   'get', 'please', 'any', 'some', 'with', 'on', 'in', 'and', 'or', 'is', 'are', 'my', 'about', 'link', 'links', 'resource',
   'resources', 'material', 'materials', 'study', 'official', 'best', 'good', 'free', 'ssc', 'cgl', '2026', 'exam', 'download',
-  'where', 'which', 'what', 'can', 'do', 'you', 'have', 'there']);
+  'where', 'which', 'what', 'can', 'do', 'you', 'have', 'there',
+  // deictic words point at the conversation, not at a resource
+  'that', 'this', 'those', 'these', 'it', 'its', 'them', 'they', 'one', 'ones', 'same', 'instead', 'too', 'also', 'again', 'more']);
 
 const NAVIGATOR_FORMAT_WORDS: { format: NavigatorFormat; words: string[] }[] = [
   { format: 'PDF', words: ['pdf', 'document', 'notice', 'notification', 'gazette', 'corrigendum', 'notes', 'text', 'paper', 'papers'] },
@@ -5430,7 +5676,11 @@ function scoreResourceForQuery(r: ResourceItem, reading: NavigatorReading, qNorm
       PORTAL:  { PORTAL: 5, PDF: 1, VIDEO: -2, CHANNEL: -2, TOOL: -1 },
       TOOL:    { TOOL: 5, PORTAL: -1, PDF: -2, VIDEO: -2, CHANNEL: -2 }
     };
-    score += table[reading.format][group] ?? -2;
+    const adjustment = table[reading.format][group] ?? -2;
+    // A named format is a requirement, not a preference: "pdf instead" must never return a
+    // YouTube channel, however well its words match.
+    if (adjustment <= -3) return 0;
+    score += adjustment;
   }
 
   if (r.isEssential) score += 0.5;
@@ -5439,13 +5689,18 @@ function scoreResourceForQuery(r: ResourceItem, reading: NavigatorReading, qNorm
 
 /** Ranked resources for a request, best first, with the reading that produced them. */
 export function rankResourcesForQuery(query: string, resources: ResourceItem[], limit: number = 6): { reading: NavigatorReading; results: { resource: ResourceItem; score: number }[] } {
+  // (the reading is returned as well, so a caller can see that no subject was named)
   const reading = readNavigatorQuery(query);
   const qNorm = normaliseQuery(query);
   const rarity = termRarityMap(reading.terms, resources);
-  const scored = resources
-    .map(resource => ({ resource, score: scoreResourceForQuery(resource, reading, qNorm, rarity) }))
+  const rank = (r: NavigatorReading) => resources
+    .map(resource => ({ resource, score: scoreResourceForQuery(resource, r, qNorm, rarity) }))
     .filter(x => x.score > 0)
     .sort((a, b) => b.score - a.score);
+  // The named format is a requirement — but if the library holds nothing in that format for
+  // this subject, other kinds are better than nothing, and the reply says the format is missing.
+  let scored = rank(reading);
+  if (scored.length === 0 && reading.format) scored = rank({ ...reading, format: null });
   // keep only results in the same league as the best one, so a strong match is not padded with weak ones
   const top = scored.length ? scored[0].score : 0;
   const results = scored.filter(x => x.score >= Math.max(2, top * 0.45)).slice(0, limit);
@@ -5462,7 +5717,8 @@ const navigatorFormatLabel: Record<NavigatorFormat, string> = {
 
 export const ResourceAIAssistant: React.FC<ResourceAIAssistantProps> = ({
   resources,
-  onOpenResourceModal
+  onOpenResourceModal,
+  exam
 }) => {
   const [messages, setMessages] = useState<ResourceChatMessage[]>([
     {
@@ -5497,7 +5753,25 @@ export const ResourceAIAssistant: React.FC<ResourceAIAssistantProps> = ({
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
-    const { reading, results } = rankResourcesForQuery(textToSend, resources, 6);
+    // A follow-up ("any video on that?", "pdf instead") names a format but no subject, or
+    // nothing at all. Either way the subject is in the thread, not in the message.
+    let searchText = textToSend;
+    let inheritedNote = '';
+    const firstTry = rankResourcesForQuery(textToSend, resources, 6);
+    const namesNoSubject = firstTry.reading.subjects.length === 0
+      && firstTry.reading.topicLabels.length === 0
+      && firstTry.reading.terms.length === 0;
+    if (firstTry.results.length === 0 || namesNoSubject) {
+      const expanded = resolveWithHistory(textToSend, conversationService.history('RESOURCES'));
+      if (expanded) {
+        const retry = rankResourcesForQuery(expanded.text, resources, 6);
+        if (retry.results.length > 0) {
+          searchText = expanded.text;
+          inheritedNote = `Reading that as a follow-up about ${expanded.inherited}. `;
+        }
+      }
+    }
+    const { reading, results } = rankResourcesForQuery(searchText, resources, 6);
 
     // Say what was understood, so a wrong reading is visible and correctable.
     const understood: string[] = [];
@@ -5505,7 +5779,7 @@ export const ResourceAIAssistant: React.FC<ResourceAIAssistantProps> = ({
     if (reading.topicLabels.length > 0) understood.push(`on ${reading.topicLabels.join(', ')}`);
     else if (reading.subjects.length > 0) understood.push(`for ${reading.subjects.join(' / ')}`);
     const readingLine = understood.length > 0
-      ? `I read that as: **${understood.join(' ')}**.`
+      ? `${inheritedNote}I read that as: **${understood.join(' ')}**.`
       : reading.terms.length > 0
         ? `I searched the library for **${reading.terms.join(' ')}**.`
         : 'I could not find a subject, topic or format in that.';
@@ -5530,6 +5804,14 @@ export const ResourceAIAssistant: React.FC<ResourceAIAssistantProps> = ({
       matchedResources: results.map(x => x.resource),
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
+
+    conversationService.append('RESOURCES', { role: 'user', text: textToSend, examId: exam?.id });
+    conversationService.append('RESOURCES', {
+      role: 'assistant',
+      text: replyText,
+      subject: results.length > 0 ? [...reading.topicLabels, ...reading.subjects].join(' ') || results[0].resource.subject : undefined,
+      examId: exam?.id
+    });
 
     setMessages(prev => [...prev, userMsg, aiMsg]);
     setInputText('');
@@ -6488,14 +6770,48 @@ export interface PracticePlan {
   kind: 'BUILT' | 'OFF_SYLLABUS' | 'NO_MATCH';
   text: string;
   paper?: MockPaper;
+  /** Recorded on the turn so "make it harder" can rebuild the same request. */
+  topics?: string[];
+  count?: number;
+  difficulty?: string;
 }
 
 /**
  * Turn a chat message into a test (or an honest refusal). Pure, so it can be exercised
  * outside React: the component only wraps the result in a message bubble.
  */
-export function planPracticeRequest(query: string, pastAttempts: MockAttemptRecord[]): PracticePlan {
-  const req = parseTestRequest(query);
+/** "harder", "more", "same again" — a request that only makes sense against the last one. */
+const PRACTICE_MODIFIER = /\b(harder|tougher|difficult|advanced|easier|simpler|basic|more|another|again|same|repeat|longer|shorter)\b/;
+
+const stepDifficulty = (current: string | undefined, up: boolean): CustomTestConfig['difficulty'] => {
+  const ladder: CustomTestConfig['difficulty'][] = ['EASY', 'MEDIUM', 'HARD'];
+  const at = Math.max(0, ladder.indexOf((current as CustomTestConfig['difficulty']) || 'MEDIUM'));
+  return ladder[Math.min(ladder.length - 1, Math.max(0, at + (up ? 1 : -1)))];
+};
+
+export function planPracticeRequest(query: string, pastAttempts: MockAttemptRecord[], ctx?: ChatContext): PracticePlan {
+  // A follow-up like "make it harder" or "10 more" names no topic: rebuild the previous
+  // request with the change applied, rather than reading it as a fresh, topicless ask.
+  let effectiveQuery = query;
+  let followUpNote = '';
+  const firstPass = parseTestRequest(query);
+  const lastBuilt = ctx ? [...ctx.history].reverse().find(t => t.role === 'assistant' && (t.topics || []).length > 0) : undefined;
+  if (lastBuilt && firstPass.topics.length === 0 && firstPass.subjects.length === 0 && PRACTICE_MODIFIER.test(normaliseQuery(query))) {
+    const lower = normaliseQuery(query);
+    const labels = (lastBuilt.topics || [])
+      .map(key => TOPIC_CATALOG.find(t => t.key === key)?.label)
+      .filter((l): l is string => !!l);
+    if (labels.length > 0) {
+      const harder = /\b(harder|tougher|difficult|advanced)\b/.test(lower);
+      const easier = /\b(easier|simpler|basic)\b/.test(lower);
+      const difficulty = harder || easier ? stepDifficulty(lastBuilt.difficulty, harder) : (lastBuilt.difficulty || 'MEDIUM');
+      const count = firstPass.numQuestions !== 15 ? firstPass.numQuestions : (lastBuilt.count || 15);
+      effectiveQuery = `${count} ${difficulty.toLowerCase()} questions on ${labels.join(' and ')}`;
+      followUpNote = `Continuing from your last test: ${labels.join(' and ')}${harder || easier ? `, now ${difficulty.toLowerCase()}` : ''}.`;
+    }
+  }
+
+  const req = parseTestRequest(effectiveQuery);
 
   // "Test my weak areas": read the topics actually scored below 60% in past attempts.
   let topicKeys = req.topics.map(t => t.key);
@@ -6582,6 +6898,7 @@ export function planPracticeRequest(query: string, pastAttempts: MockAttemptReco
 
   const lines = [
     `Here is what I understood from "${query}":`,
+    ...(followUpNote ? [followUpNote] : []),
     ...(req.corrections.length > 0 ? [`(I read ${req.corrections.map(c => `"${c.typed}" as "${c.readAs}"`).join(', ')}.)`] : []),
     '',
     `• Topic: ${scopeLine}`,
@@ -6596,7 +6913,14 @@ export function planPracticeRequest(query: string, pastAttempts: MockAttemptReco
   }
   lines.push('', 'Click below to start. Every solution names where the question came from.');
 
-  return { kind: 'BUILT', text: lines.join('\n'), paper: generatedMock };
+  return {
+    kind: 'BUILT',
+    text: lines.join('\n'),
+    paper: generatedMock,
+    topics: topicKeys,
+    count: generatedMock.totalQuestions,
+    difficulty: req.difficulty
+  };
 }
 
 // ==========================================================================
@@ -6784,7 +7108,19 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
     if (!customText) setChatInput('');
 
     setTimeout(() => {
-      const plan = planPracticeRequest(query, pastAttempts);
+      const ctx = buildChatContext(exam, 'PRACTICE');
+      const plan = planPracticeRequest(query, pastAttempts, ctx);
+      conversationService.append('PRACTICE', { role: 'user', text: query, examId: exam.id });
+      conversationService.append('PRACTICE', {
+        role: 'assistant',
+        text: plan.text,
+        intent: plan.kind,
+        subject: plan.paper ? plan.paper.title : undefined,
+        topics: plan.topics,
+        count: plan.count,
+        difficulty: plan.difficulty,
+        examId: exam.id
+      });
       const botMsg: MockChatMessage = {
         id: `msg-bot-${Date.now()}`,
         sender: 'assistant',
@@ -12033,7 +12369,7 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
         </button>
         {isNavigatorOpen && (
           <div style={{ padding: '0 12px 12px' }}>
-            <ResourceAIAssistant resources={resources} onOpenResourceModal={onOpenResource} />
+            <ResourceAIAssistant resources={resources} onOpenResourceModal={onOpenResource} exam={exam} />
           </div>
         )}
       </div>

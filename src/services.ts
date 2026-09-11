@@ -26,7 +26,11 @@ import {
   ExamCategoryTag,
   ExamRecommendation,
   UserInteractionEvent,
-  UserInteractionType
+  UserInteractionType,
+  CandidateStage,
+  ChatChannel,
+  ChatContext,
+  ConversationTurn
 } from './types';
 
 // ==========================================================================
@@ -1985,3 +1989,119 @@ export const resourceLiveService = {
     return null;
   }
 };
+
+// ==========================================================================
+// Conversation context — one lightweight model shared by every chat
+//
+// A chat that reads each message in isolation cannot answer "am I eligible?" or "when is
+// it?", because the subject lives in the previous turn and in whatever the candidate has
+// selected in the platform. These helpers keep that context in one place: recent turns per
+// chat, plus the active exam, target post, journey stage and profile.
+// ==========================================================================
+
+const CHAT_HISTORY_KEY = 'govos_chat_history';
+const MAX_TURNS_PER_CHANNEL = 12;
+
+type ChatHistoryStore = Partial<Record<ChatChannel, ConversationTurn[]>>;
+
+const readHistoryStore = (): ChatHistoryStore => {
+  try {
+    const raw = localStorage.getItem(CHAT_HISTORY_KEY);
+    return raw ? JSON.parse(raw) as ChatHistoryStore : {};
+  } catch {
+    return {};
+  }
+};
+
+const writeHistoryStore = (store: ChatHistoryStore): void => {
+  try {
+    localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(store));
+  } catch {
+    // storage unavailable: conversation still works for this page view
+  }
+};
+
+export const conversationService = {
+  /** Recent turns for one chat, oldest first. */
+  history(channel: ChatChannel): ConversationTurn[] {
+    return readHistoryStore()[channel] || [];
+  },
+
+  /** Record a turn and return the trimmed history. */
+  append(channel: ChatChannel, turn: Omit<ConversationTurn, 'at'> & { at?: string }): ConversationTurn[] {
+    const store = readHistoryStore();
+    const next = [...(store[channel] || []), { ...turn, at: turn.at || new Date().toISOString() }];
+    const trimmed = next.slice(-MAX_TURNS_PER_CHANNEL);
+    store[channel] = trimmed;
+    writeHistoryStore(store);
+    return trimmed;
+  },
+
+  /** The most recent turn of a role, if any. */
+  last(channel: ChatChannel, role: ConversationTurn['role']): ConversationTurn | undefined {
+    const turns = this.history(channel).filter(t => t.role === role);
+    return turns.length > 0 ? turns[turns.length - 1] : undefined;
+  },
+
+  clear(channel: ChatChannel): void {
+    const store = readHistoryStore();
+    delete store[channel];
+    writeHistoryStore(store);
+  },
+
+  /** Switching exam invalidates what "it" referred to; drop the thread rather than mislead. */
+  clearAll(): void {
+    writeHistoryStore({});
+  }
+};
+
+const parseExamDate = (value?: string): Date | null => {
+  if (!value) return null;
+  const parsed = new Date(value.replace(' ', 'T'));
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const liveDate = (exam: Exam, type: string): Date | null => {
+  const row = exam.dates.find(d => d.type === type && d.status !== 'SUPERSEDED')
+    || exam.dates.find(d => d.type === type);
+  return parseExamDate(row?.dateTimeStr);
+};
+
+/**
+ * Where the candidate is in this exam's cycle, read from the exam's own dates — never
+ * guessed. Used to make "what should I do next?" answerable.
+ */
+export function deriveCandidateStage(exam: Exam, now: Date = new Date()): CandidateStage {
+  const open = liveDate(exam, 'APPLICATION_OPEN');
+  const close = liveDate(exam, 'APPLICATION_CLOSE');
+  const tier1 = liveDate(exam, 'EXAM_TIER1');
+  if (tier1 && now > tier1) return 'POST_EXAM';
+  if (close && now > close) return tier1 ? 'PRE_EXAM' : 'APPLICATION_CLOSED';
+  if (open && now >= open) return 'APPLICATION_OPEN';
+  return 'BEFORE_NOTIFICATION';
+}
+
+/** Whole days until applications close; negative once past. Null when the date is unknown. */
+export function daysToApplicationClose(exam: Exam, now: Date = new Date()): number | null {
+  const close = liveDate(exam, 'APPLICATION_CLOSE');
+  if (!close) return null;
+  return Math.round((close.getTime() - now.getTime()) / 86400000);
+};
+
+/**
+ * Assemble the context one chat should answer with. Cheap enough to call per message:
+ * localStorage reads plus a date comparison.
+ */
+export function buildChatContext(exam: Exam, channel: ChatChannel): ChatContext {
+  const targetPostId = storageService.getTargetPost();
+  const targetPost = exam.posts.find(p => p.id === targetPostId);
+  return {
+    channel,
+    exam,
+    targetPost,
+    profile: storageService.getProfile(),
+    stage: deriveCandidateStage(exam),
+    daysToApplicationClose: daysToApplicationClose(exam),
+    history: conversationService.history(channel)
+  };
+}

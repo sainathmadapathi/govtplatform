@@ -219,6 +219,44 @@ Re-run it after touching a generator: copy it to `src/`, `npx esbuild src/__gen_
 --bundle --platform=node --format=cjs --outfile=<tmp>.cjs`, `node <tmp>.cjs`, then delete it
 (the repo keeps 5 source files).
 
+### Conversation context — one model, three chats
+Every chat answers from the same context, assembled per message by `buildChatContext(exam,
+channel)` in `services.ts`: the active exam, the target post (`storageService.getTargetPost()`
+resolved against `exam.posts`), the saved `UserProfile`, the journey stage, and the recent
+turns for that chat. Priority is the platform's: the message, then the thread, then the
+selected exam/post, then the candidate's own data, then the register.
+
+- `conversationService` keeps up to 12 turns per channel (`ASSISTANT` | `PRACTICE` |
+  `RESOURCES`) in `govos_chat_history`. A turn records what the assistant took it to be
+  about (`subject`), and for the practice chat what it built (`topics`, `count`,
+  `difficulty`) — that is what makes "make it harder" and "20 more" work.
+- `deriveCandidateStage(exam)` reads the exam's own dates — never a guess — to give
+  BEFORE_NOTIFICATION / APPLICATION_OPEN / APPLICATION_CLOSED / PRE_EXAM / POST_EXAM, and
+  `daysToApplicationClose` supplies the countdown. This is what "what should I do next?"
+  answers from.
+- **Inheriting a subject is deliberate, not automatic.** `needsInheritedSubject()` is true
+  only when a message names nothing of its own ("when is it?", "what about that?");
+  `resolveWithHistory()` then prepends the thread's subject. A message that does name
+  something ("am I eligible?") never inherits, or it would answer the previous question
+  again. The reply says "Taking that as a follow-up about …" so a wrong inheritance is
+  visible. The navigator applies the same test on its own reading: a query naming a format
+  but no subject ("any video on that?", "pdf instead") inherits.
+- **Switching exam is detected and announced.** `examNamedIn()` spots another exam from
+  `ALL_EXAMS` in the message; the answer is given for that exam with a one-line note. The
+  components clear their channel's history when `exam.id` changes, because "it" no longer
+  refers to the same thing.
+- **Context changes the answer, not just the wording.** Eligibility runs the candidate's
+  saved profile through `evaluateCandidateEligibility` and names their target post's age
+  band; with no profile it asks for date of birth, degree and category rather than answering
+  in general. Pay lists the target post first when no post is named. "What should I study?"
+  names the target post and its special qualification, or asks the candidate to choose one.
+- **Four kinds of claim, four badges.** `AssistantReply.sourceKind` is OFFICIAL (from the
+  register, cited), PLATFORM (how GovOS works), GUIDANCE (derived advice — "not an official
+  rule"), CLARIFY (a question back) or UNVERIFIED (not in the register; live search offered).
+  The chat renders each differently. Nothing from a live search is ever badged as official.
+- The scratchpad `conv_test.tsx` drives multi-turn threads across all three chats with a
+  stubbed `localStorage`; it is the fastest way to see whether context still holds.
+
 ### `src/services.ts`
 - `storageService` — the **only** place that talks to the API. localStorage is written
   first and is the effective source of truth; every SQLite call is fire-and-forget inside
@@ -241,6 +279,8 @@ Re-run it after touching a generator: copy it to `src/`, `npx esbuild src/__gen_
 - `researchService` — `getStatus`, `search(query, mode, examId?)`, `extract(urls, findingId?)`,
   `history`, `getFinding`, `setFindingStatus`. Returns a `ResearchOutcome<T>` discriminated
   union so the UI can render the setup notice on 503 instead of a generic error.
+- `conversationService` / `buildChatContext` / `deriveCandidateStage` / `daysToApplicationClose`
+  — the shared conversation context described above.
 - `resourceLiveService` — `healthSync`, `recheck`, `sscNotices`, `channelUploads`, `additions`,
   `addResource`, `retireResource`, `status`. Every call swallows network errors and returns
   null/empty, so the library degrades to its static seed when the server is down.
@@ -415,6 +455,10 @@ so run it yourself.
 
 Remaining by design, not defects:
 
+- **Chats are context-aware but still deterministic.** They read the thread, the selected
+  exam and post, the profile and the stage — there is no model call and no generation. When
+  you add an intent, give it a `FACT_SUBJECTS` phrase too, or follow-ups after it will have
+  nothing to inherit.
 - **The "AI" features are deterministic local logic.** `ResourceAIAssistant` is a ranked
   search (`rankResourcesForQuery`: `readNavigatorQuery` extracts a format — pdf / video /
   channel / portal / tool — plus subjects from its own word lists and topics via

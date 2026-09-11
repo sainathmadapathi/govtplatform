@@ -257,6 +257,7 @@ export const App: React.FC = () => {
 
         {activeTab === 'AI_ASSISTANT' && (
           <AIAssistant 
+            exam={selectedExam}
             onOpenProvenanceModal={handleOpenProvenance}
             onNavigate={handleAssistantNavigate}
           />

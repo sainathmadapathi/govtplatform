@@ -778,3 +778,51 @@ export interface ExamRecommendation {
   primarySignal: string;
 }
 
+// --- Conversation context, shared by every chat in the platform ---------------------------
+
+/** Which chat a turn belongs to. History is kept per channel, context is shared. */
+export type ChatChannel = 'ASSISTANT' | 'PRACTICE' | 'RESOURCES';
+
+/** Where the candidate stands in this exam's cycle, derived from the exam's own dates. */
+export type CandidateStage =
+  | 'BEFORE_NOTIFICATION'
+  | 'APPLICATION_OPEN'
+  | 'APPLICATION_CLOSED'
+  | 'PRE_EXAM'
+  | 'POST_EXAM';
+
+/**
+ * One turn of a conversation. The assistant records what it took the turn to be about, so
+ * the next message ("when is it?", "make it harder") can inherit that subject instead of
+ * being read as a fresh, contextless question.
+ */
+export interface ConversationTurn {
+  role: 'user' | 'assistant';
+  text: string;
+  /** Intent the assistant settled on: 'dates', 'eligibility', 'practice', 'resource'… */
+  intent?: string;
+  /** Plain-language subject of the turn, used to expand a later follow-up. */
+  subject?: string;
+  examId?: string;
+  /** Practice chat only: what was built, so "20 of those, harder" works. */
+  topics?: string[];
+  count?: number;
+  difficulty?: string;
+  at: string;
+}
+
+/**
+ * Everything a chat should weigh before answering, in the platform's priority order:
+ * the message, then recent turns, then the active exam/post, then the candidate's own
+ * profile and progress, then the verified register.
+ */
+export interface ChatContext {
+  channel: ChatChannel;
+  exam: Exam;
+  targetPost?: PostRequirement;
+  profile?: UserProfile | null;
+  stage: CandidateStage;
+  /** Days until the application closes; negative once it has closed. Null when unknown. */
+  daysToApplicationClose?: number | null;
+  history: ConversationTurn[];
+}
