@@ -369,8 +369,13 @@ so run it yourself.
 
 Remaining by design, not defects:
 
-- **The "AI" features are deterministic local logic.** `ResourceAIAssistant` is a keyword
-  matcher; `AIAssistant` is an intent engine over `PLATFORM_MAP` + `SSC_CGL_EXAM`
+- **The "AI" features are deterministic local logic.** `ResourceAIAssistant` is a ranked
+  search (`rankResourcesForQuery`: `readNavigatorQuery` extracts a format — pdf / video /
+  channel / portal / tool — plus subjects from its own word lists and topics via
+  `parseTestRequest`, then scores every resource on title, author, tag, subject and blurb,
+  keeps only results in the same league as the best, and shows nothing when nothing fits —
+  it used to substring-match the whole sentence and dump the first three entries on a miss,
+  with an invented 4.9/5 on every card); `AIAssistant` is an intent engine over `PLATFORM_MAP` + `SSC_CGL_EXAM`
   (`answerCandidateQuery`); the PracticeEngine chat is a written parser over
   `TOPIC_CATALOG`; the admin SHA-256 monitor and the PDF extraction sample are fixtures.
   No model call anywhere. Preserve the framing; don't wire them to a model unasked.

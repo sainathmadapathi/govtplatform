@@ -5094,6 +5094,170 @@ interface ResourceChatMessage {
   timestamp: string;
 }
 
+// --------------------------------------------------------------------------
+// Resource ranking for the navigator.
+//
+// A request like "geometry formulas pdf" carries three signals: a format (PDF), a subject
+// (geometry → Quantitative Aptitude) and free words. Each resource is scored on all three
+// and the best few are shown, with a sentence saying what was understood. Nothing is shown
+// when nothing fits — a wrong resource is worse than an honest "not in the library".
+// --------------------------------------------------------------------------
+
+type NavigatorFormat = 'PDF' | 'VIDEO' | 'CHANNEL' | 'PORTAL' | 'TOOL';
+
+interface NavigatorReading {
+  format: NavigatorFormat | null;
+  /** Every subject the request points at: named directly, or inferred from a topic word. */
+  subjects: ResourceItem['subject'][];
+  /** Subjects the candidate named outright ("rbi", "english") — worth more than an inference. */
+  directSubjects: ResourceItem['subject'][];
+  topicLabels: string[];
+  terms: string[];
+}
+
+const NAVIGATOR_STOPWORDS = new Set(['give', 'me', 'the', 'a', 'an', 'of', 'for', 'to', 'i', 'want', 'need', 'show', 'open', 'find',
+  'get', 'please', 'any', 'some', 'with', 'on', 'in', 'and', 'or', 'is', 'are', 'my', 'about', 'link', 'links', 'resource',
+  'resources', 'material', 'materials', 'study', 'official', 'best', 'good', 'free', 'ssc', 'cgl', '2026', 'exam', 'download',
+  'where', 'which', 'what', 'can', 'do', 'you', 'have', 'there']);
+
+const NAVIGATOR_FORMAT_WORDS: { format: NavigatorFormat; words: string[] }[] = [
+  { format: 'PDF', words: ['pdf', 'document', 'notice', 'notification', 'gazette', 'corrigendum', 'notes', 'text', 'paper', 'papers'] },
+  { format: 'VIDEO', words: ['video', 'videos', 'lecture', 'lectures', 'watch', 'marathon', 'masterclass', 'class', 'classes', 'session'] },
+  { format: 'CHANNEL', words: ['channel', 'channels', 'youtube', 'youtuber', 'teacher', 'sir', 'mam', 'coaching'] },
+  { format: 'PORTAL', words: ['portal', 'website', 'site', 'page', 'online', 'data'] },
+  { format: 'TOOL', words: ['tool', 'typing', 'practice', 'simulator', 'test'] }
+];
+
+/** Library subject → the words that name it directly (topic words come from TOPIC_CATALOG). */
+const NAVIGATOR_SUBJECT_WORDS: { subject: ResourceItem['subject']; words: string[] }[] = [
+  { subject: 'Quantitative Aptitude', words: ['quant', 'quantitative', 'maths', 'math', 'mathematics', 'arithmetic', 'formula', 'formulas', 'numerical'] },
+  { subject: 'English Comprehension', words: ['english', 'grammar', 'vocab', 'vocabulary', 'comprehension', 'rules'] },
+  { subject: 'Reasoning', words: ['reasoning', 'logical', 'logic', 'intelligence'] },
+  { subject: 'General Awareness & Static GK', words: ['gk', 'ga', 'awareness', 'static', 'polity', 'constitution', 'history', 'geography', 'science', 'census', 'borders'] },
+  { subject: 'Current Affairs & Governance', words: ['current', 'affairs', 'news', 'governance', 'parliament', 'bill', 'bills', 'pib', 'press'] },
+  { subject: 'Banking & Financial Awareness', words: ['banking', 'bank', 'rbi', 'economy', 'economic', 'financial', 'finance', 'repo'] },
+  { subject: 'Foundation Textbooks & Open Courses', words: ['ncert', 'textbook', 'textbooks', 'exemplar', 'foundation', 'course', 'courses', 'nptel', 'swayam', 'nios', 'diksha', 'library'] },
+  { subject: 'Computer & Typing', words: ['computer', 'computers', 'typing', 'dest', 'keyboard', 'excel', 'office', 'cpt'] },
+  { subject: 'Official Gazette', words: ['notice', 'notification', 'gazette', 'calendar', 'answer', 'key', 'pyq', 'previous', 'result', 'results', 'act', 'acts', 'code', 'legislative'] }
+];
+
+/** The practice catalogue's subjects, mapped onto the library's subject names. */
+const CATALOG_SUBJECT_TO_LIBRARY: Record<string, ResourceItem['subject']> = {
+  'Quantitative Aptitude': 'Quantitative Aptitude',
+  'Reasoning & General Intelligence': 'Reasoning',
+  'English Comprehension': 'English Comprehension',
+  'General Awareness': 'General Awareness & Static GK',
+  'Computer Proficiency': 'Computer & Typing'
+};
+
+/** What the candidate asked for: a format, one or more subjects, and the remaining words. */
+export function readNavigatorQuery(query: string): NavigatorReading {
+  const qNorm = normaliseQuery(query);
+  const qWords = qNorm.split(' ').filter(Boolean);
+
+  let format: NavigatorFormat | null = null;
+  let formatHits = 0;
+  NAVIGATOR_FORMAT_WORDS.forEach(f => {
+    const hits = f.words.filter(w => matchesWord(qWords, w)).length;
+    if (hits > formatHits) { format = f.format; formatHits = hits; }
+  });
+
+  const subjects: ResourceItem['subject'][] = [];
+  NAVIGATOR_SUBJECT_WORDS.forEach(sw => {
+    if (sw.words.some(w => matchesWord(qWords, w)) && !subjects.includes(sw.subject)) subjects.push(sw.subject);
+  });
+  const directSubjects = [...subjects];
+  // topic words ("geometry", "syllogism", "percentage") via the practice catalogue
+  const parsed = parseTestRequest(query);
+  const topicLabels = parsed.topics.map(t => t.label);
+  parsed.topics.forEach(t => {
+    const lib = CATALOG_SUBJECT_TO_LIBRARY[t.subject];
+    if (lib && !subjects.includes(lib)) subjects.push(lib);
+  });
+
+  // Format words are intent, not text to match: "video" must not favour a title that says "video".
+  const formatWords = new Set(NAVIGATOR_FORMAT_WORDS.flatMap(f => f.words));
+  const terms = qWords.filter(w => w.length > 1 && !NAVIGATOR_STOPWORDS.has(w) && !formatWords.has(w));
+  return { format, subjects, directSubjects, topicLabels, terms };
+}
+
+const resourceFormatGroup = (r: ResourceItem): NavigatorFormat => {
+  if (r.resourceFormat === 'DIRECT_PDF' || r.type === 'OFFICIAL_PDF') return 'PDF';
+  if (r.resourceFormat === 'YOUTUBE_COURSE') return 'VIDEO';
+  if (r.resourceFormat === 'YOUTUBE_CHANNEL') return 'CHANNEL';
+  if (r.resourceFormat === 'ONLINE_TOOL') return 'TOOL';
+  return 'PORTAL';
+};
+
+/** Score one resource against the reading; 0 means "does not fit". */
+function scoreResourceForQuery(r: ResourceItem, reading: NavigatorReading, qNorm: string): number {
+  let score = 0;
+  const fields: [string, number][] = [
+    [r.title, 3],
+    [r.author, 2],
+    [r.officialTag || '', 2],
+    [r.subject, 2],
+    [r.recommendedFor, 1],
+    [r.description, 1]
+  ];
+  const fieldWords = fields.map(([text, weight]) => ({ words: normaliseQuery(text).split(' ').filter(Boolean), weight }));
+  let termHits = 0;
+  reading.terms.forEach(term => {
+    let best = 0;
+    fieldWords.forEach(f => { if (matchesWord(f.words, term)) best = Math.max(best, f.weight); });
+    if (best > 0) { score += best; termHits += 1; }
+  });
+  // the whole request appearing in the title is a strong signal
+  if (reading.terms.length >= 2 && normaliseQuery(r.title).includes(reading.terms.join(' '))) score += 4;
+
+  // a topic named in the request ("percentage") that the entry itself names is decisive
+  const titleAndBlurb = normaliseQuery(`${r.title} ${r.recommendedFor} ${r.description}`);
+  reading.topicLabels.forEach(label => {
+    const first = normaliseQuery(label).split(' ')[0];
+    if (first && first.length >= 4 && titleAndBlurb.includes(first)) score += 3;
+  });
+
+  if (reading.subjects.length > 0) {
+    if (reading.directSubjects.includes(r.subject)) score += 4;       // named outright
+    else if (reading.subjects.includes(r.subject)) score += 2;        // inferred from a topic word
+    else if (termHits === 0) return 0;                                 // a subject was named and this is not it
+  }
+
+  if (reading.format) {
+    const group = resourceFormatGroup(r);
+    if (group === reading.format) score += 3;
+    else if (reading.format === 'VIDEO' && group === 'CHANNEL') score += 2;   // a channel is where videos live
+    else if (reading.format === 'CHANNEL' && group === 'VIDEO') score += 1;
+    else if (reading.format === 'PDF' && group === 'PORTAL' && r.subject === 'Official Gazette') score += 1; // papers/keys live on portals
+    else score -= 2;
+  }
+
+  if (r.isEssential) score += 0.5;
+  return score;
+}
+
+/** Ranked resources for a request, best first, with the reading that produced them. */
+export function rankResourcesForQuery(query: string, resources: ResourceItem[], limit: number = 6): { reading: NavigatorReading; results: { resource: ResourceItem; score: number }[] } {
+  const reading = readNavigatorQuery(query);
+  const qNorm = normaliseQuery(query);
+  const scored = resources
+    .map(resource => ({ resource, score: scoreResourceForQuery(resource, reading, qNorm) }))
+    .filter(x => x.score > 0)
+    .sort((a, b) => b.score - a.score);
+  // keep only results in the same league as the best one, so a strong match is not padded with weak ones
+  const top = scored.length ? scored[0].score : 0;
+  const results = scored.filter(x => x.score >= Math.max(2, top * 0.45)).slice(0, limit);
+  return { reading, results };
+}
+
+const navigatorFormatLabel: Record<NavigatorFormat, string> = {
+  PDF: 'a PDF or official document',
+  VIDEO: 'a video lesson',
+  CHANNEL: 'a YouTube channel',
+  PORTAL: 'an official portal',
+  TOOL: 'a practice tool'
+};
+
 export const ResourceAIAssistant: React.FC<ResourceAIAssistantProps> = ({
   resources,
   onOpenResourceModal
@@ -5102,19 +5266,22 @@ export const ResourceAIAssistant: React.FC<ResourceAIAssistantProps> = ({
     {
       id: 'msg-welcome',
       sender: 'AI',
-      text: 'Hello! I am your **GovOS Resource Navigator**. Ask me for any study material, formula sheet, official gazette, or video course, and I will jump directly to the exact verified document or YouTube masterclass for you.',
+      text: 'Tell me what you are looking for — a subject, a topic, a document, or a kind of resource — and I will pick the matching entries from the library and say why. Try "geometry video", "constitution pdf", "previous year papers" or "reasoning channel".',
       timestamp: 'Just now'
     }
   ]);
   const [inputText, setInputText] = useState<string>('');
 
+  // Each of these has at least one real entry in the library.
   const quickPrompts = [
-    'Official SSC CGL 2026 Notification PDF',
-    'English Grammar 60 Rules Marathon Video',
-    'Quantitative Aptitude Geometry & Formulas',
-    'Constitution of India Fundamental Rights Articles',
-    'Tier-2 Computer Knowledge Qualifying Notes',
-    'Official DEST 2000 Key Depressions Typing Test'
+    'SSC CGL 2026 notification pdf',
+    'Previous year question papers',
+    'English grammar video',
+    'Geometry revision video',
+    'Constitution of India pdf',
+    'NCERT exemplar maths',
+    'Reasoning channel',
+    'Typing practice tool'
   ];
 
   const handleSendMessage = (queryText?: string) => {
@@ -5128,47 +5295,35 @@ export const ResourceAIAssistant: React.FC<ResourceAIAssistantProps> = ({
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
-    const queryLower = textToSend.toLowerCase();
-    
-    // Search matching resources
-    const matched = resources.filter(res => {
-      const titleMatch = res.title.toLowerCase().includes(queryLower);
-      const subMatch = res.subject.toLowerCase().includes(queryLower);
-      const descMatch = res.description.toLowerCase().includes(queryLower);
-      const authorMatch = res.author.toLowerCase().includes(queryLower);
+    const { reading, results } = rankResourcesForQuery(textToSend, resources, 6);
 
-      if (queryLower.includes('notification') || queryLower.includes('gazette') || queryLower.includes('official notice')) {
-        return res.id === 'res-pdf-01';
-      }
-      if (queryLower.includes('english') || queryLower.includes('grammar') || queryLower.includes('rani') || queryLower.includes('rules')) {
-        return res.subject === 'English Comprehension';
-      }
-      if (queryLower.includes('math') || queryLower.includes('quant') || queryLower.includes('geometry') || queryLower.includes('algebra') || queryLower.includes('formula') || queryLower.includes('gagan')) {
-        return res.subject === 'Quantitative Aptitude';
-      }
-      if (queryLower.includes('polity') || queryLower.includes('constitution') || queryLower.includes('article') || queryLower.includes('parmar') || queryLower.includes('gk') || queryLower.includes('general awareness')) {
-        return res.subject === 'General Awareness & Static GK';
-      }
-      if (queryLower.includes('computer') || queryLower.includes('typing') || queryLower.includes('dest') || queryLower.includes('rbe')) {
-        return res.subject === 'Computer & Typing';
-      }
-      if (queryLower.includes('reasoning') || queryLower.includes('vikramjeet')) {
-        return res.subject === 'Reasoning';
-      }
+    // Say what was understood, so a wrong reading is visible and correctable.
+    const understood: string[] = [];
+    if (reading.format) understood.push(navigatorFormatLabel[reading.format]);
+    if (reading.topicLabels.length > 0) understood.push(`on ${reading.topicLabels.join(', ')}`);
+    else if (reading.subjects.length > 0) understood.push(`for ${reading.subjects.join(' / ')}`);
+    const readingLine = understood.length > 0
+      ? `I read that as: **${understood.join(' ')}**.`
+      : reading.terms.length > 0
+        ? `I searched the library for **${reading.terms.join(' ')}**.`
+        : 'I could not find a subject, topic or format in that.';
 
-      return titleMatch || subMatch || descMatch || authorMatch;
-    });
-
-    let replyText = `I found **${matched.length} verified authentic resources** matching your request. You can read the full text, download the direct PDF, or watch the complete video course below:`;
-    if (matched.length === 0) {
-      replyText = `I searched the verified GovOS repository. Here are the most authoritative core materials available for SSC CGL:`;
+    let replyText: string;
+    if (results.length > 0) {
+      const best = results[0].resource;
+      replyText = `${readingLine}\n\n**${results.length === 1 ? 'One entry fits' : `${results.length} entries fit`}**, best first — ${best.title} (${best.author}).${results.length > 1 ? ' The rest are close matches.' : ''} Every link opens on the publisher\'s own site.`;
+    } else {
+      const subjectHint = reading.subjects.length > 0
+        ? ` The library has ${resources.filter(r => reading.subjects.includes(r.subject)).length} entries under ${reading.subjects.join(' / ')}, but none that mention ${reading.terms.length ? `"${reading.terms.join(' ')}"` : 'that'}.`
+        : '';
+      replyText = `${readingLine}\n\nNothing in the library matches that, so I will not guess.${subjectHint} Try naming the subject ("quant", "polity", "english"), the kind of thing ("pdf", "video", "channel", "portal"), or use the subject chips above the results.`;
     }
 
     const aiMsg: ResourceChatMessage = {
       id: `ai-${Date.now()}`,
       sender: 'AI',
       text: replyText,
-      matchedResources: matched.length > 0 ? matched : resources.slice(0, 3),
+      matchedResources: results.map(x => x.resource),
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
@@ -5288,7 +5443,9 @@ export const ResourceAIAssistant: React.FC<ResourceAIAssistantProps> = ({
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <span className="badge badge-verified" style={{ fontSize: '0.68rem' }}>{res.subject}</span>
-                        <span style={{ fontSize: '0.72rem', color: '#fbbf24' }}>{res.rating?.split(' ')[0] || '⭐ 4.9/5'}</span>
+                        <span style={{ fontSize: '0.68rem', color: res.provenance?.verificationLevel === 'OFFICIALLY_VERIFIED' ? '#6ee7b7' : '#fbbf24', fontWeight: 700 }}>
+                          {res.provenance?.verificationLevel === 'OFFICIALLY_VERIFIED' ? 'OFFICIAL' : res.resourceFormat === 'YOUTUBE_CHANNEL' || res.resourceFormat === 'YOUTUBE_COURSE' ? 'FREE · COACHING' : 'LINK'}
+                        </span>
                       </div>
                       <h5 style={{ fontSize: '0.92rem', fontWeight: 700, color: 'white', margin: '4px 0 2px 0' }}>{res.title}</h5>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>By: {res.author}</div>
@@ -5387,7 +5544,7 @@ export const ResourceAIAssistant: React.FC<ResourceAIAssistantProps> = ({
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-          placeholder="e.g. Give me the official SSC CGL Notification PDF or English Grammar video..."
+          placeholder="e.g. geometry video, constitution pdf, previous year papers, reasoning channel"
           style={{
             flex: 1,
             padding: '10px 16px',
