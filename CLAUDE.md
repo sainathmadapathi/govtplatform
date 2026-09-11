@@ -284,10 +284,26 @@ branches, so "where should I check my eligibility in this platform" hit the fall
   answers `verified: false`: the register has no fee field.
 - Starter-question chips under the input make the scope visible. `renderAssistantText`
   turns `**bold**` into real bold runs; message bubbles are `pre-wrap`.
-- Greetings and thanks get a human reply, not "not in the register". Typos are forgiven on a
-  second pass only (`bestMatch(…, loose=true)` runs when the exact pass matched nothing),
-  plural-stripped first so "resourses" reaches Resources. A post named in a pay question
-  ("tax assistant") is listed first.
+- Greetings and thanks get a human reply, not "not in the register". A post named in a pay
+  question ("tax assistant") is listed first.
+- **Spelling is repaired before anything is matched.** `correctAssistantQuery()` maps each
+  word of four letters or more onto `assistantVocab()` (every key word, plus whole-word
+  expansions of the stems, plus resource titles) when it is within a typo's distance and
+  starts with the same letter; the reply opens with "(I read "whree" as "where".)".
+  Without this, "whree is thr typing test tool" never registered as a "where" question and
+  `asksLocation()` never fired. `bestMatch(…, loose=true)` is still the second chance for
+  words the corrector left alone.
+- **Each word of a question scores once.** `scoreKeys` credits keys highest-first and skips
+  any that covers no new word — listing both "channel" and "channels" used to score one word
+  twice and push a weak, generic match past the confidence gate.
+- **A weak match is not an answer.** When the best score is under 3 and the question has two
+  or more content words, the assistant looks for a resource the candidate named instead of
+  replying with a generic section blurb: one stray word ("test") must not produce a
+  confident Practice & Mocks answer for a question about the typing tool.
+- **Naming an item beats naming a section.** `namedResourceAnswer()` runs the navigator's
+  ranking over the library; a score of 10+ answers with the item itself ("The Constitution
+  of India — Official Full Text (PDF)") even for a "where" question, 6+ is used on the weak
+  path and once more before refusing.
 
 **All three chats are testable headlessly.** `answerCandidateQuery`, `planPracticeRequest`
 (the test creator's whole decision: BUILT / OFF_SYLLABUS / NO_MATCH, pulled out of the
@@ -405,7 +421,10 @@ Remaining by design, not defects:
   `parseTestRequest`, then scores every resource on title, author, tag, subject and blurb,
   keeps only results in the same league as the best, and shows nothing when nothing fits —
   it used to substring-match the whole sentence and dump the first three entries on a miss,
-  with an invented 4.9/5 on every card); `AIAssistant` is an intent engine over `PLATFORM_MAP` + `SSC_CGL_EXAM`
+  with an invented 4.9/5 on every card). Terms are weighted by rarity — a word in one or two
+  entries ("exemplar", "prs", "sansad") identifies the item, a word in half the library
+  ("ncert", "ssc") barely narrows it — and an exact format match outranks a near one, so
+  "english grammar video" returns the video above the channel; `AIAssistant` is an intent engine over `PLATFORM_MAP` + `SSC_CGL_EXAM`
   (`answerCandidateQuery`); the PracticeEngine chat is a written parser over
   `TOPIC_CATALOG`; the admin SHA-256 monitor and the PDF extraction sample are fixtures.
   No model call anywhere. Preserve the framing; don't wire them to a model unasked.

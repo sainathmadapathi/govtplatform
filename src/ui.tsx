@@ -2328,11 +2328,124 @@ const scoreKey = (qWords: string[], qNorm: string, key: string, loose: boolean =
   return (qNorm.includes(parts.join(' ')) ? 6 : 4) + parts.length * 1.5;
 };
 
+/** Which words of the question a key accounts for (empty when the key does not match). */
+const wordsCoveredByKey = (qWords: string[], key: string, loose: boolean): string[] => {
+  const match = loose ? matchesWordLoose : matchesWord;
+  const parts = normaliseQuery(key).split(' ').filter(Boolean);
+  if (parts.length === 0 || !parts.every(part => match(qWords, part))) return [];
+  return qWords.filter(w => parts.some(part => match([w], part)));
+};
+
+/**
+ * Total score for an entry, counting each word of the question once. Without this, listing
+ * both "channel" and "channels" as keys scored a single word twice and a weak, generic
+ * match looked like a confident one.
+ */
 const scoreKeys = (query: string, keys: string[], loose: boolean = false): number => {
   const qNorm = normaliseQuery(query);
   const qWords = qNorm.split(' ').filter(Boolean);
-  return keys.reduce((total, key) => total + scoreKey(qWords, qNorm, key, loose), 0);
+  const scored = keys
+    .map(key => ({ score: scoreKey(qWords, qNorm, key, loose), words: wordsCoveredByKey(qWords, key, loose) }))
+    .filter(x => x.score > 0)
+    .sort((a, b) => b.score - a.score);
+  const credited = new Set<string>();
+  let total = 0;
+  scored.forEach(entry => {
+    if (!entry.words.some(w => !credited.has(w))) return;   // adds nothing new
+    total += entry.score;
+    entry.words.forEach(w => credited.add(w));
+  });
+  return total;
 };
+
+/** Words that carry no intent; ignored when judging how much of a question was understood. */
+const ASSISTANT_FILLER = new Set(['the', 'a', 'an', 'is', 'are', 'was', 'do', 'does', 'did', 'can', 'could', 'will', 'would', 'should',
+  'i', 'me', 'my', 'we', 'you', 'your', 'it', 'its', 'this', 'that', 'these', 'those', 'to', 'for', 'of', 'in', 'on', 'at', 'from',
+  'and', 'or', 'but', 'with', 'about', 'please', 'kindly', 'tell', 'give', 'show', 'want', 'need', 'get', 'know', 'there', 'here',
+  'where', 'what', 'when', 'which', 'who', 'why', 'how', 'ssc', 'cgl', 'exam', 'govos', 'platform', 'app', 'sir', 'hai', 'hain', 'kya', 'kaise']);
+
+/** Every word the assistant can match, used to correct typos before matching. Built once. */
+let assistantVocabulary: Set<string> | null = null;
+const assistantVocab = (): Set<string> => {
+  if (assistantVocabulary) return assistantVocabulary;
+  const vocab = new Set<string>();
+  const add = (phrase: string) => normaliseQuery(phrase).split(' ').forEach(w => { if (w.length >= 4) vocab.add(w); });
+  PLATFORM_MAP.forEach(entry => entry.keys.forEach(add));
+  FACT_INTENTS.forEach(entry => entry.keys.forEach(add));
+  // Whole words candidates type, including expansions of the stems used as keys.
+  ['where', 'what', 'when', 'which', 'how', 'why', 'who', 'this', 'that', 'platform', 'section', 'page', 'find', 'open', 'show',
+    'tell', 'give', 'need', 'want', 'there', 'here', 'eligible', 'eligibility', 'qualification', 'qualify',
+    'syllabus', 'admit', 'card', 'download', 'vacancy', 'vacancies', 'salary', 'notification', 'notice', 'application',
+    'registration', 'corrigendum', 'cutoff', 'result', 'answer', 'paper', 'papers', 'practice', 'typing', 'documents',
+    'certificate', 'category', 'relaxation', 'marking', 'negative', 'pattern', 'question', 'questions', 'resources',
+    'calendar', 'timeline', 'roadmap', 'bookmark', 'simulator'].forEach(w => vocab.add(w));
+  SSC_CGL_EXAM.resources.forEach(r => { add(r.title); add(r.subject); });
+  assistantVocabulary = vocab;
+  return vocab;
+};
+
+/**
+ * Fix obvious typos before any matching happens — otherwise "whree is thr typing test tool"
+ * never even registers as a "where" question. Only words of four letters or more are
+ * touched, and only when they are within a typo's distance of a word the assistant knows.
+ */
+function correctAssistantQuery(query: string): { text: string; corrections: { typed: string; readAs: string }[] } {
+  const vocab = assistantVocab();
+  const corrections: { typed: string; readAs: string }[] = [];
+  const words = normaliseQuery(query).split(' ').filter(Boolean).map(word => {
+    if (word.length < 4 || vocab.has(word)) return word;
+    if (word.endsWith('s') && vocab.has(word.slice(0, -1))) return word;
+    let best = '';
+    vocab.forEach(candidate => {
+      // a typo rarely changes the first letter, and requiring it stops wild corrections
+      if (candidate[0] !== word[0]) return;
+      const near = fuzzyWordEq(word, candidate) ||
+        (word.length === 4 && candidate.length <= 5 && editDistanceShort(word, candidate) <= 1);
+      if (!near) return;
+      if (!best || Math.abs(candidate.length - word.length) < Math.abs(best.length - word.length)) best = candidate;
+    });
+    if (best) {
+      corrections.push({ typed: word, readAs: best });
+      return best;
+    }
+    return word;
+  });
+  return { text: words.join(' '), corrections };
+}
+
+/** Distance for short words, transpositions counted as one edit ("crad" → "card"). */
+function editDistanceShort(a: string, b: string): number {
+  const d: number[][] = Array.from({ length: a.length + 1 }, (_, i) => Array.from({ length: b.length + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0)));
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost);
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+    }
+  }
+  return d[a.length][b.length];
+}
+
+/** Content words of a question: what the assistant has to account for before answering. */
+const contentWordsOf = (q: string): string[] =>
+  normaliseQuery(q).split(' ').filter(w => w.length > 2 && !ASSISTANT_FILLER.has(w) && !/^\d+$/.test(w));
+
+/**
+ * The candidate named a specific thing that lives in the library ("typing test tool",
+ * "constitution pdf"). Answering with the item beats answering with the section.
+ */
+function namedResourceAnswer(q: string, minScore: number = 6): { reply: AssistantReply; score: number } | null {
+  const { results } = rankResourcesForQuery(q, SSC_CGL_EXAM.resources, 3);
+  if (results.length === 0 || results[0].score < minScore) return null;
+  const top = results[0].resource;
+  const others = results.slice(1, 3).map(x => x.resource.title);
+  const reply: AssistantReply = {
+    verified: true,
+    text: `That is in the **Resources** tab: **${top.title}** — ${top.author}.${others.length > 0 ? `\n\nAlso there: ${others.join('; ')}.` : ''}\n\nOpen Resources to reach it. Every entry opens on the publisher's own site, and each card shows when its link was last checked.`,
+    action: { label: 'Open Resources', tab: 'RESOURCES' }
+  };
+  return { reply, score: results[0].score };
+}
 
 /** The best-scoring entry of a keyed table — never merely the first one that matches. */
 function bestMatch<T extends { keys: string[] }>(query: string, table: T[], loose: boolean = false): { entry: T; score: number } | null {
@@ -2356,7 +2469,7 @@ const FACT_INTENTS: { id: string; keys: string[] }[] = [
   { id: 'age', keys: ['age limit', 'maximum age', 'minimum age', 'age relaxation', 'how old', 'upper age', 'age criteria', 'crucial date', 'age as on'] },
   { id: 'eligibility', keys: ['eligib', 'qualification', 'graduate', 'graduation', 'degree', 'b tech', 'btech', 'can i apply'] },
   { id: 'dates', keys: ['last date', 'deadline', 'closing date', 'application date', 'when can i apply', 'apply by', 'important date', 'exam date', 'when is the exam', 'notification date', 'tier 1 exam', 'tier 2 exam', 'when is tier', 'exam schedule', 'exam month', 'which month'] },
-  { id: 'pattern', keys: ['negative marking', 'marking scheme', 'exam pattern', 'pattern', 'how many questions', 'how many marks', 'duration', 'tier 1', 'tier 2', 'paper pattern'] },
+  { id: 'pattern', keys: ['negative marking', 'marking scheme', 'exam pattern', 'pattern', 'how many questions', 'how many marks', 'duration', 'tier 1', 'tier 2', 'paper pattern', 'dest', 'data entry speed test', 'qualifying'] },
   { id: 'vacancy', keys: ['vacancy', 'vacancies', 'how many post', 'number of post', 'seats'] },
   { id: 'pay', keys: ['salary', 'pay level', 'pay scale', 'in hand', 'grade pay'] },
   { id: 'syllabus', keys: ['syllabus', 'what to study', 'topics'] },
@@ -2415,6 +2528,11 @@ const PLATFORM_MAP: { keys: string[]; answer: string; action: AssistantAction }[
       'form simulator', 'simulator', 'practice filling', 'fill the form', 'form drill'],
     answer: 'The **Practice Mock Application Simulator** is inside the Exam Guide, section 04 Application & Docs, and that section opens on it by default — the button reads "Practice Mock Application Simulator (Fill → Submit → Spot Mistakes)".\n\nIt is a dummy SSC application form. You fill it in, and GovOS checks your photo and signature specifications, fee exemption, post preferences and eligibility declarations against the notice, then names every mistake — before one of them costs you the real form.\n\nThat is form practice, not question practice. For question papers, sectionals and mock tests, use Practice & Mocks.',
     action: { label: 'Open the Application Practice Simulator', tab: 'EXAM_DETAIL', section: 4 }
+  },
+  {
+    keys: ['typing', 'typing test', 'typing speed', 'typing practice', 'typing tool', 'dest', 'data entry speed test', 'keyboard', 'wpm', 'key depressions'],
+    answer: 'The typing practice tool is in the **Resources** tab, under Computer & Typing — a keyboard speed test you can use for DEST practice.\n\nThe Data Entry Speed Test itself is Section III, Module 2 of Tier-2: qualifying, so it does not add to your merit score, but you still have to clear it. Section 05 Exam Pattern shows exactly where it sits.\n\nGovOS does not host the tool; the card opens it on its own site.',
+    action: { label: 'Open Resources', tab: 'RESOURCES' }
   },
   {
     keys: ['past test', 'my score', 'my result', 'previous attempt', 'test history', 'past attempt', 'my performance', 'analytics', 'weak area', 'weak topic'],
@@ -2494,19 +2612,30 @@ const PLATFORM_MAP: { keys: string[]; answer: string; action: AssistantAction }[
  * intents otherwise.
  */
 export function answerCandidateQuery(query: string): AssistantReply {
-  const q = query.toLowerCase().trim();
+  const raw = query.toLowerCase().trim();
 
   // ---- small talk: answer like a person, then say what this assistant is for
-  if (/^(hi|hii|hello|hey|namaste|namaskar|good (morning|afternoon|evening))\b[\s!.]*$/.test(q)) {
+  if (/^(hi|hii|hello|hey|namaste|namaskar|good (morning|afternoon|evening))\b[\s!.]*$/.test(raw)) {
     return {
       verified: true,
       text: 'Hello. I answer from the verified SSC CGL 2026 register — eligibility, dates, pattern, posts, syllabus, application, admit card, cutoffs — and I can take you to any part of this platform.\n\nAsk something like "am I eligible", "last date to apply", or "where are the resources".'
     };
   }
-  if (/^(thanks|thank you|thankyou|thx|ok|okay|great|nice|got it|cool)\b[\s!.]*$/.test(q)) {
+  if (/^(thanks|thank you|thankyou|thx|ok|okay|great|nice|got it|cool)\b[\s!.]*$/.test(raw)) {
     return { verified: true, text: 'You are welcome. Ask whenever you need a date, a rule, or where something is.' };
   }
 
+  // Everything else is answered from the typo-corrected question, and the reply opens by
+  // saying what was corrected — a silent correction would hide a wrong guess.
+  const corrected = correctAssistantQuery(raw);
+  const reply = answerCorrectedQuery(corrected.text);
+  if (corrected.corrections.length === 0) return reply;
+  const note = `(I read ${corrected.corrections.map(c => `"${c.typed}" as "${c.readAs}"`).join(', ')}.)\n\n`;
+  return { ...reply, text: note + reply.text };
+}
+
+/** The grounded answer for a question whose spelling has already been repaired. */
+function answerCorrectedQuery(q: string): AssistantReply {
   // ---- orientation
   if (has(q, 'what can you do', 'what can i ask', 'how does this work', 'how do i use', 'help me get started', 'getting started', 'what is govos', 'guide me through')) {
     return {
@@ -2522,10 +2651,24 @@ export function answerCandidateQuery(query: string): AssistantReply {
   const fact = bestMatch(q, FACT_INTENTS) || bestMatch(q, FACT_INTENTS, true);
   const factId = fact ? fact.entry.id : '';
 
+  // Naming a specific entry in the library beats any section-level answer: "where can I
+  // find the constitution pdf" wants that document, not a tour of the Resources tab.
+  const stronglyNamed = namedResourceAnswer(q, 10);
+  if (stronglyNamed) return stronglyNamed.reply;
+
   // Answer with navigation when the candidate asks where something is, or when a specific
   // multi-word request ("application practice") outscores whatever single words also matched.
   if (nav && (asksLocation(q) || (nav.score >= 6 && nav.score > (fact ? fact.score : 0)))) {
     return { verified: true, text: nav.entry.answer, action: nav.entry.action };
+  }
+
+  // One generic word ("test", "date") is not understanding the question. When that is the
+  // best on offer and most of the question is still unaccounted for, look for a resource the
+  // candidate actually named before falling back on a generic section answer.
+  const bestScore = Math.max(nav ? nav.score : 0, fact ? fact.score : 0);
+  if (bestScore < 3 && contentWordsOf(q).length >= 2) {
+    const named = namedResourceAnswer(q);
+    if (named) return named.reply;
   }
 
   // ---- facts, read out of the register
@@ -2679,6 +2822,10 @@ export function answerCandidateQuery(query: string): AssistantReply {
   // Not phrased as a location question, but plainly about a part of the platform
   // ("study plan", "roadmap", "compare exams") — route it rather than fall back.
   if (nav) return { verified: true, text: nav.entry.answer, action: nav.entry.action };
+
+  // Last chance before refusing: did they name something in the library?
+  const namedLate = namedResourceAnswer(q);
+  if (namedLate) return namedLate.reply;
 
   // ---- a location question we could not place
   if (asksLocation(q)) {
@@ -5215,8 +5362,25 @@ const resourceFormatGroup = (r: ResourceItem): NavigatorFormat => {
   return 'PORTAL';
 };
 
+/** Searchable words of a resource, used for both scoring and term-rarity counting. */
+const resourceWords = (r: ResourceItem): string[] =>
+  normaliseQuery(`${r.title} ${r.author} ${r.officialTag || ''} ${r.subject} ${r.recommendedFor} ${r.description}`).split(' ').filter(Boolean);
+
+/**
+ * How many resources mention each term. A term in one or two entries ("exemplar", "rbi",
+ * "swayam") names the thing; a term in half the library ("ncert", "ssc") barely narrows it.
+ */
+function termRarityMap(terms: string[], resources: ResourceItem[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  const corpus = resources.map(resourceWords);
+  terms.forEach(term => {
+    counts.set(term, corpus.filter(words => matchesWord(words, term)).length);
+  });
+  return counts;
+}
+
 /** Score one resource against the reading; 0 means "does not fit". */
-function scoreResourceForQuery(r: ResourceItem, reading: NavigatorReading, qNorm: string): number {
+function scoreResourceForQuery(r: ResourceItem, reading: NavigatorReading, qNorm: string, rarity: Map<string, number>): number {
   let score = 0;
   const fields: [string, number][] = [
     [r.title, 3],
@@ -5231,7 +5395,12 @@ function scoreResourceForQuery(r: ResourceItem, reading: NavigatorReading, qNorm
   reading.terms.forEach(term => {
     let best = 0;
     fieldWords.forEach(f => { if (matchesWord(f.words, term)) best = Math.max(best, f.weight); });
-    if (best > 0) { score += best; termHits += 1; }
+    if (best > 0) {
+      const seenIn = rarity.get(term) ?? 99;
+      const distinctive = seenIn <= 2 ? 2 : seenIn <= 5 ? 1.4 : 1;   // rarer word, stronger signal
+      score += best * distinctive;
+      termHits += 1;
+    }
   });
   // the whole request appearing in the title is a strong signal
   if (reading.terms.length >= 2 && normaliseQuery(r.title).includes(reading.terms.join(' '))) score += 4;
@@ -5247,7 +5416,7 @@ function scoreResourceForQuery(r: ResourceItem, reading: NavigatorReading, qNorm
     if (reading.directSubjects.includes(r.subject)) score += 4.25;    // named outright (the .25 breaks ties its way)
     else if (reading.subjects.includes(r.subject)) score += 2;        // inferred from a topic word
     else if (termHits === 0) return 0;                                 // a subject was named and this is not it
-    else if (reading.directSubjects.length > 0) score = Math.min(score, 3.5); // never above a named-subject entry
+    else if (reading.directSubjects.length > 0 && termHits < 2) score = Math.min(score, 3.5); // weak outsider stays below a named-subject entry
   }
 
   if (reading.format) {
@@ -5255,11 +5424,11 @@ function scoreResourceForQuery(r: ResourceItem, reading: NavigatorReading, qNorm
     // channel above a document portal, and a video request should still surface channels
     const group = resourceFormatGroup(r);
     const table: Record<NavigatorFormat, Partial<Record<NavigatorFormat, number>>> = {
-      PDF:     { PDF: 3, PORTAL: 0, VIDEO: -3, CHANNEL: -3, TOOL: -3 },
-      VIDEO:   { VIDEO: 3, CHANNEL: 2, PDF: -3, PORTAL: -3, TOOL: -3 },
-      CHANNEL: { CHANNEL: 3, VIDEO: 1, PDF: -3, PORTAL: -3, TOOL: -3 },
-      PORTAL:  { PORTAL: 3, PDF: 1, VIDEO: -2, CHANNEL: -2, TOOL: -1 },
-      TOOL:    { TOOL: 3, PORTAL: -1, PDF: -2, VIDEO: -2, CHANNEL: -2 }
+      PDF:     { PDF: 5, PORTAL: 0, VIDEO: -3, CHANNEL: -3, TOOL: -3 },
+      VIDEO:   { VIDEO: 5, CHANNEL: 2, PDF: -3, PORTAL: -3, TOOL: -3 },
+      CHANNEL: { CHANNEL: 5, VIDEO: 1, PDF: -3, PORTAL: -3, TOOL: -3 },
+      PORTAL:  { PORTAL: 5, PDF: 1, VIDEO: -2, CHANNEL: -2, TOOL: -1 },
+      TOOL:    { TOOL: 5, PORTAL: -1, PDF: -2, VIDEO: -2, CHANNEL: -2 }
     };
     score += table[reading.format][group] ?? -2;
   }
@@ -5272,8 +5441,9 @@ function scoreResourceForQuery(r: ResourceItem, reading: NavigatorReading, qNorm
 export function rankResourcesForQuery(query: string, resources: ResourceItem[], limit: number = 6): { reading: NavigatorReading; results: { resource: ResourceItem; score: number }[] } {
   const reading = readNavigatorQuery(query);
   const qNorm = normaliseQuery(query);
+  const rarity = termRarityMap(reading.terms, resources);
   const scored = resources
-    .map(resource => ({ resource, score: scoreResourceForQuery(resource, reading, qNorm) }))
+    .map(resource => ({ resource, score: scoreResourceForQuery(resource, reading, qNorm, rarity) }))
     .filter(x => x.score > 0)
     .sort((a, b) => b.score - a.score);
   // keep only results in the same league as the best one, so a strong match is not padded with weak ones
