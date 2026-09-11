@@ -1845,6 +1845,24 @@ interface ExamCalendarProps {
   defaultMode?: 'TIMELINE' | 'CALENDAR';
 }
 
+/** Milestone time as a number; NaN for a date the register does not give properly. */
+const milestoneTime = (dateTimeStr: string): number => new Date(dateTimeStr.replace(' ', 'T')).getTime();
+
+const MONTH_NAMES = ['', 'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+
+/** "in 16 days", "today", "3 days ago" — how a candidate actually reads a deadline. */
+function relativeWhen(dateTimeStr: string, now: number): { text: string; isPast: boolean; days: number } {
+  const time = milestoneTime(dateTimeStr);
+  if (!Number.isFinite(time)) return { text: '', isPast: false, days: Number.NaN };
+  const days = Math.round((time - now) / 86400000);
+  if (days === 0) return { text: 'today', isPast: time < now, days };
+  if (days === 1) return { text: 'tomorrow', isPast: false, days };
+  if (days === -1) return { text: 'yesterday', isPast: true, days };
+  return days > 0
+    ? { text: `in ${days} days`, isPast: false, days }
+    : { text: `${Math.abs(days)} days ago`, isPast: true, days };
+}
+
 export const ExamCalendar: React.FC<ExamCalendarProps> = ({ 
   onSelectExam,
   trackedExamIds,
@@ -1854,8 +1872,16 @@ export const ExamCalendar: React.FC<ExamCalendarProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'TIMELINE' | 'CALENDAR'>(defaultMode);
   const [selectedMonth, setSelectedMonth] = useState<string>('ALL');
+  const [timeFilter, setTimeFilter] = useState<'UPCOMING' | 'ALL' | 'PAST'>('UPCOMING');
+  const [showPastFor, setShowPastFor] = useState<Record<string, boolean>>({});
 
-  const months = ['ALL', 'FEB', 'MAR', 'MAY', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+  // The page is often left open: re-read the clock every minute so a deadline moves from
+  // "tomorrow" to "today" to done without a reload.
+  const [now, setNow] = useState<number>(() => Date.now());
+  useEffect(() => {
+    const tick = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(tick);
+  }, []);
 
   // Flatten all dates across ALL_EXAMS into a unified calendar
   const allCalendarEvents = ALL_EXAMS.flatMap(exam => 
@@ -1865,11 +1891,16 @@ export const ExamCalendar: React.FC<ExamCalendarProps> = ({
       const monthNum = parseInt(dateParts[1], 10);
       const day = dateParts[2];
       
-      const monthNames = ['', 'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-      const monthStr = monthNames[monthNum] || 'OCT';
+      const monthStr = MONTH_NAMES[monthNum] || 'OCT';
       const formattedDate = `${day} ${monthStr} ${year}`;
+      const when = relativeWhen(d.dateTimeStr, now);
 
       return {
+        monthKey: `${year}-${String(monthNum).padStart(2, '0')}`,
+        monthLabel: `${monthStr} ${year}`,
+        time: milestoneTime(d.dateTimeStr),
+        isPast: when.isPast,
+        whenText: when.text,
         id: `${exam.id}-${d.id || index}`,
         examId: exam.id,
         examCode: exam.code,
@@ -1884,11 +1915,22 @@ export const ExamCalendar: React.FC<ExamCalendarProps> = ({
         status: d.status
       };
     })
-  ).sort((a, b) => a.rawDate.localeCompare(b.rawDate));
+  ).sort((a, b) => a.time - b.time);
 
-  const filteredEvents = selectedMonth === 'ALL'
-    ? allCalendarEvents
-    : allCalendarEvents.filter(ev => ev.month === selectedMonth);
+  // What is still ahead comes first and is the default; the past is a deliberate click away.
+  const byTime = allCalendarEvents.filter(ev =>
+    timeFilter === 'ALL' ? true : timeFilter === 'PAST' ? ev.isPast : !ev.isPast
+  );
+  const upcomingCount = allCalendarEvents.filter(ev => !ev.isPast).length;
+  const pastCount = allCalendarEvents.length - upcomingCount;
+
+  // Month chips are whatever months the data actually holds, in order — never a fixed list.
+  const monthOptions = Array.from(new Map(byTime.map(ev => [ev.monthKey, ev.monthLabel])).entries())
+    .sort((a, b) => a[0].localeCompare(b[0]));
+  const monthInRange = selectedMonth === 'ALL' || monthOptions.some(([key]) => key === selectedMonth);
+  const filteredEvents = selectedMonth === 'ALL' || !monthInRange
+    ? byTime
+    : byTime.filter(ev => ev.monthKey === selectedMonth);
 
   const trackedExams = ALL_EXAMS.filter(e => trackedExamIds.includes(e.id));
 
@@ -1975,7 +2017,14 @@ export const ExamCalendar: React.FC<ExamCalendarProps> = ({
             </div>
           ) : (
             trackedExams.map(exam => {
-              const activeDates = exam.dates.filter(d => d.status !== 'SUPERSEDED');
+              const activeDates = [...exam.dates.filter(d => d.status !== 'SUPERSEDED')]
+                .sort((a, b) => milestoneTime(a.dateTimeStr) - milestoneTime(b.dateTimeStr));
+              const upcoming = activeDates.filter(d => !relativeWhen(d.dateTimeStr, now).isPast);
+              const completed = activeDates.filter(d => relativeWhen(d.dateTimeStr, now).isPast);
+              const pastOpen = !!showPastFor[exam.id];
+              // Ahead of the candidate by default; what has passed only when they ask.
+              const visibleDates = pastOpen ? [...upcoming, ...completed] : upcoming;
+              const nextUp = upcoming[0];
               return (
                 <div 
                   key={exam.id}
@@ -2032,12 +2081,40 @@ export const ExamCalendar: React.FC<ExamCalendarProps> = ({
 
                   {/* Milestone Horizontal Progression Grid */}
                   <div>
-                    <h4 style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '14px' }}>
-                      Key Recruitment Milestones & Reminders
-                    </h4>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '14px' }}>
+                      <h4 style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>
+                        {upcoming.length > 0 ? `Still ahead — ${upcoming.length} milestone${upcoming.length === 1 ? '' : 's'}` : 'This cycle is complete'}
+                      </h4>
+                      {completed.length > 0 && (
+                        <button
+                          className="btn btn-secondary"
+                          onClick={() => setShowPastFor(prev => ({ ...prev, [exam.id]: !prev[exam.id] }))}
+                          style={{ fontSize: '0.76rem', padding: '5px 12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                        >
+                          <Clock size={12} /> {pastOpen ? 'Hide' : 'Show'} {completed.length} completed
+                        </button>
+                      )}
+                    </div>
+
+                    {nextUp && (
+                      <div style={{ padding: '12px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.35)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                        <span className="badge badge-verified" style={{ fontSize: '0.65rem' }}>NEXT</span>
+                        <strong style={{ color: 'white', fontSize: '0.92rem' }}>{nextUp.label}</strong>
+                        <span style={{ color: '#a5b4fc', fontSize: '0.85rem' }}>
+                          {nextUp.dateTimeStr.split(' ')[0]} · {relativeWhen(nextUp.dateTimeStr, now).text}
+                        </span>
+                      </div>
+                    )}
+
+                    {upcoming.length === 0 && completed.length > 0 && !pastOpen && (
+                      <div style={{ padding: '14px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', fontSize: '0.86rem', marginBottom: '12px' }}>
+                        Every milestone on record for this exam has passed. The next cycle's dates appear here once SSC publishes them.
+                      </div>
+                    )}
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
-                      {activeDates.map(date => {
+                      {visibleDates.map(date => {
+                        const when = relativeWhen(date.dateTimeStr, now);
                         const isClose = date.type === 'APPLICATION_CLOSE';
                         const isAdmit = date.type === 'ADMIT_CARD';
                         const isExam = date.type === 'EXAM_TIER1' || date.type === 'EXAM_TIER2';
@@ -2071,8 +2148,9 @@ export const ExamCalendar: React.FC<ExamCalendarProps> = ({
                             style={{
                               padding: '14px',
                               borderRadius: 'var(--radius-md)',
-                              background: accentColor,
-                              border: `1px solid ${borderColor}`,
+                              background: when.isPast ? 'rgba(255,255,255,0.02)' : accentColor,
+                              border: `1px solid ${when.isPast ? 'var(--border-color)' : borderColor}`,
+                              opacity: when.isPast ? 0.62 : 1,
                               display: 'flex',
                               flexDirection: 'column',
                               justifyContent: 'space-between',
@@ -2080,8 +2158,8 @@ export const ExamCalendar: React.FC<ExamCalendarProps> = ({
                             }}
                           >
                             <div>
-                              <span style={{ fontSize: '0.7rem', fontWeight: 700, color: tagColor, textTransform: 'uppercase' }}>
-                                {date.type.replace('_', ' ')}
+                              <span style={{ fontSize: '0.7rem', fontWeight: 700, color: when.isPast ? 'var(--text-muted)' : tagColor, textTransform: 'uppercase' }}>
+                                {date.type.replace('_', ' ')}{when.isPast ? ' · done' : ''}
                               </span>
                               <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'white', marginTop: '2px', lineHeight: 1.3 }}>
                                 {date.label}
@@ -2092,8 +2170,8 @@ export const ExamCalendar: React.FC<ExamCalendarProps> = ({
                               <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#93c5fd' }}>
                                 {date.dateTimeStr.split(' ')[0]}
                               </div>
-                              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                                {date.dateTimeStr.split(' ')[1] || 'IST'}
+                              <span style={{ fontSize: '0.7rem', color: when.isPast ? 'var(--text-muted)' : '#fbbf24', fontWeight: when.isPast ? 400 : 700 }}>
+                                {when.text || date.dateTimeStr.split(' ')[1] || 'IST'}
                               </span>
                             </div>
                           </div>
@@ -2112,26 +2190,65 @@ export const ExamCalendar: React.FC<ExamCalendarProps> = ({
       {activeTab === 'CALENDAR' && (
         <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           
-          {/* Month Tabs */}
-          <div className="glass-card" style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '10px', overflowX: 'auto' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', marginRight: '10px' }}>FILTER MONTH:</span>
-            {months.map(m => (
-              <button 
-                key={m}
-                className={`btn ${selectedMonth === m ? 'btn-primary' : 'btn-secondary'}`}
-                onClick={() => setSelectedMonth(m)}
+          {/* Upcoming / past, then the months that actually have events */}
+          <div className="glass-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)' }}>SHOW:</span>
+              {([
+                { key: 'UPCOMING' as const, label: `Upcoming (${upcomingCount})` },
+                { key: 'ALL' as const, label: `All (${allCalendarEvents.length})` },
+                { key: 'PAST' as const, label: `Completed (${pastCount})` }
+              ]).map(opt => (
+                <button
+                  key={opt.key}
+                  className={`btn ${timeFilter === opt.key ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => { setTimeFilter(opt.key); setSelectedMonth('ALL'); }}
+                  style={{ fontSize: '0.85rem', padding: '8px 16px' }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflowX: 'auto' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', marginRight: '4px' }}>MONTH:</span>
+              <button
+                className={`btn ${selectedMonth === 'ALL' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setSelectedMonth('ALL')}
                 style={{ fontSize: '0.85rem', padding: '8px 18px' }}
               >
-                {m === 'ALL' ? 'All Months' : `${m} 2026`}
+                All Months
               </button>
-            ))}
+              {monthOptions.map(([key, label]) => (
+                <button
+                  key={key}
+                  className={`btn ${selectedMonth === key ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => setSelectedMonth(key)}
+                  style={{ fontSize: '0.85rem', padding: '8px 18px', whiteSpace: 'nowrap' }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Timeline List */}
           <div className="glass-card" style={{ padding: '28px' }}>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '20px' }}>
-              Scheduled Events {selectedMonth === 'ALL' ? 'for 2026' : `for ${selectedMonth} 2026`} ({filteredEvents.length} Milestones)
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '6px' }}>
+              {timeFilter === 'PAST' ? 'Completed milestones' : timeFilter === 'ALL' ? 'All milestones' : 'Upcoming milestones'}
+              {selectedMonth !== 'ALL' ? ` in ${monthOptions.find(([key]) => key === selectedMonth)?.[1] || ''}` : ''} ({filteredEvents.length})
             </h3>
+            <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '20px' }}>
+              Dates that have passed drop out of this list on their own; the clock is re-read every minute.
+            </p>
+
+            {filteredEvents.length === 0 && (
+              <div style={{ padding: '22px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                {timeFilter === 'UPCOMING'
+                  ? 'Nothing ahead on record: every milestone GovOS holds has passed. Switch to Completed to see them, or check the Trust Panel for a live official check.'
+                  : 'No milestones match this filter.'}
+              </div>
+            )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {filteredEvents.map(ev => {

@@ -379,6 +379,16 @@ filters), results grouped by subject, one primary action per card chosen by
 `resourceFormat`, bookmark toggle, per-card link-status badge, and a "Verify all links now"
 button that shows live HTTP results. The old `ResourceAIAssistant` sits inside it, collapsed.
 
+`ExamCalendar` is **time-aware and self-updating**. `relativeWhen(dateTimeStr, now)` turns a
+milestone into "in 16 days" / "today" / "3 days ago", and a one-minute interval re-reads the
+clock, so a deadline moves from tomorrow to today to done with the page open. My Exam
+Timeline shows only what is still ahead, with a NEXT banner and countdown on the nearest
+milestone and completed ones behind a "Show N completed" toggle; when everything has passed
+it says the cycle is complete rather than showing a wall of old dates. All Exams Calendar
+defaults to Upcoming (All and Completed are one click away), and the month chips are derived
+from the events actually present — the old hardcoded `['FEB','MAR',…]` list with a "2026"
+label could not survive the year turning.
+
 `ExamDetailView` is the hub: a 9-stage **candidate lifecycle** as primary navigation, plus a
 collapsible grouped index of **16 detail sections** as secondary reference. `sectionToStep`
 keeps the lifecycle in sync with whichever section is open.
