@@ -7,6 +7,9 @@ from urllib.parse import urlparse, urlencode
 import threading
 import time
 import xml.etree.ElementTree as ET
+import base64
+import re
+import zlib
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from flask import Flask, send_from_directory, jsonify, request
@@ -1618,6 +1621,140 @@ def retire_resource_addition(addition_id):
         return jsonify({"error": "not found"}), 404
     return jsonify({"retired": addition_id})
 
+
+# =============================================================================
+# Reading a candidate's scorecard
+#
+# SSC publishes scorecards as generated PDFs, which carry real text: it can be pulled out
+# with zlib and a regex, so GovOS reads the marks rather than asking the candidate to work
+# out their own status. The file is parsed in memory and never written anywhere.
+#
+# Text in these PDFs is laid out character by character ("M a r k s   O b t a i ned"), so
+# every match has to tolerate spaces inside words. Whatever is read is sent back for the
+# candidate to confirm — a misread number must never silently become their result.
+# =============================================================================
+
+MAX_UPLOAD_BYTES = 8 * 1024 * 1024
+
+def _pdf_text(blob):
+    """Visible text of a text-based PDF. Empty for a scanned one, which has no text layer."""
+    out = []
+    for match in re.finditer(rb'stream\r?\n(.*?)\r?\nendstream', blob, re.S):
+        chunk = match.group(1)
+        try:
+            chunk = zlib.decompress(chunk)
+        except Exception:
+            pass
+        if b'Tj' not in chunk and b'TJ' not in chunk:
+            continue
+        text = chunk.decode('latin-1', 'ignore')
+        for segment in re.findall(r'\((?:\\.|[^()\\])*\)', text):
+            out.append(re.sub(r'\\([()\\])', r'\1', segment[1:-1]))
+        out.append('\n')
+    return ' '.join(out)
+
+
+def _join_numbers(text):
+    """"1 5 0 . 0 4" is one number split by kerning; put it back together."""
+    joined = re.sub(r'(?<=\d)\s+(?=\d)', '', text)
+    return re.sub(r'(?<=\d)\s*\.\s*(?=\d)', '.', joined)
+
+
+def _loose(word):
+    """A pattern matching a word even when its letters are spaced apart."""
+    return r'\s*'.join(re.escape(ch) for ch in word if not ch.isspace())
+
+
+MARK_LABELS = ['normalized marks', 'normalised marks', 'total normalized marks', 'marks obtained',
+               'total marks', 'aggregate marks', 'marks secured', 'total score']
+CATEGORY_WORDS = [('pwbd', 'PwBD'), ('pwd', 'PwBD'), ('ews', 'EWS'), ('obc', 'OBC'),
+                  ('sc', 'SC'), ('st', 'ST'), ('unreserved', 'UR'), ('general', 'UR'), ('ur', 'UR')]
+
+
+def _parse_scorecard(text):
+    """Pull the few fields that decide next steps. Everything is returned for confirmation."""
+    numeric = _join_numbers(text)
+    squashed = re.sub(r'\s+', '', text).lower()
+    fields = {}
+    notes = []
+
+    # marks: prefer a number that follows a marks label, since a page is full of other numbers
+    for label in MARK_LABELS:
+        hit = re.search(_loose(label) + r'[^0-9]{0,40}(\d{1,3}(?:\.\d{1,2})?)', numeric, re.I)
+        if hit:
+            value = float(hit.group(1))
+            if 0 <= value <= 700:
+                fields['marks'] = value
+                fields['marksLabel'] = label
+                break
+    if 'marks' not in fields:
+        # nothing labelled: offer the plausible decimals so the candidate can pick
+        loose_numbers = [float(n) for n in re.findall(r'\b\d{1,3}\.\d{1,2}\b', numeric)]
+        plausible = [n for n in loose_numbers if 10 <= n <= 700]
+        if plausible:
+            fields['marksCandidates'] = sorted(set(plausible))[:6]
+            notes.append('No "marks obtained" label found, so the number could not be identified with confidence.')
+
+    for word, label in CATEGORY_WORDS:
+        if re.search(r'(category|community)[^a-z]{0,20}' + _loose(word), squashed) or f'category{word}' in squashed:
+            fields['category'] = label
+            break
+
+    roll = re.search(r'\b(\d{10,11})\b', numeric)
+    if roll:
+        fields['rollNumber'] = roll.group(1)
+
+    if 'notqualified' in squashed or 'notshortlisted' in squashed:
+        fields['declared'] = 'NOT_QUALIFIED'
+    elif 'qualified' in squashed or 'shortlisted' in squashed:
+        fields['declared'] = 'QUALIFIED'
+
+    confidence = 'HIGH' if 'marks' in fields else ('LOW' if 'marksCandidates' in fields else 'NONE')
+    return fields, confidence, notes
+
+
+@app.route('/api/results/parse', methods=['POST'])
+def parse_result_document():
+    """Read an uploaded scorecard. Parsed in memory, never stored, always sent back to confirm."""
+    data = request.get_json(silent=True) or {}
+    content = data.get('contentBase64') or ''
+    filename = (data.get('filename') or 'upload').lower()
+    try:
+        raw = base64.b64decode(content, validate=False)
+    except Exception:
+        return jsonify({"ok": False, "reason": "UNREADABLE", "message": "That file could not be decoded."}), 400
+    if not raw:
+        return jsonify({"ok": False, "reason": "EMPTY", "message": "The file was empty."}), 400
+    if len(raw) > MAX_UPLOAD_BYTES:
+        return jsonify({"ok": False, "reason": "TOO_LARGE", "message": "Scorecards are small files; this one is over 8 MB."}), 400
+
+    if raw[:4] != b'%PDF':
+        is_image = raw[:3] == b'\xff\xd8\xff' or raw[:8] == b'\x89PNG\r\n\x1a\n' or filename.endswith(('.png', '.jpg', '.jpeg', '.webp'))
+        return jsonify({
+            "ok": False,
+            "reason": "IMAGE_NOT_READABLE" if is_image else "NOT_A_PDF",
+            "message": "GovOS reads text out of a PDF scorecard; it has no OCR engine, so it cannot read a photo or screenshot. Download the PDF from the SSC portal, or type your marks in — both end up at the same answer."
+                       if is_image else "That is not a PDF. Upload the scorecard PDF from the SSC portal, or type your marks in."
+        }), 200
+
+    text = _pdf_text(raw)
+    if len(text.strip()) < 40:
+        return jsonify({
+            "ok": False,
+            "reason": "NO_TEXT_LAYER",
+            "message": "This PDF holds no text — it is a scan or an image inside a PDF wrapper. GovOS has no OCR engine, so type your marks in instead."
+        }), 200
+
+    fields, confidence, notes = _parse_scorecard(text)
+    excerpt = ' '.join(text.split())[:400]
+    return jsonify({
+        "ok": True,
+        "fields": fields,
+        "confidence": confidence,
+        "notes": notes,
+        "excerpt": excerpt,
+        "storedOnServer": False
+    })
 
 # Fallback for SPA routing
 @app.route('/<path:path>')

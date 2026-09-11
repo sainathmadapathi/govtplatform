@@ -336,6 +336,7 @@ export interface MockAttemptRecord {
 const STORAGE_KEYS = {
   TARGET_POST: 'govos_target_post_id',
   DAILY_HOURS: 'govos_daily_study_hours',
+  RESULT_ENTRY: 'govos_result_entry',
   COMPLETED_MODULES: 'govos_completed_modules',
   MOCK_ATTEMPTS: 'govos_mock_attempts',
   PROFILE: 'govos_candidate_profile',
@@ -387,6 +388,52 @@ class StorageService {
       return localStorage.getItem(STORAGE_KEYS.TARGET_POST) || '';
     } catch {
       return '';
+    }
+  }
+
+  /** The marks and category the candidate entered or confirmed from their scorecard. */
+  getResultEntry(): { marks: number; category: string; source: string } | null {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.RESULT_ENTRY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  setResultEntry(entry: { marks: number; category: string; source: string } | null): void {
+    try {
+      if (entry) localStorage.setItem(STORAGE_KEYS.RESULT_ENTRY, JSON.stringify(entry));
+      else localStorage.removeItem(STORAGE_KEYS.RESULT_ENTRY);
+    } catch (e) {
+      console.warn('LocalStorage save error:', e);
+    }
+  }
+
+  /**
+   * Send a scorecard to the server to be read. The file is parsed in memory and never
+   * stored — GovOS keeps no candidate documents.
+   */
+  async parseResultDocument(file: File): Promise<{
+    ok: boolean; reason?: string; message?: string; confidence?: string;
+    fields?: { marks?: number; marksCandidates?: number[]; category?: string; rollNumber?: string; declared?: string; marksLabel?: string };
+    notes?: string[]; excerpt?: string;
+  }> {
+    try {
+      const buffer = await file.arrayBuffer();
+      let binary = '';
+      const bytes = new Uint8Array(buffer);
+      for (let i = 0; i < bytes.length; i += 8192) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
+      }
+      const res = await fetch('/api/results/parse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: file.name, contentBase64: btoa(binary) })
+      });
+      return await res.json();
+    } catch (e: any) {
+      return { ok: false, reason: 'SERVER_UNREACHABLE', message: `Could not reach the GovOS server to read the file (${e?.message || 'network error'}). Type your marks in instead.` };
     }
   }
 

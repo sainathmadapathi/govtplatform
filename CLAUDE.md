@@ -513,7 +513,21 @@ Remaining by design, not defects:
   limited to it — they generate per topic — but full shift papers still cycle these.
 - **UPSC and IBPS datasets are thin** next to SSC CGL. Views degrade gracefully (the roadmap
   shows "0 of 0 milestones"), but the data, not the code, is the limit.
-- **Sections 15 and 16** use component-local content. `ExamDayChecklistItem` and
+- **Section 16 reads the candidate's result instead of asking them to classify themselves.**
+  They type their Tier-1 marks and category, or upload the scorecard: `POST /api/results/parse`
+  pulls the text out of a generated PDF with `zlib` and regexes — no OCR engine, no new
+  dependency — and returns marks, category, roll number and any printed "qualified"
+  declaration for the candidate to confirm. **The file is parsed in memory and never stored**,
+  in line with the content policy. Text in SSC PDFs is laid out character by character, so
+  every match tolerates spaces inside words (`_loose()`) and split digits are rejoined
+  (`_join_numbers()`); a number found next to a "marks obtained" label is HIGH confidence, a
+  bare decimal is LOW and is offered as a list to pick from. A photo or a scanned PDF is
+  refused honestly — GovOS has no OCR — with the advice to type the marks instead. The marks
+  are then compared against `cutoffsHistory` for that category and the **year is stated**,
+  because this cycle's cutoff does not exist yet; a declaration printed on the scorecard
+  outranks the comparison. The next-step panel follows that verdict and the candidate can
+  still open any other path by hand.
+- **Section 15** uses component-local content. `ExamDayChecklistItem` and
   `ResultNextStepStage` exist on `Exam` as optional fields for when per-exam data is
   authored; until then the generic CBT content shows for every exam.
 - **SSC CGL 2026 dates in `data.ts` contradict the official record.** A live research run on

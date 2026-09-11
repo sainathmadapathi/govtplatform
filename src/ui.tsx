@@ -11594,10 +11594,63 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
   onSelectAlternativeExam
 }) => {
   const [selectedStatus, setSelectedStatus] = useState<CandidateResultStatus>('QUALIFIED_TIER2');
+  const [statusChosenManually, setStatusChosenManually] = useState<boolean>(false);
 
   const resultDate = exam.dates.find(d => d.type === 'RESULT');
   const ansKeyDate = exam.dates.find(d => d.type === 'ANSWER_KEY');
   const latestCutoff = exam.cutoffsHistory[0];
+
+  // ---- the candidate's own result: typed in, or read from their scorecard ----------------
+  const cutoffYear = exam.cutoffsHistory.length > 0 ? Math.max(...exam.cutoffsHistory.map(c => c.year)) : null;
+  const cutoffRows = exam.cutoffsHistory.filter(c => c.year === cutoffYear);
+  const saved = storageService.getResultEntry();
+  const [marksInput, setMarksInput] = useState<string>(saved ? String(saved.marks) : '');
+  const [categoryInput, setCategoryInput] = useState<string>(saved?.category || (cutoffRows[0]?.category || ''));
+  const [entry, setEntry] = useState<{ marks: number; category: string; source: string } | null>(saved);
+  const [parsing, setParsing] = useState<boolean>(false);
+  const [parsed, setParsed] = useState<{ ok: boolean; reason?: string; message?: string; confidence?: string; fields?: any; notes?: string[] } | null>(null);
+
+  const applyEntry = (marks: number, category: string, source: string) => {
+    const next = { marks, category, source };
+    storageService.setResultEntry(next);
+    setEntry(next);
+    setStatusChosenManually(false);
+  };
+
+  const handleScorecard = async (file: File | undefined) => {
+    if (!file) return;
+    setParsing(true);
+    setParsed(null);
+    const result = await storageService.parseResultDocument(file);
+    setParsed(result);
+    if (result.ok && result.fields?.marks !== undefined) {
+      setMarksInput(String(result.fields.marks));
+      const readCategory = result.fields.category;
+      if (readCategory) {
+        setCategoryInput(cutoffRows.find(r => r.category.toUpperCase().includes(readCategory.toUpperCase()))?.category || categoryInput);
+      }
+    }
+    setParsing(false);
+  };
+
+  // Compare with the cutoff on record for that category — last published year, clearly labelled.
+  const matchedCutoff = entry
+    ? cutoffRows.find(r => r.category.toUpperCase().includes(entry.category.toUpperCase().split(' ')[0]))
+    : undefined;
+  const margin = entry && matchedCutoff ? +(entry.marks - matchedCutoff.tier1Cutoff).toFixed(2) : null;
+  const declared: string | undefined = parsed?.fields?.declared;
+
+  // What the candidate's own numbers point to. A declaration printed on the scorecard wins;
+  // otherwise the comparison does — and the panel below follows it unless they override.
+  const impliedStatus: CandidateResultStatus | null = declared === 'NOT_QUALIFIED'
+    ? 'NOT_QUALIFIED'
+    : declared === 'QUALIFIED'
+      ? 'QUALIFIED_TIER2'
+      : margin === null ? null : margin >= 0 ? 'QUALIFIED_TIER2' : 'NOT_QUALIFIED';
+
+  useEffect(() => {
+    if (impliedStatus && !statusChosenManually) setSelectedStatus(impliedStatus);
+  }, [impliedStatus, statusChosenManually]);
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -11632,16 +11685,125 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
         </div>
       </div>
 
-      {/* Interactive Candidate Status Switcher */}
+      {/* Your result: typed in, or read from the scorecard you upload */}
+      <div className="glass-card" style={{ padding: '22px', border: '1px solid rgba(99,102,241,0.3)' }}>
+        <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'white', margin: '0 0 4px' }}>Your result</h4>
+        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '0 0 16px', lineHeight: 1.5 }}>
+          Enter your Tier-1 marks, or upload the scorecard PDF and GovOS will read them. The file is read on the
+          server and never stored. Whatever is read is shown for you to confirm before it is used.
+        </p>
+
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', fontWeight: 700 }}>Tier-1 marks</label>
+            <input
+              type="number" step="0.01" min={0} max={200}
+              value={marksInput}
+              onChange={e => setMarksInput(e.target.value)}
+              placeholder="e.g. 158.75"
+              style={{ width: '130px', padding: '9px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.9rem' }}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', fontWeight: 700 }}>Your category</label>
+            <select
+              value={categoryInput}
+              onChange={e => setCategoryInput(e.target.value)}
+              style={{ padding: '9px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.9rem', minWidth: '200px' }}
+            >
+              {cutoffRows.map(row => (
+                <option key={row.category} value={row.category}>{row.category}</option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            className="btn btn-primary"
+            onClick={() => {
+              const value = parseFloat(marksInput);
+              if (Number.isFinite(value) && value >= 0) applyEntry(value, categoryInput, parsed?.ok ? 'SCORECARD' : 'TYPED');
+            }}
+            style={{ fontSize: '0.85rem', padding: '10px 18px' }}
+          >
+            {entry ? 'Update my result' : 'Use these marks'}
+          </button>
+
+          <label className="btn btn-secondary" style={{ fontSize: '0.85rem', padding: '10px 16px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+            <FileText size={15} /> {parsing ? 'Reading…' : 'Upload scorecard PDF'}
+            <input type="file" accept="application/pdf,.pdf,image/*" style={{ display: 'none' }} onChange={e => handleScorecard(e.target.files?.[0])} />
+          </label>
+
+          {entry && (
+            <button
+              className="btn btn-secondary"
+              onClick={() => { storageService.setResultEntry(null); setEntry(null); setMarksInput(''); setParsed(null); setStatusChosenManually(false); }}
+              style={{ fontSize: '0.8rem', padding: '10px 14px' }}
+            >
+              Clear
+            </button>
+          )}
+        </div>
+
+        {/* What the file actually said — confirm before it counts */}
+        {parsed && !parsed.ok && (
+          <div style={{ marginTop: '14px', padding: '12px 14px', borderRadius: 'var(--radius-md)', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.35)', color: '#fcd34d', fontSize: '0.85rem', lineHeight: 1.5 }}>
+            {parsed.message}
+          </div>
+        )}
+        {parsed?.ok && (
+          <div style={{ marginTop: '14px', padding: '12px 14px', borderRadius: 'var(--radius-md)', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.3)', fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+            <strong style={{ color: 'white' }}>Read from your file</strong>
+            {parsed.confidence === 'HIGH' ? ' (found next to a "marks" label)' : parsed.confidence === 'LOW' ? ' (no marks label found — please check)' : ''}:
+            <div style={{ marginTop: '6px' }}>
+              {parsed.fields?.marks !== undefined && <div>• Marks: <strong style={{ color: '#a5b4fc' }}>{parsed.fields.marks}</strong></div>}
+              {parsed.fields?.marksCandidates && <div>• Numbers found: {parsed.fields.marksCandidates.join(', ')} — type the right one above</div>}
+              {parsed.fields?.category && <div>• Category: {parsed.fields.category}</div>}
+              {parsed.fields?.rollNumber && <div>• Roll number: {parsed.fields.rollNumber}</div>}
+              {parsed.fields?.declared && <div>• The scorecard says: <strong style={{ color: parsed.fields.declared === 'QUALIFIED' ? '#34d399' : '#f87171' }}>{parsed.fields.declared.replace('_', ' ').toLowerCase()}</strong></div>}
+            </div>
+            {(parsed.notes || []).map(note => <div key={note} style={{ marginTop: '6px', color: '#fcd34d' }}>{note}</div>)}
+            <div style={{ marginTop: '8px', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+              Nothing is used until you press the button above. The file was not saved.
+            </div>
+          </div>
+        )}
+
+        {/* The comparison, with the year it comes from stated */}
+        {entry && (
+          <div style={{ marginTop: '16px', padding: '14px 16px', borderRadius: 'var(--radius-md)', background: margin !== null && margin >= 0 ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)', border: `1px solid ${margin !== null && margin >= 0 ? 'rgba(16,185,129,0.35)' : 'rgba(239,68,68,0.35)'}` }}>
+            <div style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '4px' }}>
+              {entry.marks} marks · {entry.category}
+            </div>
+            {matchedCutoff ? (
+              <div style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+                That is <strong style={{ color: margin !== null && margin >= 0 ? '#34d399' : '#f87171' }}>
+                  {margin !== null && margin >= 0 ? `${margin} marks above` : `${Math.abs(margin || 0)} marks below`}
+                </strong> the {cutoffYear} Tier-1 cutoff for {matchedCutoff.category} ({matchedCutoff.tier1Cutoff}).
+                <div style={{ marginTop: '6px', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+                  The {exam.title} cutoff for this cycle is not published yet, so this is last year's bar, not a result.
+                  {declared ? ' Your scorecard states the outcome, and that is what the plan below follows.' : ' The plan below follows this comparison until the official result is out.'}
+                </div>
+              </div>
+            ) : (
+              <div style={{ fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
+                No cutoff on record for {entry.category}, so GovOS has nothing to compare against. Pick the path that matches your result below.
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Path — chosen from your result, changeable by hand */}
       <div className="glass-card" style={{ padding: '20px' }}>
         <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          Select Your Candidate Examination Status:
+          {impliedStatus && !statusChosenManually ? 'Your next steps, from the marks above — open another path any time:' : 'Select your candidate examination status:'}
         </label>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
           <button 
             className={`btn ${selectedStatus === 'QUALIFIED_TIER2' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setSelectedStatus('QUALIFIED_TIER2')}
+            onClick={() => { setSelectedStatus('QUALIFIED_TIER2'); setStatusChosenManually(true); }}
             style={{ fontSize: '0.85rem', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', textAlign: 'left' }}
           >
             <Award size={18} color={selectedStatus === 'QUALIFIED_TIER2' ? 'white' : '#34d399'} />
@@ -11653,7 +11815,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
 
           <button 
             className={`btn ${selectedStatus === 'SKILL_TEST' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setSelectedStatus('SKILL_TEST')}
+            onClick={() => { setSelectedStatus('SKILL_TEST'); setStatusChosenManually(true); }}
             style={{ fontSize: '0.85rem', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', textAlign: 'left' }}
           >
             <Keyboard size={18} color={selectedStatus === 'SKILL_TEST' ? 'white' : '#60a5fa'} />
@@ -11665,7 +11827,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
 
           <button 
             className={`btn ${selectedStatus === 'DOC_VERIFICATION' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setSelectedStatus('DOC_VERIFICATION')}
+            onClick={() => { setSelectedStatus('DOC_VERIFICATION'); setStatusChosenManually(true); }}
             style={{ fontSize: '0.85rem', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', textAlign: 'left' }}
           >
             <FileText size={18} color={selectedStatus === 'DOC_VERIFICATION' ? 'white' : '#a855f7'} />
@@ -11677,7 +11839,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
 
           <button 
             className={`btn ${selectedStatus === 'NOT_QUALIFIED' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setSelectedStatus('NOT_QUALIFIED')}
+            onClick={() => { setSelectedStatus('NOT_QUALIFIED'); setStatusChosenManually(true); }}
             style={{ fontSize: '0.85rem', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', textAlign: 'left' }}
           >
             <RefreshCw size={18} color={selectedStatus === 'NOT_QUALIFIED' ? 'white' : '#f87171'} />
