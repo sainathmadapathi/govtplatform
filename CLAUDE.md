@@ -158,7 +158,7 @@ struck-through with a corrigendum badge. **This provenance chain is the product'
 `i % len` to fill each "100-question" paper, so all papers share the same underlying items.
 Adding real past-paper questions means extending those arrays.
 
-**Custom tests are topic-scoped, not template-cycled.** `TOPIC_CATALOG` lists 34 topics —
+**Custom tests are topic-scoped, not template-cycled.** `TOPIC_CATALOG` lists 47 topics (34 in-syllabus, 13 recognised as out-of-syllabus) —
 key, label, subject, recognition aliases, `inSyllabus`, and an optional `generate()`. Asking
 for "12 questions on calculus" must produce twelve calculus questions, so:
 
@@ -184,9 +184,19 @@ for "12 questions on calculus" must produce twelve calculus questions, so:
   never repeated inside one paper. Every decision lands in `generationNotes[]`, which the
   chat prints back, plus `requestSummary` and the count of questions actually on the
   requested topic in `description`.
-- Off-syllabus requests are honoured with a note ("Calculus is not part of the SSC CGL
-  syllabus"). A request matching nothing produces no test: the chat says so and offers
-  in-syllabus examples.
+- **Typos are forgiven, and said so.** Exact alias matching runs first; only if it finds no
+  topic does `containsAliasFuzzy` retry, accepting a word once repeated letters collapse
+  ("workk") or within one edit for 5+ letters, two for 9+. Words under four letters stay
+  exact, so "si"/"ci" cannot drift. Every correction lands in `corrections[]` and the chat
+  prints "(I read "workk" as "work".)" — a silent correction would hide a wrong guess.
+- **Out of syllabus is named, not guessed around.** `TOPIC_CATALOG` carries thirteen
+  `inSyllabus: false` topics with no generator (matrices, vectors, complex numbers,
+  differential equations, programming, ML, essay writing, Hindi, foreign languages, law,
+  accounting, medical, engineering) purely so the chat can say "X is not part of the SSC CGL
+  syllabus" and list the nearest in-syllabus topics, instead of "could not match". Calculus
+  keeps its generator and is still built with a syllabus note, because the user asked for
+  that. A request matching nothing at all produces no test; the chat says it may be spelled
+  differently or be outside the syllabus, and offers examples.
 - Pace words are stripped before topic matching, so a "speed drill on Indian Polity" is not
   read as speed-time-distance. Watch for aliases that belong to two topics: "articles" means
   constitutional articles here, so grammar claims "article usage" instead.

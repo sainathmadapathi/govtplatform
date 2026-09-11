@@ -6185,7 +6185,21 @@ export const TOPIC_CATALOG: TopicSpec[] = [
   { key: 'current-affairs', label: 'Current Affairs', subject: SUBJECT_GA, aliases: ['current affairs', 'current events', 'news'], inSyllabus: true },
   { key: 'ssc-notice', label: 'SSC CGL 2026 Notice Facts', subject: SUBJECT_GA, aliases: ['notice', 'notification', 'vacancy', 'vacancies', 'crucial date', 'application window'], inSyllabus: true },
   // Computer
-  { key: 'computer-basics', label: 'Computer Basics', subject: SUBJECT_COMP, aliases: ['computer basics', 'hardware', 'software', 'cpu', 'memory', 'ms office', 'excel', 'word', 'internet', 'networking', 'cyber', 'cyber security'], inSyllabus: true, generate: genComputer }
+  { key: 'computer-basics', label: 'Computer Basics', subject: SUBJECT_COMP, aliases: ['computer basics', 'hardware', 'software', 'cpu', 'memory', 'ms office', 'excel', 'word', 'internet', 'networking', 'cyber', 'cyber security'], inSyllabus: true, generate: genComputer },
+  // Outside the SSC CGL syllabus. Recognised so the candidate is told so, never generated.
+  { key: 'matrices', label: 'Matrices & Determinants', subject: SUBJECT_QUANT, aliases: ['matrix', 'matrices', 'determinant', 'determinants'], inSyllabus: false },
+  { key: 'vectors', label: 'Vectors', subject: SUBJECT_QUANT, aliases: ['vector', 'vectors', 'vector algebra'], inSyllabus: false },
+  { key: 'complex-numbers', label: 'Complex Numbers', subject: SUBJECT_QUANT, aliases: ['complex number', 'complex numbers', 'imaginary number'], inSyllabus: false },
+  { key: 'differential-equations', label: 'Differential Equations', subject: SUBJECT_QUANT, aliases: ['differential equation', 'differential equations'], inSyllabus: false },
+  { key: 'programming', label: 'Programming', subject: SUBJECT_COMP, aliases: ['programming', 'coding language', 'python', 'java', 'c++', 'javascript', 'sql', 'data structures', 'algorithms'], inSyllabus: false },
+  { key: 'ai-ml', label: 'Machine Learning & Data Science', subject: SUBJECT_COMP, aliases: ['machine learning', 'artificial intelligence', 'data science', 'deep learning', 'neural network'], inSyllabus: false },
+  { key: 'descriptive-writing', label: 'Essay & Letter Writing', subject: SUBJECT_ENG, aliases: ['essay', 'essays', 'letter writing', 'precis', 'descriptive paper', 'paragraph writing'], inSyllabus: false },
+  { key: 'hindi', label: 'Hindi Language', subject: SUBJECT_ENG, aliases: ['hindi', 'hindi grammar', 'hindi vyakaran'], inSyllabus: false },
+  { key: 'foreign-language', label: 'Foreign Languages', subject: SUBJECT_ENG, aliases: ['french', 'german', 'spanish', 'japanese', 'foreign language'], inSyllabus: false },
+  { key: 'law', label: 'Law', subject: SUBJECT_GA, aliases: ['law', 'legal', 'ipc', 'crpc', 'contract act', 'jurisprudence'], inSyllabus: false },
+  { key: 'accounting', label: 'Accounting & Commerce', subject: SUBJECT_GA, aliases: ['accounting', 'accounts', 'accountancy', 'bookkeeping', 'tally', 'commerce', 'auditing'], inSyllabus: false },
+  { key: 'medical', label: 'Medical Science', subject: SUBJECT_GA, aliases: ['anatomy', 'medicine', 'pharmacology', 'nursing', 'medical'], inSyllabus: false },
+  { key: 'engineering', label: 'Engineering Subjects', subject: SUBJECT_GA, aliases: ['thermodynamics', 'engineering mechanics', 'circuit theory', 'strength of materials', 'fluid mechanics'], inSyllabus: false }
 ];
 
 export interface ParsedTestRequest {
@@ -6197,6 +6211,8 @@ export interface ParsedTestRequest {
   focusGoal: NonNullable<CustomTestConfig['focusGoal']>;
   /** Words that looked like a topic request but matched nothing in the catalogue. */
   unrecognised: string[];
+  /** Typos the parser forgave, so the reply can say "I read 'workk' as 'work'". */
+  corrections: { typed: string; readAs: string }[];
 }
 
 /**
@@ -6208,6 +6224,62 @@ const containsAlias = (text: string, alias: string): boolean =>
   new RegExp(`(^|[^a-z])${alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(s|es)?($|[^a-z])`, 'i').test(text);
 
 /** Turns a chat message into a structured request. */
+const collapseRepeats = (w: string) => w.replace(/(.)\1+/g, '$1');
+
+/** Levenshtein distance for short words; enough for typo forgiveness. */
+function editDistance(a: string, b: string): number {
+  const prev: number[] = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    let diag = prev[0];
+    prev[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const tmp = prev[j];
+      prev[j] = Math.min(prev[j] + 1, prev[j - 1] + 1, diag + (a[i - 1] === b[j - 1] ? 0 : 1));
+      diag = tmp;
+    }
+  }
+  return prev[b.length];
+}
+
+/**
+ * Typo-tolerant word equality: exact; or equal once repeated letters collapse ("workk");
+ * or one edit away for words of 5+ letters, two for 9+. Short words stay exact so
+ * "si" and "ci" cannot drift.
+ */
+const fuzzyWordEq = (typed: string, want: string): boolean => {
+  if (typed === want) return true;
+  if (want.length < 4) return false;
+  if (collapseRepeats(typed) === collapseRepeats(want)) return true;
+  if (want.length < 5) return false;
+  const tolerance = want.length >= 9 ? 2 : 1;
+  return Math.abs(typed.length - want.length) <= tolerance && editDistance(typed, want) <= tolerance;
+};
+
+/**
+ * Alias match that forgives typos: the alias words must appear in order and adjacent, each
+ * fuzzy-equal (plural-tolerant). Returns the words it had to correct, or null on no match.
+ */
+function containsAliasFuzzy(text: string, alias: string): { typed: string; readAs: string }[] | null {
+  const tw = text.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean);
+  const aw = alias.toLowerCase().split(/\s+/).filter(Boolean);
+  if (aw.length === 0) return null;
+  for (let i = 0; i + aw.length <= tw.length; i++) {
+    const diffs: { typed: string; readAs: string }[] = [];
+    let ok = true;
+    for (let j = 0; j < aw.length; j++) {
+      const t = tw[i + j];
+      const a = aw[j];
+      const plural = t === `${a}s` || t === `${a}es` || (a.endsWith('s') && t === a.slice(0, -1));
+      if (t === a || plural) continue;
+      if (fuzzyWordEq(t, a)) { diffs.push({ typed: t, readAs: a }); continue; }
+      ok = false;
+      break;
+    }
+    if (ok) return diffs;
+  }
+  return null;
+}
+
 export function parseTestRequest(query: string): ParsedTestRequest {
   const lower = query.toLowerCase();
   // "speed drill" and friends describe the pace, not the topic: strip them before matching
@@ -6217,9 +6289,31 @@ export function parseTestRequest(query: string): ParsedTestRequest {
     .replace(/\bspeed\s+booster\b/g, ' ');
   const has = (alias: string) => containsAlias(topicText, alias);
 
-  const topics = TOPIC_CATALOG.filter(t => t.aliases.some(has));
+  const corrections: { typed: string; readAs: string }[] = [];
+  const noteCorrections = (diffs: { typed: string; readAs: string }[]) =>
+    diffs.forEach(d => { if (!corrections.some(c => c.typed === d.typed)) corrections.push(d); });
+
+  let topics = TOPIC_CATALOG.filter(t => t.aliases.some(has));
   const subjects: string[] = [];
   SUBJECT_ALIASES.forEach(sa => { if (sa.aliases.some(has) && !subjects.includes(sa.subject)) subjects.push(sa.subject); });
+
+  // Nothing matched exactly: try again forgiving typos, and remember what was corrected.
+  if (topics.length === 0) {
+    TOPIC_CATALOG.forEach(t => {
+      for (const alias of t.aliases) {
+        const diffs = containsAliasFuzzy(topicText, alias);
+        if (diffs && diffs.length > 0) { topics.push(t); noteCorrections(diffs); break; }
+      }
+    });
+  }
+  if (topics.length === 0 && subjects.length === 0) {
+    SUBJECT_ALIASES.forEach(sa => {
+      for (const alias of sa.aliases) {
+        const diffs = containsAliasFuzzy(topicText, alias);
+        if (diffs && diffs.length > 0) { if (!subjects.includes(sa.subject)) subjects.push(sa.subject); noteCorrections(diffs); break; }
+      }
+    });
+  }
   topics.forEach(t => { if (!subjects.includes(t.subject)) subjects.push(t.subject); });
 
   // count: "12 questions", "12 qs", "12-question", "of 12"; a bare number not attached to a unit
@@ -6250,7 +6344,7 @@ export function parseTestRequest(query: string): ParsedTestRequest {
     if (m && m[1].trim() && !SUBJECT_ALIASES.some(sa => sa.aliases.some(a => containsAlias(m[1], a)))) unrecognised.push(m[1].trim());
   }
 
-  return { subjects, topics, numQuestions, difficulty, durationMinutes, focusGoal: /\bweak/.test(lower) ? 'WEAK_AREAS' : 'GENERAL', unrecognised };
+  return { subjects, topics, numQuestions, difficulty, durationMinutes, focusGoal: /\bweak/.test(lower) ? 'WEAK_AREAS' : 'GENERAL', unrecognised, corrections };
 }
 
 function bankFor(subject: string): TemplateQuestion[] {
@@ -6365,7 +6459,9 @@ export function generateCustomMockTest(config: CustomTestConfig): MockPaper {
     const all = explicitTopics.map(t => makeSupplier(t, bankMatches(t)));
     const empty = all.filter(sup => sup.bank.length === 0 && !sup.topic.generate);
     suppliers = all.filter(sup => sup.bank.length > 0 || sup.topic.generate);
-    empty.forEach(e => notes.push(`GovOS has no ${e.topic.label} questions yet, so that topic could not be included.`));
+    empty.forEach(e => notes.push(e.topic.inSyllabus
+      ? `GovOS has no ${e.topic.label} questions yet, so that topic could not be included.`
+      : `${e.topic.label} is not part of the SSC CGL syllabus, so it was left out.`));
     if (suppliers.length === 0) {
       const fallback = subjects.length > 0 ? subjects : [SUBJECT_QUANT];
       suppliers = fallback.flatMap(suppliersForSubject);
@@ -6380,8 +6476,8 @@ export function generateCustomMockTest(config: CustomTestConfig): MockPaper {
     notes.push('No subject or topic was named, so this mixes the four Tier-1 sections. Ask for a topic — for example "12 questions on percentage" — to drill one thing.');
   }
 
-  explicitTopics.filter(t => !t.inSyllabus).forEach(t =>
-    notes.push(`${t.label} is not part of the SSC CGL syllabus. Generated for practice because you asked for it.`));
+  suppliers.filter(sup => !sup.topic.inSyllabus && explicitTopics.includes(sup.topic)).forEach(sup =>
+    notes.push(`${sup.topic.label} is not part of the SSC CGL syllabus. Generated for practice because you asked for it.`));
 
   const targetCount = Math.max(1, config.numQuestions || 25);
   const rng = mulberry32((Date.now() % 1000003) + targetCount * 7919);

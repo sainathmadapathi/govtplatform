@@ -6501,13 +6501,28 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
         }
       }
 
+      // Every named topic is outside the SSC CGL syllabus and cannot be generated: say so plainly.
+      const offSyllabus = req.topics.filter(t => !t.inSyllabus && !t.generate);
+      if (req.topics.length > 0 && offSyllabus.length === req.topics.length) {
+        const nearest = Array.from(new Set(offSyllabus.map(t => t.subject)))
+          .flatMap(sub => TOPIC_CATALOG.filter(t => t.subject === sub && t.inSyllabus && (t.generate || matchTopicByName(t.label))).slice(0, 4))
+          .map(t => t.label);
+        setChatMessages(prev => [...prev, {
+          id: `msg-bot-${Date.now()}`,
+          sender: 'assistant',
+          text: `${offSyllabus.map(t => t.label).join(' and ')} ${offSyllabus.length === 1 ? 'is' : 'are'} NOT part of the SSC CGL syllabus, so GovOS has no questions on it and I have not built a test — time spent there would not move your score.\n\nThe nearest topics that are in the syllabus:\n${nearest.map(n => `• ${req.numQuestions} questions on ${n.toLowerCase()}`).join('\n')}\n\nThe full syllabus is in the Exam Guide, section 06.`,
+          timestamp: stamp()
+        }]);
+        return;
+      }
+
       // Nothing in the message matched a subject or a topic: ask, don't guess.
       if (topicKeys.length === 0 && req.subjects.length === 0 && req.focusGoal !== 'WEAK_AREAS' && req.unrecognised.length > 0) {
         const examples = TOPIC_CATALOG.filter(t => t.generate && t.inSyllabus).slice(0, 6).map(t => t.label);
         setChatMessages(prev => [...prev, {
           id: `msg-bot-${Date.now()}`,
           sender: 'assistant',
-          text: `I could not match "${req.unrecognised[0]}" to anything in the question bank, so I have not built a test — a random mix would not help you.\n\nName a topic and I will generate it, for example:\n${examples.map(e => `• ${req.numQuestions} questions on ${e.toLowerCase()}`).join('\n')}\n\nOr name a section: Quantitative Aptitude, Reasoning, English, General Awareness.`,
+          text: `I could not match "${req.unrecognised[0]}" to any topic in the SSC CGL syllabus or the question bank — it may be spelled differently from how I know it, or it may be outside the syllabus. I have not built a test, because a random mix would not help you.\n\nName a topic and I will generate it, for example:\n${examples.map(e => `• ${req.numQuestions} questions on ${e.toLowerCase()}`).join('\n')}\n\nOr name a section: Quantitative Aptitude, Reasoning, English, General Awareness.`,
           timestamp: stamp()
         }]);
         return;
@@ -6530,6 +6545,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
 
       const lines = [
         `Here is what I understood from "${query}":`,
+        ...(req.corrections.length > 0 ? [`(I read ${req.corrections.map(c => `"${c.typed}" as "${c.readAs}"`).join(', ')}.)`] : []),
         '',
         `• Topic: ${scopeLine}`,
         `• Questions: ${generatedMock.totalQuestions}`,
