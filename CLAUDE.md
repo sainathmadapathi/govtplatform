@@ -525,8 +525,12 @@ Remaining by design, not defects:
   refused honestly — GovOS has no OCR — with the advice to type the marks instead. The marks
   are then compared against `cutoffsHistory` for that category and the **year is stated**,
   because this cycle's cutoff does not exist yet; a declaration printed on the scorecard
-  outranks the comparison. The next-step panel follows that verdict and the candidate can
-  still open any other path by hand.
+  outranks the comparison — but only while the marks are the ones it was read with. The
+  declaration is stored on the applied entry, not held in the live parse result, so typing a
+  different number over an upload drops it; keeping it there once let an old "qualified"
+  override 120 typed marks. The panels state their basis rather than asserting a result:
+  the Tier-2 panel reads "your scorecard says you are through", "on last year's bar, X
+  clears Tier-1", or "the Tier-2 plan, if you are shortlisted" when opened by hand.
 - **Section 15** uses component-local content. `ExamDayChecklistItem` and
   `ResultNextStepStage` exist on `Exam` as optional fields for when per-exam data is
   authored; until then the generic CBT content shows for every exam.

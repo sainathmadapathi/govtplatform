@@ -11606,12 +11606,21 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
   const saved = storageService.getResultEntry();
   const [marksInput, setMarksInput] = useState<string>(saved ? String(saved.marks) : '');
   const [categoryInput, setCategoryInput] = useState<string>(saved?.category || (cutoffRows[0]?.category || ''));
-  const [entry, setEntry] = useState<{ marks: number; category: string; source: string } | null>(saved);
+  const [entry, setEntry] = useState<{ marks: number; category: string; source: string; declared?: string } | null>(saved);
   const [parsing, setParsing] = useState<boolean>(false);
   const [parsed, setParsed] = useState<{ ok: boolean; reason?: string; message?: string; confidence?: string; fields?: any; notes?: string[] } | null>(null);
 
-  const applyEntry = (marks: number, category: string, source: string) => {
-    const next = { marks, category, source };
+  const applyEntry = (marks: number, category: string) => {
+    // The "qualified" line only counts while the marks are the ones it was read with. Type a
+    // different number and the declaration no longer describes it.
+    const readMarks = parsed?.ok ? parsed.fields?.marks : undefined;
+    const fromScorecard = readMarks !== undefined && Math.abs(readMarks - marks) < 0.001;
+    const next = {
+      marks,
+      category,
+      source: fromScorecard ? 'SCORECARD' : 'TYPED',
+      declared: fromScorecard ? parsed?.fields?.declared : undefined
+    };
     storageService.setResultEntry(next);
     setEntry(next);
     setStatusChosenManually(false);
@@ -11638,7 +11647,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
     ? cutoffRows.find(r => r.category.toUpperCase().includes(entry.category.toUpperCase().split(' ')[0]))
     : undefined;
   const margin = entry && matchedCutoff ? +(entry.marks - matchedCutoff.tier1Cutoff).toFixed(2) : null;
-  const declared: string | undefined = parsed?.fields?.declared;
+  const declared: string | undefined = entry?.declared;
 
   // What the candidate's own numbers point to. A declaration printed on the scorecard wins;
   // otherwise the comparison does — and the panel below follows it unless they override.
@@ -11722,7 +11731,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
             className="btn btn-primary"
             onClick={() => {
               const value = parseFloat(marksInput);
-              if (Number.isFinite(value) && value >= 0) applyEntry(value, categoryInput, parsed?.ok ? 'SCORECARD' : 'TYPED');
+              if (Number.isFinite(value) && value >= 0) applyEntry(value, categoryInput);
             }}
             style={{ fontSize: '0.85rem', padding: '10px 18px' }}
           >
@@ -11782,7 +11791,9 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                 </strong> the {cutoffYear} Tier-1 cutoff for {matchedCutoff.category} ({matchedCutoff.tier1Cutoff}).
                 <div style={{ marginTop: '6px', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
                   The {exam.title} cutoff for this cycle is not published yet, so this is last year's bar, not a result.
-                  {declared ? ' Your scorecard states the outcome, and that is what the plan below follows.' : ' The plan below follows this comparison until the official result is out.'}
+                  {declared
+                    ? ` Your scorecard states the outcome — ${declared.replace('_', ' ').toLowerCase()} — and that is what the plan below follows.`
+                    : ' The plan below follows this comparison until the official result is out.'}
                 </div>
               </div>
             ) : (
@@ -11860,11 +11871,20 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                 <CheckCircle2 size={20} />
               </div>
               <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', margin: 0 }}>
-                Congratulations! You are Shortlisted for Tier-2 Computer Based Exam
+                {declared === 'QUALIFIED'
+                  ? 'Your scorecard says you are through to Tier-2'
+                  : entry && margin !== null && margin >= 0
+                    ? `On last year's bar, ${entry.marks} clears Tier-1 — here is the Tier-2 plan`
+                    : 'The Tier-2 plan, if you are shortlisted'}
               </h4>
             </div>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0, lineHeight: 1.5 }}>
-              Your Tier-1 score exceeded the normalized qualifying mark. Tier-2 marks determine your <strong>final all-India merit rank and Ministry allocation</strong>. Follow this immediate 4-step action schedule:
+              {declared === 'QUALIFIED'
+                ? 'Tier-2 marks decide your '
+                : entry && margin !== null && margin >= 0
+                  ? `Your ${entry.marks} is ${margin} above the ${cutoffYear} cutoff for ${entry.category}, which is an indication rather than a result. Tier-2 marks decide your `
+                  : 'Nothing here is claimed about your result — this is the plan for a shortlisted candidate. Tier-2 marks decide the '}
+              <strong>final all-India merit rank and Ministry allocation</strong>. Follow this immediate 4-step action schedule:
             </p>
           </div>
 

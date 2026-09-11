@@ -392,7 +392,7 @@ class StorageService {
   }
 
   /** The marks and category the candidate entered or confirmed from their scorecard. */
-  getResultEntry(): { marks: number; category: string; source: string } | null {
+  getResultEntry(): { marks: number; category: string; source: string; declared?: string } | null {
     try {
       const raw = localStorage.getItem(STORAGE_KEYS.RESULT_ENTRY);
       return raw ? JSON.parse(raw) : null;
@@ -401,7 +401,7 @@ class StorageService {
     }
   }
 
-  setResultEntry(entry: { marks: number; category: string; source: string } | null): void {
+  setResultEntry(entry: { marks: number; category: string; source: string; declared?: string } | null): void {
     try {
       if (entry) localStorage.setItem(STORAGE_KEYS.RESULT_ENTRY, JSON.stringify(entry));
       else localStorage.removeItem(STORAGE_KEYS.RESULT_ENTRY);
