@@ -335,6 +335,7 @@ export interface MockAttemptRecord {
 
 const STORAGE_KEYS = {
   TARGET_POST: 'govos_target_post_id',
+  DAILY_HOURS: 'govos_daily_study_hours',
   COMPLETED_MODULES: 'govos_completed_modules',
   MOCK_ATTEMPTS: 'govos_mock_attempts',
   PROFILE: 'govos_candidate_profile',
@@ -380,12 +381,35 @@ class StorageService {
   private userId: string = 'default-candidate';
 
   // --- 1. Target Post Persistence ---
+  /** The post the candidate chose, or '' — never an invented default. */
   getTargetPost(): string {
     try {
-      const saved = localStorage.getItem(STORAGE_KEYS.TARGET_POST);
-      return saved || 'post-aso-css';
+      return localStorage.getItem(STORAGE_KEYS.TARGET_POST) || '';
     } catch {
-      return 'post-aso-css';
+      return '';
+    }
+  }
+
+  hasTargetPost(): boolean {
+    return this.getTargetPost() !== '';
+  }
+
+  /** Hours a day the candidate says they can study. Null until they tell us. */
+  getDailyStudyHours(): number | null {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.DAILY_HOURS);
+      const parsed = saved ? parseFloat(saved) : Number.NaN;
+      return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+
+  setDailyStudyHours(hours: number): void {
+    try {
+      localStorage.setItem(STORAGE_KEYS.DAILY_HOURS, String(hours));
+    } catch (e) {
+      console.warn('LocalStorage save error:', e);
     }
   }
 

@@ -474,6 +474,26 @@ Remaining by design, not defects:
   exam and post, the profile and the stage — there is no model call and no generation. When
   you add an intent, give it a `FACT_SUBJECTS` phrase too, or follow-ups after it will have
   nothing to inherit.
+- **Authored data yes, invented personalisation no.** The register (dates, posts, syllabus,
+  resources, question bank) is authored on purpose and carries provenance — that is the
+  product. What must never be hardcoded is anything presented as *the candidate's*:
+  - Daily study hours come from an input in the practice analysis
+    (`storageService.getDailyStudyHours()`, null until they answer). The split across
+    sections uses the Tier-1 marks from `exam.stages` and is boosted by the *share* of the
+    candidate's weak topics in each section, capped at double — counting weak topics
+    outright let one quant drill swallow three quarters of the day.
+  - Weak-area cards state what was measured ("0 right, 0 wrong, 1 not attempted out of 1")
+    and the topic's real weight from `exam.syllabus` (`weightagePercentage`, `avgQuestions`,
+    `isHighYield`). They used to assert a cause GovOS cannot know ("prone to sign errors")
+    and an invented weight ("3-4 Qs guaranteed in TCS exam pattern").
+  - `getTargetPost()` returns `''` when the candidate has not chosen, never `post-aso-css`.
+    Labels say "not chosen yet" and point at section 01; the statistics slice appears when
+    the chosen post actually needs statistics, read from the post, not from its id.
+  - The application simulator records real elapsed time and a score of passed checks over
+    checks run; both were constants (120 seconds, 100 − 25 × mistakes).
+  - Counts inside answer text are placeholders (`{posts}`, `{resources}`, `{syllabus}`,
+    `{exam}`) filled by `fillCounts()` from the register, so "25 verified links" cannot
+    survive the library growing to 38.
 - **The "AI" features are deterministic local logic.** `ResourceAIAssistant` is a ranked
   search (`rankResourcesForQuery`: `readNavigatorQuery` extracts a format — pdf / video /
   channel / portal / tool — plus subjects from its own word lists and topics via

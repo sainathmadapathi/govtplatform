@@ -2595,6 +2595,16 @@ export function resolveWithHistory(message: string, history: ConversationTurn[])
   return { text: `${message} ${inherited}`.trim(), inherited };
 }
 
+/**
+ * Counts in answer text come from the register, not from whatever was true when the
+ * sentence was written: {posts}, {resources}, {syllabus}, {exam}.
+ */
+const fillCounts = (text: string, exam: Exam): string => text
+  .replace(/\{posts\}/g, String(exam.posts.length))
+  .replace(/\{resources\}/g, String(exam.resources.length))
+  .replace(/\{syllabus\}/g, String(exam.syllabus.length))
+  .replace(/\{exam\}/g, exam.title);
+
 /** A short phrase naming what each intent is about, recorded on the turn for follow-ups. */
 const FACT_SUBJECTS: Record<string, string> = {
   targetPost: 'your target post',
@@ -2701,7 +2711,7 @@ const citeFrom = (provenance: DataProvenance, fallbackTitle: string) => ({
 const PLATFORM_MAP: { keys: string[]; answer: string; action: AssistantAction }[] = [
   {
     keys: ['eligib', 'qualify', 'am i able to apply', 'can i apply'],
-    answer: 'Eligibility lives in the **Am I Eligible?** tab in the top navigation.\n\nEnter your date of birth, degree, branch, percentage, category and gender. GovOS then checks you against all 18 SSC CGL posts one by one and tells you, for each, whether you are eligible, conditionally eligible or not eligible — with the age relaxation for your category already applied and the rule it used shown next to the verdict.\n\nThe full written criteria, with the clause from the notice, are in the Exam Guide under section 03 Eligibility.',
+    answer: 'Eligibility lives in the **Am I Eligible?** tab in the top navigation.\n\nEnter your date of birth, degree, branch, percentage, category and gender. GovOS then checks you against all {posts} {exam} posts one by one and tells you, for each, whether you are eligible, conditionally eligible or not eligible — with the age relaxation for your category already applied and the rule it used shown next to the verdict.\n\nThe full written criteria, with the clause from the notice, are in the Exam Guide under section 03 Eligibility.',
     action: { label: 'Open Am I Eligible?', tab: 'ELIGIBILITY' }
   },
   {
@@ -2804,7 +2814,7 @@ const PLATFORM_MAP: { keys: string[]; answer: string; action: AssistantAction }[
   },
   {
     keys: ['post', 'job profile', 'salary', 'pay', 'department', 'which job'],
-    answer: 'Section 01 Overview & Posts of the Exam Guide lists all 18 posts with department, pay level, classification and nature of work, so you can pick a target post. Your choice drives the roadmap and the practice analysis.',
+    answer: 'Section 01 Overview & Posts of the Exam Guide lists all {posts} posts with department, pay level, classification and nature of work, so you can pick a target post. Your choice drives the roadmap and the practice analysis.',
     action: { label: 'Open Overview & Posts', tab: 'EXAM_DETAIL', section: 1 }
   }
 ];
@@ -2908,7 +2918,7 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
   if (has(q, 'what can you do', 'what can i ask', 'how does this work', 'how do i use', 'help me get started', 'getting started', 'what is govos', 'guide me through')) {
     return {
       verified: true,
-      text: 'I answer from the verified GovOS register for SSC CGL 2026, and I can point you to the right part of the platform.\n\nThe platform has nine views:\n• **Exam Finder** — discover exams matched to your qualification\n• **Am I Eligible?** — per-post eligibility from your own details\n• **Exam Guide** — 16 sections: dates, eligibility, application, pattern, syllabus, cutoffs, admit card and more\n• **Practice & Mocks** — CBT papers, topic drills and a test creator\n• **Resources** — 25 verified official links, PDFs and videos\n• **Study Roadmap** — a plan for your target post\n• **Compare Exams**, **My Timeline & Calendar**, **Trust Panel**\n\nTry asking: "where do I check my eligibility", "what is the last date to apply", "is there negative marking", "where are the resources", or "what is the exam pattern".',
+      text: fillCounts('I answer from the verified GovOS register for {exam}, and I can point you to the right part of the platform.\n\nThe platform has nine views:\n• **Exam Finder** — discover exams matched to your qualification\n• **Am I Eligible?** — per-post eligibility from your own details\n• **Exam Guide** — 16 sections: dates, eligibility, application, pattern, syllabus, cutoffs, admit card and more\n• **Practice & Mocks** — CBT papers, topic drills and a test creator\n• **Resources** — {resources} verified official links, PDFs and videos\n• **Study Roadmap** — a plan for your target post\n• **Compare Exams**, **My Timeline & Calendar**, **Trust Panel**\n\nTry asking: "where do I check my eligibility", "what is the last date to apply", "is there negative marking", "where are the resources", or "what is the exam pattern".', exam),
       action: { label: 'Open the Exam Guide', tab: 'EXAM_DETAIL', section: 1 }
     };
   }
@@ -2936,7 +2946,7 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
     return {
       verified: true,
       sourceKind: 'PLATFORM',
-      text: nav.entry.answer,
+      text: fillCounts(nav.entry.answer, exam),
       action: nav.entry.action,
       resourceLink: item ? item.reply.resourceLink : undefined
     };
@@ -3177,7 +3187,7 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
 
   // Not phrased as a location question, but plainly about a part of the platform
   // ("study plan", "roadmap", "compare exams") — route it rather than fall back.
-  if (nav) return { verified: true, sourceKind: 'PLATFORM', text: nav.entry.answer, action: nav.entry.action };
+  if (nav) return { verified: true, sourceKind: 'PLATFORM', text: fillCounts(nav.entry.answer, exam), action: nav.entry.action };
 
   // Last chance before refusing: did they name something in the library?
   const namedLate = namedResourceAnswer(q);
@@ -7154,7 +7164,15 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
   const [pastAttempts, setPastAttempts] = useState<MockAttemptRecord[]>(() => storageService.getMockAttempts());
   const [reviewingAttempt, setReviewingAttempt] = useState<MockAttemptRecord | null>(null);
   const targetPostId = storageService.getTargetPost();
-  const targetPost = getPostStudyPath(targetPostId);
+  const hasTargetPost = targetPostId !== '';
+  const targetPost = exam.posts.find(p => p.id === targetPostId);
+  const targetPath = getPostStudyPath(targetPostId);
+  // Hours a day come from the candidate; until they say, nothing is assumed.
+  const [dailyHours, setDailyHours] = useState<number | null>(() => storageService.getDailyStudyHours());
+  const [hoursDraft, setHoursDraft] = useState<string>(() => {
+    const saved = storageService.getDailyStudyHours();
+    return saved ? String(saved) : '';
+  });
 
   // Sync latest mock attempts from SQLite on component mount
   useEffect(() => {
@@ -7336,7 +7354,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
     : 0;
 
   // Enhanced Clarity Weak, Medium, Strong Classification
-  const weakAreas: { topic: string; subject: string; accuracy: number; total: number; missed: number; trapAlert: string; examImpact: string }[] = [];
+  const weakAreas: { topic: string; subject: string; accuracy: number; total: number; missed: number; evidence: string; weightLine: string }[] = [];
   const mediumAreas: { topic: string; subject: string; accuracy: number; total: number; speedAdvice: string }[] = [];
   const strongAreas: { topic: string; subject: string; accuracy: number; total: number }[] = [];
 
@@ -7344,23 +7362,25 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
     Object.entries(data.topics).forEach(([top, tData]) => {
       const acc = tData.total > 0 ? (tData.correct / tData.total) * 100 : 0;
       if (acc < 50) {
-        let trap = 'Prone to sign errors and algebraic identity misapplication under time pressure.';
-        let impact = 'High Tier-1 & Tier-2 Weightage (3–4 Qs guaranteed in TCS exam pattern).';
-        if (subj === 'General Awareness') {
-          trap = 'Confusion between closely related constitutional articles and historical dates.';
-          impact = 'Direct scoring area for increasing Tier-1 cut-off clearance buffer.';
-        } else if (subj === 'English Comprehension') {
-          trap = 'Rule of proximity violations in correlative conjunctions and preposition nuances.';
-          impact = 'Essential for high-accuracy scoring in Tier-1 & Tier-2 English.';
-        }
-        weakAreas.push({ 
-          topic: top, 
-          subject: subj, 
-          accuracy: Math.round(acc), 
-          total: tData.total, 
+        // Say what was measured. GovOS cannot know *why* a question was missed, and a
+        // confident invented reason ("prone to sign errors") is worse than none.
+        const skipped = tData.total - tData.correct - tData.incorrect;
+        const evidence = `${tData.correct} right, ${tData.incorrect} wrong${skipped > 0 ? `, ${skipped} not attempted` : ''} out of ${tData.total} in this paper.`;
+        // Weight comes from the register's own syllabus row when there is one.
+        const syllabusRow = exam.syllabus.find(t =>
+          top.toLowerCase().includes(t.topicName.toLowerCase()) || t.topicName.toLowerCase().includes(top.split(':')[0].trim().toLowerCase())
+        );
+        const weightLine = syllabusRow
+          ? `${syllabusRow.weightagePercentage}% of the ${syllabusRow.subject} section, about ${syllabusRow.avgQuestions} question${syllabusRow.avgQuestions === 1 ? '' : 's'} a paper${syllabusRow.isHighYield ? ' — marked high-yield in the syllabus' : ''}.`
+          : 'The syllabus does not give a separate weightage for this topic.';
+        weakAreas.push({
+          topic: top,
+          subject: subj,
+          accuracy: Math.round(acc),
+          total: tData.total,
           missed: tData.incorrect,
-          trapAlert: trap,
-          examImpact: impact
+          evidence,
+          weightLine
         });
       } else if (acc >= 50 && acc < 75) {
         mediumAreas.push({ 
@@ -7377,33 +7397,64 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
   });
 
   // Calculate Selection Plan-Driven Daily Study Hours
-  const calculateDailyStudyHours = () => {
-    let quantHours = 2.0;
-    let reasoningHours = 1.0;
-    let englishHours = 1.5;
-    let gaHours = 1.5;
-
-    weakAreas.forEach(w => {
-      if (w.subject === 'Quantitative Aptitude') quantHours += 0.5;
-      if (w.subject === 'General Awareness') gaHours += 0.5;
-      if (w.subject === 'English Comprehension') englishHours += 0.5;
-      if (w.subject === 'Reasoning & General Intelligence') reasoningHours += 0.25;
+  /**
+   * Split the hours the candidate says they have — never a number GovOS made up.
+   * Weighting is their own: sections they are weak in get more, and with no attempts yet
+   * the split follows the exam's own marks per section rather than a guess.
+   */
+  const calculateDailyStudyHours = (hours: number) => {
+    const sections = ['Quantitative Aptitude', 'Reasoning & General Intelligence', 'English Comprehension', 'General Awareness'];
+    const tier1 = exam.stages.find(st => st.tier === 'TIER_1');
+    const marksOf = (section: string): number => {
+      const row = tier1?.sections.find(sec => sec.sectionName.toLowerCase().includes(section.split(' ')[0].toLowerCase()));
+      return row ? row.marks : 50;
+    };
+    // Base share is the paper's own marks; a section is boosted by the SHARE of weak topics
+    // that fall in it, capped at double. Counting weak topics outright let a single quant
+    // drill swallow three quarters of the day.
+    const totalWeak = weakAreas.length;
+    const weights = sections.map(section => {
+      const base = marksOf(section);
+      const weakHere = weakAreas.filter(w => w.subject === section).length;
+      const boost = totalWeak > 0 ? 1 + weakHere / totalWeak : 1;
+      return { section, weight: base * boost };
     });
+    // a post that needs statistics earns its own slice, read from the post, not an id
+    const needsStats = !!targetPost && /statistic/i.test(`${targetPost.postName} ${targetPost.specialQualification || ''}`);
+    if (needsStats) weights.push({ section: 'Statistics', weight: marksOf('Quantitative') });
 
-    let statsHours = targetPostId === 'post-jso' ? 2.0 : 0.0;
-    const totalDailyHours = quantHours + reasoningHours + englishHours + gaHours + statsHours;
+    const totalWeight = weights.reduce((sum, w) => sum + w.weight, 0) || 1;
+    const share = (section: string) => {
+      const found = weights.find(w => w.section === section);
+      return found ? ((found.weight / totalWeight) * hours).toFixed(1) : '0.0';
+    };
 
     return {
-      quantHours: quantHours.toFixed(1),
-      reasoningHours: reasoningHours.toFixed(1),
-      englishHours: englishHours.toFixed(1),
-      gaHours: gaHours.toFixed(1),
-      statsHours: statsHours.toFixed(1),
-      totalDailyHours: totalDailyHours.toFixed(1)
+      quantHours: share('Quantitative Aptitude'),
+      reasoningHours: share('Reasoning & General Intelligence'),
+      englishHours: share('English Comprehension'),
+      gaHours: share('General Awareness'),
+      statsHours: share('Statistics'),
+      totalDailyHours: hours.toFixed(1),
+      weightedByResults: weakAreas.length > 0
     };
   };
 
-  const studyHoursPlan = calculateDailyStudyHours();
+  const studyHoursPlan = calculateDailyStudyHours(dailyHours || 0);
+
+  /** The topics this candidate is actually weak in, or where the split came from instead. */
+  const weakTopicsFor = (section: string): string => {
+    const mine = weakAreas.filter(w => w.subject === section).map(w => w.topic.split(':')[0].trim());
+    if (mine.length > 0) {
+      const unique = Array.from(new Set(mine));
+      return `Your weakest here: ${unique.slice(0, 3).join(', ')}${unique.length > 3 ? ` and ${unique.length - 3} more` : ''}.`;
+    }
+    const tier1 = exam.stages.find(st => st.tier === 'TIER_1');
+    const row = tier1?.sections.find(sec => sec.sectionName.toLowerCase().includes(section.split(' ')[0].toLowerCase()));
+    return row
+      ? `No weak topic recorded yet — share of the paper: ${row.questions} questions, ${row.marks} marks.`
+      : 'No weak topic recorded here yet.';
+  };
 
   // Test Submission Handler
   const handleSubmitTest = () => {
@@ -7732,7 +7783,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                 ⚡ OFFICIAL CBT ENGINE & ANIMATED SHORTCUTS
               </span>
               <span style={{ fontSize: '0.8rem', color: '#93c5fd', fontWeight: 700 }}>
-                • Target: {targetPost.postName}
+                • Target: {hasTargetPost ? targetPath.postName : 'no target post chosen yet'}
               </span>
             </div>
             <h3 style={{ fontSize: '1.45rem', fontWeight: 800, color: 'white', margin: 0 }}>
@@ -7897,7 +7948,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
             </div>
 
             <span className="badge badge-verified" style={{ fontSize: '0.72rem' }}>
-              Target: {targetPost.postName}
+              Target: {hasTargetPost ? targetPath.postName : 'Not chosen yet'}
             </span>
           </div>
 
@@ -8427,7 +8478,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                     {reviewingAttempt ? `Reviewing: ${selectedPaper.title}` : 'In-Depth Diagnostic Clarity & Solutions Engine'}
                   </h3>
                   <div style={{ fontSize: '0.85rem', color: '#93c5fd' }}>
-                    Target Post: <strong>{targetPost.postName}</strong> ({targetPost.department})
+                    Target Post: <strong>{hasTargetPost ? targetPath.postName : 'not chosen yet'}</strong>{hasTargetPost ? ` (${targetPath.department})` : ' — pick one in Exam Guide section 01 and this analysis follows it'}
                   </div>
                 </div>
 
@@ -8457,7 +8508,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                       🔍 Enhanced Clarity Weakness & Topic Diagnosis
                     </h4>
                     <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                      Categorized by critical error severity, failure causes, and direct exam impact.
+                      Your accuracy per topic in this paper, with each topic's weight in the official syllabus.
                     </span>
                   </div>
                 </div>
@@ -8485,11 +8536,11 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                               </div>
 
                               <div style={{ fontSize: '0.78rem', color: '#fecaca', lineHeight: 1.4 }}>
-                                <strong>⚠️ Why You Missed:</strong> {w.trapAlert}
+                                <strong>What you scored here:</strong> {w.evidence}
                               </div>
 
                               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                <strong>📊 Exam Impact:</strong> {w.examImpact}
+                                <strong>Why it matters:</strong> {w.weightLine}
                               </div>
 
                               <button
@@ -8578,48 +8629,91 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                     <Compass size={20} color="#60a5fa" />
                     <div>
                       <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'white', margin: 0 }}>
-                        Target Post Daily Study Blueprint ({studyHoursPlan.totalDailyHours} Hours/Day)
+                        {dailyHours ? `Your ${studyHoursPlan.totalDailyHours} hours a day, split by subject` : 'How many hours a day can you study?'}
                       </h4>
                       <span style={{ fontSize: '0.78rem', color: '#93c5fd' }}>
-                        Dynamically calculated from your test weaknesses for {targetPost.postName}.
+                        {dailyHours
+                          ? `${studyHoursPlan.weightedByResults ? 'Weighted by the topics you are under 50% on' : 'Split by each section\u2019s marks in the paper — take a test and it re-weights to your own results'}${hasTargetPost ? ` · target post: ${targetPath.postName}` : ''}.`
+                          : 'GovOS will not invent a number for you. Tell it your hours and it splits them by the sections you are weakest in.'}
                       </span>
                     </div>
                   </div>
-                  <span className="badge badge-verified">
-                    SELECTION STRATEGY: {studyHoursPlan.totalDailyHours} HRS/DAY
-                  </span>
+
+                  {/* The candidate's own input — nothing here is assumed */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <input
+                      type="number"
+                      min={0.5}
+                      max={16}
+                      step={0.5}
+                      value={hoursDraft}
+                      onChange={e => setHoursDraft(e.target.value)}
+                      placeholder="e.g. 6"
+                      aria-label="Hours you can study each day"
+                      style={{ width: '90px', padding: '8px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.9rem' }}
+                    />
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => {
+                        const parsed = parseFloat(hoursDraft);
+                        if (Number.isFinite(parsed) && parsed > 0 && parsed <= 16) {
+                          storageService.setDailyStudyHours(parsed);
+                          setDailyHours(parsed);
+                        }
+                      }}
+                      style={{ fontSize: '0.8rem', padding: '8px 14px' }}
+                    >
+                      {dailyHours ? 'Update' : 'Set hours'}
+                    </button>
+                  </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+                {!dailyHours && (
+                  <div style={{ padding: '14px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '12px' }}>
+                    Enter your hours above and this splits them across the four sections. Everything below is computed from your own papers — GovOS does not decide how much time you have.
+                  </div>
+                )}
+
+                <div style={{ display: dailyHours ? 'grid' : 'none', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
                   <div style={{ padding: '14px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)' }}>
                     <div style={{ fontSize: '0.75rem', color: '#93c5fd', textTransform: 'uppercase', fontWeight: 700 }}>Quantitative Aptitude</div>
                     <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'white', margin: '4px 0' }}>{studyHoursPlan.quantHours} Hours</div>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>Focus on Geometry proofs & Algebra symmetric identities.</div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
+                      {weakTopicsFor('Quantitative Aptitude')}
+                    </div>
                   </div>
 
                   <div style={{ padding: '14px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)' }}>
                     <div style={{ fontSize: '0.75rem', color: '#93c5fd', textTransform: 'uppercase', fontWeight: 700 }}>General Awareness</div>
                     <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'white', margin: '4px 0' }}>{studyHoursPlan.gaHours} Hours</div>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>Focus on Constitution Articles 14-32 & Static GK.</div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
+                      {weakTopicsFor('General Awareness')}
+                    </div>
                   </div>
 
                   <div style={{ padding: '14px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)' }}>
                     <div style={{ fontSize: '0.75rem', color: '#93c5fd', textTransform: 'uppercase', fontWeight: 700 }}>English Comprehension</div>
                     <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'white', margin: '4px 0' }}>{studyHoursPlan.englishHours} Hours</div>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>Daily 60 Rules Grammar + Norman Lewis Root Words.</div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
+                      {weakTopicsFor('English Comprehension')}
+                    </div>
                   </div>
 
                   <div style={{ padding: '14px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)' }}>
                     <div style={{ fontSize: '0.75rem', color: '#93c5fd', textTransform: 'uppercase', fontWeight: 700 }}>Reasoning</div>
                     <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'white', margin: '4px 0' }}>{studyHoursPlan.reasoningHours} Hours</div>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>High-speed Syllogism & Blood Relation sectionals.</div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
+                      {weakTopicsFor('Reasoning')}
+                    </div>
                   </div>
 
-                  {targetPostId === 'post-jso' && (
+                  {parseFloat(studyHoursPlan.statsHours) > 0 && targetPost && (
                     <div style={{ padding: '14px', borderRadius: 'var(--radius-md)', background: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.3)' }}>
                       <div style={{ fontSize: '0.75rem', color: '#fbbf24', textTransform: 'uppercase', fontWeight: 700 }}>Tier-2 Paper-II Statistics</div>
                       <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#fde047', margin: '4px 0' }}>{studyHoursPlan.statsHours} Hours</div>
-                      <div style={{ fontSize: '0.72rem', color: '#fef08a' }}>Mandatory paper for Junior Statistical Officer (JSO).</div>
+                      <div style={{ fontSize: '0.72rem', color: '#fef08a' }}>
+                        {targetPost.postName} requires it{targetPost.specialQualification ? ` — ${targetPost.specialQualification}` : ''}.
+                      </div>
                     </div>
                   )}
                 </div>
@@ -9183,6 +9277,8 @@ interface ErrorItem {
 
 export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulatorProps> = () => {
   const [currentStep, setCurrentStep] = useState<number>(1);
+  // When this attempt began, so the recorded time is the candidate's own, not a constant.
+  const [startedAt, setStartedAt] = useState<number>(() => Date.now());
   const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
 
   const initialFormState: FormState = {
@@ -9540,21 +9636,24 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
 
   const handleSubmit = () => {
     setIsSubmitted(true);
+    const checksRun = passedChecks.length + mistakes.length;
     storageService.saveMockAttempt({
       id: `app-practice-${Date.now()}`,
       exam_id: 'ssc-cgl-2026',
       subject: 'Application Practice Simulator',
-      score: mistakes.length === 0 ? 100 : Math.max(0, 100 - mistakes.length * 25),
+      // the candidate's own result and their own time — both were constants before
+      score: checksRun > 0 ? Math.round((passedChecks.length / checksRun) * 100) : 0,
       total_marks: 100,
       correct_count: passedChecks.length,
       incorrect_count: mistakes.length,
       unattempted_count: 0,
-      time_taken_seconds: 120
+      time_taken_seconds: Math.max(1, Math.round((Date.now() - startedAt) / 1000))
     });
   };
 
   const handleReset = () => {
     setForm(initialFormState);
+    setStartedAt(Date.now());
     setCurrentStep(1);
     setIsSubmitted(false);
   };
