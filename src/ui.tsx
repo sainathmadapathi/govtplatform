@@ -704,7 +704,8 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
           {recommendations.slice(0, 3).map((rec) => {
             const isRecTracked = trackedExamIds.includes(rec.exam.id);
             const isRecBookmarked = bookmarkedIds.includes(rec.exam.id);
-            const matchPercent = Math.round(rec.score * 100);
+            // `score` is already normalised to 0-100 by computePersonalizedRecommendations.
+            const matchPercent = Math.min(100, Math.max(0, Math.round(rec.score)));
 
             const strengthBorder = rec.matchStrength === 'STRONG'
               ? 'rgba(16, 185, 129, 0.45)'
