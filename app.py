@@ -2127,7 +2127,6 @@ def _parse_scorecard(text, exam_id=''):
             v = float(gs1_m.group(1))
             if 20.0 <= v <= 200.0:
                 fields['upscPrelimsGs1Marks'] = round(v, 2)
-                fields['tier1Marks'] = round(v, 2)
                 fields['marks'] = round(v, 2)
                 fields['marksLabel'] = 'Prelims GS Paper-I Marks'
 
@@ -2144,7 +2143,6 @@ def _parse_scorecard(text, exam_id=''):
             v = float(written_m.group(1))
             if 300.0 <= v <= 1750.0:
                 fields['upscMainsWrittenMarks'] = round(v, 2)
-                fields['tier2Marks'] = round(v, 2)
 
         # Personality Test / Interview (out of 275)
         pt_m = re.search(r'(?:personality\s*test|interview|pt\s*marks?)[^0-9\n]{0,35}\b(\d{2,3}(?:\.\d{1,2})?)\b', full_text, re.I)
@@ -2183,7 +2181,6 @@ def _parse_scorecard(text, exam_id=''):
             v = float(pre_m.group(1))
             if 10.0 <= v <= 100.0:
                 fields['ibpsPrelimsMarks'] = round(v, 2)
-                fields['tier1Marks'] = round(v, 2)
                 fields['marks'] = round(v, 2)
                 fields['marksLabel'] = 'IBPS Prelims Marks'
 
@@ -2192,7 +2189,6 @@ def _parse_scorecard(text, exam_id=''):
             v = float(main_m.group(1))
             if 20.0 <= v <= 225.0:
                 fields['ibpsMainsMarks'] = round(v, 2)
-                fields['tier2Marks'] = round(v, 2)
 
         int_m = re.search(r'(?:interview)(?:\s+[a-z]+){0,3}\s*(?:marks?|score?)[^0-9\n]{0,35}\b(\d{1,3}(?:\.\d{1,2})?)\b', full_text, re.I)
         if int_m:
