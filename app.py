@@ -8,6 +8,7 @@ import threading
 import time
 import xml.etree.ElementTree as ET
 import base64
+import io
 import re
 import zlib
 from concurrent.futures import ThreadPoolExecutor
@@ -1794,6 +1795,68 @@ def _pdf_text(blob):
     return ' '.join(out)
 
 
+# ---- OCR for scans and photos. Optional: the app runs without these libraries. -----------
+_OCR_ENGINE = None
+_OCR_STATE = {"checked": False, "available": False, "reason": None}
+
+
+def _ocr_available():
+    """True when rapidocr_onnxruntime and pypdfium2 import; cached after the first look."""
+    global _OCR_ENGINE
+    if _OCR_STATE["checked"]:
+        return _OCR_STATE["available"]
+    _OCR_STATE["checked"] = True
+    try:
+        from rapidocr_onnxruntime import RapidOCR  # noqa: F401
+        import pypdfium2  # noqa: F401
+        import PIL  # noqa: F401
+        _OCR_ENGINE = RapidOCR()
+        _OCR_STATE["available"] = True
+    except Exception as exc:  # ImportError, or a model that failed to load
+        _OCR_STATE["reason"] = str(exc)[:200]
+    return _OCR_STATE["available"]
+
+
+OCR_INSTALL_HINT = "pip install rapidocr-onnxruntime pypdfium2 pillow numpy (they are in requirements.txt), then restart python app.py"
+
+
+def _ocr_image(pil_image):
+    """Text lines from one image, top to bottom, as RapidOCR read them."""
+    import numpy as np
+    img = pil_image.convert('RGB')
+    # Small phone photos read badly; upscale to a sensible width before recognition.
+    if img.width < 1400:
+        ratio = 1400 / img.width
+        img = img.resize((1400, int(img.height * ratio)))
+    result, _elapsed = _OCR_ENGINE(np.array(img))
+    if not result:
+        return []
+    # each item: [box, text, confidence]; sort by the box's top edge, then left edge
+    result.sort(key=lambda item: (round(item[0][0][1] / 12), item[0][0][0]))
+    return [item[1] for item in result if item[1] and item[1].strip()]
+
+
+def _ocr_pdf(blob, max_pages=3):
+    """Render the first pages of a scanned PDF and read them."""
+    import pypdfium2 as pdfium
+    pdf = pdfium.PdfDocument(blob)
+    lines = []
+    try:
+        for index in range(min(len(pdf), max_pages)):
+            page = pdf[index]
+            bitmap = page.render(scale=2.2)  # ~160 dpi: enough for print, small enough to be quick
+            lines.extend(_ocr_image(bitmap.to_pil()))
+            lines.append('')
+    finally:
+        pdf.close()
+    return lines
+
+
+def _ocr_bytes_as_image(raw):
+    from PIL import Image
+    return _ocr_image(Image.open(io.BytesIO(raw)))
+
+
 def _join_numbers(text):
     """"1 5 0 . 0 4" is one number split by kerning; put it back together."""
     joined = re.sub(r'(?<=\d)\s+(?=\d)', '', text)
@@ -1868,27 +1931,46 @@ def parse_result_document():
     if len(raw) > MAX_UPLOAD_BYTES:
         return jsonify({"ok": False, "reason": "TOO_LARGE", "message": "Scorecards are small files; this one is over 8 MB."}), 400
 
+    method = "TEXT_LAYER"
     if raw[:4] != b'%PDF':
-        is_image = raw[:3] == b'\xff\xd8\xff' or raw[:8] == b'\x89PNG\r\n\x1a\n' or filename.endswith(('.png', '.jpg', '.jpeg', '.webp'))
-        return jsonify({
-            "ok": False,
-            "reason": "IMAGE_NOT_READABLE" if is_image else "NOT_A_PDF",
-            "message": "GovOS reads text out of a PDF scorecard; it has no OCR engine, so it cannot read a photo or screenshot. Download the PDF from the SSC portal, or type your marks in — both end up at the same answer."
-                       if is_image else "That is not a PDF. Upload the scorecard PDF from the SSC portal, or type your marks in."
-        }), 200
+        is_image = raw[:3] == b'\xff\xd8\xff' or raw[:8] == b'\x89PNG\r\n\x1a\n' or raw[:4] == b'RIFF' or filename.endswith(('.png', '.jpg', '.jpeg', '.webp'))
+        if not is_image:
+            return jsonify({"ok": False, "reason": "NOT_A_PDF",
+                            "message": "That is not a PDF or an image. Upload the scorecard PDF from the SSC portal, a photo of it, or type your marks in."}), 200
+        if not _ocr_available():
+            return jsonify({"ok": False, "reason": "OCR_NOT_INSTALLED",
+                            "message": f"This is a photo or screenshot, and the OCR engine is not installed on this GovOS server, so it cannot be read yet. To enable it: {OCR_INSTALL_HINT}. Until then, type your marks in."}), 200
+        try:
+            lines = _ocr_bytes_as_image(raw)
+        except Exception as exc:
+            return jsonify({"ok": False, "reason": "OCR_FAILED", "message": f"The image could not be read ({str(exc)[:120]}). Try a sharper, straighter photo, or type your marks in."}), 200
+        text = '\n'.join(lines)
+        method = "OCR"
+    else:
+        text = _pdf_text(raw)
+        if len(text.strip()) < 40:
+            # No text layer: a scan, or an image inside a PDF wrapper. Read the pixels.
+            if not _ocr_available():
+                return jsonify({"ok": False, "reason": "OCR_NOT_INSTALLED",
+                                "message": f"This PDF holds no text — it is a scan or an image inside a PDF wrapper — and the OCR engine is not installed on this GovOS server. To enable it: {OCR_INSTALL_HINT}. Until then, type your marks in."}), 200
+            try:
+                lines = _ocr_pdf(raw)
+            except Exception as exc:
+                return jsonify({"ok": False, "reason": "OCR_FAILED", "message": f"The scan could not be read ({str(exc)[:120]}). Type your marks in instead."}), 200
+            text = '\n'.join(lines)
+            method = "OCR"
 
-    text = _pdf_text(raw)
-    if len(text.strip()) < 40:
-        return jsonify({
-            "ok": False,
-            "reason": "NO_TEXT_LAYER",
-            "message": "This PDF holds no text — it is a scan or an image inside a PDF wrapper. GovOS has no OCR engine, so type your marks in instead."
-        }), 200
+    if len(text.strip()) < 12:
+        return jsonify({"ok": False, "reason": "NO_TEXT_FOUND",
+                        "message": "Nothing readable was found in that file — the scan may be too blurry or too dark. Try a clearer copy, or type your marks in."}), 200
 
     fields, confidence, notes = _parse_scorecard(text)
+    if method == "OCR":
+        notes.append("Read by OCR from the image, so a digit can be misread — check the marks against your scorecard before using them.")
     excerpt = ' '.join(text.split())[:400]
     return jsonify({
         "ok": True,
+        "method": method,
         "fields": fields,
         "confidence": confidence,
         "notes": notes,

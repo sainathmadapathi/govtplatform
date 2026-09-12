@@ -618,8 +618,16 @@ Remaining by design, not defects:
   in line with the content policy. Text in SSC PDFs is laid out character by character, so
   every match tolerates spaces inside words (`_loose()`) and split digits are rejoined
   (`_join_numbers()`); a number found next to a "marks obtained" label is HIGH confidence, a
-  bare decimal is LOW and is offered as a list to pick from. A photo or a scanned PDF is
-  refused honestly — GovOS has no OCR — with the advice to type the marks instead. The marks
+  bare decimal is LOW and is offered as a list to pick from. **A photo or a scanned PDF is
+  read by OCR**: RapidOCR (ONNX models, `pip install rapidocr-onnxruntime`, no system binary)
+  reads a JPEG/PNG directly, and pypdfium2 rasterises the first three pages of a PDF with no
+  text layer at ~160 dpi first. Small photos are upscaled to 1400 px wide before recognition,
+  and lines are re-ordered top-to-bottom, left-to-right so the same `_parse_scorecard` runs
+  over both paths. The response carries `method: TEXT_LAYER | OCR`; an OCR read adds the note
+  that a digit can be misread and the UI shows "Read from your scan by OCR — CHECK THE
+  DIGITS". The four OCR libraries are optional (listed in `requirements.txt`): without them
+  the route answers `OCR_NOT_INSTALLED` with the install hint and the candidate types the
+  marks, so the app never depends on them to start. The marks
   are then compared against `cutoffsHistory` for that category and the **year is stated**,
   because this cycle's cutoff does not exist yet; a declaration printed on the scorecard
   outranks the comparison — but only while the marks are the ones it was read with. The

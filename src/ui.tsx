@@ -11938,7 +11938,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
   const [categoryInput, setCategoryInput] = useState<string>(saved?.category || (cutoffRows[0]?.category || ''));
   const [entry, setEntry] = useState<{ marks: number; category: string; source: string; declared?: string } | null>(saved);
   const [parsing, setParsing] = useState<boolean>(false);
-  const [parsed, setParsed] = useState<{ ok: boolean; reason?: string; message?: string; confidence?: string; fields?: any; notes?: string[] } | null>(null);
+  const [parsed, setParsed] = useState<{ ok: boolean; reason?: string; message?: string; confidence?: string; method?: 'TEXT_LAYER' | 'OCR'; fields?: any; notes?: string[] } | null>(null);
 
   const applyEntry = (marks: number, category: string) => {
     // The "qualified" line only counts while the marks are the ones it was read with. Type a
@@ -12092,7 +12092,10 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
         )}
         {parsed?.ok && (
           <div style={{ marginTop: '14px', padding: '12px 14px', borderRadius: 'var(--radius-md)', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.3)', fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-            <strong style={{ color: 'white' }}>Read from your file</strong>
+            <strong style={{ color: 'white' }}>{parsed.method === 'OCR' ? 'Read from your scan by OCR' : 'Read from your file'}</strong>
+            {parsed.method === 'OCR' && (
+              <span className="badge badge-pending" style={{ fontSize: '0.62rem', marginLeft: '8px' }}>OCR — CHECK THE DIGITS</span>
+            )}
             {parsed.confidence === 'HIGH' ? ' (found next to a "marks" label)' : parsed.confidence === 'LOW' ? ' (no marks label found — please check)' : ''}:
             <div style={{ marginTop: '6px' }}>
               {parsed.fields?.marks !== undefined && <div>• Marks: <strong style={{ color: '#a5b4fc' }}>{parsed.fields.marks}</strong></div>}

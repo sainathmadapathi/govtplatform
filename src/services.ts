@@ -442,7 +442,7 @@ class StorageService {
    * stored — GovOS keeps no candidate documents.
    */
   async parseResultDocument(file: File): Promise<{
-    ok: boolean; reason?: string; message?: string; confidence?: string;
+    ok: boolean; reason?: string; message?: string; confidence?: string; method?: 'TEXT_LAYER' | 'OCR';
     fields?: { marks?: number; marksCandidates?: number[]; category?: string; rollNumber?: string; declared?: string; marksLabel?: string };
     notes?: string[]; excerpt?: string;
   }> {
