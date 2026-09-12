@@ -264,7 +264,8 @@ export const App: React.FC = () => {
         )}
 
         {activeTab === 'ELIGIBILITY' && (
-          <EligibilityCalculator 
+          <EligibilityCalculator
+            exam={liveExam}
             onSelectExam={handleSelectExam}
             onOpenProvenanceModal={handleOpenProvenance}
           />

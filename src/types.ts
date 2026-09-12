@@ -32,7 +32,7 @@ export interface CorrigendumNotice {
 
 export interface ImportantDate {
   id: string;
-  type: 'NOTIFICATION' | 'APPLICATION_OPEN' | 'APPLICATION_CLOSE' | 'CORRECTION_WINDOW' | 'ADMIT_CARD' | 'EXAM_TIER1' | 'EXAM_TIER2' | 'ANSWER_KEY' | 'RESULT';
+  type: 'NOTIFICATION' | 'APPLICATION_OPEN' | 'APPLICATION_CLOSE' | 'CORRECTION_WINDOW' | 'ADMIT_CARD' | 'EXAM_TIER1' | 'EXAM_TIER2' | 'ANSWER_KEY' | 'RESULT' | 'INTERVIEW';
   label: string;
   dateTimeStr: string;
   timezone: string;
@@ -77,9 +77,21 @@ export interface RuleGroup {
   childGroups?: RuleGroup[];
 }
 
+/**
+ * Every subject a syllabus topic may belong to. The first six are SSC CGL's sections; the
+ * rest are the areas UPSC's notice names for the Preliminary and Main examinations.
+ */
+export type SyllabusSubject =
+  | 'Quantitative Aptitude' | 'Reasoning & General Intelligence' | 'English Comprehension'
+  | 'General Awareness' | 'Computer Proficiency' | 'Statistics'
+  | 'History & Culture' | 'Geography' | 'Polity & Governance' | 'Economy'
+  | 'Environment & Ecology' | 'Science & Technology' | 'Current Affairs'
+  | 'CSAT (Aptitude & Reasoning)' | 'Ethics, Integrity & Aptitude' | 'Essay & Answer Writing'
+  | 'International Relations & Security' | 'Optional Subject' | 'Indian Language & English (Qualifying)';
+
 export interface SyllabusTopic {
   id: string;
-  subject: 'Quantitative Aptitude' | 'Reasoning & General Intelligence' | 'English Comprehension' | 'General Awareness' | 'Computer Proficiency' | 'Statistics';
+  subject: SyllabusSubject;
   tier: 'TIER_1' | 'TIER_2' | 'BOTH';
   topicName: string;
   parentId?: string;
@@ -105,7 +117,8 @@ export interface ExamStage {
   id: string;
   stageNumber: number;
   stageName: string;
-  tier: 'TIER_1' | 'TIER_2';
+  /** TIER_1 / TIER_2 are the written stages; INTERVIEW is a personality test with no paper. */
+  tier: 'TIER_1' | 'TIER_2' | 'INTERVIEW';
   durationMinutes: number;
   totalQuestions: number;
   totalMarks: number;
@@ -205,7 +218,16 @@ export interface ResourceItem {
     | 'Banking & Financial Awareness'
     | 'Foundation Textbooks & Open Courses'
     | 'Computer & Typing'
-    | 'Official Gazette';
+    | 'Official Gazette'
+    | 'History & Culture'
+    | 'Geography & Environment'
+    | 'Polity & Governance'
+    | 'Economy'
+    | 'Science & Technology'
+    | 'Ethics, Essay & Answer Writing'
+    | 'CSAT & Aptitude'
+    | 'Previous Year Papers'
+    | 'Optional Subjects';
   author: string;
   type: 'OFFICIAL_PDF' | 'OFFICIAL_PORTAL' | 'SIMPLIFIED_GUIDE' | 'RECOMMENDED_BOOK' | 'VIDEO_LECTURE' | 'ONLINE_TOOL';
   resourceFormat: 'DIRECT_PDF' | 'YOUTUBE_COURSE' | 'YOUTUBE_CHANNEL' | 'INTERACTIVE_HANDBOOK' | 'ONLINE_TOOL' | 'OFFICIAL_PORTAL';
@@ -352,7 +374,7 @@ export type RequirementProvenanceType =
 export interface StudyModuleRequirement {
   id: string;
   title: string;
-  subject: 'Quantitative Aptitude' | 'Reasoning & General Intelligence' | 'English Comprehension' | 'General Awareness' | 'Computer Proficiency' | 'Statistics';
+  subject: SyllabusSubject;
   stage: 'TIER_1' | 'TIER_2' | 'BOTH';
   requirementType: RequirementProvenanceType;
   officialClause: string;
@@ -538,6 +560,12 @@ export interface Exam {
   admitCardDetails?: AdmitCardDetails;
   examDayChecklist?: ExamDayChecklistItem[];
   resultNextSteps?: ResultNextStepStage[];
+  /** The eligibility cards shown in section 03 — each exam states its own rules, cited. */
+  eligibilityHighlights?: { title: string; body: string; provenance: DataProvenance }[];
+  /** The portals listed in section 12 — the authority's own, plus the ones its notice sends candidates to. */
+  officialLinks?: { title: string; url: string; note: string }[];
+  /** One line naming the document and section the syllabus was read from. */
+  syllabusSourceNote?: string;
 }
 
 export interface UserProfile {

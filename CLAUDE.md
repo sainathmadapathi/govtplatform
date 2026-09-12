@@ -2,8 +2,8 @@
 
 Single-page React app (dark "glassmorphism" UI) that turns fragmented Indian government
 recruitment notifications into a verified, provenance-cited, personalized exam journey.
-SSC CGL 2026 is the fully-built "Golden Journey" reference exam; UPSC CSE and IBPS PO are
-thinner secondary datasets.
+SSC CGL 2026 is the "Golden Journey" reference exam and UPSC CSE 2026 is authored to the
+same depth from UPSC's own documents; IBPS PO and the two APPSC exams are thin skeletons.
 
 ## Project layout
 
@@ -94,11 +94,29 @@ struck-through with a corrigendum badge. **This provenance chain is the product'
 
 ### `src/data.ts`
 - `SSC_CGL_EXAM` (18 posts, 9 dates incl. one superseded, 3 stages, ~21 syllabus topics,
-  3 roadmap tracks, 25 resources, 6 FAQs, admit-card details, full application guide),
-  `UPSC_CSE_EXAM`, `IBPS_PO_EXAM`, `ALL_EXAMS`. **Only SSC CGL has real, authored
-  content**; UPSC and IBPS are skeletons (3/1 posts, one resource each). Do not extend
-  them with SSC-derived material — treat SSC CGL as the sole content exam until told
-  otherwise.
+  3 roadmap tracks, 38 resources, 6 FAQs, admit-card details, full application guide),
+  `UPSC_CSE_EXAM`, `IBPS_PO_EXAM`, `APPSC_*`, `ALL_EXAMS`. **SSC CGL and UPSC CSE are the
+  two authored exams**; IBPS and APPSC are skeletons. Never fill a thin exam with material
+  derived from another exam — author it from that authority's own documents, as UPSC was.
+- **`UPSC_CSE_EXAM` was read from UPSC's own documents on 2026-09-12**, every one fetched
+  from upsc.gov.in and named in a provenance: Examination Notice No. 05/2026-CSE (4 Feb
+  2026, the 159-page PDF: services, eligibility, attempts, fee, scheme, syllabi, centres),
+  the e-Admit Card press note (15 May), the Preliminary result press notes (15 and 18 June:
+  13,343 shortlisted, Mains window 19-28 June, Rs 200 fee, **1,016 vacancies against the
+  approx. 933 in the notice** — recorded as the exam's corrigendum), the Main Examination
+  press note (19 Aug: 21-23 and 29-30 Aug, QPReP 31 Aug-4 Sep), the Calendar for 2027 (the
+  next cycle's dates: 13 Jan / 2 Feb / 23 May / 20 Aug 2027, all `isTentative`), and the
+  minimum-qualifying-marks sheets for 2021, 2022, 2023 and 2025 (2024's sheet was not on
+  UPSC's cut-off page, so it is absent rather than guessed). The 2026 question booklets are
+  scanned; the item counts (GS-I 100, CSAT 80) were read from their back covers with the
+  app's own OCR. 23 services with the notice's Group A/B classification; pay is **not** in
+  the notice, so `upscPayProvenance` is INTERPRETATION / UNDER_VERIFICATION and says so.
+  Topic weightage is GovOS's count of the official papers, marked the same way. 30 resources
+  — the notice, the portal, the 2026 Prelims and Mains papers as official PDFs, the cut-off
+  and calendar sheets, PIB, PRS, Economic Survey, RBI, NITI, MEA, Sansad, India Code, the
+  Constitution, NCERT on DIKSHA, e-Gazette, Sansad TV (official) and six coaching channels
+  whose identity and subscriber count were read from each channel page (`/channel/UC...`
+  URLs from the page's canonical link) — all HTTP 200 through the app's checker that day.
 - **Resource library (SSC CGL only), links only.** `officialSource()` / `pendingSource()` build
   `DataProvenance` for external links. Every `OFFICIAL_PORTAL` entry was HTTP-checked on 2026-09-09 and carries
   `linkVerifiedDate`; `ncert.nic.in` timed out from the authoring machine so it is marked
@@ -218,6 +236,39 @@ session scratchpad (`gen_test.ts`); the last run checked 1090 answers with 0 mis
 Re-run it after touching a generator: copy it to `src/`, `npx esbuild src/__gen_test.ts
 --bundle --platform=node --format=cjs --outfile=<tmp>.cjs`, `node <tmp>.cjs`, then delete it
 (the repo keeps 5 source files).
+
+### Two exams, one page: nothing SSC-shaped is baked into a section
+`ExamDetailView` renders every section from the record. Prose the components used to carry
+for SSC moved into the SSC record, and the UPSC record supplies its own:
+- Section 03 maps `exam.eligibilityHighlights` (title, body, provenance) — four cards for
+  UPSC (age, attempts, degree, fee), three for SSC; with none it lists `globalRuleGroup`.
+- Section 06 names `exam.syllabusSourceNote`; the Post Study Plan view appears only where
+  `examHasStudyPaths(exam)` — SSC's posts differ in papers, UPSC's services are all selected
+  by the same papers, so UPSC gets a sentence saying so rather than the ASO path.
+- Section 10's heading and column labels come from the exam's cut-off years and stages, so
+  UPSC reads "Preliminary ... (General Studies Paper-I, of 200)" and "Main ... (of 1750)".
+- Section 12 maps `exam.officialLinks` (six for UPSC, SSC's three).
+- `ApplicationGuide` names the guide's own portal; the SSC form simulator and the ssc.nic.in
+  notice show only for an `ssc.gov.in` portal (`isSscPortal`), with a sentence for others.
+- `EligibilityCalculator` takes `exam` (main passes `liveExam`); the JSO and physical
+  checks appear only where the exam has such posts.
+- **The practice bank belongs to one exam.** `PRACTICE_BANK_EXAM_ID` in `data.ts` is SSC
+  CGL; `PracticeEngine` offers the shift papers, sectionals and drills only there and shows
+  an honest empty state pointing other exams at their official papers in Resources. The test
+  creator still builds aptitude drills for any exam and names the exam it judges syllabus
+  membership for (`syllabusName` in `planPracticeRequest`).
+- The unions in `types.ts` widened rather than loosened: `SyllabusSubject` (SSC's six plus
+  UPSC's areas), `ExamStage.tier` and `ImportantDate.type` gained `INTERVIEW`, and
+  `ResourceItem.subject` gained the UPSC library's groups.
+
+**UPSC has a live board as SSC does.** upsc.gov.in's RSS is empty, so `app.py` reads the
+What's New page (`_fetch_upsc_whatsnew`: 44 "Kind: Exam" rows with links and **no dates**),
+records the date GovOS first saw each item (`firstSeen`, carried across refreshes), caches it
+six hours as `upsc-whatsnew`, refreshes it in the hourly loop, and serves it at
+`GET /api/resources/live/upsc-notices?scope=cse|all`. The Resource Library shows a "Latest
+from UPSC's What's New — Civil Services" shelf for a UPSC exam, with an honest empty state
+when none of the latest items concern the CSE, and the syllabus watch judges UPSC items by
+first sighting and says so in its `note`.
 
 ### Conversation context — one model, three chats
 Every chat answers from the same context, assembled per message by `buildChatContext(exam,
@@ -535,7 +586,8 @@ Syllabus (`/api/syllabus/*`): `GET watch?exam_id=&since=` · `GET|POST revisions
 
 Live resources (`/api/resources/*`): `POST health/sync {urls}` (register + current health,
 background-checks new URLs) · `POST health/recheck {urls}` (immediate sweep, stored) ·
-`GET live/ssc-notices?scope=cgl|all&limit=N` · `GET live/channel-uploads?ids=UC…,UC…` ·
+`GET live/ssc-notices?scope=cgl|all&limit=N` · `GET live/upsc-notices?scope=cse|all&limit=N` ·
+`GET live/channel-uploads?ids=UC…,UC…` ·
 `GET live/status` · `GET|POST additions` · `POST additions/<id>/retire`. Feeds are cached in
 `live_feed_cache` for 6 h, health in `resource_link_health` for 12 h; `_start_background_refresh()`
 runs the hourly daemon from `__main__`.
@@ -608,8 +660,14 @@ Remaining by design, not defects:
   map sends candidates to the wrong tab, which is worse than no answer.
 - **The past-paper corpus is 35 templates** (see `data.ts` above). Custom tests are not
   limited to it — they generate per topic — but full shift papers still cycle these.
-- **UPSC and IBPS datasets are thin** next to SSC CGL. Views degrade gracefully (the roadmap
-  shows "0 of 0 milestones"), but the data, not the code, is the limit.
+- **IBPS and APPSC datasets are thin** next to SSC CGL and UPSC CSE. Views degrade
+  gracefully (the roadmap shows "0 of 0 milestones", practice shows its empty state), but
+  the data, not the code, is the limit. UPSC's Result & Next Steps and Exam-Day sections
+  still use the component-local, Tier-shaped content (see the Section 15/16 notes) — the
+  `resultNextSteps` / `examDayChecklist` record fields exist but nothing reads them yet.
+- **YouTube's Atom feed refused this machine while UPSC's channels were added** (404/500 on
+  known-good IDs too), so their upload shelves were not seen live; the ids are the channel
+  pages' canonical ids and the library already tolerates a failed refresh.
 - **Section 16 reads the candidate's result instead of asking them to classify themselves.**
   They type their Tier-1 marks and category, or upload the scorecard: `POST /api/results/parse`
   pulls the text out of a generated PDF with `zlib` and regexes — no OCR engine, no new

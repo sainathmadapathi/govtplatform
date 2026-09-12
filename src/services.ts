@@ -2159,6 +2159,31 @@ export const resourceLiveService = {
     return null;
   },
 
+  /** UPSC's What's New list, mapped to the same shape as SSC's board; items are dated by first sighting. */
+  async upscNotices(scope: 'cse' | 'all' = 'cse', limit: number = 8): Promise<SscNoticeFeed | null> {
+    try {
+      const res = await fetch(`/api/resources/live/upsc-notices?scope=${scope}&limit=${limit}`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      return {
+        items: (data.items || []).map((i: { id: string; headline: string; firstSeen: string; url: string; kind: string }) => ({
+          id: i.id, headline: i.headline, createdAt: i.firstSeen, isCgl: false,
+          files: [{ name: i.kind || 'Open', url: i.url, sizeKb: 0 }]
+        })),
+        total: data.total || 0,
+        scope: 'all',
+        fetchedAt: data.fetchedAt || null,
+        stale: !!data.stale,
+        error: data.error || null,
+        source: data.source || 'https://www.upsc.gov.in/whats-new',
+        intervalHours: data.intervalHours || 6
+      };
+    } catch {
+      // server offline
+    }
+    return null;
+  },
+
   async channelUploads(channelIds: string[]): Promise<Record<string, ChannelUploadFeed>> {
     if (channelIds.length === 0) return {};
     try {

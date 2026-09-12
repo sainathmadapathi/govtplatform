@@ -135,6 +135,8 @@ import {
   QUANT_TEMPLATES,
   REASONING_TEMPLATES,
   SSC_CGL_EXAM,
+  PRACTICE_BANK_EXAM_ID,
+  examHasStudyPaths,
   SUBJECT_MOCK_TESTS,
   TOPIC_CATALOG,
   TOPIC_DRILL_TESTS,
@@ -1261,11 +1263,14 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
 interface EligibilityCalculatorProps {
   onSelectExam?: (exam: Exam) => void;
   onOpenProvenanceModal: (provenance: DataProvenance) => void;
+  /** The exam whose posts are checked; the current exam, defaulting to the reference exam. */
+  exam?: Exam;
 }
 
 export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({ 
   onSelectExam, 
-  onOpenProvenanceModal 
+  onOpenProvenanceModal,
+  exam = SSC_CGL_EXAM
 }) => {
   const [profile, setProfile] = useState<UserProfile>({
     dateOfBirth: '2001-05-15',
@@ -1284,7 +1289,11 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
 
   const [postFilter, setPostFilter] = useState<'ALL' | 'ELIGIBLE' | 'INELIGIBLE' | 'PHYSICAL'>('ALL');
 
-  const selectedExam = SSC_CGL_EXAM;
+  const selectedExam = exam;
+  const examShort = selectedExam.code.replace(/_/g, ' ');
+  // SSC-specific checks only where the exam has posts that need them.
+  const hasStatisticsPosts = selectedExam.posts.some(p => /statistic|JSO/i.test(p.postName) || !!p.specialQualification);
+  const hasPhysicalPosts = selectedExam.posts.some(p => p.physicalRequired);
   const diagnostic: EligibilityDiagnostic = evaluateEligibility(selectedExam, profile);
   const detailedAge = calculateDetailedAge(profile.dateOfBirth, selectedExam.crucialEligibilityDate || '2026-08-01');
   const relaxation = getCategoryAgeRelaxation(profile.category);
@@ -1319,7 +1328,7 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
                 </span>
               </div>
               <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: 'white', margin: 0 }}>
-                SSC CGL Deterministic Eligibility & Post Allocation Engine
+                {examShort} Deterministic Eligibility & Post Allocation Engine
               </h2>
             </div>
           </div>
@@ -1396,7 +1405,7 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
             <div style={{ padding: '14px', borderRadius: 'var(--radius-md)', background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <span style={{ fontSize: '0.75rem', color: '#93c5fd', textTransform: 'uppercase', fontWeight: 700 }}>
-                  Calculated Age on 01-08-2026 (Crucial Date)
+                  Calculated Age on {selectedExam.crucialEligibilityDate} (Crucial Date)
                 </span>
                 <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'white', marginTop: '2px' }}>
                   {detailedAge.years} Years, {detailedAge.months} Months, {detailedAge.days} Days
@@ -1459,7 +1468,8 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
               </div>
             </div>
 
-            {/* Special Academic Criteria (JSO & Statistical Investigator) */}
+            {/* Special Academic Criteria (JSO & Statistical Investigator) — only where the exam has such posts */}
+            {hasStatisticsPosts && (
             <div style={{ padding: '16px', borderRadius: 'var(--radius-md)', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#93c5fd', textTransform: 'uppercase' }}>
                 Specialized Academic Criteria Checks
@@ -1485,11 +1495,13 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
                 <span>Studied <strong>Statistics</strong> in all 3 years / semesters of Degree (Statistical Investigator Gr II)</span>
               </label>
             </div>
+            )}
 
-            {/* Physical Standards & Medical Check */}
+            {/* Physical Standards & Medical Check — only where the exam has posts that require them */}
+            {hasPhysicalPosts && (
             <div style={{ padding: '16px', borderRadius: 'var(--radius-md)', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#93c5fd', textTransform: 'uppercase' }}>
-                Uniformed Posts Physical & Vision Criteria (CBIC / CBI / NIA)
+                Uniformed Posts Physical & Vision Criteria
               </span>
 
               <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.88rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
@@ -1512,6 +1524,7 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
                 <span>I have <strong>Color Blindness</strong> (Restricts Excise / Customs / Narcotics Inspector)</span>
               </label>
             </div>
+            )}
 
           </div>
         </div>
@@ -1533,9 +1546,9 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
               )}
               <div>
                 <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', margin: 0 }}>
-                  {diagnostic.status === 'ELIGIBLE' && 'Fully Eligible for SSC CGL'}
+                  {diagnostic.status === 'ELIGIBLE' && `Fully Eligible for ${examShort}`}
                   {diagnostic.status === 'CONDITIONAL' && 'Partially Eligible (Post-Specific Constraints)'}
-                  {diagnostic.status === 'INELIGIBLE' && 'Ineligible for SSC CGL 2026'}
+                  {diagnostic.status === 'INELIGIBLE' && `Ineligible for ${examShort}`}
                 </h3>
                 <span className="badge badge-verified" style={{ fontSize: '0.75rem', marginTop: '3px' }}>
                   {diagnostic.categoryRelaxationApplied}
@@ -4164,7 +4177,7 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
                     Subject {revisionForm.kind === 'AMEND' && <span style={{ color: 'var(--text-muted)' }}>(blank = unchanged)</span>}
                     <select value={revisionForm.subject} onChange={e => setRev({ subject: e.target.value })} style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white' }}>
                       <option value="">—</option>
-                      {['Quantitative Aptitude', 'Reasoning & General Intelligence', 'English Comprehension', 'General Awareness', 'Computer Proficiency', 'Statistics'].map(sub => <option key={sub} value={sub}>{sub}</option>)}
+                      {Array.from(new Set(syllabusExam.syllabus.map(t => t.subject))).map(sub => <option key={sub} value={sub}>{sub}</option>)}
                     </select>
                   </label>
                   <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
@@ -7255,6 +7268,8 @@ const stepDifficulty = (current: string | undefined, up: boolean): CustomTestCon
 };
 
 export function planPracticeRequest(query: string, pastAttempts: MockAttemptRecord[], ctx?: ChatContext): PracticePlan {
+  // Reads as "the SSC CGL 2026 syllabus" with an exam in context and "the syllabus of this exam" without.
+  const syllabusName = ctx?.exam ? `${ctx.exam.title} syllabus` : 'syllabus of this exam';
   // A follow-up like "make it harder" or "10 more" names no topic: rebuild the previous
   // request with the change applied, rather than reading it as a fresh, topicless ask.
   let effectiveQuery = query;
@@ -7320,7 +7335,7 @@ export function planPracticeRequest(query: string, pastAttempts: MockAttemptReco
       .map(t => t.label);
     return {
       kind: 'OFF_SYLLABUS',
-      text: `${offSyllabus.map(t => t.label).join(' and ')} ${offSyllabus.length === 1 ? 'is' : 'are'} NOT part of the SSC CGL syllabus, so GovOS has no questions on it and I have not built a test — time spent there would not move your score.\n\nThe nearest topics that are in the syllabus:\n${nearest.map(n => `• ${req.numQuestions} questions on ${n.toLowerCase()}`).join('\n')}\n\nThe full syllabus is in the Exam Guide, section 06.`
+      text: `${offSyllabus.map(t => t.label).join(' and ')} ${offSyllabus.length === 1 ? 'is' : 'are'} NOT part of the ${syllabusName}, so GovOS has no questions on it and I have not built a test — time spent there would not move your score.\n\nThe nearest topics that are in the syllabus:\n${nearest.map(n => `• ${req.numQuestions} questions on ${n.toLowerCase()}`).join('\n')}\n\nThe full syllabus is in the Exam Guide, section 06.`
     };
   }
 
@@ -7333,7 +7348,7 @@ export function planPracticeRequest(query: string, pastAttempts: MockAttemptReco
       .map(t => t.label);
     return {
       kind: 'NO_MATCH',
-      text: `${unsupplied.map(t => t.label).join(' and ')} ${unsupplied.length === 1 ? 'is' : 'are'} in the SSC CGL syllabus, but GovOS has no questions on it yet — I have not built a test, rather than hand you questions on something else and call it ${unsupplied[0].label}.\n\n${available.length > 0 ? `In ${subjectsHit.join(' and ')} I can build right now:\n${available.map(a => `• ${req.numQuestions} questions on ${a.toLowerCase()}`).join('\n')}` : 'Name another topic and I will build it.'}\n\nFor ${unsupplied[0].label} itself, the Resources tab has the official sources to read from.`
+      text: `${unsupplied.map(t => t.label).join(' and ')} ${unsupplied.length === 1 ? 'is' : 'are'} in the ${syllabusName}, but GovOS has no questions on it yet — I have not built a test, rather than hand you questions on something else and call it ${unsupplied[0].label}.\n\n${available.length > 0 ? `In ${subjectsHit.join(' and ')} I can build right now:\n${available.map(a => `• ${req.numQuestions} questions on ${a.toLowerCase()}`).join('\n')}` : 'Name another topic and I will build it.'}\n\nFor ${unsupplied[0].label} itself, the Resources tab has the official sources to read from.`
     };
   }
 
@@ -7342,7 +7357,7 @@ export function planPracticeRequest(query: string, pastAttempts: MockAttemptReco
     const examples = TOPIC_CATALOG.filter(t => t.generate && t.inSyllabus).slice(0, 6).map(t => t.label);
     return {
       kind: 'NO_MATCH',
-      text: `I could not match "${req.unrecognised[0]}" to any topic in the SSC CGL syllabus or the question bank — it may be spelled differently from how I know it, or it may be outside the syllabus. I have not built a test, because a random mix would not help you.\n\nName a topic and I will generate it, for example:\n${examples.map(e => `• ${req.numQuestions} questions on ${e.toLowerCase()}`).join('\n')}\n\nOr name a section: Quantitative Aptitude, Reasoning, English, General Awareness.`
+      text: `I could not match "${req.unrecognised[0]}" to any topic in the ${syllabusName} or the question bank — it may be spelled differently from how I know it, or it may be outside the syllabus. I have not built a test, because a random mix would not help you.\n\nName a topic and I will generate it, for example:\n${examples.map(e => `• ${req.numQuestions} questions on ${e.toLowerCase()}`).join('\n')}\n\nOr name a section: Quantitative Aptitude, Reasoning, English, General Awareness.`
     };
   }
 
@@ -7440,7 +7455,12 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
   const [activePracticeTab, setActivePracticeTab] = useState<'PAPERS_LIST' | 'SUBJECT_TESTS' | 'TOPIC_DRILLS' | 'AI_CHAT_ASSISTANT' | 'ACTIVE_TEST' | 'PAST_ANALYTICS'>(scope === 'MOCKS' ? 'AI_CHAT_ASSISTANT' : 'PAPERS_LIST');
   
   // Available Papers List (Starts with 10 official papers, can auto-sync newly discovered ones)
-  const [availablePapers, setAvailablePapers] = useState<MockPaper[]>(OFFICIAL_10_MOCK_PAPERS);
+  // GovOS's authored shift papers, sectionals and drills are written to one exam's pattern.
+  // Another exam gets an honest empty shelf and a pointer to its official papers, not SSC's.
+  const bankIsForThisExam = exam.id === PRACTICE_BANK_EXAM_ID;
+  const sectionalTests = bankIsForThisExam ? SUBJECT_MOCK_TESTS : [];
+  const drillTests = bankIsForThisExam ? TOPIC_DRILL_TESTS : [];
+  const [availablePapers, setAvailablePapers] = useState<MockPaper[]>(bankIsForThisExam ? OFFICIAL_10_MOCK_PAPERS : []);
   const [isSyncingPapers, setIsSyncingPapers] = useState<boolean>(false);
   const [syncSuccessNotice, setSyncSuccessNotice] = useState<string | null>(null);
 
@@ -7526,7 +7546,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
     setTimeout(() => {
       // Check if discovered papers are already included
       const existingIds = new Set(availablePapers.map(p => p.id));
-      const newlyAdded = NEW_DISCOVERED_PAPERS.filter(p => !existingIds.has(p.id));
+      const newlyAdded = bankIsForThisExam ? NEW_DISCOVERED_PAPERS.filter(p => !existingIds.has(p.id)) : [];
 
       if (newlyAdded.length > 0) {
         setAvailablePapers(prev => [...newlyAdded, ...prev]);
@@ -8222,6 +8242,11 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
             </span>
           </div>
 
+          {!bankIsForThisExam && (
+            <div style={{ padding: '18px 20px', borderRadius: 'var(--radius-md)', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.35)', fontSize: '0.88rem', color: '#fef3c7', lineHeight: 1.6 }}>
+              GovOS has not authored practice papers for {exam.title}: its shift papers, sectionals and drills are written to SSC CGL's pattern and would mislead here. This exam's real previous-year papers are official PDFs in the Resources section — use those. The test creator below still builds aptitude drills (percentage, ratio, reasoning) that suit an aptitude paper.
+            </div>
+          )}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '16px' }}>
             {availablePapers.map((paper, pIdx) => (
               <div 
@@ -8425,7 +8450,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
-            {SUBJECT_MOCK_TESTS.map((paper, pIdx) => (
+            {sectionalTests.map((paper, pIdx) => (
               <div 
                 key={paper.id}
                 className="glass-card"
@@ -8472,7 +8497,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
-            {TOPIC_DRILL_TESTS.map((paper, pIdx) => (
+            {drillTests.map((paper, pIdx) => (
               <div 
                 key={paper.id}
                 className="glass-card"
@@ -10783,6 +10808,8 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
   guide,
   onOpenProvenanceModal
 }) => {
+  // The form simulator and the ssc.nic.in notice describe SSC's portal only.
+  const isSscPortal = /ssc\.gov\.in/.test(guide.officialPortal);
   const [applicationMode, setApplicationMode] = useState<'PRACTICE_SIMULATOR' | 'INSTRUCTIONS'>('PRACTICE_SIMULATOR');
   const [activeTab, setActiveTab] = useState<'OTR_STEPS' | 'PHOTO_SIGNATURE' | 'CERTIFICATES' | 'PITFALLS'>('OTR_STEPS');
   const [expandedStep, setExpandedStep] = useState<number>(1);
@@ -10853,10 +10880,10 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
               <span className="badge badge-verified">
-                <ShieldCheck size={14} /> 100% OFFICIAL SSC APPLICATION PROTOCOL
+                <ShieldCheck size={14} /> 100% OFFICIAL APPLICATION PROTOCOL
               </span>
               <span className="badge badge-demo" style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa' }}>
-                ssc.gov.in (New Portal)
+                {guide.officialPortal.replace(/^https?:\/\//, '').replace(/\/$/, '')}
               </span>
             </div>
             <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'white', marginBottom: '6px' }}>
@@ -10874,7 +10901,7 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
             className="btn btn-primary"
             style={{ padding: '12px 20px', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '8px' }}
           >
-            Open Official SSC Portal <ExternalLink size={16} />
+            Open Official Portal <ExternalLink size={16} />
           </a>
         </div>
       </div>
@@ -10898,8 +10925,13 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
       </div>
 
       {/* VIEW 1: INTERACTIVE PRACTICE APPLICATION SIMULATOR */}
-      {applicationMode === 'PRACTICE_SIMULATOR' && (
+      {applicationMode === 'PRACTICE_SIMULATOR' && isSscPortal && (
         <PracticeApplicationSimulator onOpenProvenanceModal={onOpenProvenanceModal} />
+      )}
+      {applicationMode === 'PRACTICE_SIMULATOR' && !isSscPortal && (
+        <div className="glass-card" style={{ padding: '22px', fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+          The practice form simulator is built on SSC's application form field by field, so it is not offered for this exam — practising the wrong form would teach the wrong mistakes. Follow the step-by-step instructions here, which are read from this exam's own notice, and apply on {guide.officialPortal.replace(/^https?:\/\//, '')}.
+        </div>
       )}
 
       {/* VIEW 2: STEP-BY-STEP INSTRUCTIONS & SPECIFICATIONS */}
@@ -10943,12 +10975,14 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
       {/* Tab Content 1: OTR Steps */}
       {activeTab === 'OTR_STEPS' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {isSscPortal && (
           <div style={{ padding: '14px 18px', background: 'rgba(59, 130, 246, 0.08)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(59, 130, 246, 0.3)', display: 'flex', alignItems: 'center', gap: '12px' }}>
             <Info size={22} color="#60a5fa" />
             <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
               <strong style={{ color: 'white' }}>Important Notice:</strong> SSC has permanently discontinued the old portal (<code style={{ color: '#93c5fd' }}>ssc.nic.in</code>). All aspirants must create a fresh <strong>One-Time Registration (OTR)</strong> on <code style={{ color: '#93c5fd' }}>ssc.gov.in</code>.
             </div>
           </div>
+          )}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {guide.otrSteps.map((step) => {
@@ -12709,6 +12743,14 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
 
   const channelIds = Array.from(new Set(resources.map(r => channelIdOf(r.url)).filter((c): c is string => !!c)));
   const isSscExam = exam.id.includes('ssc');
+  const isUpscExam = exam.id.includes('upsc');
+  const [upscFeed, setUpscFeed] = useState<SscNoticeFeed | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!isUpscExam) { setUpscFeed(null); return; }
+    resourceLiveService.upscNotices('cse', 8).then(feed => { if (!cancelled) setUpscFeed(feed); });
+    return () => { cancelled = true; };
+  }, [isUpscExam, exam.id]);
 
   const applyHealth = (health: { results: ResourceLinkCheck[]; lastRun: string | null; pending: number; intervalHours: number }) => {
     const map: Record<string, ResourceLinkCheck> = {};
@@ -13084,6 +13126,39 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
           </div>
         )}
       </div>
+
+      {/* Live: UPSC's What's New, for a UPSC exam. The list carries no dates, so the badge says
+          when GovOS first saw each item rather than pretending to a publication date. */}
+      {isUpscExam && !isFiltered && upscFeed && (
+        <div className="glass-card" style={{ padding: '20px', background: 'linear-gradient(135deg, rgba(99,102,241,0.10) 0%, rgba(15,23,42,0.98) 60%)', border: '1px solid rgba(99,102,241,0.35)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <Bell size={18} color="#a5b4fc" />
+              <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'white', margin: 0 }}>Latest from UPSC's What's New — Civil Services</h4>
+              <span className="badge badge-verified" style={{ fontSize: '0.62rem' }}>LIVE · OFFICIAL</span>
+            </div>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              Read {formatFetched(upscFeed.fetchedAt)}{upscFeed.stale ? ' · last good copy' : ''} · <a href={upscFeed.source} target="_blank" rel="noreferrer" style={{ color: '#a5b4fc' }}>upsc.gov.in/whats-new</a>
+            </span>
+          </div>
+          {upscFeed.error && upscFeed.items.length === 0 && (
+            <div style={{ fontSize: '0.82rem', color: '#fcd34d' }}>UPSC's page could not be read just now ({upscFeed.error}). Open it directly.</div>
+          )}
+          {!upscFeed.error && upscFeed.items.length === 0 && (
+            <div style={{ fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
+              Nothing about the Civil Services Examination among the {upscFeed.total} latest items on UPSC's What's New page right now. The page is re-read every {upscFeed.intervalHours} h; anything new appears here, dated by when GovOS first saw it.
+            </div>
+          )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {upscFeed.items.map(n => (
+              <a key={n.id} href={n.files[0]?.url || upscFeed.source} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '10px 12px', borderRadius: 'var(--radius-sm)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', textDecoration: 'none' }}>
+                <span style={{ fontSize: '0.86rem', color: '#e2e8f0' }}>{n.headline}</span>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>first seen {n.createdAt} <ExternalLink size={11} /></span>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Live: SSC's own notice board */}
       {isSscExam && !isFiltered && sscFeed && (sscFeed.items.length > 0 || sscFeed.total > 0 || sscFeed.error) && (
@@ -13755,7 +13830,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                   03 — Configured Eligibility Rules (Crucial Date: {exam.crucialEligibilityDate})
                 </h3>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: '4px 0 0 0' }}>
-                  Deterministic verification rules configured directly from official SSC CGL gazette notification.
+                  Deterministic verification rules configured directly from the official {exam.authorityName} notification.
                 </p>
               </div>
 
@@ -13767,31 +13842,30 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
-              <div style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
-                <h4 style={{ fontSize: '1rem', fontWeight: 700, color: '#93c5fd', marginBottom: '8px' }}>1. Crucial Cutoff Date</h4>
-                <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', margin: 0 }}>
-                  Candidate age is calculated strictly as of <strong>01-08-2026</strong>. Final year degree holders must possess their qualifying degree on or before this date.
-                </p>
-              </div>
-
-              <div style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
-                <h4 style={{ fontSize: '1rem', fontWeight: 700, color: '#34d399', marginBottom: '8px' }}>2. Category Age Relaxations</h4>
-                <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', margin: 0 }}>
-                  • <strong>OBC:</strong> +3 Years<br />
-                  • <strong>SC / ST:</strong> +5 Years<br />
-                  • <strong>PwBD (Unreserved):</strong> +10 Years<br />
-                  • <strong>PwBD (OBC):</strong> +13 Years<br />
-                  • <strong>PwBD (SC/ST):</strong> +15 Years
-                </p>
-              </div>
-
-              <div style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
-                <h4 style={{ fontSize: '1rem', fontWeight: 700, color: '#fbbf24', marginBottom: '8px' }}>3. Specialized Degree Posts</h4>
-                <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', margin: 0 }}>
-                  • <strong>JSO:</strong> 60% in 12th Maths OR Degree with Statistics.<br />
-                  • <strong>Stat Investigator Gr II:</strong> Statistics in all 3 years of Degree.
-                </p>
-              </div>
+              {/* Each exam states its own rules; the cards are data, cited, not component prose. */}
+              {(exam.eligibilityHighlights || []).map((card, idx) => {
+                const palette = [
+                  { bg: 'rgba(59, 130, 246, 0.08)', border: 'rgba(59, 130, 246, 0.3)', color: '#93c5fd' },
+                  { bg: 'rgba(16, 185, 129, 0.08)', border: 'rgba(16, 185, 129, 0.3)', color: '#34d399' },
+                  { bg: 'rgba(245, 158, 11, 0.08)', border: 'rgba(245, 158, 11, 0.3)', color: '#fbbf24' },
+                  { bg: 'rgba(168, 85, 247, 0.08)', border: 'rgba(168, 85, 247, 0.3)', color: '#c4b5fd' }
+                ][idx % 4];
+                return (
+                  <div key={card.title} style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: palette.bg, border: `1px solid ${palette.border}`, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <h4 style={{ fontSize: '1rem', fontWeight: 700, color: palette.color, margin: 0 }}>{card.title}</h4>
+                    <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.55 }}>{card.body}</p>
+                    <button onClick={() => onOpenProvenanceModal(card.provenance)} className="btn btn-outline" style={{ alignSelf: 'flex-start', fontSize: '0.7rem', padding: '2px 8px' }}>
+                      <ShieldCheck size={11} /> Sourced Clause
+                    </button>
+                  </div>
+                );
+              })}
+              {(exam.eligibilityHighlights || []).length === 0 && exam.globalRuleGroup.rules.map(rule => (
+                <div key={rule.id} style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)' }}>
+                  <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'white', marginBottom: '6px' }}>{rule.ruleType.replace(/_/g, ' ')}</h4>
+                  <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', margin: 0 }}>{rule.operator} {Array.isArray(rule.ruleValue) ? rule.ruleValue.join(', ') : String(rule.ruleValue)}</p>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -13885,7 +13959,12 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
             </div>
 
             {/* View 1: Dynamic Post Study Path Engine */}
-            {syllabusViewMode === 'POST_STUDY_PATH' && (
+            {syllabusViewMode === 'POST_STUDY_PATH' && !examHasStudyPaths(exam) && (
+              <div style={{ padding: '16px 18px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+                GovOS has not authored post-wise study paths for {exam.title} yet: every service allotted through it is selected by the same papers, so the Official Syllabus view is the plan. Post-wise paths exist for SSC CGL, where posts differ in papers and thresholds.
+              </div>
+            )}
+            {syllabusViewMode === 'POST_STUDY_PATH' && examHasStudyPaths(exam) && (
               <PostStudyPathEngine 
                 onOpenProvenanceModal={onOpenProvenanceModal}
                 onNavigatePractice={onNavigatePractice}
@@ -13897,7 +13976,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
               <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
                 <div style={{ padding: '14px 18px', borderRadius: 'var(--radius-md)', background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.25)', fontSize: '0.86rem', color: '#93c5fd', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <div>
-                    ℹ️ <strong>Official Legal Blueprint:</strong> This is the unadjusted statutory syllabus extracted directly from the SSC Gazette Notification Section 13.
+                    ℹ️ <strong>Official Legal Blueprint:</strong> This is the unadjusted statutory syllabus extracted directly from {exam.syllabusSourceNote || `the official ${exam.authorityName} notification`}.
                   </div>
                   <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                     Verified {syllabusVerifiedOn || 'on the date in each topic\'s source'} from {exam.syllabus[0]?.officialProvenance?.documentTitle || 'the official notice'}.
@@ -13919,7 +13998,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                   </div>
                 ) : syllabusWatch.items.length === 0 ? (
                   <div style={{ fontSize: '0.8rem', color: '#6ee7b7', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                    <CheckCircle2 size={13} /> Watching SSC's notice board: nothing published about this exam since {syllabusVerifiedOn || 'verification'}.
+                    <CheckCircle2 size={13} /> Watching {syllabusWatch.source.replace(/^https?:\/\/(www\.)?/, '')}: nothing published about this exam since {syllabusVerifiedOn || 'verification'}.
                     <span style={{ color: 'var(--text-muted)' }}>Checked {formatFetched(syllabusWatch.fetchedAt)}{syllabusWatch.stale ? ' · last good copy, refresh failed' : ''}.</span>
                   </div>
                 ) : (
@@ -13927,7 +14006,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                       <AlertTriangle size={18} color="var(--amber)" />
                       <strong style={{ color: '#fbbf24', fontSize: '0.92rem' }}>
-                        SSC has published {syllabusWatch.items.length} notice{syllabusWatch.items.length === 1 ? '' : 's'} about this exam since the syllabus was verified on {syllabusVerifiedOn}
+                        {exam.authorityName.split(' (')[0]} has published {syllabusWatch.items.length} notice{syllabusWatch.items.length === 1 ? '' : 's'} about this exam since the syllabus was verified on {syllabusVerifiedOn}
                       </strong>
                       <span className="badge badge-verified" style={{ fontSize: '0.62rem' }}>LIVE · OFFICIAL</span>
                     </div>
@@ -14046,7 +14125,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
         {activeSection === 10 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'white', margin: 0 }}>
-              10 — Official Category Cutoff History (2021 to 2024)
+              10 — Official Category Cutoff History{exam.cutoffsHistory.length > 0 ? ` (${Math.min(...exam.cutoffsHistory.map(c => c.year))} to ${Math.max(...exam.cutoffsHistory.map(c => c.year))})` : ''}
             </h3>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
@@ -14054,8 +14133,8 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                   <tr style={{ borderBottom: '1px solid var(--border-color)', textAlign: 'left', color: 'var(--text-secondary)' }}>
                     <th style={{ padding: '12px' }}>Year</th>
                     <th style={{ padding: '12px' }}>Category</th>
-                    <th style={{ padding: '12px' }}>Tier-1 Cutoff (Out of 200)</th>
-                    <th style={{ padding: '12px' }}>Tier-2 Final Cutoff (Out of 390)</th>
+                    <th style={{ padding: '12px' }}>{exam.stages[0] ? `${exam.stages[0].stageName.split(' — ')[0].split(':')[0]} cut-off` : 'Stage 1 cut-off'}{exam.stages[0]?.sections?.[0] && exam.stages[0].sections.length > 1 && exam.stages[0].tier === 'TIER_1' && exam.id !== PRACTICE_BANK_EXAM_ID ? ` (${exam.stages[0].sections[0].sectionName}, of ${exam.stages[0].sections[0].marks})` : exam.stages[0] ? ` (of ${exam.stages[0].totalMarks})` : ''}</th>
+                    <th style={{ padding: '12px' }}>{exam.stages[1] ? `${exam.stages[1].stageName.split(' — ')[0].split(':')[0]} cut-off (of ${exam.stages[1].totalMarks})` : 'Stage 2 cut-off'}</th>
                     <th style={{ padding: '12px' }}>Source Provenance</th>
                   </tr>
                 </thead>
@@ -14127,29 +14206,18 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
               12 — Authoritative Government Portals & Directory
             </h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
-              <a href="https://ssc.gov.in" target="_blank" rel="noreferrer" className="glass-card" style={{ padding: '18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div>
-                  <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'white' }}>Staff Selection Commission</h4>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>ssc.gov.in (Official Application & Result Portal)</div>
-                </div>
-                <ExternalLink size={18} color="var(--primary)" />
-              </a>
-
-              <a href="https://ncbc.nic.in" target="_blank" rel="noreferrer" className="glass-card" style={{ padding: '18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div>
-                  <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'white' }}>NCBC Central OBC List</h4>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>ncbc.nic.in (Central OBC Caste Verification)</div>
-                </div>
-                <ExternalLink size={18} color="var(--primary)" />
-              </a>
-
-              <a href="https://www.digilocker.gov.in" target="_blank" rel="noreferrer" className="glass-card" style={{ padding: '18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div>
-                  <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'white' }}>DigiLocker Government Portal</h4>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>digilocker.gov.in (Verified Marksheets & ID)</div>
-                </div>
-                <ExternalLink size={18} color="var(--primary)" />
-              </a>
+              {(exam.officialLinks && exam.officialLinks.length > 0
+                ? exam.officialLinks
+                : [{ title: exam.authorityName, url: exam.officialDomain, note: exam.officialDomain.replace(/^https?:\/\//, '') }]
+              ).map(link => (
+                <a key={link.url} href={link.url} target="_blank" rel="noreferrer" className="glass-card" style={{ padding: '18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>
+                    <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'white' }}>{link.title}</h4>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{link.note}</div>
+                  </div>
+                  <ExternalLink size={18} color="var(--primary)" />
+                </a>
+              ))}
             </div>
           </div>
         )}

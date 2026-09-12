@@ -1418,6 +1418,64 @@ def _ssc_notices_cached(force=False):
         return {"payload": [], "fetchedAt": None, "error": str(e), "stale": True}
 
 
+UPSC_WHATS_NEW_URL = 'https://www.upsc.gov.in/whats-new'
+
+
+def _fetch_upsc_whatsnew(previous):
+    """UPSC's What's New list, newest first. The page carries no dates, so each item keeps the
+    date GovOS first saw it (carried over from the previous cached copy)."""
+    import hashlib
+    from html import unescape
+    req = urllib.request.Request(UPSC_WHATS_NEW_URL, headers=_LIVE_UA)
+    with urllib.request.urlopen(req, timeout=25) as resp:
+        page = resp.read().decode('utf-8', 'ignore')
+    first_seen = {item["id"]: item.get("firstSeen") for item in (previous or []) if item.get("firstSeen")}
+    today = _now_iso()[:10]
+    items = []
+    for block in re.split(r'class="views-row', page)[1:]:
+        block = block[:4000]
+        href = re.search(r'href="([^"]+)"', block)
+        block = re.sub(r'<[^>]*$', '', block)   # a tag cut open by the block limit
+        text = re.sub(r'<[^>]+>', ' ', block)
+        text = ' '.join(unescape(text).split())
+        text = re.sub(r'^[\w\s-]*views-row[\w\s-]*"?>?\s*', '', text).strip()
+        if not href or not text:
+            continue
+        url = href.group(1)
+        if url.startswith('/'):
+            url = 'https://www.upsc.gov.in' + url
+        elif not url.startswith('http'):
+            url = 'https://www.upsc.gov.in/' + url.lstrip('/')
+        url = url.replace(' ', '%20')
+        kind, _, exam = text.partition(':')
+        item_id = hashlib.sha1(url.encode('utf-8')).hexdigest()[:16]
+        items.append({
+            "id": item_id,
+            "headline": text[:300],
+            "kind": kind.strip()[:80] if exam else '',
+            "examName": exam.strip()[:200] if exam else text[:200],
+            "url": url,
+            "isCse": bool(re.search(r'civil services', text, re.I)),
+            "firstSeen": first_seen.get(item_id, today)
+        })
+    return items
+
+
+def _upsc_whatsnew_cached(force=False):
+    cached = _cache_get('upsc-whatsnew', FEED_MAX_AGE_SECONDS)
+    if cached and not cached["stale"] and not force:
+        return cached
+    try:
+        items = _fetch_upsc_whatsnew(cached["payload"] if cached else [])
+        _cache_put('upsc-whatsnew', items)
+        return {"payload": items, "fetchedAt": _now_iso(), "error": None, "stale": False}
+    except Exception as e:
+        if cached:
+            cached["error"] = f'refresh failed: {e}'
+            return cached
+        return {"payload": [], "fetchedAt": None, "error": str(e), "stale": True}
+
+
 def _channel_uploads_cached(channel_ids, force=False):
     result = {}
     to_fetch = []
@@ -1496,6 +1554,7 @@ def _background_refresh_loop():
             if due:
                 _recheck_links(due[:80])
             _ssc_notices_cached()
+            _upsc_whatsnew_cached()
             conn = get_db_connection()
             keys = [r["cache_key"][3:] for r in conn.execute("SELECT cache_key FROM live_feed_cache WHERE cache_key LIKE 'yt-%'").fetchall()]
             conn.close()
@@ -1518,6 +1577,7 @@ def live_resources_status():
     checked = [r["checkedAt"] for r in rows if r["checkedAt"]]
     return jsonify({
         "sscFetchedAt": ssc["fetchedAt"] if ssc else None,
+        "upscFetchedAt": (_cache_get('upsc-whatsnew', FEED_MAX_AGE_SECONDS) or {}).get("fetchedAt"),
         "healthLastRun": max(checked) if checked else None,
         "healthTracked": len(rows),
         "healthPending": len([r for r in rows if not r["checkedAt"]]),
@@ -1573,6 +1633,20 @@ def live_ssc_notices():
     return jsonify({"items": items[:limit], "total": len(cached["payload"]), "scope": scope,
                     "fetchedAt": cached["fetchedAt"], "stale": cached["stale"], "error": cached["error"],
                     "source": "https://ssc.gov.in/notice-board", "intervalHours": FEED_MAX_AGE_SECONDS // 3600})
+
+
+@app.route('/api/resources/live/upsc-notices', methods=['GET'])
+def live_upsc_notices():
+    scope = (request.args.get('scope') or 'cse').lower()
+    limit = max(1, min(40, int(request.args.get('limit') or 8)))
+    cached = _upsc_whatsnew_cached(force=request.args.get('refresh') == '1')
+    items = cached["payload"]
+    if scope == 'cse':
+        items = [i for i in items if i["isCse"]]
+    return jsonify({"items": items[:limit], "total": len(cached["payload"]), "scope": scope,
+                    "fetchedAt": cached["fetchedAt"], "stale": cached["stale"], "error": cached["error"],
+                    "source": UPSC_WHATS_NEW_URL, "intervalHours": FEED_MAX_AGE_SECONDS // 3600,
+                    "note": "UPSC's list carries no dates; firstSeen is when GovOS first saw the item."})
 
 
 @app.route('/api/resources/live/channel-uploads', methods=['GET'])
@@ -1653,21 +1727,39 @@ SYLLABUS_CHANGE_WORDS = re.compile(r'corrigend|addend|revis|amend|modif|syllab|s
 
 
 def _syllabus_watch_items(exam_id, since):
-    """Notices on the cached SSC board that may change this exam's syllabus, newest first."""
-    if not exam_id.startswith('exam-ssc'):
-        return None
-    cached = _ssc_notices_cached(force=False)
-    hits = []
-    for item in cached["payload"]:
-        if not item["isCgl"]:
-            continue
-        if since and item["createdAt"] <= since:
-            continue
-        if not SYLLABUS_CHANGE_WORDS.search(item["headline"]):
-            continue
-        hits.append(item)
-    return {"items": hits, "fetchedAt": cached["fetchedAt"], "stale": cached["stale"], "error": cached["error"],
-            "source": "https://ssc.gov.in/notice-board"}
+    """Notices on the cached official board that may change this exam's syllabus, newest first.
+    SSC's board carries a publication date; UPSC's carries none, so its items are judged by the
+    date GovOS first saw them, and the response says so."""
+    if exam_id.startswith('exam-ssc'):
+        cached = _ssc_notices_cached(force=False)
+        hits = []
+        for item in cached["payload"]:
+            if not item["isCgl"]:
+                continue
+            if since and item["createdAt"] <= since:
+                continue
+            if not SYLLABUS_CHANGE_WORDS.search(item["headline"]):
+                continue
+            hits.append(item)
+        return {"items": hits, "fetchedAt": cached["fetchedAt"], "stale": cached["stale"], "error": cached["error"],
+                "source": "https://ssc.gov.in/notice-board"}
+    if exam_id.startswith('exam-upsc'):
+        cached = _upsc_whatsnew_cached(force=False)
+        hits = []
+        for item in cached["payload"]:
+            if not item["isCse"]:
+                continue
+            if since and item["firstSeen"] <= since:
+                continue
+            if not SYLLABUS_CHANGE_WORDS.search(item["headline"]):
+                continue
+            # the Syllabus section renders SSC-shaped items: give it the same fields
+            hits.append({"id": item["id"], "headline": item["headline"], "createdAt": item["firstSeen"],
+                         "files": [{"name": item["kind"] or "Open", "url": item["url"], "sizeKb": 0}], "isCgl": False})
+        return {"items": hits, "fetchedAt": cached["fetchedAt"], "stale": cached["stale"], "error": cached["error"],
+                "source": UPSC_WHATS_NEW_URL,
+                "note": "UPSC's What's New list carries no dates; each item is dated by when GovOS first saw it."}
+    return None
 
 
 @app.route('/api/syllabus/watch', methods=['GET'])

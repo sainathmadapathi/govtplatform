@@ -7,7 +7,8 @@ import {
   ExcludedModule,
   PostStudyPath,
   PracticeQuestion,
-  StudyModuleRequirement
+  StudyModuleRequirement,
+  PostRequirement
 } from './types';
 
 // ---------------------------------------------------------------------------
@@ -2286,6 +2287,32 @@ export const SSC_CGL_EXAM: Exam = {
     ]
   },
 
+  syllabusSourceNote: 'Section 13 of the SSC CGL 2026 Gazette Notification (Scheme of Examination and detailed syllabus)',
+
+  eligibilityHighlights: [
+    {
+      title: '1. Crucial Cutoff Date',
+      body: 'Candidate age is calculated strictly as of 01-08-2026. Final year degree holders must possess their qualifying degree on or before this date.',
+      provenance: sscProvenanceEligibility
+    },
+    {
+      title: '2. Category Age Relaxations',
+      body: 'OBC: +3 years. SC / ST: +5 years. PwBD (Unreserved): +10 years. PwBD (OBC): +13 years. PwBD (SC/ST): +15 years.',
+      provenance: sscProvenanceEligibility
+    },
+    {
+      title: '3. Specialized Degree Posts',
+      body: 'JSO: 60% in 12th Maths OR Degree with Statistics. Statistical Investigator Grade II: Statistics in all 3 years of Degree.',
+      provenance: sscProvenanceEligibility
+    }
+  ],
+
+  officialLinks: [
+    { title: 'Staff Selection Commission', url: 'https://ssc.gov.in', note: 'ssc.gov.in (Official Application & Result Portal)' },
+    { title: 'NCBC Central OBC List', url: 'https://ncbc.nic.in', note: 'ncbc.nic.in (Central OBC Caste Verification)' },
+    { title: 'DigiLocker Government Portal', url: 'https://www.digilocker.gov.in', note: 'digilocker.gov.in (Verified Marksheets & ID)' }
+  ],
+
   // Frequently Asked Questions citing Official Notification Clauses
   faqs: [
     {
@@ -2335,384 +2362,1182 @@ export const SSC_CGL_EXAM: Exam = {
 
 // ============================================================================
 // UPSC CIVIL SERVICES EXAMINATION (CSE) 2026
+//
+// Read from the Commission's own documents on 2026-09-12 (see each provenance). Nothing in
+// this record was taken from a coaching site. Where the notice is silent (pay levels) or the
+// figure is GovOS's reading of the papers (topic weightage), the provenance says so.
 // ============================================================================
 
-const upscProvenance: DataProvenance = {
-  id: 'prov-upsc-01',
-  documentTitle: 'UPSC Civil Services Examination 2026 Notification.pdf',
-  officialUrl: 'https://upsc.gov.in',
+const UPSC_CHECK = '2026-09-12';
+const UPSC_NOTICE_URL = 'https://www.upsc.gov.in/sites/default/files/Notif-CSP-2026-Engl-060226Rev.pdf';
+const UPSC_NOTICE_TITLE = 'UPSC Examination Notice No. 05/2026-CSE — Civil Services (Preliminary) Examination, 2026 (dated 04.02.2026, revised 06.02.2026)';
+
+/** A clause of the 2026 notice, cited by section and page. */
+const upscNotice = (id: string, clauseNumber: string, pageNumber: number, excerptText: string, taxonomyType: DataProvenance['taxonomyType'] = 'FACT'): DataProvenance => ({
+  id,
+  documentTitle: UPSC_NOTICE_TITLE,
+  officialUrl: UPSC_NOTICE_URL,
+  pageNumber,
+  clauseNumber,
+  publishedDate: '2026-02-04',
+  verifiedDate: UPSC_CHECK,
+  verifiedBy: `GovOS verifier — read from the notice PDF on ${UPSC_CHECK}`,
+  taxonomyType,
+  verificationLevel: 'OFFICIALLY_VERIFIED',
+  excerptText
+});
+
+/** A UPSC press note or sheet other than the notice. */
+const upscDocument = (id: string, documentTitle: string, officialUrl: string, publishedDate: string, excerptText: string, clauseNumber: string = 'Whole document'): DataProvenance => ({
+  id,
+  documentTitle,
+  officialUrl,
   pageNumber: 1,
-  clauseNumber: 'Section 1 (Notice No. 05/2026-CSP)',
-  publishedDate: '2026-02-14',
-  verifiedDate: '2026-02-15',
-  verifiedBy: 'Senior Verification Officer #102',
+  clauseNumber,
+  publishedDate,
+  verifiedDate: UPSC_CHECK,
+  verifiedBy: `GovOS verifier — read from the document on ${UPSC_CHECK}`,
   taxonomyType: 'FACT',
   verificationLevel: 'OFFICIALLY_VERIFIED',
-  excerptText: 'The Union Public Service Commission will hold the Civil Services (Preliminary) Examination, 2026 on 24th May, 2026 for recruitment to the Services and Posts including IAS, IFS, and IPS.'
+  excerptText
+});
+
+const upscProvenance = upscNotice('prov-upsc-01', 'Cover and Section I', 1,
+  'EXAMINATION NOTICE NO 05/2026-CSE DATE: 04.02.2026 (LAST DATE FOR SUBMISSION OF ONLINE APPLICATIONS: 24.02.2026 of CIVIL SERVICES EXAMINATION, 2026).');
+const upscProvenanceEligibility = upscNotice('prov-upsc-elig', 'Section II — Conditions of Eligibility (I) Nationality, (II) Age Limits, (III) Minimum Educational Qualification, (IV) Number of attempts', 14,
+  'A candidate must have attained the age of 21 years and must not have attained the age of 32 years on the 1st of August, 2026 i.e., the candidate must have been born not earlier than 2nd August, 1994 and not later than 1st August, 2005.');
+const upscProvenanceScheme = upscNotice('prov-upsc-scheme', 'Section III — Part A (Preliminary Examination) and Part B (Main Examination), Scheme of Examination', 25,
+  'The Examination shall comprise of two compulsory Papers of 200 marks each … Sub Total (Written test) 1750 Marks; Personality Test 275 Marks; Grand Total 2025 Marks.');
+const upscProvenanceSyllabus = upscNotice('prov-upsc-syl', 'Section III — Part A (Preliminary) and Part B (Main): syllabi of the papers', 33,
+  'Paper I - (200 marks) Duration: Two hours. Current events of national and international importance. History of India and Indian National Movement. Indian and World Geography … Indian Polity and Governance … Economic and Social Development … Environmental ecology, Bio-diversity and Climate Change … General Science.');
+const upscProvenanceFee = upscNotice('prov-upsc-fee', 'Section: FEE (para 4) and LAST DATE FOR SUBMISSION OF APPLICATIONS (para 3)', 3,
+  'All the candidates (Except Female/SC/ST/Persons with Benchmark Disability Candidates who are exempted from payment of fee) are required to pay fee of Rs. 100/- … Candidates admitted to the Civil Services (Main) Examination, 2026 will be required to pay a further fee of Rs. 200/-.');
+const upscProvenanceApply = upscNotice('prov-upsc-apply', 'IMPORTANT INFORMATION FOR THE CANDIDATES and Section: HOW TO APPLY (para 2)', 1,
+  'The Online Application Portal of Union Public Service Commission … has four cards/modules, three of which namely, Account creation, Universal Registration and Common Application Form are common to all examination applications … Applicants are required to apply online by using the website https://upsconline.nic.in.');
+const upscProvenanceAdmit = upscNotice('prov-upsc-admit', 'Section: ISSUANCE OF E-ADMIT CARD (para 4)', 3,
+  'The eligible candidates will be issued an e-Admit Card on the last working day of the preceding week of the date of examination … The e-Admit Card will be made available on the website [https://upsconline.nic.in] for downloading by the candidates. No Admit Card will be sent by post or Email.');
+const upscProvenanceVacancy = upscNotice('prov-upsc-vac', 'Section I — Services and Posts; number of vacancies', 2,
+  'The number of vacancies to be filled through the examination is expected to be approximately 933 which include 33 Vacancies reserved for Persons with Benchmark Disability Category … The final number of vacancies may undergo change after getting firm number of vacancies from Cadre Controlling Authorities.');
+const upscProvenanceCentres = upscNotice('prov-upsc-centres', 'Section: Centres of Examination — (i) Preliminary (83 centres), (ii) Main (27 centres)', 9,
+  'The Centres and the date of holding the examination as mentioned above are liable to be changed at the discretion of the Commission.');
+
+const upscProvenancePrelimsResult = upscDocument('prov-upsc-prelims-result',
+  'UPSC Press Note — Result of the Civil Services (Preliminary) Examination, 2026 (names), dated 18 June 2026',
+  'https://www.upsc.gov.in/sites/default/files/WR-NameList-CSP-2026-Engl-18062026.pdf', '2026-06-18',
+  'In continuation of the Press Note dated 15/06/2026 declaring the Roll Number Wise Result of the Civil Services (Preliminary) Examination, 2026 held on 24/05/2026 … The Window for filling up these details and submission thereof will be available on the Commission’s website from 19th to 28th June, 2026 … This year, against 1016 vacancies notified for the Civil Services Examination, 2026, a total of 13,343 candidates have been shortlisted for the Civil Services (Main) Examination, 2026.');
+const upscProvenanceEAdmit = upscDocument('prov-upsc-eadmit',
+  'UPSC Press Note — Civil Services (Preliminary) Examination, 2026: e-Admit Cards uploaded, dated 15 May 2026',
+  'https://www.upsc.gov.in/sites/default/files/Press_Note_CSPE_2026_Eng_15052026.pdf', '2026-05-15',
+  'Union Public Service Commission will be conducting the Civil Services (Preliminary) Examination, 2026 on 24th May, 2026 (Sunday) all over India. The Commission has uploaded the e-Admit Cards of the admitted candidates on its website (http://upsconline.nic.in) … No paper Admit Card will be issued for this Examination.');
+const upscProvenanceMains = upscDocument('prov-upsc-mains',
+  'UPSC Press Note — Civil Services (Main) Examination, 2026, dated 19 August 2026',
+  'https://www.upsc.gov.in/sites/default/files/PressNote-CSM-2026-Engl-190826.pdf', '2026-08-19',
+  'The Civil Services (Main) Examination, 2026 is scheduled to be held from 21.08.2026 to 23.08.2026 and from 29.08.2026 to 30.08.2026. After the conclusion of the Examination, Question Paper Representation Portal (QPReP) will be made available … from 31.08.2026 to 04.09.2026.');
+const upscProvenanceCalendar2027 = upscDocument('prov-upsc-cal-2027',
+  'UPSC Calendar of Examinations for the year 2027 (published 20 May 2026)',
+  'https://www.upsc.gov.in/sites/default/files/Calendar-Year-2027-Engl-200526.pdf', '2026-05-20',
+  '9. Civil Services (Preliminary) Examination, 2027 — Date of Notification 13.01.2027; Last date for receipt of applications 02.02.2027; Date of commencement of Exam 23.05.2027. 19. Civil Services (Main) Examination, 2027 — 20.08.2027 (Friday), 5 DAYS.');
+const upscProvenanceQP2026 = upscDocument('prov-upsc-qp-2026',
+  'UPSC — Civil Services (Preliminary) Examination, 2026: General Studies Paper-I and Paper-II question booklets (Series A), published 25 May 2026',
+  'https://www.upsc.gov.in/sites/default/files/QP_CSP_2026_GENERAL_STUDIES_PAPER-I_25052026.pdf', '2026-05-25',
+  'GENERAL STUDIES PAPER-I: Time Allowed: Two Hours; Maximum Marks: 200; This Test Booklet contains 100 items (questions). GENERAL STUDIES Paper-II: Time Allowed: Two Hours; Maximum Marks: 200; This Test Booklet contains 80 items (questions). For each question for which a wrong answer has been given by the candidate, one-third of the marks assigned to that question will be deducted as penalty.',
+  'Back-cover instructions of each booklet');
+const upscCutoff = (year: number, url: string, publishedDate: string, excerptText: string): DataProvenance => upscDocument(`prov-upsc-cutoff-${year}`,
+  `UPSC — Civil Services Examination, ${year}: minimum qualifying marks (official sheet)`, url, publishedDate, excerptText,
+  'Table: minimum qualifying standards/marks secured by the last recommended candidate');
+const upscCutoff2025 = upscCutoff(2025, 'https://www.upsc.gov.in/sites/default/files/CSE_2025_Cut-OffMks_Eng_09032026.pdf', '2026-03-09',
+  'CS(Prelim)* 92.66 (General) 89.34 (EWS) 92.00 (OBC) 84.00 (SC) 82.66 (ST) … CS(Main)# 739 706 717 700 694 … CS(Final) 963 926 931 905 902. *Cut off marks on the basis of GS Paper-I only. GS Paper-II is of qualifying nature with 33% marks.');
+const upscCutoff2023 = upscCutoff(2023, 'https://www.upsc.gov.in/sites/default/files/CutOff-CSE-23-engl-180424.pdf', '2024-04-18',
+  'CS (Prelim)* 75.41 68.02 74.75 59.25 47.82 … CS (Main)# 741 706 712 694 692 … CS (Final) 953 923 919 890 891.');
+const upscCutoff2022 = upscCutoff(2022, 'https://www.upsc.gov.in/sites/default/files/CutOff-CSE-22-Engl-230523.pdf', '2023-05-23',
+  'CS(Prelim)* 88.22 82.83 87.54 74.08 69.35 … CS(Main)** 748 715 714 699 706 … CS(Final) 960 926 923 893 900.');
+const upscCutoff2021 = upscCutoff(2021, 'https://www.upsc.gov.in/sites/default/files/CutOff-CSE-21-engl-300522.pdf', '2022-05-30',
+  'CS(Prelim)* 87.54 80.14 84.85 75.41 70.71 … CS(Main)** 745 713 707 700 700 … CS(Final) 953 916 910 886 883.');
+
+/** Pay is not in the CSE notice; it is set by each service's rules on the 7th CPC matrix. Said so. */
+const upscPayProvenance: DataProvenance = {
+  id: 'prov-upsc-pay',
+  documentTitle: '7th Central Pay Commission pay matrix, as applied by each service’s recruitment rules (not part of the CSE notice)',
+  officialUrl: 'https://doe.gov.in/',
+  clauseNumber: 'Entry pay levels of Group A and Group B services',
+  publishedDate: '2016-07-25',
+  verifiedDate: UPSC_CHECK,
+  verifiedBy: 'GovOS verifier — the CSE notice allots services, it does not print pay; level shown is the widely published entry level for the service',
+  taxonomyType: 'INTERPRETATION',
+  verificationLevel: 'UNDER_VERIFICATION',
+  excerptText: 'Entry pay for IAS/IPS/IFS and the Group A services allotted through CSE is Pay Level 10 of the 7th CPC matrix; Group B services (DANICS, DANIPS, PONDICS, PONDIPS, AFHQ CS Section Officer) enter at Level 7 or 8 under their own rules. Confirm against the service’s recruitment rules before relying on it.'
 };
+/** Topic weightage is GovOS’s reading of the official papers, not an official figure. */
+const upscWeightageProvenance: DataProvenance = {
+  id: 'prov-upsc-weightage',
+  documentTitle: 'GovOS reading of UPSC’s official Preliminary question papers, 2021–2026 (upsc.gov.in/examinations/previous-question-papers)',
+  officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+  clauseNumber: 'Approximate share of GS Paper-I questions by area',
+  publishedDate: '2026-05-25',
+  verifiedDate: UPSC_CHECK,
+  verifiedBy: 'GovOS verifier — counted from the papers; UPSC publishes no topic-wise weightage',
+  taxonomyType: 'INTERPRETATION',
+  verificationLevel: 'UNDER_VERIFICATION',
+  excerptText: 'UPSC does not publish topic weightage. The percentages here are GovOS’s approximate count from the official papers and vary year to year; treat them as guidance for time allocation, not as a promise about the next paper.'
+};
+
+const UPSC_PHYSICAL_NOTE = 'Physical standards under Appendix-III of the Rules for the Civil Services Examination, 2026 (Gazette of India Extraordinary, 04.02.2026): height, chest and vision norms apply to this service, with relaxations for specified categories. Read the appendix before listing the service in your preferences.';
+const upscGroupA = (id: string, postName: string, department: string, ministry: string, natureOfWork: string, physical: boolean = false): PostRequirement => ({
+  id, postName, department, ministry,
+  payLevel: 'Pay Level 10 (entry)',
+  payScale: '₹56,100 – ₹1,77,500',
+  classification: 'Group A (Gazetted)',
+  minAge: 21,
+  maxAge: 32,
+  natureOfWork,
+  ...(physical ? { physicalRequired: true, physicalNote: UPSC_PHYSICAL_NOTE } : {}),
+  provenance: upscPayProvenance
+});
+const upscGroupB = (id: string, postName: string, department: string, ministry: string, natureOfWork: string, physical: boolean = false): PostRequirement => ({
+  id, postName, department, ministry,
+  payLevel: 'Pay Level 7 / 8 (entry, per service rules)',
+  payScale: '₹44,900 – ₹1,42,400 (Level 7) or ₹47,600 – ₹1,51,100 (Level 8)',
+  classification: 'Group B (Gazetted)',
+  minAge: 21,
+  maxAge: 32,
+  natureOfWork,
+  ...(physical ? { physicalRequired: true, physicalNote: UPSC_PHYSICAL_NOTE } : {}),
+  provenance: upscPayProvenance
+});
 
 export const UPSC_CSE_EXAM: Exam = {
   id: 'exam-upsc-cse-2026',
   code: 'UPSC_CSE_2026',
   title: 'UPSC Civil Services Examination (CSE) 2026',
   authorityName: 'Union Public Service Commission (UPSC)',
-  officialDomain: 'https://upsc.gov.in',
+  officialDomain: 'https://www.upsc.gov.in',
   crucialEligibilityDate: '2026-08-01',
   minimumQualification: 'GRADUATION',
-  careerFields: ['Civil Services & Governance', 'Government Job'],
+  careerFields: ['Government Job', 'Civil Services & Governance'],
   categoryTag: 'CIVIL_SERVICES',
   isGoldenJourney: false,
   isDemoData: false,
-  overviewDescription: 'The Civil Services Examination (CSE) is a premier nationwide competitive examination conducted by UPSC for recruitment to higher Civil Services of the Government of India, including IAS, IFS, IPS, and IRS.',
-  vacanciesTotal: '1,056 (Expected)',
+  overviewDescription:
+    'The Civil Services Examination is conducted by the Union Public Service Commission in three stages — a screening Preliminary Examination (two objective papers), a descriptive Main Examination (nine papers, seven counted for merit) and a Personality Test — for recruitment to the Indian Administrative Service, the Indian Foreign Service, the Indian Police Service and twenty other Group A and Group B Central services. The 2026 cycle was notified on 4 February 2026 (Notice No. 05/2026-CSE); the Preliminary Examination was held on 24 May 2026 and the Main Examination from 21 to 30 August 2026.',
+  vacanciesTotal: '1,016 (revised; the notice said approx. 933 incl. 33 for PwBD)',
+  syllabusSourceNote: 'Section III of Examination Notice No. 05/2026-CSE — Part A (Preliminary Examination) and Part B (Main Examination)',
+
   posts: [
-    {
-      id: 'post-upsc-ias',
-      postName: 'Indian Administrative Service (IAS)',
-      department: 'Department of Personnel & Training (DoPT)',
-      payLevel: 'Pay Level 10 (₹56,100 - ₹1,77,500)',
-      payScale: '₹56,100 – ₹1,77,500',
-      classification: 'Group B (Gazetted)',
-      minAge: 21,
-      maxAge: 32,
-      natureOfWork: 'Public administration, policymaking, and executive district governance across India.',
-      provenance: upscProvenance
-    },
-    {
-      id: 'post-upsc-ips',
-      postName: 'Indian Police Service (IPS)',
-      department: 'Ministry of Home Affairs (MHA)',
-      payLevel: 'Pay Level 10 (₹56,100 - ₹1,77,500)',
-      payScale: '₹56,100 – ₹1,77,500',
-      classification: 'Group B (Gazetted)',
-      minAge: 21,
-      maxAge: 32,
-      physicalRequired: true,
-      physicalNote: 'Height: Male 165cm, Female 150cm. Chest: 84cm with 5cm expansion.',
-      natureOfWork: 'Law enforcement, internal security, crime prevention, and traffic control.',
-      provenance: upscProvenance
-    },
-    {
-      id: 'post-upsc-ifs',
-      postName: 'Indian Foreign Service (IFS)',
-      department: 'Ministry of External Affairs (MEA)',
-      payLevel: 'Pay Level 10 (₹56,100 - ₹1,77,500)',
-      payScale: '₹56,100 – ₹1,77,500',
-      classification: 'Group B (Gazetted)',
-      minAge: 21,
-      maxAge: 32,
-      natureOfWork: 'Diplomacy, bilateral foreign relations, consular affairs, and international trade.',
-      provenance: upscProvenance
-    }
+    upscGroupA('post-upsc-ias', 'Indian Administrative Service (IAS)', 'Indian Administrative Service', 'Ministry of Personnel, Public Grievances and Pensions (DoPT) — cadre controlling authority', 'District administration, policy implementation and secretariat leadership in State and Central Governments; begins as Assistant Collector / SDM.'),
+    upscGroupA('post-upsc-ifs', 'Indian Foreign Service (IFS)', 'Indian Foreign Service', 'Ministry of External Affairs', 'Diplomacy, missions abroad, consular and trade representation; begins at MEA headquarters and a foreign posting after language training.'),
+    upscGroupA('post-upsc-ips', 'Indian Police Service (IPS)', 'Indian Police Service', 'Ministry of Home Affairs — cadre controlling authority', 'Law and order, crime investigation and police leadership in a State cadre; begins as ASP / SDPO after training at SVPNPA, Hyderabad.', true),
+    upscGroupA('post-upsc-iaas', 'Indian Audit and Accounts Service (IA&AS)', 'Office of the Comptroller and Auditor General of India', 'Comptroller and Auditor General of India', 'Audit of Union and State accounts and public-sector undertakings; begins as Assistant Accountant General.'),
+    upscGroupA('post-upsc-icas', 'Indian Civil Accounts Service (ICAS)', 'Controller General of Accounts', 'Ministry of Finance (Department of Expenditure)', 'Payment, accounting and internal audit for Central ministries; begins as Assistant Controller of Accounts.'),
+    upscGroupA('post-upsc-icls', 'Indian Corporate Law Service (ICLS)', 'Ministry of Corporate Affairs', 'Ministry of Corporate Affairs', 'Administration of the Companies Act, LLP Act and corporate regulation; begins as Assistant Registrar of Companies.'),
+    upscGroupA('post-upsc-idas', 'Indian Defence Accounts Service (IDAS)', 'Controller General of Defence Accounts', 'Ministry of Defence', 'Audit, accounts and financial advice for the defence services and DRDO; begins as Assistant Controller of Defence Accounts.'),
+    upscGroupA('post-upsc-ides', 'Indian Defence Estates Service (IDES)', 'Directorate General Defence Estates', 'Ministry of Defence', 'Management of defence land and cantonment administration; begins as Assistant Defence Estates Officer / CEO of a Cantonment Board.'),
+    upscGroupA('post-upsc-iis', 'Indian Information Service (IIS)', 'Ministry of Information and Broadcasting', 'Ministry of Information and Broadcasting', 'Government media, press relations and public communication through PIB, Doordarshan, AIR and DAVP; begins as Assistant Director.'),
+    upscGroupA('post-upsc-ipos', 'Indian Postal Service (IPoS)', 'Department of Posts', 'Ministry of Communications', 'Management of postal circles, divisions and India Post Payments Bank operations; begins as Senior Superintendent of Post Offices.'),
+    upscGroupA('post-upsc-iptafs', 'Indian Post & Telecommunication Accounts and Finance Service (IP&TAFS)', 'Department of Telecommunications / Department of Posts', 'Ministry of Communications', 'Accounts, finance and licence-fee assessment for telecom and postal operations; begins as Assistant Controller of Communication Accounts.'),
+    upscGroupA('post-upsc-irms-traffic', 'Indian Railway Management Service (Traffic) (IRMS)', 'Indian Railways', 'Ministry of Railways', 'Train operations, commercial and freight management in a railway zone; begins as Assistant Operations / Commercial Manager.'),
+    upscGroupA('post-upsc-irms-personnel', 'Indian Railway Management Service (Personnel) (IRMS)', 'Indian Railways', 'Ministry of Railways', 'Human resources, welfare and industrial relations for the railway workforce; begins as Assistant Personnel Officer.'),
+    upscGroupA('post-upsc-irms-accounts', 'Indian Railway Management Service (Accounts) (IRMS)', 'Indian Railways', 'Ministry of Railways', 'Railway finance, budgeting and accounts; begins as Assistant Divisional Finance Manager.'),
+    upscGroupA('post-upsc-irpfs', 'Indian Railway Protection Force Service (IRPFS)', 'Railway Protection Force', 'Ministry of Railways', 'Security of railway property, passengers and premises; begins as Assistant Security Commissioner. Physical standards apply.', true),
+    upscGroupA('post-upsc-irs-cit', 'Indian Revenue Service (Customs & Indirect Taxes) (IRS C&IT)', 'Central Board of Indirect Taxes and Customs (CBIC)', 'Ministry of Finance (Department of Revenue)', 'GST and customs administration, anti-smuggling and trade facilitation; begins as Assistant Commissioner.'),
+    upscGroupA('post-upsc-irs-it', 'Indian Revenue Service (Income Tax) (IRS IT)', 'Central Board of Direct Taxes (CBDT)', 'Ministry of Finance (Department of Revenue)', 'Direct-tax assessment, investigation and administration; begins as Assistant Commissioner of Income Tax.'),
+    upscGroupA('post-upsc-its', 'Indian Trade Service (ITS), Grade III', 'Directorate General of Foreign Trade', 'Ministry of Commerce and Industry', 'Foreign-trade policy, export promotion and trade negotiations; begins as Assistant Director General of Foreign Trade.'),
+    upscGroupB('post-upsc-afhqcs', 'Armed Forces Headquarters Civil Service (AFHQ CS), Section Officer’s Grade', 'Armed Forces Headquarters', 'Ministry of Defence', 'Secretariat and administrative support at Army, Navy and Air Force headquarters and inter-services organisations.'),
+    upscGroupB('post-upsc-danics', 'DANICS — Delhi, Andaman & Nicobar Islands, Lakshadweep, Daman & Diu and Dadra & Nagar Haveli Civil Service', 'Union Territory administrations', 'Ministry of Home Affairs', 'Civil administration in Delhi and the Union Territories; begins as SDM / Deputy Secretary-level posts in the UT cadre.'),
+    upscGroupB('post-upsc-danips', 'DANIPS — Delhi, Andaman & Nicobar Islands, Lakshadweep, Daman & Diu and Dadra & Nagar Haveli Police Service', 'Union Territory police', 'Ministry of Home Affairs', 'Police service in Delhi and the Union Territories; begins as Assistant Commissioner of Police. Physical standards apply.', true),
+    upscGroupB('post-upsc-pondics', 'Pondicherry Civil Service (PONDICS)', 'Government of Puducherry', 'Ministry of Home Affairs', 'Civil administration in the Union Territory of Puducherry.'),
+    upscGroupB('post-upsc-pondips', 'Pondicherry Police Service (PONDIPS)', 'Government of Puducherry', 'Ministry of Home Affairs', 'Police service in the Union Territory of Puducherry. Physical standards apply.', true)
   ],
+
   dates: [
-    {
-      id: 'date-upsc-notif',
-      type: 'NOTIFICATION',
-      label: 'UPSC CSE Official Notification Released',
-      dateTimeStr: '2026-02-14 10:00:00',
-      timezone: 'Asia/Kolkata (IST)',
-      isTentative: false,
-      status: 'AVAILABLE',
-      provenance: upscProvenance
-    },
-    {
-      id: 'date-upsc-app-open',
-      type: 'APPLICATION_OPEN',
-      label: 'Online Application Window Opens (OTR Portal)',
-      dateTimeStr: '2026-02-14 10:00:00',
-      timezone: 'Asia/Kolkata (IST)',
-      isTentative: false,
-      status: 'AVAILABLE',
-      provenance: upscProvenance
-    },
-    {
-      id: 'date-upsc-app-close',
-      type: 'APPLICATION_CLOSE',
-      label: 'Application Final Closing Date (18:00 IST)',
-      dateTimeStr: '2026-03-05 18:00:00',
-      timezone: 'Asia/Kolkata (IST)',
-      isTentative: false,
-      status: 'AVAILABLE',
-      provenance: upscProvenance
-    },
-    {
-      id: 'date-upsc-correction',
-      type: 'CORRECTION_WINDOW',
-      label: 'Application Form Correction Window (7 Days)',
-      dateTimeStr: '2026-03-06 10:00:00',
-      timezone: 'Asia/Kolkata (IST)',
-      isTentative: false,
-      status: 'AVAILABLE',
-      provenance: upscProvenance
-    },
-    {
-      id: 'date-upsc-admit',
-      type: 'ADMIT_CARD',
-      label: 'e-Admit Card for Prelims Exam',
-      dateTimeStr: '2026-05-10 11:00:00',
-      timezone: 'Asia/Kolkata (IST)',
-      isTentative: true,
-      status: 'AVAILABLE',
-      provenance: upscProvenance
-    },
-    {
-      id: 'date-upsc-prelims',
-      type: 'EXAM_TIER1',
-      label: 'Civil Services (Preliminary) Exam (GS-I & CSAT)',
-      dateTimeStr: '2026-05-24 09:30:00',
-      timezone: 'Asia/Kolkata (IST)',
-      isTentative: false,
-      status: 'AVAILABLE',
-      provenance: upscProvenance
-    },
-    {
-      id: 'date-upsc-result-pre',
-      type: 'RESULT',
-      label: 'Prelims Examination Written Result Declaration',
-      dateTimeStr: '2026-06-25 17:00:00',
-      timezone: 'Asia/Kolkata (IST)',
-      isTentative: true,
-      status: 'AVAILABLE',
-      provenance: upscProvenance
-    },
-    {
-      id: 'date-upsc-mains',
-      type: 'EXAM_TIER2',
-      label: 'Civil Services (Main) Examination Begins',
-      dateTimeStr: '2026-09-18 09:00:00',
-      timezone: 'Asia/Kolkata (IST)',
-      isTentative: false,
-      status: 'AVAILABLE',
-      provenance: upscProvenance
-    }
+    { id: 'date-upsc-notif', type: 'NOTIFICATION', label: 'Examination Notice No. 05/2026-CSE published', dateTimeStr: '2026-02-04 10:00:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: upscProvenance },
+    { id: 'date-upsc-open', type: 'APPLICATION_OPEN', label: 'Online application opens on upsconline.nic.in', dateTimeStr: '2026-02-04 10:00:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: upscProvenanceApply },
+    { id: 'date-upsc-close', type: 'APPLICATION_CLOSE', label: 'Last date for online applications (6:00 PM)', dateTimeStr: '2026-02-24 18:00:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: upscProvenanceFee },
+    { id: 'date-upsc-eadmit', type: 'ADMIT_CARD', label: 'Preliminary e-Admit Cards uploaded on upsconline.nic.in', dateTimeStr: '2026-05-15 10:00:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: upscProvenanceEAdmit },
+    { id: 'date-upsc-prelims', type: 'EXAM_TIER1', label: 'Civil Services (Preliminary) Examination — two sessions, see e-Admit Card', dateTimeStr: '2026-05-24 09:30:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: upscProvenanceEAdmit },
+    { id: 'date-upsc-prelims-result', type: 'RESULT', label: 'Preliminary result declared (roll numbers 15 June; names 18 June)', dateTimeStr: '2026-06-15 18:00:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: upscProvenancePrelimsResult },
+    { id: 'date-upsc-mains-window', type: 'CORRECTION_WINDOW', label: 'Mains fee (₹200), scribe and cadre-preference window: 19–28 June 2026', dateTimeStr: '2026-06-19 10:00:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: upscProvenancePrelimsResult },
+    { id: 'date-upsc-mains', type: 'EXAM_TIER2', label: 'Civil Services (Main) Examination — 21–23 and 29–30 August 2026', dateTimeStr: '2026-08-21 09:00:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: upscProvenanceMains },
+    { id: 'date-upsc-mains-qprep', type: 'ANSWER_KEY', label: 'Mains Question Paper Representation Portal (QPReP) open 31 Aug – 4 Sep 2026', dateTimeStr: '2026-08-31 10:00:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: upscProvenanceMains },
+    { id: 'date-upsc-2027-notif', type: 'NOTIFICATION', label: 'CSE 2027 — notification (next cycle, per UPSC Calendar 2027)', dateTimeStr: '2027-01-13 10:00:00', timezone: 'Asia/Kolkata (IST)', isTentative: true, status: 'AVAILABLE', provenance: upscProvenanceCalendar2027 },
+    { id: 'date-upsc-2027-close', type: 'APPLICATION_CLOSE', label: 'CSE 2027 — last date for applications (per Calendar 2027)', dateTimeStr: '2027-02-02 18:00:00', timezone: 'Asia/Kolkata (IST)', isTentative: true, status: 'AVAILABLE', provenance: upscProvenanceCalendar2027 },
+    { id: 'date-upsc-2027-prelims', type: 'EXAM_TIER1', label: 'CSE 2027 — Preliminary Examination (per Calendar 2027)', dateTimeStr: '2027-05-23 09:30:00', timezone: 'Asia/Kolkata (IST)', isTentative: true, status: 'AVAILABLE', provenance: upscProvenanceCalendar2027 },
+    { id: 'date-upsc-2027-mains', type: 'EXAM_TIER2', label: 'CSE 2027 — Main Examination commences, 5 days (per Calendar 2027)', dateTimeStr: '2027-08-20 09:00:00', timezone: 'Asia/Kolkata (IST)', isTentative: true, status: 'AVAILABLE', provenance: upscProvenanceCalendar2027 }
   ],
+
   globalRuleGroup: {
     id: 'rg-upsc-global',
     operator: 'AND',
     rules: [
-      {
-        id: 'rule-upsc-age-min',
-        ruleType: 'AGE_MIN',
-        operator: '>=',
-        ruleValue: 21,
-        category: 'GENERAL',
-        provenance: upscProvenance
-      },
-      {
-        id: 'rule-upsc-age-max',
-        ruleType: 'AGE_MAX',
-        operator: '<=',
-        ruleValue: 32,
-        category: 'GENERAL',
-        provenance: upscProvenance
-      },
-      {
-        id: 'rule-upsc-deg',
-        ruleType: 'DEGREE_REQUIRED',
-        operator: '=',
-        ruleValue: ['Bachelor Degree', 'Graduation', 'B.E', 'B.Tech', 'B.Sc', 'B.Com', 'B.A', 'MBBS'],
-        category: 'GENERAL',
-        provenance: upscProvenance
-      },
-      {
-        id: 'rule-upsc-nat',
-        ruleType: 'NATIONALITY',
-        operator: '=',
-        ruleValue: ['Indian', 'Citizen of India'],
-        category: 'GENERAL',
-        provenance: upscProvenance
-      }
+      { id: 'rule-upsc-age-min', ruleType: 'AGE_MIN', operator: '>=', ruleValue: 21, category: 'GENERAL', provenance: upscProvenanceEligibility },
+      { id: 'rule-upsc-deg', ruleType: 'DEGREE_REQUIRED', operator: '=', ruleValue: ['Bachelor Degree', 'Graduation', 'B.E', 'B.Tech', 'B.Sc', 'B.Com', 'B.A', 'BBA', 'BCA', 'MBBS', 'LLB'], category: 'GENERAL', provenance: upscProvenanceEligibility },
+      { id: 'rule-upsc-nat', ruleType: 'NATIONALITY', operator: '=', ruleValue: ['Indian', 'Citizen of India', 'Subject of Nepal', 'Subject of Bhutan'], category: 'GENERAL', provenance: upscProvenanceEligibility }
     ]
   },
+
+  eligibilityHighlights: [
+    {
+      title: '1. Age on the crucial date (1 August 2026)',
+      body: 'A candidate must have attained 21 years and must not have attained 32 years on 1 August 2026 — born not earlier than 2 August 1994 and not later than 1 August 2005. Upper age is relaxable: SC/ST up to 5 years; OBC up to 3 years; Defence Services personnel disabled in operations up to 3 years; ex-servicemen with at least 5 years’ service up to 5 years; Persons with Benchmark Disability up to 10 years. Relaxations are cumulative only as the notice allows.',
+      provenance: upscProvenanceEligibility
+    },
+    {
+      title: '2. Number of attempts',
+      body: 'Six attempts for General and EWS candidates; nine for OBC and for PwBD candidates of the General/EWS/OBC categories; unlimited (within the age limit) for SC/ST. Appearing in either paper of the Preliminary Examination counts as an attempt; applying without appearing does not.',
+      provenance: upscProvenanceEligibility
+    },
+    {
+      title: '3. Educational qualification',
+      body: 'A degree of a University incorporated by an Act of the Central or a State Legislature, of an institution established by an Act of Parliament, or of a deemed University under Section 3 of the UGC Act, 1956, or an equivalent qualification. Final-year candidates and those awaiting results may sit the Preliminary Examination, but must produce proof of having passed with the Main Examination application. IAS/IPS/IFS officers already in service cannot appear again for those services.',
+      provenance: upscProvenanceEligibility
+    },
+    {
+      title: '4. Fee and how to apply',
+      body: 'Apply only on upsconline.nic.in: create an account, complete Universal Registration (URN) with one photo ID, fill the Common Application Form with a live photo capture, then the exam-specific module. Fee ₹100 (Female, SC, ST and PwBD candidates exempt); ₹200 more if admitted to the Main Examination. No withdrawal and no correction after submission. The 2026 window closed on 24 February 2026 at 6:00 PM.',
+      provenance: upscProvenanceFee
+    }
+  ],
+
+  officialLinks: [
+    { title: 'Union Public Service Commission', url: 'https://www.upsc.gov.in', note: 'upsc.gov.in — notices, question papers, results, cut-offs' },
+    { title: 'UPSC Online Application Portal', url: 'https://upsconline.nic.in', note: 'upsconline.nic.in — URN registration, application, e-Admit Card, QPReP' },
+    { title: 'Examination Notifications', url: 'https://www.upsc.gov.in/exams-related-info/exam-notification', note: 'Every active notice, with the PDF' },
+    { title: 'Calendar of Examinations', url: 'https://www.upsc.gov.in/examinations/exam-calendar', note: 'Annual calendar — the 2027 cycle dates come from here' },
+    { title: 'Previous Question Papers', url: 'https://www.upsc.gov.in/examinations/previous-question-papers', note: 'Official booklets for every stage, every year' },
+    { title: 'Cut-off Marks', url: 'https://www.upsc.gov.in/examinations/cutoff-marks', note: 'Minimum qualifying marks by category and stage, year by year' }
+  ],
+
   stages: [
     {
-      id: 'stage-upsc-pre',
+      id: 'stage-upsc-prelims',
       stageNumber: 1,
-      stageName: 'Preliminary Examination (Objective MCQ)',
+      stageName: 'Civil Services (Preliminary) Examination — two objective papers',
       tier: 'TIER_1',
+      provenance: upscProvenanceScheme,
       durationMinutes: 240,
       totalQuestions: 180,
       totalMarks: 400,
-      negativeMarking: '-0.33% per wrong answer',
-      mode: 'Offline Pen & Paper (OMR)',
-      qualifyingNature: 'CSAT is qualifying at 33%. GS-I marks determine merit for Mains eligibility.',
+      negativeMarking: 'One-third (0.33) of the marks assigned to a question is deducted for each wrong answer; more than one answer counts as wrong; a blank carries no penalty',
+      mode: 'Pen-and-paper OMR, multiple choice; question papers in Hindi and English',
+      qualifyingNature: 'A screening test only: its marks are not counted in the final merit. GS Paper-II (CSAT) is qualifying at 33%; the GS Paper-I cut-off decides who sits the Main Examination (about 12–13 times the vacancies).',
       sections: [
-        {
-          sectionName: 'General Studies Paper I (GS-I)',
-          modules: ['Current Affairs', 'History of India', 'Indian Polity & Governance', 'Geography', 'Economy', 'Environment & Ecology', 'General Science'],
-          questions: 100,
-          marks: 200,
-          durationMinutes: 120,
-          negativeMarking: '-0.66 marks'
-        },
-        {
-          sectionName: 'Civil Services Aptitude Test (CSAT - Paper II)',
-          modules: ['Reading Comprehension', 'Interpersonal Skills', 'Logical Reasoning', 'Decision Making', 'Basic Numeracy (Class X)'],
-          questions: 80,
-          marks: 200,
-          durationMinutes: 120,
-          negativeMarking: '-0.83 marks'
-        }
-      ],
-      provenance: upscProvenance
+        { sectionName: 'General Studies Paper-I', modules: ['Current events', 'History of India & the National Movement', 'Indian & World Geography', 'Polity & Governance', 'Economic & Social Development', 'Environment, Ecology & Climate Change', 'General Science'], questions: 100, marks: 200, durationMinutes: 120, negativeMarking: '-0.66 (one-third of 2 marks)' },
+        { sectionName: 'General Studies Paper-II (CSAT) — qualifying, 33%', modules: ['Comprehension', 'Interpersonal & communication skills', 'Logical reasoning & analytical ability', 'Decision making & problem solving', 'General mental ability', 'Basic numeracy & data interpretation (Class X level)'], questions: 80, marks: 200, durationMinutes: 120, negativeMarking: '-0.83 (one-third of 2.5 marks)' }
+      ]
     },
     {
       id: 'stage-upsc-mains',
       stageNumber: 2,
-      stageName: 'Main Examination (Descriptive Essay & GS Papers)',
+      stageName: 'Civil Services (Main) Examination — nine descriptive papers, seven counted for merit',
       tier: 'TIER_2',
+      provenance: upscProvenanceScheme,
       durationMinutes: 1620,
-      totalQuestions: 180,
+      totalQuestions: 0,
       totalMarks: 1750,
-      negativeMarking: 'Subjective evaluation',
-      mode: 'Written Descriptive',
-      qualifyingNature: 'Merit ranking determining final service allocation.',
+      negativeMarking: 'None — conventional (essay-type) answers, evaluated on content',
+      mode: 'Pen-and-paper descriptive; three hours per paper; Papers I–VII may be answered in English or any Eighth Schedule language',
+      qualifyingNature: 'Paper A (an Indian language) and Paper B (English), 300 marks each, are qualifying at 25% and not counted for ranking; the other seven papers are taken cognizance of only for candidates who clear both. Written total 1750 marks.',
       sections: [
-        {
-          sectionName: 'Essay & GS Papers I-IV',
-          modules: ['Essay', 'GS I (Heritage & Geography)', 'GS II (Governance & Constitution)', 'GS III (Tech & Security)', 'GS IV (Ethics & Integrity)'],
-          questions: 100,
-          marks: 1250,
-          durationMinutes: 900,
-          negativeMarking: 'None'
-        },
-        {
-          sectionName: 'Optional Subject (Paper I & II)',
-          modules: ['Optional Paper 1', 'Optional Paper 2'],
-          questions: 20,
-          marks: 500,
-          durationMinutes: 360,
-          negativeMarking: 'None'
-        }
-      ],
-      provenance: upscProvenance
+        { sectionName: 'Paper A — Indian Language (qualifying, 25%)', modules: ['Comprehension', 'Précis', 'Usage & vocabulary', 'Short essays', 'Translation'], questions: 0, marks: 300, durationMinutes: 180, negativeMarking: 'None' },
+        { sectionName: 'Paper B — English (qualifying, 25%)', modules: ['Comprehension', 'Précis', 'Usage & vocabulary', 'Short essays'], questions: 0, marks: 300, durationMinutes: 180, negativeMarking: 'None' },
+        { sectionName: 'Paper I — Essay', modules: ['Essays on multiple topics; credit for effective and exact expression'], questions: 0, marks: 250, durationMinutes: 180, negativeMarking: 'None' },
+        { sectionName: 'Paper II — General Studies-I', modules: ['Indian Heritage & Culture', 'Modern Indian History & the Freedom Struggle', 'Post-independence consolidation', 'World History', 'Indian Society', 'World Geography'], questions: 0, marks: 250, durationMinutes: 180, negativeMarking: 'None' },
+        { sectionName: 'Paper III — General Studies-II', modules: ['Constitution & Polity', 'Governance', 'Social Justice', 'International Relations'], questions: 0, marks: 250, durationMinutes: 180, negativeMarking: 'None' },
+        { sectionName: 'Paper IV — General Studies-III', modules: ['Economy & Development', 'Agriculture', 'Science & Technology', 'Environment & Biodiversity', 'Security', 'Disaster Management'], questions: 0, marks: 250, durationMinutes: 180, negativeMarking: 'None' },
+        { sectionName: 'Paper V — General Studies-IV', modules: ['Ethics', 'Integrity', 'Aptitude', 'Case studies'], questions: 0, marks: 250, durationMinutes: 180, negativeMarking: 'None' },
+        { sectionName: 'Paper VI — Optional Subject Paper 1', modules: ['One of 25 subjects or a literature (list in the notice)'], questions: 0, marks: 250, durationMinutes: 180, negativeMarking: 'None' },
+        { sectionName: 'Paper VII — Optional Subject Paper 2', modules: ['Same optional subject'], questions: 0, marks: 250, durationMinutes: 180, negativeMarking: 'None' }
+      ]
+    },
+    {
+      id: 'stage-upsc-interview',
+      stageNumber: 3,
+      stageName: 'Personality Test (Interview)',
+      tier: 'INTERVIEW',
+      provenance: upscProvenanceScheme,
+      durationMinutes: 0,
+      totalQuestions: 0,
+      totalMarks: 275,
+      negativeMarking: 'Not applicable',
+      mode: 'Board interview at the Commission’s office in New Delhi; about twice the number of vacancies are summoned',
+      qualifyingNature: 'Carries 275 marks with no minimum qualifying marks. Final ranking = Main written (1750) + Personality Test (275) = 2025 marks; service allocation follows rank and preferences.',
+      sections: [
+        { sectionName: 'Personality Test', modules: ['Assessment of personal suitability for a career in public service by a Board of competent and unbiased observers'], questions: 0, marks: 275, durationMinutes: 0, negativeMarking: 'Not applicable' }
+      ]
     }
   ],
+
   syllabus: [
+    // --- Preliminary: General Studies Paper-I (Section III, Part A) ---
+    { id: 'upsc-syl-history', subject: 'History & Culture', tier: 'BOTH', topicName: 'History of India and the Indian National Movement', subtopics: ['Ancient & medieval India', 'Art, architecture & literature', 'Modern India from the mid-18th century', 'Freedom struggle — stages & contributors', 'Post-independence consolidation'], weightagePercentage: 18, avgQuestions: 18, isHighYield: true, officialProvenance: upscProvenanceSyllabus, weightageProvenance: upscWeightageProvenance },
+    { id: 'upsc-syl-geography', subject: 'Geography', tier: 'BOTH', topicName: 'Indian and World Geography — physical, social and economic', subtopics: ['Physical geography & geomorphology', 'Climate & monsoon', 'Indian rivers, soils & agriculture', 'Resources & industry', 'Map-based questions'], weightagePercentage: 12, avgQuestions: 12, isHighYield: true, officialProvenance: upscProvenanceSyllabus, weightageProvenance: upscWeightageProvenance },
+    { id: 'upsc-syl-polity', subject: 'Polity & Governance', tier: 'BOTH', topicName: 'Indian Polity and Governance — Constitution, political system, Panchayati Raj, public policy, rights issues', subtopics: ['Preamble, Fundamental Rights & DPSP', 'Union & State executive, legislature, judiciary', 'Federalism & Centre–State relations', 'Panchayati Raj & local government', 'Constitutional & statutory bodies'], weightagePercentage: 15, avgQuestions: 15, isHighYield: true, officialProvenance: upscProvenanceSyllabus, weightageProvenance: upscWeightageProvenance },
+    { id: 'upsc-syl-economy', subject: 'Economy', tier: 'BOTH', topicName: 'Economic and Social Development — sustainable development, poverty, inclusion, demographics, social-sector initiatives', subtopics: ['National income & growth', 'Money, banking & RBI', 'Fiscal policy & budget', 'External sector', 'Poverty, inclusion & welfare schemes'], weightagePercentage: 14, avgQuestions: 14, isHighYield: true, officialProvenance: upscProvenanceSyllabus, weightageProvenance: upscWeightageProvenance },
+    { id: 'upsc-syl-environment', subject: 'Environment & Ecology', tier: 'BOTH', topicName: 'General issues on environmental ecology, biodiversity and climate change', subtopics: ['Ecosystems & biodiversity', 'Protected areas & species', 'Climate change & conventions', 'Pollution & environmental law', 'Conservation institutions'], weightagePercentage: 15, avgQuestions: 15, isHighYield: true, officialProvenance: upscProvenanceSyllabus, weightageProvenance: upscWeightageProvenance },
+    { id: 'upsc-syl-science', subject: 'Science & Technology', tier: 'BOTH', topicName: 'General Science', subtopics: ['Physics, chemistry & biology at everyday level', 'Space, defence & IT developments', 'Biotechnology & health', 'Energy'], weightagePercentage: 10, avgQuestions: 10, isHighYield: false, officialProvenance: upscProvenanceSyllabus, weightageProvenance: upscWeightageProvenance },
+    { id: 'upsc-syl-current', subject: 'Current Affairs', tier: 'BOTH', topicName: 'Current events of national and international importance', subtopics: ['Government schemes & reports', 'International organisations & summits', 'Awards, indices & reports', 'Economy & science in the news'], weightagePercentage: 16, avgQuestions: 16, isHighYield: true, officialProvenance: upscProvenanceSyllabus, weightageProvenance: upscWeightageProvenance },
+    // --- Preliminary: General Studies Paper-II, CSAT (qualifying) ---
+    { id: 'upsc-syl-csat-comprehension', subject: 'CSAT (Aptitude & Reasoning)', tier: 'TIER_1', topicName: 'CSAT — Comprehension and communication', subtopics: ['Reading comprehension passages', 'Interpersonal & communication skills', 'Decision making & problem solving'], weightagePercentage: 40, avgQuestions: 30, isHighYield: true, officialProvenance: upscProvenanceSyllabus, weightageProvenance: upscWeightageProvenance },
+    { id: 'upsc-syl-csat-reasoning', subject: 'CSAT (Aptitude & Reasoning)', tier: 'TIER_1', topicName: 'CSAT — Logical reasoning, analytical ability and general mental ability', subtopics: ['Syllogisms & statements', 'Seating & arrangement', 'Series & coding', 'Direction sense', 'Blood relations'], weightagePercentage: 30, avgQuestions: 25, isHighYield: true, officialProvenance: upscProvenanceSyllabus, weightageProvenance: upscWeightageProvenance },
+    { id: 'upsc-syl-csat-numeracy', subject: 'CSAT (Aptitude & Reasoning)', tier: 'TIER_1', topicName: 'CSAT — Basic numeracy and data interpretation (Class X level)', subtopics: ['Numbers & their relations', 'Percentage, ratio, average', 'Time, work, speed', 'Charts, graphs, tables', 'Data sufficiency'], weightagePercentage: 30, avgQuestions: 25, isHighYield: true, officialProvenance: upscProvenanceSyllabus, weightageProvenance: upscWeightageProvenance },
+    // --- Main: qualifying language papers ---
+    { id: 'upsc-syl-lang', subject: 'Indian Language & English (Qualifying)', tier: 'TIER_2', topicName: 'Paper A (an Indian language) and Paper B (English) — Matriculation standard, qualifying at 25%', subtopics: ['Comprehension of given passages', 'Précis writing', 'Usage & vocabulary', 'Short essays', 'Translation (Paper A)'], weightagePercentage: 0, avgQuestions: 0, isHighYield: false, officialProvenance: upscProvenanceSyllabus },
+    // --- Main: papers counted for merit (Section III, Part B) ---
+    { id: 'upsc-syl-essay', subject: 'Essay & Answer Writing', tier: 'TIER_2', topicName: 'Paper I — Essay (250 marks)', subtopics: ['Essays on multiple topics', 'Keeping to the subject', 'Orderly arrangement of ideas', 'Concise, exact expression'], weightagePercentage: 14, avgQuestions: 2, isHighYield: true, officialProvenance: upscProvenanceSyllabus },
+    { id: 'upsc-syl-gs1', subject: 'History & Culture', tier: 'TIER_2', topicName: 'Paper II — General Studies-I: Indian Heritage and Culture, History and Geography of the World and Society (250 marks)', subtopics: ['Art forms, literature & architecture', 'Modern Indian history & freedom struggle', 'Post-independence consolidation', 'World history since the 18th century', 'Indian society, diversity, women, urbanisation, globalisation', 'World physical geography & resources'], weightagePercentage: 14, avgQuestions: 20, isHighYield: true, officialProvenance: upscProvenanceSyllabus },
+    { id: 'upsc-syl-gs2', subject: 'Polity & Governance', tier: 'TIER_2', topicName: 'Paper III — General Studies-II: Governance, Constitution, Polity, Social Justice and International Relations (250 marks)', subtopics: ['Constitution — features, amendments, basic structure', 'Union & States, federalism, devolution', 'Parliament, judiciary, pressure groups', 'Government policies, welfare schemes, social sector', 'India and its neighbourhood; international institutions'], weightagePercentage: 14, avgQuestions: 20, isHighYield: true, officialProvenance: upscProvenanceSyllabus },
+    { id: 'upsc-syl-gs3', subject: 'Economy', tier: 'TIER_2', topicName: 'Paper IV — General Studies-III: Technology, Economic Development, Bio-diversity, Environment, Security and Disaster Management (250 marks)', subtopics: ['Indian economy, planning, growth, budgeting', 'Agriculture, MSP, PDS, food security', 'Infrastructure & investment', 'Science & technology, IPR', 'Environment & biodiversity', 'Internal security, cyber security, disaster management'], weightagePercentage: 14, avgQuestions: 20, isHighYield: true, officialProvenance: upscProvenanceSyllabus },
+    { id: 'upsc-syl-gs4', subject: 'Ethics, Integrity & Aptitude', tier: 'TIER_2', topicName: 'Paper V — General Studies-IV: Ethics, Integrity and Aptitude (250 marks)', subtopics: ['Ethics & human interface', 'Attitude, aptitude & foundational values', 'Emotional intelligence', 'Thinkers & moral philosophy', 'Probity in governance', 'Case studies'], weightagePercentage: 14, avgQuestions: 12, isHighYield: true, officialProvenance: upscProvenanceSyllabus },
+    { id: 'upsc-syl-ir', subject: 'International Relations & Security', tier: 'TIER_2', topicName: 'International relations and internal security (across GS-II and GS-III)', subtopics: ['Bilateral, regional & global groupings', 'Effect of developed & developing countries’ policies on India', 'Indian diaspora', 'Linkages of extremism, money-laundering, border security'], weightagePercentage: 6, avgQuestions: 8, isHighYield: false, officialProvenance: upscProvenanceSyllabus },
+    { id: 'upsc-syl-optional', subject: 'Optional Subject', tier: 'TIER_2', topicName: 'Papers VI & VII — one optional subject (500 marks)', subtopics: ['25 subjects: Agriculture to Zoology', 'Literature of 23 languages', 'Two papers of 250 marks, three hours each', 'Questions of conventional (essay) type'], weightagePercentage: 28, avgQuestions: 16, isHighYield: true, officialProvenance: upscProvenanceSyllabus }
+  ],
+
+  practiceQuestions: [],
+
+  corrigendums: [
     {
-      id: 'syl-upsc-polity',
-      subject: 'General Awareness',
-      tier: 'BOTH',
-      topicName: 'Indian Polity, Governance & Constitution',
-      weightagePercentage: 22,
-      avgQuestions: 18,
-      isHighYield: true,
-      officialProvenance: upscProvenance
-    },
-    {
-      id: 'syl-upsc-env',
-      subject: 'General Awareness',
-      tier: 'TIER_1',
-      topicName: 'Environment, Ecology & Biodiversity',
-      weightagePercentage: 20,
-      avgQuestions: 16,
-      isHighYield: true,
-      officialProvenance: upscProvenance
+      id: 'corr-upsc-01',
+      title: 'Vacancy position revised: 1,016 vacancies notified against the approximate 933 printed in the notice',
+      noticeNumber: 'UPSC Press Note dated 18.06.2026 (Result of CS(P) Examination, 2026)',
+      publishedDate: '2026-06-18',
+      effectiveDate: '2026-06-18',
+      summary: 'The 4 February notice said the number of vacancies was expected to be approximately 933 and might change once the Cadre Controlling Authorities firmed up their numbers. The Preliminary result press note records 1,016 vacancies notified for CSE 2026, against which 13,343 candidates were shortlisted for the Main Examination.',
+      pdfUrl: 'https://www.upsc.gov.in/sites/default/files/WR-NameList-CSP-2026-Engl-18062026.pdf',
+      status: 'ACTIVE',
+      diffSummary: 'Vacancies: approx. 933 (notice, 04-02-2026) → 1,016 (press note, 18-06-2026).'
     }
   ],
-  practiceQuestions: [
-    {
-      id: 'q-upsc-01',
-      topicId: 'syl-upsc-polity',
-      subject: 'General Awareness',
-      topicName: 'Indian Polity',
-      tier: 'TIER_1',
-      shiftInfo: 'UPSC CSE Prelims 2024 (GS-I)',
-      questionType: 'OFFICIAL_PYQ',
-      questionText: 'Under the Indian Constitution, which one of the following is NOT a Fundamental Duty?',
-      options: [
-        { id: 0, text: 'To vote in public elections' },
-        { id: 1, text: 'To develop the scientific temper and spirit of inquiry' },
-        { id: 2, text: 'To safeguard public property' },
-        { id: 3, text: 'To abide by the Constitution and respect its ideals' }
-      ],
-      correctOptionIndex: 0,
-      explanation: 'Voting in public elections is a civic responsibility/statutory right under the Representation of People Act, 1951, but NOT a Fundamental Duty enumerated under Article 51A.',
-      difficulty: 'MEDIUM',
-      provenance: upscProvenance
-    }
-  ],
-  corrigendums: [],
+
+  // Official minimum qualifying marks: Prelims = GS Paper-I cut-off (of 200); Mains = written cut-off (of 1750); Final = of 2025.
+  // UPSC had not published the 2024 sheet on its cut-off page when this was checked, so 2024 is absent rather than guessed.
   cutoffsHistory: [
-    {
-      year: 2024,
-      category: 'General (UR)',
-      tier1Cutoff: 75.41,
-      provenance: upscProvenance
-    },
-    {
-      year: 2023,
-      category: 'General (UR)',
-      tier1Cutoff: 75.41,
-      provenance: upscProvenance
-    }
+    { year: 2025, category: 'General', tier1Cutoff: 92.66, tier2Cutoff: 739, postsEligible: 'Final cut-off 963 / 2025', provenance: upscCutoff2025 },
+    { year: 2025, category: 'EWS', tier1Cutoff: 89.34, tier2Cutoff: 706, postsEligible: 'Final cut-off 926 / 2025', provenance: upscCutoff2025 },
+    { year: 2025, category: 'OBC', tier1Cutoff: 92.00, tier2Cutoff: 717, postsEligible: 'Final cut-off 931 / 2025', provenance: upscCutoff2025 },
+    { year: 2025, category: 'SC', tier1Cutoff: 84.00, tier2Cutoff: 700, postsEligible: 'Final cut-off 905 / 2025', provenance: upscCutoff2025 },
+    { year: 2025, category: 'ST', tier1Cutoff: 82.66, tier2Cutoff: 694, postsEligible: 'Final cut-off 902 / 2025', provenance: upscCutoff2025 },
+    { year: 2025, category: 'PwBD-1', tier1Cutoff: 76.66, tier2Cutoff: 703, postsEligible: 'Final cut-off 917 / 2025', provenance: upscCutoff2025 },
+    { year: 2025, category: 'PwBD-2', tier1Cutoff: 54.66, tier2Cutoff: 708, postsEligible: 'Final cut-off 944 / 2025', provenance: upscCutoff2025 },
+    { year: 2025, category: 'PwBD-3', tier1Cutoff: 40.66, tier2Cutoff: 536, postsEligible: 'Final cut-off 804 / 2025', provenance: upscCutoff2025 },
+    { year: 2025, category: 'PwBD-5', tier1Cutoff: 40.66, tier2Cutoff: 451, postsEligible: 'Final cut-off 631 / 2025', provenance: upscCutoff2025 },
+
+    { year: 2023, category: 'General', tier1Cutoff: 75.41, tier2Cutoff: 741, postsEligible: 'Final cut-off 953 / 2025', provenance: upscCutoff2023 },
+    { year: 2023, category: 'EWS', tier1Cutoff: 68.02, tier2Cutoff: 706, postsEligible: 'Final cut-off 923 / 2025', provenance: upscCutoff2023 },
+    { year: 2023, category: 'OBC', tier1Cutoff: 74.75, tier2Cutoff: 712, postsEligible: 'Final cut-off 919 / 2025', provenance: upscCutoff2023 },
+    { year: 2023, category: 'SC', tier1Cutoff: 59.25, tier2Cutoff: 694, postsEligible: 'Final cut-off 890 / 2025', provenance: upscCutoff2023 },
+    { year: 2023, category: 'ST', tier1Cutoff: 47.82, tier2Cutoff: 692, postsEligible: 'Final cut-off 891 / 2025', provenance: upscCutoff2023 },
+
+    { year: 2022, category: 'General', tier1Cutoff: 88.22, tier2Cutoff: 748, postsEligible: 'Final cut-off 960 / 2025', provenance: upscCutoff2022 },
+    { year: 2022, category: 'EWS', tier1Cutoff: 82.83, tier2Cutoff: 715, postsEligible: 'Final cut-off 926 / 2025', provenance: upscCutoff2022 },
+    { year: 2022, category: 'OBC', tier1Cutoff: 87.54, tier2Cutoff: 714, postsEligible: 'Final cut-off 923 / 2025', provenance: upscCutoff2022 },
+    { year: 2022, category: 'SC', tier1Cutoff: 74.08, tier2Cutoff: 699, postsEligible: 'Final cut-off 893 / 2025', provenance: upscCutoff2022 },
+    { year: 2022, category: 'ST', tier1Cutoff: 69.35, tier2Cutoff: 706, postsEligible: 'Final cut-off 900 / 2025', provenance: upscCutoff2022 },
+
+    { year: 2021, category: 'General', tier1Cutoff: 87.54, tier2Cutoff: 745, postsEligible: 'Final cut-off 953 / 2025', provenance: upscCutoff2021 },
+    { year: 2021, category: 'EWS', tier1Cutoff: 80.14, tier2Cutoff: 713, postsEligible: 'Final cut-off 916 / 2025', provenance: upscCutoff2021 },
+    { year: 2021, category: 'OBC', tier1Cutoff: 84.85, tier2Cutoff: 707, postsEligible: 'Final cut-off 910 / 2025', provenance: upscCutoff2021 },
+    { year: 2021, category: 'SC', tier1Cutoff: 75.41, tier2Cutoff: 700, postsEligible: 'Final cut-off 886 / 2025', provenance: upscCutoff2021 },
+    { year: 2021, category: 'ST', tier1Cutoff: 70.71, tier2Cutoff: 700, postsEligible: 'Final cut-off 883 / 2025', provenance: upscCutoff2021 }
   ],
+
+  // Links only, all answering HTTP 200 through GovOS's own checker on 2026-09-12. Coaching channels are
+  // labelled as such with the subscriber count read from the channel page on the same day.
   resources: [
     {
-      id: 'res-upsc-notif',
-      title: 'UPSC CSE 2026 Examination Portal & Official Notices',
+      id: 'res-upsc-notice-2026',
+      title: 'UPSC CSE 2026 — Examination Notice No. 05/2026-CSE (official PDF, 159 pages)',
       subject: 'Official Gazette',
-      author: 'UPSC Examination Branch',
+      author: 'Union Public Service Commission',
+      type: 'OFFICIAL_PDF',
+      resourceFormat: 'DIRECT_PDF',
+      url: UPSC_NOTICE_URL,
+      directPdfUrl: UPSC_NOTICE_URL,
+      downloadFileName: 'Notif-CSP-2026-Engl-060226Rev.pdf',
+      officialTag: 'UPSC — PRIMARY NOTIFICATION (PDF, 2.9 MB)',
+      recommendedFor: 'The one document that governs the cycle: eligibility, attempts, fee, scheme, the full syllabus (Section III) and the list of services. Verify every claim, including GovOS’s, against it.',
+      description: 'The Commission’s notice for the Civil Services (Preliminary) Examination, 2026, hosted on upsc.gov.in. Sections I–III carry the services, eligibility, scheme and syllabi; the appendices carry the rules, centres and certificate formats. GovOS links to the file on the UPSC server rather than keeping a copy.',
+      linkVerifiedDate: UPSC_CHECK,
+      isEssential: true,
+      provenance: officialSource('prov-res-upsc-notice', 'UPSC CSE 2026 — Examination Notice No. 05/2026-CSE', UPSC_NOTICE_URL, 200)
+    },
+    {
+      id: 'res-upsc-portal',
+      title: 'UPSC Online Application Portal (upsconline.nic.in)',
+      subject: 'Official Gazette',
+      author: 'Union Public Service Commission',
       type: 'OFFICIAL_PORTAL',
       resourceFormat: 'OFFICIAL_PORTAL',
-      url: 'https://upsc.gov.in/examinations/active-exams',
-      description: 'The authoritative official examination portal covering active examinations, official notification notices, rules, and syllabi directly from UPSC.',
-      recommendedFor: 'Mandatory portal for all civil services aspirants to access official notices and application links.',
-      officialTag: 'OFFICIAL UPSC EXAMINATION PORTAL'
-    }
-  ],
-  faqs: [
+      url: 'https://upsconline.nic.in',
+      officialTag: 'UPSC — APPLICATION, e-ADMIT CARD, QPReP',
+      recommendedFor: 'Registering (URN), applying, downloading the e-Admit Card, paying the Mains fee and filing question-paper representations.',
+      description: 'The only portal for the Civil Services Examination application. Four modules — account, Universal Registration, Common Application Form, exam-specific form — and the e-Admit Card download. No admit card is sent by post or email.',
+      linkVerifiedDate: UPSC_CHECK,
+      isEssential: true,
+      provenance: officialSource('prov-res-upsc-portal', 'UPSC Online Application Portal', 'https://upsconline.nic.in', 200)
+    },
     {
-      id: 'faq-upsc-01',
-      question: 'How many attempts are permitted for General Category candidates in UPSC CSE?',
-      answer: 'General category candidates are permitted a maximum of 6 attempts until age 32. OBC candidates receive 9 attempts until age 35, while SC/ST candidates have unlimited attempts until age 37.',
-      officialClause: 'Rule 3, Number of Attempts',
-      provenance: upscProvenance
+      id: 'res-upsc-pyq-page',
+      title: 'UPSC Previous Question Papers — official page (every stage, every year)',
+      subject: 'Previous Year Papers',
+      author: 'Union Public Service Commission',
+      type: 'OFFICIAL_PORTAL',
+      resourceFormat: 'OFFICIAL_PORTAL',
+      url: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+      officialTag: 'UPSC — QUESTION PAPER ARCHIVE',
+      recommendedFor: 'The real papers, as printed. Start every subject by reading five years of them.',
+      description: 'UPSC publishes each question booklet after the examination — Preliminary GS-I and GS-II, and every Main paper including all optionals. This page lists them by examination and year.',
+      linkVerifiedDate: UPSC_CHECK,
+      isEssential: true,
+      provenance: officialSource('prov-res-upsc-pyq-page', 'UPSC Previous Question Papers', 'https://www.upsc.gov.in/examinations/previous-question-papers', 200)
+    },
+    {
+      id: 'res-upsc-qp-2026-gs1',
+      title: 'CSE 2026 Preliminary — General Studies Paper-I question booklet (official PDF)',
+      subject: 'Previous Year Papers',
+      author: 'Union Public Service Commission',
+      type: 'OFFICIAL_PDF',
+      resourceFormat: 'DIRECT_PDF',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP_CSP_2026_GENERAL_STUDIES_PAPER-I_25052026.pdf',
+      directPdfUrl: 'https://www.upsc.gov.in/sites/default/files/QP_CSP_2026_GENERAL_STUDIES_PAPER-I_25052026.pdf',
+      downloadFileName: 'QP_CSP_2026_GENERAL_STUDIES_PAPER-I_25052026.pdf',
+      officialTag: 'UPSC — 2026 PAPER (100 questions, 200 marks, 2 hours)',
+      recommendedFor: 'The most recent GS Paper-I, exactly as candidates saw it on 24 May 2026.',
+      description: 'The Series-A booklet of the 2026 Preliminary GS Paper-I published by UPSC the day after the examination. Scanned, so search does not work inside it; read it as a paper.',
+      linkVerifiedDate: UPSC_CHECK,
+      provenance: officialSource('prov-res-upsc-qp-2026-gs1', 'CSE 2026 Preliminary — GS Paper-I', 'https://www.upsc.gov.in/sites/default/files/QP_CSP_2026_GENERAL_STUDIES_PAPER-I_25052026.pdf', 200)
+    },
+    {
+      id: 'res-upsc-qp-2026-gs2',
+      title: 'CSE 2026 Preliminary — General Studies Paper-II (CSAT) question booklet (official PDF)',
+      subject: 'Previous Year Papers',
+      author: 'Union Public Service Commission',
+      type: 'OFFICIAL_PDF',
+      resourceFormat: 'DIRECT_PDF',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP_CSP_2026_GENERAL_STUDIES_PAPER-II_25052026.pdf',
+      directPdfUrl: 'https://www.upsc.gov.in/sites/default/files/QP_CSP_2026_GENERAL_STUDIES_PAPER-II_25052026.pdf',
+      downloadFileName: 'QP_CSP_2026_GENERAL_STUDIES_PAPER-II_25052026.pdf',
+      officialTag: 'UPSC — 2026 PAPER (80 questions, 200 marks, 2 hours, qualifying 33%)',
+      recommendedFor: 'Calibrating CSAT: time yourself on the real 80 questions before assuming it is a formality.',
+      description: 'The Series-A booklet of the 2026 CSAT paper published by UPSC the day after the examination.',
+      linkVerifiedDate: UPSC_CHECK,
+      provenance: officialSource('prov-res-upsc-qp-2026-gs2', 'CSE 2026 Preliminary — GS Paper-II (CSAT)', 'https://www.upsc.gov.in/sites/default/files/QP_CSP_2026_GENERAL_STUDIES_PAPER-II_25052026.pdf', 200)
+    },
+    {
+      id: 'res-upsc-qp-2026-essay',
+      title: 'CSE 2026 Main — Essay paper (official PDF)',
+      subject: 'Previous Year Papers',
+      author: 'Union Public Service Commission',
+      type: 'OFFICIAL_PDF',
+      resourceFormat: 'DIRECT_PDF',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-ESSAY.pdf',
+      directPdfUrl: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-ESSAY.pdf',
+      downloadFileName: 'QP-CSM-26-010926-ESSAY.pdf',
+      officialTag: 'UPSC — 2026 MAIN PAPER I (250 marks)',
+      recommendedFor: 'Practising the Essay paper on this year’s topics.',
+      description: 'The Essay paper of the Civil Services (Main) Examination, 2026, published by UPSC on 1 September 2026.',
+      linkVerifiedDate: UPSC_CHECK,
+      provenance: officialSource('prov-res-upsc-qp-2026-essay', 'CSE 2026 Main — Essay', 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-ESSAY.pdf', 200)
+    },
+    {
+      id: 'res-upsc-qp-2026-gs-i',
+      title: 'CSE 2026 Main — General Studies Paper-I (official PDF)',
+      subject: 'Previous Year Papers',
+      author: 'Union Public Service Commission',
+      type: 'OFFICIAL_PDF',
+      resourceFormat: 'DIRECT_PDF',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-GENERAL%20STUDIES%20PAPER%20-%20I.pdf',
+      directPdfUrl: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-GENERAL%20STUDIES%20PAPER%20-%20I.pdf',
+      downloadFileName: 'QP-CSM-26-GS-I.pdf',
+      officialTag: 'UPSC — 2026 MAIN PAPER II (250 marks)',
+      recommendedFor: 'History, culture, geography and society answer-writing on the real 2026 questions.',
+      description: 'General Studies Paper-I of the Main Examination, 2026, as published by UPSC.',
+      linkVerifiedDate: UPSC_CHECK,
+      provenance: officialSource('prov-res-upsc-qp-2026-gs-i', 'CSE 2026 Main — GS Paper-I', 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-GENERAL%20STUDIES%20PAPER%20-%20I.pdf', 200)
+    },
+    {
+      id: 'res-upsc-qp-2026-gs-ii',
+      title: 'CSE 2026 Main — General Studies Paper-II (official PDF)',
+      subject: 'Previous Year Papers',
+      author: 'Union Public Service Commission',
+      type: 'OFFICIAL_PDF',
+      resourceFormat: 'DIRECT_PDF',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-GENERAL-STUDIES-PAPER%20-%20II.pdf',
+      directPdfUrl: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-GENERAL-STUDIES-PAPER%20-%20II.pdf',
+      downloadFileName: 'QP-CSM-26-GS-II.pdf',
+      officialTag: 'UPSC — 2026 MAIN PAPER III (250 marks)',
+      recommendedFor: 'Polity, governance, social justice and international relations answer-writing.',
+      description: 'General Studies Paper-II of the Main Examination, 2026, as published by UPSC.',
+      linkVerifiedDate: UPSC_CHECK,
+      provenance: officialSource('prov-res-upsc-qp-2026-gs-ii', 'CSE 2026 Main — GS Paper-II', 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-GENERAL-STUDIES-PAPER%20-%20II.pdf', 200)
+    },
+    {
+      id: 'res-upsc-qp-2026-gs-iii',
+      title: 'CSE 2026 Main — General Studies Paper-III (official PDF)',
+      subject: 'Previous Year Papers',
+      author: 'Union Public Service Commission',
+      type: 'OFFICIAL_PDF',
+      resourceFormat: 'DIRECT_PDF',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-GENERAL-STUDIES-PAPER-III.pdf',
+      directPdfUrl: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-GENERAL-STUDIES-PAPER-III.pdf',
+      downloadFileName: 'QP-CSM-26-GS-III.pdf',
+      officialTag: 'UPSC — 2026 MAIN PAPER IV (250 marks)',
+      recommendedFor: 'Economy, science, environment, security and disaster-management answer-writing.',
+      description: 'General Studies Paper-III of the Main Examination, 2026, as published by UPSC.',
+      linkVerifiedDate: UPSC_CHECK,
+      provenance: officialSource('prov-res-upsc-qp-2026-gs-iii', 'CSE 2026 Main — GS Paper-III', 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-GENERAL-STUDIES-PAPER-III.pdf', 200)
+    },
+    {
+      id: 'res-upsc-qp-2026-gs-iv',
+      title: 'CSE 2026 Main — General Studies Paper-IV, Ethics (official PDF)',
+      subject: 'Previous Year Papers',
+      author: 'Union Public Service Commission',
+      type: 'OFFICIAL_PDF',
+      resourceFormat: 'DIRECT_PDF',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-GENERAL-STUDIES-PAPER-IV.pdf',
+      directPdfUrl: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-GENERAL-STUDIES-PAPER-IV.pdf',
+      downloadFileName: 'QP-CSM-26-GS-IV.pdf',
+      officialTag: 'UPSC — 2026 MAIN PAPER V (250 marks)',
+      recommendedFor: 'Ethics theory and the case studies exactly as set in 2026.',
+      description: 'General Studies Paper-IV of the Main Examination, 2026, as published by UPSC.',
+      linkVerifiedDate: UPSC_CHECK,
+      provenance: officialSource('prov-res-upsc-qp-2026-gs-iv', 'CSE 2026 Main — GS Paper-IV', 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-GENERAL-STUDIES-PAPER-IV.pdf', 200)
+    },
+    {
+      id: 'res-upsc-cutoffs',
+      title: 'UPSC Cut-off Marks — official page and the 2025 sheet',
+      subject: 'Official Gazette',
+      author: 'Union Public Service Commission',
+      type: 'OFFICIAL_PORTAL',
+      resourceFormat: 'OFFICIAL_PORTAL',
+      url: 'https://www.upsc.gov.in/examinations/cutoff-marks',
+      officialTag: 'UPSC — MINIMUM QUALIFYING MARKS, BY YEAR',
+      recommendedFor: 'Seeing the real bar for each stage and category, from the Commission, not from a coaching estimate.',
+      description: 'UPSC publishes, after each final result, the marks secured by the last recommended candidate at the Preliminary, Main and Final stages for every category. The 2025 sheet (CSE_2025_Cut-OffMks_Eng_09032026.pdf) is the latest; GovOS’s cut-off table is read from these sheets.',
+      linkVerifiedDate: UPSC_CHECK,
+      provenance: officialSource('prov-res-upsc-cutoffs', 'UPSC Cut-off Marks', 'https://www.upsc.gov.in/examinations/cutoff-marks', 200)
+    },
+    {
+      id: 'res-upsc-calendar-2027',
+      title: 'UPSC Calendar of Examinations, 2027 (official PDF)',
+      subject: 'Official Gazette',
+      author: 'Union Public Service Commission',
+      type: 'OFFICIAL_PDF',
+      resourceFormat: 'DIRECT_PDF',
+      url: 'https://www.upsc.gov.in/sites/default/files/Calendar-Year-2027-Engl-200526.pdf',
+      directPdfUrl: 'https://www.upsc.gov.in/sites/default/files/Calendar-Year-2027-Engl-200526.pdf',
+      downloadFileName: 'Calendar-Year-2027-Engl-200526.pdf',
+      officialTag: 'UPSC — NEXT CYCLE DATES (published 20 May 2026)',
+      recommendedFor: 'Planning the 2027 attempt: notification 13 Jan 2027, last date 2 Feb 2027, Prelims 23 May 2027, Mains from 20 Aug 2027.',
+      description: 'The Commission’s annual calendar for 2027. The CSE 2027 dates on GovOS’s timeline are read from row 9 (Preliminary) and row 19 (Main) of this document.',
+      linkVerifiedDate: UPSC_CHECK,
+      provenance: officialSource('prov-res-upsc-calendar-2027', 'UPSC Calendar of Examinations, 2027', 'https://www.upsc.gov.in/sites/default/files/Calendar-Year-2027-Engl-200526.pdf', 200)
+    },
+    {
+      id: 'res-upsc-mains-press',
+      title: 'CSE 2026 — Main Examination press note (dates and QPReP window)',
+      subject: 'Official Gazette',
+      author: 'Union Public Service Commission',
+      type: 'OFFICIAL_PDF',
+      resourceFormat: 'DIRECT_PDF',
+      url: 'https://www.upsc.gov.in/sites/default/files/PressNote-CSM-2026-Engl-190826.pdf',
+      directPdfUrl: 'https://www.upsc.gov.in/sites/default/files/PressNote-CSM-2026-Engl-190826.pdf',
+      downloadFileName: 'PressNote-CSM-2026-Engl-190826.pdf',
+      officialTag: 'UPSC — PRESS NOTE, 19 AUG 2026',
+      recommendedFor: 'Confirming the Main Examination dates and the representation window from the Commission itself.',
+      description: 'States that the Main Examination is held 21–23 and 29–30 August 2026 and that the Question Paper Representation Portal is open 31 August to 4 September 2026 on upsconline.nic.in.',
+      linkVerifiedDate: UPSC_CHECK,
+      provenance: officialSource('prov-res-upsc-mains-press', 'CSE 2026 — Main Examination press note', 'https://www.upsc.gov.in/sites/default/files/PressNote-CSM-2026-Engl-190826.pdf', 200)
+    },
+    {
+      id: 'res-upsc-prelims-result',
+      title: 'CSE 2026 — Preliminary result press note with the list of qualified candidates',
+      subject: 'Official Gazette',
+      author: 'Union Public Service Commission',
+      type: 'OFFICIAL_PDF',
+      resourceFormat: 'DIRECT_PDF',
+      url: 'https://www.upsc.gov.in/sites/default/files/WR-NameList-CSP-2026-Engl-18062026.pdf',
+      directPdfUrl: 'https://www.upsc.gov.in/sites/default/files/WR-NameList-CSP-2026-Engl-18062026.pdf',
+      downloadFileName: 'WR-NameList-CSP-2026-Engl-18062026.pdf',
+      officialTag: 'UPSC — PRESS NOTE, 18 JUN 2026 (505 pages)',
+      recommendedFor: 'Checking the Mains window, the ₹200 fee and the revised vacancy figure of 1,016.',
+      description: 'Declares the 13,343 candidates qualified for the Main Examination, the 19–28 June window for fee, scribe and cadre preferences, and records 1,016 vacancies notified for CSE 2026.',
+      linkVerifiedDate: UPSC_CHECK,
+      provenance: officialSource('prov-res-upsc-prelims-result', 'CSE 2026 — Preliminary result press note', 'https://www.upsc.gov.in/sites/default/files/WR-NameList-CSP-2026-Engl-18062026.pdf', 200)
+    },
+    {
+      id: 'res-upsc-constitution',
+      title: 'The Constitution of India — official full text (Legislative Department)',
+      subject: 'Polity & Governance',
+      author: 'Legislative Department, Ministry of Law and Justice',
+      type: 'OFFICIAL_PORTAL',
+      resourceFormat: 'OFFICIAL_PORTAL',
+      url: 'https://legislative.gov.in/constitution-of-india/',
+      officialTag: 'GOVERNMENT OF INDIA — PRIMARY TEXT',
+      recommendedFor: 'GS-II and the Prelims polity questions: read the articles themselves, then the commentary.',
+      description: 'The Legislative Department’s page for the Constitution of India as amended, with the full text and the amendment acts. Every polity claim in GovOS should be checkable here.',
+      linkVerifiedDate: UPSC_CHECK,
+      isEssential: true,
+      provenance: officialSource('prov-res-upsc-constitution', 'The Constitution of India — official text', 'https://legislative.gov.in/constitution-of-india/', 200)
+    },
+    {
+      id: 'res-upsc-indiacode',
+      title: 'India Code — every Central Act, as amended',
+      subject: 'Polity & Governance',
+      author: 'Legislative Department, Ministry of Law and Justice',
+      type: 'OFFICIAL_PORTAL',
+      resourceFormat: 'OFFICIAL_PORTAL',
+      url: 'https://www.indiacode.nic.in/',
+      officialTag: 'GOVERNMENT OF INDIA — STATUTES',
+      recommendedFor: 'Governance and social-justice questions that turn on what a statute actually says.',
+      description: 'The official repository of Central and State Acts with amendments, rules and notifications.',
+      linkVerifiedDate: UPSC_CHECK,
+      provenance: officialSource('prov-res-upsc-indiacode', 'India Code', 'https://www.indiacode.nic.in/', 200)
+    },
+    {
+      id: 'res-upsc-pib',
+      title: 'Press Information Bureau — Government of India releases',
+      subject: 'Current Affairs & Governance',
+      author: 'Press Information Bureau, Ministry of Information and Broadcasting',
+      type: 'OFFICIAL_PORTAL',
+      resourceFormat: 'OFFICIAL_PORTAL',
+      url: 'https://pib.gov.in/',
+      officialTag: 'GOVERNMENT OF INDIA — DAILY RELEASES',
+      recommendedFor: 'Current affairs from the source: schemes, cabinet decisions, reports, in the government’s own words.',
+      description: 'Every press release of the Government of India, searchable by ministry and date. The primary source most current-affairs compilations are built from.',
+      linkVerifiedDate: UPSC_CHECK,
+      isEssential: true,
+      provenance: officialSource('prov-res-upsc-pib', 'Press Information Bureau', 'https://pib.gov.in/', 200)
+    },
+    {
+      id: 'res-upsc-economic-survey',
+      title: 'Economic Survey of India — Ministry of Finance',
+      subject: 'Economy',
+      author: 'Department of Economic Affairs, Ministry of Finance',
+      type: 'OFFICIAL_PORTAL',
+      resourceFormat: 'OFFICIAL_PORTAL',
+      url: 'https://www.indiabudget.gov.in/economicsurvey/',
+      officialTag: 'GOVERNMENT OF INDIA — ANNUAL SURVEY',
+      recommendedFor: 'GS-III economy and the Prelims economic-development questions; read the chapter summaries and the data tables.',
+      description: 'The Economic Survey tabled before the Union Budget each year, with all chapters and statistical appendices as PDFs.',
+      linkVerifiedDate: UPSC_CHECK,
+      isEssential: true,
+      provenance: officialSource('prov-res-upsc-economic-survey', 'Economic Survey of India', 'https://www.indiabudget.gov.in/economicsurvey/', 200)
+    },
+    {
+      id: 'res-upsc-rbi',
+      title: 'Reserve Bank of India — publications, reports and data',
+      subject: 'Economy',
+      author: 'Reserve Bank of India',
+      type: 'OFFICIAL_PORTAL',
+      resourceFormat: 'OFFICIAL_PORTAL',
+      url: 'https://www.rbi.org.in/',
+      officialTag: 'REGULATOR — MONETARY POLICY & BANKING',
+      recommendedFor: 'Monetary policy, banking regulation and the RBI annual report and bulletins.',
+      description: 'The central bank’s site: policy statements, the Annual Report, Financial Stability Report and the database on the Indian economy.',
+      linkVerifiedDate: UPSC_CHECK,
+      provenance: officialSource('prov-res-upsc-rbi', 'Reserve Bank of India', 'https://www.rbi.org.in/', 200)
+    },
+    {
+      id: 'res-upsc-niti',
+      title: 'NITI Aayog — reports, indices and policy papers',
+      subject: 'Economy',
+      author: 'NITI Aayog, Government of India',
+      type: 'OFFICIAL_PORTAL',
+      resourceFormat: 'OFFICIAL_PORTAL',
+      url: 'https://www.niti.gov.in/',
+      officialTag: 'GOVERNMENT OF INDIA — POLICY THINK TANK',
+      recommendedFor: 'SDG India Index, multidimensional poverty, health and innovation indices that recur in GS-II and GS-III.',
+      description: 'The Government’s policy think tank: its reports and indices are frequent sources for Mains questions on development.',
+      linkVerifiedDate: UPSC_CHECK,
+      provenance: officialSource('prov-res-upsc-niti', 'NITI Aayog', 'https://www.niti.gov.in/', 200)
+    },
+    {
+      id: 'res-upsc-mea',
+      title: 'Ministry of External Affairs — bilateral briefs and joint statements',
+      subject: 'Current Affairs & Governance',
+      author: 'Ministry of External Affairs',
+      type: 'OFFICIAL_PORTAL',
+      resourceFormat: 'OFFICIAL_PORTAL',
+      url: 'https://www.mea.gov.in/',
+      officialTag: 'GOVERNMENT OF INDIA — FOREIGN POLICY',
+      recommendedFor: 'International relations in GS-II: the country briefs and joint statements are the primary source.',
+      description: 'Official briefs on India’s relations with every country and organisation, press releases and speeches.',
+      linkVerifiedDate: UPSC_CHECK,
+      provenance: officialSource('prov-res-upsc-mea', 'Ministry of External Affairs', 'https://www.mea.gov.in/', 200)
+    },
+    {
+      id: 'res-upsc-sansad',
+      title: 'Sansad — Parliament of India digital portal (bills, debates, questions)',
+      subject: 'Polity & Governance',
+      author: 'Lok Sabha and Rajya Sabha Secretariats',
+      type: 'OFFICIAL_PORTAL',
+      resourceFormat: 'OFFICIAL_PORTAL',
+      url: 'https://sansad.in/',
+      officialTag: 'PARLIAMENT OF INDIA — PRIMARY RECORDS',
+      recommendedFor: 'Bills, committee reports and parliamentary questions, as introduced and answered.',
+      description: 'The integrated portal of both Houses: legislation, debates, questions and committee reports.',
+      linkVerifiedDate: UPSC_CHECK,
+      provenance: officialSource('prov-res-upsc-sansad', 'Sansad — Parliament of India', 'https://sansad.in/', 200)
+    },
+    {
+      id: 'res-upsc-prs',
+      title: 'PRS Legislative Research — bill summaries and analysis',
+      subject: 'Polity & Governance',
+      author: 'PRS Legislative Research (independent, non-profit)',
+      type: 'SIMPLIFIED_GUIDE',
+      resourceFormat: 'OFFICIAL_PORTAL',
+      url: 'https://prsindia.org/',
+      officialTag: 'TRUSTED PUBLIC SOURCE — NOT GOVERNMENT',
+      recommendedFor: 'Understanding a bill quickly before reading it on Sansad; widely cited, but it is analysis, not the statute.',
+      description: 'Independent, non-partisan summaries of bills, budgets and state legislatures. GovOS lists it as a trusted public source; the Act on India Code governs where they differ.',
+      linkVerifiedDate: UPSC_CHECK,
+      provenance: communitySource('prov-res-upsc-prs', 'PRS Legislative Research', 'https://prsindia.org/', 'widely cited by candidates and the press')
+    },
+    {
+      id: 'res-upsc-ncert-diksha',
+      title: 'NCERT textbooks, Classes VI–XII — DIKSHA (Ministry of Education)',
+      subject: 'Foundation Textbooks & Open Courses',
+      author: 'NCERT via DIKSHA, Ministry of Education',
+      type: 'OFFICIAL_PORTAL',
+      resourceFormat: 'OFFICIAL_PORTAL',
+      url: 'https://diksha.gov.in/ncert',
+      officialTag: 'NCERT — FULL TEXTBOOKS, FREE',
+      recommendedFor: 'The foundation for History, Geography, Polity, Economics and Science: read the NCERTs before any coaching notes.',
+      description: 'Every NCERT textbook, chapter by chapter, on the Ministry of Education’s DIKSHA platform. Linked here because ncert.nic.in has timed out from Indian networks; the content is NCERT’s own.',
+      linkVerifiedDate: UPSC_CHECK,
+      isEssential: true,
+      provenance: officialSource('prov-res-upsc-ncert-diksha', 'NCERT textbooks on DIKSHA', 'https://diksha.gov.in/ncert', 200)
+    },
+    {
+      id: 'res-upsc-egazette',
+      title: 'e-Gazette of India — notifications as published',
+      subject: 'Official Gazette',
+      author: 'Directorate of Printing, Government of India',
+      type: 'OFFICIAL_PORTAL',
+      resourceFormat: 'OFFICIAL_PORTAL',
+      url: 'https://egazette.gov.in/',
+      officialTag: 'GOVERNMENT OF INDIA — GAZETTE',
+      recommendedFor: 'The Civil Services Examination Rules are notified in the Gazette (Extraordinary) each February; this is where to find them.',
+      description: 'The official electronic Gazette of India. The 2026 rules were published in the Gazette Extraordinary dated 4 February 2026, as the notice states.',
+      linkVerifiedDate: UPSC_CHECK,
+      provenance: officialSource('prov-res-upsc-egazette', 'e-Gazette of India', 'https://egazette.gov.in/', 200)
+    },
+    {
+      id: 'res-upsc-sansadtv',
+      title: 'Sansad TV — Parliament’s broadcaster (YouTube channel, 9.63M subscribers)',
+      subject: 'Current Affairs & Governance',
+      author: 'Sansad TV, Parliament of India',
+      type: 'VIDEO_LECTURE',
+      resourceFormat: 'YOUTUBE_CHANNEL',
+      url: 'https://www.youtube.com/channel/UCISgnSNwqQ2i8lhCun3KtQg',
+      officialTag: 'OFFICIAL BROADCASTER — FREE',
+      recommendedFor: 'Perspective, In Depth and the debate coverage that Mains answers draw on; an official source, unlike coaching channels.',
+      description: 'The Parliament of India’s own channel: proceedings, and discussion programmes on policy and current affairs. Channel identity confirmed from the channel page on 2026-09-12.',
+      linkVerifiedDate: UPSC_CHECK,
+      provenance: officialSource('prov-res-upsc-sansadtv', 'Sansad TV (YouTube)', 'https://www.youtube.com/channel/UCISgnSNwqQ2i8lhCun3KtQg', 200)
+    },
+    {
+      id: 'res-upsc-yt-studyiq',
+      title: 'StudyIQ IAS — YouTube channel (20.5M subscribers)',
+      subject: 'Current Affairs & Governance',
+      author: 'StudyIQ IAS (YouTube channel)',
+      type: 'VIDEO_LECTURE',
+      resourceFormat: 'YOUTUBE_CHANNEL',
+      url: 'https://www.youtube.com/channel/UCrC8mOqJQpoB7NuIMKIS6rQ',
+      officialTag: 'FREE · COACHING · 20.5M SUBSCRIBERS (checked 2026-09-12)',
+      recommendedFor: 'Daily current-affairs and editorial analysis in Hindi and English; the most-followed UPSC channel.',
+      description: 'Coaching content, not a government source. Listed because it is the most-subscribed UPSC channel; GovOS confirmed the channel identity and count from the channel page and has not fact-checked its lessons.',
+      linkVerifiedDate: UPSC_CHECK,
+      provenance: communitySource('prov-res-upsc-yt-studyiq', 'StudyIQ IAS (YouTube)', 'https://www.youtube.com/channel/UCrC8mOqJQpoB7NuIMKIS6rQ', '20.5M subscribers')
+    },
+    {
+      id: 'res-upsc-yt-drishti',
+      title: 'Drishti IAS — YouTube channel (12.9M subscribers)',
+      subject: 'History & Culture',
+      author: 'Drishti IAS (YouTube channel)',
+      type: 'VIDEO_LECTURE',
+      resourceFormat: 'YOUTUBE_CHANNEL',
+      url: 'https://www.youtube.com/channel/UCzLqOSZPtUKrmSEnlH4LAvw',
+      officialTag: 'FREE · COACHING · 12.9M SUBSCRIBERS (checked 2026-09-12)',
+      recommendedFor: 'Hindi-medium candidates especially: answer writing, editorial analysis and ethics discussions.',
+      description: 'Coaching content, not a government source. Identity and subscriber count confirmed from the channel page on 2026-09-12; lessons not fact-checked by GovOS.',
+      linkVerifiedDate: UPSC_CHECK,
+      provenance: communitySource('prov-res-upsc-yt-drishti', 'Drishti IAS (YouTube)', 'https://www.youtube.com/channel/UCzLqOSZPtUKrmSEnlH4LAvw', '12.9M subscribers')
+    },
+    {
+      id: 'res-upsc-yt-mrunal',
+      title: 'Mrunal Patel — YouTube channel (2.1M subscribers)',
+      subject: 'Economy',
+      author: 'Mrunal Patel (YouTube channel)',
+      type: 'VIDEO_LECTURE',
+      resourceFormat: 'YOUTUBE_CHANNEL',
+      url: 'https://www.youtube.com/channel/UCwDfgcUkKKTxPozU9UnQ8Pw',
+      officialTag: 'FREE · COACHING · 2.1M SUBSCRIBERS (checked 2026-09-12)',
+      recommendedFor: 'Economy — budget and Economic Survey walkthroughs that candidates widely use for GS-III.',
+      description: 'Coaching content, not a government source. Identity and subscriber count confirmed from the channel page on 2026-09-12; lessons not fact-checked by GovOS.',
+      linkVerifiedDate: UPSC_CHECK,
+      provenance: communitySource('prov-res-upsc-yt-mrunal', 'Mrunal Patel (YouTube)', 'https://www.youtube.com/channel/UCwDfgcUkKKTxPozU9UnQ8Pw', '2.1M subscribers')
+    },
+    {
+      id: 'res-upsc-yt-vision',
+      title: 'Vision IAS — YouTube channel (1.82M subscribers)',
+      subject: 'Current Affairs & Governance',
+      author: 'Vision IAS (YouTube channel)',
+      type: 'VIDEO_LECTURE',
+      resourceFormat: 'YOUTUBE_CHANNEL',
+      url: 'https://www.youtube.com/channel/UCw4wosjC-DKq95xI5klz92w',
+      officialTag: 'FREE · COACHING · 1.82M SUBSCRIBERS (checked 2026-09-12)',
+      recommendedFor: 'Monthly current-affairs revision and Prelims–Mains linkage.',
+      description: 'Coaching content, not a government source. Identity and subscriber count confirmed from the channel page on 2026-09-12; lessons not fact-checked by GovOS.',
+      linkVerifiedDate: UPSC_CHECK,
+      provenance: communitySource('prov-res-upsc-yt-vision', 'Vision IAS (YouTube)', 'https://www.youtube.com/channel/UCw4wosjC-DKq95xI5klz92w', '1.82M subscribers')
+    },
+    {
+      id: 'res-upsc-yt-sleepy',
+      title: 'Sleepy Classes IAS — YouTube channel (1.28M subscribers)',
+      subject: 'Ethics, Essay & Answer Writing',
+      author: 'Sleepy Classes IAS (YouTube channel)',
+      type: 'VIDEO_LECTURE',
+      resourceFormat: 'YOUTUBE_CHANNEL',
+      url: 'https://www.youtube.com/channel/UCgRf62bnK3uX4N-YEhG4Jog',
+      officialTag: 'FREE · COACHING · 1.28M SUBSCRIBERS (checked 2026-09-12)',
+      recommendedFor: 'Ethics (GS-IV), essay and answer-writing sessions.',
+      description: 'Coaching content, not a government source. Identity and subscriber count confirmed from the channel page on 2026-09-12; lessons not fact-checked by GovOS.',
+      linkVerifiedDate: UPSC_CHECK,
+      provenance: communitySource('prov-res-upsc-yt-sleepy', 'Sleepy Classes IAS (YouTube)', 'https://www.youtube.com/channel/UCgRf62bnK3uX4N-YEhG4Jog', '1.28M subscribers')
+    },
+    {
+      id: 'res-upsc-yt-vajiram',
+      title: 'Vajiram and Ravi Official — YouTube channel (689K subscribers)',
+      subject: 'Polity & Governance',
+      author: 'Vajiram and Ravi (YouTube channel)',
+      type: 'VIDEO_LECTURE',
+      resourceFormat: 'YOUTUBE_CHANNEL',
+      url: 'https://www.youtube.com/channel/UCzelA5kqD9v6k6drK44l4_g',
+      officialTag: 'FREE · COACHING · 689K SUBSCRIBERS (checked 2026-09-12)',
+      recommendedFor: 'Strategy sessions and topic lectures from one of the oldest Delhi institutes.',
+      description: 'Coaching content, not a government source. Identity and subscriber count confirmed from the channel page on 2026-09-12; lessons not fact-checked by GovOS.',
+      linkVerifiedDate: UPSC_CHECK,
+      provenance: communitySource('prov-res-upsc-yt-vajiram', 'Vajiram and Ravi (YouTube)', 'https://www.youtube.com/channel/UCzelA5kqD9v6k6drK44l4_g', '689K subscribers')
     }
   ],
+
+  faqs: [
+    { id: 'faq-upsc-01', question: 'What are the age limits and the crucial date for CSE 2026?', answer: '21 to 32 years on 1 August 2026: born not earlier than 2 August 1994 and not later than 1 August 2005. Upper age relaxes by 5 years for SC/ST, 3 for OBC, 3 for Defence personnel disabled in operations, 5 for ex-servicemen with at least 5 years’ service, and 10 for Persons with Benchmark Disability.', officialClause: 'Section II (II) Age Limits', provenance: upscProvenanceEligibility },
+    { id: 'faq-upsc-02', question: 'How many attempts do I get?', answer: 'Six for General and EWS; nine for OBC and for PwBD candidates of General/EWS/OBC; unlimited within the age limit for SC/ST. Appearing in either Preliminary paper counts as an attempt.', officialClause: 'Section II (IV) Number of attempts', provenance: upscProvenanceEligibility },
+    { id: 'faq-upsc-03', question: 'Can I apply in my final year of graduation?', answer: 'Yes. Candidates who have appeared at, or intend to appear at, the qualifying examination may sit the Preliminary Examination, but must produce proof of having passed it with the application for the Main Examination.', officialClause: 'Section II (III) Minimum Educational Qualification, Note-I', provenance: upscProvenanceEligibility },
+    { id: 'faq-upsc-04', question: 'What is the fee and who is exempt?', answer: '₹100 for the Preliminary Examination, paid online; a further ₹200 for candidates admitted to the Main Examination, paid in a 10-day window after the Preliminary result. Female, SC, ST and PwBD candidates are exempt from both.', officialClause: 'Para 4, FEE', provenance: upscProvenanceFee },
+    { id: 'faq-upsc-05', question: 'How does the Preliminary Examination work, and is there negative marking?', answer: 'Two objective papers of 200 marks and two hours each. GS Paper-I (100 questions) decides the cut-off; GS Paper-II, the CSAT (80 questions), is qualifying at 33%. One-third of a question’s marks is deducted for each wrong answer; a blank costs nothing. Preliminary marks are not counted in the final merit.', officialClause: 'Section III Part A; Section I, Notes I–II', provenance: upscProvenanceScheme },
+    { id: 'faq-upsc-06', question: 'What does the Main Examination consist of?', answer: 'Nine descriptive papers of three hours each. Paper A (an Indian language) and Paper B (English), 300 marks each, are qualifying at 25% and not counted. The seven merit papers — Essay, GS-I to GS-IV and two optional papers — carry 250 marks each, 1,750 in total. The Personality Test adds 275 marks, for a grand total of 2,025.', officialClause: 'Section III Part B — Main Examination', provenance: upscProvenanceScheme },
+    { id: 'faq-upsc-07', question: 'When and where do I get the e-Admit Card?', answer: 'It is uploaded on upsconline.nic.in on the last working day of the week before the examination (three days before for candidates who changed their scribe). Nothing is posted or emailed. For the 2026 Preliminary Examination the cards were uploaded on 15 May 2026; carry the printout and the photo ID quoted in it to every session.', officialClause: 'Para 4, ISSUANCE OF E-ADMIT CARD; Press Note 15.05.2026', provenance: upscProvenanceAdmit },
+    { id: 'faq-upsc-08', question: 'Can I correct my application after submitting it?', answer: 'No. The notice states that no correction, alteration or modification in any field is allowed after submission, and applications cannot be withdrawn. The Universal Registration profile can be updated once, but changes apply only to applications submitted afterwards.', officialClause: 'Para 2.1 and Note 1, HOW TO APPLY', provenance: upscProvenanceApply }
+  ],
+
   applicationGuide: {
     officialPortal: 'https://upsconline.nic.in',
     otrSteps: [
       {
         stepNumber: 1,
-        title: 'One Time Registration (OTR)',
+        title: 'Account creation on the UPSC Online Application Portal',
         portalUrl: 'https://upsconline.nic.in',
-        instructions: ['Register with active mobile and email', 'Verify Aadhaar/Photo ID card details', 'Generate permanent OTR ID'],
-        mandatoryFields: ['Full Name', 'DoB', 'Gender', 'Father Name', 'Photo ID'],
-        commonMistakesToAvoid: ['Discrepancy in Name matching Class 10 certificate']
+        instructions: [
+          'Open https://upsconline.nic.in and create an account with an e-mail address and mobile number you will keep until the final result.',
+          'Verify both by OTP; the Commission communicates electronically, so a dead mailbox means missed notices.',
+          'Read the General Instructions and the module-wise instructions the portal links before going further.'
+        ],
+        mandatoryFields: ['Active e-mail ID', 'Active mobile number', 'Password of your own'],
+        commonMistakesToAvoid: [
+          'Using a cyber-café e-mail or phone — e-Admit Card and QPReP messages go there.',
+          'Creating two accounts; the portal ties everything to one Universal Registration Number.'
+        ]
+      },
+      {
+        stepNumber: 2,
+        title: 'Universal Registration (URN) — common to every UPSC examination',
+        portalUrl: 'https://upsconline.nic.in',
+        instructions: [
+          'Fill personal details exactly as on the Matriculation certificate — name, parents’ names, date of birth.',
+          'Enter one photo ID (Aadhaar, Voter Card, PAN, Passport, Driving Licence or another Government photo ID). This ID is used for every future reference and must be carried to every examination session.',
+          'Lock the profile. A one-time modification facility exists, but changes do not flow into applications already submitted.'
+        ],
+        mandatoryFields: ['Photo ID type and number', 'Date of birth per Matriculation certificate', 'Category and nationality'],
+        commonMistakesToAvoid: [
+          'A photo ID number that differs from the card you will carry — the invigilator checks the number printed on the e-Admit Card.',
+          'Claiming a category without the certificate in the prescribed format; verification is done at the Personality Test stage from originals.'
+        ]
+      },
+      {
+        stepNumber: 3,
+        title: 'Common Application Form (CAF) with live photo capture',
+        portalUrl: 'https://upsconline.nic.in',
+        instructions: [
+          'Complete the CAF, which is shared across the Commission’s examinations: education, address, preferences for centre.',
+          'Capture the photograph live through the portal as instructed (Note 2 of the notice); a previously taken photo is not accepted where live capture is prescribed.',
+          'Upload the signature and any documents in the sizes the portal states on the upload screen.'
+        ],
+        mandatoryFields: ['Live photograph', 'Signature image', 'Educational qualification details'],
+        commonMistakesToAvoid: [
+          'Poor lighting or a covered face in the live capture — the same image appears on the e-Admit Card.',
+          'Leaving the CAF unlocked; the examination-specific module cannot be submitted until it is complete.'
+        ]
+      },
+      {
+        stepNumber: 4,
+        title: 'Examination-specific module for CSE and fee payment',
+        portalUrl: 'https://upsconline.nic.in',
+        instructions: [
+          'Within the notified window (for 2026: 4 to 24 February, 6:00 PM) open the Civil Services (Preliminary) Examination module.',
+          'Choose the centre for the Preliminary Examination from the 83 listed and the Main centre from the 27 listed; the Commission may reallocate.',
+          'Pay ₹100 by net banking, card or UPI unless exempt (Female / SC / ST / PwBD). Keep the Application Number with the URN.',
+          'Submit. There is no withdrawal and no correction afterwards — check every field before the final click.'
+        ],
+        mandatoryFields: ['Preliminary centre', 'Main centre', 'Optional subject (Mains)', 'Medium of examination', 'Fee payment or exemption'],
+        commonMistakesToAvoid: [
+          'Waiting for the last evening: the window closes at 6:00 PM, not midnight.',
+          'Choosing an optional subject casually — it cannot be changed after submission.'
+        ]
       }
     ],
     photoRules: {
-      documentType: 'Passport Photograph',
-      dimensions: '350 x 350 pixels (Aspect Ratio 1:1)',
-      fileFormat: 'JPG / JPEG',
-      fileSize: '20 KB to 300 KB',
-      rules: ['Candidate face should cover 3/4th of space', 'Photo must not be older than 10 days from upload', 'White background'],
-      sampleDescription: 'Frontal clear photograph with candidate name and date printed at bottom.'
+      documentType: 'Live-captured photograph (Common Application Form)',
+      dimensions: 'As framed by the portal’s live-capture screen',
+      fileFormat: 'Captured by the portal (no upload where live capture is prescribed)',
+      fileSize: 'Set by the portal',
+      rules: [
+        'Face fully visible, looking at the camera, no dark glasses or headgear except religious.',
+        'Plain, well-lit background; the same image is printed on the e-Admit Card and matched at the venue.',
+        'Capture again if the preview is blurred — a rejected photograph invalidates the application.'
+      ],
+      sampleDescription: 'A recent, front-facing colour photograph on a plain background, captured live in the portal.'
     },
     signatureRules: {
-      documentType: 'Signature',
-      dimensions: '1000 x 1000 pixels max',
-      fileFormat: 'JPG / JPEG',
-      fileSize: '20 KB to 300 KB',
-      rules: ['Black ballpoint pen on white background', 'No capital initials only'],
-      sampleDescription: 'Clear handwritten running signature.'
+      documentType: 'Signature image',
+      dimensions: 'As specified on the portal’s upload screen',
+      fileFormat: 'JPG as accepted by the portal',
+      fileSize: 'Within the limit shown on the upload screen',
+      rules: [
+        'Sign in black or blue ink on white paper and scan; do not type your name.',
+        'The signature on the e-Admit Card is the one the invigilator compares at the venue.'
+      ],
+      sampleDescription: 'A clear scan of your usual signature on white paper.'
     },
-    certificateRules: [],
-    rejectionPitfalls: []
+    certificateRules: [
+      {
+        category: 'OBC_NCL',
+        title: 'OBC (Non-Creamy Layer) certificate',
+        issuingAuthority: ['District Magistrate / Collector / Deputy Commissioner', 'Sub-Divisional Officer of the area of residence', 'Other authorities listed in Appendix-II of the notice'],
+        financialYearValidity: 'Must certify non-creamy-layer status on the relevant date; format as in the notice’s appendix',
+        crucialDate: 'As specified in the notice (verified at the Personality Test stage from originals)',
+        officialAnnexure: 'Appendix-II format, Notice No. 05/2026-CSE',
+        keyConditions: ['Caste must be in the Central List of OBCs for the State', 'Certificate must state the candidate does not belong to the creamy layer', 'A State-list-only OBC is treated as General for CSE']
+      },
+      {
+        category: 'EWS',
+        title: 'Income & Asset certificate (EWS)',
+        issuingAuthority: ['District Magistrate / Additional DM / Collector / Deputy Commissioner and equivalents', 'Sub-Divisional Officer of the area of residence'],
+        financialYearValidity: 'Issued for the financial year the notice specifies, in the prescribed format',
+        crucialDate: 'As specified in the notice',
+        officialAnnexure: 'Appendix format for EWS, Notice No. 05/2026-CSE',
+        keyConditions: ['Family income below ₹8 lakh in the specified year', 'Land and property holdings within the prescribed limits', 'EWS candidates get no age relaxation and six attempts']
+      },
+      {
+        category: 'PwBD',
+        title: 'Persons with Benchmark Disability certificate',
+        issuingAuthority: ['Medical authority notified under the Rights of Persons with Disabilities Act, 2016'],
+        financialYearValidity: 'Permanent or as stated on the certificate',
+        crucialDate: 'Benchmark disability of 40% or more on the crucial date',
+        officialAnnexure: 'Appendix-III (physical standards) and the PwBD certificate format, Notice No. 05/2026-CSE',
+        keyConditions: ['Categories (a) to (e) as defined in the notice; 33 vacancies reserved in 2026', 'Scribe and compensatory time as per the rules; scribe change must be requested seven days before the examination', 'Fee exempt; nine attempts (General/EWS/OBC) or unlimited (SC/ST)']
+      },
+      {
+        category: 'ESM',
+        title: 'Ex-servicemen / Defence personnel',
+        issuingAuthority: ['Competent military authority (discharge certificate or NOC as applicable)'],
+        financialYearValidity: 'At least five years’ military service as on 1 August 2026 for the ex-servicemen relaxation',
+        crucialDate: '1 August 2026',
+        officialAnnexure: 'Section II (II)(2)(c)–(d), Notice No. 05/2026-CSE',
+        keyConditions: ['Up to 5 years’ age relaxation for ex-servicemen released on completion of assignment or on medical grounds', 'Up to 3 years for Defence personnel disabled in operations']
+      }
+    ],
+    rejectionPitfalls: [
+      { pitfall: 'Photo ID on the e-Admit Card does not match the card carried', consequence: 'Not admitted to the examination hall', prevention: 'Carry the exact ID whose number you entered in the URN profile, plus the e-Admit Card printout.' },
+      { pitfall: 'Attempt count exceeded or age outside the window', consequence: 'Candidature cancelled at verification, even after the Main Examination', prevention: 'Count every year you appeared in a Preliminary paper; check the birth-date window in the notice.' },
+      { pitfall: 'Category certificate not in the prescribed format or from an unlisted authority', consequence: 'Treated as General at the Personality Test stage; fee and attempt relaxations reversed', prevention: 'Use the appendix format in the notice and an issuing authority it lists.' },
+      { pitfall: 'Missing the Mains ₹200 fee / DAF window after the Preliminary result', consequence: 'Not admitted to the Main Examination', prevention: 'The window opens the day after the result and lasts about ten days (19–28 June in 2026).' }
+    ]
   },
+
   roadmapTracks: [
     {
+      id: 'TRACK_90_DAYS',
+      name: '90-Day Prelims Sprint',
+      subtitle: 'For a candidate who has read the NCERTs once and is 90 days from the Preliminary Examination (7–8 hours/day)',
+      targetDailyHours: 7.5,
+      suitableFor: 'Repeaters and full-time aspirants who need to convert reading into a Prelims score; CSAT practised weekly from day one.',
+      dailyTimetable: [
+        { timeSlot: '06:00 – 08:00 (2 hrs)', activity: 'Static GS revision', focus: 'One subject a fortnight: Polity → Economy → Environment → History → Geography → Science' },
+        { timeSlot: '08:30 – 10:00 (1.5 hrs)', activity: 'Current affairs', focus: 'PIB and one compilation; note schemes, reports, indices in your own table' },
+        { timeSlot: '11:00 – 13:00 (2 hrs)', activity: 'Previous-year papers', focus: '50 official Prelims questions a day, timed; log every wrong answer with the reason' },
+        { timeSlot: '15:00 – 16:00 (1 hr)', activity: 'CSAT', focus: 'One passage set and 15 numeracy/reasoning items; the 33% bar is real' },
+        { timeSlot: '17:00 – 18:00 (1 hr)', activity: 'Map and data work', focus: 'Atlas practice; Economic Survey tables; environment species and sites' },
+        { timeSlot: '20:00 – 21:00 (1 hr)', activity: 'Error log & flashcards', focus: 'Re-attempt yesterday’s wrong questions from memory' }
+      ],
+      phases: [
+        {
+          phaseNumber: 1,
+          phaseTitle: 'Phase 1: Static consolidation (Weeks 1–5)',
+          durationWeeks: 5,
+          focusArea: 'Polity, Economy and Environment — the three areas that together carry about 45% of GS Paper-I — plus a CSAT baseline.',
+          weeklySchedule: [
+            { weekNumber: 1, weekTitle: 'Week 1: Polity — Constitution, Parliament, Judiciary', goals: ['Read the Constitution’s Parts III–VI from the Legislative Department text', 'Solve 2019–2026 Prelims polity questions', 'CSAT diagnostic: one full official Paper-II, timed'], suggestedDailyHours: 7.5, milestoneTest: 'Sectional: 50 polity questions from official papers' },
+            { weekNumber: 2, weekTitle: 'Week 2: Polity — bodies, amendments, local government', goals: ['Constitutional and statutory bodies with articles', 'Panchayati Raj and municipalities', 'Amendments since 2019'], suggestedDailyHours: 7.5, milestoneTest: 'Sectional: 50 polity + 20 CSAT reasoning' },
+            { weekNumber: 3, weekTitle: 'Week 3: Economy — macro basics and RBI', goals: ['National income, inflation, monetary policy from the RBI and the Economic Survey', 'Budget concepts and fiscal terms', 'Solve 2019–2026 economy questions'], suggestedDailyHours: 7.5, milestoneTest: 'Sectional: 50 economy questions' },
+            { weekNumber: 4, weekTitle: 'Week 4: Economy — schemes, external sector, agriculture', goals: ['Flagship schemes from PIB', 'Trade, BoP and exchange-rate basics', 'MSP, PDS and agricultural marketing'], suggestedDailyHours: 7.5, milestoneTest: 'Full official Prelims GS-I paper (2024), timed' },
+            { weekNumber: 5, weekTitle: 'Week 5: Environment & ecology', goals: ['Ecosystems, biodiversity hotspots, protected areas', 'Climate conventions and Indian commitments', 'Species in the news from official sources'], suggestedDailyHours: 7.5, milestoneTest: 'Sectional: 50 environment questions + CSAT numeracy set' }
+          ]
+        },
+        {
+          phaseNumber: 2,
+          phaseTitle: 'Phase 2: History, Geography, Science and current affairs (Weeks 6–9)',
+          durationWeeks: 4,
+          focusArea: 'Complete the remaining static areas and build the current-affairs table for the twelve months before the examination.',
+          weeklySchedule: [
+            { weekNumber: 6, weekTitle: 'Week 6: Modern history and the freedom struggle', goals: ['1857 to 1947 from the NCERTs', 'Governors-General, acts, sessions of Congress', 'Solve 2019–2026 modern-history questions'], suggestedDailyHours: 7.5, milestoneTest: 'Sectional: 50 history questions' },
+            { weekNumber: 7, weekTitle: 'Week 7: Ancient & medieval history, art and culture', goals: ['Architecture, dance, music and literature from NCERT Fine Arts', 'Dynasties and inscriptions that recur', 'Map the UNESCO sites'], suggestedDailyHours: 7.5, milestoneTest: 'Full official Prelims GS-I paper (2025), timed' },
+            { weekNumber: 8, weekTitle: 'Week 8: Geography — physical and Indian', goals: ['Monsoon, climate, soils, rivers with the atlas', 'World physical geography basics', 'Solve 2019–2026 geography questions'], suggestedDailyHours: 7.5, milestoneTest: 'Sectional: 50 geography questions + map test' },
+            { weekNumber: 9, weekTitle: 'Week 9: Science & technology and current affairs', goals: ['Space, defence, biotech and IT developments of the year from PIB', 'General science at NCERT level', 'Consolidate the current-affairs table'], suggestedDailyHours: 7.5, milestoneTest: 'Full official Prelims GS-I paper (2026), timed' }
+          ]
+        },
+        {
+          phaseNumber: 3,
+          phaseTitle: 'Phase 3: Full-length papers and revision (Weeks 10–13)',
+          durationWeeks: 4,
+          focusArea: 'Alternate full official papers with revision of the error log; CSAT full papers weekly.',
+          weeklySchedule: [
+            { weekNumber: 10, weekTitle: 'Week 10: Papers 2021–2022', goals: ['Two full GS-I papers, timed', 'One full CSAT paper', 'Revise polity and economy from the error log'], suggestedDailyHours: 8, milestoneTest: 'Official GS-I 2022 under exam conditions' },
+            { weekNumber: 11, weekTitle: 'Week 11: Papers 2023–2024', goals: ['Two full GS-I papers, timed', 'One full CSAT paper', 'Revise environment, history, geography'], suggestedDailyHours: 8, milestoneTest: 'Official GS-I 2024 under exam conditions' },
+            { weekNumber: 12, weekTitle: 'Week 12: Current affairs and elimination technique', goals: ['Twelve-month current-affairs table, one pass a day', 'Practise option elimination on 2025–2026 papers', 'Decide your attempt count from your accuracy'], suggestedDailyHours: 8, milestoneTest: 'Official GS-I 2026 + CSAT 2026 back to back' },
+            { weekNumber: 13, weekTitle: 'Week 13: Taper', goals: ['Flashcards and maps only', 'Sleep, venue reconnaissance, e-Admit Card and photo ID ready', 'No new material'], suggestedDailyHours: 5, milestoneTest: 'None — rest' }
+          ]
+        }
+      ]
+    },
+    {
       id: 'TRACK_180_DAYS',
-      name: 'Comprehensive UPSC CSE Foundation (1 Year)',
-      subtitle: 'Structured Prelims-cum-Mains integrated pathway',
-      targetDailyHours: 8,
-      suitableFor: 'Full-time aspirants aiming for Civil Services 2026',
-      phases: [],
-      dailyTimetable: []
+      name: '180-Day Prelims + Mains Foundation',
+      subtitle: 'For a first attempt with six months in hand: NCERT foundation, then Prelims, with Mains answer-writing started early (6–7 hours/day)',
+      targetDailyHours: 6.5,
+      suitableFor: 'First-time aspirants with a graduation degree who can give a full working day to preparation.',
+      dailyTimetable: [
+        { timeSlot: '06:00 – 08:30 (2.5 hrs)', activity: 'NCERT / static subject', focus: 'One subject at a time, notes in your own words' },
+        { timeSlot: '09:00 – 10:00 (1 hr)', activity: 'Current affairs', focus: 'PIB releases; Sansad TV discussion once a week' },
+        { timeSlot: '11:00 – 12:30 (1.5 hrs)', activity: 'Answer writing', focus: 'One GS answer a day from the 2024–2026 Main papers, 150 words, timed' },
+        { timeSlot: '16:00 – 17:00 (1 hr)', activity: 'Previous-year Prelims questions', focus: '30 questions on the subject of the fortnight' },
+        { timeSlot: '20:00 – 20:30 (0.5 hr)', activity: 'Revision', focus: 'Yesterday’s notes and the error log' }
+      ],
+      phases: [
+        {
+          phaseNumber: 1,
+          phaseTitle: 'Phase 1: Foundation (Weeks 1–10)',
+          durationWeeks: 10,
+          focusArea: 'NCERTs Classes VI–XII for History, Geography, Polity, Economy and Science; optional subject chosen by week 6.',
+          weeklySchedule: [
+            { weekNumber: 1, weekTitle: 'Weeks 1–2: Polity from the Constitution and NCERT', goals: ['Read Parts I–VI of the Constitution', 'NCERT Class XI–XII Political Science', 'Begin a daily 150-word answer'], suggestedDailyHours: 6.5, milestoneTest: 'Sectional: 30 polity questions from official papers' },
+            { weekNumber: 3, weekTitle: 'Weeks 3–4: History — ancient to modern', goals: ['NCERT History VI–XII', 'Timeline of the freedom struggle', 'Art and culture from NCERT Fine Arts'], suggestedDailyHours: 6.5, milestoneTest: 'Sectional: 30 history questions' },
+            { weekNumber: 5, weekTitle: 'Weeks 5–6: Geography and environment', goals: ['NCERT Geography VI–XII with the atlas', 'Environment from Class XII Biology (ecology chapters)', 'Choose the optional subject and read its syllabus in the notice'], suggestedDailyHours: 6.5, milestoneTest: 'Sectional: 30 geography + 20 environment questions' },
+            { weekNumber: 7, weekTitle: 'Weeks 7–8: Economy', goals: ['NCERT Economics XI–XII', 'Economic Survey overview chapter', 'Budget terms from the Ministry of Finance glossary'], suggestedDailyHours: 6.5, milestoneTest: 'Sectional: 30 economy questions' },
+            { weekNumber: 9, weekTitle: 'Weeks 9–10: Science, technology and CSAT', goals: ['NCERT Science IX–X', 'Two official CSAT papers, timed', 'First full GS-I paper as a diagnostic'], suggestedDailyHours: 6.5, milestoneTest: 'Official GS-I 2021, timed' }
+          ]
+        },
+        {
+          phaseNumber: 2,
+          phaseTitle: 'Phase 2: Depth and answer writing (Weeks 11–20)',
+          durationWeeks: 10,
+          focusArea: 'Standard references per subject; optional subject Paper 1; GS answer writing from the official Main papers three times a week.',
+          weeklySchedule: [
+            { weekNumber: 11, weekTitle: 'Weeks 11–14: Polity and governance in depth; optional Paper 1', goals: ['Committee reports and Acts from PRS and India Code', 'GS-II answers from the 2024–2026 papers', 'Optional Paper 1 syllabus, first pass'], suggestedDailyHours: 7, milestoneTest: 'Two GS-II answers marked against the question demand' },
+            { weekNumber: 15, weekTitle: 'Weeks 15–17: Economy, agriculture and security', goals: ['Economic Survey chapters', 'GS-III answers from the 2024–2026 papers', 'Internal security topics from official sources'], suggestedDailyHours: 7, milestoneTest: 'Full GS-I paper (2023), timed' },
+            { weekNumber: 18, weekTitle: 'Weeks 18–20: Ethics and essay', goals: ['GS-IV theory and case studies from the 2024–2026 papers', 'One essay a week on a past topic', 'Optional Paper 2 syllabus, first pass'], suggestedDailyHours: 7, milestoneTest: 'One essay and two case studies, self-marked' }
+          ]
+        },
+        {
+          phaseNumber: 3,
+          phaseTitle: 'Phase 3: Prelims conversion (Weeks 21–26)',
+          durationWeeks: 6,
+          focusArea: 'Switch to Prelims mode: official papers weekly, current-affairs table, CSAT to safety.',
+          weeklySchedule: [
+            { weekNumber: 21, weekTitle: 'Weeks 21–23: Papers and revision', goals: ['One full GS-I and one CSAT paper each week', 'Revise subject notes in the order of weightage', 'Current-affairs table for the past year'], suggestedDailyHours: 7.5, milestoneTest: 'Official GS-I 2025, timed' },
+            { weekNumber: 24, weekTitle: 'Weeks 24–26: Final revision', goals: ['Error log only', 'Maps, species, sites, schemes flashcards', 'Taper in the last week'], suggestedDailyHours: 6, milestoneTest: 'Official GS-I 2026 + CSAT 2026 back to back' }
+          ]
+        }
+      ]
+    },
+    {
+      id: 'TRACK_WORKING_PRO',
+      name: 'Working Professional — 12-month plan',
+      subtitle: 'Three focused hours on weekdays and six on weekends; Prelims first, Mains answer writing on weekends',
+      targetDailyHours: 3,
+      suitableFor: 'Candidates in a job who can hold a steady routine for a year and use leave for the last month before the Preliminary Examination.',
+      dailyTimetable: [
+        { timeSlot: '05:30 – 07:00 (1.5 hrs)', activity: 'Static subject', focus: 'One NCERT chapter or one standard-reference section a day' },
+        { timeSlot: '13:00 – 13:30 (0.5 hr)', activity: 'Current affairs', focus: 'PIB headlines; note only what maps to the syllabus' },
+        { timeSlot: '21:00 – 22:00 (1 hr)', activity: 'Previous-year questions', focus: '20 official Prelims questions on the running subject' },
+        { timeSlot: 'Weekends (6 hrs/day)', activity: 'Papers and answer writing', focus: 'One full official paper Saturday; three Mains answers Sunday' }
+      ],
+      phases: [
+        {
+          phaseNumber: 1,
+          phaseTitle: 'Phase 1: Foundation, one subject a month (Months 1–6)',
+          durationWeeks: 26,
+          focusArea: 'Polity, History, Geography, Economy, Environment, Science — NCERTs plus one reference each; official questions on the running subject every night.',
+          weeklySchedule: [
+            { weekNumber: 1, weekTitle: 'Months 1–2: Polity and history', goals: ['Constitution Parts I–VI; NCERT Political Science', 'NCERT History VI–XII', 'Weekend: 2021 and 2022 official GS-I papers, untimed, to learn the demand'], suggestedDailyHours: 3, milestoneTest: 'Sectional: 30 polity + 30 history questions' },
+            { weekNumber: 9, weekTitle: 'Months 3–4: Geography and economy', goals: ['NCERT Geography with the atlas', 'NCERT Economics and the Economic Survey overview', 'Weekend: first Mains answers from the 2024 GS-I and GS-III papers'], suggestedDailyHours: 3, milestoneTest: 'Sectional: 30 geography + 30 economy questions' },
+            { weekNumber: 18, weekTitle: 'Months 5–6: Environment, science, CSAT', goals: ['Ecology chapters and climate conventions', 'NCERT Science IX–X', 'Weekend: two official CSAT papers, timed'], suggestedDailyHours: 3, milestoneTest: 'Official GS-I 2023, timed, on a weekend' }
+          ]
+        },
+        {
+          phaseNumber: 2,
+          phaseTitle: 'Phase 2: Optional and answer writing (Months 7–9)',
+          durationWeeks: 13,
+          focusArea: 'Optional subject on weekday mornings; GS answers and one essay a fortnight on weekends; current-affairs table maintained.',
+          weeklySchedule: [
+            { weekNumber: 27, weekTitle: 'Months 7–8: Optional Paper 1 and 2', goals: ['Cover the optional syllabus from the notice, paper by paper', 'Weekend: three GS answers from the 2025–2026 Main papers', 'One essay a fortnight'], suggestedDailyHours: 3, milestoneTest: 'Optional Paper 1 questions from the 2025 paper, timed sections' },
+            { weekNumber: 35, weekTitle: 'Month 9: Ethics and consolidation', goals: ['GS-IV theory and the 2024–2026 case studies', 'Consolidate all subject notes to revision sheets', 'Weekend: full GS-I paper (2024)'], suggestedDailyHours: 3, milestoneTest: 'Two case studies and one essay, self-marked' }
+          ]
+        },
+        {
+          phaseNumber: 3,
+          phaseTitle: 'Phase 3: Prelims conversion with leave (Months 10–12)',
+          durationWeeks: 13,
+          focusArea: 'Weekly official papers; take leave for the final four weeks and follow the 90-day sprint’s last phase.',
+          weeklySchedule: [
+            { weekNumber: 40, weekTitle: 'Months 10–11: Weekly papers', goals: ['One full official GS-I paper every weekend, 2019 onwards', 'CSAT every second weekend', 'Current-affairs table, one pass a week'], suggestedDailyHours: 3, milestoneTest: 'Official GS-I 2025, timed' },
+            { weekNumber: 49, weekTitle: 'Month 12: On leave — final sprint', goals: ['Follow Phase 3 of the 90-Day Prelims Sprint', 'Error log and flashcards only in the last week', 'e-Admit Card and photo ID ready; venue checked'], suggestedDailyHours: 7, milestoneTest: 'Official GS-I 2026 + CSAT 2026 back to back' }
+          ]
+        }
+      ]
     }
-  ]
+  ],
+
+  admitCardDetails: {
+    status: 'EXPIRED',
+    releaseDateStr: '2026-05-15 10:00:00',
+    officialPortalUrl: 'https://upsconline.nic.in',
+    loginCredentialsRequired: [
+      'Universal Registration Number (URN) or Registration ID',
+      'Date of birth, or the portal password',
+      'Captcha'
+    ],
+    instructions: [
+      'e-Admit Cards are uploaded on upsconline.nic.in on the last working day of the week before each stage; for the 2026 Preliminary Examination they went up on 15 May 2026. Nothing is posted or emailed.',
+      'Print it and preserve it until the final result is declared; it is needed again for the Main Examination and the Personality Test.',
+      'Carry the printout and the photo ID whose number is printed on it to every session; without both you will not be admitted.',
+      'Read the “Important Instructions to the candidates” appended to the card — reporting time, banned items and the answer-sheet rules are there.',
+      'Any discrepancy in the card must be reported to the Commission immediately, before the examination.',
+      'The Main Examination e-Admit Cards for 2026 were issued in August; Personality Test e-summon letters follow on the same portal after the Main result.'
+    ],
+    cityIntimationAvailable: false
+  }
 };
 
 // ============================================================================
@@ -3692,6 +4517,9 @@ export const APPSC_GROUP2_EXAM: Exam = {
     }
   ]
 };
+
+/** The authored question bank, shift papers, sectionals and drills are written to this exam's pattern. */
+export const PRACTICE_BANK_EXAM_ID = 'exam-ssc-cgl-2026';
 
 export const ALL_EXAMS: Exam[] = [
   SSC_CGL_EXAM,
@@ -6492,7 +7320,7 @@ export function generateCustomMockTest(config: CustomTestConfig): MockPaper {
     suppliers = all.filter(sup => sup.bank.length > 0 || sup.topic.generate);
     empty.forEach(e => notes.push(e.topic.inSyllabus
       ? `GovOS has no ${e.topic.label} questions yet, so that topic could not be included.`
-      : `${e.topic.label} is not part of the SSC CGL syllabus, so it was left out.`));
+      : `${e.topic.label} is outside this exam's syllabus, so it was left out.`));
     if (suppliers.length === 0) {
       const fallback = subjects.length > 0 ? subjects : [SUBJECT_QUANT];
       suppliers = fallback.flatMap(suppliersForSubject);
@@ -6508,7 +7336,7 @@ export function generateCustomMockTest(config: CustomTestConfig): MockPaper {
   }
 
   suppliers.filter(sup => !sup.topic.inSyllabus && explicitTopics.includes(sup.topic)).forEach(sup =>
-    notes.push(`${sup.topic.label} is not part of the SSC CGL syllabus. Generated for practice because you asked for it.`));
+    notes.push(`${sup.topic.label} is outside this exam's syllabus. Generated for practice because you asked for it.`));
 
   const targetCount = Math.max(1, config.numQuestions || 25);
   const rng = mulberry32((Date.now() % 1000003) + targetCount * 7919);
@@ -7075,6 +7903,10 @@ export const ALL_POST_STUDY_PATHS: Record<string, PostStudyPath> = {
  * Post ids used by earlier builds, kept so a target post already saved in a
  * candidate's browser still resolves after the ids were aligned with examsData.
  */
+/** True when at least one of the exam's posts has an authored study path (SSC CGL today). */
+export const examHasStudyPaths = (exam: Exam): boolean =>
+  exam.posts.some(p => !!ALL_POST_STUDY_PATHS[p.id] || !!LEGACY_POST_ID_ALIASES[p.id]);
+
 const LEGACY_POST_ID_ALIASES: Record<string, string> = {
   'post-cbi-si': 'post-si-cbi',
   'post-tax-asst': 'post-tax-assistant-cbdt',
