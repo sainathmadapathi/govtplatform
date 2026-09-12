@@ -270,6 +270,30 @@ selected exam/post, then the candidate's own data, then the register.
 - The scratchpad `conv_test.tsx` drives multi-turn threads across all three chats with a
   stubbed `localStorage`; it is the fastest way to see whether context still holds.
 
+### The syllabus is watched, and revised only by a verifier
+The register's syllabus is the seed and carries the date it was verified. It changes at
+runtime through the same two-step rule as resource additions, never from a scrape:
+
+1. **Watch.** `GET /api/syllabus/watch?exam_id=&since=` reads the cached SSC notice board
+   for the notices that can change a syllabus (the exam's own notice, and any corrigendum,
+   addendum or revision to it) dated after the syllabus's `verifiedDate`. The Syllabus
+   section shows them in an amber banner with the notice link and says plainly that the
+   syllabus below is the last verified version; with nothing newer it says so in green, with
+   the fetch time. Exams without a wired board get an honest "no live board yet". A notice
+   is a reason to check, not a change.
+2. **Revise.** The Trust Panel's Corrigendum tab shows the same list with "Use as basis"
+   and a form to ADD, AMEND or RETIRE a topic citing the notice (`POST
+   /api/syllabus/revisions`, table `syllabus_revisions`, `…/<id>/retire` to undo). The server
+   refuses a revision with neither a notice URL nor a note. `applySyllabusRevisions(exam,
+   revisions)` in `services.ts` merges active revisions over the seed; `main.tsx` fetches
+   them per exam (and again on entering the exam page) and hands the merged `liveExam` to
+   the exam page, practice engine, planner, library and assistant, so the syllabus count in
+   a chat answer and the weights in the practice analysis agree with the Syllabus section.
+   A revised topic carries a REVISED / ADDED badge linking the notice and provenance naming
+   the verifier; a revision with a notice URL is `OFFICIALLY_VERIFIED`, one on a note alone
+   `UNDER_VERIFICATION`. `applySyllabusRevisions` returns the same object when there is
+   nothing to apply, so nothing re-renders for no reason.
+
 ### `src/services.ts`
 - `storageService` — the **only** place that talks to the API. localStorage is written
   first and is the effective source of truth; every SQLite call is fire-and-forget inside
@@ -294,6 +318,8 @@ selected exam/post, then the candidate's own data, then the register.
   union so the UI can render the setup notice on 503 instead of a generic error.
 - `conversationService` / `buildChatContext` / `deriveCandidateStage` / `daysToApplicationClose`
   — the shared conversation context described above.
+- `syllabusLiveService` — `watch`, `revisions`, `addRevision`, `retireRevision`; plus the pure
+  `applySyllabusRevisions(exam, revisions)`.
 - `resourceLiveService` — `healthSync`, `recheck`, `sscNotices`, `channelUploads`, `additions`,
   `addResource`, `retireResource`, `status`. Every call swallows network errors and returns
   null/empty, so the library degrades to its static seed when the server is down.
@@ -503,6 +529,9 @@ PDFs. API: `/api/sqlite/status`, `/profile`, `/progress`, `/mock-attempts`, `/sy
 (POST `{urls: []}` → HEAD-then-GET each with browser-like headers and a cookie jar, 8
 threads, 10s timeout; classifies HEALTHY / REDIRECT / BLOCKED / BROKEN / UNREACHABLE.
 Only GET results are trusted, because several portals answer HEAD with 404).
+
+Syllabus (`/api/syllabus/*`): `GET watch?exam_id=&since=` · `GET|POST revisions?exam_id=` ·
+`POST revisions/<id>/retire`. Table `syllabus_revisions`.
 
 Live resources (`/api/resources/*`): `POST health/sync {urls}` (register + current health,
 background-checks new URLs) · `POST health/recheck {urls}` (immediate sweep, stored) ·

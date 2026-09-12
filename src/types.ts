@@ -89,6 +89,16 @@ export interface SyllabusTopic {
   isHighYield: boolean;
   officialProvenance: DataProvenance;
   weightageProvenance?: DataProvenance;
+  /** Set when a verifier changed this topic at runtime; names the notice it came from. */
+  revision?: {
+    id: string;
+    kind: 'ADD' | 'AMEND';
+    noticeTitle?: string | null;
+    noticeUrl?: string | null;
+    noticeDate?: string | null;
+    appliedAt: string;
+    appliedBy: string;
+  };
 }
 
 export interface ExamStage {
@@ -722,6 +732,47 @@ export interface ResourceAddition {
   addedAt: string;
   addedFrom: string;
   findingId?: number | null;
+}
+
+/** The fields a verifier may set when adding or amending a syllabus topic. */
+export interface SyllabusRevisionTopic {
+  subject?: SyllabusTopic['subject'];
+  tier?: SyllabusTopic['tier'];
+  topicName?: string;
+  subtopics?: string[];
+  weightagePercentage?: number | null;
+  avgQuestions?: number | null;
+  isHighYield?: boolean | null;
+}
+
+/**
+ * One verifier decision about the syllabus, stored on the server and merged over the
+ * register's seed at runtime. ADD brings a topic in, AMEND changes fields of an existing
+ * one, RETIRE hides one. Each cites the notice it was read from.
+ */
+export interface SyllabusRevision {
+  id: string;
+  examId: string;
+  kind: 'ADD' | 'AMEND' | 'RETIRE';
+  topicId?: string | null;
+  topic?: SyllabusRevisionTopic | null;
+  note?: string | null;
+  noticeTitle?: string | null;
+  noticeUrl?: string | null;
+  noticeDate?: string | null;
+  appliedAt: string;
+  appliedBy: string;
+}
+
+/** Notices on the live board that may change a syllabus, dated after it was verified. */
+export interface SyllabusWatch {
+  items: SscNotice[];
+  fetchedAt: string | null;
+  stale: boolean;
+  error: string | null;
+  /** null when no live board is wired for the exam. */
+  source: string | null;
+  note?: string;
 }
 
 export interface ResourceHealthSync {

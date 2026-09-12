@@ -110,6 +110,9 @@ import {
   ChannelUploadFeed,
   ResourceAddition,
   SscNoticeFeed,
+  SyllabusRevision,
+  SyllabusRevisionTopic,
+  SyllabusWatch,
   ExamRecommendation,
   UserInteractionEvent,
   ChatContext,
@@ -143,6 +146,7 @@ import {
   conversationService,
   researchService,
   resourceLiveService,
+  syllabusLiveService,
   calculateDetailedAge,
   evaluateCandidateEligibility,
   evaluateEligibility,
@@ -3601,6 +3605,90 @@ interface AdminVerificationPanelProps {
 export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ onOpenProvenanceModal }) => {
   const [activeTab, setActiveTab] = useState<'HEALTH' | 'EXTRACTION' | 'CORRIGENDUM' | 'REPORTS' | 'RESEARCH'>('HEALTH');
 
+  // ---- Syllabus revisions (SSC CGL: the one exam with an authored syllabus and a live board) ----
+  const syllabusExam = SSC_CGL_EXAM;
+  const syllabusVerifiedOn = syllabusExam.syllabus[0]?.officialProvenance?.verifiedDate || '';
+  const [syllabusWatch, setSyllabusWatch] = useState<SyllabusWatch | null>(null);
+  const [syllabusRevisions, setSyllabusRevisions] = useState<SyllabusRevision[]>([]);
+  const [revisionBusy, setRevisionBusy] = useState<boolean>(false);
+  const [revisionError, setRevisionError] = useState<string | null>(null);
+  const emptyRevisionForm = {
+    kind: 'AMEND' as SyllabusRevision['kind'],
+    topicId: syllabusExam.syllabus[0]?.id || '',
+    subject: '' as string,
+    tier: '' as string,
+    topicName: '',
+    subtopics: '',
+    weightagePercentage: '',
+    avgQuestions: '',
+    isHighYield: '' as '' | 'yes' | 'no',
+    noticeTitle: '',
+    noticeUrl: '',
+    noticeDate: '',
+    note: ''
+  };
+  const [revisionForm, setRevisionForm] = useState(emptyRevisionForm);
+  const setRev = (patch: Partial<typeof emptyRevisionForm>) => setRevisionForm(prev => ({ ...prev, ...patch }));
+
+  const loadSyllabusMeta = async () => {
+    const [watch, revisions] = await Promise.all([
+      syllabusLiveService.watch(syllabusExam.id, syllabusVerifiedOn),
+      syllabusLiveService.revisions(syllabusExam.id)
+    ]);
+    setSyllabusWatch(watch);
+    setSyllabusRevisions(revisions);
+  };
+  useEffect(() => {
+    if (activeTab === 'CORRIGENDUM') loadSyllabusMeta();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
+  /** Record one verifier decision about the syllabus, citing the notice it came from. */
+  const applySyllabusRevision = async () => {
+    if (revisionBusy) return;
+    setRevisionError(null);
+    const f = revisionForm;
+    const num = (v: string) => (v.trim() === '' ? undefined : Number(v));
+    const topic: SyllabusRevisionTopic | undefined = f.kind === 'RETIRE' ? undefined : {
+      subject: (f.subject || undefined) as SyllabusRevisionTopic['subject'],
+      tier: (f.tier || undefined) as SyllabusRevisionTopic['tier'],
+      topicName: f.topicName.trim() || undefined,
+      subtopics: f.subtopics.split(',').map(x => x.trim()).filter(Boolean),
+      weightagePercentage: num(f.weightagePercentage),
+      avgQuestions: num(f.avgQuestions),
+      isHighYield: f.isHighYield === '' ? undefined : f.isHighYield === 'yes'
+    };
+    if (f.kind === 'ADD' && (!topic?.subject || !topic?.topicName)) {
+      setRevisionError('A new topic needs at least a subject and a name.');
+      return;
+    }
+    setRevisionBusy(true);
+    const result = await syllabusLiveService.addRevision({
+      examId: syllabusExam.id,
+      kind: f.kind,
+      topicId: f.kind === 'ADD' ? undefined : f.topicId,
+      topic,
+      note: f.note.trim() || undefined,
+      noticeTitle: f.noticeTitle.trim() || undefined,
+      noticeUrl: f.noticeUrl.trim() || undefined,
+      noticeDate: f.noticeDate.trim() || undefined,
+      appliedBy: 'GovOS verifier (Trust Panel)'
+    });
+    setRevisionBusy(false);
+    if (result.revision) {
+      setSyllabusRevisions(prev => [...prev, result.revision as SyllabusRevision]);
+      setRevisionForm(emptyRevisionForm);
+    } else {
+      setRevisionError(result.error || 'Not saved.');
+    }
+  };
+
+  const undoSyllabusRevision = async (id: string) => {
+    if (await syllabusLiveService.retireRevision(id)) {
+      setSyllabusRevisions(prev => prev.filter(r => r.id !== id));
+    }
+  };
+
   // ---- Live Source Research (Tavily) ----
   const [researchStatus, setResearchStatus] = useState<ResearchStatus | null>(null);
   const [researchQuery, setResearchQuery] = useState<string>('');
@@ -4002,6 +4090,187 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
               </div>
             )}
           </div>
+          {/* Syllabus: what the board says has changed, and what the verifier has applied */}
+          <div className="glass-card" style={{ padding: '28px' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Compass size={20} color="var(--primary)" /> Syllabus Revisions — {syllabusExam.title}
+            </h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '18px' }}>
+              The syllabus in the register was verified on <strong style={{ color: 'white' }}>{syllabusVerifiedOn}</strong>. SSC's notice board is read on the server; anything about this exam published since is listed here for you to read. Nothing changes the candidate-facing syllabus until you apply it below, citing the notice — the same rule as resource additions.
+            </p>
+
+            {/* What SSC has published since the verified date */}
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>
+                Notices since {syllabusVerifiedOn} {syllabusWatch ? `· checked ${formatFetched(syllabusWatch.fetchedAt)}` : ''}
+              </div>
+              {syllabusWatch === null ? (
+                <div style={{ fontSize: '0.84rem', color: 'var(--text-muted)' }}>Reading the notice board…</div>
+              ) : syllabusWatch.items.length === 0 ? (
+                <div style={{ padding: '14px', borderRadius: 'var(--radius-md)', background: 'rgba(16, 185, 129, 0.06)', border: '1px solid rgba(16, 185, 129, 0.25)', fontSize: '0.84rem', color: '#6ee7b7', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <CheckCircle2 size={15} /> Nothing about this exam has been published since the syllabus was verified.{syllabusWatch.error ? ` (Board refresh failed: ${syllabusWatch.error}; showing the last good copy.)` : ''}
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {syllabusWatch.items.map(n => (
+                    <div key={n.id} style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.35)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', fontSize: '0.84rem' }}>
+                      <span style={{ color: '#fef3c7' }}><span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>{n.createdAt}</span> · {n.headline}</span>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        {n.files[0] && (
+                          <a href={n.files[0].url} target="_blank" rel="noreferrer" className="btn btn-outline" style={{ fontSize: '0.72rem', padding: '3px 10px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                            Read <ExternalLink size={11} />
+                          </a>
+                        )}
+                        <button
+                          className="btn btn-secondary"
+                          style={{ fontSize: '0.72rem', padding: '3px 10px' }}
+                          onClick={() => setRev({ noticeTitle: n.headline, noticeUrl: n.files[0]?.url || '', noticeDate: n.createdAt })}
+                        >
+                          Use as basis
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Apply a change */}
+            <div style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
+              <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Apply a revision</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                  Change
+                  <select value={revisionForm.kind} onChange={e => setRev({ kind: e.target.value as SyllabusRevision['kind'] })} style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white' }}>
+                    <option value="AMEND">Amend an existing topic</option>
+                    <option value="ADD">Add a new topic</option>
+                    <option value="RETIRE">Retire a topic</option>
+                  </select>
+                </label>
+                {revisionForm.kind !== 'ADD' && (
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                    Topic
+                    <select value={revisionForm.topicId} onChange={e => setRev({ topicId: e.target.value })} style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white' }}>
+                      {syllabusExam.syllabus.map(t => <option key={t.id} value={t.id}>{t.subject} — {t.topicName}</option>)}
+                    </select>
+                  </label>
+                )}
+              </div>
+
+              {revisionForm.kind !== 'RETIRE' && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                    Subject {revisionForm.kind === 'AMEND' && <span style={{ color: 'var(--text-muted)' }}>(blank = unchanged)</span>}
+                    <select value={revisionForm.subject} onChange={e => setRev({ subject: e.target.value })} style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white' }}>
+                      <option value="">—</option>
+                      {['Quantitative Aptitude', 'Reasoning & General Intelligence', 'English Comprehension', 'General Awareness', 'Computer Proficiency', 'Statistics'].map(sub => <option key={sub} value={sub}>{sub}</option>)}
+                    </select>
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                    Tier
+                    <select value={revisionForm.tier} onChange={e => setRev({ tier: e.target.value })} style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white' }}>
+                      <option value="">—</option>
+                      <option value="TIER_1">TIER_1</option>
+                      <option value="TIER_2">TIER_2</option>
+                      <option value="BOTH">BOTH</option>
+                    </select>
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                    Topic name
+                    <input value={revisionForm.topicName} onChange={e => setRev({ topicName: e.target.value })} placeholder={revisionForm.kind === 'ADD' ? 'e.g. Data Sufficiency' : 'leave blank to keep'} style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white' }} />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                    Subtopics, comma-separated
+                    <input value={revisionForm.subtopics} onChange={e => setRev({ subtopics: e.target.value })} placeholder="leave blank to keep" style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white' }} />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                    Weightage %
+                    <input type="number" value={revisionForm.weightagePercentage} onChange={e => setRev({ weightagePercentage: e.target.value })} placeholder="keep" style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white' }} />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                    Avg questions / shift
+                    <input type="number" value={revisionForm.avgQuestions} onChange={e => setRev({ avgQuestions: e.target.value })} placeholder="keep" style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white' }} />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                    High-yield
+                    <select value={revisionForm.isHighYield} onChange={e => setRev({ isHighYield: e.target.value as '' | 'yes' | 'no' })} style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white' }}>
+                      <option value="">—</option>
+                      <option value="yes">yes</option>
+                      <option value="no">no</option>
+                    </select>
+                  </label>
+                </div>
+              )}
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                  Notice title
+                  <input value={revisionForm.noticeTitle} onChange={e => setRev({ noticeTitle: e.target.value })} placeholder="from the list above, or type" style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white' }} />
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                  Notice URL
+                  <input value={revisionForm.noticeUrl} onChange={e => setRev({ noticeUrl: e.target.value })} placeholder="https://ssc.gov.in/…" style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white' }} />
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                  Notice date
+                  <input value={revisionForm.noticeDate} onChange={e => setRev({ noticeDate: e.target.value })} placeholder="YYYY-MM-DD" style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white' }} />
+                </label>
+              </div>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                Verifier note (what the notice says, in your words)
+                <input value={revisionForm.note} onChange={e => setRev({ note: e.target.value })} placeholder="required if there is no notice URL" style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white' }} />
+              </label>
+              {revisionError && (
+                <div style={{ fontSize: '0.82rem', color: '#fca5a5', display: 'flex', alignItems: 'center', gap: '6px' }}><AlertCircle size={14} /> {revisionError}</div>
+              )}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>
+                  A revision with a notice URL is published as verified; one on a note alone is marked under verification. Both are labelled on the candidate's syllabus and can be undone here.
+                </span>
+                <button className="btn btn-emerald" onClick={applySyllabusRevision} disabled={revisionBusy} style={{ fontSize: '0.82rem' }}>
+                  {revisionBusy ? 'Applying…' : 'Apply to the candidate-facing syllabus'}
+                </button>
+              </div>
+            </div>
+
+            {/* What is applied now */}
+            <div>
+              <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>
+                Active revisions ({syllabusRevisions.length})
+              </div>
+              {syllabusRevisions.length === 0 ? (
+                <div style={{ fontSize: '0.84rem', color: 'var(--text-muted)' }}>None. Candidates see the register's syllabus exactly as verified on {syllabusVerifiedOn}.</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {syllabusRevisions.map(r => {
+                    const target = syllabusExam.syllabus.find(t => t.id === r.topicId);
+                    return (
+                      <div key={r.id} style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', fontSize: '0.84rem' }}>
+                        <div>
+                          <span className="badge badge-changed" style={{ fontSize: '0.64rem', marginRight: '8px' }}>{r.kind}</span>
+                          <strong style={{ color: 'white' }}>{r.kind === 'ADD' ? r.topic?.topicName : target?.topicName || r.topicId}</strong>
+                          <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                            {r.appliedAt.slice(0, 10)} · {r.appliedBy}{r.noticeTitle ? ` · per ${r.noticeTitle}` : ''}{r.note ? ` · ${r.note}` : ''}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          {r.noticeUrl && (
+                            <a href={r.noticeUrl} target="_blank" rel="noreferrer" className="btn btn-outline" style={{ fontSize: '0.72rem', padding: '3px 10px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                              Notice <ExternalLink size={11} />
+                            </a>
+                          )}
+                          <button className="btn btn-secondary" style={{ fontSize: '0.72rem', padding: '3px 10px' }} onClick={() => undoSyllabusRevision(r.id)}>
+                            Undo
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
         </div>
       )}
 
@@ -12992,6 +13261,20 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
   }, []);
   const [showPastDates, setShowPastDates] = useState<boolean>(false);
 
+  // What SSC has published since this syllabus was verified. Read, shown, never applied here.
+  const syllabusVerifiedOn = exam.syllabus[0]?.officialProvenance?.verifiedDate || '';
+  const [syllabusWatch, setSyllabusWatch] = useState<SyllabusWatch | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    setSyllabusWatch(null);
+    syllabusLiveService.watch(exam.id, syllabusVerifiedOn).then(found => {
+      if (!cancelled) setSyllabusWatch(found);
+    });
+    return () => { cancelled = true; };
+  }, [exam.id, syllabusVerifiedOn]);
+  const revisedTopics = exam.syllabus.filter(t => t.revision);
+  const latestRevisionOn = revisedTopics.reduce((latest, t) => (t.revision && t.revision.appliedAt > latest ? t.revision.appliedAt : latest), '');
+
   useEffect(() => {
     if (initialSection) {
       setActiveSection(initialSection);
@@ -13608,9 +13891,59 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
             {/* View 2: Official Micro-Topic Syllabus Blueprint */}
             {syllabusViewMode === 'OFFICIAL_BLUEPRINT' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-                <div style={{ padding: '14px 18px', borderRadius: 'var(--radius-md)', background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.25)', fontSize: '0.86rem', color: '#93c5fd' }}>
-                  ℹ️ <strong>Official Legal Blueprint:</strong> This is the unadjusted statutory syllabus extracted directly from the SSC Gazette Notification Section 13.
+                <div style={{ padding: '14px 18px', borderRadius: 'var(--radius-md)', background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.25)', fontSize: '0.86rem', color: '#93c5fd', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div>
+                    ℹ️ <strong>Official Legal Blueprint:</strong> This is the unadjusted statutory syllabus extracted directly from the SSC Gazette Notification Section 13.
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                    Verified {syllabusVerifiedOn || 'on the date in each topic\'s source'} from {exam.syllabus[0]?.officialProvenance?.documentTitle || 'the official notice'}.
+                    {revisedTopics.length > 0
+                      ? ` ${revisedTopics.length} topic${revisedTopics.length === 1 ? '' : 's'} revised since, latest ${latestRevisionOn.slice(0, 10)} — each carries the notice it came from.`
+                      : ' No revisions applied since.'}
+                  </div>
                 </div>
+
+                {/* The notice board, read against the verified date. A notice here is a reason to
+                    check, not a change: the syllabus below changes only when a verifier applies one. */}
+                {syllabusWatch === null ? (
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <RefreshCw size={13} className="animate-spin" /> Reading the official notice board for anything newer than this syllabus…
+                  </div>
+                ) : syllabusWatch.source === null ? (
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Info size={13} /> {syllabusWatch.note || 'No live notice board is wired for this exam yet.'} The syllabus shown is the register's verified version.
+                  </div>
+                ) : syllabusWatch.items.length === 0 ? (
+                  <div style={{ fontSize: '0.8rem', color: '#6ee7b7', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <CheckCircle2 size={13} /> Watching SSC's notice board: nothing published about this exam since {syllabusVerifiedOn || 'verification'}.
+                    <span style={{ color: 'var(--text-muted)' }}>Checked {formatFetched(syllabusWatch.fetchedAt)}{syllabusWatch.stale ? ' · last good copy, refresh failed' : ''}.</span>
+                  </div>
+                ) : (
+                  <div style={{ padding: '16px 18px', borderRadius: 'var(--radius-md)', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.4)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                      <AlertTriangle size={18} color="var(--amber)" />
+                      <strong style={{ color: '#fbbf24', fontSize: '0.92rem' }}>
+                        SSC has published {syllabusWatch.items.length} notice{syllabusWatch.items.length === 1 ? '' : 's'} about this exam since the syllabus was verified on {syllabusVerifiedOn}
+                      </strong>
+                      <span className="badge badge-verified" style={{ fontSize: '0.62rem' }}>LIVE · OFFICIAL</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      {syllabusWatch.items.map(n => (
+                        <div key={n.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', fontSize: '0.84rem' }}>
+                          <span style={{ color: '#fef3c7' }}><span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>{n.createdAt}</span> · {n.headline}</span>
+                          {n.files[0] && (
+                            <a href={n.files[0].url} target="_blank" rel="noreferrer" className="btn btn-outline" style={{ fontSize: '0.72rem', padding: '3px 10px', borderColor: 'var(--amber)', color: 'var(--amber)', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                              Open notice <ExternalLink size={11} />
+                            </a>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                      The syllabus below is the last verified version. A GovOS verifier reads each notice in the Trust Panel and applies any change there, citing it — a notice is a reason to check, not a change by itself. Checked {formatFetched(syllabusWatch.fetchedAt)}.
+                    </div>
+                  </div>
+                )}
 
                 {exam.syllabus.map(topic => {
                   const isDone = !!completedTopics[topic.id];
@@ -13640,6 +13973,19 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                           <span className="badge badge-verified">
                             Weightage: ~{topic.weightagePercentage}% (~{topic.avgQuestions} Qs/Shift)
                           </span>
+                          {topic.revision && (
+                            <a
+                              href={topic.revision.noticeUrl || undefined}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="badge badge-changed"
+                              title={`${topic.revision.kind === 'ADD' ? 'Added' : 'Amended'} by ${topic.revision.appliedBy} on ${topic.revision.appliedAt.slice(0, 10)}${topic.revision.noticeTitle ? ` — per ${topic.revision.noticeTitle}` : ''}`}
+                              style={{ fontSize: '0.68rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                            >
+                              {topic.revision.kind === 'ADD' ? 'ADDED' : 'REVISED'} {topic.revision.noticeDate || topic.revision.appliedAt.slice(0, 10)}
+                              {topic.revision.noticeUrl && <ExternalLink size={10} />}
+                            </a>
+                          )}
                         </div>
                       </div>
 

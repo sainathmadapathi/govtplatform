@@ -21,6 +21,11 @@ import {
   ChannelUploadFeed,
   LiveResourceStatus,
   ResourceAddition,
+  DataProvenance,
+  SyllabusRevision,
+  SyllabusRevisionTopic,
+  SyllabusTopic,
+  SyllabusWatch,
   ResourceHealthSync,
   SscNoticeFeed,
   ExamCategoryTag,
@@ -1975,6 +1980,141 @@ export const researchService = {
 // ==========================================================================
 // Live resources — the Resource Library's server-refreshed parts
 // ==========================================================================
+// ---------------------------------------------------------------------------
+// Syllabus: watched on the notice board, changed only by a verifier
+// ---------------------------------------------------------------------------
+
+export const syllabusLiveService = {
+  /** Notices that may change this exam's syllabus, published after `since` (YYYY-MM-DD). */
+  async watch(examId: string, since?: string): Promise<SyllabusWatch | null> {
+    try {
+      const qs = new URLSearchParams({ exam_id: examId });
+      if (since) qs.set('since', since);
+      const res = await fetch(`/api/syllabus/watch?${qs.toString()}`);
+      if (res.ok) return await res.json();
+    } catch {
+      // server offline: the section shows the seed and says the board is not being read
+    }
+    return null;
+  },
+
+  async revisions(examId: string): Promise<SyllabusRevision[]> {
+    try {
+      const res = await fetch(`/api/syllabus/revisions?exam_id=${encodeURIComponent(examId)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.revisions)) return data.revisions;
+      }
+    } catch {
+      // server offline: the seed stands
+    }
+    return [];
+  },
+
+  async addRevision(input: {
+    examId: string;
+    kind: SyllabusRevision['kind'];
+    topicId?: string;
+    topic?: SyllabusRevisionTopic;
+    note?: string;
+    noticeTitle?: string;
+    noticeUrl?: string;
+    noticeDate?: string;
+    appliedBy?: string;
+  }): Promise<{ revision?: SyllabusRevision; error?: string }> {
+    try {
+      const res = await fetch('/api/syllabus/revisions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input)
+      });
+      const data = await res.json();
+      if (res.ok && data.revision) return { revision: data.revision };
+      return { error: data.error || `Server answered ${res.status}` };
+    } catch {
+      return { error: 'The GovOS server is not reachable, so the revision was not saved.' };
+    }
+  },
+
+  async retireRevision(id: string): Promise<boolean> {
+    try {
+      const res = await fetch(`/api/syllabus/revisions/${encodeURIComponent(id)}/retire`, { method: 'POST' });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }
+};
+
+/**
+ * Merge the server's revisions over the register's syllabus. Returns the very same exam
+ * object when there is nothing to apply, so callers can pass the result down without
+ * causing re-renders. Applied in the order the verifier made them.
+ */
+export function applySyllabusRevisions(exam: Exam, revisions: SyllabusRevision[]): Exam {
+  const mine = revisions.filter(r => r.examId === exam.id);
+  if (mine.length === 0) return exam;
+
+  let topics: SyllabusTopic[] = [...exam.syllabus];
+  const seedProvenance = exam.syllabus[0]?.officialProvenance;
+
+  const provenanceFor = (r: SyllabusRevision): DataProvenance => ({
+    id: `prov-${r.id}`,
+    documentTitle: r.noticeTitle || seedProvenance?.documentTitle || `${exam.title} notice`,
+    officialUrl: r.noticeUrl || seedProvenance?.officialUrl || exam.officialDomain,
+    clauseNumber: 'Syllabus revision recorded by the GovOS verifier',
+    publishedDate: r.noticeDate || r.appliedAt.slice(0, 10),
+    verifiedDate: r.appliedAt.slice(0, 10),
+    verifiedBy: r.appliedBy,
+    taxonomyType: 'FACT',
+    // A change with a notice behind it is verified; a change on a note alone is not yet.
+    verificationLevel: r.noticeUrl ? 'OFFICIALLY_VERIFIED' : 'UNDER_VERIFICATION',
+    excerptText: r.note || `Applied at runtime from ${r.noticeTitle || 'a verifier note'}, not from a code edit.`
+  });
+
+  mine.forEach(r => {
+    if (r.kind === 'RETIRE') {
+      topics = topics.filter(t => t.id !== r.topicId);
+      return;
+    }
+    const meta = {
+      id: r.id, kind: r.kind, noticeTitle: r.noticeTitle, noticeUrl: r.noticeUrl,
+      noticeDate: r.noticeDate, appliedAt: r.appliedAt, appliedBy: r.appliedBy
+    } as const;
+    const fields = r.topic || {};
+    if (r.kind === 'AMEND') {
+      topics = topics.map(t => t.id !== r.topicId ? t : {
+        ...t,
+        ...(fields.subject ? { subject: fields.subject } : {}),
+        ...(fields.tier ? { tier: fields.tier } : {}),
+        ...(fields.topicName ? { topicName: fields.topicName } : {}),
+        ...(fields.subtopics && fields.subtopics.length > 0 ? { subtopics: fields.subtopics } : {}),
+        ...(typeof fields.weightagePercentage === 'number' ? { weightagePercentage: fields.weightagePercentage } : {}),
+        ...(typeof fields.avgQuestions === 'number' ? { avgQuestions: fields.avgQuestions } : {}),
+        ...(typeof fields.isHighYield === 'boolean' ? { isHighYield: fields.isHighYield } : {}),
+        officialProvenance: provenanceFor(r),
+        revision: meta
+      });
+      return;
+    }
+    // ADD
+    topics = [...topics, {
+      id: r.id,
+      subject: fields.subject || 'General Awareness',
+      tier: fields.tier || 'BOTH',
+      topicName: fields.topicName || 'Untitled topic',
+      subtopics: fields.subtopics && fields.subtopics.length > 0 ? fields.subtopics : undefined,
+      weightagePercentage: typeof fields.weightagePercentage === 'number' ? fields.weightagePercentage : 0,
+      avgQuestions: typeof fields.avgQuestions === 'number' ? fields.avgQuestions : 0,
+      isHighYield: fields.isHighYield === true,
+      officialProvenance: provenanceFor(r),
+      revision: meta
+    }];
+  });
+
+  return { ...exam, syllabus: topics };
+}
+
 export const resourceLiveService = {
   /** Register the library's links for scheduled checking; returns what the server knows now. */
   async healthSync(urls: string[]): Promise<ResourceHealthSync | null> {

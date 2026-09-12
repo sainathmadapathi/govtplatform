@@ -224,6 +224,22 @@ def init_database():
         )
     ''')
     cursor.execute('''
+        CREATE TABLE IF NOT EXISTS syllabus_revisions (
+            id TEXT PRIMARY KEY,
+            exam_id TEXT NOT NULL,
+            kind TEXT NOT NULL,
+            topic_id TEXT,
+            topic_json TEXT,
+            note TEXT,
+            notice_title TEXT,
+            notice_url TEXT,
+            notice_date TEXT,
+            applied_at TEXT NOT NULL,
+            applied_by TEXT NOT NULL,
+            retired INTEGER NOT NULL DEFAULT 0
+        )
+    ''')
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS resource_additions (
             id TEXT PRIMARY KEY,
             title TEXT NOT NULL,
@@ -1620,6 +1636,130 @@ def retire_resource_addition(addition_id):
     if cur.rowcount == 0:
         return jsonify({"error": "not found"}), 404
     return jsonify({"retired": addition_id})
+
+
+# =============================================================================
+# Syllabus: watched on the notice board, revised only by a verifier
+#
+# The syllabus in the register carries the date it was verified. SSC's notice board is
+# already cached here; the notices that can change a syllabus are the exam's own notice and
+# any corrigendum, addendum or revision to it. `watch` lists those dated after the verified
+# date. `revisions` stores what a verifier decided after reading one, citing it. The
+# frontend merges active revisions over the seed - the board itself never edits the syllabus.
+# =============================================================================
+
+SYLLABUS_CHANGE_WORDS = re.compile(r'corrigend|addend|revis|amend|modif|syllab|scheme of exam|pattern|notice of', re.I)
+
+
+def _syllabus_watch_items(exam_id, since):
+    """Notices on the cached SSC board that may change this exam's syllabus, newest first."""
+    if not exam_id.startswith('exam-ssc'):
+        return None
+    cached = _ssc_notices_cached(force=False)
+    hits = []
+    for item in cached["payload"]:
+        if not item["isCgl"]:
+            continue
+        if since and item["createdAt"] <= since:
+            continue
+        if not SYLLABUS_CHANGE_WORDS.search(item["headline"]):
+            continue
+        hits.append(item)
+    return {"items": hits, "fetchedAt": cached["fetchedAt"], "stale": cached["stale"], "error": cached["error"],
+            "source": "https://ssc.gov.in/notice-board"}
+
+
+@app.route('/api/syllabus/watch', methods=['GET'])
+def syllabus_watch():
+    exam_id = request.args.get('exam_id') or ''
+    since = request.args.get('since') or ''
+    found = _syllabus_watch_items(exam_id, since)
+    if found is None:
+        return jsonify({"items": [], "fetchedAt": None, "stale": False, "error": None, "source": None,
+                        "note": "No live notice board is wired for this exam yet."})
+    return jsonify(found)
+
+
+def _revision_row(r):
+    return {"id": r["id"], "examId": r["exam_id"], "kind": r["kind"], "topicId": r["topic_id"],
+            "topic": json.loads(r["topic_json"]) if r["topic_json"] else None, "note": r["note"],
+            "noticeTitle": r["notice_title"], "noticeUrl": r["notice_url"], "noticeDate": r["notice_date"],
+            "appliedAt": r["applied_at"], "appliedBy": r["applied_by"]}
+
+
+@app.route('/api/syllabus/revisions', methods=['GET', 'POST'])
+def syllabus_revisions():
+    if request.method == 'GET':
+        exam_id = request.args.get('exam_id') or ''
+        conn = get_db_connection()
+        if exam_id:
+            rows = conn.execute('SELECT * FROM syllabus_revisions WHERE retired = 0 AND exam_id = ? ORDER BY applied_at ASC', (exam_id,)).fetchall()
+        else:
+            rows = conn.execute('SELECT * FROM syllabus_revisions WHERE retired = 0 ORDER BY applied_at ASC').fetchall()
+        conn.close()
+        return jsonify({"revisions": [_revision_row(r) for r in rows]})
+
+    data = request.get_json(silent=True) or {}
+    exam_id = (data.get('examId') or '').strip()
+    kind = (data.get('kind') or '').strip().upper()
+    topic_id = (data.get('topicId') or '').strip() or None
+    topic = data.get('topic') if isinstance(data.get('topic'), dict) else None
+    notice_url = (data.get('noticeUrl') or '').strip()
+    if not exam_id or kind not in ('ADD', 'AMEND', 'RETIRE'):
+        return jsonify({"error": "examId and a kind of ADD, AMEND or RETIRE are required"}), 400
+    if kind in ('AMEND', 'RETIRE') and not topic_id:
+        return jsonify({"error": "topicId is required to amend or retire a topic"}), 400
+    if kind in ('ADD', 'AMEND') and not topic:
+        return jsonify({"error": "topic fields are required to add or amend"}), 400
+    if kind == 'ADD' and not (topic.get('topicName') and topic.get('subject')):
+        return jsonify({"error": "a new topic needs at least a subject and a topicName"}), 400
+    if notice_url and not notice_url.startswith(('http://', 'https://')):
+        return jsonify({"error": "noticeUrl must be http(s)"}), 400
+    if not notice_url and not (data.get('note') or '').strip():
+        return jsonify({"error": "cite the notice (noticeUrl) or say why (note); a change needs a basis"}), 400
+
+    clean_topic = None
+    if topic:
+        clean_topic = {
+            "subject": topic.get('subject'),
+            "tier": topic.get('tier') or 'BOTH',
+            "topicName": (topic.get('topicName') or '')[:200],
+            "subtopics": [str(x)[:120] for x in (topic.get('subtopics') or []) if str(x).strip()][:20],
+            "weightagePercentage": topic.get('weightagePercentage'),
+            "avgQuestions": topic.get('avgQuestions'),
+            "isHighYield": bool(topic.get('isHighYield')) if topic.get('isHighYield') is not None else None
+        }
+    row = {
+        "id": f"rev-{int(time.time() * 1000)}",
+        "exam_id": exam_id,
+        "kind": kind,
+        "topic_id": topic_id if kind != 'ADD' else None,
+        "topic_json": json.dumps(clean_topic) if clean_topic else None,
+        "note": (data.get('note') or '')[:1000] or None,
+        "notice_title": (data.get('noticeTitle') or '')[:300] or None,
+        "notice_url": notice_url or None,
+        "notice_date": (data.get('noticeDate') or '')[:10] or None,
+        "applied_at": _now_iso(),
+        "applied_by": (data.get('appliedBy') or 'GovOS verifier')[:120]
+    }
+    conn = get_db_connection()
+    conn.execute("""INSERT INTO syllabus_revisions (id, exam_id, kind, topic_id, topic_json, note, notice_title, notice_url, notice_date, applied_at, applied_by)
+                    VALUES (:id, :exam_id, :kind, :topic_id, :topic_json, :note, :notice_title, :notice_url, :notice_date, :applied_at, :applied_by)""", row)
+    conn.commit()
+    saved = conn.execute('SELECT * FROM syllabus_revisions WHERE id = ?', (row["id"],)).fetchone()
+    conn.close()
+    return jsonify({"revision": _revision_row(saved)})
+
+
+@app.route('/api/syllabus/revisions/<revision_id>/retire', methods=['POST'])
+def retire_syllabus_revision(revision_id):
+    conn = get_db_connection()
+    cur = conn.execute('UPDATE syllabus_revisions SET retired = 1 WHERE id = ?', (revision_id,))
+    conn.commit()
+    conn.close()
+    if cur.rowcount == 0:
+        return jsonify({"error": "not found"}), 404
+    return jsonify({"retired": revision_id})
 
 
 # =============================================================================

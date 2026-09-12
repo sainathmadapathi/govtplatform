@@ -1,6 +1,6 @@
 // GovOS entry point: application shell, global modals and React root.
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import {
   BookOpen,
@@ -17,14 +17,17 @@ import {
   DataProvenance,
   Exam,
   NotificationPreference,
-  ResourceItem
+  ResourceItem,
+  SyllabusRevision
 } from './types';
 import {
   ALL_EXAMS,
   SSC_CGL_EXAM
 } from './data';
 import {
-  storageService
+  applySyllabusRevisions,
+  storageService,
+  syllabusLiveService
 } from './services';
 import {
   AdminVerificationPanel,
@@ -88,6 +91,23 @@ export const App: React.FC = () => {
 
   /** Used by the assistant's "take me there" buttons. */
   const handleAssistantNavigate = navigate;
+
+  /**
+   * The syllabus a candidate sees is the register's seed plus whatever a verifier has
+   * applied since, read from the server. Re-read when the exam changes and whenever the
+   * exam page is entered, so a revision applied in the Trust Panel shows without a reload.
+   */
+  const [syllabusRevisions, setSyllabusRevisions] = useState<SyllabusRevision[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    syllabusLiveService.revisions(selectedExam.id).then(found => {
+      if (!cancelled) setSyllabusRevisions(found);
+    });
+    return () => { cancelled = true; };
+  }, [selectedExam.id, activeTab]);
+
+  /** The exam every exam-scoped feature is handed: identity from the register, syllabus as revised. */
+  const liveExam = useMemo(() => applySyllabusRevisions(selectedExam, syllabusRevisions), [selectedExam, syllabusRevisions]);
   
   // Tracked Exams & Notifications State
   const [trackedExamIds, setTrackedExamIds] = useState<string[]>(() => storageService.getTrackedExams());
@@ -251,8 +271,8 @@ export const App: React.FC = () => {
         )}
 
         {activeTab === 'EXAM_DETAIL' && (
-          <ExamDetailView 
-            exam={selectedExam}
+          <ExamDetailView
+            exam={liveExam}
             initialSection={examSection}
             onOpenProvenanceModal={handleOpenProvenance}
             onOpenReportModal={handleOpenReport}
@@ -269,21 +289,21 @@ export const App: React.FC = () => {
             path that sets the tab directly still shows the real feature rather than a blank
             screen - they mount the very same components the exam page mounts. */}
         {activeTab === 'PLANNER' && (
-          <PreparationPlanner 
-            exam={selectedExam}
+          <PreparationPlanner
+            exam={liveExam}
           />
         )}
 
         {activeTab === 'PRACTICE' && (
-          <PracticeEngine 
-            exam={selectedExam}
+          <PracticeEngine
+            exam={liveExam}
             onOpenProvenanceModal={handleOpenProvenance}
           />
         )}
 
         {activeTab === 'RESOURCES' && (
           <ResourceLibrary
-            exam={selectedExam}
+            exam={liveExam}
             showSectionNumber={false}
             onOpenResource={(res) => setResourceForReader(res)}
             onOpenProvenanceModal={handleOpenProvenance}
@@ -307,8 +327,8 @@ export const App: React.FC = () => {
         )}
 
         {activeTab === 'AI_ASSISTANT' && (
-          <AIAssistant 
-            exam={selectedExam}
+          <AIAssistant
+            exam={liveExam}
             onOpenProvenanceModal={handleOpenProvenance}
             onNavigate={handleAssistantNavigate}
           />
