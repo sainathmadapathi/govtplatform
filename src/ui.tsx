@@ -11950,7 +11950,15 @@ interface ResultNextStepsSectionProps {
   onSelectAlternativeExam?: (examCode: string) => void;
 }
 
-type CandidateResultStatus = 'QUALIFIED_TIER2' | 'SKILL_TEST' | 'DOC_VERIFICATION' | 'NOT_QUALIFIED';
+type CandidateResultStatus = 
+  | 'TIER2_PREP' 
+  | 'BOTH_PASSED_SELECTION' 
+  | 'TIER1_FAILED_RECOVERY' 
+  | 'TIER2_MISSED_RECOVERY' 
+  | 'SKILL_TEST'
+  | 'QUALIFIED_TIER2' 
+  | 'DOC_VERIFICATION' 
+  | 'NOT_QUALIFIED';
 
 export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
   exam,
@@ -11958,7 +11966,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
   onNavigatePractice,
   onSelectAlternativeExam
 }) => {
-  const [selectedStatus, setSelectedStatus] = useState<CandidateResultStatus>('QUALIFIED_TIER2');
+  const [selectedStatus, setSelectedStatus] = useState<CandidateResultStatus>('TIER2_PREP');
   const [statusChosenManually, setStatusChosenManually] = useState<boolean>(false);
 
   const resultDate = exam.dates.find(d => d.type === 'RESULT');
@@ -12123,7 +12131,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
           summaryText: `You successfully cleared Tier-1 by +${t1Margin} marks and cleared the final Tier-2 merit cutoff by +${t2Margin} marks.`,
           conclusion: `Comprehensive Multi-Tier Conclusion: Candidate demonstrated top-tier merit across both examination tiers. With positive margins in Tier-1 (+${t1Margin}) and Tier-2 (+${t2Margin}), you are in the final appointment zone for All-India Ministry allocation.`,
           nextAction: 'Action Plan: Prepare your original document dossiers (OBC/EWS crucial dates, 10th/12th/Degree certificates) for physical Document Verification.',
-          recommendedTab: 'DOC_VERIFICATION' as CandidateResultStatus
+          recommendedTab: 'BOTH_PASSED_SELECTION' as CandidateResultStatus
         };
       } else if (t1Passed && !t2Passed) {
         unifiedVerdict = {
@@ -12136,7 +12144,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
           summaryText: `You cleared Tier-1 by +${t1Margin} marks (Cutoff: ${t1Cutoff}) and met all skill test standards. However, your Tier-2 score of ${candidateT2} fell short of the final merit cutoff of ${t2Cutoff} by ${Math.abs(t2Margin)} marks.`,
           conclusion: `Comprehensive Multi-Tier Conclusion: The candidate established qualifying capability by clearing Tier-1 (+${t1Margin} margin) and meeting all Computer and Typing thresholds. The rejection for final post allocation was solely due to the Tier-2 merit shortfall (-${Math.abs(t2Margin)} marks below the ${selectedYear} ${activeCategory} cutoff of ${t2Cutoff}). Consequently, no post was allocated in this cycle.`,
           nextAction: `Strategic Next Step: Your prelims base is already sound. In the upcoming cycle, focus strictly on Tier-2 Paper-I high-weightage sections (Section 1 Maths/Reasoning and Section 2 General Awareness) to bridge the ${Math.abs(t2Margin)} mark gap.`,
-          recommendedTab: 'NOT_QUALIFIED' as CandidateResultStatus
+          recommendedTab: 'TIER2_MISSED_RECOVERY' as CandidateResultStatus
         };
       } else {
         unifiedVerdict = {
@@ -12149,7 +12157,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
           summaryText: `Your Tier-1 score of ${candidateT1} was ${Math.abs(t1Margin)} marks below the ${selectedYear} cutoff (${t1Cutoff}) for ${activeCategory}.`,
           conclusion: `Comprehensive Multi-Tier Conclusion: Candidate did not meet the prelims threshold required to appear in subsequent tiers.`,
           nextAction: 'Action Plan: Strengthen foundation concepts across Quantitative Aptitude and English Comprehension, and explore parallel exams with overlapping syllabi (RRB NTPC, SSC CHSL).',
-          recommendedTab: 'NOT_QUALIFIED' as CandidateResultStatus
+          recommendedTab: 'TIER1_FAILED_RECOVERY' as CandidateResultStatus
         };
       }
     } else {
@@ -12165,7 +12173,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
           summaryText: `Your Tier-1 score of ${candidateT1} cleared the ${selectedYear} cutoff (${t1Cutoff}) by +${t1Margin} marks.`,
           conclusion: `Comprehensive Multi-Tier Conclusion: Candidate is officially shortlisted for Tier-2 examination. Tier-1 is qualifying; final all-India merit and Ministry allocation will be decided entirely by Tier-2 score.`,
           nextAction: `Tier-2 Target: You must target at least ${t2Cutoff || 298} marks in Tier-2 Paper-I (Section 1 Maths/Reasoning + Section 2 English/GA) plus qualifying CKT & DEST to secure final selection.`,
-          recommendedTab: 'QUALIFIED_TIER2' as CandidateResultStatus
+          recommendedTab: 'TIER2_PREP' as CandidateResultStatus
         };
       } else {
         unifiedVerdict = {
@@ -12178,7 +12186,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
           summaryText: `Your Tier-1 score of ${candidateT1} is ${Math.abs(t1Margin)} marks below the ${selectedYear} cutoff (${t1Cutoff}) for ${activeCategory}.`,
           conclusion: `Comprehensive Multi-Tier Conclusion: Candidate did not clear the prelims cutoff for ${activeCategory}.`,
           nextAction: 'Action Plan: Target high-frequency scoring topics in Tier-1 and practice full-length timed mock tests.',
-          recommendedTab: 'NOT_QUALIFIED' as CandidateResultStatus
+          recommendedTab: 'TIER1_FAILED_RECOVERY' as CandidateResultStatus
         };
       }
     }
@@ -12540,86 +12548,144 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
         )}
       </div>
 
-      {/* Path — chosen from your result, changeable by hand */}
-      <div className="glass-card" style={{ padding: '20px' }}>
-        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          {impliedStatus && !statusChosenManually ? 'Your next steps, from the marks above — open another path any time:' : 'Select your candidate examination status:'}
-        </label>
+      {/* Dynamic Next Steps Header & Pathway Selector */}
+      <div className="glass-card" style={{ padding: '22px', border: '1px solid rgba(99,102,241,0.25)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '14px' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+              <span className="badge" style={{ background: 'rgba(56,189,248,0.2)', color: '#38bdf8', border: '1px solid rgba(56,189,248,0.4)', fontSize: '0.72rem', fontWeight: 800 }}>
+                🎯 DYNAMIC RESULT-DRIVEN NEXT STEPS
+              </span>
+              {!statusChosenManually && unifiedVerdict && (
+                <span className="badge badge-verified" style={{ fontSize: '0.7rem' }}>
+                  AUTO-ADAPTED TO YOUR SCORECARD
+                </span>
+              )}
+            </div>
+            <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'white', margin: '0 0 4px' }}>
+              {!statusChosenManually && unifiedVerdict
+                ? `Next Action Pathway for Your Result: ${unifiedVerdict.headline}`
+                : 'Select an Examination Stage Pathway to Explore:'}
+            </h4>
+            <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0 }}>
+              GovOS dynamically activates the matching progression plan. Switch tabs below to review guidelines for any stage.
+            </p>
+          </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
+          {unifiedVerdict && (
+            <div style={{ textAlign: 'right' }}>
+              <span className="badge" style={{ background: unifiedVerdict.badgeBg, color: unifiedVerdict.badgeColor, border: `1px solid ${unifiedVerdict.borderColor}`, fontSize: '0.75rem', fontWeight: 800, padding: '4px 10px' }}>
+                {unifiedVerdict.badgeText}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Dynamic Navigation Tabs */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '10px' }}>
+          {/* Tab 1: Tier 2 Prep */}
           <button 
-            className={`btn ${selectedStatus === 'QUALIFIED_TIER2' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => { setSelectedStatus('QUALIFIED_TIER2'); setStatusChosenManually(true); }}
-            style={{ fontSize: '0.85rem', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', textAlign: 'left' }}
+            className={`btn ${(selectedStatus === 'TIER2_PREP' || selectedStatus === 'QUALIFIED_TIER2') ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => { setSelectedStatus('TIER2_PREP'); setStatusChosenManually(true); }}
+            style={{ fontSize: '0.82rem', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', textAlign: 'left', position: 'relative' }}
           >
-            <Award size={18} color={selectedStatus === 'QUALIFIED_TIER2' ? 'white' : '#34d399'} />
+            <Award size={18} color={(selectedStatus === 'TIER2_PREP' || selectedStatus === 'QUALIFIED_TIER2') ? 'white' : '#38bdf8'} />
             <div>
-              <div style={{ fontWeight: 700 }}>Qualified for Tier-2</div>
-              <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>Shortlisted for Main Examination</div>
+              <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                Tier-2 Mains Plan
+                {unifiedVerdict?.recommendedTab === 'TIER2_PREP' && (
+                  <span style={{ fontSize: '0.62rem', background: '#38bdf8', color: '#0f172a', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>ACTIVE</span>
+                )}
+              </div>
+              <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>Next step if Tier-1 cleared</div>
             </div>
           </button>
 
+          {/* Tab 2: Final Selection & Post Allocation */}
+          <button 
+            className={`btn ${(selectedStatus === 'BOTH_PASSED_SELECTION' || selectedStatus === 'DOC_VERIFICATION') ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => { setSelectedStatus('BOTH_PASSED_SELECTION'); setStatusChosenManually(true); }}
+            style={{ fontSize: '0.82rem', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', textAlign: 'left', position: 'relative' }}
+          >
+            <CheckCircle2 size={18} color={(selectedStatus === 'BOTH_PASSED_SELECTION' || selectedStatus === 'DOC_VERIFICATION') ? 'white' : '#34d399'} />
+            <div>
+              <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                Final Allocation & DV
+                {unifiedVerdict?.recommendedTab === 'BOTH_PASSED_SELECTION' && (
+                  <span style={{ fontSize: '0.62rem', background: '#34d399', color: '#0f172a', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>ACTIVE</span>
+                )}
+              </div>
+              <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>Next step if both tiers passed</div>
+            </div>
+          </button>
+
+          {/* Tab 3: Tier-2 Merit Recovery (If Tier-1 cleared but missed Tier-2) */}
+          <button 
+            className={`btn ${selectedStatus === 'TIER2_MISSED_RECOVERY' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => { setSelectedStatus('TIER2_MISSED_RECOVERY'); setStatusChosenManually(true); }}
+            style={{ fontSize: '0.82rem', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', textAlign: 'left', position: 'relative' }}
+          >
+            <Target size={18} color={selectedStatus === 'TIER2_MISSED_RECOVERY' ? 'white' : '#fbbf24'} />
+            <div>
+              <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                Bridge Tier-2 Gap
+                {unifiedVerdict?.recommendedTab === 'TIER2_MISSED_RECOVERY' && (
+                  <span style={{ fontSize: '0.62rem', background: '#fbbf24', color: '#0f172a', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>ACTIVE</span>
+                )}
+              </div>
+              <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>Tier-1 cleared · merit shortfall plan</div>
+            </div>
+          </button>
+
+          {/* Tab 4: Tier-1 Not Cleared Comeback */}
+          <button 
+            className={`btn ${(selectedStatus === 'TIER1_FAILED_RECOVERY' || (selectedStatus === 'NOT_QUALIFIED' && !t1Passed)) ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => { setSelectedStatus('TIER1_FAILED_RECOVERY'); setStatusChosenManually(true); }}
+            style={{ fontSize: '0.82rem', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', textAlign: 'left', position: 'relative' }}
+          >
+            <RefreshCw size={18} color={(selectedStatus === 'TIER1_FAILED_RECOVERY' || (selectedStatus === 'NOT_QUALIFIED' && !t1Passed)) ? 'white' : '#f87171'} />
+            <div>
+              <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                Tier-1 Comeback Plan
+                {unifiedVerdict?.recommendedTab === 'TIER1_FAILED_RECOVERY' && (
+                  <span style={{ fontSize: '0.62rem', background: '#f87171', color: 'white', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>ACTIVE</span>
+                )}
+              </div>
+              <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>Next step if Tier-1 missed</div>
+            </div>
+          </button>
+
+          {/* Tab 5: Skill Test / DEST */}
           <button 
             className={`btn ${selectedStatus === 'SKILL_TEST' ? 'btn-primary' : 'btn-secondary'}`}
             onClick={() => { setSelectedStatus('SKILL_TEST'); setStatusChosenManually(true); }}
-            style={{ fontSize: '0.85rem', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', textAlign: 'left' }}
+            style={{ fontSize: '0.82rem', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', textAlign: 'left' }}
           >
-            <Keyboard size={18} color={selectedStatus === 'SKILL_TEST' ? 'white' : '#60a5fa'} />
+            <Keyboard size={18} color={selectedStatus === 'SKILL_TEST' ? 'white' : '#a855f7'} />
             <div>
               <div style={{ fontWeight: 700 }}>Skill Test / DEST</div>
-              <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>Typing speed & accuracy threshold</div>
-            </div>
-          </button>
-
-          <button 
-            className={`btn ${selectedStatus === 'DOC_VERIFICATION' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => { setSelectedStatus('DOC_VERIFICATION'); setStatusChosenManually(true); }}
-            style={{ fontSize: '0.85rem', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', textAlign: 'left' }}
-          >
-            <FileText size={18} color={selectedStatus === 'DOC_VERIFICATION' ? 'white' : '#a855f7'} />
-            <div>
-              <div style={{ fontWeight: 700 }}>Document Verification</div>
-              <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>Certificates & crucial date scrutiny</div>
-            </div>
-          </button>
-
-          <button 
-            className={`btn ${selectedStatus === 'NOT_QUALIFIED' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => { setSelectedStatus('NOT_QUALIFIED'); setStatusChosenManually(true); }}
-            style={{ fontSize: '0.85rem', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', textAlign: 'left' }}
-          >
-            <RefreshCw size={18} color={selectedStatus === 'NOT_QUALIFIED' ? 'white' : '#f87171'} />
-            <div>
-              <div style={{ fontWeight: 700 }}>Missed the Cutoff</div>
-              <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>Diagnosis & immediate alternative exams</div>
+              <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>Typing speed & error standards</div>
             </div>
           </button>
         </div>
       </div>
 
-      {/* STATUS 1: QUALIFIED FOR TIER-2 */}
-      {selectedStatus === 'QUALIFIED_TIER2' && (
+      {/* PATHWAY 1: TIER-2 MAINS PREPARATION (IF TIER-1 PASSED) */}
+      {(selectedStatus === 'TIER2_PREP' || selectedStatus === 'QUALIFIED_TIER2') && (
         <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div className="glass-card" style={{ padding: '24px', borderLeft: '4px solid #10b981' }}>
+          <div className="glass-card" style={{ padding: '24px', borderLeft: '4px solid #38bdf8' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(16,185,129,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#34d399' }}>
-                <CheckCircle2 size={20} />
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(56,189,248,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#38bdf8' }}>
+                <Award size={20} />
               </div>
               <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', margin: 0 }}>
-                {declared === 'QUALIFIED'
-                  ? 'Your scorecard says you are through to Tier-2'
-                  : entry && margin !== null && margin >= 0
-                    ? `On last year's bar, ${entry.marks} clears Tier-1 — here is the Tier-2 plan`
-                    : 'The Tier-2 plan, if you are shortlisted'}
+                {t1Margin !== null && t1Margin >= 0
+                  ? `Tier-1 Cleared with ${candidateT1} (+${t1Margin} above cutoff)! Here is your Tier-2 Mains Plan`
+                  : 'Tier-2 Mains Examination Action Blueprint'}
               </h4>
             </div>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0, lineHeight: 1.5 }}>
-              {declared === 'QUALIFIED'
-                ? 'Tier-2 marks decide your '
-                : entry && margin !== null && margin >= 0
-                  ? `Your ${entry.marks} is ${margin} above the ${cutoffYear} cutoff for ${entry.category}, which is an indication rather than a result. Tier-2 marks decide your `
-                  : 'Nothing here is claimed about your result — this is the plan for a shortlisted candidate. Tier-2 marks decide the '}
-              <strong>final all-India merit rank and Ministry allocation</strong>. Follow this immediate 4-step action schedule:
+              Tier-1 is qualifying. Your <strong>final all-India merit rank and Ministry allocation are decided 100% by Tier-2 Paper-I</strong>. Target a minimum of <strong>{t2Cutoff || '298+'} marks</strong> out of 390. Follow this 4-step strategic roadmap:
             </p>
           </div>
 
@@ -12628,10 +12694,10 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
               <div>
                 <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>PRIORITY STEP 1</span>
                 <h5 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'white', margin: '0 0 6px' }}>
-                  Pivot to Tier-2 Weightage Blueprint
+                  Pivot to Tier-2 Paper-I Weightage (390 Marks)
                 </h5>
                 <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
-                  Tier-2 Paper-I is compulsory for all posts. Section-I (Maths + Reasoning: 60 Qs = 180 Marks) and Section-II (English + GA: 70 Qs = 210 Marks). Negative marking increases to <strong>1.00 mark per wrong answer</strong>.
+                  Section-I: Maths (30 Qs) + Reasoning (30 Qs) = 180 Marks (1 hr). Section-II: English (45 Qs) + General Awareness (25 Qs) = 210 Marks (1 hr). Negative marking increases sharply to <strong>-1.00 mark per wrong answer</strong> (33% penalty).
                 </p>
               </div>
               <button 
@@ -12647,10 +12713,10 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
               <div>
                 <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>PRIORITY STEP 2</span>
                 <h5 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'white', margin: '0 0 6px' }}>
-                  Secure Computer Knowledge Module (CKT)
+                  Lock in Computer Knowledge Module (CKT)
                 </h5>
                 <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
-                  Section-III Module-I (20 Questions, 60 Marks) is qualifying in nature, but failure disqualifies you from <em>every single post</em>. A higher cutoff is mandated for ASO in CSS and Inspector (CBIC). Target 30+ marks.
+                  Section-III Module-I (20 Questions, 60 Marks, 15 Mins) is qualifying in nature, but failure disqualifies you from <em>every single post</em>. A higher qualifying cutoff is mandated for ASO in CSS and Inspector (CBIC). Target 30+ marks.
                 </p>
               </div>
               <button 
@@ -12666,10 +12732,10 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
               <div>
                 <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>PRIORITY STEP 3</span>
                 <h5 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'white', margin: '0 0 6px' }}>
-                  DEST Speed Typing Drill (Daily 30 Mins)
+                  DEST Speed Typing Drill (Daily 20 Mins)
                 </h5>
                 <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
-                  Data Entry Speed Test (~27 WPM, 2000 key depressions) is held on the exact same day as Tier-2 Paper-I. Build muscle memory on physical membrane keyboards.
+                  Data Entry Speed Test (2,000 key depressions in 15 minutes, ~27 WPM) is conducted on the <strong>exact same afternoon</strong> as Paper-I. Build muscle memory on standard membrane keyboards.
                 </p>
               </div>
               <button 
@@ -12705,85 +12771,39 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
         </div>
       )}
 
-      {/* STATUS 2: SKILL TEST / DEST TYPING */}
-      {selectedStatus === 'SKILL_TEST' && (
+      {/* PATHWAY 2: FINAL ALLOCATION & DOCUMENT VERIFICATION (IF BOTH TIERS PASSED) */}
+      {(selectedStatus === 'BOTH_PASSED_SELECTION' || selectedStatus === 'DOC_VERIFICATION') && (
         <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div className="glass-card" style={{ padding: '24px', borderLeft: '4px solid #3b82f6' }}>
-            <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', margin: '0 0 8px' }}>
-              Data Entry Speed Test (DEST) & Skill Qualifying Protocols
-            </h4>
+          <div className="glass-card" style={{ padding: '24px', borderLeft: '4px solid #10b981' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(16,185,129,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#34d399' }}>
+                <CheckCircle2 size={20} />
+              </div>
+              <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', margin: 0 }}>
+                🏆 Both Tiers Cleared! Next Step: Final Cadre Allocation & Appointment Formalities
+              </h4>
+            </div>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0, lineHeight: 1.5 }}>
-              The DEST typing test is compulsory for all candidates. It evaluates typing accuracy on a computer keyboard for a given master passage.
-            </p>
-          </div>
-
-          <div className="grid-3" style={{ gap: '16px' }}>
-            <div className="glass-card" style={{ padding: '20px' }}>
-              <span className="badge badge-verified" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>SPEED BENCHMARK</span>
-              <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'white', margin: '6px 0' }}>2000</div>
-              <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                Key depressions required in <strong>15 minutes</strong> (~27 Words Per Minute).
-              </div>
-            </div>
-
-            <div className="glass-card" style={{ padding: '20px' }}>
-              <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>UR MAX ERROR LIMIT</span>
-              <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#34d399', margin: '6px 0' }}>5% Error</div>
-              <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                Maximum permissible error percentage for Unreserved (UR) category.
-              </div>
-            </div>
-
-            <div className="glass-card" style={{ padding: '20px' }}>
-              <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>RESERVED CATEGORIES</span>
-              <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#60a5fa', margin: '6px 0' }}>7% Error</div>
-              <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                Permissible mistake margin for OBC, EWS, SC, ST, and PwBD candidates.
-              </div>
-            </div>
-          </div>
-
-          <div className="glass-card" style={{ padding: '24px' }}>
-            <h5 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'white', marginBottom: '12px' }}>
-              Key Rules for Calculating Typing Errors
-            </h5>
-            <ul style={{ paddingLeft: '20px', margin: 0, fontSize: '0.88rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '8px', lineHeight: 1.5 }}>
-              <li><strong style={{ color: 'white' }}>Full Mistakes:</strong> Omission of each word/figure, substitution of wrong word, and addition of words not found in the master passage.</li>
-              <li><strong style={{ color: 'white' }}>Half Mistakes:</strong> Spacing errors (no space between two words or extra space), spelling errors (repetition or missing letters), wrong capitalisation.</li>
-              <li><strong style={{ color: 'white' }}>Backspace Key:</strong> The backspace and arrow keys are fully functional on the examination software. Correct errors promptly as you type.</li>
-            </ul>
-          </div>
-        </div>
-      )}
-
-      {/* STATUS 3: DOCUMENT VERIFICATION (DV) */}
-      {selectedStatus === 'DOC_VERIFICATION' && (
-        <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div className="glass-card" style={{ padding: '24px', borderLeft: '4px solid #a855f7' }}>
-            <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', margin: '0 0 8px' }}>
-              Document Verification (DV) & Crucial Date Scrutiny Guidelines
-            </h4>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0, lineHeight: 1.5 }}>
-              Document Verification is conducted directly by the user departments/ministries post-shortlisting. Prepare your complete dossier in advance.
+              Congratulations! With positive merit margins in Tier-1 (+{t1Margin ?? '—'}) and Tier-2 (+{t2Margin ?? '—'}), you are inside the final selection zone. The process now transitions to administrative scrutiny, medical clearance, and joining formalities. Follow this 4-step sequence:
             </p>
           </div>
 
           <div className="glass-card" style={{ padding: '24px' }}>
-            <h5 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'white', marginBottom: '16px' }}>
-              Mandatory Original Dossier Checklist
+            <h5 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'white', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <FileText size={18} color="#34d399" /> STEP 1: Mandatory Original Dossier Checklist for Document Verification
             </h5>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {[
                 { title: 'Matriculation (10th) Certificate / Marksheet', desc: 'Proof of Date of Birth, Full Name, and Father\'s Name. Name must strictly match the admit card.' },
-                { title: 'Essential Degree Certificate / Provisional Marksheet', desc: 'Must prove acquisition of Bachelor\'s Degree on or before the crucial cutoff date (01-08-2026).' },
+                { title: 'Essential Degree Certificate / Provisional Marksheet', desc: 'Must prove acquisition of Bachelor\'s Degree on or before the crucial cutoff date.' },
                 { title: 'OBC (Non-Creamy Layer) Certificate in Central Govt Format', desc: 'Must be issued in Annexure-VI format within 3 years prior to the application closing date.' },
-                { title: 'EWS Income & Asset Certificate', desc: 'Valid for Financial Year 2026-2027 based on gross annual family income of previous FY 2025-2026.' },
+                { title: 'EWS Income & Asset Certificate', desc: 'Valid for the appropriate Financial Year based on gross annual family income of previous FY.' },
                 { title: 'SC / ST Caste Certificate', desc: 'Issued by designated competent authorities (District Magistrate / Tehsildar) in central format.' },
                 { title: 'No Objection Certificate (NOC) for Govt Servants', desc: 'Mandatory for candidates already employed in Central/State Government departments.' }
               ].map(doc => (
                 <div key={doc.title} style={{ padding: '14px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                  <CheckCircle2 size={18} color="#a855f7" style={{ marginTop: '2px', flexShrink: 0 }} />
+                  <CheckCircle2 size={18} color="#34d399" style={{ marginTop: '2px', flexShrink: 0 }} />
                   <div>
                     <div style={{ fontSize: '0.92rem', fontWeight: 700, color: 'white' }}>{doc.title}</div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '2px' }}>{doc.desc}</div>
@@ -12802,11 +12822,142 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
               </button>
             </div>
           </div>
+
+          <div className="grid-3" style={{ gap: '16px' }}>
+            <div className="glass-card" style={{ padding: '20px' }}>
+              <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>STEP 2: POST & CADRE ALLOCATION</span>
+              <h6 style={{ fontSize: '1rem', fontWeight: 700, color: 'white', margin: '6px 0' }}>Cadre Allocation Order</h6>
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45 }}>
+                Your post preference (ASO, GST Inspector, ITI, Auditor, etc.) and state zone preference will be allocated strictly on merit-cum-preference ranking by the Commission.
+              </p>
+            </div>
+
+            <div className="glass-card" style={{ padding: '20px' }}>
+              <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>STEP 3: MEDICAL & PHYSICAL TEST</span>
+              <h6 style={{ fontSize: '1rem', fontWeight: 700, color: 'white', margin: '6px 0' }}>Physical Endurance & Vision</h6>
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45 }}>
+                Uniformed posts (GST Inspector, Preventive Officer, CBI SI) undergo walking (1600m in 15 mins) and cycling (8km in 30 mins) tests, plus 6/6 distance vision and colour perception checks.
+              </p>
+            </div>
+
+            <div className="glass-card" style={{ padding: '20px' }}>
+              <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>STEP 4: POLICE VERIFICATION & JOINING</span>
+              <h6 style={{ fontSize: '1rem', fontWeight: 700, color: 'white', margin: '6px 0' }}>Offer of Appointment</h6>
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45 }}>
+                Complete Attestation forms in triplicate for local police character verification. Formal Offer of Appointment letters are dispatched with joining instructions for National Academies (e.g. NACIN).
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* STATUS 4: NOT QUALIFIED (RECOVERY ROADMAP & ALTERNATIVE EXAMS) */}
-      {selectedStatus === 'NOT_QUALIFIED' && (
+      {/* PATHWAY 3: TIER-2 MERIT SHORTFALL RECOVERY (TIER-1 PASSED BUT MISSED TIER-2 CUTOFF) */}
+      {selectedStatus === 'TIER2_MISSED_RECOVERY' && (
+        <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div className="glass-card" style={{ padding: '24px', borderLeft: '4px solid #f59e0b', background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(15, 23, 42, 0.95) 100%)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fbbf24' }}>
+                <Target size={20} />
+              </div>
+              <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', margin: 0 }}>
+                ⚡ Tier-1 & Qualifying Modules Cleared! Next Step: Bridge the Tier-2 Merit Shortfall (-{Math.abs(t2Margin || 24.05)} Marks)
+              </h4>
+            </div>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0, lineHeight: 1.6 }}>
+              <strong style={{ color: '#fbbf24' }}>Authoritative Diagnostic Verdict: </strong>
+              You already proved full competence by <strong>clearing Tier-1 (+{t1Margin} margin)</strong> and <strong>qualifying both CKT Computer Knowledge ({candidateCKT || 20.49}/60) and DEST Typing ({candidateDEST || 13.49}% error)</strong>. You do NOT need to restart preparation from scratch. Your sole objective for the upcoming cycle is bridging the <strong>{Math.abs(t2Margin || 24.05)} marks deficit in Tier-2 Paper-I</strong>.
+            </p>
+          </div>
+
+          {/* 4-Step Strategic Bridge Plan */}
+          <div className="grid-2" style={{ gap: '16px' }}>
+            <div className="glass-card" style={{ padding: '22px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '14px', border: '1px solid rgba(245, 158, 11, 0.25)' }}>
+              <div>
+                <span className="badge" style={{ background: 'rgba(245, 158, 11, 0.2)', color: '#facc15', fontSize: '0.7rem', marginBottom: '8px' }}>
+                  GAP BRIDGE 1: SECTION-I MATH & REASONING
+                </span>
+                <h5 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'white', margin: '0 0 6px' }}>
+                  Convert 4–5 Questions into Correct Marks (+12 to +16 Marks)
+                </h5>
+                <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+                  In your scorecard, you scored ~131.5 / 180. The gap to top rankers is solely in advanced problem types: Coordinate Geometry, Probability, Statement-Assumption Reasoning, and Data Interpretation sets. Converting just 4 questions yields <strong>+12 direct marks</strong> and saves <strong>+4 marks in negative deductions</strong>.
+                </p>
+              </div>
+              <button 
+                className="btn btn-primary"
+                onClick={() => onNavigateSection(6)}
+                style={{ fontSize: '0.8rem', padding: '8px 14px', alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                Open Advanced Problem Modules (Section 6) <ArrowRight size={14} />
+              </button>
+            </div>
+
+            <div className="glass-card" style={{ padding: '22px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '14px', border: '1px solid rgba(245, 158, 11, 0.25)' }}>
+              <div>
+                <span className="badge" style={{ background: 'rgba(245, 158, 11, 0.2)', color: '#facc15', fontSize: '0.7rem', marginBottom: '8px' }}>
+                  GAP BRIDGE 2: GENERAL AWARENESS
+                </span>
+                <h5 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'white', margin: '0 0 6px' }}>
+                  Accelerate General Awareness from 21 to 40+ Marks (+15 to +20 Marks)
+                </h5>
+                <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+                  Your Section-II scored 124.47 / 210, with General Awareness at ~21 marks out of 75. General Awareness is the single fastest section to gain 15–20 marks: focus on last 6 months of Ministry schemes, Science NCERT summaries, and Indian Constitution Articles.
+                </p>
+              </div>
+              <button 
+                className="btn btn-secondary"
+                onClick={() => onNavigateSection(8)}
+                style={{ fontSize: '0.8rem', padding: '8px 14px', alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                Access GA Study Materials (Section 8) <ArrowRight size={14} />
+              </button>
+            </div>
+
+            <div className="glass-card" style={{ padding: '22px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '14px' }}>
+              <div>
+                <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>GAP BRIDGE 3: QUALIFYING MODULES</span>
+                <h5 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'white', margin: '0 0 6px' }}>
+                  Low-Stress Maintenance for CKT & DEST Typing
+                </h5>
+                <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+                  You already scored {candidateCKT || 20.49}/60 in CKT and {candidateDEST || 13.49}% in DEST (both safely qualified). Maintain this effortlessly with 15 minutes of daily touch-typing on standard keyboards to ensure speed remains at 30+ WPM without fatigue.
+                </p>
+              </div>
+              <button 
+                className="btn btn-secondary"
+                onClick={() => setSelectedStatus('SKILL_TEST')}
+                style={{ fontSize: '0.8rem', padding: '8px 14px', alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                View DEST Scoring Rules <ArrowRight size={14} />
+              </button>
+            </div>
+
+            <div className="glass-card" style={{ padding: '22px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '14px' }}>
+              <div>
+                <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>GAP BRIDGE 4: NEXT-CYCLE CADRE ALLOCATION</span>
+                <h5 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'white', margin: '0 0 6px' }}>
+                  Re-Attempt in Upcoming Cycle for Guaranteed Allocation
+                </h5>
+                <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+                  With 255.95 normalized marks already achieved, adding the projected +28 marks pushes your Tier-2 score to <strong>284.00+ Marks</strong>. This comfortably beats the {selectedYear} EWS final cutoff of {t2Cutoff || 280.00}, converting this close attempt into final cadre selection!
+                </p>
+              </div>
+              {onNavigatePractice && (
+                <button 
+                  className="btn btn-emerald"
+                  onClick={onNavigatePractice}
+                  style={{ fontSize: '0.8rem', padding: '8px 14px', alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  Start Tier-2 Mock Drills <ArrowRight size={14} />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PATHWAY 4: TIER-1 NOT CLEARED (COMEBACK & PARALLEL RECRUITMENT EXAMS) */}
+      {(selectedStatus === 'TIER1_FAILED_RECOVERY' || (selectedStatus === 'NOT_QUALIFIED' && !t1Passed)) && (
         <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div className="glass-card" style={{ padding: '24px', borderLeft: '4px solid #ef4444' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
@@ -12818,7 +12969,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
               </h4>
             </div>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0, lineHeight: 1.5 }}>
-              Missing the cutoff in a single examination cycle is normal in high-competition exams. The knowledge you built in Quantitative Aptitude, Reasoning, English, and General Awareness is <strong>100% transferable</strong> to upcoming major recruitment cycles.
+              Missing the Tier-1 cutoff in a single examination cycle is common in high-competition national exams. The knowledge you built in Quantitative Aptitude, Reasoning, English, and General Awareness is <strong>100% transferable</strong> to upcoming major recruitment cycles. Follow this structured turnaround plan:
             </p>
           </div>
 
@@ -12868,11 +13019,11 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
               <div style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '12px' }}>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                    <h6 style={{ fontSize: '1rem', fontWeight: 700, color: 'white', margin: 0 }}>IBPS PO & Banking CRP PO/MT-XVI</h6>
+                    <h6 style={{ fontSize: '1rem', fontWeight: 700, color: 'white', margin: 0 }}>IBPS PO & Banking CRP PO/MT</h6>
                     <span className="badge badge-verified" style={{ fontSize: '0.68rem' }}>80% OVERLAP</span>
                   </div>
                   <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45 }}>
-                    High synergy in Quantitative Aptitude, Data Interpretation, and English. Faster selection timeline (joining in April 2027).
+                    High synergy in Quantitative Aptitude, Data Interpretation, and English. Faster selection timeline with annual regular schedule.
                   </p>
                 </div>
                 {onSelectAlternativeExam && (
@@ -12901,6 +13052,57 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* PATHWAY 5: SKILL TEST / DEST TYPING PROTOCOLS */}
+      {selectedStatus === 'SKILL_TEST' && (
+        <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div className="glass-card" style={{ padding: '24px', borderLeft: '4px solid #a855f7' }}>
+            <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', margin: '0 0 8px' }}>
+              Data Entry Speed Test (DEST) & Skill Qualifying Protocols
+            </h4>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0, lineHeight: 1.5 }}>
+              The DEST typing test is compulsory for all candidates. It evaluates typing accuracy on a computer keyboard for a given master passage.
+            </p>
+          </div>
+
+          <div className="grid-3" style={{ gap: '16px' }}>
+            <div className="glass-card" style={{ padding: '20px' }}>
+              <span className="badge badge-verified" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>SPEED BENCHMARK</span>
+              <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'white', margin: '6px 0' }}>2000</div>
+              <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                Key depressions required in <strong>15 minutes</strong> (~27 Words Per Minute).
+              </div>
+            </div>
+
+            <div className="glass-card" style={{ padding: '20px' }}>
+              <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>UR MAX ERROR LIMIT</span>
+              <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#34d399', margin: '6px 0' }}>5% Error</div>
+              <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                Maximum permissible error percentage for Unreserved (UR) category.
+              </div>
+            </div>
+
+            <div className="glass-card" style={{ padding: '20px' }}>
+              <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>RESERVED CATEGORIES</span>
+              <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#60a5fa', margin: '6px 0' }}>7% / 20%</div>
+              <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                Permissible mistake margin for OBC, EWS, SC, ST, and PwBD candidates.
+              </div>
+            </div>
+          </div>
+
+          <div className="glass-card" style={{ padding: '24px' }}>
+            <h5 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'white', marginBottom: '12px' }}>
+              Key Rules for Calculating Typing Errors
+            </h5>
+            <ul style={{ paddingLeft: '20px', margin: 0, fontSize: '0.88rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '8px', lineHeight: 1.5 }}>
+              <li><strong style={{ color: 'white' }}>Full Mistakes:</strong> Omission of each word/figure, substitution of wrong word, and addition of words not found in the master passage.</li>
+              <li><strong style={{ color: 'white' }}>Half Mistakes:</strong> Spacing errors (no space between two words or extra space), spelling errors (repetition or missing letters), wrong capitalisation.</li>
+              <li><strong style={{ color: 'white' }}>Backspace Key:</strong> The backspace and arrow keys are fully functional on the examination software. Correct errors promptly as you type.</li>
+            </ul>
           </div>
         </div>
       )}
