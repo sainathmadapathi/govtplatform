@@ -403,9 +403,11 @@ Everything that belongs to one exam lives inside that exam. Resources, Practice,
 Timeline, the Application guide and both chats read the **current exam** and show only its
 content; a candidate inside UPSC never meets SSC material.
 
-`ExamDetailView` is that page: a 9-stage **candidate lifecycle** ("what should I do next?"),
-then the exam's **13 parts** as the section row, then a quieter "Also in this exam" row for
-the four reference sections. `sectionToStep` keeps the lifecycle in sync with what is open.
+`ExamDetailView` is that page: the exam's **13 parts** as the section row, then a quieter
+"Also in this exam" row for the four reference sections. That is the **only** navigation on
+the page. A 9-stage "candidate lifecycle" card grid used to sit above it and repeated the
+same stages under different names; it was removed as a duplicate visual layer, and nothing
+it pointed at went with it — every section, jump button and feature is reached from the row.
 
 ```
 <exam>

@@ -13067,51 +13067,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
     ...REFERENCE_SECTIONS.map(sec => ({ num: sec.num, name: sec.label }))
   ];
 
-  // PRIMARY NAVIGATION — the candidate journey ("What should I do next?").
-  // Each stage owns a target section plus the reference sections that back it up.
-  const steps = [
-    { num: 1, label: 'Check Eligibility', action: 'Confirm which posts you can apply for', sec: 3, icon: UserCheck, alsoSee: [1] },
-    { num: 2, label: 'Understand Pattern', action: 'Learn the tier structure & marking', sec: 5, icon: Layers, alsoSee: [2] },
-    { num: 3, label: 'Application & Docs', action: 'Fill the form without rejection', sec: 4, icon: FileText, alsoSee: [] },
-    { num: 4, label: 'Syllabus Blueprint', action: 'See exactly what to study', sec: 6, icon: Compass, alsoSee: [] },
-    { num: 5, label: 'Study Roadmap', action: 'Follow a day-by-day plan', sec: 7, icon: Calendar, alsoSee: [8] },
-    { num: 6, label: 'Practice & Mocks', action: 'Attempt real shift papers and build mocks', sec: 9, icon: Award, alsoSee: [17, 10] },
-    { num: 7, label: 'Admit Card Download', action: 'Get your hall ticket & city slip', sec: 14, icon: Download, alsoSee: [] },
-    { num: 8, label: 'Exam-Day Checklist', action: 'Carry the right documents', sec: 15, icon: CheckSquare, alsoSee: [] },
-    { num: 9, label: 'Result & Next Steps', action: 'Plan your move after the result', sec: 16, icon: Flame, alsoSee: [10] }
-  ];
-
-  // Maps every guide section back to the lifecycle stage it supports, so the journey bar
-  // always reflects where the candidate currently is. Sections 11-13 are pure reference.
-  const sectionToStep: Record<number, number> = {
-    1: 1, 3: 1,
-    2: 2, 5: 2,
-    4: 3,
-    6: 4,
-    7: 5, 8: 5,
-    9: 6, 10: 6, 17: 6,
-    14: 7,
-    15: 8,
-    16: 9
-  };
-
-  const activeStepNum = sectionToStep[activeSection];
-  const activeStep = steps.find(s => s.num === activeStepNum);
   const activeSectionMeta = sections.find(s => s.num === activeSection);
-
-  // Related sections for the current stage, excluding the one already open.
-  const relatedSections = activeStep
-    ? [activeStep.sec, ...activeStep.alsoSee].filter(n => n !== activeSection)
-    : [];
-
-  // SECONDARY NAVIGATION — the reference index, grouped so it reads as a table of
-  // contents rather than a second journey.
-  const sectionGroups = [
-    { title: 'Exam Essentials', nums: [1, 2, 3, 5] },
-    { title: 'Apply & Prepare', nums: [4, 6, 7, 8, 9] },
-    { title: 'Exam Day & Results', nums: [10, 14, 15, 16] },
-    { title: 'Official Records', nums: [11, 12, 13] }
-  ];
 
   const goToSection = (secNum: number) => {
     setActiveSection(secNum);
@@ -13211,116 +13167,6 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
         </div>
       )}
 
-      {/* ================= PRIMARY NAVIGATION: CANDIDATE LIFECYCLE ================= */}
-      {/* "What should I do next?" — the main way a candidate moves through this exam. */}
-      <div
-        className="glass-card"
-        style={{
-          padding: '26px',
-          background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.10) 0%, rgba(15, 23, 42, 0.98) 55%)',
-          border: '1px solid rgba(16, 185, 129, 0.35)',
-          boxShadow: '0 0 30px -12px rgba(16, 185, 129, 0.35)'
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px', marginBottom: '20px' }}>
-          <div>
-            <span className="badge badge-verified" style={{ fontSize: '0.7rem', marginBottom: '8px', display: 'inline-flex' }}>
-              <Target size={13} /> YOUR CANDIDATE JOURNEY
-            </span>
-            <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white', margin: '0 0 4px' }}>
-              What should I do next?
-            </h3>
-            <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', margin: 0 }}>
-              Follow these 9 stages in order — from checking eligibility to acting on your result. Each stage opens the tool or guide section you need for it.
-            </p>
-          </div>
-
-          <div style={{ padding: '12px 18px', borderRadius: 'var(--radius-md)', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(16, 185, 129, 0.3)', minWidth: '190px' }}>
-            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>
-              Current Stage
-            </span>
-            {activeStep ? (
-              <>
-                <div style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--emerald)', marginTop: '2px', lineHeight: 1.2 }}>
-                  {activeStep.label}
-                </div>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                  Stage {activeStep.num} of {steps.length}
-                </span>
-              </>
-            ) : (
-              <>
-                <div style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-secondary)', marginTop: '2px', lineHeight: 1.2 }}>
-                  Reference Lookup
-                </div>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                  Viewing a detail section
-                </span>
-              </>
-            )}
-          </div>
-        </div>
-
-        <div className="stepper-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
-          {steps.map((st) => {
-            const isCurrent = activeStepNum === st.num;
-            const StepIcon = st.icon;
-            return (
-              <div
-                key={st.num}
-                className={`step-item ${isCurrent ? 'active' : ''}`}
-                onClick={() => goToSection(st.sec)}
-                title={`${st.action} — opens ${sections.find(s => s.num === st.sec)?.name}`}
-                style={{
-                  padding: '16px',
-                  borderRadius: 'var(--radius-md)',
-                  background: isCurrent ? 'rgba(16, 185, 129, 0.14)' : 'rgba(255, 255, 255, 0.035)',
-                  border: isCurrent ? '1px solid var(--emerald)' : '1px solid var(--border-color)',
-                  boxShadow: isCurrent ? '0 0 18px -6px var(--emerald-glow)' : 'none',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '8px',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div style={{
-                    width: '28px',
-                    height: '28px',
-                    flexShrink: 0,
-                    borderRadius: '50%',
-                    background: isCurrent ? 'var(--emerald)' : 'rgba(255, 255, 255, 0.08)',
-                    color: isCurrent ? '#062c22' : 'var(--text-secondary)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '0.82rem',
-                    fontWeight: 800,
-                    fontFamily: 'var(--font-mono)'
-                  }}>
-                    {st.num}
-                  </div>
-                  <StepIcon size={17} color={isCurrent ? '#34d399' : 'var(--text-muted)'} style={{ flexShrink: 0 }} />
-                  <div style={{ fontSize: '0.95rem', fontWeight: 800, color: isCurrent ? '#6ee7b7' : 'white', lineHeight: 1.2 }}>
-                    {st.label}
-                  </div>
-                </div>
-
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                  {st.action}
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.7rem', color: isCurrent ? '#34d399' : 'var(--text-muted)', fontWeight: 700, marginTop: 'auto' }}>
-                  {isCurrent ? 'You are here' : 'Open'} <ArrowRight size={11} /> Section {String(st.sec).padStart(2, '0')}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
       {/* ================= EXAM SECTION NAVIGATION ================= */}
       {/* The 13 parts of this exam. Everything exam-scoped is reached from here. */}
       <div className="glass-card" style={{ padding: '18px 20px' }}>
@@ -13333,9 +13179,6 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
               </div>
               <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                 Reading: <strong style={{ color: '#cbd5e1' }}>{activeSectionMeta?.name || 'Overview'}</strong>
-                {activeStep && (
-                  <span style={{ color: 'var(--text-muted)' }}> · supports “{activeStep.label}”</span>
-                )}
               </div>
             </div>
           </div>
@@ -13412,65 +13255,6 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
 
       {/* Section Content Views */}
       <div className="glass-card" style={{ padding: '28px' }}>
-
-        {/* Context strip: ties the detail section back to the lifecycle stage it serves */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '10px',
-          marginBottom: '22px',
-          paddingBottom: '14px',
-          borderBottom: '1px solid var(--border-color)',
-          fontSize: '0.78rem'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)', flexWrap: 'wrap' }}>
-            {activeStep ? (
-              <>
-                <span style={{ color: 'var(--text-muted)' }}>Stage {activeStep.num} · {activeStep.label}</span>
-                <ChevronRight size={12} />
-                <strong style={{ color: 'var(--text-secondary)' }}>{activeSectionMeta?.name}</strong>
-              </>
-            ) : (
-              <>
-                <Info size={13} />
-                <span>Reference section — not part of the step-by-step journey.</span>
-                <ChevronRight size={12} />
-                <strong style={{ color: 'var(--text-secondary)' }}>{activeSectionMeta?.name}</strong>
-              </>
-            )}
-          </div>
-
-          {relatedSections.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <span style={{ color: 'var(--text-muted)' }}>Also useful for this stage:</span>
-              {relatedSections.map(num => {
-                const sec = sections.find(s => s.num === num);
-                if (!sec) return null;
-                return (
-                  <button
-                    key={num}
-                    onClick={() => goToSection(num)}
-                    style={{
-                      padding: '3px 10px',
-                      borderRadius: 'var(--radius-sm)',
-                      background: 'transparent',
-                      border: '1px solid var(--border-color)',
-                      color: 'var(--text-secondary)',
-                      fontSize: '0.74rem',
-                      fontFamily: 'var(--font-sans)',
-                      cursor: 'pointer',
-                      whiteSpace: 'nowrap'
-                    }}
-                  >
-                    {sec.name}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
 
         {/* Section 01: Overview & Posts */}
         {activeSection === 1 && (
