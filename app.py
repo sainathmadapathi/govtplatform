@@ -2003,10 +2003,11 @@ def _clean_ocr_text(text):
     return t
 
 
-def _parse_scorecard(text):
+def _parse_scorecard(text, exam_id=''):
     """
-    Rigorously parses government exam scorecards (SSC CGL/CHSL/CPO/MTS, RRB, Banking, PSCs).
-    Extracts marks, category, roll number, qualification status, and candidate scores.
+    Rigorously parses government exam scorecards according to each exam's specific structure
+    (UPSC Civil Services, SSC CGL, IBPS PO, APPSC, etc.).
+    Extracts marks, category, roll number, qualification status, and stage-specific scores.
     """
     cleaned = _clean_ocr_text(text)
     lines = [line.strip() for line in cleaned.split('\n') if line.strip()]
@@ -2014,10 +2015,15 @@ def _parse_scorecard(text):
     fields = {}
     notes = []
 
+    # Detect exam authority from exam_id hint or document text
+    is_upsc = ('upsc' in exam_id or 'cse' in exam_id) or bool(re.search(r'\b(?:upsc|union\s+public\s+service|civil\s+services|dholpur\s+house|cs\s*\((?:p|main|prelim)\))\b', full_text, re.I))
+    is_ibps = ('ibps' in exam_id) or bool(re.search(r'\b(?:ibps|institute\s+of\s+banking|probationary\s+officer)\b', full_text, re.I))
+    is_appsc = ('appsc' in exam_id) or bool(re.search(r'\b(?:appsc|andhra\s+pradesh\s+public\s+service)\b', full_text, re.I))
+
     # 1. Roll Number & Registration Number
-    roll_match = re.search(r'(?:roll\s*(?:no|number)|rollno|ticket\s*no)\s*[:\-]?\s*(\d{8,12})', full_text, re.I)
+    roll_match = re.search(r'(?:roll\s*(?:no|number)|rollno|ticket\s*no)\s*[:\-]?\s*(\d{6,12})', full_text, re.I)
     if not roll_match:
-        roll_match = re.search(r'\b(\d{10,11})\b', full_text)
+        roll_match = re.search(r'\b(\d{7,11})\b', full_text)
     if roll_match:
         roll_str = roll_match.group(1)
         fields['rollNumber'] = roll_str
@@ -2056,7 +2062,7 @@ def _parse_scorecard(text):
             if st_m:
                 cat_found = 'ST'
                 break
-            pwbd_m = re.search(r'\b(?:pwbd|pwd|divyang)\b', window, re.I)
+            pwbd_m = re.search(r'\b(?:pwbd[- ]?[1-5]?|pwd|divyang)\b', window, re.I)
             if pwbd_m:
                 cat_found = 'PwBD'
                 break
@@ -2066,16 +2072,16 @@ def _parse_scorecard(text):
                 break
             ur_m = re.search(r'\b(?:ur|unreserved)\b|\bgeneral\b(?!\s+(?:intelligence|awareness|studies|science|english|ability|knowledge|\d))', window, re.I)
             if ur_m:
-                cat_found = 'UR'
+                cat_found = 'General' if is_upsc else 'UR'
                 break
             code_m = re.search(r'\b([0-9])\b', l)
             if code_m and code_m.group(1) in cat_code_map:
                 cat_found = cat_code_map[code_m.group(1)]
                 break
 
-    # Priority B: Document-wide scan with precise boundaries
+    # Priority B: Whole document search
     if not cat_found:
-        if re.search(r'\bews\s*[\(\[]?\s*[0o]?\s*[\)\]]?', full_text, re.I):
+        if re.search(r'\bews\b', full_text, re.I):
             cat_found = 'EWS'
         elif re.search(r'\bobc(?:-ncl)?\b', full_text, re.I):
             cat_found = 'OBC'
@@ -2083,23 +2089,125 @@ def _parse_scorecard(text):
             cat_found = 'SC'
         elif re.search(r'\bst\b', full_text, re.I):
             cat_found = 'ST'
-        elif re.search(r'\b(?:pwbd|pwd|divyang)\b', full_text, re.I):
+        elif re.search(r'\b(?:pwbd[- ]?[1-5]?|pwd|divyang)\b', full_text, re.I):
             cat_found = 'PwBD'
         elif re.search(r'\b(?:esm|ex-servicemen)\b', full_text, re.I):
             cat_found = 'ESM'
         elif re.search(r'\b(?:unreserved|\bur\b)\b|\bgeneral\b(?!\s+(?:intelligence|awareness|studies|science|english|ability|knowledge|\d))', full_text, re.I):
-            cat_found = 'UR'
+            cat_found = 'General' if is_upsc else 'UR'
 
     if cat_found:
         fields['category'] = cat_found
 
+    # Common Candidate Metadata: Name & Exam Year
+    name_m = re.search(r'\bname\s*[:\-]?\s*([a-zA-Z\s]{3,35})(?=\s+(?:father|mother|gender|dob|cat|community|roll))', full_text, re.I)
+    if name_m:
+        fields['candidateName'] = re.sub(r'\s+', ' ', name_m.group(1)).strip()
+
+    yr_m = re.search(r'\b(202[0-9])\b', full_text)
+    if yr_m:
+        fields['examYear'] = int(yr_m.group(1))
+
     # 3. Status declaration
-    if re.search(r'\b(?:not\s*qualified|not\s*shortlisted|rejected|disqualified)\b', full_text, re.I):
+    if re.search(r'\b(?:not\s*qualified|not\s*shortlisted|not\s*recommended|rejected|disqualified)\b', full_text, re.I):
         fields['declared'] = 'NOT_QUALIFIED'
-    elif re.search(r'\b(?:qualified(?:\s+for\s+tier[- ]?(?:2|ii))?|shortlisted|eligible|provisionally\s+selected)\b', full_text, re.I):
+    elif re.search(r'\b(?:recommended\s*for\s*appointment|qualified(?:\s+for\s+(?:cs\(main\)|tier[- ]?(?:2|ii)|mains?))?|shortlisted|eligible|provisionally\s+selected)\b', full_text, re.I):
         fields['declared'] = 'QUALIFIED'
 
-    # 4. Clean examination section before score analysis
+    # =========================================================================
+    # BRANCH A: UPSC CIVIL SERVICES EXAMINATION SCORECARD
+    # =========================================================================
+    if is_upsc:
+        fields['examType'] = 'UPSC_CSE'
+        notes.append("Evaluated according to UPSC Civil Services Examination evaluation scheme.")
+
+        # Prelims GS Paper-I (Screening Merit out of 200)
+        gs1_m = re.search(r'(?:paper[- ]?i\b|general\s+studies[- ]?(?:i|1)\b|gs[- ]?i\b|gs\s*1\b)[^0-9\n]{0,35}\b(\d{1,3}(?:\.\d{1,5})?)\b', full_text, re.I)
+        if gs1_m:
+            v = float(gs1_m.group(1))
+            if 20.0 <= v <= 200.0:
+                fields['upscPrelimsGs1Marks'] = round(v, 2)
+                fields['tier1Marks'] = round(v, 2)
+                fields['marks'] = round(v, 2)
+                fields['marksLabel'] = 'Prelims GS Paper-I Marks'
+
+        # Prelims CSAT Paper-II (Qualifying 33% = 66.66 Marks out of 200)
+        csat_m = re.search(r'(?:paper[- ]?ii\b|csat\b|general\s+studies[- ]?(?:ii|2)\b|gs[- ]?ii\b)[^0-9\n]{0,35}\b(\d{1,3}(?:\.\d{1,5})?)\b', full_text, re.I)
+        if csat_m:
+            v = float(csat_m.group(1))
+            if 0.0 <= v <= 200.0:
+                fields['upscPrelimsCsatMarks'] = round(v, 2)
+
+        # Mains Written Total (7 Papers out of 1750)
+        written_m = re.search(r'(?:written\s*total|written\s*marks|cs\s*\(main\)\s*marks?|mains?\s*written|total\s*written)[^0-9\n]{0,35}\b(\d{3,4}(?:\.\d{1,2})?)\b', full_text, re.I)
+        if written_m:
+            v = float(written_m.group(1))
+            if 300.0 <= v <= 1750.0:
+                fields['upscMainsWrittenMarks'] = round(v, 2)
+                fields['tier2Marks'] = round(v, 2)
+
+        # Personality Test / Interview (out of 275)
+        pt_m = re.search(r'(?:personality\s*test|interview|pt\s*marks?)[^0-9\n]{0,35}\b(\d{2,3}(?:\.\d{1,2})?)\b', full_text, re.I)
+        if pt_m:
+            v = float(pt_m.group(1))
+            if 50.0 <= v <= 275.0:
+                fields['upscInterviewMarks'] = round(v, 2)
+
+        # Final Grand Total (Written + Interview out of 2025)
+        final_m = re.search(r'(?:final\s*total|grand\s*total|total\s*marks)[^0-9\n]{0,35}\b(\d{3,4}(?:\.\d{1,2})?)\b', full_text, re.I)
+        if final_m:
+            v = float(final_m.group(1))
+            if 400.0 <= v <= 2025.0:
+                fields['upscFinalTotalMarks'] = round(v, 2)
+
+        # Service Allocated (IAS, IPS, IFS, IRS, etc.)
+        service_m = re.search(r'\b(ias|ips|ifs|irs(?:\s*\(?[a-z]+\)?)?|iaas|idas|ipos)\b', full_text, re.I)
+        if service_m:
+            fields['allocatedPost'] = service_m.group(1).upper()
+            fields['allocatedService'] = service_m.group(1).upper()
+        else:
+            fields['allocatedPost'] = 'NOT_RECOMMENDED' if fields.get('declared') == 'NOT_QUALIFIED' else 'AWAITING_ALLOCATION'
+
+        confidence = 'HIGH' if 'upscPrelimsGs1Marks' in fields or 'upscMainsWrittenMarks' in fields else 'LOW'
+        return fields, confidence, notes
+
+    # =========================================================================
+    # BRANCH B: IBPS PO / BANKING EXAM SCORECARD
+    # =========================================================================
+    if is_ibps:
+        fields['examType'] = 'IBPS_PO'
+        notes.append("Evaluated according to IBPS CRP PO/MT examination scheme.")
+
+        pre_m = re.search(r'(?:preliminary|prelims?|cbt[- ]?1)(?:\s+[a-z]+){0,3}\s*(?:marks?|score?)[^0-9\n]{0,35}\b(\d{1,3}(?:\.\d{1,2})?)\b', full_text, re.I)
+        if pre_m:
+            v = float(pre_m.group(1))
+            if 10.0 <= v <= 100.0:
+                fields['ibpsPrelimsMarks'] = round(v, 2)
+                fields['tier1Marks'] = round(v, 2)
+                fields['marks'] = round(v, 2)
+                fields['marksLabel'] = 'IBPS Prelims Marks'
+
+        main_m = re.search(r'(?:mains?|main)(?:\s+[a-z]+){0,3}\s*(?:marks?|score?)[^0-9\n]{0,35}\b(\d{1,3}(?:\.\d{1,2})?)\b', full_text, re.I)
+        if main_m:
+            v = float(main_m.group(1))
+            if 20.0 <= v <= 225.0:
+                fields['ibpsMainsMarks'] = round(v, 2)
+                fields['tier2Marks'] = round(v, 2)
+
+        int_m = re.search(r'(?:interview)(?:\s+[a-z]+){0,3}\s*(?:marks?|score?)[^0-9\n]{0,35}\b(\d{1,3}(?:\.\d{1,2})?)\b', full_text, re.I)
+        if int_m:
+            v = float(int_m.group(1))
+            if 10.0 <= v <= 100.0:
+                fields['ibpsInterviewMarks'] = round(v, 2)
+
+        conf = 'HIGH' if 'ibpsPrelimsMarks' in fields else 'LOW'
+        return fields, conf, notes
+
+    # =========================================================================
+    # BRANCH C: SSC CGL & STATE SELECTION COMMISSIONS (MULTI-TIER)
+    # =========================================================================
+    fields['examType'] = 'SSC_CGL'
+    # Clean examination section before score analysis
     # Discard Skill Test / DEST / Typing Test / Computer Knowledge Module
     cbt_text = re.split(r'\b(?:performance\s+in\s+skill\s+test|skill\s*test|dest\b|typing\s*test|computer\s*knowledge\s*module)\b', full_text, flags=re.I)[0]
     
@@ -2120,10 +2228,10 @@ def _parse_scorecard(text):
         return res
 
     # 5. Extract CBT Exam Scores
-    # Priority A: Check for Tier-I CBT score (e.g. 'Score in Computer Based Examination (Tier-I/ Paper-I) Paper 1 113.11524')
+    # Priority A: Check for Tier-I CBT score (e.g. 'Score in Computer Based Examination (Tier-I/ Paper-I) Paper 1 113.11524' or 'Tier-1 Normalised Marks: 113.12')
     tier1_m = re.search(r'(?:computer\s*based\s*examination|cbe)\s*\([^\)]*tier[- ]?[1iI][^\)]*\)(?:[^0-9]|paper\s*\d)*\b(\d{2,3}(?:\.\d{1,5})?)\b', cbt_text, re.I)
     if not tier1_m:
-        tier1_m = re.search(r'tier[- ]?(?:1|i)\s*(?:marks?|score?)\s*[:\-]?[^0-9]{0,30}\b(\d{1,3}(?:\.\d{1,5})?)\b', cbt_text, re.I)
+        tier1_m = re.search(r'tier[- ]?(?:1|i)\s*(?:[a-z]+\s*)*(?:marks?|score?)\s*[:\-]?[^0-9]{0,30}\b(\d{1,3}(?:\.\d{1,5})?)\b', cbt_text, re.I)
     if tier1_m:
         v = float(tier1_m.group(1))
         if 20.0 <= v <= 700.0 and v not in ignored_numbers:
@@ -2173,21 +2281,26 @@ def _parse_scorecard(text):
                 fields['marksLabel'] = 'Raw / Total Marks'
                 fields['marksRaw'] = raw_m.group(1)
 
+    # Priority E: Direct Tier-2 CBT score regex
+    tier2_m = re.search(r'tier[- ]?(?:2|ii)\s*(?:[a-z0-9\-\(\)\/]+\s*)*(?:marks?|score?)\s*[:\-]?[^0-9]{0,30}\b(\d{1,3}(?:\.\d{1,5})?)\b', cbt_text, re.I)
+    if tier2_m:
+        fields['tier2Marks'] = round(float(tier2_m.group(1)), 2)
+
     # 6. Candidate scores from CBT section
     scores = extract_scores(cbt_text)
     
     # Tier-2 Normalized Section Totals if present
-    t2_norms = [float(x) for x in re.findall(r'\b(\d{2,3}\.\d{3,5})\b', cbt_text[tier1_m.end():] if tier1_m else cbt_text)]
-    tier2_total = None
-    if len(t2_norms) >= 2:
-        tier2_total = round(sum(t2_norms[:2]), 2)
-        fields['tier2Marks'] = tier2_total
+    if 'tier2Marks' not in fields:
+        t2_norms = [float(x) for x in re.findall(r'\b(\d{2,3}\.\d{3,5})\b', cbt_text[tier1_m.end():] if tier1_m else cbt_text)]
+        if len(t2_norms) >= 2:
+            tier2_total = round(sum(t2_norms[:2]), 2)
+            fields['tier2Marks'] = tier2_total
 
     plausible = []
     if 'tier1Marks' in fields:
         plausible.append(fields['tier1Marks'])
-    if tier2_total and 100.0 <= tier2_total <= 390.0:
-        plausible.append(tier2_total)
+    if 'tier2Marks' in fields:
+        plausible.append(fields['tier2Marks'])
     for v, s in scores:
         if v not in [100.0, 200.0, 300.0, 50.0]:
             plausible.append(round(v, 2))
@@ -2200,15 +2313,6 @@ def _parse_scorecard(text):
         fields['marks'] = plausible[0]
         fields['marksLabel'] = 'Candidate Mark'
 
-    # 7. Candidate Metadata (Name, Exam Year, Allocation)
-    name_m = re.search(r'\bname\s*[:\-]?\s*([a-zA-Z\s]{3,35})(?=\s+(?:father|mother|gender|dob|cat|roll))', full_text, re.I)
-    if name_m:
-        fields['candidateName'] = re.sub(r'\s+', ' ', name_m.group(1)).strip()
-
-    yr_m = re.search(r'\b(202[0-9])\b', full_text)
-    if yr_m:
-        fields['examYear'] = int(yr_m.group(1))
-
     alloc_m = re.search(r'allocated\s*post\s*[:\-]?\s*([a-zA-Z0-9]+)', full_text, re.I)
     if alloc_m and alloc_m.group(1).upper() not in ['ALLOCATED', 'CATEGORY', 'NONE', 'NIL', 'NA', 'POST']:
         fields['allocatedPost'] = alloc_m.group(1).upper()
@@ -2216,19 +2320,34 @@ def _parse_scorecard(text):
         fields['allocatedPost'] = 'NOT_ALLOCATED'
 
     # 8. Skill Test & Computer Knowledge Module Extraction (DEST, CKT)
-    skill_start = re.search(r'(?:perform[a-z]*\s*in\s*skill\s*test|skill\s*test|dest\b|typing\s*test|computer\s*knowledge)', full_text, re.I)
-    if skill_start:
-        skill_text = full_text[skill_start.start():]
-        nums = re.findall(r'\b(\d{1,3}(?:\.\d{1,5})?)\b', skill_text)
-        dest_val = next((float(x) for x in nums if '.' in x and len(x.split('.')[-1]) <= 2 and float(x) <= 50.0), None)
-        if dest_val is not None:
-            fields['destMistakesPercent'] = round(dest_val, 2)
-        ckt_norm = next((float(x) for x in nums if '.' in x and len(x.split('.')[-1]) > 2 and float(x) <= 60.0), None)
-        ckt_raw = next((float(x) for x in nums if '.' not in x and 0.0 <= float(x) <= 60.0), None)
-        if ckt_norm is not None:
-            fields['computerKnowledgeMarks'] = round(ckt_norm, 2)
-        elif ckt_raw is not None:
-            fields['computerKnowledgeMarks'] = round(ckt_raw, 2)
+    ckt_m = re.search(r'(?:computer\s*knowledge\s*(?:module)?|ckt)[^0-9\n]{0,35}\b(\d{1,2}(?:\.\d{1,5})?)\b', full_text, re.I)
+    if ckt_m:
+        v = float(ckt_m.group(1))
+        if 0.0 <= v <= 60.0:
+            fields['computerKnowledgeMarks'] = round(v, 2)
+
+    dest_m = re.search(r'(?:dest|mistakes\s*(?:in\s*dest)?|typing\s*mistakes?|error\s*(?:in\s*dest)?)[^0-9\n]{0,35}\b(\d{1,2}(?:\.\d{1,5})?)\b', full_text, re.I)
+    if dest_m:
+        v = float(dest_m.group(1))
+        if 0.0 <= v <= 50.0:
+            fields['destMistakesPercent'] = round(v, 2)
+
+    if 'computerKnowledgeMarks' not in fields or 'destMistakesPercent' not in fields:
+        skill_start = re.search(r'(?:perform[a-z]*\s*in\s*skill\s*test|skill\s*test|dest\b|typing\s*test|computer\s*knowledge)', full_text, re.I)
+        if skill_start:
+            skill_text = full_text[skill_start.start():]
+            nums = re.findall(r'\b(\d{1,3}(?:\.\d{1,5})?)\b', skill_text)
+            if 'destMistakesPercent' not in fields:
+                dest_val = next((float(x) for x in nums if '.' in x and len(x.split('.')[-1]) <= 2 and float(x) <= 50.0), None)
+                if dest_val is not None:
+                    fields['destMistakesPercent'] = round(dest_val, 2)
+            if 'computerKnowledgeMarks' not in fields:
+                ckt_norm = next((float(x) for x in nums if '.' in x and len(x.split('.')[-1]) > 2 and float(x) <= 60.0), None)
+                ckt_raw = next((float(x) for x in nums if '.' not in x and 0.0 <= float(x) <= 60.0), None)
+                if ckt_norm is not None:
+                    fields['computerKnowledgeMarks'] = round(ckt_norm, 2)
+                elif ckt_raw is not None:
+                    fields['computerKnowledgeMarks'] = round(ckt_raw, 2)
 
     confidence = 'HIGH' if 'marks' in fields and 'category' in fields else ('MEDIUM' if 'marks' in fields else 'LOW')
     return fields, confidence, notes
@@ -2240,6 +2359,7 @@ def parse_result_document():
     data = request.get_json(silent=True) or {}
     content = data.get('contentBase64') or ''
     filename = (data.get('filename') or 'upload').lower()
+    exam_id = (data.get('examId') or '').lower()
     try:
         raw = base64.b64decode(content, validate=False)
     except Exception:
@@ -2282,7 +2402,7 @@ def parse_result_document():
         return jsonify({"ok": False, "reason": "NO_TEXT_FOUND",
                         "message": "Nothing readable was found in that file — the scan may be too blurry or too dark. Try a clearer copy, or type your marks in."}), 200
 
-    fields, confidence, notes = _parse_scorecard(text)
+    fields, confidence, notes = _parse_scorecard(text, exam_id=exam_id)
     if method == "OCR":
         notes.append("Read by OCR from the image, so a digit can be misread — check the marks against your scorecard before using them.")
     excerpt = ' '.join(text.split())[:600]

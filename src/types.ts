@@ -206,10 +206,26 @@ export interface MultiTierResultEntry {
   category: string;
   source: string;
   declared?: string;
+  examId?: string;
+  examType?: 'SSC_CGL' | 'UPSC_CSE' | 'IBPS_PO' | 'APPSC' | 'GENERIC';
+  // SSC specific
   tier1Marks?: number;
   tier2Marks?: number;
   computerKnowledgeMarks?: number;
   destMistakesPercent?: number;
+  // UPSC specific
+  upscPrelimsGs1Marks?: number;
+  upscPrelimsCsatMarks?: number;
+  upscMainsWrittenMarks?: number;
+  upscInterviewMarks?: number;
+  upscFinalTotalMarks?: number;
+  allocatedService?: string;
+  // IBPS specific
+  ibpsPrelimsMarks?: number;
+  ibpsMainsMarks?: number;
+  ibpsInterviewMarks?: number;
+  ibpsFinalScore?: number;
+  // Common metadata
   examYear?: number;
   rollNumber?: string;
   candidateName?: string;

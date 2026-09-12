@@ -419,20 +419,22 @@ class StorageService {
     }
   }
 
-  /** The marks and category the candidate entered or confirmed from their scorecard. */
-  getResultEntry(): MultiTierResultEntry | null {
+  /** The marks and category the candidate entered or confirmed from their scorecard, isolated per exam. */
+  getResultEntry(examId?: string): MultiTierResultEntry | null {
     try {
-      const raw = localStorage.getItem(STORAGE_KEYS.RESULT_ENTRY);
+      const key = examId ? `${STORAGE_KEYS.RESULT_ENTRY}_${examId}` : STORAGE_KEYS.RESULT_ENTRY;
+      const raw = localStorage.getItem(key);
       return raw ? JSON.parse(raw) : null;
     } catch {
       return null;
     }
   }
 
-  setResultEntry(entry: MultiTierResultEntry | null): void {
+  setResultEntry(entry: MultiTierResultEntry | null, examId?: string): void {
     try {
-      if (entry) localStorage.setItem(STORAGE_KEYS.RESULT_ENTRY, JSON.stringify(entry));
-      else localStorage.removeItem(STORAGE_KEYS.RESULT_ENTRY);
+      const key = examId ? `${STORAGE_KEYS.RESULT_ENTRY}_${examId}` : STORAGE_KEYS.RESULT_ENTRY;
+      if (entry) localStorage.setItem(key, JSON.stringify(entry));
+      else localStorage.removeItem(key);
     } catch (e) {
       console.warn('LocalStorage save error:', e);
     }
@@ -442,7 +444,7 @@ class StorageService {
    * Send a scorecard to the server to be read. The file is parsed in memory and never
    * stored — GovOS keeps no candidate documents.
    */
-  async parseResultDocument(file: File): Promise<{
+  async parseResultDocument(file: File, examId?: string): Promise<{
     ok: boolean; reason?: string; message?: string; confidence?: string; method?: 'TEXT_LAYER' | 'OCR';
     fields?: {
       marks?: number;
@@ -454,11 +456,25 @@ class StorageService {
       declared?: string;
       marksLabel?: string;
       marksRaw?: string;
+      examType?: 'SSC_CGL' | 'UPSC_CSE' | 'IBPS_PO' | 'APPSC' | 'GENERIC';
+      // SSC specific
       tier1Marks?: number;
       tier2Marks?: number;
       computerKnowledgeMarks?: number;
       destMistakesPercent?: number;
       allocatedPost?: string;
+      // UPSC specific
+      upscPrelimsGs1Marks?: number;
+      upscPrelimsCsatMarks?: number;
+      upscMainsWrittenMarks?: number;
+      upscInterviewMarks?: number;
+      upscFinalTotalMarks?: number;
+      allocatedService?: string;
+      // IBPS specific
+      ibpsPrelimsMarks?: number;
+      ibpsMainsMarks?: number;
+      ibpsInterviewMarks?: number;
+      ibpsFinalScore?: number;
     };
     notes?: string[]; excerpt?: string;
   }> {
@@ -472,7 +488,7 @@ class StorageService {
       const res = await fetch('/api/results/parse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename: file.name, contentBase64: btoa(binary) })
+        body: JSON.stringify({ filename: file.name, contentBase64: btoa(binary), examId: examId || '' })
       });
       return await res.json();
     } catch (e: any) {

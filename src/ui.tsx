@@ -11941,7 +11941,8 @@ export const ExamDayChecklistSection: React.FC<ExamDayChecklistSectionProps> = (
 
 
 // ==========================================================================
-// ResultNextStepsSection.tsx
+// ResultNextStepsSection.tsx — Dynamic Multi-Exam Result Evaluation & Next Steps
+// Maintains exam-isolated scorecards & patterns (UPSC CSE, SSC CGL, IBPS PO)
 // ==========================================================================
 interface ResultNextStepsSectionProps {
   exam: Exam;
@@ -11951,6 +11952,7 @@ interface ResultNextStepsSectionProps {
 }
 
 type CandidateResultStatus = 
+  // SSC & Generic statuses
   | 'TIER2_PREP' 
   | 'BOTH_PASSED_SELECTION' 
   | 'TIER1_FAILED_RECOVERY' 
@@ -11958,7 +11960,20 @@ type CandidateResultStatus =
   | 'SKILL_TEST'
   | 'QUALIFIED_TIER2' 
   | 'DOC_VERIFICATION' 
-  | 'NOT_QUALIFIED';
+  | 'NOT_QUALIFIED'
+  // UPSC Civil Services statuses
+  | 'UPSC_MAINS_PREP'
+  | 'UPSC_INTERVIEW_PREP'
+  | 'UPSC_FINAL_SELECTION'
+  | 'UPSC_CSAT_RECOVERY'
+  | 'UPSC_PRELIMS_RECOVERY'
+  | 'UPSC_MAINS_MISSED'
+  | 'UPSC_FINAL_MISSED'
+  // IBPS PO statuses
+  | 'IBPS_MAINS_PREP'
+  | 'IBPS_INTERVIEW_PREP'
+  | 'IBPS_FINAL_SELECTION'
+  | 'IBPS_PRELIMS_RECOVERY';
 
 export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
   exam,
@@ -11966,35 +11981,156 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
   onNavigatePractice,
   onSelectAlternativeExam
 }) => {
-  const [selectedStatus, setSelectedStatus] = useState<CandidateResultStatus>('TIER2_PREP');
-  const [statusChosenManually, setStatusChosenManually] = useState<boolean>(false);
+  // ---- Exam Pattern Identification ----
+  const isUPSC = exam.code?.includes('UPSC') || exam.id?.includes('upsc') || exam.title?.toLowerCase().includes('civil services');
+  const isIBPS = exam.code?.includes('IBPS') || exam.id?.includes('ibps');
+  const isSSC = exam.code?.includes('SSC') || exam.id?.includes('ssc');
 
-  const resultDate = exam.dates.find(d => d.type === 'RESULT');
-  const ansKeyDate = exam.dates.find(d => d.type === 'ANSWER_KEY');
-  const latestCutoff = exam.cutoffsHistory[0];
-
-  // ---- Multi-Tier Result & Scorecard Evaluation Engine ----------------
+  // Available benchmark cycles from cutoffs history
   const availableYears = Array.from(new Set(exam.cutoffsHistory.map(c => c.year))).sort((a, b) => b - a);
-  const saved = storageService.getResultEntry();
-  const defaultYear = saved?.examYear && availableYears.includes(saved.examYear) ? saved.examYear : (availableYears[0] || 2024);
-  const [selectedYear, setSelectedYear] = useState<number>(defaultYear);
-  const cutoffRows = exam.cutoffsHistory.filter(c => c.year === selectedYear);
 
-  const [tier1Input, setTier1Input] = useState<string>(
-    saved?.tier1Marks !== undefined ? String(saved.tier1Marks) : (saved ? String(saved.marks) : '')
+  // ---- Exam-Isolated State Loading ----
+  const [entry, setEntry] = useState<MultiTierResultEntry | null>(() => storageService.getResultEntry(exam.id));
+  const [selectedYear, setSelectedYear] = useState<number>(() => {
+    const saved = storageService.getResultEntry(exam.id);
+    return saved?.examYear && availableYears.includes(saved.examYear) ? saved.examYear : (availableYears[0] || 2025);
+  });
+  const [categoryInput, setCategoryInput] = useState<string>(() => {
+    const saved = storageService.getResultEntry(exam.id);
+    const cutoffRows = exam.cutoffsHistory.filter(c => c.year === (saved?.examYear || availableYears[0] || 2025));
+    return saved?.category || (cutoffRows[0]?.category || (isUPSC ? 'General' : 'UR'));
+  });
+
+  // UPSC Specific Inputs
+  const [upscGs1Input, setUpscGs1Input] = useState<string>(() => {
+    const saved = storageService.getResultEntry(exam.id);
+    return saved?.upscPrelimsGs1Marks !== undefined ? String(saved.upscPrelimsGs1Marks) : (saved?.tier1Marks !== undefined ? String(saved.tier1Marks) : '');
+  });
+  const [upscCsatInput, setUpscCsatInput] = useState<string>(() => {
+    const saved = storageService.getResultEntry(exam.id);
+    return saved?.upscPrelimsCsatMarks !== undefined ? String(saved.upscPrelimsCsatMarks) : '';
+  });
+  const [upscMainsInput, setUpscMainsInput] = useState<string>(() => {
+    const saved = storageService.getResultEntry(exam.id);
+    return saved?.upscMainsWrittenMarks !== undefined ? String(saved.upscMainsWrittenMarks) : (saved?.tier2Marks !== undefined ? String(saved.tier2Marks) : '');
+  });
+  const [upscInterviewInput, setUpscInterviewInput] = useState<string>(() => {
+    const saved = storageService.getResultEntry(exam.id);
+    return saved?.upscInterviewMarks !== undefined ? String(saved.upscInterviewMarks) : '';
+  });
+
+  // SSC / Generic Inputs
+  const [tier1Input, setTier1Input] = useState<string>(() => {
+    const saved = storageService.getResultEntry(exam.id);
+    return saved?.tier1Marks !== undefined ? String(saved.tier1Marks) : (saved ? String(saved.marks) : '');
+  });
+  const [tier2Input, setTier2Input] = useState<string>(() => {
+    const saved = storageService.getResultEntry(exam.id);
+    return saved?.tier2Marks !== undefined ? String(saved.tier2Marks) : '';
+  });
+
+  // IBPS Inputs
+  const [ibpsPrelimsInput, setIbpsPrelimsInput] = useState<string>(() => {
+    const saved = storageService.getResultEntry(exam.id);
+    return saved?.ibpsPrelimsMarks !== undefined ? String(saved.ibpsPrelimsMarks) : (saved?.tier1Marks !== undefined ? String(saved.tier1Marks) : '');
+  });
+  const [ibpsMainsInput, setIbpsMainsInput] = useState<string>(() => {
+    const saved = storageService.getResultEntry(exam.id);
+    return saved?.ibpsMainsMarks !== undefined ? String(saved.ibpsMainsMarks) : (saved?.tier2Marks !== undefined ? String(saved.tier2Marks) : '');
+  });
+  const [ibpsInterviewInput, setIbpsInterviewInput] = useState<string>(() => {
+    const saved = storageService.getResultEntry(exam.id);
+    return saved?.ibpsInterviewMarks !== undefined ? String(saved.ibpsInterviewMarks) : '';
+  });
+
+  const [selectedStatus, setSelectedStatus] = useState<CandidateResultStatus>(
+    isUPSC ? 'UPSC_MAINS_PREP' : isIBPS ? 'IBPS_MAINS_PREP' : 'TIER2_PREP'
   );
-  const [tier2Input, setTier2Input] = useState<string>(
-    saved?.tier2Marks !== undefined ? String(saved.tier2Marks) : ''
-  );
-  const [categoryInput, setCategoryInput] = useState<string>(
-    saved?.category || (cutoffRows[0]?.category || 'UR')
-  );
-  const [entry, setEntry] = useState<MultiTierResultEntry | null>(saved);
+  const [statusChosenManually, setStatusChosenManually] = useState<boolean>(false);
   const [parsing, setParsing] = useState<boolean>(false);
   const [parsed, setParsed] = useState<{ ok: boolean; reason?: string; message?: string; confidence?: string; method?: 'TEXT_LAYER' | 'OCR'; fields?: any; notes?: string[]; excerpt?: string } | null>(null);
 
+  // ---- CRITICAL: Reload isolated state when candidate switches exam ----
+  useEffect(() => {
+    const saved = storageService.getResultEntry(exam.id);
+    setEntry(saved);
+    setParsed(null);
+    setStatusChosenManually(false);
+
+    const years = Array.from(new Set(exam.cutoffsHistory.map(c => c.year))).sort((a, b) => b - a);
+    const targetYear = saved?.examYear && years.includes(saved.examYear) ? saved.examYear : (years[0] || 2025);
+    setSelectedYear(targetYear);
+
+    const rows = exam.cutoffsHistory.filter(c => c.year === targetYear);
+    setCategoryInput(saved?.category || rows[0]?.category || (isUPSC ? 'General' : 'UR'));
+
+    if (isUPSC) {
+      setUpscGs1Input(saved?.upscPrelimsGs1Marks !== undefined ? String(saved.upscPrelimsGs1Marks) : (saved?.tier1Marks !== undefined ? String(saved.tier1Marks) : ''));
+      setUpscCsatInput(saved?.upscPrelimsCsatMarks !== undefined ? String(saved.upscPrelimsCsatMarks) : '');
+      setUpscMainsInput(saved?.upscMainsWrittenMarks !== undefined ? String(saved.upscMainsWrittenMarks) : (saved?.tier2Marks !== undefined ? String(saved.tier2Marks) : ''));
+      setUpscInterviewInput(saved?.upscInterviewMarks !== undefined ? String(saved.upscInterviewMarks) : '');
+      setSelectedStatus('UPSC_MAINS_PREP');
+    } else if (isIBPS) {
+      setIbpsPrelimsInput(saved?.ibpsPrelimsMarks !== undefined ? String(saved.ibpsPrelimsMarks) : (saved?.tier1Marks !== undefined ? String(saved.tier1Marks) : ''));
+      setIbpsMainsInput(saved?.ibpsMainsMarks !== undefined ? String(saved.ibpsMainsMarks) : (saved?.tier2Marks !== undefined ? String(saved.tier2Marks) : ''));
+      setIbpsInterviewInput(saved?.ibpsInterviewMarks !== undefined ? String(saved.ibpsInterviewMarks) : '');
+      setSelectedStatus('IBPS_MAINS_PREP');
+    } else {
+      setTier1Input(saved?.tier1Marks !== undefined ? String(saved.tier1Marks) : (saved ? String(saved.marks) : ''));
+      setTier2Input(saved?.tier2Marks !== undefined ? String(saved.tier2Marks) : '');
+      setSelectedStatus('TIER2_PREP');
+    }
+  }, [exam.id]);
+
+  // Current year cutoffs
+  const cutoffRows = exam.cutoffsHistory.filter(c => c.year === selectedYear);
+  const activeCategory = entry?.category || categoryInput;
+  const matchedCutoff = cutoffRows.find(r => {
+    const catA = activeCategory.toUpperCase();
+    const catB = r.category.toUpperCase();
+    return catA === catB || catB.includes(catA.split(' ')[0]) || catA.includes(catB.split(' ')[0]);
+  }) || cutoffRows[0];
+
+  // Apply typed entries for UPSC
+  const applyUpscEntry = (
+    gs1Val: number | null,
+    csatVal: number | null,
+    mainsVal: number | null,
+    intvVal: number | null,
+    catVal: string,
+    yrVal: number
+  ) => {
+    const finalTot = (mainsVal !== null && intvVal !== null) ? +(mainsVal + intvVal).toFixed(2) : undefined;
+    const next: MultiTierResultEntry = {
+      examId: exam.id,
+      examType: 'UPSC_CSE',
+      marks: gs1Val ?? (mainsVal ?? 0),
+      category: catVal,
+      source: entry?.source || 'TYPED',
+      declared: entry?.declared,
+      upscPrelimsGs1Marks: gs1Val ?? undefined,
+      upscPrelimsCsatMarks: csatVal ?? undefined,
+      upscMainsWrittenMarks: mainsVal ?? undefined,
+      upscInterviewMarks: intvVal ?? undefined,
+      upscFinalTotalMarks: finalTot,
+      tier1Marks: gs1Val ?? undefined,
+      tier2Marks: mainsVal ?? undefined,
+      examYear: yrVal,
+      rollNumber: entry?.rollNumber,
+      candidateName: entry?.candidateName,
+      allocatedService: entry?.allocatedService,
+      allocatedPost: entry?.allocatedService
+    };
+    storageService.setResultEntry(next, exam.id);
+    setEntry(next);
+    setStatusChosenManually(false);
+  };
+
+  // Apply typed entries for SSC / Generic
   const applyMultiTierEntry = (t1Val: number | null, t2Val: number | null, catVal: string, yrVal: number) => {
     const next: MultiTierResultEntry = {
+      examId: exam.id,
+      examType: isSSC ? 'SSC_CGL' : 'GENERIC',
       marks: t1Val ?? (t2Val ?? 0),
       category: catVal,
       source: entry?.source || 'TYPED',
@@ -12008,81 +12144,307 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
       candidateName: entry?.candidateName,
       allocatedPost: entry?.allocatedPost
     };
-    storageService.setResultEntry(next);
+    storageService.setResultEntry(next, exam.id);
     setEntry(next);
     setStatusChosenManually(false);
   };
 
+  // Clear entry for current exam
+  const clearCurrentEntry = () => {
+    storageService.setResultEntry(null, exam.id);
+    setEntry(null);
+    setUpscGs1Input('');
+    setUpscCsatInput('');
+    setUpscMainsInput('');
+    setUpscInterviewInput('');
+    setTier1Input('');
+    setTier2Input('');
+    setIbpsPrelimsInput('');
+    setIbpsMainsInput('');
+    setIbpsInterviewInput('');
+    setParsed(null);
+    setStatusChosenManually(false);
+  };
+
+  // Scorecard parser handler
   const handleScorecard = async (file: File | undefined) => {
     if (!file) return;
     setParsing(true);
     setParsed(null);
-    const result = await storageService.parseResultDocument(file);
+    const result = await storageService.parseResultDocument(file, exam.id);
     setParsed(result);
     if (result.ok) {
-      const t1 = result.fields?.tier1Marks ?? result.fields?.marks;
-      const t2 = result.fields?.tier2Marks;
-      const ckt = result.fields?.computerKnowledgeMarks;
-      const dest = result.fields?.destMistakesPercent;
-      const yr = result.fields?.examYear;
-      const name = result.fields?.candidateName;
-      const roll = result.fields?.rollNumber;
-      const alloc = result.fields?.allocatedPost;
-
-      if (t1 !== undefined) setTier1Input(String(t1));
-      if (t2 !== undefined) setTier2Input(String(t2));
-      
+      const f = result.fields || {};
       let targetYear = selectedYear;
-      if (yr && availableYears.includes(yr)) {
-        targetYear = yr;
-        setSelectedYear(yr);
+      if (f.examYear && availableYears.includes(f.examYear)) {
+        targetYear = f.examYear;
+        setSelectedYear(f.examYear);
       }
-      
+
       const currentRows = exam.cutoffsHistory.filter(c => c.year === targetYear);
       let detectedCat = categoryInput;
-      const readCategory = result.fields?.category;
-      if (readCategory) {
+      if (f.category) {
         const matched = currentRows.find(r => 
-          r.category.toUpperCase() === readCategory.toUpperCase() ||
-          r.category.toUpperCase().includes(readCategory.toUpperCase()) ||
-          readCategory.toUpperCase().includes(r.category.toUpperCase())
-        )?.category || readCategory;
+          r.category.toUpperCase() === f.category!.toUpperCase() ||
+          r.category.toUpperCase().includes(f.category!.toUpperCase()) ||
+          f.category!.toUpperCase().includes(r.category.toUpperCase())
+        )?.category || f.category;
         if (matched) {
           detectedCat = matched;
           setCategoryInput(matched);
         }
       }
 
-      const autoEntry: MultiTierResultEntry = {
-        marks: t1 ?? (t2 ?? 0),
-        category: detectedCat,
-        source: 'SCORECARD',
-        declared: result.fields?.declared,
-        tier1Marks: t1,
-        tier2Marks: t2,
-        computerKnowledgeMarks: ckt,
-        destMistakesPercent: dest,
-        examYear: targetYear,
-        rollNumber: roll,
-        candidateName: name,
-        allocatedPost: alloc
-      };
-      storageService.setResultEntry(autoEntry);
+      let autoEntry: MultiTierResultEntry;
+
+      if (isUPSC) {
+        const gs1 = f.upscPrelimsGs1Marks ?? f.tier1Marks ?? f.marks;
+        const csat = f.upscPrelimsCsatMarks;
+        const mains = f.upscMainsWrittenMarks ?? f.tier2Marks;
+        const interview = f.upscInterviewMarks;
+        const finalTot = f.upscFinalTotalMarks ?? (mains !== undefined && interview !== undefined ? +(mains + interview).toFixed(2) : undefined);
+        const service = f.allocatedService || f.allocatedPost;
+
+        if (gs1 !== undefined) setUpscGs1Input(String(gs1));
+        if (csat !== undefined) setUpscCsatInput(String(csat));
+        if (mains !== undefined) setUpscMainsInput(String(mains));
+        if (interview !== undefined) setUpscInterviewInput(String(interview));
+
+        autoEntry = {
+          examId: exam.id,
+          examType: 'UPSC_CSE',
+          marks: gs1 ?? (mains ?? 0),
+          category: detectedCat,
+          source: 'SCORECARD',
+          declared: f.declared,
+          upscPrelimsGs1Marks: gs1,
+          upscPrelimsCsatMarks: csat,
+          upscMainsWrittenMarks: mains,
+          upscInterviewMarks: interview,
+          upscFinalTotalMarks: finalTot,
+          allocatedService: service,
+          allocatedPost: service,
+          examYear: targetYear,
+          rollNumber: f.rollNumber,
+          candidateName: f.candidateName,
+          tier1Marks: gs1,
+          tier2Marks: mains
+        };
+      } else if (isIBPS) {
+        const p = f.ibpsPrelimsMarks ?? f.tier1Marks ?? f.marks;
+        const m = f.ibpsMainsMarks ?? f.tier2Marks;
+        const intv = f.ibpsInterviewMarks;
+        if (p !== undefined) setIbpsPrelimsInput(String(p));
+        if (m !== undefined) setIbpsMainsInput(String(m));
+        if (intv !== undefined) setIbpsInterviewInput(String(intv));
+
+        autoEntry = {
+          examId: exam.id,
+          examType: 'IBPS_PO',
+          marks: p ?? (m ?? 0),
+          category: detectedCat,
+          source: 'SCORECARD',
+          declared: f.declared,
+          ibpsPrelimsMarks: p,
+          ibpsMainsMarks: m,
+          ibpsInterviewMarks: intv,
+          examYear: targetYear,
+          rollNumber: f.rollNumber,
+          candidateName: f.candidateName,
+          tier1Marks: p,
+          tier2Marks: m
+        };
+      } else {
+        const t1 = f.tier1Marks ?? f.marks;
+        const t2 = f.tier2Marks;
+        const ckt = f.computerKnowledgeMarks;
+        const dest = f.destMistakesPercent;
+        const alloc = f.allocatedPost;
+
+        if (t1 !== undefined) setTier1Input(String(t1));
+        if (t2 !== undefined) setTier2Input(String(t2));
+
+        autoEntry = {
+          examId: exam.id,
+          examType: isSSC ? 'SSC_CGL' : 'GENERIC',
+          marks: t1 ?? (t2 ?? 0),
+          category: detectedCat,
+          source: 'SCORECARD',
+          declared: f.declared,
+          tier1Marks: t1,
+          tier2Marks: t2,
+          computerKnowledgeMarks: ckt,
+          destMistakesPercent: dest,
+          examYear: targetYear,
+          rollNumber: f.rollNumber,
+          candidateName: f.candidateName,
+          allocatedPost: alloc
+        };
+      }
+
+      storageService.setResultEntry(autoEntry, exam.id);
       setEntry(autoEntry);
       setStatusChosenManually(false);
     }
     setParsing(false);
   };
 
-  // Matched category in the selected year
-  const activeCategory = entry?.category || categoryInput;
-  const matchedCutoff = cutoffRows.find(r => {
-    const catA = activeCategory.toUpperCase();
-    const catB = r.category.toUpperCase();
-    return catA === catB || catB.includes(catA.split(' ')[0]) || catA.includes(catB.split(' ')[0]);
-  });
+  // Unified Verdict Structure
+  let unifiedVerdict: {
+    status: string;
+    badgeText: string;
+    badgeBg: string;
+    badgeColor: string;
+    borderColor: string;
+    headline: string;
+    summaryText: string;
+    conclusion: string;
+    nextAction: string;
+    recommendedTab: CandidateResultStatus;
+  } | null = null;
 
-  const candidateT1 = entry?.tier1Marks !== undefined ? entry.tier1Marks : (parseFloat(tier1Input) || (entry ? entry.marks : null));
+  // =========================================================================
+  // EVALUATION ENGINE A: UPSC CIVIL SERVICES EXAMINATION
+  // =========================================================================
+  const upscGs1 = entry?.upscPrelimsGs1Marks !== undefined ? entry.upscPrelimsGs1Marks : (parseFloat(upscGs1Input) || (entry && isUPSC ? entry.marks : null));
+  const upscCsat = entry?.upscPrelimsCsatMarks !== undefined ? entry.upscPrelimsCsatMarks : (parseFloat(upscCsatInput) || null);
+  const upscMains = entry?.upscMainsWrittenMarks !== undefined ? entry.upscMainsWrittenMarks : (parseFloat(upscMainsInput) || (entry && isUPSC && entry.tier2Marks ? entry.tier2Marks : null));
+  const upscInterview = entry?.upscInterviewMarks !== undefined ? entry.upscInterviewMarks : (parseFloat(upscInterviewInput) || null);
+  const upscFinalTotal = (upscMains !== null && upscInterview !== null) ? +(upscMains + upscInterview).toFixed(2) : (entry?.upscFinalTotalMarks ?? null);
+  const upscAllocatedService = entry?.allocatedService || (entry?.allocatedPost && entry.allocatedPost !== 'NOT_RECOMMENDED' ? entry.allocatedPost : null);
+
+  const upscGs1Cutoff = matchedCutoff?.tier1Cutoff ?? 92.66;
+  const upscMainsCutoff = matchedCutoff?.tier2Cutoff ?? 739.0;
+  const finalCutoffMatch = matchedCutoff?.postsEligible ? matchedCutoff.postsEligible.match(/(\d{3,4})\s*\/\s*2025/) : null;
+  const upscFinalCutoff = finalCutoffMatch ? parseFloat(finalCutoffMatch[1]) : (matchedCutoff?.postsEligible ? parseFloat(matchedCutoff.postsEligible.replace(/[^0-9.]/g, '')) || 963.0 : 963.0);
+
+  const upscGs1Margin = upscGs1 !== null ? +(upscGs1 - upscGs1Cutoff).toFixed(2) : null;
+  const upscGs1Passed = upscGs1Margin !== null && upscGs1Margin >= 0;
+  const upscCsatPassed = upscCsat !== null ? upscCsat >= 66.66 : true; // Qualifying at 33%
+
+  const upscMainsMargin = upscMains !== null ? +(upscMains - upscMainsCutoff).toFixed(2) : null;
+  const upscMainsPassed = upscMainsMargin !== null && upscMainsMargin >= 0;
+
+  const upscFinalMargin = upscFinalTotal !== null ? +(upscFinalTotal - upscFinalCutoff).toFixed(2) : null;
+  const upscFinalPassed = upscFinalMargin !== null && upscFinalMargin >= 0;
+
+  if (isUPSC) {
+    if (upscCsat !== null && upscCsat < 66.66) {
+      // CSAT Disqualification
+      unifiedVerdict = {
+        status: 'CSAT_DISQUALIFIED',
+        badgeText: '⚠️ PRELIMS CSAT PAPER-II NOT QUALIFIED (< 66.66)',
+        badgeBg: 'rgba(239, 68, 68, 0.2)',
+        badgeColor: '#f87171',
+        borderColor: '#ef4444',
+        headline: `CSAT Qualifying Benchmark Missed: ${upscCsat} / 200 (Min 66.66 required)`,
+        summaryText: `Even though your GS-1 score is ${upscGs1 ?? '—'}, UPSC Examination Rule 15 mandates a minimum of 33% (66.66 marks) in CSAT Paper-II. Your GS-1 paper cannot be evaluated for Mains qualification.`,
+        conclusion: `Comprehensive Multi-Stage Conclusion: Candidate was disqualified at the Preliminary screening stage due to CSAT Paper-II falling short of the mandatory qualifying benchmark of 66.66 marks. In the UPSC Civil Services scheme, CSAT is non-negotiable before GS Paper-I merit ranking.`,
+        nextAction: `Strategic Turnaround Plan: Prioritize CSAT Reading Comprehension inference and Class X basic numeracy to reliably guarantee 80+ marks in Paper-II.`,
+        recommendedTab: 'UPSC_CSAT_RECOVERY'
+      };
+    } else if (upscGs1 !== null) {
+      if (!upscGs1Passed) {
+        // Prelims GS-1 Missed
+        unifiedVerdict = {
+          status: 'MISSED_PRELIMS',
+          badgeText: '❌ MISSED PRELIMS GS-1 CUTOFF',
+          badgeBg: 'rgba(239, 68, 68, 0.2)',
+          badgeColor: '#f87171',
+          borderColor: '#ef4444',
+          headline: `Did Not Clear Civil Services Preliminary GS-1 in ${selectedYear}`,
+          summaryText: `Your GS Paper-I score of ${upscGs1} was ${Math.abs(upscGs1Margin!)} marks below the ${selectedYear} cutoff (${upscGs1Cutoff}) for ${activeCategory}.`,
+          conclusion: `Comprehensive Multi-Stage Conclusion: Candidate did not clear the Preliminary GS-I cutoff for ${activeCategory}. As CS(P) is an elimination filter, the candidate could not appear for the CS(Main) Examination in this cycle.`,
+          nextAction: `Strategic Next Step: Rebuild foundation in the 'Core 4' high-yield subjects (Polity, Modern History, Economy, and Ecology) which account for over 65% of GS Paper-I questions.`,
+          recommendedTab: 'UPSC_PRELIMS_RECOVERY'
+        };
+      } else {
+        // Prelims Cleared
+        if (upscMains !== null) {
+          if (upscMainsPassed) {
+            if (upscFinalTotal !== null) {
+              if (upscFinalPassed) {
+                // Final Selection Achieved
+                unifiedVerdict = {
+                  status: 'FINAL_SELECTION',
+                  badgeText: '🏆 RECOMMENDED FOR CIVIL SERVICES APPOINTMENT',
+                  badgeBg: 'rgba(16, 185, 129, 0.2)',
+                  badgeColor: '#34d399',
+                  borderColor: '#10b981',
+                  headline: `Merit Recommendation Achieved for ${selectedYear} (${activeCategory})`,
+                  summaryText: `Outstanding achievement! You cleared Prelims GS-1 (${upscGs1} vs ${upscGs1Cutoff}), Mains Written (${upscMains} vs ${upscMainsCutoff}), and achieved a Final Consolidated Total of ${upscFinalTotal} / 2025 (+${upscFinalMargin} above cutoff ${upscFinalCutoff}).`,
+                  conclusion: `Comprehensive Multi-Stage Conclusion: Candidate has cleared all three stages of the UPSC Civil Services Examination with distinction. Ranked within the merit list for Central Civil Services appointment.`,
+                  nextAction: `Action Plan: Prepare for LBSNAA Mussoorie Foundation Course joining, submit Medical Examination records, and track Service Allocation notifications by DoPT.`,
+                  recommendedTab: 'UPSC_FINAL_SELECTION'
+                };
+              } else {
+                // Missed Final Merit
+                unifiedVerdict = {
+                  status: 'MISSED_FINAL',
+                  badgeText: '⚠️ CLEARED MAINS WRITTEN · MISSED FINAL MERIT',
+                  badgeBg: 'rgba(245, 158, 11, 0.2)',
+                  badgeColor: '#fbbf24',
+                  borderColor: '#f59e0b',
+                  headline: `Appeared in Personality Test, but missed final merit by ${Math.abs(upscFinalMargin!)} marks`,
+                  summaryText: `You scored ${upscMains} in Mains Written (Cutoff: ${upscMainsCutoff}) and ${upscInterview ?? '—'} in Personality Test. Consolidated total ${upscFinalTotal} fell short of the final merit cutoff (${upscFinalCutoff}) by ${Math.abs(upscFinalMargin!)} marks.`,
+                  conclusion: `Comprehensive Multi-Stage Conclusion: Candidate demonstrated exceptional merit by clearing Prelims and Mains Written, reaching the prestigious Dholpur House Personality Test. The shortfall was solely on the consolidated final merit cutoff (-${Math.abs(upscFinalMargin!)} marks).`,
+                  nextAction: `Strategic Recommendation: Your foundation is elite. In the next cycle, focus on Optional Subject maximization (+30 marks) and Essay articulation to lock in top-100 IAS/IFS rank.`,
+                  recommendedTab: 'UPSC_FINAL_MISSED'
+                };
+              }
+            } else {
+              // Mains Cleared, Summoned for Personality Test
+              unifiedVerdict = {
+                status: 'SUMMONED_INTERVIEW',
+                badgeText: '🎯 CLEARED MAINS WRITTEN · SUMMONED FOR PERSONALITY TEST',
+                badgeBg: 'rgba(56, 189, 248, 0.2)',
+                badgeColor: '#38bdf8',
+                borderColor: '#38bdf8',
+                headline: `Qualified for UPSC Personality Test / Interview at Dholpur House!`,
+                summaryText: `Your Mains Written score of ${upscMains} cleared the ${selectedYear} written cutoff (${upscMainsCutoff}) by +${upscMainsMargin} marks.`,
+                conclusion: `Comprehensive Multi-Stage Conclusion: Candidate is officially shortlisted for the Personality Test (275 marks) conducted by UPSC Boards in New Delhi. Final ranking will be based on Written (1750) + Interview (275) = 2025 Marks.`,
+                nextAction: `Personality Test Target: Prepare DAF-II thoroughly (cadre preferences, achievements, hobbies), practice balanced constitutional opinions, and target 180+ marks in the Interview.`,
+                recommendedTab: 'UPSC_INTERVIEW_PREP'
+              };
+            }
+          } else {
+            // Cleared Prelims, Missed Mains Written Cutoff
+            unifiedVerdict = {
+              status: 'MISSED_MAINS',
+              badgeText: '⚠️ CLEARED PRELIMS · MISSED MAINS WRITTEN CUTOFF',
+              badgeBg: 'rgba(245, 158, 11, 0.2)',
+              badgeColor: '#fbbf24',
+              borderColor: '#f59e0b',
+              headline: `Cleared Prelims GS-1, but fell short in Mains Written by ${Math.abs(upscMainsMargin!)} marks`,
+              summaryText: `You cleared Prelims (+${upscGs1Margin}), but your Mains Written total of ${upscMains} / 1750 fell short of the ${selectedYear} cutoff (${upscMainsCutoff}) by ${Math.abs(upscMainsMargin!)} marks.`,
+              conclusion: `Comprehensive Multi-Stage Conclusion: Candidate proved prelims screening mastery, but faced a score deficit in the 7 descriptive merit papers (1750 marks). Descriptive answer writing speed, structure, and optional depth were the determining factors.`,
+              nextAction: `Action Plan: Intensive 3-hour daily answer writing drills: focus on GS-4 Ethics case studies and Optional Subject Paper 1 & 2 to gain 40–50 marks.`,
+              recommendedTab: 'UPSC_MAINS_MISSED'
+            };
+          }
+        } else {
+          // Prelims Cleared, Shortlisted for Mains
+          unifiedVerdict = {
+            status: 'CLEARED_PRELIMS_AWAITING_MAINS',
+            badgeText: '✅ CLEARED PRELIMS · SHORTLISTED FOR MAINS WRITTEN',
+            badgeBg: 'rgba(56, 189, 248, 0.2)',
+            badgeColor: '#38bdf8',
+            borderColor: '#38bdf8',
+            headline: `Through to Civil Services (Main) Examination (Target: ${upscMainsCutoff}+ Marks)`,
+            summaryText: `Your Prelims GS-1 score of ${upscGs1} cleared the cutoff (${upscGs1Cutoff}) by +${upscGs1Margin} marks, with qualifying CSAT.`,
+            conclusion: `Comprehensive Multi-Stage Conclusion: Candidate is officially shortlisted for the Civil Services (Main) Examination. Prelims marks are not counted for final ranking; merit is determined 100% by Mains Written (1750) + Interview (275).`,
+            nextAction: `Mains Blueprint: Complete DAF-I submission, master Essay and GS 1–4 structured templates, and finalize 2 revisions of your Optional Subject.`,
+            recommendedTab: 'UPSC_MAINS_PREP'
+          };
+        }
+      }
+    }
+  }
+
+  // =========================================================================
+  // EVALUATION ENGINE B: SSC CGL & ALL-INDIA RECRUITMENT COMMISSIONS
+  // =========================================================================
+  const candidateT1 = entry?.tier1Marks !== undefined ? entry.tier1Marks : (parseFloat(tier1Input) || (entry && !isUPSC ? entry.marks : null));
   const candidateT2 = entry?.tier2Marks !== undefined ? entry.tier2Marks : (parseFloat(tier2Input) || null);
   const candidateCKT = entry?.computerKnowledgeMarks ?? null;
   const candidateDEST = entry?.destMistakesPercent ?? null;
@@ -12099,27 +12461,11 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
 
   const cktCutoff = activeCategory.toUpperCase().includes('UR') || activeCategory.toUpperCase().includes('GEN') ? 18.0 : 15.0;
   const cktPassed = candidateCKT !== null ? candidateCKT >= cktCutoff : null;
-
   const destMaxAllowed = 20.0;
   const destPassed = candidateDEST !== null ? candidateDEST <= destMaxAllowed : null;
 
-  // Unified Multi-Tier Conclusion computation
-  let unifiedVerdict: {
-    status: string;
-    badgeText: string;
-    badgeBg: string;
-    badgeColor: string;
-    borderColor: string;
-    headline: string;
-    summaryText: string;
-    conclusion: string;
-    nextAction: string;
-    recommendedTab: CandidateResultStatus;
-  } | null = null;
-
-  if (candidateT1 !== null && t1Cutoff !== null) {
+  if (!isUPSC && candidateT1 !== null && t1Cutoff !== null) {
     if (candidateT2 !== null && t2Cutoff !== null) {
-      // Both Tier-1 and Tier-2 evaluated
       if (t1Passed && t2Passed) {
         unifiedVerdict = {
           status: 'SELECTED',
@@ -12131,7 +12477,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
           summaryText: `You successfully cleared Tier-1 by +${t1Margin} marks and cleared the final Tier-2 merit cutoff by +${t2Margin} marks.`,
           conclusion: `Comprehensive Multi-Tier Conclusion: Candidate demonstrated top-tier merit across both examination tiers. With positive margins in Tier-1 (+${t1Margin}) and Tier-2 (+${t2Margin}), you are in the final appointment zone for All-India Ministry allocation.`,
           nextAction: 'Action Plan: Prepare your original document dossiers (OBC/EWS crucial dates, 10th/12th/Degree certificates) for physical Document Verification.',
-          recommendedTab: 'BOTH_PASSED_SELECTION' as CandidateResultStatus
+          recommendedTab: 'BOTH_PASSED_SELECTION'
         };
       } else if (t1Passed && !t2Passed) {
         unifiedVerdict = {
@@ -12141,10 +12487,10 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
           badgeColor: '#fbbf24',
           borderColor: '#f59e0b',
           headline: `Qualified Tier-1 & Skill Test, but missed final post merit in ${selectedYear}`,
-          summaryText: `You cleared Tier-1 by +${t1Margin} marks (Cutoff: ${t1Cutoff}) and met all skill test standards. However, your Tier-2 score of ${candidateT2} fell short of the final merit cutoff of ${t2Cutoff} by ${Math.abs(t2Margin)} marks.`,
-          conclusion: `Comprehensive Multi-Tier Conclusion: The candidate established qualifying capability by clearing Tier-1 (+${t1Margin} margin) and meeting all Computer and Typing thresholds. The rejection for final post allocation was solely due to the Tier-2 merit shortfall (-${Math.abs(t2Margin)} marks below the ${selectedYear} ${activeCategory} cutoff of ${t2Cutoff}). Consequently, no post was allocated in this cycle.`,
-          nextAction: `Strategic Next Step: Your prelims base is already sound. In the upcoming cycle, focus strictly on Tier-2 Paper-I high-weightage sections (Section 1 Maths/Reasoning and Section 2 General Awareness) to bridge the ${Math.abs(t2Margin)} mark gap.`,
-          recommendedTab: 'TIER2_MISSED_RECOVERY' as CandidateResultStatus
+          summaryText: `You cleared Tier-1 by +${t1Margin} marks (Cutoff: ${t1Cutoff}) and met all skill test standards. However, your Tier-2 score of ${candidateT2} fell short of the final merit cutoff of ${t2Cutoff} by ${Math.abs(t2Margin!)} marks.`,
+          conclusion: `Comprehensive Multi-Tier Conclusion: The candidate established qualifying capability by clearing Tier-1 (+${t1Margin} margin) and meeting all Computer and Typing thresholds. The rejection for final post allocation was solely due to the Tier-2 merit shortfall (-${Math.abs(t2Margin!)} marks below the ${selectedYear} ${activeCategory} cutoff of ${t2Cutoff}). Consequently, no post was allocated in this cycle.`,
+          nextAction: `Strategic Next Step: Your prelims base is already sound. In the upcoming cycle, focus strictly on Tier-2 Paper-I high-weightage sections (Section 1 Maths/Reasoning and Section 2 General Awareness) to bridge the ${Math.abs(t2Margin!)} mark gap.`,
+          recommendedTab: 'TIER2_MISSED_RECOVERY'
         };
       } else {
         unifiedVerdict = {
@@ -12154,14 +12500,13 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
           badgeColor: '#f87171',
           borderColor: '#ef4444',
           headline: `Did Not Clear Tier-1 Prelims in ${selectedYear}`,
-          summaryText: `Your Tier-1 score of ${candidateT1} was ${Math.abs(t1Margin)} marks below the ${selectedYear} cutoff (${t1Cutoff}) for ${activeCategory}.`,
+          summaryText: `Your Tier-1 score of ${candidateT1} was ${Math.abs(t1Margin!)} marks below the ${selectedYear} cutoff (${t1Cutoff}) for ${activeCategory}.`,
           conclusion: `Comprehensive Multi-Tier Conclusion: Candidate did not meet the prelims threshold required to appear in subsequent tiers.`,
           nextAction: 'Action Plan: Strengthen foundation concepts across Quantitative Aptitude and English Comprehension, and explore parallel exams with overlapping syllabi (RRB NTPC, SSC CHSL).',
-          recommendedTab: 'TIER1_FAILED_RECOVERY' as CandidateResultStatus
+          recommendedTab: 'TIER1_FAILED_RECOVERY'
         };
       }
     } else {
-      // Only Tier-1 evaluated (e.g. Tier-2 not attempted yet)
       if (t1Passed) {
         unifiedVerdict = {
           status: 'CLEARED_TIER1_AWAITING_TIER2',
@@ -12173,7 +12518,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
           summaryText: `Your Tier-1 score of ${candidateT1} cleared the ${selectedYear} cutoff (${t1Cutoff}) by +${t1Margin} marks.`,
           conclusion: `Comprehensive Multi-Tier Conclusion: Candidate is officially shortlisted for Tier-2 examination. Tier-1 is qualifying; final all-India merit and Ministry allocation will be decided entirely by Tier-2 score.`,
           nextAction: `Tier-2 Target: You must target at least ${t2Cutoff || 298} marks in Tier-2 Paper-I (Section 1 Maths/Reasoning + Section 2 English/GA) plus qualifying CKT & DEST to secure final selection.`,
-          recommendedTab: 'TIER2_PREP' as CandidateResultStatus
+          recommendedTab: 'TIER2_PREP'
         };
       } else {
         unifiedVerdict = {
@@ -12183,15 +12528,16 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
           badgeColor: '#f87171',
           borderColor: '#ef4444',
           headline: `Did Not Clear Tier-1 Prelims in ${selectedYear}`,
-          summaryText: `Your Tier-1 score of ${candidateT1} is ${Math.abs(t1Margin)} marks below the ${selectedYear} cutoff (${t1Cutoff}) for ${activeCategory}.`,
+          summaryText: `Your Tier-1 score of ${candidateT1} is ${Math.abs(t1Margin!)} marks below the ${selectedYear} cutoff (${t1Cutoff}) for ${activeCategory}.`,
           conclusion: `Comprehensive Multi-Tier Conclusion: Candidate did not clear the prelims cutoff for ${activeCategory}.`,
           nextAction: 'Action Plan: Target high-frequency scoring topics in Tier-1 and practice full-length timed mock tests.',
-          recommendedTab: 'TIER1_FAILED_RECOVERY' as CandidateResultStatus
+          recommendedTab: 'TIER1_FAILED_RECOVERY'
         };
       }
     }
   }
 
+  // Sync recommended tab when verdict is computed
   useEffect(() => {
     if (unifiedVerdict && !statusChosenManually) {
       setSelectedStatus(unifiedVerdict.recommendedTab);
@@ -12201,43 +12547,62 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       
-      {/* Top Banner */}
-      <div className="glass-card" style={{ padding: '24px', background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.12) 0%, rgba(17, 24, 39, 0.95) 100%)', borderColor: 'rgba(234, 179, 8, 0.35)' }}>
+      {/* Top Banner — Exam-Specific Styling & Content */}
+      <div className="glass-card" style={{ padding: '24px', background: isUPSC ? 'linear-gradient(135deg, rgba(217, 119, 6, 0.15) 0%, rgba(15, 23, 42, 0.95) 100%)' : 'linear-gradient(135deg, rgba(234, 179, 8, 0.12) 0%, rgba(17, 24, 39, 0.95) 100%)', borderColor: isUPSC ? 'rgba(245, 158, 11, 0.4)' : 'rgba(234, 179, 8, 0.35)' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
-              <span className="badge" style={{ background: 'rgba(234, 179, 8, 0.2)', color: '#facc15', border: '1px solid rgba(234, 179, 8, 0.4)' }}>
-                🏆 MULTI-TIER RESULT & VERDICT ENGINE
+              <span className="badge" style={{ background: isUPSC ? 'rgba(245, 158, 11, 0.2)' : 'rgba(234, 179, 8, 0.2)', color: isUPSC ? '#fbbf24' : '#facc15', border: `1px solid ${isUPSC ? 'rgba(245, 158, 11, 0.4)' : 'rgba(234, 179, 8, 0.4)'}` }}>
+                {isUPSC ? '🏛️ UPSC CIVIL SERVICES 3-STAGE RESULT & VERDICT ENGINE' : '🏆 MULTI-TIER RESULT & VERDICT ENGINE'}
               </span>
               <span className="badge badge-verified">
-                OFFICIALLY AUDITED
+                OFFICIALLY AUDITED SCHEME
+              </span>
+              <span className="badge" style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', fontSize: '0.72rem' }}>
+                ISOLATED STORAGE: {exam.code}
               </span>
             </div>
 
             <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white', margin: '0 0 6px' }}>
-              Multi-Tier Scorecard Analysis & Unified Conclusion
+              {isUPSC 
+                ? 'UPSC Civil Services 3-Stage Scorecard & Final Allocation Analysis'
+                : 'Multi-Tier Scorecard Analysis & Unified Conclusion'}
             </h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0 }}>
-              GovOS evaluates performance across <strong>every stage (Tier-1 Prelims, Tier-2 Mains, Skill Test, CKT, and Post Allocation)</strong> to deliver one definitive examination conclusion.
+              {isUPSC 
+                ? 'GovOS evaluates performance across all three stages: Stage 1 (Prelims GS-1 Merit & CSAT Qualifying), Stage 2 (Mains Written 1750), Stage 3 (Personality Test 275), and Stage 4 (Final Total 2025 & Service Allocation: IAS, IFS, IPS, IRS).'
+                : 'GovOS evaluates performance across every stage (Tier-1 Prelims, Tier-2 Mains, Skill Test, CKT, and Post Allocation) to deliver one definitive examination conclusion.'}
             </p>
           </div>
 
-          {latestCutoff && (
+          {matchedCutoff && (
             <div style={{ padding: '10px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-color)', textAlign: 'right' }}>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Latest Cutoffs ({latestCutoff.year})</div>
-              <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--primary)' }}>Tier-1: {latestCutoff.tier1Cutoff} | Tier-2: {latestCutoff.tier2Cutoff || '—'}</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Cutoffs Benchmark ({selectedYear} · {activeCategory})</div>
+              {isUPSC ? (
+                <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#fbbf24' }}>
+                  GS-1: {upscGs1Cutoff} | Mains: {upscMainsCutoff} | Final: {upscFinalCutoff}
+                </div>
+              ) : (
+                <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--primary)' }}>
+                  Tier-1: {t1Cutoff || '—'} | Tier-2: {t2Cutoff || '—'}
+                </div>
+              )}
             </div>
           )}
         </div>
       </div>
 
-      {/* Your result: multi-tier marks, category, and cycle selector */}
+      {/* Scorecard & Marks Input Card */}
       <div className="glass-card" style={{ padding: '22px', border: '1px solid rgba(99,102,241,0.3)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '14px' }}>
           <div>
-            <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'white', margin: '0 0 4px' }}>Your examination scores & scorecard upload</h4>
+            <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'white', margin: '0 0 4px' }}>
+              {isUPSC ? 'Enter UPSC Civil Services Marks or Upload Scorecard' : 'Your Examination Scores & Scorecard Upload'}
+            </h4>
             <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0 }}>
-              Upload your official scorecard or type marks for Tier-1 and Tier-2. GovOS evaluates all stages together.
+              {isUPSC 
+                ? 'Type marks for Prelims GS-I, CSAT, Mains Written, and Personality Test, or upload your official UPSC mark sheet scan.'
+                : 'Upload your official scorecard or type marks for Tier-1 and Tier-2. GovOS evaluates all stages together.'}
             </p>
           </div>
 
@@ -12255,35 +12620,94 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
           </div>
         </div>
 
+        {/* Input Form — Exam-Specific Layout */}
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <div>
-            <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', fontWeight: 700 }}>Tier-1 Marks (Prelims)</label>
-            <input
-              type="number" step="0.01" min={0} max={700}
-              value={tier1Input}
-              onChange={e => setTier1Input(e.target.value)}
-              placeholder="e.g. 113.12"
-              style={{ width: '140px', padding: '9px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.9rem' }}
-            />
-          </div>
+          {isUPSC ? (
+            <>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', fontWeight: 700 }}>
+                  Prelims GS-1 (out of 200)
+                </label>
+                <input
+                  type="number" step="0.01" min={0} max={200}
+                  value={upscGs1Input}
+                  onChange={e => setUpscGs1Input(e.target.value)}
+                  placeholder="e.g. 96.50"
+                  style={{ width: '150px', padding: '9px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.9rem' }}
+                />
+              </div>
 
-          <div>
-            <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', fontWeight: 700 }}>Tier-2 Marks (Mains / Optional)</label>
-            <input
-              type="number" step="0.01" min={0} max={700}
-              value={tier2Input}
-              onChange={e => setTier2Input(e.target.value)}
-              placeholder="e.g. 255.95"
-              style={{ width: '140px', padding: '9px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.9rem' }}
-            />
-          </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', fontWeight: 700 }}>
+                  CSAT Paper-II (Qualifying 33%)
+                </label>
+                <input
+                  type="number" step="0.01" min={0} max={200}
+                  value={upscCsatInput}
+                  onChange={e => setUpscCsatInput(e.target.value)}
+                  placeholder="e.g. 78.50 (min 66.66)"
+                  style={{ width: '160px', padding: '9px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.9rem' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', fontWeight: 700 }}>
+                  Mains Written (7 Papers / 1750)
+                </label>
+                <input
+                  type="number" step="0.01" min={0} max={1750}
+                  value={upscMainsInput}
+                  onChange={e => setUpscMainsInput(e.target.value)}
+                  placeholder="e.g. 752.00"
+                  style={{ width: '170px', padding: '9px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.9rem' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', fontWeight: 700 }}>
+                  Interview (PT / 275)
+                </label>
+                <input
+                  type="number" step="0.01" min={0} max={275}
+                  value={upscInterviewInput}
+                  onChange={e => setUpscInterviewInput(e.target.value)}
+                  placeholder="e.g. 182.00"
+                  style={{ width: '135px', padding: '9px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.9rem' }}
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', fontWeight: 700 }}>Tier-1 Marks (Prelims)</label>
+                <input
+                  type="number" step="0.01" min={0} max={700}
+                  value={tier1Input}
+                  onChange={e => setTier1Input(e.target.value)}
+                  placeholder="e.g. 113.12"
+                  style={{ width: '140px', padding: '9px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.9rem' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', fontWeight: 700 }}>Tier-2 Marks (Mains / Paper-I)</label>
+                <input
+                  type="number" step="0.01" min={0} max={700}
+                  value={tier2Input}
+                  onChange={e => setTier2Input(e.target.value)}
+                  placeholder="e.g. 255.95"
+                  style={{ width: '140px', padding: '9px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.9rem' }}
+                />
+              </div>
+            </>
+          )}
 
           <div>
             <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', fontWeight: 700 }}>Your category</label>
             <select
               value={categoryInput}
               onChange={e => setCategoryInput(e.target.value)}
-              style={{ padding: '9px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.9rem', minWidth: '180px' }}
+              style={{ padding: '9px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.9rem', minWidth: '160px' }}
             >
               {cutoffRows.map(row => (
                 <option key={row.category} value={row.category}>{row.category}</option>
@@ -12294,36 +12718,44 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
           <button
             className="btn btn-primary"
             onClick={() => {
-              const t1 = parseFloat(tier1Input);
-              const t2 = parseFloat(tier2Input);
-              applyMultiTierEntry(
-                Number.isFinite(t1) ? t1 : null,
-                Number.isFinite(t2) ? t2 : null,
-                categoryInput,
-                selectedYear
-              );
+              if (isUPSC) {
+                const g1 = parseFloat(upscGs1Input);
+                const cs = parseFloat(upscCsatInput);
+                const mn = parseFloat(upscMainsInput);
+                const it = parseFloat(upscInterviewInput);
+                applyUpscEntry(
+                  Number.isFinite(g1) ? g1 : null,
+                  Number.isFinite(cs) ? cs : null,
+                  Number.isFinite(mn) ? mn : null,
+                  Number.isFinite(it) ? it : null,
+                  categoryInput,
+                  selectedYear
+                );
+              } else {
+                const t1 = parseFloat(tier1Input);
+                const t2 = parseFloat(tier2Input);
+                applyMultiTierEntry(
+                  Number.isFinite(t1) ? t1 : null,
+                  Number.isFinite(t2) ? t2 : null,
+                  categoryInput,
+                  selectedYear
+                );
+              }
             }}
             style={{ fontSize: '0.85rem', padding: '10px 16px' }}
           >
-            {entry ? 'Update & Evaluate' : 'Evaluate All Tiers'}
+            {entry ? 'Update & Evaluate' : isUPSC ? 'Evaluate UPSC Scores' : 'Evaluate All Tiers'}
           </button>
 
           <label className="btn btn-secondary" style={{ fontSize: '0.85rem', padding: '10px 16px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-            <FileText size={15} /> {parsing ? 'Reading All Tiers…' : 'Upload scorecard / scan'}
+            <FileText size={15} /> {parsing ? 'Reading Scorecard…' : isUPSC ? 'Upload UPSC Scorecard' : 'Upload scorecard / scan'}
             <input type="file" accept="application/pdf,.pdf,image/*" style={{ display: 'none' }} onChange={e => { handleScorecard(e.target.files?.[0]); e.target.value = ''; }} />
           </label>
 
           {entry && (
             <button
               className="btn btn-secondary"
-              onClick={() => {
-                storageService.setResultEntry(null);
-                setEntry(null);
-                setTier1Input('');
-                setTier2Input('');
-                setParsed(null);
-                setStatusChosenManually(false);
-              }}
+              onClick={clearCurrentEntry}
               style={{ fontSize: '0.8rem', padding: '10px 14px' }}
             >
               Clear
@@ -12342,10 +12774,10 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <strong style={{ color: 'white', fontSize: '0.92rem' }}>
-                  {parsed.method === 'OCR' ? 'Scorecard Scan Analyzed by Multi-Tier OCR' : 'Scorecard Text Read Directly'}
+                  {parsed.method === 'OCR' ? 'Scorecard Scan Analyzed by Multi-Exam OCR' : 'Scorecard Text Read Directly'}
                 </strong>
                 <span className="badge" style={{ fontSize: '0.65rem', background: 'rgba(16,185,129,0.15)', color: '#34d399' }}>
-                  MULTI-TIER EXTRACTED
+                  {isUPSC ? 'UPSC SCHEME DETECTED' : 'MULTI-TIER EXTRACTED'}
                 </span>
                 <span className="badge" style={{ fontSize: '0.65rem', background: 'rgba(56,189,248,0.15)', color: '#38bdf8' }}>
                   AUTO-POPULATED
@@ -12368,55 +12800,52 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
               {parsed.fields?.category && (
                 <div>• Category: <strong style={{ color: '#6ee7b7' }}>{parsed.fields.category}</strong></div>
               )}
-              {parsed.fields?.tier1Marks !== undefined && (
-                <div>• Tier-1: <strong style={{ color: '#38bdf8' }}>{parsed.fields.tier1Marks}</strong></div>
-              )}
-              {parsed.fields?.tier2Marks !== undefined && (
-                <div>• Tier-2 Total: <strong style={{ color: '#818cf8' }}>{parsed.fields.tier2Marks}</strong></div>
-              )}
-              {parsed.fields?.computerKnowledgeMarks !== undefined && (
-                <div>• CKT: <strong style={{ color: '#fbbf24' }}>{parsed.fields.computerKnowledgeMarks} / 60</strong></div>
-              )}
-              {parsed.fields?.destMistakesPercent !== undefined && (
-                <div>• DEST: <strong style={{ color: '#34d399' }}>{parsed.fields.destMistakesPercent}% Error</strong></div>
-              )}
-              {parsed.fields?.allocatedPost && (
-                <div>• Allocated Post: <strong style={{ color: parsed.fields.allocatedPost === 'NOT_ALLOCATED' ? '#f87171' : '#34d399' }}>{parsed.fields.allocatedPost}</strong></div>
+
+              {isUPSC ? (
+                <>
+                  {parsed.fields?.upscPrelimsGs1Marks !== undefined && (
+                    <div>• GS Paper-I: <strong style={{ color: '#38bdf8' }}>{parsed.fields.upscPrelimsGs1Marks} / 200</strong></div>
+                  )}
+                  {parsed.fields?.upscPrelimsCsatMarks !== undefined && (
+                    <div>• CSAT: <strong style={{ color: '#fbbf24' }}>{parsed.fields.upscPrelimsCsatMarks} / 200</strong></div>
+                  )}
+                  {parsed.fields?.upscMainsWrittenMarks !== undefined && (
+                    <div>• Mains Written: <strong style={{ color: '#818cf8' }}>{parsed.fields.upscMainsWrittenMarks} / 1750</strong></div>
+                  )}
+                  {parsed.fields?.upscInterviewMarks !== undefined && (
+                    <div>• Personality Test: <strong style={{ color: '#a78bfa' }}>{parsed.fields.upscInterviewMarks} / 275</strong></div>
+                  )}
+                  {parsed.fields?.upscFinalTotalMarks !== undefined && (
+                    <div>• Final Total: <strong style={{ color: '#34d399' }}>{parsed.fields.upscFinalTotalMarks} / 2025</strong></div>
+                  )}
+                  {parsed.fields?.allocatedService && (
+                    <div>• Allocated Service: <strong style={{ color: '#34d399' }}>{parsed.fields.allocatedService}</strong></div>
+                  )}
+                </>
+              ) : (
+                <>
+                  {parsed.fields?.tier1Marks !== undefined && (
+                    <div>• Tier-1: <strong style={{ color: '#38bdf8' }}>{parsed.fields.tier1Marks}</strong></div>
+                  )}
+                  {parsed.fields?.tier2Marks !== undefined && (
+                    <div>• Tier-2 Total: <strong style={{ color: '#818cf8' }}>{parsed.fields.tier2Marks}</strong></div>
+                  )}
+                  {parsed.fields?.computerKnowledgeMarks !== undefined && (
+                    <div>• CKT: <strong style={{ color: '#fbbf24' }}>{parsed.fields.computerKnowledgeMarks} / 60</strong></div>
+                  )}
+                  {parsed.fields?.destMistakesPercent !== undefined && (
+                    <div>• DEST: <strong style={{ color: '#34d399' }}>{parsed.fields.destMistakesPercent}% Error</strong></div>
+                  )}
+                  {parsed.fields?.allocatedPost && (
+                    <div>• Allocated Post: <strong style={{ color: parsed.fields.allocatedPost === 'NOT_ALLOCATED' ? '#f87171' : '#34d399' }}>{parsed.fields.allocatedPost}</strong></div>
+                  )}
+                </>
               )}
             </div>
-
-            {parsed.fields?.marksCandidates && parsed.fields.marksCandidates.length > 0 && (
-              <div style={{ marginTop: '8px' }}>
-                <div style={{ fontSize: '0.76rem', color: '#cbd5e1', marginBottom: '4px' }}>
-                  Numbers identified in file (tap to assign to Tier-1 or Tier-2):
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                  {parsed.fields.marksCandidates.map((num: number) => (
-                    <span key={num} style={{ display: 'inline-flex', alignItems: 'center', background: 'rgba(255,255,255,0.06)', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(255,255,255,0.15)', fontSize: '0.76rem' }}>
-                      <span style={{ padding: '2px 8px', color: '#cbd5e1', fontWeight: 700 }}>{num}</span>
-                      <button
-                        type="button"
-                        onClick={() => { setTier1Input(String(num)); applyMultiTierEntry(num, candidateT2, activeCategory, selectedYear); }}
-                        style={{ background: 'rgba(56,189,248,0.15)', border: 'none', borderLeft: '1px solid rgba(255,255,255,0.1)', color: '#38bdf8', padding: '2px 6px', cursor: 'pointer', fontSize: '0.7rem' }}
-                      >
-                        T1
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { setTier2Input(String(num)); applyMultiTierEntry(candidateT1, num, activeCategory, selectedYear); }}
-                        style={{ background: 'rgba(129,140,248,0.15)', border: 'none', borderLeft: '1px solid rgba(255,255,255,0.1)', color: '#818cf8', padding: '2px 6px', cursor: 'pointer', fontSize: '0.7rem' }}
-                      >
-                        T2
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         )}
 
-        {/* THE UNIFIED MULTI-TIER CONCLUSION CARD */}
+        {/* THE AUTHORITATIVE CONCLUSION CARD */}
         {unifiedVerdict && (
           <div
             className="animate-fade-in"
@@ -12458,84 +12887,166 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
 
               <div style={{ textAlign: 'right' }}>
                 <span className="badge" style={{ fontSize: '0.72rem', background: 'rgba(255,255,255,0.06)', color: '#94a3b8' }}>
-                  AUTHORITATIVE MULTI-TIER CONCLUSION
+                  AUTHORITATIVE {isUPSC ? 'UPSC CSE' : 'MULTI-TIER'} CONCLUSION
                 </span>
               </div>
             </div>
 
             {/* Stage-by-Stage Breakdown Pipeline */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '18px' }}>
-              {/* Stage 1: Tier-1 */}
-              <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: t1Passed ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)', border: `1px solid ${t1Passed ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}` }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                  <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, color: '#94a3b8' }}>Stage 1: Tier-1 CBT</span>
-                  <span style={{ fontSize: '0.7rem', fontWeight: 800, color: t1Passed ? '#34d399' : '#f87171' }}>
-                    {t1Passed ? '✅ CLEARED' : '❌ MISSED'}
-                  </span>
+            {isUPSC ? (
+              // UPSC 4-STAGE PIPELINE
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '18px' }}>
+                {/* Stage 1: Preliminary */}
+                <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: (upscGs1Passed && upscCsatPassed) ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)', border: `1px solid ${(upscGs1Passed && upscCsatPassed) ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}` }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, color: '#94a3b8' }}>Stage 1: Preliminary</span>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: (upscGs1Passed && upscCsatPassed) ? '#34d399' : '#f87171' }}>
+                      {(upscGs1Passed && upscCsatPassed) ? '✅ QUALIFIED' : '❌ NOT QUALIFIED'}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'white' }}>
+                    GS-1: {upscGs1 !== null ? upscGs1 : '—'} <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>/ 200</span>
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: '#cbd5e1', marginTop: '2px' }}>
+                    CSAT: <strong style={{ color: upscCsatPassed ? '#34d399' : '#f87171' }}>{upscCsat !== null ? `${upscCsat} / 200` : 'Qualifying (min 66.66)'}</strong>
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '4px' }}>
+                    GS-1 Cutoff: <strong>{upscGs1Cutoff}</strong> ({upscGs1Margin !== null ? (upscGs1Margin >= 0 ? `+${upscGs1Margin} margin` : `${upscGs1Margin} margin`) : 'Merit Decider'})
+                  </div>
                 </div>
-                <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'white' }}>
-                  {candidateT1 !== null ? candidateT1 : '—'} <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>/ 200</span>
-                </div>
-                <div style={{ fontSize: '0.75rem', color: '#cbd5e1', marginTop: '4px' }}>
-                  Cutoff: <strong>{t1Cutoff}</strong> ({t1Margin !== null && t1Margin >= 0 ? `+${t1Margin} margin` : `${t1Margin} margin`})
-                </div>
-              </div>
 
-              {/* Stage 2: Tier-2 */}
-              <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: t2Cutoff ? (t2Passed ? 'rgba(16,185,129,0.08)' : candidateT2 !== null ? 'rgba(239,68,68,0.08)' : 'rgba(56,189,248,0.08)') : 'rgba(255,255,255,0.04)', border: `1px solid ${t2Cutoff ? (t2Passed ? 'rgba(16,185,129,0.3)' : candidateT2 !== null ? 'rgba(239,68,68,0.3)' : 'rgba(56,189,248,0.3)') : 'rgba(255,255,255,0.1)'}` }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                  <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, color: '#94a3b8' }}>Stage 2: Tier-2 CBT</span>
-                  <span style={{ fontSize: '0.7rem', fontWeight: 800, color: t2Cutoff ? (t2Passed ? '#34d399' : candidateT2 !== null ? '#f87171' : '#38bdf8') : '#94a3b8' }}>
-                    {t2Cutoff ? (t2Passed ? '✅ CLEARED' : candidateT2 !== null ? '❌ MISSED MERIT' : '⏳ AWAITING') : 'N/A'}
-                  </span>
+                {/* Stage 2: Mains Written */}
+                <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: upscMainsPassed ? 'rgba(16,185,129,0.08)' : upscMains !== null ? 'rgba(239,68,68,0.08)' : 'rgba(56,189,248,0.08)', border: `1px solid ${upscMainsPassed ? 'rgba(16,185,129,0.3)' : upscMains !== null ? 'rgba(239,68,68,0.3)' : 'rgba(56,189,248,0.3)'}` }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, color: '#94a3b8' }}>Stage 2: Mains Written</span>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: upscMainsPassed ? '#34d399' : upscMains !== null ? '#f87171' : '#38bdf8' }}>
+                      {upscMainsPassed ? '✅ CLEARED' : upscMains !== null ? '❌ MISSED WRITTEN' : '⏳ AWAITING'}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'white' }}>
+                    {upscMains !== null ? upscMains : `Target: ${upscMainsCutoff}`} <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>/ 1750</span>
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#cbd5e1', marginTop: '4px' }}>
+                    7 Merit Papers · Cutoff: <strong>{upscMainsCutoff}</strong>
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '2px' }}>
+                    {upscMainsMargin !== null ? (upscMainsMargin >= 0 ? `+${upscMainsMargin} above cutoff` : `${upscMainsMargin} shortfall`) : 'Essay + GS 1-4 + Optional'}
+                  </div>
                 </div>
-                <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'white' }}>
-                  {candidateT2 !== null ? candidateT2 : (t2Cutoff ? `Target: ${t2Cutoff}` : '—')} <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>/ 390</span>
-                </div>
-                <div style={{ fontSize: '0.75rem', color: '#cbd5e1', marginTop: '4px' }}>
-                  Cutoff: <strong>{t2Cutoff || '—'}</strong> ({t2Margin !== null ? (t2Margin >= 0 ? `+${t2Margin} margin` : `${t2Margin} margin`) : 'Target Merit Score'})
-                </div>
-              </div>
 
-              {/* Stage 3: Skill Test & Computer Knowledge */}
-              <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: (candidateCKT !== null || candidateDEST !== null) ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                  <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, color: '#94a3b8' }}>Stage 3: Modules</span>
-                  <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#34d399' }}>
-                    {(candidateCKT !== null || candidateDEST !== null) ? '✅ QUALIFIED' : 'QUALIFYING'}
-                  </span>
+                {/* Stage 3: Personality Test (Interview) */}
+                <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: upscInterview !== null ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, color: '#94a3b8' }}>Stage 3: Interview</span>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: upscInterview !== null ? '#34d399' : '#a855f7' }}>
+                      {upscInterview !== null ? 'APPEARED' : 'DHOLPUR HOUSE'}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'white' }}>
+                    {upscInterview !== null ? upscInterview : 'Target: 180+'} <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>/ 275</span>
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#cbd5e1', marginTop: '4px' }}>
+                    Board Personality Test
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '2px' }}>
+                    No qualifying minimum; decisive for cadre
+                  </div>
                 </div>
-                <div style={{ fontSize: '0.85rem', color: 'white', fontWeight: 600 }}>
-                  CKT: <strong style={{ color: '#facc15' }}>{candidateCKT !== null ? `${candidateCKT} / 60` : 'Min 15.0'}</strong>
-                </div>
-                <div style={{ fontSize: '0.85rem', color: 'white', fontWeight: 600, marginTop: '2px' }}>
-                  DEST: <strong style={{ color: '#34d399' }}>{candidateDEST !== null ? `${candidateDEST}% Error` : 'Max 20%'}</strong>
-                </div>
-                <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '4px' }}>
-                  {cktPassed && destPassed ? 'All qualifying thresholds met' : 'Non-merit qualifying stage'}
-                </div>
-              </div>
 
-              {/* Stage 4: Post Allocation */}
-              <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: allocatedPost && allocatedPost !== 'NOT_ALLOCATED' ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                  <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, color: '#94a3b8' }}>Stage 4: Post Allocation</span>
-                  <span style={{ fontSize: '0.7rem', fontWeight: 800, color: allocatedPost && allocatedPost !== 'NOT_ALLOCATED' ? '#34d399' : '#f87171' }}>
-                    {allocatedPost && allocatedPost !== 'NOT_ALLOCATED' ? 'ALLOCATED' : 'NOT ALLOCATED'}
-                  </span>
-                </div>
-                <div style={{ fontSize: '1.05rem', fontWeight: 800, color: allocatedPost && allocatedPost !== 'NOT_ALLOCATED' ? '#34d399' : '#e2e8f0' }}>
-                  {allocatedPost && allocatedPost !== 'NOT_ALLOCATED' ? allocatedPost : 'None (No Post Allocated)'}
-                </div>
-                <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '4px' }}>
-                  Matches {selectedYear} Merit Result
+                {/* Stage 4: Final Recommendation & Allocation */}
+                <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: upscFinalPassed ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.04)', border: `1px solid ${upscFinalPassed ? 'rgba(16,185,129,0.3)' : 'rgba(255,255,255,0.1)'}` }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, color: '#94a3b8' }}>Stage 4: Final Selection</span>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: upscFinalPassed ? '#34d399' : upscFinalTotal !== null ? '#f87171' : '#fbbf24' }}>
+                      {upscFinalPassed ? 'RECOMMENDED' : upscFinalTotal !== null ? 'NOT RECOMMENDED' : 'OUT OF 2025'}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '1.15rem', fontWeight: 800, color: upscFinalPassed ? '#34d399' : 'white' }}>
+                    {upscFinalTotal !== null ? upscFinalTotal : `Cutoff: ${upscFinalCutoff}`} <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>/ 2025</span>
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#cbd5e1', marginTop: '4px' }}>
+                    Service: <strong>{upscAllocatedService || (upscFinalPassed ? 'IAS / IFS / IPS' : 'Pending Rank')}</strong>
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '2px' }}>
+                    Written (1750) + Interview (275)
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              // SSC CGL / GENERIC PIPELINE
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '18px' }}>
+                {/* Stage 1: Tier-1 */}
+                <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: t1Passed ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)', border: `1px solid ${t1Passed ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}` }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, color: '#94a3b8' }}>Stage 1: Tier-1 CBT</span>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: t1Passed ? '#34d399' : '#f87171' }}>
+                      {t1Passed ? '✅ CLEARED' : '❌ MISSED'}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'white' }}>
+                    {candidateT1 !== null ? candidateT1 : '—'} <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>/ 200</span>
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#cbd5e1', marginTop: '4px' }}>
+                    Cutoff: <strong>{t1Cutoff}</strong> ({t1Margin !== null && t1Margin >= 0 ? `+${t1Margin} margin` : `${t1Margin} margin`})
+                  </div>
+                </div>
+
+                {/* Stage 2: Tier-2 */}
+                <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: t2Cutoff ? (t2Passed ? 'rgba(16,185,129,0.08)' : candidateT2 !== null ? 'rgba(239,68,68,0.08)' : 'rgba(56,189,248,0.08)') : 'rgba(255,255,255,0.04)', border: `1px solid ${t2Cutoff ? (t2Passed ? 'rgba(16,185,129,0.3)' : candidateT2 !== null ? 'rgba(239,68,68,0.3)' : 'rgba(56,189,248,0.3)') : 'rgba(255,255,255,0.1)'}` }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, color: '#94a3b8' }}>Stage 2: Tier-2 CBT</span>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: t2Cutoff ? (t2Passed ? '#34d399' : candidateT2 !== null ? '#f87171' : '#38bdf8') : '#94a3b8' }}>
+                      {t2Cutoff ? (t2Passed ? '✅ CLEARED' : candidateT2 !== null ? '❌ MISSED MERIT' : '⏳ AWAITING') : 'N/A'}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'white' }}>
+                    {candidateT2 !== null ? candidateT2 : (t2Cutoff ? `Target: ${t2Cutoff}` : '—')} <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>/ 390</span>
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#cbd5e1', marginTop: '4px' }}>
+                    Cutoff: <strong>{t2Cutoff || '—'}</strong> ({t2Margin !== null ? (t2Margin >= 0 ? `+${t2Margin} margin` : `${t2Margin} margin`) : 'Target Merit Score'})
+                  </div>
+                </div>
+
+                {/* Stage 3: Modules */}
+                <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: (candidateCKT !== null || candidateDEST !== null) ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, color: '#94a3b8' }}>Stage 3: Modules</span>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#34d399' }}>
+                      {(candidateCKT !== null || candidateDEST !== null) ? '✅ QUALIFIED' : 'QUALIFYING'}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '0.85rem', color: 'white', fontWeight: 600 }}>
+                    CKT: <strong style={{ color: '#facc15' }}>{candidateCKT !== null ? `${candidateCKT} / 60` : 'Min 15.0'}</strong>
+                  </div>
+                  <div style={{ fontSize: '0.85rem', color: 'white', fontWeight: 600, marginTop: '2px' }}>
+                    DEST: <strong style={{ color: '#34d399' }}>{candidateDEST !== null ? `${candidateDEST}% Error` : 'Max 20%'}</strong>
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '4px' }}>
+                    {cktPassed && destPassed ? 'All qualifying thresholds met' : 'Non-merit qualifying stage'}
+                  </div>
+                </div>
+
+                {/* Stage 4: Post Allocation */}
+                <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: allocatedPost && allocatedPost !== 'NOT_ALLOCATED' ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, color: '#94a3b8' }}>Stage 4: Post Allocation</span>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: allocatedPost && allocatedPost !== 'NOT_ALLOCATED' ? '#34d399' : '#f87171' }}>
+                      {allocatedPost && allocatedPost !== 'NOT_ALLOCATED' ? 'ALLOCATED' : 'NOT ALLOCATED'}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '1.05rem', fontWeight: 800, color: allocatedPost && allocatedPost !== 'NOT_ALLOCATED' ? '#34d399' : '#e2e8f0' }}>
+                    {allocatedPost && allocatedPost !== 'NOT_ALLOCATED' ? allocatedPost : 'None (No Post Allocated)'}
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '4px' }}>
+                    Matches {selectedYear} Merit Result
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Authoritative Conclusion Callout */}
             <div style={{ padding: '14px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', marginBottom: '12px', fontSize: '0.88rem', color: '#e2e8f0', lineHeight: 1.6 }}>
-              <strong style={{ color: '#38bdf8' }}>📋 Unified GovOS Examination Conclusion: </strong>
+              <strong style={{ color: '#38bdf8' }}>📋 Authoritative Examination Conclusion: </strong>
               {unifiedVerdict.conclusion}
             </div>
 
@@ -12568,7 +13079,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                 : 'Select an Examination Stage Pathway to Explore:'}
             </h4>
             <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0 }}>
-              GovOS dynamically activates the matching progression plan. Switch tabs below to review guidelines for any stage.
+              GovOS dynamically activates the matching progression plan based on your exact exam pattern. Switch tabs below to review guidelines for any stage.
             </p>
           </div>
 
@@ -12581,97 +13092,197 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
           )}
         </div>
 
-        {/* Dynamic Navigation Tabs */}
+        {/* Dynamic Navigation Tabs — Customized for UPSC or SSC */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '10px' }}>
-          {/* Tab 1: Tier 2 Prep */}
-          <button 
-            className={`btn ${(selectedStatus === 'TIER2_PREP' || selectedStatus === 'QUALIFIED_TIER2') ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => { setSelectedStatus('TIER2_PREP'); setStatusChosenManually(true); }}
-            style={{ fontSize: '0.82rem', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', textAlign: 'left', position: 'relative' }}
-          >
-            <Award size={18} color={(selectedStatus === 'TIER2_PREP' || selectedStatus === 'QUALIFIED_TIER2') ? 'white' : '#38bdf8'} />
-            <div>
-              <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                Tier-2 Mains Plan
-                {unifiedVerdict?.recommendedTab === 'TIER2_PREP' && (
-                  <span style={{ fontSize: '0.62rem', background: '#38bdf8', color: '#0f172a', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>ACTIVE</span>
-                )}
-              </div>
-              <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>Next step if Tier-1 cleared</div>
-            </div>
-          </button>
+          {isUPSC ? (
+            <>
+              {/* UPSC Tab 1: Mains Written Strategy */}
+              <button 
+                className={`btn ${(selectedStatus === 'UPSC_MAINS_PREP') ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => { setSelectedStatus('UPSC_MAINS_PREP'); setStatusChosenManually(true); }}
+                style={{ fontSize: '0.82rem', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', textAlign: 'left' }}
+              >
+                <Award size={18} color={selectedStatus === 'UPSC_MAINS_PREP' ? 'white' : '#38bdf8'} />
+                <div>
+                  <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    Mains Answer Blueprint
+                    {unifiedVerdict?.recommendedTab === 'UPSC_MAINS_PREP' && (
+                      <span style={{ fontSize: '0.62rem', background: '#38bdf8', color: '#0f172a', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>ACTIVE</span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>7 Merit Papers (1750 Marks) & DAF-1</div>
+                </div>
+              </button>
 
-          {/* Tab 2: Final Selection & Post Allocation */}
-          <button 
-            className={`btn ${(selectedStatus === 'BOTH_PASSED_SELECTION' || selectedStatus === 'DOC_VERIFICATION') ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => { setSelectedStatus('BOTH_PASSED_SELECTION'); setStatusChosenManually(true); }}
-            style={{ fontSize: '0.82rem', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', textAlign: 'left', position: 'relative' }}
-          >
-            <CheckCircle2 size={18} color={(selectedStatus === 'BOTH_PASSED_SELECTION' || selectedStatus === 'DOC_VERIFICATION') ? 'white' : '#34d399'} />
-            <div>
-              <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                Final Allocation & DV
-                {unifiedVerdict?.recommendedTab === 'BOTH_PASSED_SELECTION' && (
-                  <span style={{ fontSize: '0.62rem', background: '#34d399', color: '#0f172a', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>ACTIVE</span>
-                )}
-              </div>
-              <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>Next step if both tiers passed</div>
-            </div>
-          </button>
+              {/* UPSC Tab 2: Personality Test / Interview */}
+              <button 
+                className={`btn ${(selectedStatus === 'UPSC_INTERVIEW_PREP') ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => { setSelectedStatus('UPSC_INTERVIEW_PREP'); setStatusChosenManually(true); }}
+                style={{ fontSize: '0.82rem', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', textAlign: 'left' }}
+              >
+                <Sparkles size={18} color={selectedStatus === 'UPSC_INTERVIEW_PREP' ? 'white' : '#a855f7'} />
+                <div>
+                  <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    Personality Test (Interview)
+                    {unifiedVerdict?.recommendedTab === 'UPSC_INTERVIEW_PREP' && (
+                      <span style={{ fontSize: '0.62rem', background: '#a855f7', color: 'white', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>ACTIVE</span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>Dholpur House Board & DAF-2</div>
+                </div>
+              </button>
 
-          {/* Tab 3: Tier-2 Merit Recovery (If Tier-1 cleared but missed Tier-2) */}
-          <button 
-            className={`btn ${selectedStatus === 'TIER2_MISSED_RECOVERY' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => { setSelectedStatus('TIER2_MISSED_RECOVERY'); setStatusChosenManually(true); }}
-            style={{ fontSize: '0.82rem', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', textAlign: 'left', position: 'relative' }}
-          >
-            <Target size={18} color={selectedStatus === 'TIER2_MISSED_RECOVERY' ? 'white' : '#fbbf24'} />
-            <div>
-              <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                Bridge Tier-2 Gap
-                {unifiedVerdict?.recommendedTab === 'TIER2_MISSED_RECOVERY' && (
-                  <span style={{ fontSize: '0.62rem', background: '#fbbf24', color: '#0f172a', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>ACTIVE</span>
-                )}
-              </div>
-              <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>Tier-1 cleared · merit shortfall plan</div>
-            </div>
-          </button>
+              {/* UPSC Tab 3: Final Selection & LBSNAA */}
+              <button 
+                className={`btn ${(selectedStatus === 'UPSC_FINAL_SELECTION') ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => { setSelectedStatus('UPSC_FINAL_SELECTION'); setStatusChosenManually(true); }}
+                style={{ fontSize: '0.82rem', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', textAlign: 'left' }}
+              >
+                <CheckCircle2 size={18} color={selectedStatus === 'UPSC_FINAL_SELECTION' ? 'white' : '#34d399'} />
+                <div>
+                  <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    Service Allocation & LBSNAA
+                    {unifiedVerdict?.recommendedTab === 'UPSC_FINAL_SELECTION' && (
+                      <span style={{ fontSize: '0.62rem', background: '#34d399', color: '#0f172a', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>ACTIVE</span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>Cadre Policy & Foundation Course</div>
+                </div>
+              </button>
 
-          {/* Tab 4: Tier-1 Not Cleared Comeback */}
-          <button 
-            className={`btn ${(selectedStatus === 'TIER1_FAILED_RECOVERY' || (selectedStatus === 'NOT_QUALIFIED' && !t1Passed)) ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => { setSelectedStatus('TIER1_FAILED_RECOVERY'); setStatusChosenManually(true); }}
-            style={{ fontSize: '0.82rem', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', textAlign: 'left', position: 'relative' }}
-          >
-            <RefreshCw size={18} color={(selectedStatus === 'TIER1_FAILED_RECOVERY' || (selectedStatus === 'NOT_QUALIFIED' && !t1Passed)) ? 'white' : '#f87171'} />
-            <div>
-              <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                Tier-1 Comeback Plan
-                {unifiedVerdict?.recommendedTab === 'TIER1_FAILED_RECOVERY' && (
-                  <span style={{ fontSize: '0.62rem', background: '#f87171', color: 'white', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>ACTIVE</span>
-                )}
-              </div>
-              <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>Next step if Tier-1 missed</div>
-            </div>
-          </button>
+              {/* UPSC Tab 4: CSAT Paper-II Turnaround */}
+              <button 
+                className={`btn ${(selectedStatus === 'UPSC_CSAT_RECOVERY') ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => { setSelectedStatus('UPSC_CSAT_RECOVERY'); setStatusChosenManually(true); }}
+                style={{ fontSize: '0.82rem', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', textAlign: 'left' }}
+              >
+                <Target size={18} color={selectedStatus === 'UPSC_CSAT_RECOVERY' ? 'white' : '#f59e0b'} />
+                <div>
+                  <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    CSAT Paper-II Turnaround
+                    {unifiedVerdict?.recommendedTab === 'UPSC_CSAT_RECOVERY' && (
+                      <span style={{ fontSize: '0.62rem', background: '#f59e0b', color: '#0f172a', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>ACTIVE</span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>Bridge 33% Qualifying Threshold</div>
+                </div>
+              </button>
 
-          {/* Tab 5: Skill Test / DEST */}
-          <button 
-            className={`btn ${selectedStatus === 'SKILL_TEST' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => { setSelectedStatus('SKILL_TEST'); setStatusChosenManually(true); }}
-            style={{ fontSize: '0.82rem', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', textAlign: 'left' }}
-          >
-            <Keyboard size={18} color={selectedStatus === 'SKILL_TEST' ? 'white' : '#a855f7'} />
-            <div>
-              <div style={{ fontWeight: 700 }}>Skill Test / DEST</div>
-              <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>Typing speed & error standards</div>
-            </div>
-          </button>
+              {/* UPSC Tab 5: Prelims GS-1 Core Comeback */}
+              <button 
+                className={`btn ${(selectedStatus === 'UPSC_PRELIMS_RECOVERY') ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => { setSelectedStatus('UPSC_PRELIMS_RECOVERY'); setStatusChosenManually(true); }}
+                style={{ fontSize: '0.82rem', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', textAlign: 'left' }}
+              >
+                <RefreshCw size={18} color={selectedStatus === 'UPSC_PRELIMS_RECOVERY' ? 'white' : '#f87171'} />
+                <div>
+                  <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    Prelims GS-1 Core Comeback
+                    {unifiedVerdict?.recommendedTab === 'UPSC_PRELIMS_RECOVERY' && (
+                      <span style={{ fontSize: '0.62rem', background: '#f87171', color: 'white', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>ACTIVE</span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>Master Core 4: Polity, Econ, Env, Hist</div>
+                </div>
+              </button>
+            </>
+          ) : (
+            <>
+              {/* SSC Tab 1: Tier 2 Prep */}
+              <button 
+                className={`btn ${(selectedStatus === 'TIER2_PREP' || selectedStatus === 'QUALIFIED_TIER2') ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => { setSelectedStatus('TIER2_PREP'); setStatusChosenManually(true); }}
+                style={{ fontSize: '0.82rem', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', textAlign: 'left' }}
+              >
+                <Award size={18} color={(selectedStatus === 'TIER2_PREP' || selectedStatus === 'QUALIFIED_TIER2') ? 'white' : '#38bdf8'} />
+                <div>
+                  <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    Tier-2 Mains Plan
+                    {unifiedVerdict?.recommendedTab === 'TIER2_PREP' && (
+                      <span style={{ fontSize: '0.62rem', background: '#38bdf8', color: '#0f172a', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>ACTIVE</span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>Next step if Tier-1 cleared</div>
+                </div>
+              </button>
+
+              {/* SSC Tab 2: Final Allocation & Post Allocation */}
+              <button 
+                className={`btn ${(selectedStatus === 'BOTH_PASSED_SELECTION' || selectedStatus === 'DOC_VERIFICATION') ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => { setSelectedStatus('BOTH_PASSED_SELECTION'); setStatusChosenManually(true); }}
+                style={{ fontSize: '0.82rem', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', textAlign: 'left' }}
+              >
+                <CheckCircle2 size={18} color={(selectedStatus === 'BOTH_PASSED_SELECTION' || selectedStatus === 'DOC_VERIFICATION') ? 'white' : '#34d399'} />
+                <div>
+                  <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    Final Allocation & DV
+                    {unifiedVerdict?.recommendedTab === 'BOTH_PASSED_SELECTION' && (
+                      <span style={{ fontSize: '0.62rem', background: '#34d399', color: '#0f172a', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>ACTIVE</span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>Next step if both tiers passed</div>
+                </div>
+              </button>
+
+              {/* SSC Tab 3: Tier-2 Merit Recovery */}
+              <button 
+                className={`btn ${selectedStatus === 'TIER2_MISSED_RECOVERY' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => { setSelectedStatus('TIER2_MISSED_RECOVERY'); setStatusChosenManually(true); }}
+                style={{ fontSize: '0.82rem', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', textAlign: 'left' }}
+              >
+                <Target size={18} color={selectedStatus === 'TIER2_MISSED_RECOVERY' ? 'white' : '#fbbf24'} />
+                <div>
+                  <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    Bridge Tier-2 Gap
+                    {unifiedVerdict?.recommendedTab === 'TIER2_MISSED_RECOVERY' && (
+                      <span style={{ fontSize: '0.62rem', background: '#fbbf24', color: '#0f172a', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>ACTIVE</span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>Tier-1 cleared · merit shortfall plan</div>
+                </div>
+              </button>
+
+              {/* SSC Tab 4: Tier-1 Not Cleared Comeback */}
+              <button 
+                className={`btn ${(selectedStatus === 'TIER1_FAILED_RECOVERY' || (selectedStatus === 'NOT_QUALIFIED' && !t1Passed)) ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => { setSelectedStatus('TIER1_FAILED_RECOVERY'); setStatusChosenManually(true); }}
+                style={{ fontSize: '0.82rem', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', textAlign: 'left' }}
+              >
+                <RefreshCw size={18} color={(selectedStatus === 'TIER1_FAILED_RECOVERY' || (selectedStatus === 'NOT_QUALIFIED' && !t1Passed)) ? 'white' : '#f87171'} />
+                <div>
+                  <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    Tier-1 Comeback Plan
+                    {unifiedVerdict?.recommendedTab === 'TIER1_FAILED_RECOVERY' && (
+                      <span style={{ fontSize: '0.62rem', background: '#f87171', color: 'white', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>ACTIVE</span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>Next step if Tier-1 missed</div>
+                </div>
+              </button>
+
+              {/* SSC Tab 5: Skill Test / DEST */}
+              <button 
+                className={`btn ${selectedStatus === 'SKILL_TEST' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => { setSelectedStatus('SKILL_TEST'); setStatusChosenManually(true); }}
+                style={{ fontSize: '0.82rem', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', textAlign: 'left' }}
+              >
+                <Keyboard size={18} color={selectedStatus === 'SKILL_TEST' ? 'white' : '#a855f7'} />
+                <div>
+                  <div style={{ fontWeight: 700 }}>Skill Test / DEST</div>
+                  <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>Typing speed & error standards</div>
+                </div>
+              </button>
+            </>
+          )}
         </div>
       </div>
 
-      {/* PATHWAY 1: TIER-2 MAINS PREPARATION (IF TIER-1 PASSED) */}
-      {(selectedStatus === 'TIER2_PREP' || selectedStatus === 'QUALIFIED_TIER2') && (
+      {/* ===================================================================== */}
+      {/* UPSC SPECIFIC PATHWAY VIEWS                                           */}
+      {/* ===================================================================== */}
+
+      {/* UPSC PATHWAY 1: MAINS WRITTEN BLUEPRINT */}
+      {isUPSC && (selectedStatus === 'UPSC_MAINS_PREP' || selectedStatus === 'QUALIFIED_TIER2') && (
         <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div className="glass-card" style={{ padding: '24px', borderLeft: '4px solid #38bdf8' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
@@ -12679,13 +13290,13 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                 <Award size={20} />
               </div>
               <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', margin: 0 }}>
-                {t1Margin !== null && t1Margin >= 0
-                  ? `Tier-1 Cleared with ${candidateT1} (+${t1Margin} above cutoff)! Here is your Tier-2 Mains Plan`
-                  : 'Tier-2 Mains Examination Action Blueprint'}
+                {upscGs1Margin !== null && upscGs1Margin >= 0
+                  ? `Prelims Cleared with ${upscGs1} (+${upscGs1Margin} above cutoff)! Your Mains Written Masterplan`
+                  : 'Civil Services (Main) Examination 1750-Mark Action Blueprint'}
               </h4>
             </div>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0, lineHeight: 1.5 }}>
-              Tier-1 is qualifying. Your <strong>final all-India merit rank and Ministry allocation are decided 100% by Tier-2 Paper-I</strong>. Target a minimum of <strong>{t2Cutoff || '298+'} marks</strong> out of 390. Follow this 4-step strategic roadmap:
+              Preliminary marks are zeroed out for final ranking. Your <strong>final all-India merit and Service Allocation (IAS, IFS, IPS) depend 100% on the 7 descriptive merit papers (1750 Marks)</strong> and Personality Test (275 Marks). Target a minimum of <strong>{upscMainsCutoff || '739+'} marks</strong> in written papers. Follow this 4-step strategic roadmap:
             </p>
           </div>
 
@@ -12694,18 +13305,18 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
               <div>
                 <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>PRIORITY STEP 1</span>
                 <h5 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'white', margin: '0 0 6px' }}>
-                  Pivot to Tier-2 Paper-I Weightage (390 Marks)
+                  Detailed Application Form-1 (DAF-I) Submission
                 </h5>
                 <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
-                  Section-I: Maths (30 Qs) + Reasoning (30 Qs) = 180 Marks (1 hr). Section-II: English (45 Qs) + General Awareness (25 Qs) = 210 Marks (1 hr). Negative marking increases sharply to <strong>-1.00 mark per wrong answer</strong> (33% penalty).
+                  Immediately after prelims results, log in to <strong>upsconline.nic.in</strong> to fill DAF-I. Upload certified copies of educational credentials, community certificates, and choice of Optional Subject with medium of examination. Errors in DAF-I cannot be corrected later.
                 </p>
               </div>
               <button 
                 className="btn btn-primary"
-                onClick={() => onNavigateSection(6)}
+                onClick={() => onNavigateSection(4)}
                 style={{ fontSize: '0.8rem', padding: '8px 14px', alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '6px' }}
               >
-                Open Post Study Plan (Section 6) <ArrowRight size={14} />
+                Review DAF & Eligibility Guidelines (Section 4) <ArrowRight size={14} />
               </button>
             </div>
 
@@ -12713,18 +13324,18 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
               <div>
                 <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>PRIORITY STEP 2</span>
                 <h5 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'white', margin: '0 0 6px' }}>
-                  Lock in Computer Knowledge Module (CKT)
+                  The 10-Marker (150 Words) & 15-Marker (250 Words) Formula
                 </h5>
                 <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
-                  Section-III Module-I (20 Questions, 60 Marks, 15 Mins) is qualifying in nature, but failure disqualifies you from <em>every single post</em>. A higher qualifying cutoff is mandated for ASO in CSS and Inspector (CBIC). Target 30+ marks.
+                  In Mains, time is the scarcest asset: 20 questions in 180 minutes = <strong>7 minutes per 10-marker and 11 minutes per 15-marker</strong>. Structure each answer with: (1) Crisp Definition/Context, (2) Multi-dimensional body with sub-headings and micro-diagrams, and (3) Forward-looking constitutional conclusion.
                 </p>
               </div>
               <button 
                 className="btn btn-secondary"
-                onClick={() => onNavigateSection(8)}
+                onClick={() => onNavigateSection(6)}
                 style={{ fontSize: '0.8rem', padding: '8px 14px', alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '6px' }}
               >
-                View Computer Masterclass (Section 8) <ArrowRight size={14} />
+                Access Answer Writing Framework (Section 6) <ArrowRight size={14} />
               </button>
             </div>
 
@@ -12732,176 +13343,10 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
               <div>
                 <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>PRIORITY STEP 3</span>
                 <h5 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'white', margin: '0 0 6px' }}>
-                  DEST Speed Typing Drill (Daily 20 Mins)
+                  Optional Subject Consolidation (500 Marks)
                 </h5>
                 <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
-                  Data Entry Speed Test (2,000 key depressions in 15 minutes, ~27 WPM) is conducted on the <strong>exact same afternoon</strong> as Paper-I. Build muscle memory on standard membrane keyboards.
-                </p>
-              </div>
-              <button 
-                className="btn btn-secondary"
-                onClick={() => setSelectedStatus('SKILL_TEST')}
-                style={{ fontSize: '0.8rem', padding: '8px 14px', alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '6px' }}
-              >
-                Explore Skill Test Protocols <ArrowRight size={14} />
-              </button>
-            </div>
-
-            <div className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '14px' }}>
-              <div>
-                <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>PRIORITY STEP 4</span>
-                <h5 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'white', margin: '0 0 6px' }}>
-                  Full-Length 2.5-Hour CBT Endurance Tests
-                </h5>
-                <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
-                  Sit for continuous 2 hour 15 minute mocks without intermission. Time management across English comprehension passages and multi-statement reasoning is decisive.
-                </p>
-              </div>
-              {onNavigatePractice && (
-                <button 
-                  className="btn btn-emerald"
-                  onClick={onNavigatePractice}
-                  style={{ fontSize: '0.8rem', padding: '8px 14px', alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '6px' }}
-                >
-                  Launch Practice Engine <ArrowRight size={14} />
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* PATHWAY 2: FINAL ALLOCATION & DOCUMENT VERIFICATION (IF BOTH TIERS PASSED) */}
-      {(selectedStatus === 'BOTH_PASSED_SELECTION' || selectedStatus === 'DOC_VERIFICATION') && (
-        <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div className="glass-card" style={{ padding: '24px', borderLeft: '4px solid #10b981' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(16,185,129,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#34d399' }}>
-                <CheckCircle2 size={20} />
-              </div>
-              <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', margin: 0 }}>
-                🏆 Both Tiers Cleared! Next Step: Final Cadre Allocation & Appointment Formalities
-              </h4>
-            </div>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0, lineHeight: 1.5 }}>
-              Congratulations! With positive merit margins in Tier-1 (+{t1Margin ?? '—'}) and Tier-2 (+{t2Margin ?? '—'}), you are inside the final selection zone. The process now transitions to administrative scrutiny, medical clearance, and joining formalities. Follow this 4-step sequence:
-            </p>
-          </div>
-
-          <div className="glass-card" style={{ padding: '24px' }}>
-            <h5 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'white', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <FileText size={18} color="#34d399" /> STEP 1: Mandatory Original Dossier Checklist for Document Verification
-            </h5>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {[
-                { title: 'Matriculation (10th) Certificate / Marksheet', desc: 'Proof of Date of Birth, Full Name, and Father\'s Name. Name must strictly match the admit card.' },
-                { title: 'Essential Degree Certificate / Provisional Marksheet', desc: 'Must prove acquisition of Bachelor\'s Degree on or before the crucial cutoff date.' },
-                { title: 'OBC (Non-Creamy Layer) Certificate in Central Govt Format', desc: 'Must be issued in Annexure-VI format within 3 years prior to the application closing date.' },
-                { title: 'EWS Income & Asset Certificate', desc: 'Valid for the appropriate Financial Year based on gross annual family income of previous FY.' },
-                { title: 'SC / ST Caste Certificate', desc: 'Issued by designated competent authorities (District Magistrate / Tehsildar) in central format.' },
-                { title: 'No Objection Certificate (NOC) for Govt Servants', desc: 'Mandatory for candidates already employed in Central/State Government departments.' }
-              ].map(doc => (
-                <div key={doc.title} style={{ padding: '14px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                  <CheckCircle2 size={18} color="#34d399" style={{ marginTop: '2px', flexShrink: 0 }} />
-                  <div>
-                    <div style={{ fontSize: '0.92rem', fontWeight: 700, color: 'white' }}>{doc.title}</div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '2px' }}>{doc.desc}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div style={{ marginTop: '18px', display: 'flex', justifyContent: 'flex-end' }}>
-              <button 
-                className="btn btn-primary"
-                onClick={() => onNavigateSection(4)}
-                style={{ fontSize: '0.85rem', padding: '8px 18px', display: 'flex', alignItems: 'center', gap: '6px' }}
-              >
-                Review Application & Certificate Clauses (Section 4) <ArrowRight size={14} />
-              </button>
-            </div>
-          </div>
-
-          <div className="grid-3" style={{ gap: '16px' }}>
-            <div className="glass-card" style={{ padding: '20px' }}>
-              <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>STEP 2: POST & CADRE ALLOCATION</span>
-              <h6 style={{ fontSize: '1rem', fontWeight: 700, color: 'white', margin: '6px 0' }}>Cadre Allocation Order</h6>
-              <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45 }}>
-                Your post preference (ASO, GST Inspector, ITI, Auditor, etc.) and state zone preference will be allocated strictly on merit-cum-preference ranking by the Commission.
-              </p>
-            </div>
-
-            <div className="glass-card" style={{ padding: '20px' }}>
-              <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>STEP 3: MEDICAL & PHYSICAL TEST</span>
-              <h6 style={{ fontSize: '1rem', fontWeight: 700, color: 'white', margin: '6px 0' }}>Physical Endurance & Vision</h6>
-              <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45 }}>
-                Uniformed posts (GST Inspector, Preventive Officer, CBI SI) undergo walking (1600m in 15 mins) and cycling (8km in 30 mins) tests, plus 6/6 distance vision and colour perception checks.
-              </p>
-            </div>
-
-            <div className="glass-card" style={{ padding: '20px' }}>
-              <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>STEP 4: POLICE VERIFICATION & JOINING</span>
-              <h6 style={{ fontSize: '1rem', fontWeight: 700, color: 'white', margin: '6px 0' }}>Offer of Appointment</h6>
-              <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45 }}>
-                Complete Attestation forms in triplicate for local police character verification. Formal Offer of Appointment letters are dispatched with joining instructions for National Academies (e.g. NACIN).
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* PATHWAY 3: TIER-2 MERIT SHORTFALL RECOVERY (TIER-1 PASSED BUT MISSED TIER-2 CUTOFF) */}
-      {selectedStatus === 'TIER2_MISSED_RECOVERY' && (
-        <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div className="glass-card" style={{ padding: '24px', borderLeft: '4px solid #f59e0b', background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(15, 23, 42, 0.95) 100%)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fbbf24' }}>
-                <Target size={20} />
-              </div>
-              <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', margin: 0 }}>
-                ⚡ Tier-1 & Qualifying Modules Cleared! Next Step: Bridge the Tier-2 Merit Shortfall (-{Math.abs(t2Margin || 24.05)} Marks)
-              </h4>
-            </div>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0, lineHeight: 1.6 }}>
-              <strong style={{ color: '#fbbf24' }}>Authoritative Diagnostic Verdict: </strong>
-              You already proved full competence by <strong>clearing Tier-1 (+{t1Margin} margin)</strong> and <strong>qualifying both CKT Computer Knowledge ({candidateCKT || 20.49}/60) and DEST Typing ({candidateDEST || 13.49}% error)</strong>. You do NOT need to restart preparation from scratch. Your sole objective for the upcoming cycle is bridging the <strong>{Math.abs(t2Margin || 24.05)} marks deficit in Tier-2 Paper-I</strong>.
-            </p>
-          </div>
-
-          {/* 4-Step Strategic Bridge Plan */}
-          <div className="grid-2" style={{ gap: '16px' }}>
-            <div className="glass-card" style={{ padding: '22px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '14px', border: '1px solid rgba(245, 158, 11, 0.25)' }}>
-              <div>
-                <span className="badge" style={{ background: 'rgba(245, 158, 11, 0.2)', color: '#facc15', fontSize: '0.7rem', marginBottom: '8px' }}>
-                  GAP BRIDGE 1: SECTION-I MATH & REASONING
-                </span>
-                <h5 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'white', margin: '0 0 6px' }}>
-                  Convert 4–5 Questions into Correct Marks (+12 to +16 Marks)
-                </h5>
-                <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
-                  In your scorecard, you scored ~131.5 / 180. The gap to top rankers is solely in advanced problem types: Coordinate Geometry, Probability, Statement-Assumption Reasoning, and Data Interpretation sets. Converting just 4 questions yields <strong>+12 direct marks</strong> and saves <strong>+4 marks in negative deductions</strong>.
-                </p>
-              </div>
-              <button 
-                className="btn btn-primary"
-                onClick={() => onNavigateSection(6)}
-                style={{ fontSize: '0.8rem', padding: '8px 14px', alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '6px' }}
-              >
-                Open Advanced Problem Modules (Section 6) <ArrowRight size={14} />
-              </button>
-            </div>
-
-            <div className="glass-card" style={{ padding: '22px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '14px', border: '1px solid rgba(245, 158, 11, 0.25)' }}>
-              <div>
-                <span className="badge" style={{ background: 'rgba(245, 158, 11, 0.2)', color: '#facc15', fontSize: '0.7rem', marginBottom: '8px' }}>
-                  GAP BRIDGE 2: GENERAL AWARENESS
-                </span>
-                <h5 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'white', margin: '0 0 6px' }}>
-                  Accelerate General Awareness from 21 to 40+ Marks (+15 to +20 Marks)
-                </h5>
-                <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
-                  Your Section-II scored 124.47 / 210, with General Awareness at ~21 marks out of 75. General Awareness is the single fastest section to gain 15–20 marks: focus on last 6 months of Ministry schemes, Science NCERT summaries, and Indian Constitution Articles.
+                  Optional Papers VI & VII account for ~28% of total written weightage. The difference between a rank in the top 50 and missing the list is consistently in Optional scoring. Target <strong>280+ marks</strong> through complete coverage of previous 10 years UPSC question papers.
                 </p>
               </div>
               <button 
@@ -12909,37 +13354,18 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                 onClick={() => onNavigateSection(8)}
                 style={{ fontSize: '0.8rem', padding: '8px 14px', alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '6px' }}
               >
-                Access GA Study Materials (Section 8) <ArrowRight size={14} />
+                Access Optional Subject Syllabus (Section 8) <ArrowRight size={14} />
               </button>
             </div>
 
-            <div className="glass-card" style={{ padding: '22px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '14px' }}>
+            <div className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '14px' }}>
               <div>
-                <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>GAP BRIDGE 3: QUALIFYING MODULES</span>
+                <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>PRIORITY STEP 4</span>
                 <h5 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'white', margin: '0 0 6px' }}>
-                  Low-Stress Maintenance for CKT & DEST Typing
+                  Qualifying Language Papers A & B (Min 25%)
                 </h5>
                 <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
-                  You already scored {candidateCKT || 20.49}/60 in CKT and {candidateDEST || 13.49}% in DEST (both safely qualified). Maintain this effortlessly with 15 minutes of daily touch-typing on standard keyboards to ensure speed remains at 30+ WPM without fatigue.
-                </p>
-              </div>
-              <button 
-                className="btn btn-secondary"
-                onClick={() => setSelectedStatus('SKILL_TEST')}
-                style={{ fontSize: '0.8rem', padding: '8px 14px', alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '6px' }}
-              >
-                View DEST Scoring Rules <ArrowRight size={14} />
-              </button>
-            </div>
-
-            <div className="glass-card" style={{ padding: '22px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '14px' }}>
-              <div>
-                <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>GAP BRIDGE 4: NEXT-CYCLE CADRE ALLOCATION</span>
-                <h5 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'white', margin: '0 0 6px' }}>
-                  Re-Attempt in Upcoming Cycle for Guaranteed Allocation
-                </h5>
-                <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
-                  With 255.95 normalized marks already achieved, adding the projected +28 marks pushes your Tier-2 score to <strong>284.00+ Marks</strong>. This comfortably beats the {selectedYear} EWS final cutoff of {t2Cutoff || 280.00}, converting this close attempt into final cadre selection!
+                  Paper A (Indian Language - 300 marks) and Paper B (English - 300 marks) require <strong>minimum 25% (75 marks)</strong>. If a candidate fails language papers, the 7 merit papers are not evaluated. Practice précis writing, comprehension, and translations from the past 5 years.
                 </p>
               </div>
               {onNavigatePractice && (
@@ -12948,7 +13374,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                   onClick={onNavigatePractice}
                   style={{ fontSize: '0.8rem', padding: '8px 14px', alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
-                  Start Tier-2 Mock Drills <ArrowRight size={14} />
+                  Start Mains Test Simulation <ArrowRight size={14} />
                 </button>
               )}
             </div>
@@ -12956,8 +13382,144 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
         </div>
       )}
 
-      {/* PATHWAY 4: TIER-1 NOT CLEARED (COMEBACK & PARALLEL RECRUITMENT EXAMS) */}
-      {(selectedStatus === 'TIER1_FAILED_RECOVERY' || (selectedStatus === 'NOT_QUALIFIED' && !t1Passed)) && (
+      {/* UPSC PATHWAY 2: PERSONALITY TEST / INTERVIEW MASTERCLASS */}
+      {isUPSC && (selectedStatus === 'UPSC_INTERVIEW_PREP') && (
+        <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div className="glass-card" style={{ padding: '24px', borderLeft: '4px solid #a855f7', background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, rgba(15, 23, 42, 0.95) 100%)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(168, 85, 247, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#c084fc' }}>
+                <Sparkles size={20} />
+              </div>
+              <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', margin: 0 }}>
+                🏛️ Dholpur House Personality Test (Interview) Masterclass — 275 Marks
+              </h4>
+            </div>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0, lineHeight: 1.6 }}>
+              Congratulations on clearing the Civil Services Main written examination! You are among the top ~2,800 candidates summoned to the Union Public Service Commission at Dholpur House, Shahjahan Road, New Delhi. The interview carries <strong>275 marks with no minimum qualifying threshold</strong>, but a 180+ score decisively guarantees your preferred service (IAS / IFS / IPS).
+            </p>
+          </div>
+
+          <div className="grid-3" style={{ gap: '16px' }}>
+            <div className="glass-card" style={{ padding: '20px' }}>
+              <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>STEP 1: DAF-II DETAILED SCRUTINY</span>
+              <h6 style={{ fontSize: '1rem', fontWeight: 700, color: 'white', margin: '6px 0' }}>DAF-II Dissection</h6>
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45 }}>
+                Every keyword in your DAF-II is potential question territory: Home district issues, college alma mater, hobbies/interests, employment history, and service/cadre preferences. Prepare 100+ anticipated questions on your personal profile.
+              </p>
+            </div>
+
+            <div className="glass-card" style={{ padding: '20px' }}>
+              <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>STEP 2: BOARD INTERVIEW TRAITS</span>
+              <h6 style={{ fontSize: '1rem', fontWeight: 700, color: 'white', margin: '6px 0' }}>Constitutional Poise & Balance</h6>
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45 }}>
+                The Board tests intellectual integrity, mental alertness, balance of judgement, and emotional composure under questioning. If you do not know a factual query, politely state: <em>"Sir/Madam, I am unable to recall at this moment, but I will read up on this."</em>
+              </p>
+            </div>
+
+            <div className="glass-card" style={{ padding: '20px' }}>
+              <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>STEP 3: MOCK INTERVIEW DRILLS</span>
+              <h6 style={{ fontSize: '1rem', fontWeight: 700, color: 'white', margin: '6px 0' }}>Video Recorded Simulation</h6>
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45 }}>
+                Attend 3 to 4 mock panels with retired senior civil servants. Review body language recordings: eye contact across all board members, upright posture, calm modulation of voice, and avoiding dogmatic or polarising stances.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* UPSC PATHWAY 3: FINAL SELECTION & LBSNAA FORMALITIES */}
+      {isUPSC && (selectedStatus === 'UPSC_FINAL_SELECTION') && (
+        <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div className="glass-card" style={{ padding: '24px', borderLeft: '4px solid #10b981', background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, rgba(15, 23, 42, 0.95) 100%)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#34d399' }}>
+                <CheckCircle2 size={20} />
+              </div>
+              <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', margin: 0 }}>
+                🏆 Recommended by UPSC! Next Step: Service & Cadre Allocation Formalities
+              </h4>
+            </div>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0, lineHeight: 1.6 }}>
+              Congratulations on securing a final recommendation in the UPSC Civil Services Examination! Your all-India rank and consolidated marks (Written {upscMains || '—'} + Personality Test {upscInterview || '—'} = {upscFinalTotal || '—'}) place you in the prestigious league of India's top administrators. Follow this post-selection execution sequence:
+            </p>
+          </div>
+
+          <div className="grid-3" style={{ gap: '16px' }}>
+            <div className="glass-card" style={{ padding: '20px' }}>
+              <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>STAGE 1: SERVICE & CADRE ALLOCATION</span>
+              <h6 style={{ fontSize: '1rem', fontWeight: 700, color: 'white', margin: '6px 0' }}>DoPT Cadre Allocation Order</h6>
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45 }}>
+                The Department of Personnel and Training (DoPT) issues formal service allocation based on your rank, category, and preferences submitted in DAF-II. Cadre allocation for IAS and IPS follows the 5-Zone policy with a 1:2 Insider/Outsider ratio.
+              </p>
+            </div>
+
+            <div className="glass-card" style={{ padding: '20px' }}>
+              <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>STAGE 2: MEDICAL BOARD SCRUTINY</span>
+              <h6 style={{ fontSize: '1rem', fontWeight: 700, color: 'white', margin: '6px 0' }}>Central Standing Medical Board</h6>
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45 }}>
+                Undergo medical check-ups at designated hospitals in New Delhi (Dr. RML Hospital, Safdarjung Hospital, Sucheta Kriplani). Height, chest expansion, and colour vision standards are strictly verified for technical services like IPS, IRPFS, and DANIPS.
+              </p>
+            </div>
+
+            <div className="glass-card" style={{ padding: '20px' }}>
+              <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>STAGE 3: LBSNAA FOUNDATION COURSE</span>
+              <h6 style={{ fontSize: '1rem', fontWeight: 700, color: 'white', margin: '6px 0' }}>Reporting to Mussoorie</h6>
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45 }}>
+                Report to the Lal Bahadur Shastri National Academy of Administration (LBSNAA) in Mussoorie for the 15-week Foundation Course. Police verification dossiers and original document scrutiny are completed before the formal swearing-in.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* UPSC PATHWAY 4: CSAT TURNAROUND PLAN */}
+      {isUPSC && (selectedStatus === 'UPSC_CSAT_RECOVERY') && (
+        <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div className="glass-card" style={{ padding: '24px', borderLeft: '4px solid #f59e0b', background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(15, 23, 42, 0.95) 100%)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fbbf24' }}>
+                <Target size={20} />
+              </div>
+              <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', margin: 0 }}>
+                ⚡ CSAT Paper-II Turnaround Plan: Bridge the 33% Qualifying Threshold
+              </h4>
+            </div>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0, lineHeight: 1.6 }}>
+              <strong style={{ color: '#fbbf24' }}>Authoritative Diagnostic Verdict: </strong>
+              CSAT Paper-II is the single largest hurdle in UPSC Preliminary screening. Even with high GS-1 scores, candidates are disqualified if they score below <strong>66.66 marks out of 200 (27 net correct questions out of 80)</strong>. CSAT carries a steep negative marking penalty of <strong>-0.83 marks per wrong question</strong>. Follow this structured turnaround plan:
+            </p>
+          </div>
+
+          <div className="grid-2" style={{ gap: '16px' }}>
+            <div className="glass-card" style={{ padding: '22px', border: '1px solid rgba(245, 158, 11, 0.25)' }}>
+              <span className="badge" style={{ background: 'rgba(245, 158, 11, 0.2)', color: '#facc15', fontSize: '0.7rem', marginBottom: '8px' }}>
+                MODULE 1: READING COMPREHENSION
+              </span>
+              <h5 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'white', margin: '0 0 6px' }}>
+                Inference & Assumption Mastery (27–30 Questions)
+              </h5>
+              <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+                UPSC passages do not ask direct factual questions; they test: (1) Crucial Message, (2) Critical Inference, (3) Logical Assumption. Avoid bringing prior outside knowledge into the passage. Practice 5 passages daily from previous year papers (2018–2025).
+              </p>
+            </div>
+
+            <div className="glass-card" style={{ padding: '22px', border: '1px solid rgba(245, 158, 11, 0.25)' }}>
+              <span className="badge" style={{ background: 'rgba(245, 158, 11, 0.2)', color: '#facc15', fontSize: '0.7rem', marginBottom: '8px' }}>
+                MODULE 2: HIGH-YIELD QUANT CLUSTERS
+              </span>
+              <h5 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'white', margin: '0 0 6px' }}>
+                Number System & Permutations Focus (20+ Questions)
+              </h5>
+              <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+                Over 50% of the math section comes from three topics: (1) Number System (divisibility, unit digits, remainders), (2) Permutations & Combinations / Counting principles, and (3) Percentages, Ratios & Averages. Mastering these guarantees 35–45 direct marks without attempting lengthy calculations.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* UPSC PATHWAY 5: PRELIMS GS-1 RECOVERY */}
+      {isUPSC && (selectedStatus === 'UPSC_PRELIMS_RECOVERY') && (
         <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div className="glass-card" style={{ padding: '24px', borderLeft: '4px solid #ef4444' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
@@ -12965,144 +13527,91 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                 <Target size={20} />
               </div>
               <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', margin: 0 }}>
-                Structured Diagnosis & Immediate Comeback Pathway
+                Civil Services Preliminary GS-1 Core Comeback Strategy
               </h4>
             </div>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0, lineHeight: 1.5 }}>
-              Missing the Tier-1 cutoff in a single examination cycle is common in high-competition national exams. The knowledge you built in Quantitative Aptitude, Reasoning, English, and General Awareness is <strong>100% transferable</strong> to upcoming major recruitment cycles. Follow this structured turnaround plan:
+              Missing the Preliminary cutoff in a cycle is a temporary setback. The syllabus of UPSC CSE has high internal synergy. Focusing on the <strong>'Core 4' high-yield subjects</strong> ensures consistent scoring above 100+ marks in Paper-I:
             </p>
           </div>
 
-          {/* Diagnosis Matrix */}
-          <div className="glass-card" style={{ padding: '24px' }}>
-            <h5 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'white', marginBottom: '14px' }}>
-              3-Step Post-Exam Diagnostic Audit
-            </h5>
-
-            <div className="grid-3" style={{ gap: '14px' }}>
-              <div style={{ padding: '16px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)' }}>
-                <span className="badge badge-demo" style={{ fontSize: '0.7rem' }}>STEP 1</span>
-                <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'white', margin: '8px 0 4px' }}>Inspect Raw vs Normalised Score</div>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>
-                  Compare your response sheet marks with the shift difficulty multiplier. Hard shifts often receive substantial upward normalization (+8 to +15 marks).
-                </p>
-              </div>
-
-              <div style={{ padding: '16px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)' }}>
-                <span className="badge badge-demo" style={{ fontSize: '0.7rem' }}>STEP 2</span>
-                <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'white', margin: '8px 0 4px' }}>Negative Marking Audit</div>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>
-                  Did blind guessing pull you down? In Tier-1, every 4 wrong answers forfeit 2 marks (-0.50 per error). Calculate net loss from unforced errors.
-                </p>
-              </div>
-
-              <div style={{ padding: '16px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)' }}>
-                <span className="badge badge-demo" style={{ fontSize: '0.7rem' }}>STEP 3</span>
-                <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'white', margin: '8px 0 4px' }}>Sectional Weak-Link Isolation</div>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>
-                  Is Static GK scoring below 15 marks? Or did Arithmetic calculation speed cause time crunch? Target your singular bottleneck topic.
-                </p>
-              </div>
+          <div className="grid-2" style={{ gap: '16px' }}>
+            <div className="glass-card" style={{ padding: '20px' }}>
+              <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>CORE SUBJECT 1: INDIAN POLITY</span>
+              <h5 style={{ fontSize: '1rem', fontWeight: 700, color: 'white', margin: '4px 0' }}>15–18 Questions · High Predictability</h5>
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45 }}>
+                Master Constitution Articles, Fundamental Rights, DPSP, Parliament procedures, and Supreme Court constitutional bench rulings. Aim for 85%+ accuracy in this section.
+              </p>
             </div>
-          </div>
 
-          {/* Alternative Overlapping Recruitment Exams */}
-          <div className="glass-card" style={{ padding: '24px' }}>
-            <h5 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'white', marginBottom: '8px' }}>
-              Immediate High-Synergy Target Exams (Overlapping Syllabus)
-            </h5>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-              These verified national recruitment cycles share 70% to 90% of your current preparation syllabus:
-            </p>
+            <div className="glass-card" style={{ padding: '20px' }}>
+              <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>CORE SUBJECT 2: ENVIRONMENT & ECOLOGY</span>
+              <h5 style={{ fontSize: '1rem', fontWeight: 700, color: 'white', margin: '4px 0' }}>15–17 Questions · High Weightage</h5>
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45 }}>
+                Focus on National Parks and Biosphere Reserves, Wildlife Protection Act schedules, IUCN Red List species, and global climate summits (UNFCCC COP resolutions).
+              </p>
+            </div>
 
-            <div className="grid-2" style={{ gap: '14px' }}>
-              <div style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '12px' }}>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                    <h6 style={{ fontSize: '1rem', fontWeight: 700, color: 'white', margin: 0 }}>IBPS PO & Banking CRP PO/MT</h6>
-                    <span className="badge badge-verified" style={{ fontSize: '0.68rem' }}>80% OVERLAP</span>
-                  </div>
-                  <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45 }}>
-                    High synergy in Quantitative Aptitude, Data Interpretation, and English. Faster selection timeline with annual regular schedule.
-                  </p>
-                </div>
-                {onSelectAlternativeExam && (
-                  <button 
-                    className="btn btn-secondary"
-                    onClick={() => onSelectAlternativeExam('IBPS_PO_2026')}
-                    style={{ fontSize: '0.78rem', padding: '6px 14px', alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '6px' }}
-                  >
-                    View IBPS PO Roadmap <ArrowRight size={12} />
-                  </button>
-                )}
-              </div>
+            <div className="glass-card" style={{ padding: '20px' }}>
+              <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>CORE SUBJECT 3: INDIAN ECONOMY</span>
+              <h5 style={{ fontSize: '1rem', fontWeight: 700, color: 'white', margin: '4px 0' }}>14–16 Questions · Concept Driven</h5>
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45 }}>
+                Grasp macro principles: Monetary policy tools, inflation indices (CPI vs WPI), Balance of Payments, external debt composition, and major fiscal schemes.
+              </p>
+            </div>
 
-              <div style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '12px' }}>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                    <h6 style={{ fontSize: '1rem', fontWeight: 700, color: 'white', margin: 0 }}>Railway Recruitment Board (RRB NTPC)</h6>
-                    <span className="badge badge-verified" style={{ fontSize: '0.68rem' }}>90% OVERLAP</span>
-                  </div>
-                  <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45 }}>
-                    Zero English required in CBT 1 & 2. High weightage on General Awareness, Science, Reasoning, and Basic Arithmetic.
-                  </p>
-                </div>
-                <div style={{ fontSize: '0.75rem', color: '#93c5fd' }}>
-                  Next Cycle Notification Opening Soon
-                </div>
-              </div>
+            <div className="glass-card" style={{ padding: '20px' }}>
+              <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>CORE SUBJECT 4: MODERN HISTORY</span>
+              <h5 style={{ fontSize: '1rem', fontWeight: 700, color: 'white', margin: '4px 0' }}>12–15 Questions · Chronology</h5>
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45 }}>
+                Cover the Freedom Struggle chronologically from 1857 to 1947: Non-Cooperation, Civil Disobedience, Quit India, Constitutional acts (1909, 1919, 1935), and personality contributions.
+              </p>
             </div>
           </div>
         </div>
       )}
 
-      {/* PATHWAY 5: SKILL TEST / DEST TYPING PROTOCOLS */}
-      {selectedStatus === 'SKILL_TEST' && (
+      {/* UPSC PATHWAY 6: MAINS MISSED / SHORTFALL RECOVERY */}
+      {isUPSC && (selectedStatus === 'UPSC_MAINS_MISSED' || selectedStatus === 'UPSC_FINAL_MISSED') && (
         <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div className="glass-card" style={{ padding: '24px', borderLeft: '4px solid #a855f7' }}>
-            <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', margin: '0 0 8px' }}>
-              Data Entry Speed Test (DEST) & Skill Qualifying Protocols
-            </h4>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0, lineHeight: 1.5 }}>
-              The DEST typing test is compulsory for all candidates. It evaluates typing accuracy on a computer keyboard for a given master passage.
+          <div className="glass-card" style={{ padding: '24px', borderLeft: '4px solid #f59e0b' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fbbf24' }}>
+                <Target size={20} />
+              </div>
+              <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', margin: 0 }}>
+                ⚡ Bridge the Mains Written Shortfall: Strategy to Gain +40 to +60 Marks
+              </h4>
+            </div>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0, lineHeight: 1.6 }}>
+              You already cleared the intense Preliminary screening. The deficit in Mains is structural: small improvements across 7 papers multiply into a decisive +50 marks leap. Focus on these 3 levers:
             </p>
           </div>
 
           <div className="grid-3" style={{ gap: '16px' }}>
             <div className="glass-card" style={{ padding: '20px' }}>
-              <span className="badge badge-verified" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>SPEED BENCHMARK</span>
-              <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'white', margin: '6px 0' }}>2000</div>
-              <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                Key depressions required in <strong>15 minutes</strong> (~27 Words Per Minute).
-              </div>
+              <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>LEVER 1: OPTIONAL SUBJECT</span>
+              <h6 style={{ fontSize: '1rem', fontWeight: 700, color: 'white', margin: '6px 0' }}>+25 to +35 Marks Potential</h6>
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45 }}>
+                Deepen theoretical mastery, quote scholarly literature/case studies, and solve every PYQ from the last 15 years.
+              </p>
             </div>
 
             <div className="glass-card" style={{ padding: '20px' }}>
-              <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>UR MAX ERROR LIMIT</span>
-              <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#34d399', margin: '6px 0' }}>5% Error</div>
-              <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                Maximum permissible error percentage for Unreserved (UR) category.
-              </div>
+              <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>LEVER 2: GS-4 ETHICS CASE STUDIES</span>
+              <h6 style={{ fontSize: '1rem', fontWeight: 700, color: 'white', margin: '6px 0' }}>+15 to +20 Marks Potential</h6>
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45 }}>
+                Structure case studies with clear stakeholder mapping, moral dilemmas, course of action evaluation, and practical ethical justification.
+              </p>
             </div>
 
             <div className="glass-card" style={{ padding: '20px' }}>
-              <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>RESERVED CATEGORIES</span>
-              <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#60a5fa', margin: '6px 0' }}>7% / 20%</div>
-              <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                Permissible mistake margin for OBC, EWS, SC, ST, and PwBD candidates.
-              </div>
+              <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>LEVER 3: ESSAY PAPER POLISHING</span>
+              <h6 style={{ fontSize: '1rem', fontWeight: 700, color: 'white', margin: '6px 0' }}>+10 to +15 Marks Potential</h6>
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45 }}>
+                Use multi-dimensional frameworks (historical, social, economic, ethical, environmental, international) and engaging real-world anecdotes.
+              </p>
             </div>
-          </div>
-
-          <div className="glass-card" style={{ padding: '24px' }}>
-            <h5 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'white', marginBottom: '12px' }}>
-              Key Rules for Calculating Typing Errors
-            </h5>
-            <ul style={{ paddingLeft: '20px', margin: 0, fontSize: '0.88rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '8px', lineHeight: 1.5 }}>
-              <li><strong style={{ color: 'white' }}>Full Mistakes:</strong> Omission of each word/figure, substitution of wrong word, and addition of words not found in the master passage.</li>
-              <li><strong style={{ color: 'white' }}>Half Mistakes:</strong> Spacing errors (no space between two words or extra space), spelling errors (repetition or missing letters), wrong capitalisation.</li>
-              <li><strong style={{ color: 'white' }}>Backspace Key:</strong> The backspace and arrow keys are fully functional on the examination software. Correct errors promptly as you type.</li>
-            </ul>
           </div>
         </div>
       )}
@@ -13110,6 +13619,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
     </div>
   );
 };
+
 
 
 // ==========================================================================
