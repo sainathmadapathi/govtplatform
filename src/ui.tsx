@@ -116,7 +116,8 @@ import {
   ExamRecommendation,
   UserInteractionEvent,
   ChatContext,
-  ConversationTurn
+  ConversationTurn,
+  MultiTierResultEntry
 } from './types';
 import {
   ALL_EXAMS,
@@ -11964,26 +11965,40 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
   const ansKeyDate = exam.dates.find(d => d.type === 'ANSWER_KEY');
   const latestCutoff = exam.cutoffsHistory[0];
 
-  // ---- the candidate's own result: typed in, or read from their scorecard ----------------
-  const cutoffYear = exam.cutoffsHistory.length > 0 ? Math.max(...exam.cutoffsHistory.map(c => c.year)) : null;
-  const cutoffRows = exam.cutoffsHistory.filter(c => c.year === cutoffYear);
+  // ---- Multi-Tier Result & Scorecard Evaluation Engine ----------------
+  const availableYears = Array.from(new Set(exam.cutoffsHistory.map(c => c.year))).sort((a, b) => b - a);
   const saved = storageService.getResultEntry();
-  const [marksInput, setMarksInput] = useState<string>(saved ? String(saved.marks) : '');
-  const [categoryInput, setCategoryInput] = useState<string>(saved?.category || (cutoffRows[0]?.category || ''));
-  const [entry, setEntry] = useState<{ marks: number; category: string; source: string; declared?: string } | null>(saved);
-  const [parsing, setParsing] = useState<boolean>(false);
-  const [parsed, setParsed] = useState<{ ok: boolean; reason?: string; message?: string; confidence?: string; method?: 'TEXT_LAYER' | 'OCR'; fields?: any; notes?: string[] } | null>(null);
+  const defaultYear = saved?.examYear && availableYears.includes(saved.examYear) ? saved.examYear : (availableYears[0] || 2024);
+  const [selectedYear, setSelectedYear] = useState<number>(defaultYear);
+  const cutoffRows = exam.cutoffsHistory.filter(c => c.year === selectedYear);
 
-  const applyEntry = (marks: number, category: string) => {
-    // The "qualified" line only counts while the marks are the ones it was read with. Type a
-    // different number and the declaration no longer describes it.
-    const readMarks = parsed?.ok ? parsed.fields?.marks : undefined;
-    const fromScorecard = readMarks !== undefined && Math.abs(readMarks - marks) < 0.001;
-    const next = {
-      marks,
-      category,
-      source: fromScorecard ? 'SCORECARD' : 'TYPED',
-      declared: fromScorecard ? parsed?.fields?.declared : undefined
+  const [tier1Input, setTier1Input] = useState<string>(
+    saved?.tier1Marks !== undefined ? String(saved.tier1Marks) : (saved ? String(saved.marks) : '')
+  );
+  const [tier2Input, setTier2Input] = useState<string>(
+    saved?.tier2Marks !== undefined ? String(saved.tier2Marks) : ''
+  );
+  const [categoryInput, setCategoryInput] = useState<string>(
+    saved?.category || (cutoffRows[0]?.category || 'UR')
+  );
+  const [entry, setEntry] = useState<MultiTierResultEntry | null>(saved);
+  const [parsing, setParsing] = useState<boolean>(false);
+  const [parsed, setParsed] = useState<{ ok: boolean; reason?: string; message?: string; confidence?: string; method?: 'TEXT_LAYER' | 'OCR'; fields?: any; notes?: string[]; excerpt?: string } | null>(null);
+
+  const applyMultiTierEntry = (t1Val: number | null, t2Val: number | null, catVal: string, yrVal: number) => {
+    const next: MultiTierResultEntry = {
+      marks: t1Val ?? (t2Val ?? 0),
+      category: catVal,
+      source: entry?.source || 'TYPED',
+      declared: entry?.declared,
+      tier1Marks: t1Val ?? undefined,
+      tier2Marks: t2Val ?? undefined,
+      computerKnowledgeMarks: entry?.computerKnowledgeMarks,
+      destMistakesPercent: entry?.destMistakesPercent,
+      examYear: yrVal,
+      rollNumber: entry?.rollNumber,
+      candidateName: entry?.candidateName,
+      allocatedPost: entry?.allocatedPost
     };
     storageService.setResultEntry(next);
     setEntry(next);
@@ -11996,34 +12011,184 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
     setParsed(null);
     const result = await storageService.parseResultDocument(file);
     setParsed(result);
-    if (result.ok && result.fields?.marks !== undefined) {
-      setMarksInput(String(result.fields.marks));
-      const readCategory = result.fields.category;
-      if (readCategory) {
-        setCategoryInput(cutoffRows.find(r => r.category.toUpperCase().includes(readCategory.toUpperCase()))?.category || categoryInput);
+    if (result.ok) {
+      const t1 = result.fields?.tier1Marks ?? result.fields?.marks;
+      const t2 = result.fields?.tier2Marks;
+      const ckt = result.fields?.computerKnowledgeMarks;
+      const dest = result.fields?.destMistakesPercent;
+      const yr = result.fields?.examYear;
+      const name = result.fields?.candidateName;
+      const roll = result.fields?.rollNumber;
+      const alloc = result.fields?.allocatedPost;
+
+      if (t1 !== undefined) setTier1Input(String(t1));
+      if (t2 !== undefined) setTier2Input(String(t2));
+      
+      let targetYear = selectedYear;
+      if (yr && availableYears.includes(yr)) {
+        targetYear = yr;
+        setSelectedYear(yr);
       }
+      
+      const currentRows = exam.cutoffsHistory.filter(c => c.year === targetYear);
+      let detectedCat = categoryInput;
+      const readCategory = result.fields?.category;
+      if (readCategory) {
+        const matched = currentRows.find(r => 
+          r.category.toUpperCase() === readCategory.toUpperCase() ||
+          r.category.toUpperCase().includes(readCategory.toUpperCase()) ||
+          readCategory.toUpperCase().includes(r.category.toUpperCase())
+        )?.category || readCategory;
+        if (matched) {
+          detectedCat = matched;
+          setCategoryInput(matched);
+        }
+      }
+
+      const autoEntry: MultiTierResultEntry = {
+        marks: t1 ?? (t2 ?? 0),
+        category: detectedCat,
+        source: 'SCORECARD',
+        declared: result.fields?.declared,
+        tier1Marks: t1,
+        tier2Marks: t2,
+        computerKnowledgeMarks: ckt,
+        destMistakesPercent: dest,
+        examYear: targetYear,
+        rollNumber: roll,
+        candidateName: name,
+        allocatedPost: alloc
+      };
+      storageService.setResultEntry(autoEntry);
+      setEntry(autoEntry);
+      setStatusChosenManually(false);
     }
     setParsing(false);
   };
 
-  // Compare with the cutoff on record for that category — last published year, clearly labelled.
-  const matchedCutoff = entry
-    ? cutoffRows.find(r => r.category.toUpperCase().includes(entry.category.toUpperCase().split(' ')[0]))
-    : undefined;
-  const margin = entry && matchedCutoff ? +(entry.marks - matchedCutoff.tier1Cutoff).toFixed(2) : null;
-  const declared: string | undefined = entry?.declared;
+  // Matched category in the selected year
+  const activeCategory = entry?.category || categoryInput;
+  const matchedCutoff = cutoffRows.find(r => {
+    const catA = activeCategory.toUpperCase();
+    const catB = r.category.toUpperCase();
+    return catA === catB || catB.includes(catA.split(' ')[0]) || catA.includes(catB.split(' ')[0]);
+  });
 
-  // What the candidate's own numbers point to. A declaration printed on the scorecard wins;
-  // otherwise the comparison does — and the panel below follows it unless they override.
-  const impliedStatus: CandidateResultStatus | null = declared === 'NOT_QUALIFIED'
-    ? 'NOT_QUALIFIED'
-    : declared === 'QUALIFIED'
-      ? 'QUALIFIED_TIER2'
-      : margin === null ? null : margin >= 0 ? 'QUALIFIED_TIER2' : 'NOT_QUALIFIED';
+  const candidateT1 = entry?.tier1Marks !== undefined ? entry.tier1Marks : (parseFloat(tier1Input) || (entry ? entry.marks : null));
+  const candidateT2 = entry?.tier2Marks !== undefined ? entry.tier2Marks : (parseFloat(tier2Input) || null);
+  const candidateCKT = entry?.computerKnowledgeMarks ?? null;
+  const candidateDEST = entry?.destMistakesPercent ?? null;
+  const allocatedPost = entry?.allocatedPost ?? null;
+
+  const t1Cutoff = matchedCutoff?.tier1Cutoff ?? null;
+  const t2Cutoff = matchedCutoff?.tier2Cutoff ?? null;
+
+  const t1Margin = candidateT1 !== null && t1Cutoff !== null ? +(candidateT1 - t1Cutoff).toFixed(2) : null;
+  const t1Passed = t1Margin !== null && t1Margin >= 0;
+
+  const t2Margin = candidateT2 !== null && t2Cutoff !== null ? +(candidateT2 - t2Cutoff).toFixed(2) : null;
+  const t2Passed = t2Margin !== null && t2Margin >= 0;
+
+  const cktCutoff = activeCategory.toUpperCase().includes('UR') || activeCategory.toUpperCase().includes('GEN') ? 18.0 : 15.0;
+  const cktPassed = candidateCKT !== null ? candidateCKT >= cktCutoff : null;
+
+  const destMaxAllowed = 20.0;
+  const destPassed = candidateDEST !== null ? candidateDEST <= destMaxAllowed : null;
+
+  // Unified Multi-Tier Conclusion computation
+  let unifiedVerdict: {
+    status: string;
+    badgeText: string;
+    badgeBg: string;
+    badgeColor: string;
+    borderColor: string;
+    headline: string;
+    summaryText: string;
+    conclusion: string;
+    nextAction: string;
+    recommendedTab: CandidateResultStatus;
+  } | null = null;
+
+  if (candidateT1 !== null && t1Cutoff !== null) {
+    if (candidateT2 !== null && t2Cutoff !== null) {
+      // Both Tier-1 and Tier-2 evaluated
+      if (t1Passed && t2Passed) {
+        unifiedVerdict = {
+          status: 'SELECTED',
+          badgeText: '🏆 CLEARED ALL TIERS · FINAL SELECTION ZONE',
+          badgeBg: 'rgba(16, 185, 129, 0.2)',
+          badgeColor: '#34d399',
+          borderColor: '#10b981',
+          headline: `Merit Selection Achieved for ${selectedYear} (${activeCategory})`,
+          summaryText: `You successfully cleared Tier-1 by +${t1Margin} marks and cleared the final Tier-2 merit cutoff by +${t2Margin} marks.`,
+          conclusion: `Comprehensive Multi-Tier Conclusion: Candidate demonstrated top-tier merit across both examination tiers. With positive margins in Tier-1 (+${t1Margin}) and Tier-2 (+${t2Margin}), you are in the final appointment zone for All-India Ministry allocation.`,
+          nextAction: 'Action Plan: Prepare your original document dossiers (OBC/EWS crucial dates, 10th/12th/Degree certificates) for physical Document Verification.',
+          recommendedTab: 'DOC_VERIFICATION' as CandidateResultStatus
+        };
+      } else if (t1Passed && !t2Passed) {
+        unifiedVerdict = {
+          status: 'MISSED_TIER2',
+          badgeText: '⚠️ CLEARED TIER-1 · MISSED FINAL TIER-2 ALLOCATION',
+          badgeBg: 'rgba(245, 158, 11, 0.2)',
+          badgeColor: '#fbbf24',
+          borderColor: '#f59e0b',
+          headline: `Qualified Tier-1 & Skill Test, but missed final post merit in ${selectedYear}`,
+          summaryText: `You cleared Tier-1 by +${t1Margin} marks (Cutoff: ${t1Cutoff}) and met all skill test standards. However, your Tier-2 score of ${candidateT2} fell short of the final merit cutoff of ${t2Cutoff} by ${Math.abs(t2Margin)} marks.`,
+          conclusion: `Comprehensive Multi-Tier Conclusion: The candidate established qualifying capability by clearing Tier-1 (+${t1Margin} margin) and meeting all Computer and Typing thresholds. The rejection for final post allocation was solely due to the Tier-2 merit shortfall (-${Math.abs(t2Margin)} marks below the ${selectedYear} ${activeCategory} cutoff of ${t2Cutoff}). Consequently, no post was allocated in this cycle.`,
+          nextAction: `Strategic Next Step: Your prelims base is already sound. In the upcoming cycle, focus strictly on Tier-2 Paper-I high-weightage sections (Section 1 Maths/Reasoning and Section 2 General Awareness) to bridge the ${Math.abs(t2Margin)} mark gap.`,
+          recommendedTab: 'NOT_QUALIFIED' as CandidateResultStatus
+        };
+      } else {
+        unifiedVerdict = {
+          status: 'MISSED_TIER1',
+          badgeText: '❌ MISSED TIER-1 CUTOFF',
+          badgeBg: 'rgba(239, 68, 68, 0.2)',
+          badgeColor: '#f87171',
+          borderColor: '#ef4444',
+          headline: `Did Not Clear Tier-1 Prelims in ${selectedYear}`,
+          summaryText: `Your Tier-1 score of ${candidateT1} was ${Math.abs(t1Margin)} marks below the ${selectedYear} cutoff (${t1Cutoff}) for ${activeCategory}.`,
+          conclusion: `Comprehensive Multi-Tier Conclusion: Candidate did not meet the prelims threshold required to appear in subsequent tiers.`,
+          nextAction: 'Action Plan: Strengthen foundation concepts across Quantitative Aptitude and English Comprehension, and explore parallel exams with overlapping syllabi (RRB NTPC, SSC CHSL).',
+          recommendedTab: 'NOT_QUALIFIED' as CandidateResultStatus
+        };
+      }
+    } else {
+      // Only Tier-1 evaluated (e.g. Tier-2 not attempted yet)
+      if (t1Passed) {
+        unifiedVerdict = {
+          status: 'CLEARED_TIER1_AWAITING_TIER2',
+          badgeText: '✅ CLEARED TIER-1 · SHORTLISTED FOR TIER-2',
+          badgeBg: 'rgba(56, 189, 248, 0.2)',
+          badgeColor: '#38bdf8',
+          borderColor: '#38bdf8',
+          headline: `Through to Tier-2 (Target Cutoff: ${t2Cutoff || '298+'} Marks)`,
+          summaryText: `Your Tier-1 score of ${candidateT1} cleared the ${selectedYear} cutoff (${t1Cutoff}) by +${t1Margin} marks.`,
+          conclusion: `Comprehensive Multi-Tier Conclusion: Candidate is officially shortlisted for Tier-2 examination. Tier-1 is qualifying; final all-India merit and Ministry allocation will be decided entirely by Tier-2 score.`,
+          nextAction: `Tier-2 Target: You must target at least ${t2Cutoff || 298} marks in Tier-2 Paper-I (Section 1 Maths/Reasoning + Section 2 English/GA) plus qualifying CKT & DEST to secure final selection.`,
+          recommendedTab: 'QUALIFIED_TIER2' as CandidateResultStatus
+        };
+      } else {
+        unifiedVerdict = {
+          status: 'MISSED_TIER1',
+          badgeText: '❌ MISSED TIER-1 CUTOFF',
+          badgeBg: 'rgba(239, 68, 68, 0.2)',
+          badgeColor: '#f87171',
+          borderColor: '#ef4444',
+          headline: `Did Not Clear Tier-1 Prelims in ${selectedYear}`,
+          summaryText: `Your Tier-1 score of ${candidateT1} is ${Math.abs(t1Margin)} marks below the ${selectedYear} cutoff (${t1Cutoff}) for ${activeCategory}.`,
+          conclusion: `Comprehensive Multi-Tier Conclusion: Candidate did not clear the prelims cutoff for ${activeCategory}.`,
+          nextAction: 'Action Plan: Target high-frequency scoring topics in Tier-1 and practice full-length timed mock tests.',
+          recommendedTab: 'NOT_QUALIFIED' as CandidateResultStatus
+        };
+      }
+    }
+  }
 
   useEffect(() => {
-    if (impliedStatus && !statusChosenManually) setSelectedStatus(impliedStatus);
-  }, [impliedStatus, statusChosenManually]);
+    if (unifiedVerdict && !statusChosenManually) {
+      setSelectedStatus(unifiedVerdict.recommendedTab);
+    }
+  }, [unifiedVerdict, statusChosenManually]);
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -12034,7 +12199,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
               <span className="badge" style={{ background: 'rgba(234, 179, 8, 0.2)', color: '#facc15', border: '1px solid rgba(234, 179, 8, 0.4)' }}>
-                🏆 RESULT & SCORECARD NAVIGATION
+                🏆 MULTI-TIER RESULT & VERDICT ENGINE
               </span>
               <span className="badge badge-verified">
                 OFFICIALLY AUDITED
@@ -12042,39 +12207,66 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
             </div>
 
             <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white', margin: '0 0 6px' }}>
-              Post-Result Personalized Next Step Flow
+              Multi-Tier Scorecard Analysis & Unified Conclusion
             </h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0 }}>
-              Official Tier-1 shortlist announcement: <strong style={{ color: '#facc15' }}>{resultDate?.dateTimeStr || '15 Dec 2026'}</strong>. Select your result status below to view your exact official action plan.
+              GovOS evaluates performance across <strong>every stage (Tier-1 Prelims, Tier-2 Mains, Skill Test, CKT, and Post Allocation)</strong> to deliver one definitive examination conclusion.
             </p>
           </div>
 
           {latestCutoff && (
             <div style={{ padding: '10px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-color)', textAlign: 'right' }}>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Latest General (UR) Cutoff</div>
-              <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--primary)' }}>{latestCutoff.tier1Cutoff} Marks</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Latest Cutoffs ({latestCutoff.year})</div>
+              <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--primary)' }}>Tier-1: {latestCutoff.tier1Cutoff} | Tier-2: {latestCutoff.tier2Cutoff || '—'}</div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Your result: typed in, or read from the scorecard you upload */}
+      {/* Your result: multi-tier marks, category, and cycle selector */}
       <div className="glass-card" style={{ padding: '22px', border: '1px solid rgba(99,102,241,0.3)' }}>
-        <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'white', margin: '0 0 4px' }}>Your result</h4>
-        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '0 0 16px', lineHeight: 1.5 }}>
-          Enter your Tier-1 marks, or upload the scorecard PDF and GovOS will read them. The file is read on the
-          server and never stored. Whatever is read is shown for you to confirm before it is used.
-        </p>
-
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '14px' }}>
           <div>
-            <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', fontWeight: 700 }}>Tier-1 marks</label>
+            <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'white', margin: '0 0 4px' }}>Your examination scores & scorecard upload</h4>
+            <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0 }}>
+              Upload your official scorecard or type marks for Tier-1 and Tier-2. GovOS evaluates all stages together.
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Benchmark Cycle:</span>
+            <select
+              value={selectedYear}
+              onChange={e => setSelectedYear(parseInt(e.target.value))}
+              style={{ padding: '6px 12px', borderRadius: 'var(--radius-sm)', background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.4)', color: '#c7d2fe', fontWeight: 700, fontSize: '0.85rem' }}
+            >
+              {availableYears.map(yr => (
+                <option key={yr} value={yr} style={{ background: '#0f172a', color: 'white' }}>{yr} Examination Cycle</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', fontWeight: 700 }}>Tier-1 Marks (Prelims)</label>
             <input
-              type="number" step="0.01" min={0} max={200}
-              value={marksInput}
-              onChange={e => setMarksInput(e.target.value)}
-              placeholder="e.g. 158.75"
-              style={{ width: '130px', padding: '9px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.9rem' }}
+              type="number" step="0.01" min={0} max={700}
+              value={tier1Input}
+              onChange={e => setTier1Input(e.target.value)}
+              placeholder="e.g. 113.12"
+              style={{ width: '140px', padding: '9px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.9rem' }}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', fontWeight: 700 }}>Tier-2 Marks (Mains / Optional)</label>
+            <input
+              type="number" step="0.01" min={0} max={700}
+              value={tier2Input}
+              onChange={e => setTier2Input(e.target.value)}
+              placeholder="e.g. 255.95"
+              style={{ width: '140px', padding: '9px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.9rem' }}
             />
           </div>
 
@@ -12083,7 +12275,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
             <select
               value={categoryInput}
               onChange={e => setCategoryInput(e.target.value)}
-              style={{ padding: '9px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.9rem', minWidth: '200px' }}
+              style={{ padding: '9px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.9rem', minWidth: '180px' }}
             >
               {cutoffRows.map(row => (
                 <option key={row.category} value={row.category}>{row.category}</option>
@@ -12094,23 +12286,36 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
           <button
             className="btn btn-primary"
             onClick={() => {
-              const value = parseFloat(marksInput);
-              if (Number.isFinite(value) && value >= 0) applyEntry(value, categoryInput);
+              const t1 = parseFloat(tier1Input);
+              const t2 = parseFloat(tier2Input);
+              applyMultiTierEntry(
+                Number.isFinite(t1) ? t1 : null,
+                Number.isFinite(t2) ? t2 : null,
+                categoryInput,
+                selectedYear
+              );
             }}
-            style={{ fontSize: '0.85rem', padding: '10px 18px' }}
+            style={{ fontSize: '0.85rem', padding: '10px 16px' }}
           >
-            {entry ? 'Update my result' : 'Use these marks'}
+            {entry ? 'Update & Evaluate' : 'Evaluate All Tiers'}
           </button>
 
           <label className="btn btn-secondary" style={{ fontSize: '0.85rem', padding: '10px 16px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-            <FileText size={15} /> {parsing ? 'Reading…' : 'Upload scorecard PDF'}
-            <input type="file" accept="application/pdf,.pdf,image/*" style={{ display: 'none' }} onChange={e => handleScorecard(e.target.files?.[0])} />
+            <FileText size={15} /> {parsing ? 'Reading All Tiers…' : 'Upload scorecard / scan'}
+            <input type="file" accept="application/pdf,.pdf,image/*" style={{ display: 'none' }} onChange={e => { handleScorecard(e.target.files?.[0]); e.target.value = ''; }} />
           </label>
 
           {entry && (
             <button
               className="btn btn-secondary"
-              onClick={() => { storageService.setResultEntry(null); setEntry(null); setMarksInput(''); setParsed(null); setStatusChosenManually(false); }}
+              onClick={() => {
+                storageService.setResultEntry(null);
+                setEntry(null);
+                setTier1Input('');
+                setTier2Input('');
+                setParsed(null);
+                setStatusChosenManually(false);
+              }}
               style={{ fontSize: '0.8rem', padding: '10px 14px' }}
             >
               Clear
@@ -12118,56 +12323,219 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
           )}
         </div>
 
-        {/* What the file actually said — confirm before it counts */}
+        {/* OCR Result Details */}
         {parsed && !parsed.ok && (
           <div style={{ marginTop: '14px', padding: '12px 14px', borderRadius: 'var(--radius-md)', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.35)', color: '#fcd34d', fontSize: '0.85rem', lineHeight: 1.5 }}>
             {parsed.message}
           </div>
         )}
         {parsed?.ok && (
-          <div style={{ marginTop: '14px', padding: '12px 14px', borderRadius: 'var(--radius-md)', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.3)', fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-            <strong style={{ color: 'white' }}>{parsed.method === 'OCR' ? 'Read from your scan by OCR' : 'Read from your file'}</strong>
-            {parsed.method === 'OCR' && (
-              <span className="badge badge-pending" style={{ fontSize: '0.62rem', marginLeft: '8px' }}>OCR — CHECK THE DIGITS</span>
+          <div style={{ marginTop: '14px', padding: '16px 18px', borderRadius: 'var(--radius-md)', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.35)', fontSize: '0.86rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <strong style={{ color: 'white', fontSize: '0.92rem' }}>
+                  {parsed.method === 'OCR' ? 'Scorecard Scan Analyzed by Multi-Tier OCR' : 'Scorecard Text Read Directly'}
+                </strong>
+                <span className="badge" style={{ fontSize: '0.65rem', background: 'rgba(16,185,129,0.15)', color: '#34d399' }}>
+                  MULTI-TIER EXTRACTED
+                </span>
+                <span className="badge" style={{ fontSize: '0.65rem', background: 'rgba(56,189,248,0.15)', color: '#38bdf8' }}>
+                  AUTO-POPULATED
+                </span>
+              </div>
+              {parsed.fields?.examYear && (
+                <span className="badge" style={{ background: 'rgba(99,102,241,0.2)', color: '#c7d2fe', fontWeight: 700, fontSize: '0.72rem' }}>
+                  EXAM CYCLE: {parsed.fields.examYear}
+                </span>
+              )}
+            </div>
+
+            <div style={{ marginTop: '10px', display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
+              {parsed.fields?.candidateName && (
+                <div>• Candidate: <strong style={{ color: 'white' }}>{parsed.fields.candidateName}</strong></div>
+              )}
+              {parsed.fields?.rollNumber && (
+                <div>• Roll No: <strong style={{ color: '#e2e8f0', fontFamily: 'var(--font-mono)' }}>{parsed.fields.rollNumber}</strong></div>
+              )}
+              {parsed.fields?.category && (
+                <div>• Category: <strong style={{ color: '#6ee7b7' }}>{parsed.fields.category}</strong></div>
+              )}
+              {parsed.fields?.tier1Marks !== undefined && (
+                <div>• Tier-1: <strong style={{ color: '#38bdf8' }}>{parsed.fields.tier1Marks}</strong></div>
+              )}
+              {parsed.fields?.tier2Marks !== undefined && (
+                <div>• Tier-2 Total: <strong style={{ color: '#818cf8' }}>{parsed.fields.tier2Marks}</strong></div>
+              )}
+              {parsed.fields?.computerKnowledgeMarks !== undefined && (
+                <div>• CKT: <strong style={{ color: '#fbbf24' }}>{parsed.fields.computerKnowledgeMarks} / 60</strong></div>
+              )}
+              {parsed.fields?.destMistakesPercent !== undefined && (
+                <div>• DEST: <strong style={{ color: '#34d399' }}>{parsed.fields.destMistakesPercent}% Error</strong></div>
+              )}
+              {parsed.fields?.allocatedPost && (
+                <div>• Allocated Post: <strong style={{ color: parsed.fields.allocatedPost === 'NOT_ALLOCATED' ? '#f87171' : '#34d399' }}>{parsed.fields.allocatedPost}</strong></div>
+              )}
+            </div>
+
+            {parsed.fields?.marksCandidates && parsed.fields.marksCandidates.length > 0 && (
+              <div style={{ marginTop: '8px' }}>
+                <div style={{ fontSize: '0.76rem', color: '#cbd5e1', marginBottom: '4px' }}>
+                  Numbers identified in file (tap to assign to Tier-1 or Tier-2):
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  {parsed.fields.marksCandidates.map((num: number) => (
+                    <span key={num} style={{ display: 'inline-flex', alignItems: 'center', background: 'rgba(255,255,255,0.06)', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(255,255,255,0.15)', fontSize: '0.76rem' }}>
+                      <span style={{ padding: '2px 8px', color: '#cbd5e1', fontWeight: 700 }}>{num}</span>
+                      <button
+                        type="button"
+                        onClick={() => { setTier1Input(String(num)); applyMultiTierEntry(num, candidateT2, activeCategory, selectedYear); }}
+                        style={{ background: 'rgba(56,189,248,0.15)', border: 'none', borderLeft: '1px solid rgba(255,255,255,0.1)', color: '#38bdf8', padding: '2px 6px', cursor: 'pointer', fontSize: '0.7rem' }}
+                      >
+                        T1
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setTier2Input(String(num)); applyMultiTierEntry(candidateT1, num, activeCategory, selectedYear); }}
+                        style={{ background: 'rgba(129,140,248,0.15)', border: 'none', borderLeft: '1px solid rgba(255,255,255,0.1)', color: '#818cf8', padding: '2px 6px', cursor: 'pointer', fontSize: '0.7rem' }}
+                      >
+                        T2
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </div>
             )}
-            {parsed.confidence === 'HIGH' ? ' (found next to a "marks" label)' : parsed.confidence === 'LOW' ? ' (no marks label found — please check)' : ''}:
-            <div style={{ marginTop: '6px' }}>
-              {parsed.fields?.marks !== undefined && <div>• Marks: <strong style={{ color: '#a5b4fc' }}>{parsed.fields.marks}</strong></div>}
-              {parsed.fields?.marksCandidates && <div>• Numbers found: {parsed.fields.marksCandidates.join(', ')} — type the right one above</div>}
-              {parsed.fields?.category && <div>• Category: {parsed.fields.category}</div>}
-              {parsed.fields?.rollNumber && <div>• Roll number: {parsed.fields.rollNumber}</div>}
-              {parsed.fields?.declared && <div>• The scorecard says: <strong style={{ color: parsed.fields.declared === 'QUALIFIED' ? '#34d399' : '#f87171' }}>{parsed.fields.declared.replace('_', ' ').toLowerCase()}</strong></div>}
-            </div>
-            {(parsed.notes || []).map(note => <div key={note} style={{ marginTop: '6px', color: '#fcd34d' }}>{note}</div>)}
-            <div style={{ marginTop: '8px', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
-              Nothing is used until you press the button above. The file was not saved.
-            </div>
           </div>
         )}
 
-        {/* The comparison, with the year it comes from stated */}
-        {entry && (
-          <div style={{ marginTop: '16px', padding: '14px 16px', borderRadius: 'var(--radius-md)', background: margin !== null && margin >= 0 ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)', border: `1px solid ${margin !== null && margin >= 0 ? 'rgba(16,185,129,0.35)' : 'rgba(239,68,68,0.35)'}` }}>
-            <div style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '4px' }}>
-              {entry.marks} marks · {entry.category}
-            </div>
-            {matchedCutoff ? (
-              <div style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
-                That is <strong style={{ color: margin !== null && margin >= 0 ? '#34d399' : '#f87171' }}>
-                  {margin !== null && margin >= 0 ? `${margin} marks above` : `${Math.abs(margin || 0)} marks below`}
-                </strong> the {cutoffYear} Tier-1 cutoff for {matchedCutoff.category} ({matchedCutoff.tier1Cutoff}).
-                <div style={{ marginTop: '6px', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
-                  The {exam.title} cutoff for this cycle is not published yet, so this is last year's bar, not a result.
-                  {declared
-                    ? ` Your scorecard states the outcome — ${declared.replace('_', ' ').toLowerCase()} — and that is what the plan below follows.`
-                    : ' The plan below follows this comparison until the official result is out.'}
+        {/* THE UNIFIED MULTI-TIER CONCLUSION CARD */}
+        {unifiedVerdict && (
+          <div
+            className="animate-fade-in"
+            style={{
+              marginTop: '18px',
+              padding: '22px',
+              borderRadius: 'var(--radius-lg)',
+              background: 'linear-gradient(145deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%)',
+              border: `2px solid ${unifiedVerdict.borderColor}`,
+              boxShadow: `0 10px 30px -5px ${unifiedVerdict.badgeBg}`
+            }}
+          >
+            {/* Verdict Header */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+              <div>
+                <span
+                  style={{
+                    display: 'inline-block',
+                    padding: '4px 14px',
+                    borderRadius: 'var(--radius-full)',
+                    background: unifiedVerdict.badgeBg,
+                    color: unifiedVerdict.badgeColor,
+                    fontWeight: 800,
+                    fontSize: '0.76rem',
+                    letterSpacing: '0.04em',
+                    marginBottom: '8px',
+                    border: `1px solid ${unifiedVerdict.borderColor}`
+                  }}
+                >
+                  {unifiedVerdict.badgeText}
+                </span>
+                <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', margin: '0 0 4px' }}>
+                  {unifiedVerdict.headline}
+                </h4>
+                <div style={{ fontSize: '0.86rem', color: '#cbd5e1' }}>
+                  Candidate: <strong>{entry?.candidateName || 'Candidate'}</strong> · Roll No: <strong>{entry?.rollNumber || '—'}</strong> · Category: <strong>{activeCategory}</strong> · Benchmark Cycle: <strong>{selectedYear}</strong>
                 </div>
               </div>
-            ) : (
-              <div style={{ fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
-                No cutoff on record for {entry.category}, so GovOS has nothing to compare against. Pick the path that matches your result below.
+
+              <div style={{ textAlign: 'right' }}>
+                <span className="badge" style={{ fontSize: '0.72rem', background: 'rgba(255,255,255,0.06)', color: '#94a3b8' }}>
+                  AUTHORITATIVE MULTI-TIER CONCLUSION
+                </span>
               </div>
-            )}
+            </div>
+
+            {/* Stage-by-Stage Breakdown Pipeline */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '18px' }}>
+              {/* Stage 1: Tier-1 */}
+              <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: t1Passed ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)', border: `1px solid ${t1Passed ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}` }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, color: '#94a3b8' }}>Stage 1: Tier-1 CBT</span>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 800, color: t1Passed ? '#34d399' : '#f87171' }}>
+                    {t1Passed ? '✅ CLEARED' : '❌ MISSED'}
+                  </span>
+                </div>
+                <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'white' }}>
+                  {candidateT1 !== null ? candidateT1 : '—'} <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>/ 200</span>
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#cbd5e1', marginTop: '4px' }}>
+                  Cutoff: <strong>{t1Cutoff}</strong> ({t1Margin !== null && t1Margin >= 0 ? `+${t1Margin} margin` : `${t1Margin} margin`})
+                </div>
+              </div>
+
+              {/* Stage 2: Tier-2 */}
+              <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: t2Cutoff ? (t2Passed ? 'rgba(16,185,129,0.08)' : candidateT2 !== null ? 'rgba(239,68,68,0.08)' : 'rgba(56,189,248,0.08)') : 'rgba(255,255,255,0.04)', border: `1px solid ${t2Cutoff ? (t2Passed ? 'rgba(16,185,129,0.3)' : candidateT2 !== null ? 'rgba(239,68,68,0.3)' : 'rgba(56,189,248,0.3)') : 'rgba(255,255,255,0.1)'}` }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, color: '#94a3b8' }}>Stage 2: Tier-2 CBT</span>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 800, color: t2Cutoff ? (t2Passed ? '#34d399' : candidateT2 !== null ? '#f87171' : '#38bdf8') : '#94a3b8' }}>
+                    {t2Cutoff ? (t2Passed ? '✅ CLEARED' : candidateT2 !== null ? '❌ MISSED MERIT' : '⏳ AWAITING') : 'N/A'}
+                  </span>
+                </div>
+                <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'white' }}>
+                  {candidateT2 !== null ? candidateT2 : (t2Cutoff ? `Target: ${t2Cutoff}` : '—')} <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>/ 390</span>
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#cbd5e1', marginTop: '4px' }}>
+                  Cutoff: <strong>{t2Cutoff || '—'}</strong> ({t2Margin !== null ? (t2Margin >= 0 ? `+${t2Margin} margin` : `${t2Margin} margin`) : 'Target Merit Score'})
+                </div>
+              </div>
+
+              {/* Stage 3: Skill Test & Computer Knowledge */}
+              <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: (candidateCKT !== null || candidateDEST !== null) ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, color: '#94a3b8' }}>Stage 3: Modules</span>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#34d399' }}>
+                    {(candidateCKT !== null || candidateDEST !== null) ? '✅ QUALIFIED' : 'QUALIFYING'}
+                  </span>
+                </div>
+                <div style={{ fontSize: '0.85rem', color: 'white', fontWeight: 600 }}>
+                  CKT: <strong style={{ color: '#facc15' }}>{candidateCKT !== null ? `${candidateCKT} / 60` : 'Min 15.0'}</strong>
+                </div>
+                <div style={{ fontSize: '0.85rem', color: 'white', fontWeight: 600, marginTop: '2px' }}>
+                  DEST: <strong style={{ color: '#34d399' }}>{candidateDEST !== null ? `${candidateDEST}% Error` : 'Max 20%'}</strong>
+                </div>
+                <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '4px' }}>
+                  {cktPassed && destPassed ? 'All qualifying thresholds met' : 'Non-merit qualifying stage'}
+                </div>
+              </div>
+
+              {/* Stage 4: Post Allocation */}
+              <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: allocatedPost && allocatedPost !== 'NOT_ALLOCATED' ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, color: '#94a3b8' }}>Stage 4: Post Allocation</span>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 800, color: allocatedPost && allocatedPost !== 'NOT_ALLOCATED' ? '#34d399' : '#f87171' }}>
+                    {allocatedPost && allocatedPost !== 'NOT_ALLOCATED' ? 'ALLOCATED' : 'NOT ALLOCATED'}
+                  </span>
+                </div>
+                <div style={{ fontSize: '1.05rem', fontWeight: 800, color: allocatedPost && allocatedPost !== 'NOT_ALLOCATED' ? '#34d399' : '#e2e8f0' }}>
+                  {allocatedPost && allocatedPost !== 'NOT_ALLOCATED' ? allocatedPost : 'None (No Post Allocated)'}
+                </div>
+                <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '4px' }}>
+                  Matches {selectedYear} Merit Result
+                </div>
+              </div>
+            </div>
+
+            {/* Authoritative Conclusion Callout */}
+            <div style={{ padding: '14px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', marginBottom: '12px', fontSize: '0.88rem', color: '#e2e8f0', lineHeight: 1.6 }}>
+              <strong style={{ color: '#38bdf8' }}>📋 Unified GovOS Examination Conclusion: </strong>
+              {unifiedVerdict.conclusion}
+            </div>
+
+            {/* Next Action Strategy */}
+            <div style={{ padding: '12px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.25)', fontSize: '0.84rem', color: '#cbd5e1', lineHeight: 1.55 }}>
+              <strong style={{ color: '#c7d2fe' }}>🎯 Strategic Recommendation: </strong>
+              {unifiedVerdict.nextAction}
+            </div>
           </div>
         )}
       </div>

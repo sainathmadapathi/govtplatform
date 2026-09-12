@@ -201,6 +201,21 @@ export interface CutoffEntry {
   provenance: DataProvenance;
 }
 
+export interface MultiTierResultEntry {
+  marks: number;
+  category: string;
+  source: string;
+  declared?: string;
+  tier1Marks?: number;
+  tier2Marks?: number;
+  computerKnowledgeMarks?: number;
+  destMistakesPercent?: number;
+  examYear?: number;
+  rollNumber?: string;
+  candidateName?: string;
+  allocatedPost?: string;
+}
+
 export interface InAppChapter {
   chapterTitle: string;
   contentMarkdown: string;

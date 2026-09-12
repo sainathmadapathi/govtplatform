@@ -1870,7 +1870,21 @@ def retire_syllabus_revision(revision_id):
 MAX_UPLOAD_BYTES = 8 * 1024 * 1024
 
 def _pdf_text(blob):
-    """Visible text of a text-based PDF. Empty for a scanned one, which has no text layer."""
+    """Visible text of a text-based PDF using PyMuPDF (fitz), with stream fallback."""
+    try:
+        import fitz
+        doc = fitz.open(stream=blob, filetype="pdf")
+        pages_text = []
+        for page in doc:
+            pages_text.append(page.get_text("text"))
+        doc.close()
+        full = "\n".join(pages_text).strip()
+        if full:
+            return full
+    except Exception as e:
+        print(f"[PDF] PyMuPDF extraction note: {e}")
+
+    # Fallback to stream regex if fitz is not available or encounters issues
     out = []
     for match in re.finditer(rb'stream\r?\n(.*?)\r?\nendstream', blob, re.S):
         chunk = match.group(1)
@@ -1887,61 +1901,84 @@ def _pdf_text(blob):
     return ' '.join(out)
 
 
-# ---- OCR for scans and photos. Optional: the app runs without these libraries. -----------
+# ---- OCR for scans and photos. ----------------------------------------------
 _OCR_ENGINE = None
 _OCR_STATE = {"checked": False, "available": False, "reason": None}
 
 
 def _ocr_available():
-    """True when rapidocr_onnxruntime and pypdfium2 import; cached after the first look."""
+    """True when rapidocr_onnxruntime and fitz/pypdfium2/PIL import; cached after the first look."""
     global _OCR_ENGINE
     if _OCR_STATE["checked"]:
         return _OCR_STATE["available"]
     _OCR_STATE["checked"] = True
     try:
         from rapidocr_onnxruntime import RapidOCR  # noqa: F401
-        import pypdfium2  # noqa: F401
         import PIL  # noqa: F401
         _OCR_ENGINE = RapidOCR()
         _OCR_STATE["available"] = True
-    except Exception as exc:  # ImportError, or a model that failed to load
+    except Exception as exc:
         _OCR_STATE["reason"] = str(exc)[:200]
     return _OCR_STATE["available"]
 
 
-OCR_INSTALL_HINT = "pip install rapidocr-onnxruntime pypdfium2 pillow numpy (they are in requirements.txt), then restart python app.py"
+OCR_INSTALL_HINT = "pip install rapidocr-onnxruntime pymupdf pillow numpy, then restart python app.py"
 
 
 def _ocr_image(pil_image):
     """Text lines from one image, top to bottom, as RapidOCR read them."""
     import numpy as np
+    from PIL import ImageEnhance
     img = pil_image.convert('RGB')
-    # Small phone photos read badly; upscale to a sensible width before recognition.
-    if img.width < 1400:
-        ratio = 1400 / img.width
-        img = img.resize((1400, int(img.height * ratio)))
-    result, _elapsed = _OCR_ENGINE(np.array(img))
+    if img.width < 1600:
+        ratio = 1600 / img.width
+        img = img.resize((1600, int(img.height * ratio)))
+    
+    # Slight contrast enhancement to make text distinct
+    try:
+        enhancer = ImageEnhance.Contrast(img)
+        img_contrasted = enhancer.enhance(1.2)
+        result, _ = _OCR_ENGINE(np.array(img_contrasted))
+    except Exception:
+        result = None
+    
+    if not result:
+        result, _ = _OCR_ENGINE(np.array(img))
     if not result:
         return []
-    # each item: [box, text, confidence]; sort by the box's top edge, then left edge
-    result.sort(key=lambda item: (round(item[0][0][1] / 12), item[0][0][0]))
+    
+    result.sort(key=lambda item: (round(item[0][0][1] / 15), item[0][0][0]))
     return [item[1] for item in result if item[1] and item[1].strip()]
 
 
 def _ocr_pdf(blob, max_pages=3):
-    """Render the first pages of a scanned PDF and read them."""
-    import pypdfium2 as pdfium
-    pdf = pdfium.PdfDocument(blob)
-    lines = []
+    """Render the first pages of a scanned PDF at high quality and read them."""
     try:
-        for index in range(min(len(pdf), max_pages)):
-            page = pdf[index]
-            bitmap = page.render(scale=2.2)  # ~160 dpi: enough for print, small enough to be quick
-            lines.extend(_ocr_image(bitmap.to_pil()))
+        import fitz
+        from PIL import Image
+        doc = fitz.open(stream=blob, filetype="pdf")
+        lines = []
+        for index in range(min(len(doc), max_pages)):
+            page = doc[index]
+            pix = page.get_pixmap(dpi=200)
+            img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+            lines.extend(_ocr_image(img))
             lines.append('')
-    finally:
-        pdf.close()
-    return lines
+        doc.close()
+        return lines
+    except Exception:
+        import pypdfium2 as pdfium
+        pdf = pdfium.PdfDocument(blob)
+        lines = []
+        try:
+            for index in range(min(len(pdf), max_pages)):
+                page = pdf[index]
+                bitmap = page.render(scale=2.2)
+                lines.extend(_ocr_image(bitmap.to_pil()))
+                lines.append('')
+        finally:
+            pdf.close()
+        return lines
 
 
 def _ocr_bytes_as_image(raw):
@@ -1949,62 +1986,251 @@ def _ocr_bytes_as_image(raw):
     return _ocr_image(Image.open(io.BytesIO(raw)))
 
 
-def _join_numbers(text):
-    """"1 5 0 . 0 4" is one number split by kerning; put it back together."""
-    joined = re.sub(r'(?<=\d)\s+(?=\d)', '', text)
-    return re.sub(r'(?<=\d)\s*\.\s*(?=\d)', '.', joined)
-
-
-def _loose(word):
-    """A pattern matching a word even when its letters are spaced apart."""
-    return r'\s*'.join(re.escape(ch) for ch in word if not ch.isspace())
-
-
-MARK_LABELS = ['normalized marks', 'normalised marks', 'total normalized marks', 'marks obtained',
-               'total marks', 'aggregate marks', 'marks secured', 'total score']
-CATEGORY_WORDS = [('pwbd', 'PwBD'), ('pwd', 'PwBD'), ('ews', 'EWS'), ('obc', 'OBC'),
-                  ('sc', 'SC'), ('st', 'ST'), ('unreserved', 'UR'), ('general', 'UR'), ('ur', 'UR')]
+def _clean_ocr_text(text):
+    """Normalize OCR text, typos, commas in decimals, and kerning."""
+    t = text
+    # Fix common OCR typos in keywords
+    t = re.sub(r'\bseore\b', 'score', t, flags=re.I)
+    t = re.sub(r'\bcatl\b', 'cat1', t, flags=re.I)
+    # Replace commas or colons between digits with dots: 158,75 -> 158.75, 158:75 -> 158.75
+    t = re.sub(r'(?<=\d)[,:](?=\d)', '.', t)
+    # Spaces around decimal dots: 158 . 75 -> 158.75
+    t = re.sub(r'(?<=\d)\s*\.\s*(?=\d)', '.', t)
+    # Join isolated single digits: '1 5 8 . 7 5' -> '158.75'
+    for _ in range(3):
+        t = re.sub(r'(?<=\b\d)\s+(?=\d\b)', '', t)
+    t = re.sub(r'(?<=\d)\s*\.\s*(?=\d)', '.', t)
+    return t
 
 
 def _parse_scorecard(text):
-    """Pull the few fields that decide next steps. Everything is returned for confirmation."""
-    numeric = _join_numbers(text)
-    squashed = re.sub(r'\s+', '', text).lower()
+    """
+    Rigorously parses government exam scorecards (SSC CGL/CHSL/CPO/MTS, RRB, Banking, PSCs).
+    Extracts marks, category, roll number, qualification status, and candidate scores.
+    """
+    cleaned = _clean_ocr_text(text)
+    lines = [line.strip() for line in cleaned.split('\n') if line.strip()]
+    full_text = ' '.join(lines)
     fields = {}
     notes = []
 
-    # marks: prefer a number that follows a marks label, since a page is full of other numbers
-    for label in MARK_LABELS:
-        hit = re.search(_loose(label) + r'[^0-9]{0,40}(\d{1,3}(?:\.\d{1,2})?)', numeric, re.I)
-        if hit:
-            value = float(hit.group(1))
-            if 0 <= value <= 700:
-                fields['marks'] = value
-                fields['marksLabel'] = label
+    # 1. Roll Number & Registration Number
+    roll_match = re.search(r'(?:roll\s*(?:no|number)|rollno|ticket\s*no)\s*[:\-]?\s*(\d{8,12})', full_text, re.I)
+    if not roll_match:
+        roll_match = re.search(r'\b(\d{10,11})\b', full_text)
+    if roll_match:
+        roll_str = roll_match.group(1)
+        fields['rollNumber'] = roll_str
+
+    ignored_numbers = set()
+    if 'rollNumber' in fields:
+        try:
+            ignored_numbers.add(float(fields['rollNumber']))
+            ignored_numbers.add(float(fields['rollNumber'][:3]))
+        except Exception:
+            pass
+    for yr in [2020.0, 2021.0, 2022.0, 2023.0, 2024.0, 2025.0, 2026.0, 2027.0]:
+        ignored_numbers.add(yr)
+
+    # 2. Category Detection
+    cat_code_map = {'0': 'EWS', '1': 'SC', '2': 'ST', '3': 'ESM', '4': 'PwBD', '5': 'PwBD', '6': 'OBC', '7': 'PwBD', '8': 'PwBD', '9': 'UR'}
+    cat_found = None
+    
+    # Priority A: Check lines near category headers (Cat1, Cat, Category, Community)
+    for i, l in enumerate(lines):
+        if re.search(r'\b(?:cat(?:egory|1|l)?|community)\b', l, re.I):
+            window = ' '.join(lines[max(0, i-1):min(len(lines), i+2)])
+            ews_m = re.search(r'\bews\s*[\(\[]?\s*[0o]?\s*[\)\]]?', window, re.I)
+            if ews_m:
+                cat_found = 'EWS'
                 break
-    if 'marks' not in fields:
-        # nothing labelled: offer the plausible decimals so the candidate can pick
-        loose_numbers = [float(n) for n in re.findall(r'\b\d{1,3}\.\d{1,2}\b', numeric)]
-        plausible = [n for n in loose_numbers if 10 <= n <= 700]
-        if plausible:
-            fields['marksCandidates'] = sorted(set(plausible))[:6]
-            notes.append('No "marks obtained" label found, so the number could not be identified with confidence.')
+            obc_m = re.search(r'\bobc(?:-ncl)?\s*[\(\[]?\s*6?\s*[\)\]]?', window, re.I)
+            if obc_m:
+                cat_found = 'OBC'
+                break
+            sc_m = re.search(r'\bsc\s*[\(\[]?\s*1?\s*[\)\]]?', window, re.I)
+            if sc_m:
+                cat_found = 'SC'
+                break
+            st_m = re.search(r'\bst\s*[\(\[]?\s*2?\s*[\)\]]?', window, re.I)
+            if st_m:
+                cat_found = 'ST'
+                break
+            pwbd_m = re.search(r'\b(?:pwbd|pwd|divyang)\b', window, re.I)
+            if pwbd_m:
+                cat_found = 'PwBD'
+                break
+            esm_m = re.search(r'\b(?:esm|ex-servicemen)\b', window, re.I)
+            if esm_m:
+                cat_found = 'ESM'
+                break
+            ur_m = re.search(r'\b(?:ur|unreserved)\b|\bgeneral\b(?!\s+(?:intelligence|awareness|studies|science|english|ability|knowledge|\d))', window, re.I)
+            if ur_m:
+                cat_found = 'UR'
+                break
+            code_m = re.search(r'\b([0-9])\b', l)
+            if code_m and code_m.group(1) in cat_code_map:
+                cat_found = cat_code_map[code_m.group(1)]
+                break
 
-    for word, label in CATEGORY_WORDS:
-        if re.search(r'(category|community)[^a-z]{0,20}' + _loose(word), squashed) or f'category{word}' in squashed:
-            fields['category'] = label
-            break
+    # Priority B: Document-wide scan with precise boundaries
+    if not cat_found:
+        if re.search(r'\bews\s*[\(\[]?\s*[0o]?\s*[\)\]]?', full_text, re.I):
+            cat_found = 'EWS'
+        elif re.search(r'\bobc(?:-ncl)?\b', full_text, re.I):
+            cat_found = 'OBC'
+        elif re.search(r'\bsc\b(?!\s*score)', full_text, re.I):
+            cat_found = 'SC'
+        elif re.search(r'\bst\b', full_text, re.I):
+            cat_found = 'ST'
+        elif re.search(r'\b(?:pwbd|pwd|divyang)\b', full_text, re.I):
+            cat_found = 'PwBD'
+        elif re.search(r'\b(?:esm|ex-servicemen)\b', full_text, re.I):
+            cat_found = 'ESM'
+        elif re.search(r'\b(?:unreserved|\bur\b)\b|\bgeneral\b(?!\s+(?:intelligence|awareness|studies|science|english|ability|knowledge|\d))', full_text, re.I):
+            cat_found = 'UR'
 
-    roll = re.search(r'\b(\d{10,11})\b', numeric)
-    if roll:
-        fields['rollNumber'] = roll.group(1)
+    if cat_found:
+        fields['category'] = cat_found
 
-    if 'notqualified' in squashed or 'notshortlisted' in squashed:
+    # 3. Status declaration
+    if re.search(r'\b(?:not\s*qualified|not\s*shortlisted|rejected|disqualified)\b', full_text, re.I):
         fields['declared'] = 'NOT_QUALIFIED'
-    elif 'qualified' in squashed or 'shortlisted' in squashed:
+    elif re.search(r'\b(?:qualified(?:\s+for\s+tier[- ]?(?:2|ii))?|shortlisted|eligible|provisionally\s+selected)\b', full_text, re.I):
         fields['declared'] = 'QUALIFIED'
 
-    confidence = 'HIGH' if 'marks' in fields else ('LOW' if 'marksCandidates' in fields else 'NONE')
+    # 4. Clean examination section before score analysis
+    # Discard Skill Test / DEST / Typing Test / Computer Knowledge Module
+    cbt_text = re.split(r'\b(?:performance\s+in\s+skill\s+test|skill\s*test|dest\b|typing\s*test|computer\s*knowledge\s*module)\b', full_text, flags=re.I)[0]
+    
+    # Discard Allocation Details / Post Preference block (e.g. A01, B23, C34, D59...)
+    alloc_m = re.search(r'\b(?:allocation\s*details|post\s*preference)\b.*?(?=(?:score|tier|paper|computer\s*based|\Z))', cbt_text, re.I)
+    if alloc_m:
+        cbt_text = cbt_text[:alloc_m.start()] + ' ' + cbt_text[alloc_m.end():]
+
+    def extract_scores(s):
+        res = []
+        for n in re.findall(r'\b(\d{1,3}(?:\.\d{1,5})?)\b', s):
+            try:
+                v = float(n)
+                if 20.0 <= v <= 700.0 and v not in ignored_numbers:
+                    res.append((v, n))
+            except Exception:
+                pass
+        return res
+
+    # 5. Extract CBT Exam Scores
+    # Priority A: Check for Tier-I CBT score (e.g. 'Score in Computer Based Examination (Tier-I/ Paper-I) Paper 1 113.11524')
+    tier1_m = re.search(r'(?:computer\s*based\s*examination|cbe)\s*\([^\)]*tier[- ]?[1iI][^\)]*\)(?:[^0-9]|paper\s*\d)*\b(\d{2,3}(?:\.\d{1,5})?)\b', cbt_text, re.I)
+    if not tier1_m:
+        tier1_m = re.search(r'tier[- ]?(?:1|i)\s*(?:marks?|score?)\s*[:\-]?[^0-9]{0,30}\b(\d{1,3}(?:\.\d{1,5})?)\b', cbt_text, re.I)
+    if tier1_m:
+        v = float(tier1_m.group(1))
+        if 20.0 <= v <= 700.0 and v not in ignored_numbers:
+            fields['tier1Marks'] = round(v, 2)
+            fields['marks'] = round(v, 2)
+            fields['marksLabel'] = 'Tier-1 CBT Marks'
+            fields['marksRaw'] = tier1_m.group(1)
+
+    # Priority B: Line-by-line Table Header Matching (Handles column tables)
+    if 'marks' not in fields:
+        for idx, line in enumerate(lines):
+            l_lower = line.lower()
+            if 'normali' in l_lower:
+                scs = extract_scores(line)
+                if scs:
+                    v, r = scs[-1]
+                    fields['marks'] = round(v, 2)
+                    fields['marksLabel'] = 'Normalized Marks'
+                    fields['marksRaw'] = r
+                    break
+                elif idx + 1 < len(lines):
+                    next_scs = extract_scores(lines[idx + 1])
+                    if next_scs:
+                        v, r = next_scs[-1]
+                        fields['marks'] = round(v, 2)
+                        fields['marksLabel'] = 'Normalized Marks'
+                        fields['marksRaw'] = r
+                        break
+
+    # Priority C: Standard explicit Normalized Marks regex
+    if 'marks' not in fields:
+        norm_m = re.search(r'(?:final\s+)?normali[sz]ed\s*(?:cbe\s*)?(?:marks?|score?)\s*[:\-]?[^0-9]{0,60}\b(\d{1,3}(?:\.\d{1,5})?)\b', cbt_text, re.I)
+        if norm_m:
+            v = float(norm_m.group(1))
+            if 20.0 <= v <= 700.0 and v not in ignored_numbers:
+                fields['marks'] = round(v, 2)
+                fields['marksLabel'] = 'Normalized Marks'
+                fields['marksRaw'] = norm_m.group(1)
+
+    # Priority D: Explicit Raw / Total Marks
+    if 'marks' not in fields:
+        raw_m = re.search(r'(?:raw|total|aggregate)\s*(?:marks?|score?)\s*(?:obtained|secured)?\s*[:\-]?[^0-9]{0,60}\b(\d{1,3}(?:\.\d{1,5})?)\b', cbt_text, re.I)
+        if raw_m:
+            v = float(raw_m.group(1))
+            if 20.0 <= v <= 700.0 and v not in ignored_numbers:
+                fields['marks'] = round(v, 2)
+                fields['marksLabel'] = 'Raw / Total Marks'
+                fields['marksRaw'] = raw_m.group(1)
+
+    # 6. Candidate scores from CBT section
+    scores = extract_scores(cbt_text)
+    
+    # Tier-2 Normalized Section Totals if present
+    t2_norms = [float(x) for x in re.findall(r'\b(\d{2,3}\.\d{3,5})\b', cbt_text[tier1_m.end():] if tier1_m else cbt_text)]
+    tier2_total = None
+    if len(t2_norms) >= 2:
+        tier2_total = round(sum(t2_norms[:2]), 2)
+        fields['tier2Marks'] = tier2_total
+
+    plausible = []
+    if 'tier1Marks' in fields:
+        plausible.append(fields['tier1Marks'])
+    if tier2_total and 100.0 <= tier2_total <= 390.0:
+        plausible.append(tier2_total)
+    for v, s in scores:
+        if v not in [100.0, 200.0, 300.0, 50.0]:
+            plausible.append(round(v, 2))
+    
+    plausible = sorted(list(dict.fromkeys(plausible)), reverse=True)
+    if plausible:
+        fields['marksCandidates'] = plausible[:8]
+
+    if 'marks' not in fields and plausible:
+        fields['marks'] = plausible[0]
+        fields['marksLabel'] = 'Candidate Mark'
+
+    # 7. Candidate Metadata (Name, Exam Year, Allocation)
+    name_m = re.search(r'\bname\s*[:\-]?\s*([a-zA-Z\s]{3,35})(?=\s+(?:father|mother|gender|dob|cat|roll))', full_text, re.I)
+    if name_m:
+        fields['candidateName'] = re.sub(r'\s+', ' ', name_m.group(1)).strip()
+
+    yr_m = re.search(r'\b(202[0-9])\b', full_text)
+    if yr_m:
+        fields['examYear'] = int(yr_m.group(1))
+
+    alloc_m = re.search(r'allocated\s*post\s*[:\-]?\s*([a-zA-Z0-9]+)', full_text, re.I)
+    if alloc_m and alloc_m.group(1).upper() not in ['ALLOCATED', 'CATEGORY', 'NONE', 'NIL', 'NA', 'POST']:
+        fields['allocatedPost'] = alloc_m.group(1).upper()
+    else:
+        fields['allocatedPost'] = 'NOT_ALLOCATED'
+
+    # 8. Skill Test & Computer Knowledge Module Extraction (DEST, CKT)
+    skill_start = re.search(r'(?:perform[a-z]*\s*in\s*skill\s*test|skill\s*test|dest\b|typing\s*test|computer\s*knowledge)', full_text, re.I)
+    if skill_start:
+        skill_text = full_text[skill_start.start():]
+        nums = re.findall(r'\b(\d{1,3}(?:\.\d{1,5})?)\b', skill_text)
+        dest_val = next((float(x) for x in nums if '.' in x and len(x.split('.')[-1]) <= 2 and float(x) <= 50.0), None)
+        if dest_val is not None:
+            fields['destMistakesPercent'] = round(dest_val, 2)
+        ckt_norm = next((float(x) for x in nums if '.' in x and len(x.split('.')[-1]) > 2 and float(x) <= 60.0), None)
+        ckt_raw = next((float(x) for x in nums if '.' not in x and 0.0 <= float(x) <= 60.0), None)
+        if ckt_norm is not None:
+            fields['computerKnowledgeMarks'] = round(ckt_norm, 2)
+        elif ckt_raw is not None:
+            fields['computerKnowledgeMarks'] = round(ckt_raw, 2)
+
+    confidence = 'HIGH' if 'marks' in fields and 'category' in fields else ('MEDIUM' if 'marks' in fields else 'LOW')
     return fields, confidence, notes
 
 
@@ -2040,7 +2266,7 @@ def parse_result_document():
         method = "OCR"
     else:
         text = _pdf_text(raw)
-        if len(text.strip()) < 40:
+        if len(text.strip()) < 30:
             # No text layer: a scan, or an image inside a PDF wrapper. Read the pixels.
             if not _ocr_available():
                 return jsonify({"ok": False, "reason": "OCR_NOT_INSTALLED",
@@ -2052,14 +2278,14 @@ def parse_result_document():
             text = '\n'.join(lines)
             method = "OCR"
 
-    if len(text.strip()) < 12:
+    if len(text.strip()) < 8:
         return jsonify({"ok": False, "reason": "NO_TEXT_FOUND",
                         "message": "Nothing readable was found in that file — the scan may be too blurry or too dark. Try a clearer copy, or type your marks in."}), 200
 
     fields, confidence, notes = _parse_scorecard(text)
     if method == "OCR":
         notes.append("Read by OCR from the image, so a digit can be misread — check the marks against your scorecard before using them.")
-    excerpt = ' '.join(text.split())[:400]
+    excerpt = ' '.join(text.split())[:600]
     return jsonify({
         "ok": True,
         "method": method,

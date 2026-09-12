@@ -35,7 +35,8 @@ import {
   CandidateStage,
   ChatChannel,
   ChatContext,
-  ConversationTurn
+  ConversationTurn,
+  MultiTierResultEntry
 } from './types';
 
 // ==========================================================================
@@ -419,7 +420,7 @@ class StorageService {
   }
 
   /** The marks and category the candidate entered or confirmed from their scorecard. */
-  getResultEntry(): { marks: number; category: string; source: string; declared?: string } | null {
+  getResultEntry(): MultiTierResultEntry | null {
     try {
       const raw = localStorage.getItem(STORAGE_KEYS.RESULT_ENTRY);
       return raw ? JSON.parse(raw) : null;
@@ -428,7 +429,7 @@ class StorageService {
     }
   }
 
-  setResultEntry(entry: { marks: number; category: string; source: string; declared?: string } | null): void {
+  setResultEntry(entry: MultiTierResultEntry | null): void {
     try {
       if (entry) localStorage.setItem(STORAGE_KEYS.RESULT_ENTRY, JSON.stringify(entry));
       else localStorage.removeItem(STORAGE_KEYS.RESULT_ENTRY);
@@ -443,7 +444,22 @@ class StorageService {
    */
   async parseResultDocument(file: File): Promise<{
     ok: boolean; reason?: string; message?: string; confidence?: string; method?: 'TEXT_LAYER' | 'OCR';
-    fields?: { marks?: number; marksCandidates?: number[]; category?: string; rollNumber?: string; declared?: string; marksLabel?: string };
+    fields?: {
+      marks?: number;
+      marksCandidates?: number[];
+      category?: string;
+      rollNumber?: string;
+      candidateName?: string;
+      examYear?: number;
+      declared?: string;
+      marksLabel?: string;
+      marksRaw?: string;
+      tier1Marks?: number;
+      tier2Marks?: number;
+      computerKnowledgeMarks?: number;
+      destMistakesPercent?: number;
+      allocatedPost?: string;
+    };
     notes?: string[]; excerpt?: string;
   }> {
     try {
