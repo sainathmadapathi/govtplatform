@@ -13018,6 +13018,69 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
         </div>
       )}
 
+      {/* Search & filters */}
+      <div className="glass-card" style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <div style={{ position: 'relative', flex: 1, minWidth: '240px' }}>
+            <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+            <input
+              type="text"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Search by title, author, subject or use case…"
+              aria-label="Search resources"
+              style={{ width: '100%', padding: '10px 36px 10px 38px', borderRadius: 'var(--radius-md)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.9rem', fontFamily: 'var(--font-sans)', outline: 'none' }}
+            />
+            {query && (
+              <button onClick={() => setQuery('')} aria-label="Clear search" style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex' }}>
+                <X size={15} />
+              </button>
+            )}
+          </div>
+          <button onClick={() => setSavedOnly(v => !v)} style={chipStyle(savedOnly)} aria-pressed={savedOnly}>
+            <Bookmark size={13} fill={savedOnly ? '#c7d2fe' : 'none'} /> Saved ({savedCount})
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginRight: '4px' }}>Type</span>
+          <button onClick={() => setTypeGroup('ALL')} style={chipStyle(typeGroup === 'ALL')}>All types</button>
+          {availableGroups.map(g => (
+            <button key={g.key} onClick={() => setTypeGroup(g.key)} style={chipStyle(typeGroup === g.key)}>
+              {g.label} ({resources.filter(r => g.types.includes(r.type)).length})
+            </button>
+          ))}
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginRight: '4px' }}>Subject</span>
+          <button onClick={() => setSubjectFilter('ALL')} style={chipStyle(subjectFilter === 'ALL')}>All subjects</button>
+          {availableSubjects.map(sub => (
+            <button key={sub} onClick={() => setSubjectFilter(sub)} style={chipStyle(subjectFilter === sub)}>
+              {sub} ({subjectCounts[sub]})
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Resource Navigator (existing assistant, collapsed by default) */}
+      <div style={{ borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.02)' }}>
+        <button
+          onClick={() => setIsNavigatorOpen(v => !v)}
+          style={{ width: '100%', padding: '12px 16px', background: 'none', border: 'none', color: 'var(--text-secondary)', fontFamily: 'var(--font-sans)', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+        >
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+            <Sparkles size={15} color="#60a5fa" /> Not sure what to open? Ask the Resource Navigator
+          </span>
+          <ChevronDown size={15} style={{ transform: isNavigatorOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }} />
+        </button>
+        {isNavigatorOpen && (
+          <div style={{ padding: '0 12px 12px' }}>
+            <ResourceAIAssistant resources={resources} onOpenResourceModal={onOpenResource} exam={exam} />
+          </div>
+        )}
+      </div>
+
       {/* Live: SSC's own notice board */}
       {isSscExam && !isFiltered && sscFeed && (sscFeed.items.length > 0 || sscFeed.total > 0 || sscFeed.error) && (
         <div className="glass-card" style={{ padding: '20px', background: 'linear-gradient(135deg, rgba(99,102,241,0.10) 0%, rgba(15,23,42,0.98) 60%)', border: '1px solid rgba(99,102,241,0.35)' }}>
@@ -13083,69 +13146,6 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
           </div>
         </div>
       )}
-
-      {/* Search & filters */}
-      <div className="glass-card" style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-          <div style={{ position: 'relative', flex: 1, minWidth: '240px' }}>
-            <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
-            <input
-              type="text"
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              placeholder="Search by title, author, subject or use case…"
-              aria-label="Search resources"
-              style={{ width: '100%', padding: '10px 36px 10px 38px', borderRadius: 'var(--radius-md)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.9rem', fontFamily: 'var(--font-sans)', outline: 'none' }}
-            />
-            {query && (
-              <button onClick={() => setQuery('')} aria-label="Clear search" style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex' }}>
-                <X size={15} />
-              </button>
-            )}
-          </div>
-          <button onClick={() => setSavedOnly(v => !v)} style={chipStyle(savedOnly)} aria-pressed={savedOnly}>
-            <Bookmark size={13} fill={savedOnly ? '#c7d2fe' : 'none'} /> Saved ({savedCount})
-          </button>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginRight: '4px' }}>Type</span>
-          <button onClick={() => setTypeGroup('ALL')} style={chipStyle(typeGroup === 'ALL')}>All types</button>
-          {availableGroups.map(g => (
-            <button key={g.key} onClick={() => setTypeGroup(g.key)} style={chipStyle(typeGroup === g.key)}>
-              {g.label} ({resources.filter(r => g.types.includes(r.type)).length})
-            </button>
-          ))}
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginRight: '4px' }}>Subject</span>
-          <button onClick={() => setSubjectFilter('ALL')} style={chipStyle(subjectFilter === 'ALL')}>All subjects</button>
-          {availableSubjects.map(sub => (
-            <button key={sub} onClick={() => setSubjectFilter(sub)} style={chipStyle(subjectFilter === sub)}>
-              {sub} ({subjectCounts[sub]})
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Resource Navigator (existing assistant, collapsed by default) */}
-      <div style={{ borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.02)' }}>
-        <button
-          onClick={() => setIsNavigatorOpen(v => !v)}
-          style={{ width: '100%', padding: '12px 16px', background: 'none', border: 'none', color: 'var(--text-secondary)', fontFamily: 'var(--font-sans)', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-        >
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-            <Sparkles size={15} color="#60a5fa" /> Not sure what to open? Ask the Resource Navigator
-          </span>
-          <ChevronDown size={15} style={{ transform: isNavigatorOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }} />
-        </button>
-        {isNavigatorOpen && (
-          <div style={{ padding: '0 12px 12px' }}>
-            <ResourceAIAssistant resources={resources} onOpenResourceModal={onOpenResource} exam={exam} />
-          </div>
-        )}
-      </div>
 
       {/* Results */}
       {isFiltered && (
