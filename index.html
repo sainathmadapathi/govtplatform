@@ -513,908 +513,98 @@
       .animate-spin { animation: spin 1s linear infinite; }
 
       /* ===================================================
-         GOVOS HOMEPAGE — SINGLE CONTINUOUS HERO ENVIRONMENT
+         GOVOS PREMIUM DYNAMIC LIGHT BACKGROUND & AMBIENT GLOW
          =================================================== */
 
-      @keyframes govosBlueFloat {
+      @keyframes floatGlowBlue {
         0% {
-          transform: translate3d(0, 0, 0) scale(1);
+          transform: translate(0, 0) scale(1);
+          opacity: 0.85;
         }
         50% {
-          transform: translate3d(18px, 12px, 0) scale(1.04);
+          transform: translate(60px, 40px) scale(1.18);
+          opacity: 1;
         }
         100% {
-          transform: translate3d(-10px, 8px, 0) scale(0.98);
+          transform: translate(-30px, 20px) scale(0.95);
+          opacity: 0.8;
         }
       }
 
-      @keyframes govosGoldFloat {
+      @keyframes floatGlowAmber {
         0% {
-          transform: translate3d(0, 0, 0) scale(1);
+          transform: translate(0, 0) scale(1);
+          opacity: 0.8;
         }
         50% {
-          transform: translate3d(-14px, 12px, 0) scale(1.04);
+          transform: translate(-55px, 45px) scale(1.22);
+          opacity: 1;
         }
         100% {
-          transform: translate3d(8px, -8px, 0) scale(0.98);
+          transform: translate(25px, -20px) scale(0.92);
+          opacity: 0.75;
         }
       }
 
-      @keyframes govosTealFloat {
+      @keyframes gradientShiftSmooth {
         0% {
-          transform: translate3d(0, 0, 0);
+          background-position: 0% 0%;
         }
         50% {
-          transform: translate3d(12px, -10px, 0);
+          background-position: 100% 100%;
         }
         100% {
-          transform: translate3d(-8px, 6px, 0);
+          background-position: 0% 0%;
         }
       }
-
-      @keyframes govosDots {
-        0%,
-        100% {
-          opacity: 0.16;
-        }
-
-        50% {
-          opacity: 0.3;
-        }
-      }
-
-
-      /* ===================================================
-         HOMEPAGE STRUCTURE
-         =================================================== */
 
       .homepage {
         position: relative;
-        width: 100%;
         min-height: 100vh;
-        isolation: isolate;
+        width: 100%;
+        overflow: visible;
       }
 
-
-      /* ===================================================
-         SINGLE UNIFIED BACKGROUND ENVIRONMENT
-         =================================================== */
-
+      /* Base Responsive Background Layer */
       .homepage-bg-layer {
         position: absolute;
-        z-index: 0;
-        pointer-events: none;
-
-        top: -24px;
+        top: 0;
         left: -28px;
         right: -28px;
-
-        height: clamp(540px, 60vw, 760px);
-        overflow: hidden;
-
-        /* One subtle base gradient + maximum two very soft ambient glow areas */
-        background:
-          /* 1. Soft blue/indigo ambient glow (upper left) */
-          radial-gradient(
-            ellipse 60% 55% at 8% 22%,
-            rgba(219, 234, 254, 0.48) 0%,
-            rgba(224, 231, 255, 0.18) 42%,
-            transparent 70%
-          ),
-          /* 2. Soft warm gold ambient glow (upper right) */
-          radial-gradient(
-            ellipse 52% 50% at 94% 18%,
-            rgba(254, 243, 199, 0.38) 0%,
-            rgba(253, 230, 138, 0.14) 40%,
-            transparent 68%
-          ),
-          /* Subtle base ambient gradient */
-          linear-gradient(
-            180deg,
-            #f9fbff 0%,
-            #f6f9fe 55%,
-            transparent 100%
-          );
-
-        -webkit-mask-image:
-          linear-gradient(
-            to bottom,
-            #000 0%,
-            #000 82%,
-            transparent 100%
-          );
-
-        mask-image:
-          linear-gradient(
-            to bottom,
-            #000 0%,
-            #000 82%,
-            transparent 100%
-          );
-      }
-
-      /* Disable redundant static background decorations to eliminate visual clutter */
-      .bg-mesh-sky,
-      .bg-mesh-sun,
-      .bg-mesh-teal,
-      .bg-decor-dots,
-      .bg-decor-pill,
-      .bg-decor-circle,
-      .bg-decor-sun-glow,
-      .bg-decor-foliage {
-        display: none !important;
-      }
-
-
-      /* ===================================================
-         CONTENT LAYER
-         =================================================== */
-
-      .homepage-content-layer {
-        position: relative;
-        z-index: 2;
-      }
-
-
-      /* ===================================================
-         HERO LAYOUT
-         =================================================== */
-
-      .hero-seamless {
-        position: relative;
-
-        display: grid;
-
-        grid-template-columns:
-          minmax(0, 1.05fr)
-          minmax(420px, 0.95fr);
-
-        align-items: center;
-
-        gap: clamp(20px, 4vw, 60px);
-
-        min-height: 500px;
-
-        padding:
-          clamp(16px, 2vw, 28px)
-          0
-          clamp(28px, 3vw, 40px);
-
-        overflow: visible;
-      }
-
-
-      .hero-content-seamless {
-        position: relative;
-
-        z-index: 3;
-
-        width: 100%;
-        max-width: 580px;
-      }
-
-
-      .hero-title {
-        margin: 0 0 16px;
-
-        font-size:
-          clamp(2.3rem, 4vw, 3.4rem);
-
-        font-weight: 800;
-
-        line-height: 1.12;
-
-        letter-spacing: -0.04em;
-
-        color: #0f172a;
-      }
-
-
-      .hero-subtitle {
-        margin: 0 0 24px;
-
-        max-width: 540px;
-
-        color: #475569;
-
-        font-size:
-          clamp(0.98rem, 1.15vw, 1.08rem);
-
-        line-height: 1.65;
-      }
-
-
-      /* ===================================================
-         SEARCH
-         =================================================== */
-
-      .hero-search-wrapper {
-        display: flex;
-        align-items: center;
-
-        width: 100%;
-        max-width: 520px;
-
-        margin-bottom: 18px;
-
-        padding: 6px 8px 6px 18px;
-
-        background: rgba(255, 255, 255, 0.94);
-
-        border:
-          1px solid
-          rgba(226, 232, 240, 0.9);
-
-        border-radius: 999px;
-
-        box-shadow:
-          0 8px 24px -6px
-          rgba(15, 23, 42, 0.08);
-
-        transition:
-          border-color 0.2s ease,
-          box-shadow 0.2s ease;
-      }
-
-
-      .hero-search-wrapper:focus-within {
-        border-color: #2563eb;
-
-        box-shadow:
-          0 0 0 3px
-          rgba(37, 99, 235, 0.13),
-          0 12px 28px -8px
-          rgba(15, 23, 42, 0.12);
-      }
-
-
-      .hero-search-btn {
-        width: 40px;
-        height: 40px;
-
-        flex-shrink: 0;
-
-        border: none;
-        border-radius: 50%;
-
-        background: #2563eb;
-
-        color: #ffffff;
-
-        cursor: pointer;
-
-        display: flex;
-        align-items: center;
-        justify-content: center;
-
-        box-shadow:
-          0 5px 14px
-          rgba(37, 99, 235, 0.35);
-
-        transition:
-          transform 0.18s ease,
-          background 0.18s ease,
-          box-shadow 0.18s ease;
-      }
-
-
-      .hero-search-btn:hover {
-        transform: scale(1.05);
-
-        background: #1d4ed8;
-
-        box-shadow:
-          0 8px 18px
-          rgba(37, 99, 235, 0.42);
-      }
-
-
-      .hero-search-btn:active {
-        transform: scale(0.96);
-      }
-
-
-      /* ===================================================
-         CHIPS
-         =================================================== */
-
-      .hero-chip-btn {
-        padding: 6px 14px;
-
-        background:
-          rgba(255, 255, 255, 0.86);
-
-        border:
-          1px solid
-          rgba(226, 232, 240, 0.95);
-
-        border-radius: 999px;
-
-        color: #334155;
-
-        font-size: 0.82rem;
-        font-weight: 600;
-
-        cursor: pointer;
-
-        transition:
-          transform 0.16s ease,
-          background 0.16s ease,
-          border-color 0.16s ease,
-          color 0.16s ease;
-      }
-
-
-      .hero-chip-btn:hover {
-        transform: translateY(-1px);
-
-        background: #f8fbff;
-
-        border-color: #93c5fd;
-
-        color: #1d4ed8;
-      }
-
-
-      /* ===================================================
-         HERO BUTTONS
-         =================================================== */
-
-      .hero-btn-primary,
-      .hero-btn-secondary {
-        display: inline-flex;
-        align-items: center;
-
-        gap: 8px;
-
-        border-radius: 999px;
-
-        font-size: 0.95rem;
-        font-weight: 700;
-
-        cursor: pointer;
-
-        transition:
-          transform 0.2s ease,
-          box-shadow 0.2s ease,
-          background 0.2s ease;
-      }
-
-
-      .hero-btn-primary {
-        padding: 12px 24px;
-
-        border: none;
-
-        background: #2563eb;
-
-        color: #ffffff;
-
-        box-shadow:
-          0 9px 22px -5px
-          rgba(37, 99, 235, 0.42);
-      }
-
-
-      .hero-btn-primary:hover {
-        transform: translateY(-2px);
-
-        background: #1d4ed8;
-
-        box-shadow:
-          0 14px 28px -6px
-          rgba(37, 99, 235, 0.5);
-      }
-
-
-      .hero-btn-secondary {
-        padding: 12px 22px;
-
-        background:
-          rgba(255, 255, 255, 0.86);
-
-        border:
-          1px solid
-          rgba(226, 232, 240, 0.95);
-
-        color: #1e293b;
-
-        box-shadow:
-          0 4px 12px
-          rgba(15, 23, 42, 0.04);
-      }
-
-
-      .hero-btn-secondary:hover {
-        transform: translateY(-2px);
-
-        background: #ffffff;
-
-        border-color: #bfdbfe;
-      }
-
-
-      /* ===================================================
-         SEAMLESS ARTWORK
-         IMPORTANT:
-         NO CARD
-         NO BOX
-         NO BORDER
-         NO BORDER RADIUS
-         =================================================== */
-
-      .hero-art-seamless {
-        position: relative;
-
-        width: 100%;
-        min-height: 470px;
-
-        display: flex;
-        align-items: center;
-        justify-content: center;
-
-        margin-left: clamp(-30px, -2vw, -8px);
-
+        bottom: 0;
         pointer-events: none;
-
-        isolation: isolate;
-
-        overflow: visible;
-      }
-
-
-      /* artwork backlight */
-
-      .hero-art-seamless::before {
-        content: "";
-
-        position: absolute;
-
-        width:
-          clamp(280px, 34vw, 500px);
-
-        height:
-          clamp(280px, 34vw, 500px);
-
-        top: 0;
-        right: 0;
-
-        border-radius: 50%;
-
-        background:
-          radial-gradient(
-            circle,
-            rgba(254, 240, 138, 0.3) 0%,
-            rgba(253, 230, 138, 0.12) 42%,
-            transparent 72%
-          );
-
-        filter: blur(45px);
-
+        overflow: hidden;
         z-index: 0;
       }
 
-
-      /* actual illustration */
-
-      .hero-art-seamless img {
-        position: relative;
-
-        z-index: 1;
-
-        display: block;
-
-        width: 100%;
-        height: auto;
-
-        max-width: 680px;
-
-        object-fit: cover;
-
-        object-position: 84% 54%;
-
-        /*
-          THIS IS THE IMPORTANT PART.
-
-          The image fades mainly from the LEFT
-          into the hero environment.
-
-          Top and bottom fade slightly.
-
-          Right side remains visible so the
-          student and illustration stay sharp.
-        */
-
-        -webkit-mask-image:
-          linear-gradient(
-            to right,
-            transparent 0%,
-            rgba(0, 0, 0, 0.08) 8%,
-            rgba(0, 0, 0, 0.45) 22%,
-            rgba(0, 0, 0, 0.82) 38%,
-            #000 52%,
-            #000 100%
-          );
-
-        mask-image:
-          linear-gradient(
-            to right,
-            transparent 0%,
-            rgba(0, 0, 0, 0.08) 8%,
-            rgba(0, 0, 0, 0.45) 22%,
-            rgba(0, 0, 0, 0.82) 38%,
-            #000 52%,
-            #000 100%
-          );
-
-        -webkit-mask-composite: source-over;
-        mask-composite: add;
-
-        filter:
-          saturate(1.02)
-          contrast(1.01);
-      }
-
-
-      /* soft integration layer */
-
-      .hero-art-seamless::after {
-        content: "";
-
+      /* Coordinated Ambient Light Fields: Sky Blue (Left) & Golden Sunlight (Right) */
+      .bg-mesh-sky {
         position: absolute;
-
-        inset: 0;
-
-        z-index: 2;
-
+        top: -60px;
+        left: -60px;
+        width: 680px;
+        height: 620px;
+        border-radius: 50%;
+        background: radial-gradient(circle at 45% 45%, rgba(186, 220, 255, 0.65) 0%, rgba(147, 197, 253, 0.35) 38%, rgba(219, 234, 254, 0.15) 65%, transparent 75%);
+        filter: blur(55px);
         pointer-events: none;
-
-        background:
-          linear-gradient(
-            to right,
-            rgba(238, 246, 255, 0.68) 0%,
-            rgba(248, 251, 255, 0.3) 20%,
-            transparent 48%
-          ),
-
-          linear-gradient(
-            to bottom,
-            rgba(248, 251, 255, 0.16) 0%,
-            transparent 18%
-          ),
-
-          linear-gradient(
-            to top,
-            rgba(248, 251, 255, 0.18) 0%,
-            transparent 16%
-          );
+        animation: floatGlowBlue 16s ease-in-out infinite alternate;
       }
 
-
-      /* ===================================================
-         FEATURE CARDS
-         =================================================== */
-
-      .feature-grid-4 {
-        display: grid;
-
-        grid-template-columns:
-          repeat(4, minmax(0, 1fr));
-
-        gap: 18px;
-
-        margin-top: 4px;
+      .bg-mesh-sun {
+        position: absolute;
+        top: -70px;
+        right: -50px;
+        width: 640px;
+        height: 600px;
+        border-radius: 50%;
+        background: radial-gradient(circle at 50% 50%, rgba(254, 240, 138, 0.65) 0%, rgba(253, 230, 138, 0.35) 35%, rgba(251, 191, 36, 0.16) 55%, transparent 75%);
+        filter: blur(48px);
+        pointer-events: none;
+        animation: floatGlowAmber 18s ease-in-out infinite alternate;
       }
 
-
-      .feature-action-card {
-        position: relative;
-
-        min-height: 130px;
-
-        padding: 22px 20px;
-
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-
-        border-radius: 20px;
-
-        border:
-          1px solid
-          rgba(15, 23, 42, 0.06);
-
-        box-shadow:
-          0 6px 20px -8px
-          rgba(15, 23, 42, 0.08);
-
-        cursor: pointer;
-
-        transition:
-          transform 0.2s ease,
-          box-shadow 0.2s ease;
-
-        text-align: left;
-      }
-
-
-      .feature-action-card:hover {
-        transform: translateY(-3px);
-
-        box-shadow:
-          0 14px 30px -12px
-          rgba(15, 23, 42, 0.14);
-      }
-
-
-      /* ===================================================
-         POPULAR EXAMS
-         =================================================== */
-
-      .popular-exams-row {
-        display: grid;
-
-        grid-template-columns:
-          repeat(5, minmax(0, 1fr));
-
-        gap: 16px;
-      }
-
-
-      .popular-exam-card {
-        display: flex;
-        align-items: center;
-
-        gap: 12px;
-
-        padding: 14px 16px;
-
-        background:
-          rgba(255, 255, 255, 0.9);
-
-        border:
-          1px solid
-          rgba(226, 232, 240, 0.95);
-
-        border-radius: 16px;
-
-        cursor: pointer;
-
-        text-align: left;
-
-        transition:
-          transform 0.2s ease,
-          border-color 0.2s ease,
-          box-shadow 0.2s ease;
-      }
-
-
-      .popular-exam-card:hover {
-        transform: translateY(-2px);
-
-        border-color: #93c5fd;
-
-        box-shadow:
-          0 10px 24px -12px
-          rgba(37, 99, 235, 0.2);
-      }
-
-
-      /* ===================================================
-         TABLET
-         =================================================== */
-
-      @media (max-width: 1024px) {
-
-        .homepage-bg-layer {
-          height: clamp(520px, 62vw, 720px);
-        }
-
-        .hero-seamless {
-          grid-template-columns:
-            minmax(0, 1.05fr)
-            minmax(320px, 0.95fr);
-
-          gap: 20px;
-
-          min-height: 440px;
-        }
-
-        .hero-art-seamless {
-          min-height: 390px;
-
-          margin-left: -10px;
-        }
-
-        .hero-art-seamless img {
-          max-width: 100%;
-        }
-
-        .feature-grid-4 {
-          grid-template-columns:
-            repeat(2, minmax(0, 1fr));
-        }
-
-        .popular-exams-row {
-          grid-template-columns:
-            repeat(3, minmax(0, 1fr));
-        }
-      }
-
-
-      /* ===================================================
-         MOBILE
-         =================================================== */
-
-      @media (max-width: 768px) {
-
-        .homepage-bg-layer {
-          top: -20px;
-          left: -16px;
-          right: -16px;
-
-          height: clamp(660px, 120vw, 840px);
-
-          -webkit-mask-image:
-            linear-gradient(
-              to bottom,
-              #000 0%,
-              #000 88%,
-              transparent 100%
-            );
-
-          mask-image:
-            linear-gradient(
-              to bottom,
-              #000 0%,
-              #000 88%,
-              transparent 100%
-            );
-        }
-
-        .hero-seamless {
-          display: flex;
-
-          flex-direction: column;
-
-          align-items: stretch;
-
-          gap: 18px;
-
-          min-height: auto;
-
-          padding:
-            10px 0 24px;
-        }
-
-        .hero-content-seamless {
-          max-width: 100%;
-        }
-
-        .hero-art-seamless {
-          order: 2;
-
-          width: 100%;
-
-          min-height: 0;
-
-          margin: 0;
-
-          display: block;
-        }
-
-        .hero-art-seamless img {
-          width: 100%;
-
-          max-width: none;
-
-          min-height: 260px;
-
-          max-height: 420px;
-
-          object-fit: cover;
-
-          object-position: 70% center;
-
-          /*
-            Mobile keeps image visible
-            while smoothly fading only
-            into the page from top/left.
-          */
-
-          -webkit-mask-image:
-            linear-gradient(
-              to bottom,
-              rgba(0, 0, 0, 0.75) 0%,
-              #000 12%,
-              #000 78%,
-              rgba(0, 0, 0, 0.85) 88%,
-              transparent 100%
-            );
-
-          mask-image:
-            linear-gradient(
-              to bottom,
-              rgba(0, 0, 0, 0.75) 0%,
-              #000 12%,
-              #000 78%,
-              rgba(0, 0, 0, 0.85) 88%,
-              transparent 100%
-            );
-        }
-
-        .hero-art-seamless::before {
-          width: 320px;
-          height: 320px;
-
-          top: 0;
-          right: 5%;
-        }
-
-        .hero-art-seamless::after {
-          background:
-            linear-gradient(
-              to top,
-              rgba(248, 251, 255, 0.22),
-              transparent 30%
-            );
-        }
-
-        .feature-grid-4 {
-          grid-template-columns: 1fr;
-        }
-
-        .popular-exams-row {
-          grid-template-columns: 1fr;
-        }
-      }
-
-
-      /* ===================================================
-         SMALL MOBILE
-         =================================================== */
-
-      @media (max-width: 480px) {
-
-        .homepage-bg-layer {
-          height: clamp(680px, 140vw, 880px);
-        }
-
-        .hero-title {
-          font-size:
-            clamp(2.1rem, 11vw, 2.7rem);
-        }
-
-        .hero-subtitle {
-          font-size: 0.96rem;
-        }
-
-        .hero-art-seamless img {
-          min-height: 230px;
-          max-height: 330px;
-        }
-      }
-
-
-      /* ===================================================
-         ACCESSIBILITY
-         =================================================== */
-
-      @media (prefers-reduced-motion: reduce) {
-
-        *,
-        *::before,
-        *::after {
-          animation-duration: 0.01ms !important;
-          animation-iteration-count: 1 !important;
-          scroll-behavior: auto !important;
-          transition-duration: 0.01ms !important;
-        }
-      }
-
-      /* ===================================================
-         GOVOS INTERACTIVE CANVAS PARTICLE SYSTEM
-         =================================================== */
+      /* Interactive Canvas Particle Layer */
       .govos-particle-canvas {
         position: absolute;
         top: 0;
@@ -1424,6 +614,149 @@
         pointer-events: none;
         z-index: 1;
       }
+
+      /* Ensure content containers sit relative above background */
+      .homepage-content-layer {
+        position: relative;
+        z-index: 2;
+      }
+
+      /* ===================================================
+         UNBOXED SEAMLESS HERO & INTEGRATED ILLUSTRATION
+         =================================================== */
+
+      .hero-seamless {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 480px;
+        padding: 8px 0 20px;
+        overflow: visible;
+      }
+
+      .hero-content-seamless {
+        position: relative;
+        z-index: 2;
+        max-width: 580px;
+        width: 100%;
+      }
+
+      .hero-art-seamless {
+        position: absolute;
+        top: -15px;
+        right: -30px;
+        bottom: -15px;
+        width: 58%;
+        pointer-events: none;
+        overflow: hidden;
+        z-index: 1;
+        -webkit-mask-image: linear-gradient(to right,
+          transparent 0%,
+          rgba(0, 0, 0, 0.04) 10%,
+          rgba(0, 0, 0, 0.35) 24%,
+          rgba(0, 0, 0, 0.85) 42%,
+          #000000 60%
+        );
+        mask-image: linear-gradient(to right,
+          transparent 0%,
+          rgba(0, 0, 0, 0.04) 10%,
+          rgba(0, 0, 0, 0.35) 24%,
+          rgba(0, 0, 0, 0.85) 42%,
+          #000000 60%
+        );
+      }
+
+      .hero-art-seamless img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: 84% 54%;
+      }
+
+      /* 4 Action Cards */
+      .feature-grid-4 {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 18px;
+        margin-top: 4px;
+      }
+
+      .feature-action-card {
+        border-radius: 20px;
+        padding: 22px 20px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        min-height: 130px;
+        border: 1px solid rgba(0, 0, 0, 0.04);
+        box-shadow: 0 4px 15px -3px rgba(15, 23, 42, 0.03);
+        cursor: pointer;
+        text-align: left;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        position: relative;
+      }
+      .feature-action-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 24px -4px rgba(15, 23, 42, 0.08);
+      }
+
+      /* Popular Exams Grid */
+      .popular-exams-row {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 16px;
+      }
+
+      .popular-exam-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 14px 16px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        cursor: pointer;
+        text-align: left;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+        transition: all 0.2s ease;
+      }
+      .popular-exam-card:hover {
+        transform: translateY(-2px);
+        border-color: #3b82f6;
+        box-shadow: 0 6px 18px -2px rgba(59, 130, 246, 0.12);
+      }
+
+      @media (max-width: 1024px) {
+        .feature-grid-4 { grid-template-columns: repeat(2, 1fr); }
+        .popular-exams-row { grid-template-columns: repeat(3, 1fr); }
+        .hero-art-seamless { opacity: 0.55; width: 65%; }
+      }
+      @media (max-width: 768px) {
+        .hero-seamless {
+          flex-direction: column;
+          align-items: stretch;
+          min-height: auto;
+          padding-bottom: 24px;
+        }
+        .hero-content-seamless {
+          max-width: 100%;
+        }
+        .hero-art-seamless {
+          position: relative;
+          top: 0;
+          right: 0;
+          bottom: 0;
+          width: 100%;
+          height: 260px;
+          margin-top: 12px;
+          opacity: 0.85;
+          -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 15%, #000 85%, transparent 100%);
+          mask-image: linear-gradient(to bottom, transparent 0%, #000 15%, #000 85%, transparent 100%);
+        }
+        .feature-grid-4 { grid-template-columns: 1fr; }
+        .popular-exams-row { grid-template-columns: 1fr; }
+      }
     </style>
   </head>
   <body>
@@ -1431,7 +764,7 @@
     <script type="module" src="/src/main.tsx"></script>
     <script>
       (function() {
-        // GovOS Interactive Ambient Canvas Particle System (Unified Architecture)
+        // GovOS Cohesive Interactive Ambient Canvas Layer
         let canvas = null;
         let ctx = null;
         let animId = null;
@@ -1459,24 +792,20 @@
           const heightVal = h || 600;
           const area = widthVal * heightVal;
           if (widthVal > 1024) {
-            // Desktop: 45 to 60 particles depending on available area
-            return Math.min(60, Math.max(45, Math.round(area / 16000)));
+            return Math.min(48, Math.max(34, Math.round(area / 18000)));
           } else if (widthVal > 640) {
-            // Tablet: 25 to 35 particles
-            return Math.min(35, Math.max(25, Math.round(area / 22000)));
+            return Math.min(28, Math.max(18, Math.round(area / 24000)));
           } else {
-            // Mobile: 12 to 20 particles
-            return Math.min(20, Math.max(12, Math.round(area / 28000)));
+            return Math.min(14, Math.max(10, Math.round(area / 32000)));
           }
         }
 
         function createParticle(w, h) {
           const colorObj = COLOR_PALETTE[Math.floor(Math.random() * COLOR_PALETTE.length)];
-          // Slightly increased visibility: base alpha 0.30 - 0.58
-          const baseAlpha = 0.30 + Math.random() * 0.28;
-          const radius = 1.4 + Math.random() * 1.4;
+          const baseAlpha = 0.26 + Math.random() * 0.24;
+          const radius = 1.3 + Math.random() * 1.3;
           const angle = Math.random() * Math.PI * 2;
-          const speed = 0.20 + Math.random() * 0.25;
+          const speed = 0.18 + Math.random() * 0.22;
 
           const vx = Math.cos(angle) * speed;
           const vy = Math.sin(angle) * speed;
@@ -1493,7 +822,7 @@
             alpha: baseAlpha,
             baseAlpha: baseAlpha,
             pulseOffset: Math.random() * Math.PI * 2,
-            pulseSpeed: 0.018 + Math.random() * 0.02
+            pulseSpeed: 0.016 + Math.random() * 0.02
           };
         }
 
@@ -1510,16 +839,9 @@
           const parent = canvas.parentElement;
           if (!parent) return;
 
-          // Dynamically adjust parent height to match hero section naturally
-          const heroEl = document.querySelector('.hero-seamless');
-          if (heroEl) {
-            const computedHeroHeight = Math.max(540, heroEl.offsetHeight + 36);
-            parent.style.height = computedHeroHeight + 'px';
-          }
-
           const rect = parent.getBoundingClientRect();
           width = rect.width || window.innerWidth;
-          height = rect.height || 650;
+          height = rect.height || 600;
 
           dpr = Math.min(window.devicePixelRatio || 1, 2);
           canvas.width = Math.floor(width * dpr);
@@ -1550,16 +872,16 @@
             return;
           }
 
-          // Clean, subtle constellation links between nearby particles
+          // Subtle, delicate constellation links between nearby particles
           const maxLinkDist = 65;
-          ctx.lineWidth = 0.8;
+          ctx.lineWidth = 0.75;
           for (let i = 0; i < particles.length; i++) {
             for (let j = i + 1; j < particles.length; j++) {
               const dx = particles[i].x - particles[j].x;
               const dy = particles[i].y - particles[j].y;
               const dist = Math.sqrt(dx * dx + dy * dy);
               if (dist < maxLinkDist) {
-                const linkAlpha = (1 - dist / maxLinkDist) * 0.12;
+                const linkAlpha = (1 - dist / maxLinkDist) * 0.10;
                 ctx.strokeStyle = `rgba(147, 197, 253, ${linkAlpha})`;
                 ctx.beginPath();
                 ctx.moveTo(particles[i].x, particles[i].y);
@@ -1569,16 +891,16 @@
             }
           }
 
-          // Update & draw particles with smooth physical cursor response
-          const mouseRadius = 150;
+          // Update & draw particles with physical cursor interaction
+          const mouseRadius = 140;
           for (let i = 0; i < particles.length; i++) {
             const p = particles[i];
 
-            // Gentle natural pulsing
+            // Natural pulsing
             p.pulseOffset += p.pulseSpeed;
             p.alpha = p.baseAlpha + Math.sin(p.pulseOffset) * 0.08;
 
-            // Cursor proximity interaction with smooth physical deflection
+            // Cursor proximity interaction
             if (isHovering) {
               const dx = p.x - mouseX;
               const dy = p.y - mouseY;
@@ -1586,14 +908,14 @@
 
               if (dist < mouseRadius && dist > 0) {
                 const factor = 1 - dist / mouseRadius;
-                const force = factor * factor * 0.45;
+                const force = factor * factor * 0.38;
                 p.vx += (dx / dist) * force;
                 p.vy += (dy / dist) * force;
-                p.alpha = Math.min(p.baseAlpha + factor * 0.32, 0.88);
+                p.alpha = Math.min(p.baseAlpha + factor * 0.3, 0.85);
               }
             }
 
-            // Smoothly dampen velocity back towards natural calm drift
+            // Smooth physical velocity dampening back to calm drift
             p.vx = p.vx * 0.95 + p.naturalVx * 0.05;
             p.vy = p.vy * 0.95 + p.naturalVy * 0.05;
 
@@ -1620,10 +942,10 @@
           ctx.fillStyle = `rgba(${p.color.r}, ${p.color.g}, ${p.color.b}, ${p.alpha})`;
           ctx.fill();
 
-          // Delicate micro glow for soft luminescence
+          // Soft micro glow
           ctx.beginPath();
           ctx.arc(p.x, p.y, p.radius * 2.2, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(${p.color.r}, ${p.color.g}, ${p.color.b}, ${p.alpha * 0.22})`;
+          ctx.fillStyle = `rgba(${p.color.r}, ${p.color.g}, ${p.color.b}, ${p.alpha * 0.2})`;
           ctx.fill();
           ctx.restore();
         }
@@ -1634,8 +956,8 @@
           mouseX = e.clientX - rect.left;
           mouseY = e.clientY - rect.top;
           isHovering = (
-            mouseX >= -60 && mouseX <= rect.width + 60 &&
-            mouseY >= -60 && mouseY <= rect.height + 60
+            mouseX >= -50 && mouseX <= rect.width + 50 &&
+            mouseY >= -50 && mouseY <= rect.height + 50
           );
         }
 

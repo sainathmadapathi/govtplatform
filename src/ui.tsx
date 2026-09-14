@@ -1030,22 +1030,10 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
 
   return (
     <div className="homepage animate-fade-in" style={{ position: 'relative', width: '100%' }}>
-      {/* Explicit Background Effects Layer matching reference image */}
+      {/* Cohesive Ambient Background Layer */}
       <div className="homepage-bg-layer" aria-hidden="true">
         <div className="bg-mesh-sky" />
         <div className="bg-mesh-sun" />
-        <div className="bg-mesh-teal" />
-        <div className="bg-decor-dots" />
-        <div className="bg-decor-pill" />
-        <div className="bg-decor-circle" />
-        <div className="bg-decor-sun-glow" />
-        <div className="bg-decor-foliage">
-          <svg viewBox="0 0 240 240" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M220 220C170 190 145 140 155 90C130 130 135 180 175 210C150 185 105 170 80 195C110 190 145 200 165 220" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" opacity="0.45"/>
-            <path d="M230 180C200 155 185 110 198 70C172 100 175 145 205 175" stroke="#059669" strokeWidth="2" strokeLinecap="round" opacity="0.35"/>
-            <path d="M185 235C160 210 150 168 165 130C145 155 148 190 172 220" stroke="#059669" strokeWidth="2" strokeLinecap="round" opacity="0.35"/>
-          </svg>
-        </div>
       </div>
 
       <div className="homepage-content-layer" style={{ display: 'flex', flexDirection: 'column', gap: '28px', position: 'relative', zIndex: 1 }}>
@@ -1071,17 +1059,40 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
               <Sparkles size={14} color="#16a34a" /> YOUR PATH. A BRIGHTER TOMORROW.
             </div>
 
-            <h1 className="hero-title">
+            <h1 style={{
+              fontSize: '3.1rem',
+              fontWeight: 800,
+              lineHeight: 1.12,
+              letterSpacing: '-0.035em',
+              color: '#0f172a',
+              margin: '0 0 16px'
+            }}>
               Government Exams.<br />
               <span style={{ color: '#2563eb' }}>Simplified</span> for You.
             </h1>
 
-            <p className="hero-subtitle">
+            <p style={{
+              color: '#475569',
+              fontSize: '1.05rem',
+              lineHeight: 1.6,
+              maxWidth: '520px',
+              margin: '0 0 24px'
+            }}>
               Find exams, get reliable information, prepare smarter, and never miss an important date.
             </p>
 
             {/* Pill Search Bar with Blue Circular Search Button */}
-            <div className="hero-search-wrapper">
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              background: '#ffffff',
+              border: '1px solid #e2e8f0',
+              borderRadius: '9999px',
+              padding: '6px 8px 6px 18px',
+              boxShadow: '0 10px 28px -6px rgba(0, 0, 0, 0.05)',
+              maxWidth: '520px',
+              marginBottom: '18px'
+            }}>
               <Search size={18} color="#64748b" style={{ flexShrink: 0, marginRight: '10px' }} />
               <input
                 type="text"
@@ -1103,8 +1114,22 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
                 }}
               />
               <button
-                className="hero-search-btn"
                 onClick={() => document.getElementById('exam-finder-engine')?.scrollIntoView({ behavior: 'smooth' })}
+                style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '50%',
+                  background: '#2563eb',
+                  color: '#ffffff',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  boxShadow: '0 4px 12px rgba(37, 99, 235, 0.35)',
+                  transition: 'all 0.2s ease'
+                }}
                 aria-label="Search"
               >
                 <Search size={16} />
@@ -1117,8 +1142,19 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
               {['SSC CGL', 'UPSC CSE', 'RRB NTPC', 'IBPS PO', 'State PSC'].map(name => (
                 <button
                   key={name}
-                  className="hero-chip-btn"
                   onClick={() => handleSearchChange(name)}
+                  style={{
+                    background: '#ffffff',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '9999px',
+                    padding: '5px 14px',
+                    fontSize: '0.82rem',
+                    fontWeight: 600,
+                    color: '#334155',
+                    cursor: 'pointer',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+                    transition: 'all 0.15s ease'
+                  }}
                 >
                   {name}
                 </button>
@@ -1128,14 +1164,42 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
             {/* Action Buttons */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
               <button
-                className="hero-btn-primary"
                 onClick={() => document.getElementById('exam-finder-engine')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  background: '#2563eb',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '9999px',
+                  padding: '12px 24px',
+                  fontSize: '0.95rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: '0 8px 20px -4px rgba(37, 99, 235, 0.4)',
+                  transition: 'all 0.2s ease'
+                }}
               >
                 <Search size={16} /> Find My Exam <ArrowRight size={16} />
               </button>
               <button
-                className="hero-btn-secondary"
                 onClick={() => document.getElementById('featured-exams')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  background: '#ffffff',
+                  color: '#1e293b',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '9999px',
+                  padding: '12px 22px',
+                  fontSize: '0.95rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
+                  transition: 'all 0.2s ease'
+                }}
               >
                 <Compass size={16} color="#2563eb" /> Explore Exams
               </button>
