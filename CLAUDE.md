@@ -621,6 +621,13 @@ walked every `style={{…}}` block and mapped literals that only made sense on n
 `--surface-3`, and the dark gradient panels (`rgba(17,24,39,…)`, `rgba(15,23,42,…)`) → white.
 When adding UI, write colours as tokens; a new hex meant for a dark ground will read wrong.
 
+**The hero illustration is the user's reference art, not a drawing.** `src/hero-illustration.png`
+is cropped from the GovOS reference mockup (the hero's right panel), with its handwritten
+caption filled from the neighbouring sky and upscaled 3x; `ui.tsx` imports it and Vite
+inlines it into the single-file build (the `vite/client` reference at the top of `ui.tsx`
+types the import). It is the one non-source file under `src/`; do not replace it with a
+generated scene — the user asked for this image specifically.
+
 **Three layouts follow the mockup.** `Header` is the `.topbar` (Home · the current exam ·
 Compare · My Timeline · Ask AI, then Am I Eligible? and Trust Panel as subtle links, bell,
 avatar). `ExamFinder` opens with the `.hero` (headline, search bound to the finder's own
