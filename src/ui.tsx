@@ -203,6 +203,7 @@ export const Header: React.FC<HeaderProps> = ({
 
       <nav style={{ display: 'flex', alignItems: 'center', gap: '2px', overflowX: 'auto', flexWrap: 'wrap' }}>
         {link('FINDER', <><Compass size={15} /> Home</>)}
+        {link('FINDER', 'Exam Finder', undefined, () => setTimeout(() => document.getElementById('exam-finder-engine')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60))}
         {link('EXAM_DETAIL', <><BookOpen size={15} /> {examShort}</>)}
         {link('COMPARE', 'Compare')}
         {link('CALENDAR', <>My Timeline{trackedCount > 0 && <span className="badge badge-verified" style={{ fontSize: '0.6rem', padding: '1px 7px' }}>{trackedCount}</span>}</>, undefined, onOpenTimeline)}
@@ -495,9 +496,78 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
           </div>
         </div>
         <div className="hero-art" aria-hidden="true">
-          <div className="caption">Small Steps<br />Big Opportunities</div>
-          <div className="dome" />
-          <div className="ground" />
+          <svg viewBox="0 0 640 420" preserveAspectRatio="xMidYMax slice" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
+            <defs>
+              <linearGradient id="skyG" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stopColor="#dbe9ff" /><stop offset="0.55" stopColor="#eef4ff" /><stop offset="1" stopColor="#fbf3e6" />
+              </linearGradient>
+              <radialGradient id="sunG" cx="0.78" cy="0.22" r="0.42">
+                <stop offset="0" stopColor="#ffe6b8" stopOpacity="0.95" /><stop offset="0.5" stopColor="#ffd9a1" stopOpacity="0.45" /><stop offset="1" stopColor="#ffd9a1" stopOpacity="0" />
+              </radialGradient>
+              <linearGradient id="hillG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#bfe0b6" /><stop offset="1" stopColor="#8cc98a" /></linearGradient>
+              <linearGradient id="hill2G" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#d6ebcf" /><stop offset="1" stopColor="#b6dbb0" /></linearGradient>
+              <linearGradient id="stoneG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#ffffff" /><stop offset="1" stopColor="#d7dfeb" /></linearGradient>
+              <linearGradient id="domeG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#ffffff" /><stop offset="1" stopColor="#c9d4e6" /></linearGradient>
+              <linearGradient id="treeG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#6fb46b" /><stop offset="1" stopColor="#3f8a4a" /></linearGradient>
+              <linearGradient id="rockG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#9aa8bd" /><stop offset="1" stopColor="#5b6b84" /></linearGradient>
+            </defs>
+
+            {/* sky and sun */}
+            <rect width="640" height="420" fill="url(#skyG)" />
+            <rect width="640" height="420" fill="url(#sunG)" />
+            <circle cx="500" cy="92" r="34" fill="#fff1d6" opacity="0.9" />
+
+            {/* far hills */}
+            <path d="M0 300 C 90 250, 180 262, 260 292 C 330 318, 420 262, 640 300 L640 420 L0 420 Z" fill="url(#hill2G)" />
+
+            {/* the building: side towers, colonnade, dome */}
+            <g transform="translate(150 0)">
+              <rect x="22" y="232" width="40" height="78" fill="url(#stoneG)" />
+              <path d="M22 232 L42 214 L62 232 Z" fill="#e9eef7" />
+              <rect x="258" y="232" width="40" height="78" fill="url(#stoneG)" />
+              <path d="M258 232 L278 214 L298 232 Z" fill="#e9eef7" />
+              <rect x="40" y="250" width="240" height="62" fill="url(#stoneG)" />
+              <rect x="40" y="244" width="240" height="8" fill="#ffffff" />
+              {[52, 76, 100, 124, 148, 172, 196, 220, 244].map(x => <rect key={x} x={x} y="256" width="8" height="50" fill="#c8d2e2" opacity="0.9" />)}
+              <rect x="105" y="222" width="110" height="30" fill="url(#stoneG)" />
+              <rect x="100" y="218" width="120" height="6" fill="#ffffff" />
+              <path d="M112 222 C 112 176, 208 176, 208 222 Z" fill="url(#domeG)" />
+              <rect x="154" y="160" width="12" height="20" fill="#e6ecf6" />
+              <circle cx="160" cy="156" r="5" fill="#f2c94c" />
+              <path d="M110 222 L210 222 L206 230 L114 230 Z" fill="#cfd8e6" />
+            </g>
+
+            {/* trees */}
+            {[[70, 300, 26], [118, 306, 22], [560, 296, 30], [606, 306, 22], [480, 318, 18]].map(([x, y, r], i) => (
+              <g key={i}>
+                <rect x={x - 3} y={y} width="6" height="22" fill="#7a5a3b" />
+                <circle cx={x} cy={y - r + 6} r={r} fill="url(#treeG)" />
+                <circle cx={x - r * 0.55} cy={y - r * 0.4 + 6} r={r * 0.7} fill="url(#treeG)" />
+                <circle cx={x + r * 0.55} cy={y - r * 0.4 + 6} r={r * 0.7} fill="url(#treeG)" />
+              </g>
+            ))}
+
+            {/* near hill and the rock the student sits on */}
+            <path d="M0 340 C 120 300, 240 330, 360 322 C 470 316, 560 342, 640 330 L640 420 L0 420 Z" fill="url(#hillG)" />
+            <path d="M326 372 C 326 344, 366 330, 412 338 C 454 344, 482 364, 474 384 L326 388 Z" fill="url(#rockG)" />
+
+            {/* the student: seated, facing the building, backpack on */}
+            <g transform="translate(372 262)">
+              <path d="M18 76 C 26 86, 62 88, 70 78 L64 96 L20 96 Z" fill="#1f2a44" />
+              <path d="M14 42 C 6 48, 4 78, 10 84 C 30 90, 62 88, 72 82 C 78 70, 70 44, 58 38 Z" fill="#3b82f6" />
+              <path d="M2 46 C -8 50, -10 76, -2 84 C 6 90, 12 88, 14 84 C 14 66, 10 52, 6 46 Z" fill="#1e3a8a" />
+              <rect x="-6" y="52" width="14" height="6" rx="3" fill="#0f172a" opacity="0.6" />
+              <path d="M58 40 C 66 44, 70 60, 66 70 C 74 62, 78 46, 70 38 Z" fill="#f1c9a5" />
+              <circle cx="44" cy="22" r="17" fill="#f2cdaa" />
+              <path d="M27 20 C 26 6, 42 -2, 56 6 C 64 10, 62 24, 60 26 C 54 10, 40 8, 28 24 Z" fill="#1c1917" />
+              <path d="M14 42 C 20 30, 30 26, 40 30 L46 40 L18 48 Z" fill="#f2cdaa" />
+            </g>
+
+            {/* handwritten caption */}
+            <text x="400" y="70" textAnchor="middle" style={{ fontFamily: "'Segoe Script','Bradley Hand','Comic Sans MS',cursive", fontSize: '19px', fill: '#334155' }}>
+              <tspan x="400" dy="0">Small</tspan><tspan x="400" dy="24">Steps</tspan><tspan x="400" dy="24">Big</tspan><tspan x="400" dy="24">Opportunities</tspan>
+            </text>
+          </svg>
         </div>
       </section>
 
@@ -520,15 +590,26 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
 
       <div className="quote-strip">
         <div>
-          <div style={{ fontSize: '1.15rem', fontWeight: 700, fontStyle: 'italic', color: 'var(--text-primary)' }}>“The future depends on what you do today.”</div>
+          <div style={{ fontSize: '1.15rem', fontWeight: 700, fontStyle: 'italic', color: 'var(--text-primary)', fontFamily: 'Georgia, serif' }}>“The future depends on what you do today.”</div>
           <div style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', marginTop: '4px' }}>Prepare. Persist. Succeed.</div>
+          <div style={{ display: 'flex', gap: '6px', marginTop: '12px' }}>
+            <span style={{ width: '22px', height: '6px', borderRadius: '3px', background: 'var(--primary)' }} />
+            <span style={{ width: '10px', height: '6px', borderRadius: '3px', background: '#dbe3f0' }} />
+            <span style={{ width: '10px', height: '6px', borderRadius: '3px', background: '#dbe3f0' }} />
+          </div>
         </div>
-        <div style={{ background: '#e9f3e6', borderRadius: '12px', padding: '14px 18px', fontWeight: 700, color: '#166534' }}>
-          Same Dreams · Brighter Futures
+        <div style={{ background: '#e9f3e6', borderRadius: '14px', padding: '16px 20px', fontWeight: 800, color: '#1f2937', display: 'flex', alignItems: 'center', gap: '14px', minWidth: '250px' }}>
+          <div style={{ lineHeight: 1.25 }}>Same Dreams<br />Brighter Futures</div>
+          <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true">
+            <path d="M20 36 C 20 26, 20 20, 20 14" stroke="#2f7d3a" strokeWidth="3" strokeLinecap="round" fill="none" />
+            <path d="M20 22 C 12 22, 8 16, 8 10 C 14 10, 20 14, 20 22 Z" fill="#4caf60" />
+            <path d="M20 18 C 28 18, 32 12, 32 6 C 26 6, 20 10, 20 18 Z" fill="#7cc47f" />
+          </svg>
         </div>
       </div>
 
       {/* Recommended for You Shelf (Time-Decayed BPR) */}
+      <div id="exam-finder-engine" />
       <div className="glass-card" style={{ padding: '28px', border: '1px solid rgba(99, 102, 241, 0.35)', background: 'linear-gradient(135deg, #ffffff 0%, #eef2ff 100%)' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px', marginBottom: '20px' }}>
           <div>
