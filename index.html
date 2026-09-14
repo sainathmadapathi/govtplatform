@@ -55,13 +55,7 @@
       * { box-sizing: border-box; margin: 0; padding: 0; }
 
       body {
-        background-color: #f7faff;
-        background-image:
-          radial-gradient(circle at 12% 15%, rgba(191, 219, 254, 0.55) 0%, transparent 35%),
-          radial-gradient(circle at 88% 10%, rgba(254, 240, 138, 0.5) 0%, rgba(253, 230, 138, 0.25) 30%, transparent 55%),
-          radial-gradient(circle at 75% 70%, rgba(190, 235, 220, 0.3) 0%, transparent 35%),
-          linear-gradient(135deg, #f0f6ff 0%, #f7faff 45%, #fdfbf7 100%);
-        background-attachment: fixed;
+        background-color: #f8fafc;
         color: var(--text-primary);
         font-family: var(--font-sans);
         min-height: 100vh;
@@ -583,7 +577,7 @@
 
 
       /* ===================================================
-         SINGLE BACKGROUND ENVIRONMENT
+         SINGLE UNIFIED BACKGROUND ENVIRONMENT
          =================================================== */
 
       .homepage-bg-layer {
@@ -595,43 +589,38 @@
         left: -28px;
         right: -28px;
 
-        height: clamp(620px, 58vw, 760px);
+        height: clamp(540px, 60vw, 760px);
         overflow: hidden;
 
+        /* One subtle base gradient + maximum two very soft ambient glow areas */
         background:
+          /* 1. Soft blue/indigo ambient glow (upper left) */
           radial-gradient(
-            ellipse 58% 65% at 5% 18%,
-            rgba(186, 220, 255, 0.52) 0%,
-            rgba(147, 197, 253, 0.22) 42%,
-            transparent 72%
+            ellipse 60% 55% at 8% 22%,
+            rgba(219, 234, 254, 0.48) 0%,
+            rgba(224, 231, 255, 0.18) 42%,
+            transparent 70%
           ),
-
+          /* 2. Soft warm gold ambient glow (upper right) */
           radial-gradient(
-            ellipse 58% 65% at 96% 12%,
-            rgba(254, 240, 138, 0.58) 0%,
-            rgba(253, 230, 138, 0.28) 40%,
-            transparent 72%
+            ellipse 52% 50% at 94% 18%,
+            rgba(254, 243, 199, 0.38) 0%,
+            rgba(253, 230, 138, 0.14) 40%,
+            transparent 68%
           ),
-
-          radial-gradient(
-            ellipse 48% 45% at 45% 82%,
-            rgba(204, 251, 241, 0.32) 0%,
-            rgba(167, 243, 208, 0.14) 45%,
-            transparent 72%
-          ),
-
+          /* Subtle base ambient gradient */
           linear-gradient(
-            135deg,
-            rgba(238, 246, 255, 0.92) 0%,
-            rgba(248, 251, 255, 0.96) 48%,
-            rgba(255, 252, 245, 0.95) 100%
+            180deg,
+            #f9fbff 0%,
+            #f6f9fe 55%,
+            transparent 100%
           );
 
         -webkit-mask-image:
           linear-gradient(
             to bottom,
             #000 0%,
-            #000 84%,
+            #000 82%,
             transparent 100%
           );
 
@@ -639,204 +628,21 @@
           linear-gradient(
             to bottom,
             #000 0%,
-            #000 84%,
+            #000 82%,
             transparent 100%
           );
       }
 
-
-      /* ===================================================
-         AMBIENT BACKGROUND LIGHTS
-         =================================================== */
-
-      .bg-mesh-sky {
-        position: absolute;
-        top: -120px;
-        left: -110px;
-
-        width: clamp(440px, 48vw, 760px);
-        height: clamp(420px, 48vw, 720px);
-
-        border-radius: 50%;
-
-        background:
-          radial-gradient(
-            circle,
-            rgba(186, 220, 255, 0.5) 0%,
-            rgba(147, 197, 253, 0.2) 48%,
-            transparent 74%
-          );
-
-        filter: blur(55px);
-        animation: govosBlueFloat 20s ease-in-out infinite alternate;
-      }
-
-
-      .bg-mesh-sun {
-        position: absolute;
-        top: -120px;
-        right: -100px;
-
-        width: clamp(440px, 48vw, 760px);
-        height: clamp(420px, 48vw, 720px);
-
-        border-radius: 50%;
-
-        background:
-          radial-gradient(
-            circle,
-            rgba(254, 240, 138, 0.58) 0%,
-            rgba(253, 230, 138, 0.26) 45%,
-            rgba(251, 191, 36, 0.1) 58%,
-            transparent 75%
-          );
-
-        filter: blur(55px);
-        animation: govosGoldFloat 24s ease-in-out infinite alternate;
-      }
-
-
-      .bg-mesh-teal {
-        position: absolute;
-        left: 24%;
-        top: 380px;
-
-        width: clamp(320px, 38vw, 560px);
-        height: clamp(260px, 30vw, 440px);
-
-        border-radius: 50%;
-
-        background:
-          radial-gradient(
-            circle,
-            rgba(167, 243, 208, 0.3) 0%,
-            rgba(110, 231, 183, 0.12) 48%,
-            transparent 74%
-          );
-
-        filter: blur(60px);
-        animation: govosTealFloat 22s ease-in-out infinite alternate;
-      }
-
-
-      /* ===================================================
-         DECORATIVE AMBIENT ELEMENTS
-         =================================================== */
-
-      .bg-decor-dots {
-        position: absolute;
-
-        top: 24px;
-        left: 34px;
-
-        width: 150px;
-        height: 160px;
-
-        background-image:
-          radial-gradient(
-            rgba(59, 130, 246, 0.65) 2px,
-            transparent 2px
-          );
-
-        background-size: 18px 18px;
-
-        opacity: 0.22;
-
-        animation: govosDots 12s ease-in-out infinite;
-      }
-
-
-      .bg-decor-pill {
-        position: absolute;
-
-        top: 110px;
-        left: -45px;
-
-        width: 240px;
-        height: 92px;
-
-        border-radius: 999px;
-
-        background:
-          linear-gradient(
-            135deg,
-            rgba(255, 255, 255, 0.55),
-            rgba(219, 234, 254, 0.24)
-          );
-
-        border: 1px solid rgba(255, 255, 255, 0.7);
-
-        transform: rotate(-32deg);
-
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-
-        opacity: 0.5;
-      }
-
-
-      .bg-decor-circle {
-        position: absolute;
-
-        top: 230px;
-        left: 5px;
-
-        width: 170px;
-        height: 170px;
-
-        border-radius: 50%;
-
-        background:
-          radial-gradient(
-            circle at 35% 35%,
-            rgba(255, 255, 255, 0.65),
-            rgba(219, 234, 254, 0.25) 55%,
-            transparent 75%
-          );
-
-        opacity: 0.55;
-      }
-
-
-      .bg-decor-sun-glow {
-        position: absolute;
-
-        top: -40px;
-        right: 80px;
-
-        width: 420px;
-        height: 420px;
-
-        border-radius: 50%;
-
-        background:
-          radial-gradient(
-            circle,
-            rgba(254, 240, 138, 0.45) 0%,
-            rgba(253, 230, 138, 0.18) 45%,
-            transparent 72%
-          );
-
-        filter: blur(40px);
-      }
-
-
+      /* Disable redundant static background decorations to eliminate visual clutter */
+      .bg-mesh-sky,
+      .bg-mesh-sun,
+      .bg-mesh-teal,
+      .bg-decor-dots,
+      .bg-decor-pill,
+      .bg-decor-circle,
+      .bg-decor-sun-glow,
       .bg-decor-foliage {
-        position: absolute;
-
-        bottom: 20px;
-        right: 10px;
-
-        width: 250px;
-        height: 250px;
-
-        opacity: 0.12;
-      }
-
-
-      .bg-decor-foliage svg {
-        width: 100%;
-        height: 100%;
+        display: none !important;
       }
 
 
@@ -1401,7 +1207,7 @@
       @media (max-width: 1024px) {
 
         .homepage-bg-layer {
-          height: 680px;
+          height: clamp(520px, 62vw, 720px);
         }
 
         .hero-seamless {
@@ -1447,7 +1253,7 @@
           left: -16px;
           right: -16px;
 
-          height: 980px;
+          height: clamp(660px, 120vw, 840px);
 
           -webkit-mask-image:
             linear-gradient(
@@ -1554,22 +1360,6 @@
             );
         }
 
-        .bg-decor-pill,
-        .bg-decor-circle,
-        .bg-decor-foliage {
-          display: none;
-        }
-
-        .bg-decor-dots {
-          width: 90px;
-          height: 100px;
-
-          left: 12px;
-          top: 10px;
-
-          opacity: 0.14;
-        }
-
         .feature-grid-4 {
           grid-template-columns: 1fr;
         }
@@ -1587,7 +1377,7 @@
       @media (max-width: 480px) {
 
         .homepage-bg-layer {
-          height: 900px;
+          height: clamp(680px, 140vw, 880px);
         }
 
         .hero-title {
@@ -1641,7 +1431,7 @@
     <script type="module" src="/src/main.tsx"></script>
     <script>
       (function() {
-        // GovOS Interactive Ambient Canvas Particle System
+        // GovOS Interactive Ambient Canvas Particle System (Unified Architecture)
         let canvas = null;
         let ctx = null;
         let animId = null;
@@ -1656,45 +1446,59 @@
         let isRunning = false;
 
         const COLOR_PALETTE = [
-          { r: 59,  g: 130, b: 246 }, // soft sky blue
+          { r: 59,  g: 130, b: 246 }, // soft blue
           { r: 96,  g: 165, b: 250 }, // light azure
-          { r: 99,  g: 102, b: 241 }, // subtle indigo
-          { r: 129, g: 140, b: 248 }, // soft purple/iris
+          { r: 99,  g: 102, b: 241 }, // subtle indigo/purple
+          { r: 129, g: 140, b: 248 }, // soft violet
           { r: 245, g: 158, b: 11  }, // warm amber/gold
           { r: 251, g: 191, b: 36  }  // gentle golden sun
         ];
 
-        function getTargetParticleCount() {
-          const w = window.innerWidth;
-          if (w > 1024) return 40;
-          if (w > 640) return 24;
-          return 14;
+        function getTargetParticleCount(w, h) {
+          const widthVal = w || window.innerWidth;
+          const heightVal = h || 600;
+          const area = widthVal * heightVal;
+          if (widthVal > 1024) {
+            // Desktop: 45 to 60 particles depending on available area
+            return Math.min(60, Math.max(45, Math.round(area / 16000)));
+          } else if (widthVal > 640) {
+            // Tablet: 25 to 35 particles
+            return Math.min(35, Math.max(25, Math.round(area / 22000)));
+          } else {
+            // Mobile: 12 to 20 particles
+            return Math.min(20, Math.max(12, Math.round(area / 28000)));
+          }
         }
 
         function createParticle(w, h) {
           const colorObj = COLOR_PALETTE[Math.floor(Math.random() * COLOR_PALETTE.length)];
-          const baseAlpha = 0.16 + Math.random() * 0.22;
-          const radius = 1.2 + Math.random() * 1.5;
+          // Slightly increased visibility: base alpha 0.30 - 0.58
+          const baseAlpha = 0.30 + Math.random() * 0.28;
+          const radius = 1.4 + Math.random() * 1.4;
           const angle = Math.random() * Math.PI * 2;
-          const speed = 0.18 + Math.random() * 0.24;
+          const speed = 0.20 + Math.random() * 0.25;
+
+          const vx = Math.cos(angle) * speed;
+          const vy = Math.sin(angle) * speed;
 
           return {
             x: Math.random() * (w || 800),
             y: Math.random() * (h || 600),
-            vx: Math.cos(angle) * speed,
-            vy: Math.sin(angle) * speed,
+            vx: vx,
+            vy: vy,
+            naturalVx: vx,
+            naturalVy: vy,
             radius: radius,
-            baseRadius: radius,
             color: colorObj,
             alpha: baseAlpha,
             baseAlpha: baseAlpha,
             pulseOffset: Math.random() * Math.PI * 2,
-            pulseSpeed: 0.015 + Math.random() * 0.02
+            pulseSpeed: 0.018 + Math.random() * 0.02
           };
         }
 
         function initParticles() {
-          const count = getTargetParticleCount();
+          const count = getTargetParticleCount(width, height);
           particles = [];
           for (let i = 0; i < count; i++) {
             particles.push(createParticle(width, height));
@@ -1705,6 +1509,13 @@
           if (!canvas) return;
           const parent = canvas.parentElement;
           if (!parent) return;
+
+          // Dynamically adjust parent height to match hero section naturally
+          const heroEl = document.querySelector('.hero-seamless');
+          if (heroEl) {
+            const computedHeroHeight = Math.max(540, heroEl.offsetHeight + 36);
+            parent.style.height = computedHeroHeight + 'px';
+          }
 
           const rect = parent.getBoundingClientRect();
           width = rect.width || window.innerWidth;
@@ -1718,7 +1529,7 @@
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
           }
 
-          const targetCount = getTargetParticleCount();
+          const targetCount = getTargetParticleCount(width, height);
           while (particles.length < targetCount) {
             particles.push(createParticle(width, height));
           }
@@ -1739,16 +1550,16 @@
             return;
           }
 
-          // Faint constellation links between nearby particles
-          const maxLinkDist = 72;
-          ctx.lineWidth = 0.75;
+          // Clean, subtle constellation links between nearby particles
+          const maxLinkDist = 65;
+          ctx.lineWidth = 0.8;
           for (let i = 0; i < particles.length; i++) {
             for (let j = i + 1; j < particles.length; j++) {
               const dx = particles[i].x - particles[j].x;
               const dy = particles[i].y - particles[j].y;
               const dist = Math.sqrt(dx * dx + dy * dy);
               if (dist < maxLinkDist) {
-                const linkAlpha = (1 - dist / maxLinkDist) * 0.07;
+                const linkAlpha = (1 - dist / maxLinkDist) * 0.12;
                 ctx.strokeStyle = `rgba(147, 197, 253, ${linkAlpha})`;
                 ctx.beginPath();
                 ctx.moveTo(particles[i].x, particles[i].y);
@@ -1758,33 +1569,36 @@
             }
           }
 
-          // Update & draw particles
-          const mouseRadius = 120;
+          // Update & draw particles with smooth physical cursor response
+          const mouseRadius = 150;
           for (let i = 0; i < particles.length; i++) {
             const p = particles[i];
 
-            // Natural organic drift
-            p.x += p.vx;
-            p.y += p.vy;
-
-            // Gentle pulsing
+            // Gentle natural pulsing
             p.pulseOffset += p.pulseSpeed;
-            p.alpha = p.baseAlpha + Math.sin(p.pulseOffset) * 0.06;
+            p.alpha = p.baseAlpha + Math.sin(p.pulseOffset) * 0.08;
 
-            // Cursor proximity interaction
+            // Cursor proximity interaction with smooth physical deflection
             if (isHovering) {
               const dx = p.x - mouseX;
               const dy = p.y - mouseY;
               const dist = Math.sqrt(dx * dx + dy * dy);
 
               if (dist < mouseRadius && dist > 0) {
-                const force = (1 - dist / mouseRadius);
-                const push = force * 0.85;
-                p.x += (dx / dist) * push;
-                p.y += (dy / dist) * push;
-                p.alpha = Math.min(p.alpha + force * 0.25, 0.6);
+                const factor = 1 - dist / mouseRadius;
+                const force = factor * factor * 0.45;
+                p.vx += (dx / dist) * force;
+                p.vy += (dy / dist) * force;
+                p.alpha = Math.min(p.baseAlpha + factor * 0.32, 0.88);
               }
             }
+
+            // Smoothly dampen velocity back towards natural calm drift
+            p.vx = p.vx * 0.95 + p.naturalVx * 0.05;
+            p.vy = p.vy * 0.95 + p.naturalVy * 0.05;
+
+            p.x += p.vx;
+            p.y += p.vy;
 
             // Boundary wrapping
             if (p.x < -10) p.x = width + 10;
@@ -1800,18 +1614,17 @@
 
         function drawParticle(p) {
           ctx.save();
+          // Core particle
           ctx.beginPath();
-          ctx.arc(p.x, p.y, Math.max(0.5, p.radius), 0, Math.PI * 2);
+          ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
           ctx.fillStyle = `rgba(${p.color.r}, ${p.color.g}, ${p.color.b}, ${p.alpha})`;
           ctx.fill();
 
-          // Soft micro glow
-          if (p.alpha > 0.25) {
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, p.radius * 2.2, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(${p.color.r}, ${p.color.g}, ${p.color.b}, ${p.alpha * 0.2})`;
-            ctx.fill();
-          }
+          // Delicate micro glow for soft luminescence
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.radius * 2.2, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(${p.color.r}, ${p.color.g}, ${p.color.b}, ${p.alpha * 0.22})`;
+          ctx.fill();
           ctx.restore();
         }
 
@@ -1821,8 +1634,8 @@
           mouseX = e.clientX - rect.left;
           mouseY = e.clientY - rect.top;
           isHovering = (
-            mouseX >= -50 && mouseX <= rect.width + 50 &&
-            mouseY >= -50 && mouseY <= rect.height + 50
+            mouseX >= -60 && mouseX <= rect.width + 60 &&
+            mouseY >= -60 && mouseY <= rect.height + 60
           );
         }
 
