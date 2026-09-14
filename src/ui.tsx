@@ -108,6 +108,7 @@ import {
   StudyModuleRequirement,
   UserProfile,
   ChannelUploadFeed,
+  ImportantDate,
   ResourceAddition,
   SscNoticeFeed,
   SyllabusRevision,
@@ -2414,6 +2415,8 @@ export interface AssistantAction {
 export type AssistantSourceKind = 'OFFICIAL' | 'PLATFORM' | 'GUIDANCE' | 'CLARIFY' | 'UNVERIFIED';
 
 interface AssistantReply {
+  /** Set when the thread has moved to another exam than the one open; the turn is stored under it. */
+  switchedExamId?: string;
   text: string;
   verified: boolean;
   sourceKind?: AssistantSourceKind;
@@ -2517,6 +2520,62 @@ const ASSISTANT_FILLER = new Set(['the', 'a', 'an', 'is', 'are', 'was', 'do', 'd
   'and', 'or', 'but', 'with', 'about', 'please', 'kindly', 'tell', 'give', 'show', 'want', 'need', 'get', 'know', 'there', 'here',
   'where', 'what', 'when', 'which', 'who', 'why', 'how', 'ssc', 'cgl', 'exam', 'govos', 'platform', 'app', 'sir', 'hai', 'hain', 'kya', 'kaise']);
 
+/**
+ * What a phrasing means, appended to the question before scoring. The candidate's words stay
+ * (the reply still quotes them); the concept is added so the intent tables can see it.
+ * Order matters only where two patterns could both fire; each appends, none replaces.
+ */
+const ASSISTANT_PARAPHRASES: { pattern: RegExp; means: string }[] = [
+  { pattern: /\b(till|until|by) when\b|\bfill (in |up )?(the )?form\b|\bform (close|closes|closing|shut)|\bsubmit the form\b/, means: 'last date to apply' },
+  { pattern: /\bwrong (tick|answer|option|mark|attempt)s?\b|\blose marks?\b|\bpenalt(y|ies)\b|\bdeduct|\bminus marks?\b|\bnegative\b/, means: 'negative marking' },
+  { pattern: /\bhow much (do|does|will|would) (they|it|the job|the post|the government) pay\b|\bearn\b|\bstipend\b|\btake.?home\b|\bmonthly pay\b|\bpay of\b/, means: 'salary' },
+  { pattern: /\b(running|walking|cycling|height|chest|fitness|endurance|physical|medical) (test|standard|standards|requirement|requirements|check)s?\b|\bphysically fit\b/, means: 'physical test' },
+  { pattern: /\bhall (pass|ticket)\b|\be.?admit\b|\badmission certificate\b|\bcall letter\b/, means: 'admit card' },
+  { pattern: /\bhow many (people|candidates|students|of us) (will|do|does|are) (they|it|get|they take|select)|\bhow many (will|do) they (take|select|recruit|pick)\b|\bseats\b|\bopenings\b|\bhow many (posts|services|jobs)\b/, means: 'vacancies' },
+  { pattern: /\battempts?\b|\bhow many times can i (sit|appear|write|attempt|try)\b|\bchances\b/, means: 'attempts' },
+  { pattern: /\b(final|fixed|confirmed) or tentative\b|\btentative\b|\bis (that|this|it) (final|fixed|confirmed)\b|\bcan (that|this|it) change\b/, means: 'tentative' },
+  { pattern: /\bprelims?\b|\bpreliminary\b/, means: 'prelims' },
+  { pattern: /\bmains?\b(?! (subject|topic))|\bmain exam\b/, means: 'mains' },
+  { pattern: /\binterview\b|\bpersonality test\b/, means: 'interview' },
+  { pattern: /\bcan i still (sit|apply|appear|write)\b|\bfinal year\b|\b(finishes|finishing|completes|completing) (next|this) year\b|\bawaiting (my )?result\b|\bresult (is )?awaited\b/, means: 'final year eligibility' },
+  { pattern: /\bwhich (one|post|service) (should|do|would) i (choose|pick|prefer|go for)\b|\bwhich is better for me\b|\bwhat should i (choose|pick)\b/, means: 'which post should i choose' },
+  { pattern: /\b(csat|paper 2|paper ii|gs paper 2)\b/, means: 'csat qualifying' },
+  { pattern: /\bqualifying marks\b|\bminimum marks\b|\bpassing marks\b|\bsafe score\b/, means: 'cutoff' }
+];
+
+/** The question with what it means added, so a phrasing the tables never listed still lands. */
+function expandParaphrases(q: string): string {
+  const added: string[] = [];
+  ASSISTANT_PARAPHRASES.forEach(({ pattern, means }) => {
+    if (pattern.test(q) && !added.includes(means)) added.push(means);
+  });
+  return added.length > 0 ? `${q} ${added.join(' ')}` : q;
+}
+
+/**
+ * The part of the question that asks. "my resources are limited, what is the fee" is a fee
+ * question: the clause after the last question word is what has to be answered.
+ */
+function questionFocus(q: string): string | null {
+  const parts = q.split(/\b(what|when|how much|how many|how|which|where|who|why|is there|are there|do i|can i|tell me|give me)\b/);
+  if (parts.length < 3) return null;
+  const focus = parts.slice(-2).join(' ').trim();
+  return contentWordsOf(focus).length >= 1 && focus.length < q.length ? focus : null;
+}
+
+/** Ordinary English the typo corrector must leave alone; none of these is a typo of anything. */
+const COMMON_WORDS = ['till', 'until', 'form', 'fill', 'pass', 'hall', 'thing', 'lose', 'wrong', 'tick', 'running', 'walking', 'test',
+  'people', 'take', 'sit', 'still', 'next', 'year', 'finishes', 'finish', 'limited', 'about', 'exact', 'wall', 'says', 'june',
+  'morning', 'every', 'forget', 'just', 'enough', 'choose', 'better', 'same', 'again', 'also', 'then', 'only', 'really', 'much',
+  'many', 'more', 'less', 'first', 'last', 'before', 'after', 'again', 'once', 'twice', 'time', 'times', 'chance', 'chances',
+  'money', 'earn', 'pays', 'paid', 'final', 'fixed', 'sure', 'true', 'real', 'actual', 'whole', 'entire', 'full', 'half',
+  'these', 'those', 'them', 'they', 'their', 'have', 'has', 'been', 'being', 'were', 'will', 'shall', 'must', 'might', 'maybe',
+  'yoga', 'video', 'saw', 'seen', 'read', 'heard', 'said', 'told', 'mean', 'means', 'meant', 'guess', 'think', 'thought',
+  'good', 'best', 'well', 'fine', 'okay', 'right', 'left', 'high', 'low', 'long', 'short', 'late', 'early', 'soon', 'today',
+  'tomorrow', 'week', 'month', 'months', 'days', 'date', 'dates', 'apply', 'applied', 'applying', 'appear', 'attempt', 'tier',
+  'prelims', 'mains', 'main', 'interview', 'stage', 'stages', 'paper', 'papers', 'marks', 'mark', 'score', 'scores', 'post',
+  'posts', 'service', 'services', 'job', 'jobs', 'exam', 'exams', 'into', 'onto', 'over', 'under', 'through', 'without', 'within'];
+
 /** Every word the assistant can match, used to correct typos before matching. Built once. */
 let assistantVocabulary: Set<string> | null = null;
 const assistantVocab = (): Set<string> => {
@@ -2533,6 +2592,8 @@ const assistantVocab = (): Set<string> => {
     'certificate', 'category', 'relaxation', 'marking', 'negative', 'pattern', 'question', 'questions', 'resources',
     'calendar', 'timeline', 'roadmap', 'bookmark', 'simulator'].forEach(w => vocab.add(w));
   ALL_EXAMS.forEach(ex => (ex.resources || []).forEach(r => { add(r.title); add(r.subject); }));
+  COMMON_WORDS.forEach(w => vocab.add(w));
+  ASSISTANT_PARAPHRASES.forEach(pp => add(pp.means));
   assistantVocabulary = vocab;
   return vocab;
 };
@@ -2609,7 +2670,9 @@ export function resolveWithHistory(message: string, history: ConversationTurn[])
     .find(words => words.length > 0);
   const inherited = lastSubject || (lastUserWords ? lastUserWords.join(' ') : '');
   if (!inherited) return null;
-  return { text: `${message} ${inherited}`.trim(), inherited };
+  // Append what the tables match, show the candidate the label they read.
+  const reenter = SUBJECT_TO_CANONICAL[inherited] || inherited;
+  return { text: `${message} ${reenter}`.trim(), inherited };
 }
 
 /**
@@ -2639,8 +2702,25 @@ const FACT_SUBJECTS: Record<string, string> = {
   admitCard: 'the admit card',
   cutoff: 'the cutoffs',
   apply: 'the application process',
-  practice: 'practice and mock tests'
+  practice: 'practice and mock tests',
+  attempts: 'the number of attempts',
+  physical: 'the physical standards',
+  tentative: 'whether the dates are final'
 };
+
+/**
+ * The phrase that re-enters each intent when a follow-up inherits it. A subject label like
+ * "the pay by post" is for the candidate to read; "salary" is what the tables match.
+ */
+const FACT_CANONICAL: Record<string, string> = {
+  targetPost: 'my target post', nextStep: 'what should i do next', studyPlan: 'what should i study', age: 'age limit',
+  eligibility: 'eligibility', dates: 'exam date', pattern: 'exam pattern', vacancy: 'vacancies', pay: 'salary',
+  syllabus: 'syllabus', fee: 'fee', resources: 'resources', admitCard: 'admit card', cutoff: 'cutoff', apply: 'apply',
+  practice: 'practice', attempts: 'attempts', physical: 'physical test', tentative: 'tentative'
+};
+const SUBJECT_TO_CANONICAL: Record<string, string> = Object.fromEntries(
+  Object.entries(FACT_SUBJECTS).map(([id, label]) => [label, FACT_CANONICAL[id] || label])
+);
 
 /** Content words of a question: what the assistant has to account for before answering. */
 const contentWordsOf = (q: string): string[] =>
@@ -2700,20 +2780,23 @@ function bestMatch<T extends { keys: string[] }>(query: string, table: T[], loos
  * decides which question it answers.
  */
 const FACT_INTENTS: { id: string; keys: string[] }[] = [
-  { id: 'targetPost', keys: ['this post', 'that post', 'my post', 'my target post', 'the post i selected', 'my selected post', 'about this post'] },
+  { id: 'targetPost', keys: ['this post', 'that post', 'my post', 'my target post', 'the post i selected', 'my selected post', 'about this post', 'which post should i choose', 'which one should i choose', 'which is better for me'] },
   { id: 'nextStep', keys: ['what should i do next', 'what next', 'next step', 'what now', 'where do i start', 'how do i start', 'where should i begin', 'what to do now', 'guide me'] },
   { id: 'studyPlan', keys: ['what should i study', 'what to study first', 'where should i start studying', 'how should i study', 'study first', 'what should i prepare'] },
-  { id: 'age', keys: ['age limit', 'maximum age', 'minimum age', 'age relaxation', 'how old', 'upper age', 'age criteria', 'crucial date', 'age as on'] },
-  { id: 'eligibility', keys: ['eligib', 'qualification', 'graduate', 'graduation', 'degree', 'b tech', 'btech', 'can i apply'] },
-  { id: 'dates', keys: ['last date', 'deadline', 'closing date', 'application date', 'when can i apply', 'apply by', 'important date', 'exam date', 'when is the exam', 'notification date', 'tier 1 exam', 'tier 2 exam', 'when is tier', 'exam schedule', 'exam month', 'which month'] },
-  { id: 'pattern', keys: ['negative marking', 'marking scheme', 'exam pattern', 'pattern', 'how many questions', 'how many marks', 'duration', 'tier 1', 'tier 2', 'paper pattern', 'dest', 'data entry speed test', 'qualifying'] },
-  { id: 'vacancy', keys: ['vacancy', 'vacancies', 'how many post', 'number of post', 'seats'] },
-  { id: 'pay', keys: ['salary', 'pay level', 'pay scale', 'in hand', 'grade pay'] },
+  { id: 'age', keys: ['age limit', 'maximum age', 'minimum age', 'age relaxation', 'how old', 'upper age', 'age criteria', 'crucial date', 'age as on', 'too old', 'age bar'] },
+  { id: 'eligibility', keys: ['eligib', 'qualification', 'graduate', 'graduation', 'degree', 'b tech', 'btech', 'can i apply', 'final year eligibility', 'can i still'] },
+  { id: 'dates', keys: ['last date', 'deadline', 'closing date', 'application date', 'when can i apply', 'apply by', 'important date', 'exam date', 'when is the exam', 'notification date', 'tier 1 exam', 'tier 2 exam', 'when is tier', 'exam schedule', 'exam month', 'which month', 'last date to apply', 'when is prelims', 'prelims date', 'when is mains', 'mains date', 'when is the interview', 'interview date', 'when is'] },
+  { id: 'pattern', keys: ['negative marking', 'marking scheme', 'exam pattern', 'pattern', 'how many questions', 'how many marks', 'duration', 'tier 1', 'tier 2', 'paper pattern', 'dest', 'data entry speed test', 'qualifying', 'csat qualifying', 'wrong answer', 'penalty'] },
+  { id: 'vacancy', keys: ['vacancy', 'vacancies', 'how many post', 'number of post', 'seats', 'how many services', 'which services', 'services can i get', 'posts can i get', 'openings'] },
+  { id: 'pay', keys: ['salary', 'pay level', 'pay scale', 'in hand', 'grade pay', 'how much do they pay', 'earn', 'stipend', 'take home', 'pay of'] },
   { id: 'syllabus', keys: ['syllabus', 'what to study', 'topics'] },
-  { id: 'fee', keys: ['fee', 'payment', 'how much to pay', 'application fee'] },
+  { id: 'fee', keys: ['fee', 'payment', 'how much to pay', 'application fee', 'fees'] },
   { id: 'resources', keys: ['resource', 'material', 'book', 'pdf', 'video', 'ncert', 'free course', 'youtube', 'channel', 'coaching', 'teacher'] },
-  { id: 'admitCard', keys: ['admit card', 'hall ticket'] },
-  { id: 'cutoff', keys: ['cutoff', 'cut off', 'marks needed', 'safe score'] },
+  { id: 'admitCard', keys: ['admit card', 'hall ticket', 'hall pass', 'e admit card', 'admission certificate', 'call letter'] },
+  { id: 'cutoff', keys: ['cutoff', 'cut off', 'marks needed', 'safe score', 'qualifying marks', 'minimum marks', 'csat cutoff'] },
+  { id: 'attempts', keys: ['attempts', 'number of attempts', 'how many attempts', 'how many times can i', 'chances'] },
+  { id: 'physical', keys: ['physical test', 'physical standard', 'physical standards', 'running test', 'walking test', 'fitness test', 'height', 'chest', 'medical standard'] },
+  { id: 'tentative', keys: ['tentative', 'is that final', 'is it final', 'final or tentative', 'confirmed', 'fixed date', 'can it change'] },
   { id: 'apply', keys: ['apply', 'application', 'otr', 'registration', 'photo', 'signature'] },
   { id: 'practice', keys: ['practice', 'mock', 'test', 'pyq', 'previous year'] }
 ];
@@ -2857,15 +2940,28 @@ export const defaultChatContext = (exam: Exam = SSC_CGL_EXAM): ChatContext => ({
 });
 
 /** Another exam named in the message, when the candidate switches subject mid-conversation. */
+/** Words in exam titles that name nothing on their own: "services" must not mean APPSC. */
+const GENERIC_EXAM_WORDS = new Set(['exam', 'examination', 'level', 'combined', 'services', 'service', 'civil', 'graduate', 'officer',
+  'probationary', 'group', 'staff', 'selection', 'commission', 'public', 'union', 'personnel', 'banking', 'management', 'trainee',
+  'recruitment', 'process', 'institute', 'state', 'andhra', 'pradesh', 'main', 'preliminary', '2026', '2027']);
+
 function examNamedIn(q: string, current: Exam): Exam | null {
   const words = normaliseQuery(q).split(' ').filter(Boolean);
   const hit = ALL_EXAMS.find(ex => {
     if (ex.id === current.id) return false;
-    const code = normaliseQuery(ex.code || '').split(' ').filter(w => w.length >= 3);
-    const title = normaliseQuery(ex.title).split(' ').filter(w => w.length >= 4 && !['exam', 'examination', 'level', 'combined'].includes(w));
+    // the code's own tokens (ssc, cgl, upsc, cse, ibps, appsc ...) and any distinctive title word
+    const code = normaliseQuery((ex.code || '').replace(/_/g, ' ')).split(' ').filter(w => w.length >= 3 && !/^\d+$/.test(w) && !GENERIC_EXAM_WORDS.has(w));
+    const title = normaliseQuery(ex.title).split(' ').filter(w => w.length >= 4 && !GENERIC_EXAM_WORDS.has(w) && !/^\d+$/.test(w));
     return [...code, ...title].some(w => words.includes(w));
   });
   return hit || null;
+}
+
+/** The exam the thread last answered about, when a switch was made earlier in it. */
+function threadExam(ctx: ChatContext): Exam {
+  const lastId = [...ctx.history].reverse().find(t => t.role === 'assistant')?.examId;
+  if (!lastId || lastId === ctx.exam.id) return ctx.exam;
+  return ALL_EXAMS.find(e => e.id === lastId) || ctx.exam;
 }
 
 export function answerCandidateQuery(query: string, context?: ChatContext): AssistantReply {
@@ -2883,20 +2979,24 @@ export function answerCandidateQuery(query: string, context?: ChatContext): Assi
     return { verified: true, text: 'You are welcome. Ask whenever you need a date, a rule, or where something is.' };
   }
 
-  // The candidate named a different exam: answer about that one and say so, rather than
-  // silently keeping the old context.
-  const switched = examNamedIn(raw, ctx.exam);
-  const active: ChatContext = switched ? { ...ctx, exam: switched, targetPost: undefined } : ctx;
+  // The thread may already have moved to another exam ("and for upsc?" two turns ago); it
+  // stays there until the candidate names one. Naming a different exam now switches again.
+  const base = threadExam(ctx);
+  const switched = examNamedIn(raw, base);
+  const activeExam = switched || base;
+  const active: ChatContext = activeExam.id !== ctx.exam.id ? { ...ctx, exam: activeExam, targetPost: undefined } : ctx;
 
-  // Everything else is answered from the typo-corrected question, and the reply opens by
-  // saying what was corrected — a silent correction would hide a wrong guess.
+  // Everything else is answered from the typo-corrected question, with what the phrasing
+  // means added, and the reply opens by saying what was corrected.
   const corrected = correctAssistantQuery(raw);
+  const understood = expandParaphrases(corrected.text);
   let reply: AssistantReply | null = null;
+  const prevSubject = [...active.history].reverse().find(t => t.role === 'assistant' && t.subject)?.subject;
 
   // A message that names nothing of its own is a follow-up: give it the conversation's
   // subject before answering, rather than letting a stray word decide.
-  if (needsInheritedSubject(corrected.text) && active.history.length > 0) {
-    const inheritedFirst = resolveWithHistory(corrected.text, active.history);
+  if (needsInheritedSubject(understood) && active.history.length > 0) {
+    const inheritedFirst = resolveWithHistory(understood, active.history);
     if (inheritedFirst) {
       const answered = answerCorrectedQuery(inheritedFirst.text, active);
       if (!answered.unresolved) {
@@ -2904,11 +3004,26 @@ export function answerCandidateQuery(query: string, context?: ChatContext): Assi
       }
     }
   }
-  if (!reply) reply = answerCorrectedQuery(corrected.text, active);
+
+  // A short "and for OBC?" / "and tier 2?" / "and the inspector?" refines the previous
+  // subject rather than opening a new one. Try it as a refinement; keep that reading only
+  // when it lands on the same subject the thread was already on.
+  const isRefinement = !reply && prevSubject && active.history.length > 0
+    && /^(and|for|what about|how about|also|then|now|but)\b/.test(understood) && contentWordsOf(corrected.text).length <= 3;
+  if (isRefinement) {
+    const refined = resolveWithHistory(understood, active.history);
+    if (refined) {
+      const answered = answerCorrectedQuery(refined.text, active);
+      if (!answered.unresolved && answered.subject === prevSubject) {
+        reply = { ...answered, text: `Taking that as a follow-up about ${refined.inherited}.\n\n${answered.text}` };
+      }
+    }
+  }
+  if (!reply) reply = answerCorrectedQuery(understood, active);
 
   // Still nothing placed? Try the conversation's subject as a last resort.
   if (reply.unresolved && active.history.length > 0) {
-    const expanded = resolveWithHistory(corrected.text, active.history);
+    const expanded = resolveWithHistory(understood, active.history);
     if (expanded) {
       const retry = answerCorrectedQuery(expanded.text, active);
       if (!retry.unresolved) {
@@ -2919,8 +3034,8 @@ export function answerCandidateQuery(query: string, context?: ChatContext): Assi
 
   // Name the subject of the turn, so the next message can inherit it.
   if (!reply.subject) {
-    const factHit = bestMatch(corrected.text, FACT_INTENTS) || bestMatch(corrected.text, FACT_INTENTS, true);
-    const navHit = bestMatch(corrected.text, PLATFORM_MAP) || bestMatch(corrected.text, PLATFORM_MAP, true);
+    const factHit = bestMatch(understood, FACT_INTENTS) || bestMatch(understood, FACT_INTENTS, true);
+    const navHit = bestMatch(understood, PLATFORM_MAP) || bestMatch(understood, PLATFORM_MAP, true);
     const subject = (factHit && FACT_SUBJECTS[factHit.entry.id]) || (navHit && navHit.entry.keys[0]) || undefined;
     if (subject) reply = { ...reply, subject };
   }
@@ -2930,9 +3045,11 @@ export function answerCandidateQuery(query: string, context?: ChatContext): Assi
     prefix.push(`(I read ${corrected.corrections.map(c => `"${c.typed}" as "${c.readAs}"`).join(', ')}.)`);
   }
   if (switched) {
-    prefix.push(`(Switching to ${switched.title}. Say the name again to go back to ${ctx.exam.title}.)`);
+    prefix.push(`(Switching to ${switched.title}. Name ${base.title.split(' ')[0]} again to go back.)`);
   }
-  return prefix.length > 0 ? { ...reply, text: `${prefix.join('\n')}\n\n${reply.text}` } : reply;
+  // The turn records which exam it answered about, so the next message can stay there.
+  const withExam: AssistantReply = activeExam.id !== ctx.exam.id ? { ...reply, switchedExamId: activeExam.id } : reply;
+  return prefix.length > 0 ? { ...withExam, text: `${prefix.join('\n')}\n\n${withExam.text}` } : withExam;
 }
 
 /** The grounded answer for a question whose spelling has already been repaired. */
@@ -2949,8 +3066,19 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
 
   // ---- which part of the platform, and which fact, does this question best describe?
   // exact first; only if nothing at all matched, try again forgiving typos
-  const nav = bestMatch(q, PLATFORM_MAP) || bestMatch(q, PLATFORM_MAP, true);
-  const fact = bestMatch(q, FACT_INTENTS) || bestMatch(q, FACT_INTENTS, true);
+  let nav = bestMatch(q, PLATFORM_MAP) || bestMatch(q, PLATFORM_MAP, true);
+  let fact = bestMatch(q, FACT_INTENTS) || bestMatch(q, FACT_INTENTS, true);
+  // The clause that asks outranks a noun mentioned in passing: "my resources are limited,
+  // what is the fee" is about the fee.
+  const focus = questionFocus(q);
+  if (focus) {
+    const focusFact = bestMatch(focus, FACT_INTENTS) || bestMatch(focus, FACT_INTENTS, true);
+    const focusNav = bestMatch(focus, PLATFORM_MAP) || bestMatch(focus, PLATFORM_MAP, true);
+    if (focusFact && focusFact.score >= 1 && (!fact || focusFact.entry.id !== fact.entry.id)) {
+      fact = { entry: focusFact.entry, score: Math.max(focusFact.score, fact ? fact.score : 0) };
+      nav = focusNav && focusNav.score >= 6 ? focusNav : (nav && asksLocation(focus) ? nav : null);
+    }
+  }
   const factId = fact ? fact.entry.id : '';
 
   // Naming a specific entry in the library beats a section-level answer — but only when no
@@ -2995,11 +3123,68 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
     const minAge = Math.min(...exam.posts.map(p => p.minAge));
     const maxAge = Math.max(...exam.posts.map(p => p.maxAge));
     const post = exam.posts[0];
+    const ageCard = (exam.eligibilityHighlights || []).find(c => /age/i.test(c.title));
+    // Relaxation by category, read from the exam's own eligibility card when it has one.
+    const relaxOf = (cat: string, fallback: number): number => {
+      const m = ageCard && new RegExp(`${cat}[^.;]*?(\\d+) years`, 'i').exec(ageCard.body);
+      return m ? Number(m[1]) : fallback;
+    };
+    const relax: [string, number][] = [['OBC', relaxOf('OBC', 3)], ['SC/ST', relaxOf('SC/ST', 5)], ['PwBD', relaxOf('Benchmark Disability|PwBD', 10)]];
+    const asked = /\bobc\b/.test(q) ? 'OBC' : /\b(sc|st|sc st|sc\/st)\b/.test(q) ? 'SC/ST' : /\bpwbd|disab/.test(q) ? 'PwBD' : /\bews\b/.test(q) ? 'EWS' : /\b(ur|general|unreserved)\b/.test(q) ? 'General' : '';
+    const examName = exam.code.replace(/_/g, ' ');
+    if (asked) {
+      const years = asked === 'EWS' || asked === 'General' ? 0 : relax.find(r => r[0] === asked)![1];
+      return {
+        verified: true,
+        subject: FACT_SUBJECTS.age,
+        text: years > 0
+          ? `For ${asked} candidates the upper age limit of ${examName} relaxes by ${years} years: up to ${maxAge + years} on the crucial date, ${exam.crucialEligibilityDate}${asked === 'PwBD' ? ' (and a PwBD candidate who is also OBC or SC/ST gets both relaxations)' : ''}. The lower limit stays ${minAge}.`
+          : `${asked} candidates get no age relaxation in ${examName}: the limit is ${minAge} to ${maxAge} years on the crucial date, ${exam.crucialEligibilityDate}.`,
+        citation: citeFrom(ageCard ? ageCard.provenance : post.provenance, `${exam.title} Official Notice`),
+        action: { label: 'Check my age eligibility', tab: 'ELIGIBILITY' }
+      };
+    }
     return {
       verified: true,
-      text: `Age limits run from ${minAge} to ${maxAge} years across the ${exam.posts.length} SSC CGL posts — each post sets its own band, so check the one you are targeting.\n\nAge is counted as on the crucial date, ${exam.crucialEligibilityDate}, not the date you apply.\n\nRelaxation on the upper limit: OBC +3 years, SC/ST +5 years, PwBD +10 years (on top of the category relaxation where both apply).\n\nThe Am I Eligible? tab applies all of this to your date of birth and tells you post by post.`,
-      citation: citeFrom(post.provenance, 'SSC CGL 2026 Official Notice'),
+      text: `Age limits run from ${minAge} to ${maxAge} years across the ${exam.posts.length} ${examName} posts${minAge !== Math.max(...exam.posts.map(p => p.minAge)) || maxAge !== Math.min(...exam.posts.map(p => p.maxAge)) ? ' — each post sets its own band, so check the one you are targeting' : ''}.\n\nAge is counted as on the crucial date, ${exam.crucialEligibilityDate}, not the date you apply.\n\nRelaxation on the upper limit: ${relax.map(r => `${r[0]} +${r[1]} years`).join(', ')} (a PwBD candidate who is also OBC or SC/ST gets both).\n\nThe Am I Eligible? tab applies all of this to your date of birth and tells you post by post.`,
+      citation: citeFrom(ageCard ? ageCard.provenance : post.provenance, `${exam.title} Official Notice`),
       action: { label: 'Check my age eligibility', tab: 'ELIGIBILITY' }
+    };
+  }
+
+  if (factId === 'attempts') {
+    const card = (exam.eligibilityHighlights || []).find(c => /attempt/i.test(c.title));
+    return card
+      ? { verified: true, subject: FACT_SUBJECTS.attempts, text: `${card.body}\n\nThat is the rule as the notice states it; the age limit still applies on top.`, citation: citeFrom(card.provenance, `${exam.title} Official Notice`), action: { label: 'Open Eligibility & Posts', tab: 'EXAM_DETAIL', section: 3 } }
+      : { verified: true, subject: FACT_SUBJECTS.attempts, text: `The ${exam.title} notice sets no limit on the number of attempts: you may appear every year you are within the age limit (counted on ${exam.crucialEligibilityDate}) and hold the qualification. Only the age band caps it.`, citation: citeFrom(exam.posts[0].provenance, `${exam.title} Official Notice`), action: { label: 'Open Eligibility & Posts', tab: 'EXAM_DETAIL', section: 3 } };
+  }
+
+  if (factId === 'physical') {
+    const physical = exam.posts.filter(p => p.physicalRequired);
+    if (physical.length === 0) {
+      return { verified: true, subject: FACT_SUBJECTS.physical, text: `None of the ${exam.posts.length} ${exam.title} posts on record requires a physical or endurance test; selection is on the written stages${exam.stages.some(st => st.tier === 'INTERVIEW') ? ' and the interview' : ''} alone.`, citation: citeFrom(exam.posts[0].provenance, `${exam.title} Official Notice`), action: { label: 'See all posts', tab: 'EXAM_DETAIL', section: 1 } };
+    }
+    const lines = physical.map(p => `• ${p.postName}${p.physicalNote ? ` — ${p.physicalNote}` : ''}`).join('\n');
+    return {
+      verified: true,
+      subject: FACT_SUBJECTS.physical,
+      text: `${physical.length} of the ${exam.posts.length} ${exam.title} posts carry physical standards:\n\n${lines}\n\nThe other ${exam.posts.length - physical.length} posts have no physical test. The Am I Eligible? tab has a physical-fitness declaration that filters these posts for you.`,
+      citation: citeFrom(physical[0].provenance, `${exam.title} Official Notice`),
+      action: { label: 'Check my eligibility', tab: 'ELIGIBILITY' }
+    };
+  }
+
+  if (factId === 'tentative') {
+    const live = exam.dates.filter(d => d.status !== 'SUPERSEDED');
+    const tentative = live.filter(d => d.isTentative);
+    const firm = live.filter(d => !d.isTentative);
+    const superseded = exam.dates.filter(d => d.status === 'SUPERSEDED');
+    return {
+      verified: true,
+      subject: FACT_SUBJECTS.tentative,
+      text: `${firm.length > 0 ? `Final, as published by ${exam.authorityName.split(' (')[0]}:\n${firm.map(d => `• ${d.label}: ${d.dateTimeStr}`).join('\n')}\n\n` : ''}${tentative.length > 0 ? `Tentative — announced but liable to change:\n${tentative.map(d => `• ${d.label}: ${d.dateTimeStr}`).join('\n')}\n\n` : 'Nothing on record is marked tentative.\n\n'}${superseded.length > 0 ? `${superseded.length} date${superseded.length === 1 ? ' has' : 's have'} already been changed by corrigendum this cycle (section 13), which is the reason to track the exam rather than memorise a date.` : 'No date has been changed by corrigendum this cycle so far. Track the exam and GovOS tells you if one is.'}`,
+      citation: live[0] ? citeFrom(live[0].provenance, `${exam.title} Official Notice`) : undefined,
+      action: { label: 'Open Dates & Timeline', tab: 'EXAM_DETAIL', section: 2 }
     };
   }
 
@@ -3099,17 +3284,48 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
   }
 
   if (factId === 'dates') {
-    const lines = exam.dates
-      .filter(d => d.status !== 'SUPERSEDED')
-      .map(d => `• ${d.label}: ${d.dateTimeStr}${d.isTentative ? ' (tentative)' : ''}`)
-      .join('\n');
+    const live = exam.dates.filter(d => d.status !== 'SUPERSEDED');
+    // Which milestone is being asked about, if one is.
+    const wanted: ImportantDate['type'][] =
+      /\b(tier ?1|tier i\b|prelims|preliminary|first stage)/.test(q) ? ['EXAM_TIER1']
+      : /\b(tier ?2|tier ii\b|mains|main exam|second stage)/.test(q) ? ['EXAM_TIER2']
+      : /\binterview|personality test/.test(q) ? ['INTERVIEW']
+      : /\badmit|hall/.test(q) ? ['ADMIT_CARD']
+      : /\bresult/.test(q) ? ['RESULT']
+      : /\b(last date|deadline|closing|close|apply by|fill)/.test(q) ? ['APPLICATION_CLOSE']
+      : /\bnotification|notice out|when will .* (come|release)/.test(q) ? ['NOTIFICATION']
+      : [];
+    const chosen = wanted.length > 0 ? live.filter(d => wanted.includes(d.type)) : [];
+    const fmt = (d: ImportantDate) => `• ${d.label}: ${d.dateTimeStr}${d.isTentative ? ' (tentative)' : ''}`;
     const close = dateOfType('APPLICATION_CLOSE', exam);
     const superseded = exam.dates.filter(d => d.status === 'SUPERSEDED');
+    if (chosen.length > 0) {
+      const anyTentative = chosen.some(d => d.isTentative);
+      return {
+        verified: true,
+        subject: FACT_SUBJECTS.dates,
+        text: `${chosen.map(fmt).join('\n')}\n\n${anyTentative ? 'A date marked tentative is announced but can still move; ' : 'These are the published dates; '}${superseded.length > 0 ? `${superseded.length} date${superseded.length === 1 ? ' has' : 's have'} already been changed by corrigendum this cycle. ` : ''}Track the exam and GovOS reminds you before each one.`,
+        citation: citeFrom(chosen[0].provenance, `${exam.title} Official Notice`),
+        action: { label: 'Open Dates & Timeline', tab: 'EXAM_DETAIL', section: 2 }
+      };
+    }
+    const lines = live.map(fmt).join('\n');
     return {
       verified: true,
       text: `Key dates on record for ${exam.title}:\n\n${lines}\n\n${typeof ctx.daysToApplicationClose === 'number' ? (ctx.daysToApplicationClose >= 0 ? `The application window closes in ${ctx.daysToApplicationClose} day${ctx.daysToApplicationClose === 1 ? '' : 's'}.\n\n` : `The application window closed ${Math.abs(ctx.daysToApplicationClose)} day${Math.abs(ctx.daysToApplicationClose) === 1 ? '' : 's'} ago.\n\n`) : ''}${superseded.length > 0 ? `${superseded.length} earlier date${superseded.length === 1 ? ' was' : 's were'} superseded by corrigendum — section 13 shows what changed.\n\n` : ''}Track the exam and GovOS will remind you before each of these.`,
-      citation: close ? citeFrom(close.provenance, 'SSC CGL 2026 Official Notice') : undefined,
+      citation: close ? citeFrom(close.provenance, `${exam.title} Official Notice`) : undefined,
       action: { label: 'Open Dates & Timeline', tab: 'EXAM_DETAIL', section: 2 }
+    };
+  }
+
+  if (factId === 'pattern' && /negative|wrong|penalt|deduct|lose|minus/.test(q)) {
+    const lines = exam.stages.filter(st => st.tier !== 'INTERVIEW').map(st => `• ${st.stageName.split(' — ')[0]}: ${st.negativeMarking}`).join('\n');
+    return {
+      verified: true,
+      subject: FACT_SUBJECTS.pattern,
+      text: `Penalty for a wrong answer in ${exam.title}:\n\n${lines}\n\nA question left blank costs nothing, so an answer you cannot narrow down is better left.`,
+      citation: citeFrom(exam.stages[0].provenance, `${exam.title} Official Notice`),
+      action: { label: 'Open the pattern section', tab: 'EXAM_DETAIL', section: 5 }
     };
   }
 
@@ -3161,6 +3377,16 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
   }
 
   if (factId === 'fee') {
+    const feeCard = (exam.eligibilityHighlights || []).find(c => /fee/i.test(c.title));
+    if (feeCard) {
+      return {
+        verified: true,
+        subject: FACT_SUBJECTS.fee,
+        text: `${feeCard.body}`,
+        citation: citeFrom(feeCard.provenance, `${exam.title} Official Notice`),
+        action: { label: 'Open the application guide', tab: 'EXAM_DETAIL', section: 4 }
+      };
+    }
     return {
       verified: false,
       text: 'The application fee is paid on SSC\'s own portal while submitting the form; women, SC, ST, PwBD and ex-servicemen candidates are exempted under the notice.\n\nGovOS does not hold the current fee figure as a verified field, so check the fee clause of the notice itself before paying — section 04 links to it, and I can search official domains live if you want the current figure.',
@@ -3190,10 +3416,44 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
   }
 
   if (factId === 'cutoff') {
-    const latest = exam.cutoffsHistory[0];
+    const rows = exam.cutoffsHistory;
+    const latestYear = rows.length > 0 ? Math.max(...rows.map(r => r.year)) : null;
+    const yearAsked = (q.match(/\b(20\d{2})\b/) || [])[1];
+    const year = yearAsked ? Number(yearAsked) : /last year|previous year/.test(q) && latestYear ? latestYear : latestYear;
+    const cat = /\bobc\b/.test(q) ? /obc/i : /\bews\b/.test(q) ? /ews/i : /\b(sc|sc st|sc\/st)\b/.test(q) ? /^sc\b|scheduled caste/i : /\bst\b/.test(q) ? /^st\b|scheduled tribe/i : /\bpwbd|disab/.test(q) ? /pwbd|disab/i : /\b(ur|general|unreserved)\b/.test(q) ? /general|^ur\b|unreserved/i : null;
+    // A qualifying paper has a rule, not a cut-off: say the rule when that paper is asked about.
+    const qualifyingStage = /csat|paper 2|paper ii|qualifying/.test(q)
+      ? exam.stages.find(st => /33%|qualifying at|qualifying nature/i.test(st.qualifyingNature))
+      : undefined;
+    const stage1 = exam.stages[0]; const stage2 = exam.stages[1];
+    const label1 = stage1 ? stage1.stageName.split(' — ')[0].split(':')[0] : 'Stage 1';
+    const label2 = stage2 ? stage2.stageName.split(' — ')[0].split(':')[0] : 'Stage 2';
+    const picked = rows.filter(r => r.year === year && (!cat || cat.test(r.category)));
+    if (qualifyingStage && /csat|paper 2|paper ii/.test(q)) {
+      const sec = qualifyingStage.sections.find(sc => /qualifying|csat|paper-ii/i.test(sc.sectionName));
+      return {
+        verified: true,
+        subject: FACT_SUBJECTS.cutoff,
+        text: `${sec ? sec.sectionName : 'That paper'} is qualifying, not ranked: ${qualifyingStage.qualifyingNature}\n\nSo there is no category-wise cut-off for it; the cut-off that decides who goes through is on the other paper${picked.length > 0 ? ` — ${year}: ${picked.map(r => `${r.category} ${r.tier1Cutoff}`).join(', ')}` : ''}.`,
+        citation: citeFrom(qualifyingStage.provenance, `${exam.title} Official Notice`),
+        action: { label: 'Open the pattern section', tab: 'EXAM_DETAIL', section: 5 }
+      };
+    }
+    if (picked.length > 0) {
+      const lines = picked.map(r => `• ${r.category}: ${label1} ${r.tier1Cutoff}${r.tier2Cutoff ? ` · ${label2} ${r.tier2Cutoff}` : ''}${r.postsEligible ? ` · ${r.postsEligible}` : ''}`).join('\n');
+      return {
+        verified: true,
+        subject: FACT_SUBJECTS.cutoff,
+        text: `${cat ? 'Cut-off' : 'Cut-offs'} on record for ${year}${cat ? ` (${picked[0].category})` : ''}:\n\n${lines}\n\n${year === latestYear ? 'That is the most recent year published; this cycle\'s cut-off does not exist yet. ' : ''}Cut-offs move with vacancies and paper difficulty, so treat them as a band to clear with margin, not a promise.`,
+        citation: citeFrom(picked[0].provenance, `${exam.title} cut-off sheet`),
+        action: { label: 'Open Cutoffs', tab: 'EXAM_DETAIL', section: 10 }
+      };
+    }
     return {
       verified: true,
-      text: `${latest ? `Most recent cutoff on record: ${latest.year} — see the full category-wise table in section 10.` : 'Cutoff history is listed in section 10 of the Exam Guide.'}\n\nCutoffs move every year with vacancies and paper difficulty, so use them as a target band rather than a promise. Your mock analytics in Practice & PYQs tell you where you stand against them.`,
+      subject: FACT_SUBJECTS.cutoff,
+      text: `${latestYear ? `Most recent cut-off on record: ${latestYear} — ${rows.filter(r => r.year === latestYear).map(r => `${r.category} ${r.tier1Cutoff}`).join(', ')} (${label1}). Ask for a category or a year and I will give that row; the full table is in section 10.` : 'Cut-off history is listed in section 10 of the exam page.'}\n\nCut-offs move every year with vacancies and paper difficulty, so use them as a target band rather than a promise.`,
+      citation: rows[0] ? citeFrom(rows[0].provenance, `${exam.title} cut-off sheet`) : undefined,
       action: { label: 'Open Cutoffs', tab: 'EXAM_DETAIL', section: 10 }
     };
   }
@@ -3326,7 +3586,8 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal,
         text: reply.text,
         subject: reply.subject,
         intent: reply.sourceKind,
-        examId: exam.id
+        // the exam this turn answered about, so a switch made mid-thread sticks
+        examId: reply.switchedExamId || exam.id
       });
 
       const aiMsg: AIChatMessage = {
@@ -3368,7 +3629,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal,
       const ctx = buildChatContext(exam, 'ASSISTANT');
       const reply = answerCandidateQuery(question, ctx);
       conversationService.append('ASSISTANT', { role: 'user', text: question, examId: exam.id });
-      conversationService.append('ASSISTANT', { role: 'assistant', text: reply.text, subject: reply.subject, intent: reply.sourceKind, examId: exam.id });
+      conversationService.append('ASSISTANT', { role: 'assistant', text: reply.text, subject: reply.subject, intent: reply.sourceKind, examId: reply.switchedExamId || exam.id });
       setMessages(prev => [...prev, {
         id: `m-ai-${Date.now()}`,
         sender: 'AI',
@@ -6049,7 +6310,20 @@ const CATALOG_SUBJECT_TO_LIBRARY: Record<string, ResourceItem['subject']> = {
 };
 
 /** What the candidate asked for: a format, one or more subjects, and the remaining words. */
-export function readNavigatorQuery(query: string): NavigatorReading {
+/** What a library request means: the phrase a candidate uses, and the words the entries carry. */
+const NAVIGATOR_CONCEPTS: { pattern: RegExp; means: string }[] = [
+  { pattern: /\b(government'?s|official|real|actual|the commission'?s) own (paper|papers|question paper)|\b(last|previous|past|earlier) year'?s? (paper|papers|question)|\bold (papers|question papers)\b|\bpyqs?\b/, means: 'previous year question papers official' },
+  { pattern: /\bbills?\b.*\b(explained|explain|summar|simplif|simply|analysis|analys)|\bexplain(ed)? (a |the )?bills?\b|\bwhat a bill (does|means)\b/, means: 'prs legislative research bill' },
+  { pattern: /\b(actual|real|full|bare) (law|text)\b|\bread the law\b|\blaw text\b|\barticles? of the constitution\b/, means: 'constitution of india official text' },
+  { pattern: /\bsomething to watch\b|\bwatch (instead|rather)|\bnot read\b/, means: 'video' },
+  { pattern: /\bwho teaches\b|\bbest teacher\b|\bwhich channel\b|\bon youtube\b/, means: 'youtube channel' },
+  { pattern: /\bdaily news\b|\bcurrent affairs from the source\b|\bgovernment press\b/, means: 'press information bureau pib' },
+  { pattern: /\bthis year'?s? (paper|prelims|mains)\b|\b2026 (paper|prelims|mains)\b/, means: '2026 question booklet official' }
+];
+
+export function readNavigatorQuery(rawQuery: string): NavigatorReading {
+  let query = rawQuery;
+  NAVIGATOR_CONCEPTS.forEach(({ pattern, means }) => { if (pattern.test(query.toLowerCase())) query = `${query} ${means}`; });
   const qNorm = normaliseQuery(query);
   const qWords = qNorm.split(' ').filter(Boolean);
 
@@ -7268,7 +7542,34 @@ const stepDifficulty = (current: string | undefined, up: boolean): CustomTestCon
   return ladder[Math.min(ladder.length - 1, Math.max(0, at + (up ? 1 : -1)))];
 };
 
-export function planPracticeRequest(query: string, pastAttempts: MockAttemptRecord[], ctx?: ChatContext): PracticePlan {
+/**
+ * What a practice request means, before the topic catalogue reads it. "Money problems" is
+ * the money topics; "the whole thing" is a full mixed paper; "the law of the land" is the
+ * Constitution, not the out-of-syllabus Law topic.
+ */
+const PRACTICE_CONCEPTS: { pattern: RegExp; means: string }[] = [
+  { pattern: /\bmoney (problems|sums|questions|maths|math)?\b|\bfinance sums\b/, means: 'percentage, profit and loss, simple interest' },
+  { pattern: /\bodd one out\b|\bodd man out\b/, means: 'classification' },
+  { pattern: /\bfull (paper|test|mock|length)\b|\bwhole (thing|paper|test)\b|\bentire (paper|test|syllabus)\b|\bcomplete (paper|test|mock)\b|\bthe lot\b/, means: 'full mock test' },
+  { pattern: /\blaw of the land\b|\bconstitution\b|\bfundamental rights\b|\bour rights\b/, means: 'polity' },
+  { pattern: /\bsums\b/, means: 'questions' },
+  { pattern: /\bkeep (getting|failing|losing)\b.*\b(wrong|marks)\b|\bweak (in|at)\b|\bstruggle with\b|\bhelp me with\b/, means: '' }
+];
+const understandPracticeRequest = (query: string): string => {
+  const full = PRACTICE_CONCEPTS.find(c => c.means === 'full mock test');
+  if (full && full.pattern.test(query.toLowerCase())) {
+    const count = (query.match(/\b(\d{1,3})\b/) || [])[1];
+    return `${count ? `${count} questions ` : ''}full mock test`;
+  }
+  let out = query;
+  PRACTICE_CONCEPTS.forEach(({ pattern, means }) => {
+    if (pattern.test(out.toLowerCase())) out = means ? `${out} ${means}` : out;
+  });
+  return out;
+};
+
+export function planPracticeRequest(rawQuery: string, pastAttempts: MockAttemptRecord[], ctx?: ChatContext): PracticePlan {
+  const query = understandPracticeRequest(rawQuery);
   // Reads as "the SSC CGL 2026 syllabus" with an exam in context and "the syllabus of this exam" without.
   const syllabusName = ctx?.exam ? `${ctx.exam.title} syllabus` : 'syllabus of this exam';
   // A follow-up like "make it harder" or "10 more" names no topic: rebuild the previous

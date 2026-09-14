@@ -277,6 +277,33 @@ resolved against `exam.posts`), the saved `UserProfile`, the journey stage, and 
 turns for that chat. Priority is the platform's: the message, then the thread, then the
 selected exam/post, then the candidate's own data, then the register.
 
+- **Meaning is read before words are scored.** Four layers sit in front of the keyword
+  tables, and the scratchpad `ctx_test.tsx` (48 self-scoring cases: paraphrases with no
+  listed keyword, trap words in another sense, negation, refinement follow-ups, a pronoun
+  exam switch, UPSC-vocabulary questions, and concept phrasings for the test creator and
+  navigator) is the check that they still hold — it went 30/48 before this layer, 48/48 after:
+  1. `ASSISTANT_PARAPHRASES` appends what a phrasing means ("till when can i fill the form"
+     → *last date to apply*, "wrong tick" → *negative marking*, "hall pass" → *admit card*,
+     "how many times can i sit" → *attempts*) so a phrasing the tables never listed lands.
+     `COMMON_WORDS` keeps the typo corrector off ordinary English ("till" is not "tell").
+  2. `questionFocus()` takes the clause after the last question word; "my resources are
+     limited, what is the fee" is a fee question, whatever noun came first.
+  3. A short refinement ("and for OBC?", "and tier 2?", "and the inspector?", "for OBC?")
+     re-enters the previous intent through `FACT_CANONICAL` and is kept only if it lands on
+     the same subject the thread was on — so it refines rather than jumps.
+  4. An exam switch sticks: `threadExam()` reads the last assistant turn's `examId`, and
+     `AssistantReply.switchedExamId` is what the turn is stored under, so "and for upsc?"
+     moves the thread and "and the age limit there?" answers for UPSC. `examNamedIn()` names
+     an exam only by its code tokens and distinctive title words (`GENERIC_EXAM_WORDS`):
+     "how many services" is a vacancy question, not APPSC Group-I Services.
+  The fact branches read the question too: cut-offs by category and year (and the qualifying
+  rule when a qualifying paper like CSAT is asked about), dates by the stage named (tier 1 /
+  prelims / mains / interview / admit card / result / last date), negative marking on its
+  own, and three intents that were missing — `attempts` and `fee` from the exam's
+  `eligibilityHighlights`, `physical` from posts with `physicalRequired`, `tentative` from
+  the dates' `isTentative`. The test creator has `PRACTICE_CONCEPTS` ("money problems",
+  "odd one out", "the whole thing" → a full mock, "the law of the land" → polity) and the
+  navigator `NAVIGATOR_CONCEPTS` ("the government's own paper", "bills explained simply").
 - **Every chat is scoped to the exam in hand, visibly.** `AIAssistant` shows a "current exam
   context" strip naming the exam and saying that naming another exam switches it;
   `ResourceAIAssistant` names the library it is searching. `namedResourceAnswer`, `dateOfType`
