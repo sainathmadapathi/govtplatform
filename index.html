@@ -1621,10 +1621,297 @@
           transition-duration: 0.01ms !important;
         }
       }
+
+      /* ===================================================
+         GOVOS INTERACTIVE CANVAS PARTICLE SYSTEM
+         =================================================== */
+      .govos-particle-canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 1;
+      }
     </style>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      (function() {
+        // GovOS Interactive Ambient Canvas Particle System
+        let canvas = null;
+        let ctx = null;
+        let animId = null;
+        let particles = [];
+        let width = 0;
+        let height = 0;
+        let dpr = 1;
+        let mouseX = -9999;
+        let mouseY = -9999;
+        let isHovering = false;
+        let prefersReducedMotion = false;
+        let isRunning = false;
+
+        const COLOR_PALETTE = [
+          { r: 59,  g: 130, b: 246 }, // soft sky blue
+          { r: 96,  g: 165, b: 250 }, // light azure
+          { r: 99,  g: 102, b: 241 }, // subtle indigo
+          { r: 129, g: 140, b: 248 }, // soft purple/iris
+          { r: 245, g: 158, b: 11  }, // warm amber/gold
+          { r: 251, g: 191, b: 36  }  // gentle golden sun
+        ];
+
+        function getTargetParticleCount() {
+          const w = window.innerWidth;
+          if (w > 1024) return 40;
+          if (w > 640) return 24;
+          return 14;
+        }
+
+        function createParticle(w, h) {
+          const colorObj = COLOR_PALETTE[Math.floor(Math.random() * COLOR_PALETTE.length)];
+          const baseAlpha = 0.16 + Math.random() * 0.22;
+          const radius = 1.2 + Math.random() * 1.5;
+          const angle = Math.random() * Math.PI * 2;
+          const speed = 0.18 + Math.random() * 0.24;
+
+          return {
+            x: Math.random() * (w || 800),
+            y: Math.random() * (h || 600),
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            radius: radius,
+            baseRadius: radius,
+            color: colorObj,
+            alpha: baseAlpha,
+            baseAlpha: baseAlpha,
+            pulseOffset: Math.random() * Math.PI * 2,
+            pulseSpeed: 0.015 + Math.random() * 0.02
+          };
+        }
+
+        function initParticles() {
+          const count = getTargetParticleCount();
+          particles = [];
+          for (let i = 0; i < count; i++) {
+            particles.push(createParticle(width, height));
+          }
+        }
+
+        function resize() {
+          if (!canvas) return;
+          const parent = canvas.parentElement;
+          if (!parent) return;
+
+          const rect = parent.getBoundingClientRect();
+          width = rect.width || window.innerWidth;
+          height = rect.height || 650;
+
+          dpr = Math.min(window.devicePixelRatio || 1, 2);
+          canvas.width = Math.floor(width * dpr);
+          canvas.height = Math.floor(height * dpr);
+
+          if (ctx) {
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          }
+
+          const targetCount = getTargetParticleCount();
+          while (particles.length < targetCount) {
+            particles.push(createParticle(width, height));
+          }
+          if (particles.length > targetCount) {
+            particles.length = targetCount;
+          }
+        }
+
+        function renderFrame() {
+          if (!ctx || !canvas) return;
+
+          ctx.clearRect(0, 0, width, height);
+
+          if (prefersReducedMotion) {
+            for (let i = 0; i < particles.length; i++) {
+              drawParticle(particles[i]);
+            }
+            return;
+          }
+
+          // Faint constellation links between nearby particles
+          const maxLinkDist = 72;
+          ctx.lineWidth = 0.75;
+          for (let i = 0; i < particles.length; i++) {
+            for (let j = i + 1; j < particles.length; j++) {
+              const dx = particles[i].x - particles[j].x;
+              const dy = particles[i].y - particles[j].y;
+              const dist = Math.sqrt(dx * dx + dy * dy);
+              if (dist < maxLinkDist) {
+                const linkAlpha = (1 - dist / maxLinkDist) * 0.07;
+                ctx.strokeStyle = `rgba(147, 197, 253, ${linkAlpha})`;
+                ctx.beginPath();
+                ctx.moveTo(particles[i].x, particles[i].y);
+                ctx.lineTo(particles[j].x, particles[j].y);
+                ctx.stroke();
+              }
+            }
+          }
+
+          // Update & draw particles
+          const mouseRadius = 120;
+          for (let i = 0; i < particles.length; i++) {
+            const p = particles[i];
+
+            // Natural organic drift
+            p.x += p.vx;
+            p.y += p.vy;
+
+            // Gentle pulsing
+            p.pulseOffset += p.pulseSpeed;
+            p.alpha = p.baseAlpha + Math.sin(p.pulseOffset) * 0.06;
+
+            // Cursor proximity interaction
+            if (isHovering) {
+              const dx = p.x - mouseX;
+              const dy = p.y - mouseY;
+              const dist = Math.sqrt(dx * dx + dy * dy);
+
+              if (dist < mouseRadius && dist > 0) {
+                const force = (1 - dist / mouseRadius);
+                const push = force * 0.85;
+                p.x += (dx / dist) * push;
+                p.y += (dy / dist) * push;
+                p.alpha = Math.min(p.alpha + force * 0.25, 0.6);
+              }
+            }
+
+            // Boundary wrapping
+            if (p.x < -10) p.x = width + 10;
+            if (p.x > width + 10) p.x = -10;
+            if (p.y < -10) p.y = height + 10;
+            if (p.y > height + 10) p.y = -10;
+
+            drawParticle(p);
+          }
+
+          animId = requestAnimationFrame(renderFrame);
+        }
+
+        function drawParticle(p) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, Math.max(0.5, p.radius), 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(${p.color.r}, ${p.color.g}, ${p.color.b}, ${p.alpha})`;
+          ctx.fill();
+
+          // Soft micro glow
+          if (p.alpha > 0.25) {
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.radius * 2.2, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(${p.color.r}, ${p.color.g}, ${p.color.b}, ${p.alpha * 0.2})`;
+            ctx.fill();
+          }
+          ctx.restore();
+        }
+
+        function handlePointerMove(e) {
+          if (!canvas) return;
+          const rect = canvas.getBoundingClientRect();
+          mouseX = e.clientX - rect.left;
+          mouseY = e.clientY - rect.top;
+          isHovering = (
+            mouseX >= -50 && mouseX <= rect.width + 50 &&
+            mouseY >= -50 && mouseY <= rect.height + 50
+          );
+        }
+
+        function handlePointerLeave() {
+          isHovering = false;
+          mouseX = -9999;
+          mouseY = -9999;
+        }
+
+        function startAnimation() {
+          if (isRunning) return;
+          isRunning = true;
+          if (!prefersReducedMotion) {
+            animId = requestAnimationFrame(renderFrame);
+          } else {
+            renderFrame();
+          }
+        }
+
+        function stopAnimation() {
+          isRunning = false;
+          if (animId) {
+            cancelAnimationFrame(animId);
+            animId = null;
+          }
+        }
+
+        function mountCanvas() {
+          const bgLayer = document.querySelector('.homepage-bg-layer');
+          if (!bgLayer) {
+            if (canvas && canvas.parentElement) {
+              canvas.parentElement.removeChild(canvas);
+            }
+            stopAnimation();
+            return;
+          }
+
+          if (canvas && canvas.parentElement === bgLayer) {
+            if (!isRunning) startAnimation();
+            return;
+          }
+
+          if (!canvas) {
+            canvas = document.createElement('canvas');
+            canvas.className = 'govos-particle-canvas';
+            canvas.setAttribute('aria-hidden', 'true');
+            ctx = canvas.getContext('2d');
+          }
+
+          bgLayer.insertBefore(canvas, bgLayer.firstChild);
+          resize();
+          initParticles();
+          startAnimation();
+        }
+
+        const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+        prefersReducedMotion = motionQuery.matches;
+        motionQuery.addEventListener('change', (e) => {
+          prefersReducedMotion = e.matches;
+          if (prefersReducedMotion) stopAnimation();
+          else startAnimation();
+        });
+
+        window.addEventListener('pointermove', handlePointerMove, { passive: true });
+        window.addEventListener('pointerleave', handlePointerLeave, { passive: true });
+        window.addEventListener('resize', () => {
+          resize();
+        }, { passive: true });
+
+        document.addEventListener('visibilitychange', () => {
+          if (document.hidden) stopAnimation();
+          else if (document.querySelector('.homepage-bg-layer')) startAnimation();
+        });
+
+        const observer = new MutationObserver(() => {
+          mountCanvas();
+        });
+
+        function bootstrap() {
+          mountCanvas();
+          observer.observe(document.body, { childList: true, subtree: true });
+        }
+
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', bootstrap);
+        } else {
+          bootstrap();
+        }
+      })();
+    </script>
   </body>
 </html>
