@@ -23,14 +23,14 @@
 
         --text-primary: #0f172a;
         --text-secondary: #526079;
-        --text-muted: #8a94a8;
+        --text-muted: #6b7689;
 
         --primary: #2f6bff;
         --primary-soft: #eaf0ff;
         --primary-glow: rgba(47, 107, 255, 0.22);
-        --emerald: #16a34a;
+        --emerald: #15803d;
         --emerald-soft: #e8f7ee;
-        --emerald-glow: rgba(22, 163, 74, 0.22);
+        --emerald-glow: rgba(21, 128, 61, 0.22);
         --amber: #d97706;
         --amber-soft: #fff4e0;
         --amber-glow: rgba(217, 119, 6, 0.22);
@@ -114,7 +114,7 @@
       .btn-primary { background: var(--primary); color: #fff; box-shadow: var(--shadow-glow); }
       .btn-primary:hover { background: #245ae6; transform: translateY(-1px); }
       .btn-emerald { background: var(--emerald); color: #fff; box-shadow: 0 8px 24px -10px var(--emerald-glow); }
-      .btn-emerald:hover { background: #15803d; transform: translateY(-1px); }
+      .btn-emerald:hover { background: #166534; transform: translateY(-1px); }
       .btn-secondary { background: #fff; color: var(--text-primary); border: 1px solid var(--border-color); }
       .btn-secondary:hover { background: var(--surface-2); border-color: #d3dbe8; }
       .btn-outline { background: transparent; color: var(--primary); border: 1px solid rgba(47, 107, 255, 0.45); }
@@ -161,7 +161,11 @@
         gap: 16px;
         flex-wrap: nowrap;
       }
-      .topbar nav { flex: 1; min-width: 0; overflow-x: auto; flex-wrap: nowrap !important; scrollbar-width: none; }
+      .topbar nav {
+        flex: 1; min-width: 0; overflow-x: auto; flex-wrap: nowrap !important; scrollbar-width: none;
+        -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
+                mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
+      }
       .topbar nav::-webkit-scrollbar { display: none; }
       .brand { font-size: 1.55rem; font-weight: 800; letter-spacing: -0.02em; color: var(--primary); cursor: pointer; }
       .nav-link {
@@ -388,13 +392,33 @@
           height: auto;
           gap: 16px;
         }
+        /* On a narrow screen the 18-item vertical list pushed the exam itself off the
+           first screen, so it becomes one horizontally scrolling row of chips instead.
+           Same buttons, same handlers — only the direction changes. */
         .side-nav {
-          max-height: 380px;
-          overflow-y: auto;
-          overflow-x: hidden;
-          margin-bottom: 8px;
-          padding: 14px;
+          display: flex;
+          flex-direction: row;
+          flex-wrap: nowrap;
+          align-items: center;
+          gap: 6px;
+          max-height: none;
+          overflow-x: auto;
+          overflow-y: hidden;
+          margin-bottom: 4px;
+          padding: 10px 12px;
+          scrollbar-width: none;
         }
+        .side-nav::-webkit-scrollbar { display: none; }
+        .side-nav .side-link { white-space: nowrap; width: auto; }
+        .side-nav .side-heading {
+          margin: 0 2px;
+          padding: 0 10px 0 6px;
+          border-left: 1px solid var(--border-color);
+          white-space: nowrap;
+          align-self: center;
+        }
+        /* "Ask GovOS AI" has its own place in the top bar; the card would be a third copy. */
+        .side-nav > div:last-child { display: none; }
         .exam-main-content {
           overflow-y: visible;
           padding-right: 0;
@@ -516,53 +540,17 @@
          GOVOS PREMIUM DYNAMIC LIGHT BACKGROUND & AMBIENT GLOW
          =================================================== */
 
-      @keyframes floatGlowBlue {
-        0% {
-          transform: translate(0, 0) scale(1);
-          opacity: 0.85;
-        }
-        50% {
-          transform: translate(60px, 40px) scale(1.18);
-          opacity: 1;
-        }
-        100% {
-          transform: translate(-30px, 20px) scale(0.95);
-          opacity: 0.8;
-        }
-      }
 
-      @keyframes floatGlowAmber {
-        0% {
-          transform: translate(0, 0) scale(1);
-          opacity: 0.8;
-        }
-        50% {
-          transform: translate(-55px, 45px) scale(1.22);
-          opacity: 1;
-        }
-        100% {
-          transform: translate(25px, -20px) scale(0.92);
-          opacity: 0.75;
-        }
-      }
 
-      @keyframes gradientShiftSmooth {
-        0% {
-          background-position: 0% 0%;
-        }
-        50% {
-          background-position: 100% 100%;
-        }
-        100% {
-          background-position: 0% 0%;
-        }
-      }
 
       .homepage {
         position: relative;
         min-height: 100vh;
         width: 100%;
-        overflow: visible;
+        /* clip, not hidden: the decorative glow and the illustration bleed a little past the
+           content column and must never turn that bleed into a horizontal scrollbar, but
+           `clip` keeps this from becoming a scroll container (sticky children still work). */
+        overflow-x: clip;
       }
 
       /* Base Responsive Background Layer */
@@ -588,7 +576,7 @@
         background: radial-gradient(circle at 45% 45%, rgba(186, 220, 255, 0.65) 0%, rgba(147, 197, 253, 0.35) 38%, rgba(219, 234, 254, 0.15) 65%, transparent 75%);
         filter: blur(55px);
         pointer-events: none;
-        animation: floatGlowBlue 16s ease-in-out infinite alternate;
+        /* static: a decorative glow that repaints forever costs battery and jank */
       }
 
       .bg-mesh-sun {
@@ -601,19 +589,9 @@
         background: radial-gradient(circle at 50% 50%, rgba(254, 240, 138, 0.65) 0%, rgba(253, 230, 138, 0.35) 35%, rgba(251, 191, 36, 0.16) 55%, transparent 75%);
         filter: blur(48px);
         pointer-events: none;
-        animation: floatGlowAmber 18s ease-in-out infinite alternate;
+        transform: none;
       }
 
-      /* Interactive Canvas Particle Layer */
-      .govos-particle-canvas {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        pointer-events: none;
-        z-index: 1;
-      }
 
       /* Ensure content containers sit relative above background */
       .homepage-content-layer {
@@ -651,20 +629,14 @@
         pointer-events: none;
         overflow: hidden;
         z-index: 1;
-        -webkit-mask-image: linear-gradient(to right,
-          transparent 0%,
-          rgba(0, 0, 0, 0.04) 10%,
-          rgba(0, 0, 0, 0.35) 24%,
-          rgba(0, 0, 0, 0.85) 42%,
-          #000000 60%
-        );
-        mask-image: linear-gradient(to right,
-          transparent 0%,
-          rgba(0, 0, 0, 0.04) 10%,
-          rgba(0, 0, 0, 0.35) 24%,
-          rgba(0, 0, 0, 0.85) 42%,
-          #000000 60%
-        );
+        -webkit-mask-image:
+          linear-gradient(to right, transparent 0%, rgba(0,0,0,0.04) 10%, rgba(0,0,0,0.35) 24%, rgba(0,0,0,0.85) 42%, #000 60%),
+          linear-gradient(to bottom, transparent 0%, #000 8%, #000 76%, transparent 100%);
+        -webkit-mask-composite: source-in;
+        mask-image:
+          linear-gradient(to right, transparent 0%, rgba(0,0,0,0.04) 10%, rgba(0,0,0,0.35) 24%, rgba(0,0,0,0.85) 42%, #000 60%),
+          linear-gradient(to bottom, transparent 0%, #000 8%, #000 76%, transparent 100%);
+        mask-composite: intersect;
       }
 
       .hero-art-seamless img {
@@ -677,7 +649,7 @@
       /* 4 Action Cards */
       .feature-grid-4 {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 18px;
         margin-top: 4px;
       }
@@ -701,10 +673,21 @@
         box-shadow: 0 8px 24px -4px rgba(15, 23, 42, 0.08);
       }
 
+      /* "How GovOS Works": the steps card and the quote card, side by side while there is room */
+      .how-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 340px;
+        gap: 20px;
+        align-items: stretch;
+      }
+      @media (max-width: 1100px) { .how-grid { grid-template-columns: minmax(0, 1fr); } }
+
       /* Popular Exams Grid */
       .popular-exams-row {
         display: grid;
-        grid-template-columns: repeat(5, 1fr);
+        /* minmax(0,…) so a long authority name wraps inside its card instead of
+           widening the track and pushing the page into a horizontal scroll. */
+        grid-template-columns: repeat(5, minmax(0, 1fr));
         gap: 16px;
       }
 
@@ -721,6 +704,7 @@
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
         transition: all 0.2s ease;
       }
+      .popular-exam-card > * { min-width: 0; }
       .popular-exam-card:hover {
         transform: translateY(-2px);
         border-color: #3b82f6;
@@ -728,8 +712,8 @@
       }
 
       @media (max-width: 1024px) {
-        .feature-grid-4 { grid-template-columns: repeat(2, 1fr); }
-        .popular-exams-row { grid-template-columns: repeat(3, 1fr); }
+        .feature-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .popular-exams-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
         .hero-art-seamless { opacity: 0.55; width: 65%; }
       }
       @media (max-width: 768px) {
@@ -754,299 +738,13 @@
           -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 15%, #000 85%, transparent 100%);
           mask-image: linear-gradient(to bottom, transparent 0%, #000 15%, #000 85%, transparent 100%);
         }
-        .feature-grid-4 { grid-template-columns: 1fr; }
-        .popular-exams-row { grid-template-columns: 1fr; }
+        .feature-grid-4 { grid-template-columns: minmax(0, 1fr); }
+        .popular-exams-row { grid-template-columns: minmax(0, 1fr); }
       }
     </style>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <script>
-      (function() {
-        // GovOS Cohesive Interactive Ambient Canvas Layer
-        let canvas = null;
-        let ctx = null;
-        let animId = null;
-        let particles = [];
-        let width = 0;
-        let height = 0;
-        let dpr = 1;
-        let mouseX = -9999;
-        let mouseY = -9999;
-        let isHovering = false;
-        let prefersReducedMotion = false;
-        let isRunning = false;
-
-        const COLOR_PALETTE = [
-          { r: 59,  g: 130, b: 246 }, // soft blue
-          { r: 96,  g: 165, b: 250 }, // light azure
-          { r: 99,  g: 102, b: 241 }, // subtle indigo/purple
-          { r: 129, g: 140, b: 248 }, // soft violet
-          { r: 245, g: 158, b: 11  }, // warm amber/gold
-          { r: 251, g: 191, b: 36  }  // gentle golden sun
-        ];
-
-        function getTargetParticleCount(w, h) {
-          const widthVal = w || window.innerWidth;
-          const heightVal = h || 600;
-          const area = widthVal * heightVal;
-          if (widthVal > 1024) {
-            return Math.min(48, Math.max(34, Math.round(area / 18000)));
-          } else if (widthVal > 640) {
-            return Math.min(28, Math.max(18, Math.round(area / 24000)));
-          } else {
-            return Math.min(14, Math.max(10, Math.round(area / 32000)));
-          }
-        }
-
-        function createParticle(w, h) {
-          const colorObj = COLOR_PALETTE[Math.floor(Math.random() * COLOR_PALETTE.length)];
-          const baseAlpha = 0.26 + Math.random() * 0.24;
-          const radius = 1.3 + Math.random() * 1.3;
-          const angle = Math.random() * Math.PI * 2;
-          const speed = 0.18 + Math.random() * 0.22;
-
-          const vx = Math.cos(angle) * speed;
-          const vy = Math.sin(angle) * speed;
-
-          return {
-            x: Math.random() * (w || 800),
-            y: Math.random() * (h || 600),
-            vx: vx,
-            vy: vy,
-            naturalVx: vx,
-            naturalVy: vy,
-            radius: radius,
-            color: colorObj,
-            alpha: baseAlpha,
-            baseAlpha: baseAlpha,
-            pulseOffset: Math.random() * Math.PI * 2,
-            pulseSpeed: 0.016 + Math.random() * 0.02
-          };
-        }
-
-        function initParticles() {
-          const count = getTargetParticleCount(width, height);
-          particles = [];
-          for (let i = 0; i < count; i++) {
-            particles.push(createParticle(width, height));
-          }
-        }
-
-        function resize() {
-          if (!canvas) return;
-          const parent = canvas.parentElement;
-          if (!parent) return;
-
-          const rect = parent.getBoundingClientRect();
-          width = rect.width || window.innerWidth;
-          height = rect.height || 600;
-
-          dpr = Math.min(window.devicePixelRatio || 1, 2);
-          canvas.width = Math.floor(width * dpr);
-          canvas.height = Math.floor(height * dpr);
-
-          if (ctx) {
-            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-          }
-
-          const targetCount = getTargetParticleCount(width, height);
-          while (particles.length < targetCount) {
-            particles.push(createParticle(width, height));
-          }
-          if (particles.length > targetCount) {
-            particles.length = targetCount;
-          }
-        }
-
-        function renderFrame() {
-          if (!ctx || !canvas) return;
-
-          ctx.clearRect(0, 0, width, height);
-
-          if (prefersReducedMotion) {
-            for (let i = 0; i < particles.length; i++) {
-              drawParticle(particles[i]);
-            }
-            return;
-          }
-
-          // Subtle, delicate constellation links between nearby particles
-          const maxLinkDist = 65;
-          ctx.lineWidth = 0.75;
-          for (let i = 0; i < particles.length; i++) {
-            for (let j = i + 1; j < particles.length; j++) {
-              const dx = particles[i].x - particles[j].x;
-              const dy = particles[i].y - particles[j].y;
-              const dist = Math.sqrt(dx * dx + dy * dy);
-              if (dist < maxLinkDist) {
-                const linkAlpha = (1 - dist / maxLinkDist) * 0.10;
-                ctx.strokeStyle = `rgba(147, 197, 253, ${linkAlpha})`;
-                ctx.beginPath();
-                ctx.moveTo(particles[i].x, particles[i].y);
-                ctx.lineTo(particles[j].x, particles[j].y);
-                ctx.stroke();
-              }
-            }
-          }
-
-          // Update & draw particles with physical cursor interaction
-          const mouseRadius = 140;
-          for (let i = 0; i < particles.length; i++) {
-            const p = particles[i];
-
-            // Natural pulsing
-            p.pulseOffset += p.pulseSpeed;
-            p.alpha = p.baseAlpha + Math.sin(p.pulseOffset) * 0.08;
-
-            // Cursor proximity interaction
-            if (isHovering) {
-              const dx = p.x - mouseX;
-              const dy = p.y - mouseY;
-              const dist = Math.sqrt(dx * dx + dy * dy);
-
-              if (dist < mouseRadius && dist > 0) {
-                const factor = 1 - dist / mouseRadius;
-                const force = factor * factor * 0.38;
-                p.vx += (dx / dist) * force;
-                p.vy += (dy / dist) * force;
-                p.alpha = Math.min(p.baseAlpha + factor * 0.3, 0.85);
-              }
-            }
-
-            // Smooth physical velocity dampening back to calm drift
-            p.vx = p.vx * 0.95 + p.naturalVx * 0.05;
-            p.vy = p.vy * 0.95 + p.naturalVy * 0.05;
-
-            p.x += p.vx;
-            p.y += p.vy;
-
-            // Boundary wrapping
-            if (p.x < -10) p.x = width + 10;
-            if (p.x > width + 10) p.x = -10;
-            if (p.y < -10) p.y = height + 10;
-            if (p.y > height + 10) p.y = -10;
-
-            drawParticle(p);
-          }
-
-          animId = requestAnimationFrame(renderFrame);
-        }
-
-        function drawParticle(p) {
-          ctx.save();
-          // Core particle
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(${p.color.r}, ${p.color.g}, ${p.color.b}, ${p.alpha})`;
-          ctx.fill();
-
-          // Soft micro glow
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, p.radius * 2.2, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(${p.color.r}, ${p.color.g}, ${p.color.b}, ${p.alpha * 0.2})`;
-          ctx.fill();
-          ctx.restore();
-        }
-
-        function handlePointerMove(e) {
-          if (!canvas) return;
-          const rect = canvas.getBoundingClientRect();
-          mouseX = e.clientX - rect.left;
-          mouseY = e.clientY - rect.top;
-          isHovering = (
-            mouseX >= -50 && mouseX <= rect.width + 50 &&
-            mouseY >= -50 && mouseY <= rect.height + 50
-          );
-        }
-
-        function handlePointerLeave() {
-          isHovering = false;
-          mouseX = -9999;
-          mouseY = -9999;
-        }
-
-        function startAnimation() {
-          if (isRunning) return;
-          isRunning = true;
-          if (!prefersReducedMotion) {
-            animId = requestAnimationFrame(renderFrame);
-          } else {
-            renderFrame();
-          }
-        }
-
-        function stopAnimation() {
-          isRunning = false;
-          if (animId) {
-            cancelAnimationFrame(animId);
-            animId = null;
-          }
-        }
-
-        function mountCanvas() {
-          const bgLayer = document.querySelector('.homepage-bg-layer');
-          if (!bgLayer) {
-            if (canvas && canvas.parentElement) {
-              canvas.parentElement.removeChild(canvas);
-            }
-            stopAnimation();
-            return;
-          }
-
-          if (canvas && canvas.parentElement === bgLayer) {
-            if (!isRunning) startAnimation();
-            return;
-          }
-
-          if (!canvas) {
-            canvas = document.createElement('canvas');
-            canvas.className = 'govos-particle-canvas';
-            canvas.setAttribute('aria-hidden', 'true');
-            ctx = canvas.getContext('2d');
-          }
-
-          bgLayer.insertBefore(canvas, bgLayer.firstChild);
-          resize();
-          initParticles();
-          startAnimation();
-        }
-
-        const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-        prefersReducedMotion = motionQuery.matches;
-        motionQuery.addEventListener('change', (e) => {
-          prefersReducedMotion = e.matches;
-          if (prefersReducedMotion) stopAnimation();
-          else startAnimation();
-        });
-
-        window.addEventListener('pointermove', handlePointerMove, { passive: true });
-        window.addEventListener('pointerleave', handlePointerLeave, { passive: true });
-        window.addEventListener('resize', () => {
-          resize();
-        }, { passive: true });
-
-        document.addEventListener('visibilitychange', () => {
-          if (document.hidden) stopAnimation();
-          else if (document.querySelector('.homepage-bg-layer')) startAnimation();
-        });
-
-        const observer = new MutationObserver(() => {
-          mountCanvas();
-        });
-
-        function bootstrap() {
-          mountCanvas();
-          observer.observe(document.body, { childList: true, subtree: true });
-        }
-
-        if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', bootstrap);
-        } else {
-          bootstrap();
-        }
-      })();
-    </script>
   </body>
 </html>

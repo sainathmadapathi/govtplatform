@@ -628,9 +628,37 @@ inlines it into the single-file build (the `vite/client` reference at the top of
 types the import). It is the one non-source file under `src/`; do not replace it with a
 generated scene — the user asked for this image specifically.
 
+**The light re-skin left a tail of dark-theme colours, now cleared.** A colour written for a
+near-black ground (`color: 'white'`, `#d1d5db`, `#facc15`, `#d1fae5`, `rgba(255,255,255,0.4)`)
+is invisible on a white card, and several survived `p24_light_colors.py` because they sat in a
+ternary (`isChecked ? '#334155' : 'white'`) or in a `let color = 'white'` default rather than in
+a plain `style={{…}}` literal — that made every milestone title in Dates & Timeline and every
+item in the Exam-Day checklist white-on-white. They now read from the tokens. A contrast sweep
+over every tab and all 17 exam sections is the check: walk the DOM, compare each text node's
+colour against its nearest opaque background, and flag anything under 3:1. Run it again after
+touching colours; **never introduce a bare light hex as a text colour.**
+
+**The page must not scroll sideways.** `repeat(N, 1fr)` has a min-content floor, so a long
+authority name in the Popular Exams row widened its track and pushed the whole document into a
+horizontal scroll; every fixed-count grid is `repeat(N, minmax(0, 1fr))` and `.how-grid`
+collapses to one column under 1100 px. `.homepage` carries `overflow-x: clip` so the decorative
+glow and the illustration may bleed past the content column without ever creating a scrollbar.
+
+**Decoration must not animate forever.** An interactive particle canvas with a `MutationObserver`
+on the whole body, plus two 600 px blurred glows on infinite keyframes, repainted continuously in
+a React app that re-renders often — the page never idled. The glows are static now and the canvas
+is gone; the ambience is unchanged to look at.
+
+**Under 960 px the exam page's section list is a horizontal chip row**, not an 18-item column
+that pushes the exam itself off the first screen; the same buttons and handlers, only the
+direction changes, and an effect on `activeSection` scrolls the active chip into view. The top
+bar's nav scrolls horizontally with a mask fade at its right edge, so a clipped label reads as
+"there is more" rather than as a broken word.
+
 **Three layouts follow the mockup.** `Header` is the `.topbar` (Home · the current exam ·
 Compare · My Timeline · Ask AI, then Am I Eligible? and Trust Panel as subtle links, bell,
-avatar). `ExamFinder` opens with the `.hero` (headline, search bound to the finder's own
+avatar; **My Exams is always present** — it used to render only while it was already open,
+which made it unreachable). `ExamFinder` opens with the `.hero` (headline, search bound to the finder's own
 `searchQuery`, popular chips, an illustration built in CSS), five `.feature-card`s that open
 the real features through `onNavigate` (the shell's `navigate()`), and the quote strip; the
 recommendation engine and the discovery engine follow unchanged. `ExamDetailView` is the

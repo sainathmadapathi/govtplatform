@@ -479,13 +479,13 @@ export const Header: React.FC<HeaderProps> = ({
           link('FINDER', <><Home size={15} /> Home</>)
         )}
         {link('FINDER', 'Exam Finder', undefined, () => setTimeout(() => document.getElementById('exam-finder-engine')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60))}
+        {/* My Exams is a global destination, so it is always reachable — it used to render
+            only while it was already open, which made it unreachable from the bar. */}
+        {link('MY_EXAMS', <>My Exams{trackedCount > 0 && <span className="badge badge-verified" style={{ fontSize: '0.6rem', padding: '1px 7px' }}>{trackedCount}</span>}</>)}
         {link('COMPARE', 'Compare')}
         {link('CALENDAR', 'My Timeline', undefined, onOpenTimeline)}
         {link('AI_ASSISTANT', 'Ask AI')}
         {link('ADMIN', 'Trust Panel')}
-        {trackedCount > 0 && activeTab === 'MY_EXAMS' && (
-          link('MY_EXAMS', <>My Exams <span className="badge badge-verified" style={{ fontSize: '0.6rem', padding: '1px 7px' }}>{trackedCount}</span></>)
-        )}
         {activeTab === 'EXAM_DETAIL' && selectedExamTitle && (
           <span className="nav-link active" style={{ cursor: 'default' }}><BookOpen size={14} /> {examShort}</span>
         )}
@@ -1051,12 +1051,12 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
               padding: '6px 14px',
               fontSize: '0.78rem',
               fontWeight: 700,
-              color: '#16a34a',
+              color: '#15803d',
               letterSpacing: '0.04em',
               textTransform: 'uppercase',
               marginBottom: '18px'
             }}>
-              <Sparkles size={14} color="#16a34a" /> YOUR PATH. A BRIGHTER TOMORROW.
+              <Sparkles size={14} color="#15803d" /> YOUR PATH. A BRIGHTER TOMORROW.
             </div>
 
             <h1 style={{
@@ -1288,7 +1288,7 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
             <p style={{ fontSize: '0.92rem', color: '#64748b', margin: 0 }}>A simple way to stay ahead in your government exam journey.</p>
           </div>
           
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '20px', alignItems: 'stretch' }}>
+          <div className="how-grid">
             {/* 3-Step Process Card */}
             <div style={{
               background: '#ffffff',
@@ -1299,10 +1299,11 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
+              flexWrap: 'wrap',
               gap: '16px'
             }}>
               {/* Step 1 */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: '1 1 210px', minWidth: 0 }}>
                 <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#dbeafe', color: '#2563eb', fontWeight: 800, fontSize: '0.82rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>1</div>
                 <div style={{ width: '38px', height: '38px', borderRadius: '12px', background: '#e0f2fe', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <Search size={18} color="#0284c7" />
@@ -1315,7 +1316,7 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
               <ArrowRight size={18} color="#94a3b8" style={{ flexShrink: 0 }} />
 
               {/* Step 2 */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: '1 1 210px', minWidth: 0 }}>
                 <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#d1fae5', color: '#059669', fontWeight: 800, fontSize: '0.82rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>2</div>
                 <div style={{ width: '38px', height: '38px', borderRadius: '12px', background: '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <FileText size={18} color="#059669" />
@@ -1328,7 +1329,7 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
               <ArrowRight size={18} color="#94a3b8" style={{ flexShrink: 0 }} />
 
               {/* Step 3 */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: '1 1 210px', minWidth: 0 }}>
                 <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#ffedd5', color: '#ea580c', fontWeight: 800, fontSize: '0.82rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>3</div>
                 <div style={{ width: '38px', height: '38px', borderRadius: '12px', background: '#fff7ed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <BarChart2 size={18} color="#ea580c" />
@@ -1443,7 +1444,9 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
                 </div>
                 <div style={{ minWidth: 0 }}>
                   <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a', margin: '0 0 2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{exam.name}</h4>
-                  <p style={{ fontSize: '0.78rem', color: '#64748b', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{exam.sub}</p>
+                  {/* The authority's full name is the point of this line, so it wraps to a
+                      second line rather than being cut off mid-word in a 5-up grid. */}
+                  <p style={{ fontSize: '0.78rem', color: '#64748b', margin: 0, lineHeight: 1.3 }}>{exam.sub}</p>
                 </div>
               </div>
             ))}
@@ -2028,7 +2031,7 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
                   Authority: {exam.authorityName}
                 </p>
 
-                <p style={{ fontSize: '0.9rem', color: '#d1d5db', lineHeight: 1.5, marginBottom: '18px' }}>
+                <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '18px' }}>
                   {exam.overviewDescription.slice(0, 140)}...
                 </p>
 
@@ -6956,7 +6959,7 @@ export const ResourceReaderModal: React.FC<ResourceReaderModalProps> = ({
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#15803d', fontWeight: 700, fontSize: '0.9rem' }}>
                   <CheckCircle2 size={16} color="#15803d" /> Recommended Preparation Approach:
                 </div>
-                <p style={{ fontSize: '0.88rem', color: '#d1fae5', margin: 0, lineHeight: 1.5 }}>
+                <p style={{ fontSize: '0.88rem', color: '#065f46', margin: 0, lineHeight: 1.5 }}>
                   {resource.recommendedFor}
                 </p>
               </div>
@@ -9541,7 +9544,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                     </div>
                   )}
 
-                  <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', alignSelf: 'flex-end' }}>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', alignSelf: 'flex-end' }}>
                     {msg.timestamp}
                   </span>
                 </div>
@@ -9842,7 +9845,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
 
                     let bg = 'var(--surface-2)';
                     let border = '1px solid var(--border-color)';
-                    let color = 'white';
+                    let color = 'var(--text-primary)';
 
                     if (isAnswered) {
                       bg = '#10b981';
@@ -10381,7 +10384,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                         </div>
 
                         {/* Question Text with Larger Font & Line Height */}
-                        <div style={{ fontSize: '1.12rem', color: '#ffffff', lineHeight: 1.7, fontWeight: 600, whiteSpace: 'pre-line', padding: '4px 0' }}>
+                        <div style={{ fontSize: '1.12rem', color: 'var(--text-primary)', lineHeight: 1.7, fontWeight: 600, whiteSpace: 'pre-line', padding: '4px 0' }}>
                           {q.questionText}
                         </div>
 
@@ -10445,7 +10448,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                               <Sparkles size={20} color="#15803d" />
                               <span>💡 1. Plain & Simple Explanation (In Easy Everyday Words)</span>
                             </div>
-                            <p style={{ fontSize: '1rem', color: '#f0fdf4', margin: 0, lineHeight: 1.75, fontWeight: 500 }}>
+                            <p style={{ fontSize: '1rem', color: '#065f46', margin: 0, lineHeight: 1.75, fontWeight: 500 }}>
                               {det.simpleExplanation}
                             </p>
                           </div>
@@ -10471,7 +10474,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                         {/* 3. ✍️ STEP-BY-STEP FORMAL METHOD */}
                         {det && det.stepByStepMethod && (
                           <div style={{ padding: '18px 22px', borderRadius: 'var(--radius-md)', background: 'var(--surface-3)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ffffff', fontWeight: 900, fontSize: '1rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', fontWeight: 900, fontSize: '1rem' }}>
                               <FileText size={18} color="#15803d" />
                               <span>✍️ 3. Step-by-Step Formal Method</span>
                             </div>
@@ -10515,7 +10518,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                               </div>
                             )}
 
-                            <p style={{ fontSize: '0.98rem', color: '#ffffff', margin: 0, lineHeight: 1.65, fontWeight: 500 }}>
+                            <p style={{ fontSize: '0.98rem', color: 'var(--text-primary)', margin: 0, lineHeight: 1.65, fontWeight: 500 }}>
                               {det.shortcutTrick.explanation}
                             </p>
                           </div>
@@ -11766,7 +11769,7 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
                 <div><strong style={{ color: '#2563eb' }}>Highest Qualification:</strong> <div style={{ color: 'var(--text-primary)' }}>{form.highestQualification}</div></div>
                 <div>
                   <strong style={{ color: '#2563eb' }}>12th Math %:</strong> 
-                  <div style={{ color: form.mathTwelfthPercentage > 100 ? '#dc2626' : 'white', fontWeight: form.mathTwelfthPercentage > 100 ? 800 : 400 }}>
+                  <div style={{ color: form.mathTwelfthPercentage > 100 ? '#dc2626' : 'var(--text-primary)', fontWeight: form.mathTwelfthPercentage > 100 ? 800 : 400 }}>
                     {form.mathTwelfthPercentage}% {form.mathTwelfthPercentage > 100 && '(⚠️ Invalid > 100%)'}
                   </div>
                 </div>
@@ -11899,7 +11902,7 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
                     <strong>Why it matters:</strong> {err.whyItMatters}
                   </div>
 
-                  <div style={{ padding: '8px 12px', borderRadius: 'var(--radius-sm)', background: 'rgba(239, 68, 68, 0.1)', fontSize: '0.82rem', color: '#fed7d7' }}>
+                  <div style={{ padding: '8px 12px', borderRadius: 'var(--radius-sm)', background: 'rgba(239, 68, 68, 0.1)', fontSize: '0.82rem', color: '#b91c1c' }}>
                     💡 <strong>Remember:</strong> {err.rememberRule}
                   </div>
                 </div>
@@ -13059,7 +13062,7 @@ export const ExamDayChecklistSection: React.FC<ExamDayChecklistSectionProps> = (
                         <div style={{ 
                           fontSize: '0.95rem', 
                           fontWeight: 700, 
-                          color: isChecked ? '#334155' : 'white',
+                          color: isChecked ? '#64748b' : 'var(--text-primary)',
                           textDecoration: isChecked ? 'line-through' : 'none'
                         }}>
                           {item.title}
@@ -13700,7 +13703,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
-              <span className="badge" style={{ background: isUPSC ? 'rgba(245, 158, 11, 0.2)' : 'rgba(234, 179, 8, 0.2)', color: isUPSC ? '#b45309' : '#facc15', border: `1px solid ${isUPSC ? 'rgba(245, 158, 11, 0.4)' : 'rgba(234, 179, 8, 0.4)'}` }}>
+              <span className="badge" style={{ background: isUPSC ? 'rgba(245, 158, 11, 0.2)' : 'rgba(234, 179, 8, 0.2)', color: isUPSC ? '#b45309' : '#a16207', border: `1px solid ${isUPSC ? 'rgba(245, 158, 11, 0.4)' : 'rgba(234, 179, 8, 0.4)'}` }}>
                 {isUPSC ? '🏛️ UPSC CIVIL SERVICES 3-STAGE RESULT & VERDICT ENGINE' : '🏆 MULTI-TIER RESULT & VERDICT ENGINE'}
               </span>
               <span className="badge badge-verified">
@@ -13961,7 +13964,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                     <div>• Mains Written: <strong style={{ color: '#4f46e5' }}>{parsed.fields.upscMainsWrittenMarks} / 1750</strong></div>
                   )}
                   {parsed.fields?.upscInterviewMarks !== undefined && (
-                    <div>• Personality Test: <strong style={{ color: '#a78bfa' }}>{parsed.fields.upscInterviewMarks} / 275</strong></div>
+                    <div>• Personality Test: <strong style={{ color: '#7c3aed' }}>{parsed.fields.upscInterviewMarks} / 275</strong></div>
                   )}
                   {parsed.fields?.upscFinalTotalMarks !== undefined && (
                     <div>• Final Total: <strong style={{ color: '#15803d' }}>{parsed.fields.upscFinalTotalMarks} / 2025</strong></div>
@@ -14164,7 +14167,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                     </span>
                   </div>
                   <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 600 }}>
-                    CKT: <strong style={{ color: '#facc15' }}>{candidateCKT !== null ? `${candidateCKT} / 60` : 'Min 15.0'}</strong>
+                    CKT: <strong style={{ color: '#b45309' }}>{candidateCKT !== null ? `${candidateCKT} / 60` : 'Min 15.0'}</strong>
                   </div>
                   <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 600, marginTop: '2px' }}>
                     DEST: <strong style={{ color: '#15803d' }}>{candidateDEST !== null ? `${candidateDEST}% Error` : 'Max 20%'}</strong>
@@ -14640,7 +14643,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
 
           <div className="grid-2" style={{ gap: '16px' }}>
             <div className="glass-card" style={{ padding: '22px', border: '1px solid rgba(245, 158, 11, 0.25)' }}>
-              <span className="badge" style={{ background: 'rgba(245, 158, 11, 0.2)', color: '#facc15', fontSize: '0.7rem', marginBottom: '8px' }}>
+              <span className="badge" style={{ background: 'rgba(245, 158, 11, 0.2)', color: '#b45309', fontSize: '0.7rem', marginBottom: '8px' }}>
                 MODULE 1: READING COMPREHENSION
               </span>
               <h5 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 6px' }}>
@@ -14652,7 +14655,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
             </div>
 
             <div className="glass-card" style={{ padding: '22px', border: '1px solid rgba(245, 158, 11, 0.25)' }}>
-              <span className="badge" style={{ background: 'rgba(245, 158, 11, 0.2)', color: '#facc15', fontSize: '0.7rem', marginBottom: '8px' }}>
+              <span className="badge" style={{ background: 'rgba(245, 158, 11, 0.2)', color: '#b45309', fontSize: '0.7rem', marginBottom: '8px' }}>
                 MODULE 2: HIGH-YIELD QUANT CLUSTERS
               </span>
               <h5 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 6px' }}>
@@ -15266,7 +15269,7 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
           </p>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', margin: '6px 0 0 0', maxWidth: '700px', lineHeight: 1.5 }}>
             {/* The notice-board shelf only exists for SSC, so only say so there. */}
-            Kept current automatically: {isSscExam ? `SSC's notice board and channel uploads refresh every ${sscFeed?.intervalHours || 6} h, and every link is` : 'every link is'}
+            Kept current automatically: {isSscExam ? `SSC's notice board and channel uploads refresh every ${sscFeed?.intervalHours || 6} h, and every link is` : 'every link is'}{' '}
             re-checked every {healthMeta?.intervalHours || 12} h on the GovOS server.
             {healthMeta
               ? ` Links last checked ${formatFetched(healthMeta.lastRun)}${healthMeta.pending > 0 ? ` · ${healthMeta.pending} still being checked` : ''}.`
@@ -15668,6 +15671,15 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
     setActiveSection(secNum);
   };
 
+  // On a narrow screen the section list is one horizontally scrolling row, so the part the
+  // candidate just opened has to be brought into view — otherwise the highlight is off-screen.
+  useEffect(() => {
+    const nav = document.querySelector('.side-nav');
+    if (!nav || nav.scrollWidth <= nav.clientWidth + 2) return;
+    const active = nav.querySelector('.side-link.active') as HTMLElement | null;
+    active?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  }, [activeSection]);
+
   // The four tiles under the exam name: the milestones a candidate looks for first.
   const liveDates = exam.dates.filter(d => d.status !== 'SUPERSEDED');
   const tileFor = (types: ImportantDate['type'][], label: string) => {
@@ -15946,7 +15958,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                     {isNext && (
                       <span className="badge badge-verified" style={{ fontSize: '0.68rem' }}>NEXT</span>
                     )}
-                    <span style={{ fontSize: '1rem', fontWeight: 700, color: d.status === 'SUPERSEDED' ? '#dc2626' : 'white', textDecoration: d.status === 'SUPERSEDED' ? 'line-through' : 'none' }}>
+                    <span style={{ fontSize: '1rem', fontWeight: 700, color: d.status === 'SUPERSEDED' ? '#dc2626' : 'var(--text-primary)', textDecoration: d.status === 'SUPERSEDED' ? 'line-through' : 'none' }}>
                       {d.label}
                     </span>
                     {d.status === 'SUPERSEDED' && (
@@ -16089,7 +16101,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                   { bg: 'rgba(59, 130, 246, 0.08)', border: 'rgba(59, 130, 246, 0.3)', color: '#2563eb' },
                   { bg: 'rgba(16, 185, 129, 0.08)', border: 'rgba(16, 185, 129, 0.3)', color: '#15803d' },
                   { bg: 'rgba(245, 158, 11, 0.08)', border: 'rgba(245, 158, 11, 0.3)', color: '#b45309' },
-                  { bg: 'rgba(168, 85, 247, 0.08)', border: 'rgba(168, 85, 247, 0.3)', color: '#c4b5fd' }
+                  { bg: 'rgba(168, 85, 247, 0.08)', border: 'rgba(168, 85, 247, 0.3)', color: '#7c3aed' }
                 ][idx % 4];
                 return (
                   <div key={card.title} style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: palette.bg, border: `1px solid ${palette.border}`, display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -16282,7 +16294,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                             <div style={{ fontSize: '0.78rem', color: '#2563eb', fontWeight: 700, textTransform: 'uppercase' }}>
                               {topic.subject} • {topic.tier}
                             </div>
-                            <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: isDone ? '#15803d' : 'white', margin: 0 }}>
+                            <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: isDone ? '#15803d' : 'var(--text-primary)', margin: 0 }}>
                               {topic.topicName}
                             </h4>
                           </div>
