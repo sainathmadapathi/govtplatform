@@ -522,71 +522,48 @@
          GOVOS PREMIUM DYNAMIC LIGHT BACKGROUND & AMBIENT GLOW
          =================================================== */
 
-      @keyframes floatGlowBlue {
-        0% {
-          transform: translate(0, 0) scale(1);
-          opacity: 0.85;
-        }
-        50% {
-          transform: translate(60px, 40px) scale(1.18);
-          opacity: 1;
-        }
-        100% {
-          transform: translate(-30px, 20px) scale(0.95);
-          opacity: 0.8;
-        }
+      /* ===================================================
+         GOVOS CONTINUOUS AMBIENT HERO ENVIRONMENT & LIGHTING
+         =================================================== */
+
+      @keyframes ambientFloatBlue {
+        0% { transform: translate(0, 0) scale(1); }
+        50% { transform: translate(22px, 14px) scale(1.06); }
+        100% { transform: translate(-14px, 10px) scale(0.97); }
       }
 
-      @keyframes floatGlowAmber {
-        0% {
-          transform: translate(0, 0) scale(1);
-          opacity: 0.8;
-        }
-        50% {
-          transform: translate(-55px, 45px) scale(1.22);
-          opacity: 1;
-        }
-        100% {
-          transform: translate(25px, -20px) scale(0.92);
-          opacity: 0.75;
-        }
+      @keyframes ambientFloatSun {
+        0% { transform: translate(0, 0) scale(1); }
+        50% { transform: translate(-18px, 16px) scale(1.07); }
+        100% { transform: translate(12px, -10px) scale(0.96); }
       }
 
-      @keyframes floatGlowTeal {
-        0% {
-          transform: translate(0, 0) scale(1);
-          opacity: 0.7;
-        }
-        50% {
-          transform: translate(45px, -35px) scale(1.25);
-          opacity: 0.95;
-        }
-        100% {
-          transform: translate(-25px, 25px) scale(0.88);
-          opacity: 0.65;
-        }
+      @keyframes ambientFloatTeal {
+        0% { transform: translate(0, 0) scale(1); }
+        50% { transform: translate(15px, -14px) scale(1.05); }
+        100% { transform: translate(-10px, 12px) scale(0.95); }
+      }
+
+      @keyframes ambientPillFloat {
+        0% { transform: rotate(-35deg) translate(0, 0); }
+        50% { transform: rotate(-33deg) translateY(-8px); }
+        100% { transform: rotate(-36deg) translate(-4px, 4px); }
       }
 
       @keyframes dotsBreathe {
-        0%, 100% {
-          opacity: 0.65;
-          transform: translateY(0);
-        }
-        50% {
-          opacity: 1;
-          transform: translateY(-5px);
-        }
+        0%, 100% { opacity: 0.22; transform: translateY(0); }
+        50% { opacity: 0.38; transform: translateY(-4px); }
       }
 
-      @keyframes gradientShiftSmooth {
-        0% {
-          background-position: 0% 0%;
-        }
-        50% {
-          background-position: 100% 100%;
-        }
-        100% {
-          background-position: 0% 0%;
+      @media (prefers-reduced-motion: reduce) {
+        .bg-mesh-sky,
+        .bg-mesh-sun,
+        .bg-mesh-teal,
+        .bg-decor-pill,
+        .bg-decor-dots,
+        .hero-art-seamless::before {
+          animation: none !important;
+          transform: none !important;
         }
       }
 
@@ -597,77 +574,163 @@
         overflow: visible;
       }
 
-      /* Explicit Background Layer: Stretches edge-to-edge of container, isolated behind content */
+      /* Single Continuous Hero Background Layer */
       .homepage-bg-layer {
         position: absolute;
-        top: 0;
+        top: -10px;
         left: -28px;
         right: -28px;
-        bottom: 0;
+        height: clamp(520px, 55vw, 680px);
         pointer-events: none;
         overflow: hidden;
         z-index: 0;
+        background:
+          radial-gradient(ellipse 65% 60% at 10% 20%, rgba(186, 220, 255, 0.45) 0%, transparent 60%),
+          radial-gradient(ellipse 60% 55% at 90% 15%, rgba(254, 240, 138, 0.48) 0%, rgba(253, 230, 138, 0.2) 35%, transparent 65%),
+          radial-gradient(ellipse 50% 45% at 45% 75%, rgba(204, 251, 241, 0.26) 0%, transparent 55%),
+          linear-gradient(135deg, rgba(238, 246, 255, 0.75) 0%, rgba(248, 251, 255, 0.5) 45%, rgba(255, 253, 247, 0.75) 100%);
+        -webkit-mask-image: linear-gradient(to bottom, #000000 78%, transparent 100%);
+        mask-image: linear-gradient(to bottom, #000000 78%, transparent 100%);
       }
 
-      /* Ambient Sky Blue Glow (Top-Left) */
+      /* Ambient Sky Blue Glow (Upper-Left) */
       .bg-mesh-sky {
         position: absolute;
-        top: -60px;
-        left: -60px;
-        width: 680px;
-        height: 620px;
+        top: -80px;
+        left: -80px;
+        width: clamp(480px, 45vw, 720px);
+        height: clamp(440px, 42vw, 650px);
         border-radius: 50%;
-        background: radial-gradient(circle at 45% 45%, rgba(186, 220, 255, 0.72) 0%, rgba(147, 197, 253, 0.44) 38%, rgba(219, 234, 254, 0.2) 65%, transparent 75%);
-        filter: blur(45px);
+        background: radial-gradient(circle at 45% 45%, rgba(186, 220, 255, 0.6) 0%, rgba(147, 197, 253, 0.32) 40%, rgba(219, 234, 254, 0.15) 65%, transparent 75%);
+        filter: blur(50px);
         pointer-events: none;
-        animation: floatGlowBlue 14s ease-in-out infinite alternate;
+        animation: ambientFloatBlue 18s ease-in-out infinite alternate;
       }
 
-      /* Ambient Golden Sunlight Glow (Top-Right) */
+      /* Ambient Golden Sunlight Glow (Upper-Right) */
       .bg-mesh-sun {
         position: absolute;
         top: -70px;
-        right: -50px;
-        width: 640px;
-        height: 600px;
+        right: -60px;
+        width: clamp(480px, 45vw, 700px);
+        height: clamp(440px, 42vw, 640px);
         border-radius: 50%;
-        background: radial-gradient(circle at 50% 50%, rgba(254, 240, 138, 0.72) 0%, rgba(253, 230, 138, 0.45) 35%, rgba(251, 191, 36, 0.22) 55%, transparent 75%);
-        filter: blur(38px);
+        background: radial-gradient(circle at 50% 50%, rgba(254, 240, 138, 0.6) 0%, rgba(253, 230, 138, 0.32) 36%, rgba(251, 191, 36, 0.14) 55%, transparent 75%);
+        filter: blur(45px);
         pointer-events: none;
-        animation: floatGlowAmber 16s ease-in-out infinite alternate;
+        animation: ambientFloatSun 22s ease-in-out infinite alternate;
       }
 
-      /* Ambient Mint / Teal Aura (Center-Bottom) */
+      /* Ambient Mint / Pale Teal Glow (Lower-Center) */
       .bg-mesh-teal {
         position: absolute;
-        top: 500px;
-        left: 20%;
-        width: 540px;
-        height: 460px;
+        top: 360px;
+        left: 22%;
+        width: clamp(380px, 36vw, 540px);
+        height: clamp(300px, 30vw, 440px);
         border-radius: 50%;
-        background: radial-gradient(circle, rgba(167, 243, 208, 0.4) 0%, rgba(110, 231, 183, 0.18) 50%, transparent 70%);
+        background: radial-gradient(circle, rgba(167, 243, 208, 0.32) 0%, rgba(110, 231, 183, 0.14) 50%, transparent 70%);
         filter: blur(55px);
         pointer-events: none;
-        animation: floatGlowTeal 18s ease-in-out infinite alternate;
+        animation: ambientFloatTeal 20s ease-in-out infinite alternate;
       }
 
-      /* Ensure content containers sit relative above background */
+      /* Decorative Micro-dots Matrix */
+      .bg-decor-dots {
+        position: absolute;
+        top: 15px;
+        left: 24px;
+        width: 140px;
+        height: 170px;
+        background-image: radial-gradient(#3b82f6 2px, transparent 2px);
+        background-size: 18px 18px;
+        opacity: 0.28;
+        pointer-events: none;
+        z-index: 1;
+        animation: dotsBreathe 10s ease-in-out infinite alternate;
+      }
+
+      /* Translucent Frosted Glass Pill */
+      .bg-decor-pill {
+        position: absolute;
+        top: 95px;
+        left: -15px;
+        width: clamp(200px, 20vw, 260px);
+        height: clamp(80px, 8vw, 105px);
+        border-radius: 9999px;
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.75) 0%, rgba(219, 234, 254, 0.5) 50%, rgba(243, 232, 255, 0.3) 100%);
+        transform: rotate(-35deg);
+        box-shadow: 0 16px 36px -8px rgba(99, 102, 241, 0.15), inset 0 2px 4px rgba(255, 255, 255, 0.9), inset 0 -2px 4px rgba(147, 197, 253, 0.25);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border: 1.5px solid rgba(255, 255, 255, 0.85);
+        pointer-events: none;
+        z-index: 1;
+        opacity: 0.65;
+        animation: ambientPillFloat 15s ease-in-out infinite alternate;
+      }
+
+      /* Soft Ambient Circle Sphere */
+      .bg-decor-circle {
+        position: absolute;
+        top: 260px;
+        left: 12px;
+        width: clamp(120px, 14vw, 165px);
+        height: clamp(120px, 14vw, 165px);
+        border-radius: 50%;
+        background: radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.85) 0%, rgba(219, 234, 254, 0.6) 50%, rgba(199, 210, 254, 0.2) 75%, transparent 100%);
+        box-shadow: 0 18px 36px -12px rgba(99, 102, 241, 0.12);
+        pointer-events: none;
+        z-index: 1;
+        opacity: 0.55;
+      }
+
+      /* Soft Radiant Sun Glow Halo behind artwork */
+      .bg-decor-sun-glow {
+        position: absolute;
+        top: -30px;
+        right: 60px;
+        width: clamp(300px, 32vw, 420px);
+        height: clamp(300px, 32vw, 420px);
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(254, 240, 138, 0.55) 0%, rgba(253, 230, 138, 0.25) 45%, transparent 70%);
+        filter: blur(35px);
+        pointer-events: none;
+        z-index: 1;
+      }
+
+      .bg-decor-foliage {
+        position: absolute;
+        bottom: 40px;
+        right: 15px;
+        width: 260px;
+        height: 260px;
+        pointer-events: none;
+        opacity: 0.22;
+        z-index: 0;
+      }
+      .bg-decor-foliage svg {
+        width: 100%;
+        height: 100%;
+      }
+
       .homepage-content-layer {
         position: relative;
         z-index: 1;
       }
 
       /* ===================================================
-         UNBOXED SEAMLESS HERO & EXACT MEDIA MATCH STYLES
+         RESPONSIVE SEAMLESS HERO LAYOUT & INTEGRATED ARTWORK
          =================================================== */
 
       .hero-seamless {
         position: relative;
-        display: flex;
+        display: grid;
+        grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
         align-items: center;
-        justify-content: space-between;
-        min-height: 480px;
-        padding: 8px 0 20px;
+        gap: clamp(16px, 3.5vw, 44px);
+        min-height: 490px;
+        padding: 12px 0 24px;
         overflow: visible;
       }
 
@@ -678,109 +741,203 @@
         width: 100%;
       }
 
+      .hero-title {
+        font-size: clamp(2.2rem, 3.8vw, 3.15rem);
+        font-weight: 800;
+        line-height: 1.14;
+        letter-spacing: -0.035em;
+        color: #0f172a;
+        margin: 0 0 16px;
+      }
+
+      .hero-subtitle {
+        color: #475569;
+        font-size: clamp(0.95rem, 1.1vw, 1.05rem);
+        line-height: 1.6;
+        max-width: 520px;
+        margin: 0 0 24px;
+      }
+
+      .hero-search-wrapper {
+        display: flex;
+        align-items: center;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 9999px;
+        padding: 6px 8px 6px 18px;
+        box-shadow: 0 8px 24px -4px rgba(15, 23, 42, 0.05);
+        max-width: 520px;
+        width: 100%;
+        margin-bottom: 18px;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .hero-search-wrapper:focus-within {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15), 0 12px 28px -6px rgba(15, 23, 42, 0.08);
+      }
+
+      .hero-search-btn {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        background: #2563eb;
+        color: #ffffff;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+        transition: transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+      }
+
+      .hero-search-btn:hover {
+        transform: scale(1.06);
+        background: #1d4ed8;
+        box-shadow: 0 6px 16px rgba(37, 99, 235, 0.45);
+      }
+
+      .hero-search-btn:active {
+        transform: scale(0.96);
+      }
+
+      .hero-chip-btn {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 9999px;
+        padding: 5px 14px;
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: #334155;
+        cursor: pointer;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+        transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+      }
+
+      .hero-chip-btn:hover {
+        transform: translateY(-1px);
+        border-color: #93c5fd;
+        background: #f0f7ff;
+        color: #1d4ed8;
+        box-shadow: 0 3px 8px rgba(37, 99, 235, 0.1);
+      }
+
+      .hero-btn-primary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: #2563eb;
+        color: #ffffff;
+        border: none;
+        border-radius: 9999px;
+        padding: 12px 24px;
+        font-size: 0.95rem;
+        font-weight: 700;
+        cursor: pointer;
+        box-shadow: 0 8px 20px -4px rgba(37, 99, 235, 0.4);
+        transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .hero-btn-primary:hover {
+        transform: translateY(-2px);
+        background: #1d4ed8;
+        box-shadow: 0 12px 26px -4px rgba(37, 99, 235, 0.5);
+      }
+
+      .hero-btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: #ffffff;
+        color: #1e293b;
+        border: 1px solid #e2e8f0;
+        border-radius: 9999px;
+        padding: 12px 22px;
+        font-size: 0.95rem;
+        font-weight: 700;
+        cursor: pointer;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+        transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .hero-btn-secondary:hover {
+        transform: translateY(-2px);
+        border-color: #93c5fd;
+        background: #f8faff;
+        box-shadow: 0 6px 16px rgba(15, 23, 42, 0.07);
+      }
+
+      /* Seamless Artwork Integration */
       .hero-art-seamless {
-        position: absolute;
-        top: -15px;
-        right: -30px;
-        bottom: -15px;
-        width: 58%;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        max-width: 640px;
+        min-height: 440px;
+        margin-left: clamp(-40px, -3vw, -10px);
         pointer-events: none;
-        overflow: hidden;
+        overflow: visible;
         z-index: 1;
-        -webkit-mask-image: linear-gradient(to right,
-          transparent 0%,
-          rgba(0, 0, 0, 0.04) 10%,
-          rgba(0, 0, 0, 0.35) 24%,
-          rgba(0, 0, 0, 0.85) 42%,
-          #000000 60%
-        );
-        mask-image: linear-gradient(to right,
-          transparent 0%,
-          rgba(0, 0, 0, 0.04) 10%,
-          rgba(0, 0, 0, 0.35) 24%,
-          rgba(0, 0, 0, 0.85) 42%,
-          #000000 60%
-        );
+      }
+
+      /* Radiant Sun Backlight Glow behind the student / artwork */
+      .hero-art-seamless::before {
+        content: '';
+        position: absolute;
+        top: 6%;
+        right: 14%;
+        width: clamp(260px, 30vw, 360px);
+        height: clamp(260px, 30vw, 360px);
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(254, 240, 138, 0.55) 0%, rgba(253, 230, 138, 0.26) 45%, transparent 72%);
+        filter: blur(42px);
+        z-index: 0;
+        pointer-events: none;
+        animation: ambientFloatSun 20s ease-in-out infinite alternate;
       }
 
       .hero-art-seamless img {
+        position: relative;
+        z-index: 1;
         width: 100%;
         height: 100%;
+        max-height: 500px;
         object-fit: cover;
         object-position: 84% 54%;
+        border-radius: 28px;
+        /* Multi-directional smooth vignette mask that feathers left, top, bottom, and right edges */
+        -webkit-mask-image: radial-gradient(
+          ellipse 85% 82% at 65% 50%,
+          #000000 40%,
+          rgba(0, 0, 0, 0.88) 60%,
+          rgba(0, 0, 0, 0.35) 80%,
+          transparent 100%
+        );
+        mask-image: radial-gradient(
+          ellipse 85% 82% at 65% 50%,
+          #000000 40%,
+          rgba(0, 0, 0, 0.88) 60%,
+          rgba(0, 0, 0, 0.35) 80%,
+          transparent 100%
+        );
       }
 
-      /* Decorative Floating Shapes Matching Reference Image */
-      .bg-decor-dots {
+      /* Atmospheric color-blending overlay to marry the artwork with the daylight page environment */
+      .hero-art-seamless::after {
+        content: '';
         position: absolute;
-        top: 10px;
-        left: 32px;
-        width: 140px;
-        height: 180px;
-        background-image: radial-gradient(#3b82f6 2px, transparent 2px);
-        background-size: 18px 18px;
-        opacity: 0.42;
+        inset: 0;
+        z-index: 2;
+        border-radius: 28px;
+        background:
+          linear-gradient(to right, rgba(246, 250, 255, 0.52) 0%, rgba(248, 251, 255, 0.15) 30%, transparent 55%),
+          linear-gradient(to top, rgba(247, 250, 255, 0.4) 0%, transparent 25%),
+          linear-gradient(to bottom, rgba(240, 247, 255, 0.25) 0%, transparent 20%);
         pointer-events: none;
-        z-index: 1;
-        animation: dotsBreathe 9s ease-in-out infinite alternate;
-      }
-
-      .bg-decor-pill {
-        position: absolute;
-        top: 110px;
-        left: -10px;
-        width: 255px;
-        height: 100px;
-        border-radius: 9999px;
-        background: linear-gradient(135deg, rgba(219, 234, 254, 0.88) 0%, rgba(238, 242, 255, 0.7) 45%, rgba(243, 232, 255, 0.45) 100%);
-        transform: rotate(-35deg);
-        box-shadow: 0 16px 36px -8px rgba(99, 102, 241, 0.22), inset 0 2px 4px rgba(255, 255, 255, 0.95), inset 0 -2px 4px rgba(147, 197, 253, 0.3);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        border: 1.5px solid rgba(255, 255, 255, 0.9);
-        pointer-events: none;
-        z-index: 1;
-      }
-
-      .bg-decor-circle {
-        position: absolute;
-        top: 275px;
-        left: 10px;
-        width: 165px;
-        height: 165px;
-        border-radius: 50%;
-        background: radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.95) 0%, rgba(219, 234, 254, 0.82) 45%, rgba(199, 210, 254, 0.38) 75%, transparent 100%);
-        box-shadow: 0 18px 36px -12px rgba(99, 102, 241, 0.18);
-        pointer-events: none;
-        z-index: 1;
-      }
-
-      .bg-decor-sun-glow {
-        position: absolute;
-        top: -40px;
-        right: 40px;
-        width: 380px;
-        height: 380px;
-        border-radius: 50%;
-        background: radial-gradient(circle, rgba(254, 240, 138, 0.65) 0%, rgba(253, 230, 138, 0.35) 45%, transparent 75%);
-        filter: blur(35px);
-        pointer-events: none;
-        z-index: 1;
-      }
-
-      .bg-decor-foliage {
-        position: absolute;
-        bottom: 80px;
-        right: 10px;
-        width: 280px;
-        height: 280px;
-        pointer-events: none;
-        opacity: 0.28;
-        z-index: 0;
-      }
-      .bg-decor-foliage svg {
-        width: 100%;
-        height: 100%;
       }
 
       /* 4 Action Cards */
@@ -836,15 +993,62 @@
         box-shadow: 0 6px 18px -2px rgba(59, 130, 246, 0.12);
       }
 
+      /* ===================================================
+         FLUID RESPONSIVENESS & BREAKPOINTS
+         =================================================== */
+
       @media (max-width: 1024px) {
+        .hero-seamless {
+          grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+          gap: 20px;
+          min-height: 440px;
+        }
+        .hero-art-seamless {
+          max-height: 400px;
+          margin-left: -15px;
+        }
         .feature-grid-4 { grid-template-columns: repeat(2, 1fr); }
         .popular-exams-row { grid-template-columns: repeat(3, 1fr); }
-        .hero-art-seamless { opacity: 0.35; width: 80%; }
       }
+
+      @media (max-width: 768px) {
+        .hero-seamless {
+          display: flex;
+          flex-direction: column;
+          gap: 24px;
+          min-height: auto;
+          padding: 8px 0 16px;
+        }
+        .hero-content-seamless {
+          max-width: 100%;
+        }
+        .hero-art-seamless {
+          width: 100%;
+          max-width: 480px;
+          min-height: 240px;
+          max-height: 280px;
+          margin: 0 auto;
+        }
+        .bg-decor-pill,
+        .bg-decor-circle,
+        .bg-decor-foliage {
+          display: none;
+        }
+        .bg-decor-dots {
+          width: 90px;
+          height: 110px;
+          opacity: 0.18;
+        }
+        .homepage-bg-layer {
+          left: 0;
+          right: 0;
+          height: 540px;
+        }
+      }
+
       @media (max-width: 640px) {
         .feature-grid-4 { grid-template-columns: 1fr; }
         .popular-exams-row { grid-template-columns: 1fr; }
-        .hero-art-seamless { display: none; }
       }
     </style>
   </head>
