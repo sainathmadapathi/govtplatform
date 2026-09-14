@@ -167,11 +167,11 @@ import {
 // Header.tsx
 // ==========================================================================
 /** The nine top-level views. `main.tsx` switches on this; the assistant navigates with it. */
-export type GovOSTab = 'FINDER' | 'ELIGIBILITY' | 'EXAM_DETAIL' | 'PLANNER' | 'PRACTICE' | 'RESOURCES' | 'COMPARE' | 'CALENDAR' | 'AI_ASSISTANT' | 'ADMIN';
+export type GovOSTab = 'FINDER' | 'ELIGIBILITY' | 'EXAM_DETAIL' | 'PLANNER' | 'PRACTICE' | 'RESOURCES' | 'COMPARE' | 'CALENDAR' | 'AI_ASSISTANT' | 'ADMIN' | 'MY_EXAMS';
 
 interface HeaderProps {
-  activeTab: 'FINDER' | 'ELIGIBILITY' | 'EXAM_DETAIL' | 'PLANNER' | 'PRACTICE' | 'RESOURCES' | 'COMPARE' | 'CALENDAR' | 'AI_ASSISTANT' | 'ADMIN';
-  setActiveTab: (tab: 'FINDER' | 'ELIGIBILITY' | 'EXAM_DETAIL' | 'PLANNER' | 'PRACTICE' | 'RESOURCES' | 'COMPARE' | 'CALENDAR' | 'AI_ASSISTANT' | 'ADMIN') => void;
+  activeTab: GovOSTab;
+  setActiveTab: (tab: GovOSTab) => void;
   selectedExamTitle?: string;
   unreadCount?: number;
   trackedCount?: number;
@@ -204,12 +204,14 @@ export const Header: React.FC<HeaderProps> = ({
       <nav style={{ display: 'flex', alignItems: 'center', gap: '2px', overflowX: 'auto', flexWrap: 'wrap' }}>
         {link('FINDER', <><Compass size={15} /> Home</>)}
         {link('FINDER', 'Exam Finder', undefined, () => setTimeout(() => document.getElementById('exam-finder-engine')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60))}
-        {link('EXAM_DETAIL', <><BookOpen size={15} /> {examShort}</>)}
-        {link('COMPARE', 'Compare')}
-        {link('CALENDAR', <>My Timeline{trackedCount > 0 && <span className="badge badge-verified" style={{ fontSize: '0.6rem', padding: '1px 7px' }}>{trackedCount}</span>}</>, undefined, onOpenTimeline)}
-        {link('AI_ASSISTANT', 'Ask AI')}
-        {link('ELIGIBILITY', 'Am I Eligible?', 'subtle')}
-        {link('ADMIN', 'Trust Panel', 'subtle')}
+        {link('MY_EXAMS', <>My Exams{trackedCount > 0 && <span className="badge badge-verified" style={{ fontSize: '0.6rem', padding: '1px 7px' }}>{trackedCount}</span>}</>)}
+        {link('COMPARE', 'Compare Exams')}
+        {link('AI_ASSISTANT', 'Ask GovOS AI')}
+        {link('CALENDAR', 'My Timeline', undefined, onOpenTimeline)}
+        {link('ADMIN', 'Trust Panel')}
+        {activeTab === 'EXAM_DETAIL' && selectedExamTitle && (
+          <span className="nav-link active" style={{ cursor: 'default' }}><BookOpen size={14} /> {examShort}</span>
+        )}
       </nav>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -221,9 +223,81 @@ export const Header: React.FC<HeaderProps> = ({
             </span>
           )}
         </button>
-        <div className="avatar" title="Candidate">S</div>
+        <button className="avatar" onClick={() => setActiveTab('ELIGIBILITY')} title="Profile — your candidate details and post-by-post eligibility" style={{ border: 'none', cursor: 'pointer' }}>S</button>
       </div>
     </header>
+  );
+};
+
+
+// ==========================================================================
+// MyExams.tsx — the candidate's own shelf: tracked, bookmarked, and the one last opened.
+// Reads the same storage the finder and the exam page write; every button is an existing handler.
+// ==========================================================================
+interface MyExamsProps {
+  trackedExamIds: string[];
+  currentExamId: string;
+  onSelectExam: (exam: Exam) => void;
+  onToggleTrackExam: (examId: string) => void;
+  onFindExams: () => void;
+}
+
+export const MyExams: React.FC<MyExamsProps> = ({ trackedExamIds, currentExamId, onSelectExam, onToggleTrackExam, onFindExams }) => {
+  const bookmarked = storageService.getBookmarkedExams();
+  const mine = ALL_EXAMS.filter(e => trackedExamIds.includes(e.id) || bookmarked.includes(e.id) || e.id === currentExamId)
+    .sort((a, b) => (a.id === currentExamId ? -1 : b.id === currentExamId ? 1 : 0));
+  const nextDate = (exam: Exam) => {
+    const now = Date.now();
+    return exam.dates.filter(d => d.status !== 'SUPERSEDED' && new Date(d.dateTimeStr.replace(' ', 'T')).getTime() >= now)
+      .sort((a, b) => a.dateTimeStr.localeCompare(b.dateTimeStr))[0];
+  };
+  return (
+    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+      <div className="glass-card" style={{ padding: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
+        <div>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>My Exams</h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: '4px 0 0' }}>The exams you track or bookmarked, and the one you last opened. Each opens its own workspace.</p>
+        </div>
+        <button className="btn btn-primary" onClick={onFindExams}><Compass size={16} /> Find more exams</button>
+      </div>
+      {mine.length === 0 ? (
+        <div className="glass-card" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+          Nothing here yet. Track an exam from the Exam Finder and it appears on this shelf.
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
+          {mine.map(exam => {
+            const tracked = trackedExamIds.includes(exam.id);
+            const next = nextDate(exam);
+            return (
+              <div key={exam.id} className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  <div className="exam-logo" style={{ width: '44px', height: '44px', fontSize: '0.72rem' }}>{exam.code.split('_').slice(0, 2).join(' ')}</div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.2 }}>{exam.title}</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{exam.authorityName}</div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  {exam.id === currentExamId && <span className="badge badge-demo" style={{ fontSize: '0.6rem' }}>Last opened</span>}
+                  {tracked && <span className="badge badge-verified" style={{ fontSize: '0.6rem' }}>Tracking active</span>}
+                  {bookmarked.includes(exam.id) && <span className="badge badge-changed" style={{ fontSize: '0.6rem' }}>Bookmarked</span>}
+                </div>
+                <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                  {next ? <>Next: <strong style={{ color: 'var(--text-primary)' }}>{next.label}</strong> · {next.dateTimeStr.slice(0, 10)}</> : 'No upcoming date on record.'}
+                </div>
+                <div style={{ display: 'flex', gap: '8px', marginTop: 'auto' }}>
+                  <button className="btn btn-primary" style={{ fontSize: '0.85rem', padding: '8px 14px' }} onClick={() => onSelectExam(exam)}>Open workspace <ChevronRight size={14} /></button>
+                  <button className={`btn ${tracked ? 'btn-emerald' : 'btn-secondary'}`} style={{ fontSize: '0.85rem', padding: '8px 14px' }} onClick={() => onToggleTrackExam(exam.id)}>
+                    {tracked ? <><Check size={14} /> Tracking</> : <><Bell size={14} /> Track</>}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 };
 
@@ -487,11 +561,11 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
             ))}
           </div>
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '18px' }}>
-            <button className="btn btn-primary" onClick={onNavigateEligibility}>
-              <ShieldCheck size={18} /> Check My Eligibility
+            <button className="btn btn-primary" onClick={() => document.getElementById('exam-finder-engine')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
+              <Search size={18} /> Find My Exam
             </button>
-            <button className="btn btn-secondary" onClick={() => onSelectExam(ALL_EXAMS[0])}>
-              <Award size={18} /> Explore SSC CGL 2026
+            <button className="btn btn-secondary" onClick={() => document.getElementById('featured-exams')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
+              <Award size={18} /> Explore Exams
             </button>
           </div>
         </div>
@@ -571,14 +645,13 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
         </div>
       </section>
 
-      {/* What the platform does — each card opens the real feature */}
+      {/* Quick actions — each opens the real feature */}
       <div className="feature-grid">
         {[
-          { icon: <UserCheck size={22} />, tint: '#e8f0ff', color: '#2563eb', title: 'Find Your Fit', text: 'Check eligibility for every post', go: () => onNavigateEligibility() },
-          { icon: <Calendar size={22} />, tint: '#e8f7ee', color: '#15803d', title: 'Track Everything', text: 'Important dates in one place', go: () => onNavigate ? onNavigate('CALENDAR') : onSelectExam(ALL_EXAMS[0]) },
-          { icon: <Library size={22} />, tint: '#f1ebfe', color: '#6d28d9', title: 'Trusted Resources', text: 'Verified from official sources', go: () => onNavigate ? onNavigate('EXAM_DETAIL', 8) : onSelectExam(ALL_EXAMS[0]) },
-          { icon: <Award size={22} />, tint: '#fff4e0', color: '#b45309', title: 'Practice & Improve', text: 'PYQs, mocks and smart analysis', go: () => onNavigate ? onNavigate('EXAM_DETAIL', 9) : onSelectExam(ALL_EXAMS[0]) },
-          { icon: <Bot size={22} />, tint: '#e6f6fb', color: '#0e7490', title: 'AI Guidance', text: 'Grounded answers, cited, any time', go: () => onNavigate ? onNavigate('AI_ASSISTANT') : onSelectExam(ALL_EXAMS[0]) }
+          { icon: <UserCheck size={22} />, tint: '#e8f0ff', color: '#2563eb', title: 'Find the Right Exam', text: 'Check eligibility for every post', go: () => onNavigateEligibility() },
+          { icon: <Calendar size={22} />, tint: '#e8f7ee', color: '#15803d', title: 'Track Important Dates', text: 'Deadlines and reminders in one place', go: () => onNavigate ? onNavigate('CALENDAR') : onSelectExam(ALL_EXAMS[0]) },
+          { icon: <Library size={22} />, tint: '#f1ebfe', color: '#6d28d9', title: 'Verified Resources', text: 'Links to official sources, checked', go: () => onNavigate ? onNavigate('EXAM_DETAIL', 8) : onSelectExam(ALL_EXAMS[0]) },
+          { icon: <Award size={22} />, tint: '#fff4e0', color: '#b45309', title: 'Practice & Improve', text: 'PYQs, mocks and smart analysis', go: () => onNavigate ? onNavigate('EXAM_DETAIL', 9) : onSelectExam(ALL_EXAMS[0]) }
         ].map(card => (
           <button key={card.title} className="feature-card" onClick={card.go}>
             <div className="feature-icon" style={{ background: card.tint, color: card.color }}>{card.icon}</div>
@@ -588,24 +661,62 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
         ))}
       </div>
 
-      <div className="quote-strip">
-        <div>
-          <div style={{ fontSize: '1.15rem', fontWeight: 700, fontStyle: 'italic', color: 'var(--text-primary)', fontFamily: 'Georgia, serif' }}>“The future depends on what you do today.”</div>
-          <div style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', marginTop: '4px' }}>Prepare. Persist. Succeed.</div>
-          <div style={{ display: 'flex', gap: '6px', marginTop: '12px' }}>
-            <span style={{ width: '22px', height: '6px', borderRadius: '3px', background: 'var(--primary)' }} />
-            <span style={{ width: '10px', height: '6px', borderRadius: '3px', background: '#dbe3f0' }} />
-            <span style={{ width: '10px', height: '6px', borderRadius: '3px', background: '#dbe3f0' }} />
+      {/* How GovOS works */}
+      <div className="glass-card" style={{ padding: '26px 28px' }}>
+        <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 16px' }}>How GovOS works</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+          {[
+            { n: 1, title: 'Find Your Exam', text: 'Search or answer three questions; GovOS matches exams to your qualification.' },
+            { n: 2, title: 'Get Verified Information', text: 'Dates, eligibility, pattern and syllabus, each cited to the official notice.' },
+            { n: 3, title: 'Prepare and Track Everything', text: 'Resources, practice, mocks and reminders, all inside your exam\'s workspace.' }
+          ].map(step => (
+            <div key={step.n} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+              <div style={{ width: '34px', height: '34px', borderRadius: '10px', background: 'var(--primary-soft)', color: 'var(--primary)', fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{step.n}</div>
+              <div>
+                <div style={{ fontWeight: 800, color: 'var(--text-primary)' }}>{step.title}</div>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.45 }}>{step.text}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Featured exams — each card opens that exam's workspace */}
+      <div id="featured-exams" className="glass-card" style={{ padding: '26px 28px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '16px' }}>
+          <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Featured exams</h3>
+          <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>{ALL_EXAMS.length} exams in the register</span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: '12px' }}>
+          {ALL_EXAMS.map(exam => (
+            <button key={exam.id} className="feature-card" onClick={() => onSelectExam(exam)} style={{ display: 'flex', gap: '12px', alignItems: 'center', padding: '16px' }}>
+              <div className="exam-logo" style={{ width: '44px', height: '44px', fontSize: '0.7rem' }}>{exam.code.split('_').slice(0, 2).join(' ')}</div>
+              <div style={{ minWidth: 0 }}>
+                <h4 style={{ margin: 0 }}>{exam.title.replace(/\s*\(.*?\)\s*/g, ' ').trim()}</h4>
+                <p style={{ margin: 0 }}>{exam.authorityName.replace(/\s*\(.*?\)\s*/g, '').trim()}</p>
+              </div>
+              <ChevronRight size={16} color="var(--text-muted)" style={{ marginLeft: 'auto', flexShrink: 0 }} />
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Trust — what candidates get, without the pipeline internals */}
+      <div className="glass-card" style={{ padding: '22px 28px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '14px' }}>
+        {[
+          { icon: <ShieldCheck size={18} />, title: 'Official sources', text: 'Every fact links to the commission\'s own document.' },
+          { icon: <CheckCircle2 size={18} />, title: 'Verified information', text: 'Reviewed before it reaches you; nothing guessed.' },
+          { icon: <Bell size={18} />, title: 'Update monitoring', text: 'Corrigenda and notices are watched and flagged.' },
+          { icon: <Lock size={18} />, title: 'Candidate-safe', text: 'Links only, no stored documents, no form submissions on your behalf.' }
+        ].map(item => (
+          <div key={item.title} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+            <div className="info-icon" style={{ color: '#15803d', background: 'var(--emerald-soft)' }}>{item.icon}</div>
+            <div>
+              <div style={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '0.92rem' }}>{item.title}</div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>{item.text}</div>
+            </div>
           </div>
-        </div>
-        <div style={{ background: '#e9f3e6', borderRadius: '14px', padding: '16px 20px', fontWeight: 800, color: '#1f2937', display: 'flex', alignItems: 'center', gap: '14px', minWidth: '250px' }}>
-          <div style={{ lineHeight: 1.25 }}>Same Dreams<br />Brighter Futures</div>
-          <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true">
-            <path d="M20 36 C 20 26, 20 20, 20 14" stroke="#2f7d3a" strokeWidth="3" strokeLinecap="round" fill="none" />
-            <path d="M20 22 C 12 22, 8 16, 8 10 C 14 10, 20 14, 20 22 Z" fill="#4caf60" />
-            <path d="M20 18 C 28 18, 32 12, 32 6 C 26 6, 20 10, 20 18 Z" fill="#7cc47f" />
-          </svg>
-        </div>
+        ))}
       </div>
 
       {/* Recommended for You Shelf (Time-Decayed BPR) */}
@@ -14844,13 +14955,6 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
     tileFor(['EXAM_TIER2'], stageLabel(1, 'Tier 2'))
   ];
   const examInitials = exam.code.split('_').slice(0, 2).join(' ');
-  const shareExam = async () => {
-    const payload = { title: exam.title, text: `${exam.title} on GovOS`, url: exam.officialDomain };
-    try {
-      if (navigator.share) await navigator.share(payload);
-      else if (navigator.clipboard) await navigator.clipboard.writeText(exam.officialDomain);
-    } catch { /* the candidate closed the share sheet */ }
-  };
   const latestUpdates = [
     ...exam.corrigendums.map(c => ({ id: c.id, title: c.title, date: c.publishedDate, isNew: true })),
     ...liveDates.map(d => ({ id: d.id, title: d.label, date: d.dateTimeStr.slice(0, 10), isNew: false }))
@@ -14907,10 +15011,10 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
             <div style={{ minWidth: 0 }}>
               <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0, lineHeight: 1.2 }}>{exam.title}</h2>
               <div style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '2px' }}>{exam.authorityName}</div>
-              <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginTop: '2px', display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                <span>Greater Opportunities. A Stronger You.</span>
+              <div style={{ marginTop: '6px', display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                <span className="badge badge-verified" style={{ fontSize: '0.62rem' }}><ShieldCheck size={11} /> Officially verified</span>
+                {isTracked && <span className="badge badge-pending" style={{ fontSize: '0.62rem' }}><Bell size={11} /> Tracking active</span>}
                 {exam.vacanciesTotal && <span className="badge badge-demo" style={{ fontSize: '0.62rem' }}>{exam.vacanciesTotal}</span>}
-                {exam.isGoldenJourney && <span className="badge badge-verified" style={{ fontSize: '0.62rem' }}>Golden benchmark exam</span>}
               </div>
             </div>
           </div>
@@ -14921,17 +15025,18 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                 {isTracked ? <><Check size={15} /> Tracking</> : <><Bell size={15} /> Track Exam</>}
               </button>
             )}
-            <button className="btn btn-secondary" onClick={shareExam} style={{ fontSize: '0.85rem', padding: '8px 14px' }} title="Share the official page">
-              <Share2 size={15} /> Share
+            <a href={exam.officialDomain} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ fontSize: '0.85rem', padding: '8px 14px' }}
+              onClick={() => storageService.recordInteraction({ type: 'RESOURCE_ACCESS', examId: exam.id, metadata: { target: exam.officialDomain, action: 'Opened Official Domain Portal' } })}>
+              <ExternalLink size={15} /> Official Website
+            </a>
+            <button className="btn btn-secondary" onClick={() => onOpenReportModal('Exam', exam.id)} style={{ fontSize: '0.85rem', padding: '8px 14px' }}>
+              <Flag size={15} /> Report Error
             </button>
             <button className="icon-btn" onClick={handleToggleBookmark} title={isBookmarked ? 'Exam saved in bookmarks' : 'Bookmark this exam'} style={{ color: isBookmarked ? '#b45309' : undefined, background: isBookmarked ? 'var(--amber-soft)' : undefined }}>
               <Bookmark size={16} fill={isBookmarked ? 'currentColor' : 'none'} />
             </button>
-            <button className="icon-btn" onClick={() => onOpenReportModal('Exam', exam.id)} title="Report an error in this exam's data">
-              <Flag size={16} />
-            </button>
-            <button className="btn btn-primary" onClick={onAskAI} style={{ fontSize: '0.85rem', padding: '8px 14px' }}>
-              <Bot size={15} /> Ask about this exam!
+            <button className="icon-btn" onClick={onAskAI} title="Ask GovOS AI about this exam" style={{ color: 'var(--primary)', background: 'var(--primary-soft)' }}>
+              <Bot size={16} />
             </button>
           </div>
         </div>
@@ -14955,10 +15060,9 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
         <div style={{ maxWidth: '640px', fontSize: '0.95rem', color: 'var(--text-primary)', lineHeight: 1.55 }}>
           {exam.overviewDescription.length > 260 ? exam.overviewDescription.slice(0, 257).replace(/\s+\S*$/, '') + '…' : exam.overviewDescription}
         </div>
-        <a href={exam.officialDomain} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ fontSize: '0.85rem', whiteSpace: 'nowrap' }}
-          onClick={() => storageService.recordInteraction({ type: 'RESOURCE_ACCESS', examId: exam.id, metadata: { target: exam.officialDomain, action: 'Opened Official Domain Portal' } })}>
-          Official Website <ExternalLink size={15} />
-        </a>
+        <button className="btn btn-primary" onClick={onAskAI} style={{ fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
+          <Bot size={15} /> Ask about this exam
+        </button>
       </div>
 
       {/* Corrigendum Change Notification Bar */}

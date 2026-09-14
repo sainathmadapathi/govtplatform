@@ -537,7 +537,18 @@ historical values and Mock Tests took a fresh number rather than pushing the oth
 **17 Mock Tests** · 14 Admit Card · 15 Exam Day · 16 Results & Next Steps, with reference
 sections 10 Cutoffs · 11 FAQs · 12 Official Links · 13 Corrigenda.
 
-**Global navigation is what genuinely spans exams.** The header's first row is the platform
+**Global navigation, as specified:** Home · Exam Finder (scrolls to the discovery engine) ·
+My Exams (`MyExams`: the exams tracked, bookmarked or last opened, over the same storage the
+finder and exam page write; Open and Track are the existing handlers) · Compare Exams · Ask
+GovOS AI · My Timeline · Trust Panel, then the notification bell and the profile avatar
+(opens the candidate profile, which is the eligibility engine's form). When an exam page is
+open its name shows as the active pill. The home page, after the hero, has four quick-action
+cards, "How GovOS works", featured exams (every register entry, each opening its workspace)
+and a trust strip; the recommendation and discovery engines follow unchanged. The exam
+header is compact: Officially verified / Tracking active / vacancies badges and Track,
+Official Website, Report Error, bookmark and Ask actions.
+
+**Earlier layout note.** The header's first row is the platform
 (Find Exam · the current exam · Ask GovOS AI · Trust Panel · the notification bell); the
 second, quieter row is "across all exams" (Am I Eligible? · Compare Exams · All-Exam
 Calendar). Practice, Resources and the Study Roadmap used to be top-level tabs **as well as**

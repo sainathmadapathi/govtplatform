@@ -39,6 +39,7 @@ import {
   ExamDetailView,
   ExamFinder,
   Header,
+  MyExams,
   NotificationCenterModal,
   NotificationPreferencesModal,
   PracticeEngine,
@@ -48,7 +49,7 @@ import {
 } from './ui';
 
 export const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'FINDER' | 'ELIGIBILITY' | 'EXAM_DETAIL' | 'PLANNER' | 'PRACTICE' | 'RESOURCES' | 'COMPARE' | 'CALENDAR' | 'AI_ASSISTANT' | 'ADMIN'>('FINDER');
+  const [activeTab, setActiveTab] = useState<GovOSTab>('FINDER');
   /** Guide section to open when something deep-links into the Exam Guide (1-16). */
   const [examSection, setExamSection] = useState<number>(1);
   const [resourceForReader, setResourceForReader] = useState<ResourceItem | null>(null);
@@ -311,6 +312,16 @@ export const App: React.FC = () => {
             showSectionNumber={false}
             onOpenResource={(res) => setResourceForReader(res)}
             onOpenProvenanceModal={handleOpenProvenance}
+          />
+        )}
+
+        {activeTab === 'MY_EXAMS' && (
+          <MyExams
+            trackedExamIds={trackedExamIds}
+            currentExamId={selectedExam.id}
+            onSelectExam={handleSelectExam}
+            onToggleTrackExam={handleToggleTrackExam}
+            onFindExams={() => navigate('FINDER')}
           />
         )}
 
