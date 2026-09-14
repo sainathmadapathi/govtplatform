@@ -255,7 +255,8 @@ export const App: React.FC = () => {
       {/* View Render */}
       <main style={{ paddingBottom: '60px' }}>
         {activeTab === 'FINDER' && (
-          <ExamFinder 
+          <ExamFinder
+            onNavigate={navigate}
             onSelectExam={handleSelectExam}
             onNavigateEligibility={() => setActiveTab('ELIGIBILITY')}
             trackedExamIds={trackedExamIds}
@@ -274,6 +275,8 @@ export const App: React.FC = () => {
         {activeTab === 'EXAM_DETAIL' && (
           <ExamDetailView
             exam={liveExam}
+            onBackHome={() => navigate('FINDER')}
+            onAskAI={() => navigate('AI_ASSISTANT')}
             initialSection={examSection}
             onOpenProvenanceModal={handleOpenProvenance}
             onOpenReportModal={handleOpenReport}
@@ -379,7 +382,7 @@ export const App: React.FC = () => {
 
               <div>
                 <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Source Document Title:</span>
-                <div style={{ fontWeight: 700, color: 'white', marginTop: '2px' }}>{provenanceModalData.documentTitle}</div>
+                <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>{provenanceModalData.documentTitle}</div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
@@ -396,11 +399,11 @@ export const App: React.FC = () => {
 
               {/* Direct Quoted Excerpt from Official Gazette */}
               {provenanceModalData.excerptText && (
-                <div style={{ padding: '14px', borderRadius: 'var(--radius-md)', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#93c5fd', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ padding: '14px', borderRadius: 'var(--radius-md)', background: 'var(--surface-3)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#2563eb', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <Quote size={14} /> Official Gazette Legal Excerpt
                   </span>
-                  <div style={{ fontSize: '0.88rem', color: '#e2e8f0', lineHeight: 1.5, fontStyle: 'italic' }}>
+                  <div style={{ fontSize: '0.88rem', color: '#334155', lineHeight: 1.5, fontStyle: 'italic' }}>
                     "{provenanceModalData.excerptText}"
                   </div>
                 </div>
@@ -480,7 +483,7 @@ export const App: React.FC = () => {
                       borderRadius: 'var(--radius-md)',
                       background: 'var(--bg-input)',
                       border: '1px solid var(--border-color)',
-                      color: 'white',
+                      color: 'var(--text-primary)',
                       fontSize: '0.95rem',
                       outline: 'none'
                     }}

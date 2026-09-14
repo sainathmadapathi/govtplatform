@@ -179,167 +179,48 @@ interface HeaderProps {
   onOpenTimeline?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ 
-  activeTab, 
-  setActiveTab, 
+export const Header: React.FC<HeaderProps> = ({
+  activeTab,
+  setActiveTab,
   selectedExamTitle,
   unreadCount = 0,
   trackedCount = 0,
   onOpenNotifications,
   onOpenTimeline
 }) => {
+  const link = (tab: HeaderProps['activeTab'], label: React.ReactNode, extra?: string, onClick?: () => void) => (
+    <button
+      className={`nav-link ${activeTab === tab ? 'active' : ''} ${extra || ''}`}
+      onClick={() => { if (onClick) onClick(); setActiveTab(tab); }}
+    >
+      {label}
+    </button>
+  );
+  const examShort = selectedExamTitle ? selectedExamTitle.replace(/\s*\(.*?\)\s*/g, ' ').replace(/Combined Graduate Level|Civil Services Examination|Probationary Officer/g, '').replace(/\s+/g, ' ').trim() : 'My Exam';
   return (
-    <header className="glass-card" style={{ borderRadius: '0 0 16px 16px', marginBottom: '24px', padding: '16px 24px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '20px', flexWrap: 'wrap' }}>
-        {/* Brand identity */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', cursor: 'pointer' }} onClick={() => setActiveTab('FINDER')}>
-          <div style={{
-            width: '42px',
-            height: '42px',
-            borderRadius: '12px',
-            background: 'linear-gradient(135deg, #6366f1 0%, #10b981 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'white',
-            boxShadow: '0 0 20px rgba(99, 102, 241, 0.4)'
-          }}>
-            <ShieldCheck size={26} />
-          </div>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h1 style={{ fontSize: '1.4rem', fontWeight: 800, letterSpacing: '-0.02em', background: 'linear-gradient(90deg, #ffffff 0%, #cbd5e1 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                GovOS
-              </h1>
-              <span className="badge badge-verified" style={{ fontSize: '0.65rem' }}>
-                Trust System V1
-              </span>
-            </div>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
-              India's Exam & Career Navigation Operating System
-            </p>
-          </div>
-        </div>
+    <header className="topbar">
+      <div className="brand" onClick={() => setActiveTab('FINDER')}>GovOS</div>
 
-        {/* Global Navigation.
-            Row 1 is the platform: find an exam, work inside it, ask the assistant, audit.
-            Row 2 is what genuinely spans exams. Anything belonging to one exam — resources,
-            practice, mocks, timeline, application — lives inside that exam's page now, so it
-            is not offered twice under two different names. */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
-          <nav style={{ display: 'flex', alignItems: 'center', gap: '6px', overflowX: 'auto', padding: '2px' }}>
-            <button
-              className={`btn ${activeTab === 'FINDER' ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => setActiveTab('FINDER')}
-              style={{ fontSize: '0.85rem', padding: '8px 14px' }}
-            >
-              <Compass size={16} /> Find Exam
-            </button>
+      <nav style={{ display: 'flex', alignItems: 'center', gap: '2px', overflowX: 'auto', flexWrap: 'wrap' }}>
+        {link('FINDER', <><Compass size={15} /> Home</>)}
+        {link('EXAM_DETAIL', <><BookOpen size={15} /> {examShort}</>)}
+        {link('COMPARE', 'Compare')}
+        {link('CALENDAR', <>My Timeline{trackedCount > 0 && <span className="badge badge-verified" style={{ fontSize: '0.6rem', padding: '1px 7px' }}>{trackedCount}</span>}</>, undefined, onOpenTimeline)}
+        {link('AI_ASSISTANT', 'Ask AI')}
+        {link('ELIGIBILITY', 'Am I Eligible?', 'subtle')}
+        {link('ADMIN', 'Trust Panel', 'subtle')}
+      </nav>
 
-            <button
-              className={`btn ${activeTab === 'EXAM_DETAIL' ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => setActiveTab('EXAM_DETAIL')}
-              title={selectedExamTitle ? `Everything for ${selectedExamTitle}: dates, eligibility, application, syllabus, resources, practice, mocks, admit card, results` : 'Open the exam workspace'}
-              style={{ fontSize: '0.85rem', padding: '8px 14px' }}
-            >
-              <BookOpen size={16} /> {selectedExamTitle || 'My Exam'}
-            </button>
-
-            <button
-              className={`btn ${activeTab === 'AI_ASSISTANT' ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => setActiveTab('AI_ASSISTANT')}
-              style={{ fontSize: '0.85rem', padding: '8px 14px' }}
-              title="Grounded answers from the verified database, with a live official-source search as fallback"
-            >
-              <Bot size={16} /> Ask GovOS AI
-            </button>
-
-            <button
-              className={`btn ${activeTab === 'ADMIN' ? 'btn-emerald' : 'btn-secondary'}`}
-              onClick={() => setActiveTab('ADMIN')}
-              style={{ fontSize: '0.85rem', padding: '8px 14px' }}
-            >
-              <Terminal size={16} /> Trust Panel
-            </button>
-
-            {/* Candidate Notification Bell */}
-            <button
-              className="btn btn-secondary"
-              onClick={onOpenNotifications}
-              title="Candidate Notifications & Alerts"
-              style={{
-                position: 'relative',
-                padding: '8px 12px',
-                marginLeft: '4px',
-                border: unreadCount > 0 ? '1px solid rgba(99, 102, 241, 0.5)' : '1px solid var(--border-color)',
-                background: unreadCount > 0 ? 'rgba(99, 102, 241, 0.12)' : 'rgba(255, 255, 255, 0.04)'
-              }}
-            >
-              <Bell size={18} color={unreadCount > 0 ? '#818cf8' : 'white'} />
-              {unreadCount > 0 && (
-                <span
-                  style={{
-                    position: 'absolute',
-                    top: '-4px',
-                    right: '-4px',
-                    background: '#ef4444',
-                    color: 'white',
-                    borderRadius: '50%',
-                    width: '18px',
-                    height: '18px',
-                    fontSize: '0.65rem',
-                    fontWeight: 800,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 0 10px rgba(239, 68, 68, 0.8)'
-                  }}
-                >
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </span>
-              )}
-            </button>
-          </nav>
-
-          <nav style={{ display: 'flex', alignItems: 'center', gap: '6px', overflowX: 'auto', padding: '2px' }}>
-            <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap', marginRight: '2px' }}>
-              Across all exams
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <button className="icon-btn" onClick={onOpenNotifications} title="Candidate Notifications & Alerts">
+          <Bell size={18} />
+          {unreadCount > 0 && (
+            <span style={{ position: 'absolute', top: '-5px', right: '-5px', background: '#ef4444', color: '#fff', borderRadius: '50%', width: '18px', height: '18px', fontSize: '0.62rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {unreadCount > 9 ? '9+' : unreadCount}
             </span>
-
-            <button
-              className={`btn ${activeTab === 'ELIGIBILITY' ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => setActiveTab('ELIGIBILITY')}
-              style={{ fontSize: '0.78rem', padding: '5px 11px' }}
-            >
-              <CheckCircle2 size={14} /> Am I Eligible?
-            </button>
-
-            <button
-              className={`btn ${activeTab === 'COMPARE' ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => setActiveTab('COMPARE')}
-              style={{ fontSize: '0.78rem', padding: '5px 11px' }}
-            >
-              <Scale size={14} /> Compare Exams
-            </button>
-
-            <button
-              className={`btn ${activeTab === 'CALENDAR' ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => {
-                if (onOpenTimeline) onOpenTimeline();
-                setActiveTab('CALENDAR');
-              }}
-              title="Milestones across every exam in the register. A single exam's own timeline is inside that exam."
-              style={{ fontSize: '0.78rem', padding: '5px 11px', display: 'flex', alignItems: 'center', gap: '6px' }}
-            >
-              <Calendar size={14} /> All-Exam Calendar
-              {trackedCount > 0 && (
-                <span className="badge" style={{ fontSize: '0.62rem', background: 'rgba(99,102,241,0.25)', color: '#a5b4fc', padding: '1px 6px' }}>
-                  {trackedCount} Tracked
-                </span>
-              )}
-            </button>
-          </nav>
-        </div>
+          )}
+        </button>
+        <div className="avatar" title="Candidate">S</div>
       </div>
     </header>
   );
@@ -350,6 +231,8 @@ export const Header: React.FC<HeaderProps> = ({
 // ExamFinder.tsx
 // ==========================================================================
 interface ExamFinderProps {
+  /** Lets the feature cards open a tab (and a section) — the same navigate() every button uses. */
+  onNavigate?: (tab: GovOSTab, section?: number) => void;
   onSelectExam: (exam: Exam) => void;
   onNavigateEligibility: () => void;
   trackedExamIds?: string[];
@@ -357,6 +240,7 @@ interface ExamFinderProps {
 }
 
 export const ExamFinder: React.FC<ExamFinderProps> = ({ 
+  onNavigate,
   onSelectExam, 
   onNavigateEligibility,
   trackedExamIds = [],
@@ -573,56 +457,95 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
       
-      {/* Hero Banner */}
-      <div className="glass-card" style={{ padding: '36px', background: 'linear-gradient(135deg, rgba(17, 24, 39, 0.9) 0%, rgba(30, 27, 75, 0.6) 100%)', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '250px', height: '250px', background: 'radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%)', borderRadius: '50%' }} />
-        
-        <div style={{ maxWidth: '780px', position: 'relative', zIndex: 2 }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 14px', borderRadius: '999px', background: 'rgba(99, 102, 241, 0.15)', border: '1px solid rgba(99, 102, 241, 0.3)', marginBottom: '16px' }}>
-            <Sparkles size={16} color="#818cf8" />
-            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#a5b4fc', letterSpacing: '0.02em' }}>
-              ONE PLATFORM. EVERY EXAM. ONE CLEAR PATH.
-            </span>
-          </div>
-
-          <h2 style={{ fontSize: '2.2rem', fontWeight: 800, lineHeight: 1.2, marginBottom: '14px', letterSpacing: '-0.02em' }}>
-            Discover Government & Entrance Exams Matched to Your Goal
-          </h2>
-          
-          <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', marginBottom: '24px', lineHeight: 1.6 }}>
-            Never ask <strong style={{ color: 'white' }}>"What do I do next?"</strong> again. GovOS converts fragmented official government notifications into verified, version-controlled, personalized exam roadmaps.
+      {/* Hero */}
+      <section className="hero">
+        <div>
+          <span className="badge badge-verified" style={{ marginBottom: '16px', background: 'var(--emerald-soft)' }}>
+            <Sparkles size={13} /> Your path. A brighter tomorrow.
+          </span>
+          <h1>Government Exams.<br /><span className="accent">Simplified</span> for You.</h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', margin: '16px 0 22px', maxWidth: '520px', lineHeight: 1.6 }}>
+            Find exams, get reliable information, prepare smarter, and never miss an important date.
           </p>
-
-          <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
-            <button className="btn btn-primary" onClick={onNavigateEligibility} style={{ padding: '12px 24px', fontSize: '1rem' }}>
-              <ShieldCheck size={20} /> Check My Eligibility Now
-            </button>
-            
-            <button className="btn btn-emerald" onClick={() => onSelectExam(ALL_EXAMS[0])} style={{ padding: '12px 24px', fontSize: '1rem' }}>
-              <Award size={20} /> Explore Golden Journey (SSC CGL)
+          <div className="search-bar" style={{ maxWidth: '520px' }}>
+            <Search size={18} color="var(--text-muted)" />
+            <input
+              type="text"
+              placeholder="Search exams (e.g., SSC CGL, UPSC, RRB...)"
+              value={searchQuery}
+              onChange={(e) => handleSearchChange(e.target.value)}
+            />
+            <button className="btn btn-primary" style={{ padding: '10px 14px', borderRadius: '10px' }} aria-label="Search">
+              <Search size={16} />
             </button>
           </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '14px' }}>
+            <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: 600 }}>Popular:</span>
+            {['SSC CGL', 'UPSC CSE', 'RRB NTPC', 'IBPS PO', 'State PSC'].map(name => (
+              <button key={name} className="chip" onClick={() => handleSearchChange(name)}>{name}</button>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '18px' }}>
+            <button className="btn btn-primary" onClick={onNavigateEligibility}>
+              <ShieldCheck size={18} /> Check My Eligibility
+            </button>
+            <button className="btn btn-secondary" onClick={() => onSelectExam(ALL_EXAMS[0])}>
+              <Award size={18} /> Explore SSC CGL 2026
+            </button>
+          </div>
+        </div>
+        <div className="hero-art" aria-hidden="true">
+          <div className="caption">Small Steps<br />Big Opportunities</div>
+          <div className="dome" />
+          <div className="ground" />
+        </div>
+      </section>
+
+      {/* What the platform does — each card opens the real feature */}
+      <div className="feature-grid">
+        {[
+          { icon: <UserCheck size={22} />, tint: '#e8f0ff', color: '#2563eb', title: 'Find Your Fit', text: 'Check eligibility for every post', go: () => onNavigateEligibility() },
+          { icon: <Calendar size={22} />, tint: '#e8f7ee', color: '#15803d', title: 'Track Everything', text: 'Important dates in one place', go: () => onNavigate ? onNavigate('CALENDAR') : onSelectExam(ALL_EXAMS[0]) },
+          { icon: <Library size={22} />, tint: '#f1ebfe', color: '#6d28d9', title: 'Trusted Resources', text: 'Verified from official sources', go: () => onNavigate ? onNavigate('EXAM_DETAIL', 8) : onSelectExam(ALL_EXAMS[0]) },
+          { icon: <Award size={22} />, tint: '#fff4e0', color: '#b45309', title: 'Practice & Improve', text: 'PYQs, mocks and smart analysis', go: () => onNavigate ? onNavigate('EXAM_DETAIL', 9) : onSelectExam(ALL_EXAMS[0]) },
+          { icon: <Bot size={22} />, tint: '#e6f6fb', color: '#0e7490', title: 'AI Guidance', text: 'Grounded answers, cited, any time', go: () => onNavigate ? onNavigate('AI_ASSISTANT') : onSelectExam(ALL_EXAMS[0]) }
+        ].map(card => (
+          <button key={card.title} className="feature-card" onClick={card.go}>
+            <div className="feature-icon" style={{ background: card.tint, color: card.color }}>{card.icon}</div>
+            <h4>{card.title}</h4>
+            <p>{card.text}</p>
+          </button>
+        ))}
+      </div>
+
+      <div className="quote-strip">
+        <div>
+          <div style={{ fontSize: '1.15rem', fontWeight: 700, fontStyle: 'italic', color: 'var(--text-primary)' }}>“The future depends on what you do today.”</div>
+          <div style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', marginTop: '4px' }}>Prepare. Persist. Succeed.</div>
+        </div>
+        <div style={{ background: '#e9f3e6', borderRadius: '12px', padding: '14px 18px', fontWeight: 700, color: '#166534' }}>
+          Same Dreams · Brighter Futures
         </div>
       </div>
 
       {/* Recommended for You Shelf (Time-Decayed BPR) */}
-      <div className="glass-card" style={{ padding: '28px', border: '1px solid rgba(99, 102, 241, 0.35)', background: 'linear-gradient(135deg, rgba(17, 24, 39, 0.95) 0%, rgba(30, 27, 75, 0.45) 100%)' }}>
+      <div className="glass-card" style={{ padding: '28px', border: '1px solid rgba(99, 102, 241, 0.35)', background: 'linear-gradient(135deg, #ffffff 0%, #eef2ff 100%)' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px', marginBottom: '20px' }}>
           <div>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '4px 12px', borderRadius: '999px', background: 'rgba(99, 102, 241, 0.15)', border: '1px solid rgba(99, 102, 241, 0.3)', marginBottom: '10px' }}>
-              <Sparkles size={14} color="#818cf8" />
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#a5b4fc', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+              <Sparkles size={14} color="#4f46e5" />
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#4f46e5', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
                 AI Behavioral Recommendation Engine · Time-Aware Multi-Tier Decay (Inspired by Time-Decayed BPR Principles)
               </span>
             </div>
-            <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white', margin: '0 0 6px' }}>
+            <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px' }}>
               Recommended for You 🎯
             </h3>
             <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: '0 0 8px', maxWidth: '680px' }}>
               Personalized recommendations based on your real-time actions — searched queries, viewed guides, bookmarked notifications, and syllabus reading sessions with multi-tiered time decay and commitment signal weights.
             </p>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', color: '#94a3b8', background: 'rgba(255, 255, 255, 0.04)', padding: '5px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(255, 255, 255, 0.08)', marginBottom: '4px' }}>
-              <Info size={13} color="#818cf8" />
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', color: '#64748b', background: 'var(--surface-2)', padding: '5px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--surface-2)', marginBottom: '4px' }}>
+              <Info size={13} color="#4f46e5" />
               <span>
                 <strong>Match % Advisory:</strong> Normalized behavioral relevance (0–100%) from your engagement patterns. It is <em>not</em> a probability of selection or an eligibility guarantee.
               </span>
@@ -642,11 +565,11 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
         </div>
 
         {/* Behavioral Simulation Toolbar */}
-        <div style={{ padding: '14px 18px', background: 'rgba(0, 0, 0, 0.35)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', marginBottom: '22px' }}>
+        <div style={{ padding: '14px 18px', background: 'var(--surface-3)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', marginBottom: '22px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '10px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Zap size={16} color="var(--amber)" />
-              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#fbbf24' }}>
+              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#b45309' }}>
                 Behaviour Simulation Lab:
               </span>
               <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
@@ -689,14 +612,14 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
             <button
               className="btn btn-secondary"
               onClick={() => runSimulationPreset('RESET')}
-              style={{ fontSize: '0.78rem', padding: '7px 14px', color: '#f87171' }}
+              style={{ fontSize: '0.78rem', padding: '7px 14px', color: '#dc2626' }}
             >
               <RotateCcw size={13} /> Reset Behaviour
             </button>
           </div>
 
           {simulationNotice && (
-            <div className="animate-fade-in" style={{ marginTop: '10px', padding: '8px 12px', borderRadius: 'var(--radius-sm)', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#34d399', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div className="animate-fade-in" style={{ marginTop: '10px', padding: '8px 12px', borderRadius: 'var(--radius-sm)', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#15803d', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <CheckCircle2 size={15} />
               {simulationNotice}
             </div>
@@ -727,7 +650,7 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
                   flexDirection: 'column',
                   justifyContent: 'space-between',
                   border: `1px solid ${strengthBorder}`,
-                  background: 'rgba(17, 24, 39, 0.85)',
+                  background: '#ffffff',
                   position: 'relative'
                 }}
               >
@@ -741,7 +664,7 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
                         fontSize: '0.78rem',
                         fontWeight: 800,
                         background: rec.matchStrength === 'STRONG' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(99, 102, 241, 0.2)',
-                        color: rec.matchStrength === 'STRONG' ? '#34d399' : '#a5b4fc',
+                        color: rec.matchStrength === 'STRONG' ? '#15803d' : '#4f46e5',
                         border: `1px solid ${strengthBorder}`,
                         display: 'inline-flex',
                         alignItems: 'center',
@@ -757,7 +680,7 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
                       style={{
                         fontSize: '0.68rem',
                         background: rec.matchStrength === 'STRONG' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-                        color: rec.matchStrength === 'STRONG' ? '#34d399' : '#fbbf24',
+                        color: rec.matchStrength === 'STRONG' ? '#15803d' : '#b45309',
                         border: `1px solid ${strengthBorder}`
                       }}
                     >
@@ -765,7 +688,7 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
                     </span>
                   </div>
 
-                  <h4 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'white', marginBottom: '4px', lineHeight: 1.3 }}>
+                  <h4 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '4px', lineHeight: 1.3 }}>
                     {rec.exam.title}
                   </h4>
                   <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '14px', fontWeight: 500 }}>
@@ -773,7 +696,7 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
                   </div>
 
                   {/* Primary Signal Pill */}
-                  <div style={{ padding: '6px 10px', borderRadius: 'var(--radius-sm)', background: 'rgba(0, 0, 0, 0.3)', border: '1px solid var(--border-color)', marginBottom: '14px', fontSize: '0.76rem', color: '#e0e7ff', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div style={{ padding: '6px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-3)', border: '1px solid var(--border-color)', marginBottom: '14px', fontSize: '0.76rem', color: '#3730a3', display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <Target size={13} color="var(--primary)" />
                     <span style={{ fontWeight: 600 }}>{rec.primarySignal}</span>
                   </div>
@@ -784,8 +707,8 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
                       Why GovOS Recommends This:
                     </span>
                     {rec.reasons.map((reason, rIdx) => (
-                      <div key={rIdx} style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', fontSize: '0.82rem', color: '#cbd5e1', lineHeight: 1.35 }}>
-                        <span style={{ color: '#34d399', fontWeight: 800 }}>✓</span>
+                      <div key={rIdx} style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', fontSize: '0.82rem', color: '#334155', lineHeight: 1.35 }}>
+                        <span style={{ color: '#15803d', fontWeight: 800 }}>✓</span>
                         <span>{reason}</span>
                       </div>
                     ))}
@@ -808,7 +731,7 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
                     <button
                       className={`btn ${isRecBookmarked ? 'btn-amber' : 'btn-secondary'}`}
                       onClick={() => handleToggleBookmark(rec.exam.id)}
-                      style={{ padding: '6px 10px', fontSize: '0.78rem', background: isRecBookmarked ? 'rgba(245, 158, 11, 0.2)' : undefined, color: isRecBookmarked ? '#fbbf24' : undefined, borderColor: isRecBookmarked ? 'rgba(245, 158, 11, 0.4)' : undefined }}
+                      style={{ padding: '6px 10px', fontSize: '0.78rem', background: isRecBookmarked ? 'rgba(245, 158, 11, 0.2)' : undefined, color: isRecBookmarked ? '#b45309' : undefined, borderColor: isRecBookmarked ? 'rgba(245, 158, 11, 0.4)' : undefined }}
                       title={isRecBookmarked ? 'Saved in bookmarks' : 'Bookmark'}
                     >
                       <Bookmark size={13} fill={isRecBookmarked ? 'currentColor' : 'none'} />
@@ -836,17 +759,17 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
         </div>
 
         {/* Candidate Advisory: Match % Interpretation & Ranking Hierarchy */}
-        <div style={{ marginTop: '20px', padding: '12px 16px', borderRadius: 'var(--radius-sm)', background: 'rgba(99, 102, 241, 0.08)', border: '1px solid rgba(99, 102, 241, 0.22)', fontSize: '0.78rem', color: '#cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+        <div style={{ marginTop: '20px', padding: '12px 16px', borderRadius: 'var(--radius-sm)', background: 'rgba(99, 102, 241, 0.08)', border: '1px solid rgba(99, 102, 241, 0.22)', fontSize: '0.78rem', color: '#334155', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '780px' }}>
-            <ShieldCheck size={16} color="#818cf8" style={{ flexShrink: 0 }} />
+            <ShieldCheck size={16} color="#4f46e5" style={{ flexShrink: 0 }} />
             <span>
-              <strong>Candidate Advisory:</strong> Match % indicates algorithmic relevance derived from interaction history and exam cluster affinity (strictly enforcing <code style={{ color: '#c7d2fe' }}>Direct Interest &gt; Transferred Affinity &gt; Profile Prior</code>). It is an aid to discover relevant exams without pushing loosely related clusters, and is <em>not</em> a probability of selection or legal eligibility guarantee.
+              <strong>Candidate Advisory:</strong> Match % indicates algorithmic relevance derived from interaction history and exam cluster affinity (strictly enforcing <code style={{ color: '#4f46e5' }}>Direct Interest &gt; Transferred Affinity &gt; Profile Prior</code>). It is an aid to discover relevant exams without pushing loosely related clusters, and is <em>not</em> a probability of selection or legal eligibility guarantee.
             </span>
           </div>
           <button
             className="btn btn-secondary"
             onClick={() => setShowInteractionsModal(true)}
-            style={{ fontSize: '0.74rem', padding: '5px 12px', background: 'rgba(99, 102, 241, 0.15)', borderColor: 'rgba(99, 102, 241, 0.35)', color: '#c7d2fe', display: 'inline-flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}
+            style={{ fontSize: '0.74rem', padding: '5px 12px', background: 'rgba(99, 102, 241, 0.15)', borderColor: 'rgba(99, 102, 241, 0.35)', color: '#4f46e5', display: 'inline-flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}
           >
             <Activity size={13} />
             Diagnostics &amp; Formula
@@ -864,7 +787,7 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
             left: 0,
             right: 0,
             bottom: 0,
-            background: 'rgba(0, 0, 0, 0.75)',
+            background: 'var(--surface-3)',
             backdropFilter: 'blur(6px)',
             display: 'flex',
             alignItems: 'center',
@@ -882,16 +805,16 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
               maxHeight: '85vh',
               overflowY: 'auto',
               padding: '28px',
-              background: '#0f172a',
+              background: 'var(--surface-3)',
               border: '1px solid rgba(99, 102, 241, 0.4)',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)'
+              boxShadow: '0 25px 50px -12px var(--surface-3)'
             }}
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <Activity size={22} color="var(--primary)" />
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', margin: 0 }}>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                   Candidate Interaction History & Behavioral Diagnostics
                 </h3>
               </div>
@@ -904,21 +827,21 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
               </button>
             </div>
 
-            <div style={{ padding: '16px', borderRadius: 'var(--radius-md)', background: 'rgba(99, 102, 241, 0.08)', border: '1px solid rgba(99, 102, 241, 0.25)', marginBottom: '18px', fontSize: '0.85rem', color: '#cbd5e1', lineHeight: 1.5 }}>
-              <p style={{ margin: '0 0 6px', fontWeight: 700, color: 'white' }}>
+            <div style={{ padding: '16px', borderRadius: 'var(--radius-md)', background: 'rgba(99, 102, 241, 0.08)', border: '1px solid rgba(99, 102, 241, 0.25)', marginBottom: '18px', fontSize: '0.85rem', color: '#334155', lineHeight: 1.5 }}>
+              <p style={{ margin: '0 0 6px', fontWeight: 700, color: 'var(--text-primary)' }}>
                 📐 Time-Aware Behavioral Scoring (Inspired by Time-Decayed BPR Principles):
               </p>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.82rem', color: '#a5b4fc', marginBottom: '8px' }}>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.82rem', color: '#4f46e5', marginBottom: '8px' }}>
                 Score(e) = InteractionWeight × decay(type, Δt) × SignalStrength + AffinityTransfer
               </div>
               <p style={{ margin: '0 0 8px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                 Differentiated half-lives reflect real government exam preparation cycles (weeks/months) so that serious commitments don't prematurely decay:
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px', fontSize: '0.75rem' }}>
-                <span className="glass-pill" style={{ borderColor: 'rgba(16, 185, 129, 0.4)', color: '#34d399' }}>
+                <span className="glass-pill" style={{ borderColor: 'rgba(16, 185, 129, 0.4)', color: '#15803d' }}>
                   🎯 FOLLOW: T½ = 180d · 2.0x (Exam cycle)
                 </span>
-                <span className="glass-pill" style={{ borderColor: 'rgba(245, 158, 11, 0.4)', color: '#fbbf24' }}>
+                <span className="glass-pill" style={{ borderColor: 'rgba(245, 158, 11, 0.4)', color: '#b45309' }}>
                   ⭐ BOOKMARK: T½ = 60d · 1.5x (Shortlist)
                 </span>
                 <span className="glass-pill">
@@ -934,8 +857,8 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
                   🔍 SEARCH: T½ = 1d · 1.0x (Query)
                 </span>
               </div>
-              <div style={{ marginTop: '12px', padding: '10px 12px', background: 'rgba(0, 0, 0, 0.35)', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(255, 255, 255, 0.08)', fontSize: '0.76rem', color: '#cbd5e1', lineHeight: 1.45 }}>
-                <strong style={{ color: '#818cf8' }}>Strict Ranking Hierarchy:</strong> Direct Interest &gt; Transferred Affinity &gt; Profile Prior. Transferred scores from related exams are capped at ≤70% of the lead direct score so that cluster affinity never overpowers candidate actions. Match % is a normalized recommendation relevance score (0–100%) and neither an eligibility check nor a selection guarantee.
+              <div style={{ marginTop: '12px', padding: '10px 12px', background: 'var(--surface-3)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--surface-2)', fontSize: '0.76rem', color: '#334155', lineHeight: 1.45 }}>
+                <strong style={{ color: '#4f46e5' }}>Strict Ranking Hierarchy:</strong> Direct Interest &gt; Transferred Affinity &gt; Profile Prior. Transferred scores from related exams are capped at ≤70% of the lead direct score so that cluster affinity never overpowers candidate actions. Match % is a normalized recommendation relevance score (0–100%) and neither an eligibility check nor a selection guarantee.
               </div>
             </div>
 
@@ -950,7 +873,7 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
                     storageService.clearUserInteractions();
                     refreshRecommendations();
                   }}
-                  style={{ fontSize: '0.75rem', padding: '4px 10px', color: '#f87171' }}
+                  style={{ fontSize: '0.75rem', padding: '4px 10px', color: '#dc2626' }}
                 >
                   <Trash2 size={13} /> Clear All Events
                 </button>
@@ -976,7 +899,7 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
                       style={{
                         padding: '10px 14px',
                         borderRadius: 'var(--radius-sm)',
-                        background: 'rgba(255, 255, 255, 0.03)',
+                        background: 'var(--surface-2)',
                         border: '1px solid var(--border-color)',
                         display: 'flex',
                         alignItems: 'center',
@@ -992,13 +915,13 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
                             fontSize: '0.68rem',
                             padding: '3px 8px',
                             background: ev.type === 'FOLLOW' ? 'rgba(16, 185, 129, 0.2)' : ev.type === 'BOOKMARK' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(99, 102, 241, 0.2)',
-                            color: ev.type === 'FOLLOW' ? '#34d399' : ev.type === 'BOOKMARK' ? '#fbbf24' : '#a5b4fc'
+                            color: ev.type === 'FOLLOW' ? '#15803d' : ev.type === 'BOOKMARK' ? '#b45309' : '#4f46e5'
                           }}
                         >
                           {ev.type} (+{(weight * mult).toFixed(1)})
                         </span>
                         <div>
-                          <div style={{ fontWeight: 700, color: 'white' }}>
+                          <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
                             {targetExam ? targetExam.title : ev.examId}
                           </div>
                           {ev.metadata && (
@@ -1042,7 +965,7 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
                 borderRadius: 'var(--radius-md)',
                 background: 'var(--bg-input)',
                 border: '1px solid var(--border-color)',
-                color: 'white',
+                color: 'var(--text-primary)',
                 fontSize: '0.95rem',
                 fontFamily: 'var(--font-sans)',
                 outline: 'none'
@@ -1066,7 +989,7 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
                 borderRadius: 'var(--radius-md)',
                 background: 'var(--bg-input)',
                 border: '1px solid var(--border-color)',
-                color: 'white',
+                color: 'var(--text-primary)',
                 fontSize: '0.95rem',
                 fontFamily: 'var(--font-sans)',
                 outline: 'none'
@@ -1088,7 +1011,7 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
                 borderRadius: 'var(--radius-md)',
                 background: 'var(--bg-input)',
                 border: '1px solid var(--border-color)',
-                color: 'white',
+                color: 'var(--text-primary)',
                 fontSize: '0.95rem',
                 fontFamily: 'var(--font-sans)',
                 outline: 'none'
@@ -1113,7 +1036,7 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
               borderRadius: 'var(--radius-md)',
               background: 'var(--bg-input)',
               border: '1px solid var(--border-color)',
-              color: 'white',
+              color: 'var(--text-primary)',
               fontSize: '1rem',
               outline: 'none'
             }}
@@ -1142,7 +1065,7 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
         {filteredExams.length === 0 && (
           <div className="glass-card" style={{ padding: '48px 24px', textAlign: 'center' }}>
             <Compass size={30} color="var(--text-muted)" style={{ marginBottom: '10px' }} />
-            <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'white', marginBottom: '6px' }}>
+            <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '6px' }}>
               No exams match these filters yet
             </h4>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', maxWidth: '460px', margin: '0 auto 18px' }}>
@@ -1160,7 +1083,7 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
                   {exam.isGoldenJourney && (
-                    <span className="badge badge-demo" style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.4)' }}>
+                    <span className="badge badge-demo" style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#15803d', border: '1px solid rgba(16, 185, 129, 0.4)' }}>
                       🌟 GOLDEN JOURNEY
                     </span>
                   )}
@@ -1194,7 +1117,7 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
                   <span className="glass-pill">
                     📅 2026 Cycle
                   </span>
-                  <span className="glass-pill" style={{ borderColor: 'rgba(16, 185, 129, 0.3)', color: '#34d399' }}>
+                  <span className="glass-pill" style={{ borderColor: 'rgba(16, 185, 129, 0.3)', color: '#15803d' }}>
                     🏛️ {exam.authorityName.split(' ')[0]}
                   </span>
                 </div>
@@ -1229,7 +1152,7 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
                     className={`btn ${bookmarkedIds.includes(exam.id) ? 'btn-amber' : 'btn-secondary'}`}
                     onClick={() => handleToggleBookmark(exam.id)}
                     title={bookmarkedIds.includes(exam.id) ? 'Saved in bookmarks' : 'Bookmark this exam'}
-                    style={{ padding: '8px 12px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '6px', background: bookmarkedIds.includes(exam.id) ? 'rgba(245, 158, 11, 0.2)' : undefined, color: bookmarkedIds.includes(exam.id) ? '#fbbf24' : undefined, borderColor: bookmarkedIds.includes(exam.id) ? 'rgba(245, 158, 11, 0.4)' : undefined }}
+                    style={{ padding: '8px 12px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '6px', background: bookmarkedIds.includes(exam.id) ? 'rgba(245, 158, 11, 0.2)' : undefined, color: bookmarkedIds.includes(exam.id) ? '#b45309' : undefined, borderColor: bookmarkedIds.includes(exam.id) ? 'rgba(245, 158, 11, 0.4)' : undefined }}
                   >
                     <Bookmark size={14} fill={bookmarkedIds.includes(exam.id) ? 'currentColor' : 'none'} />
                     {bookmarkedIds.includes(exam.id) ? 'Saved' : 'Save'}
@@ -1314,10 +1237,10 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
       
       {/* Header Banner */}
-      <div className="glass-card" style={{ padding: '24px', background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(17, 24, 39, 0.95) 100%)', borderColor: 'rgba(16, 185, 129, 0.3)' }}>
+      <div className="glass-card" style={{ padding: '24px', background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, #ffffff 100%)', borderColor: 'rgba(16, 185, 129, 0.3)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: 'var(--emerald)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
+            <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: 'var(--emerald)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-primary)' }}>
               <UserCheck size={24} />
             </div>
             <div>
@@ -1325,17 +1248,17 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
                 <span className="badge badge-verified">
                   <ShieldCheck size={14} /> 100% DETERMINISTIC POST-BY-POST ENGINE
                 </span>
-                <span className="badge badge-demo" style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa' }}>
+                <span className="badge badge-demo" style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#2563eb' }}>
                   Crucial Cutoff: {selectedExam.crucialEligibilityDate}
                 </span>
               </div>
-              <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: 'white', margin: 0 }}>
+              <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                 {examShort} Deterministic Eligibility & Post Allocation Engine
               </h2>
             </div>
           </div>
 
-          <div style={{ padding: '12px 20px', borderRadius: 'var(--radius-md)', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-color)', textAlign: 'right' }}>
+          <div style={{ padding: '12px 20px', borderRadius: 'var(--radius-md)', background: 'var(--surface-3)', border: '1px solid var(--border-color)', textAlign: 'right' }}>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>ELIGIBLE POSTS</span>
             <div style={{ fontSize: '1.4rem', fontWeight: 800, color: diagnostic.totalEligiblePosts > 0 ? 'var(--emerald)' : 'var(--rose)' }}>
               {diagnostic.totalEligiblePosts} / {diagnostic.totalAvailablePosts}
@@ -1370,7 +1293,7 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
                     borderRadius: 'var(--radius-md)',
                     background: 'var(--bg-input)',
                     border: '1px solid var(--border-color)',
-                    color: 'white',
+                    color: 'var(--text-primary)',
                     fontSize: '0.92rem'
                   }}
                 />
@@ -1389,7 +1312,7 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
                     borderRadius: 'var(--radius-md)',
                     background: 'var(--bg-input)',
                     border: '1px solid var(--border-color)',
-                    color: 'white',
+                    color: 'var(--text-primary)',
                     fontSize: '0.92rem'
                   }}
                 >
@@ -1406,10 +1329,10 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
             {/* Calculated Age Card */}
             <div style={{ padding: '14px', borderRadius: 'var(--radius-md)', background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <span style={{ fontSize: '0.75rem', color: '#93c5fd', textTransform: 'uppercase', fontWeight: 700 }}>
+                <span style={{ fontSize: '0.75rem', color: '#2563eb', textTransform: 'uppercase', fontWeight: 700 }}>
                   Calculated Age on {selectedExam.crucialEligibilityDate} (Crucial Date)
                 </span>
-                <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'white', marginTop: '2px' }}>
+                <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '2px' }}>
                   {detailedAge.years} Years, {detailedAge.months} Months, {detailedAge.days} Days
                 </div>
               </div>
@@ -1433,7 +1356,7 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
                     borderRadius: 'var(--radius-md)',
                     background: 'var(--bg-input)',
                     border: '1px solid var(--border-color)',
-                    color: 'white',
+                    color: 'var(--text-primary)',
                     fontSize: '0.92rem'
                   }}
                 >
@@ -1463,7 +1386,7 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
                     borderRadius: 'var(--radius-md)',
                     background: 'var(--bg-input)',
                     border: '1px solid var(--border-color)',
-                    color: 'white',
+                    color: 'var(--text-primary)',
                     fontSize: '0.92rem'
                   }}
                 />
@@ -1472,8 +1395,8 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
 
             {/* Special Academic Criteria (JSO & Statistical Investigator) — only where the exam has such posts */}
             {hasStatisticsPosts && (
-            <div style={{ padding: '16px', borderRadius: 'var(--radius-md)', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#93c5fd', textTransform: 'uppercase' }}>
+            <div style={{ padding: '16px', borderRadius: 'var(--radius-md)', background: 'var(--surface-3)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#2563eb', textTransform: 'uppercase' }}>
                 Specialized Academic Criteria Checks
               </span>
 
@@ -1501,8 +1424,8 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
 
             {/* Physical Standards & Medical Check — only where the exam has posts that require them */}
             {hasPhysicalPosts && (
-            <div style={{ padding: '16px', borderRadius: 'var(--radius-md)', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#93c5fd', textTransform: 'uppercase' }}>
+            <div style={{ padding: '16px', borderRadius: 'var(--radius-md)', background: 'var(--surface-3)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#2563eb', textTransform: 'uppercase' }}>
                 Uniformed Posts Physical & Vision Criteria
               </span>
 
@@ -1547,7 +1470,7 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
                 </div>
               )}
               <div>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', margin: 0 }}>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                   {diagnostic.status === 'ELIGIBLE' && `Fully Eligible for ${examShort}`}
                   {diagnostic.status === 'CONDITIONAL' && 'Partially Eligible (Post-Specific Constraints)'}
                   {diagnostic.status === 'INELIGIBLE' && `Ineligible for ${examShort}`}
@@ -1562,7 +1485,7 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
               {diagnostic.plainEnglishExplanation}
             </p>
 
-            <div style={{ padding: '12px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(0,0,0,0.3)', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+            <div style={{ padding: '12px 16px', borderRadius: 'var(--radius-md)', background: 'var(--surface-3)', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
               <strong>Official Sourced Clauses:</strong>
               <ul style={{ margin: '4px 0 0 0', paddingLeft: '16px' }}>
                 {diagnostic.legalClauses.map((cl, cIdx) => (
@@ -1622,11 +1545,11 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
                 >
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
                     <div>
-                      <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', margin: 0 }}>
+                      <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                         {post.postName}
                       </h4>
                       <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                        {post.department} • <strong style={{ color: '#93c5fd' }}>{post.payLevel}</strong> ({pReq?.payScale})
+                        {post.department} • <strong style={{ color: '#2563eb' }}>{post.payLevel}</strong> ({pReq?.payScale})
                       </div>
                     </div>
 
@@ -1635,11 +1558,11 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
                     </span>
                   </div>
 
-                  <div style={{ fontSize: '0.85rem', color: post.eligible ? 'var(--text-secondary)' : '#fca5a5', lineHeight: 1.4 }}>
+                  <div style={{ fontSize: '0.85rem', color: post.eligible ? 'var(--text-secondary)' : '#dc2626', lineHeight: 1.4 }}>
                     {post.reason}
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid rgba(255, 255, 255, 0.06)', paddingTop: '8px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--surface-2)', paddingTop: '8px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                     <span>Age Rule: {pReq?.minAge}–{post.maxPermissibleAge} Yrs (with +{relaxation} yrs {profile.category})</span>
                     {pReq?.provenance && (
                       <button 
@@ -1751,7 +1674,7 @@ export const ExamCompare: React.FC<ExamCompareProps> = ({ onSelectExam }) => {
     { label: 'Education Requirement', render: e => qualificationLabel(e) },
     {
       label: 'Pay Scale Grade',
-      render: e => <span style={{ color: '#34d399', fontWeight: 700 }}>{payLevelLabel(e)}</span>
+      render: e => <span style={{ color: '#15803d', fontWeight: 700 }}>{payLevelLabel(e)}</span>
     },
     { label: 'Posts in Register', render: e => e.posts.length + ' post' + (e.posts.length === 1 ? '' : 's') },
     { label: 'Selection Stages', render: e => stagesLabel(e) },
@@ -1775,9 +1698,9 @@ export const ExamCompare: React.FC<ExamCompareProps> = ({ onSelectExam }) => {
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
       
       {/* Header */}
-      <div className="glass-card" style={{ padding: '24px', background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, rgba(17, 24, 39, 0.9) 100%)', borderColor: 'rgba(168, 85, 247, 0.3)' }}>
+      <div className="glass-card" style={{ padding: '24px', background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, #ffffff 100%)', borderColor: 'rgba(168, 85, 247, 0.3)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--purple)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
+          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--purple)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-primary)' }}>
             <Scale size={24} />
           </div>
           <div>
@@ -1797,7 +1720,7 @@ export const ExamCompare: React.FC<ExamCompareProps> = ({ onSelectExam }) => {
           <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px' }}>
             Select Exam 1
           </label>
-          <select value={exam1Id} onChange={(e) => setExam1Id(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: 'var(--radius-md)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white', fontWeight: 600 }}>
+          <select value={exam1Id} onChange={(e) => setExam1Id(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: 'var(--radius-md)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontWeight: 600 }}>
             {ALL_EXAMS.map(e => <option key={e.id} value={e.id}>{e.title}</option>)}
           </select>
         </div>
@@ -1806,7 +1729,7 @@ export const ExamCompare: React.FC<ExamCompareProps> = ({ onSelectExam }) => {
           <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px' }}>
             Select Exam 2
           </label>
-          <select value={exam2Id} onChange={(e) => setExam2Id(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: 'var(--radius-md)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white', fontWeight: 600 }}>
+          <select value={exam2Id} onChange={(e) => setExam2Id(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: 'var(--radius-md)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontWeight: 600 }}>
             {ALL_EXAMS.map(e => <option key={e.id} value={e.id}>{e.title}</option>)}
           </select>
         </div>
@@ -1818,13 +1741,13 @@ export const ExamCompare: React.FC<ExamCompareProps> = ({ onSelectExam }) => {
           <thead>
             <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
               <th style={{ padding: '16px', color: 'var(--text-secondary)', fontSize: '0.9rem', width: '25%' }}>ATTRIBUTE</th>
-              <th style={{ padding: '16px', color: 'white', fontSize: '1.1rem', width: '37.5%' }}>{exam1.title}</th>
-              <th style={{ padding: '16px', color: 'white', fontSize: '1.1rem', width: '37.5%' }}>{exam2.title}</th>
+              <th style={{ padding: '16px', color: 'var(--text-primary)', fontSize: '1.1rem', width: '37.5%' }}>{exam1.title}</th>
+              <th style={{ padding: '16px', color: 'var(--text-primary)', fontSize: '1.1rem', width: '37.5%' }}>{exam2.title}</th>
             </tr>
           </thead>
           <tbody>
             {rows.map(row => (
-              <tr key={row.label} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+              <tr key={row.label} style={{ borderBottom: '1px solid var(--surface-2)' }}>
                 <td style={{ padding: '16px', fontWeight: 600, color: 'var(--text-secondary)', verticalAlign: 'top' }}>{row.label}</td>
                 <td style={{ padding: '16px', verticalAlign: 'top' }}>{row.render(exam1)}</td>
                 <td style={{ padding: '16px', verticalAlign: 'top' }}>{row.render(exam2)}</td>
@@ -1956,14 +1879,14 @@ export const ExamCalendar: React.FC<ExamCalendarProps> = ({
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
       
       {/* Header Banner */}
-      <div className="glass-card" style={{ padding: '26px', background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.12) 0%, rgba(17, 24, 39, 0.95) 100%)', borderColor: 'rgba(6, 182, 212, 0.3)' }}>
+      <div className="glass-card" style={{ padding: '26px', background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.12) 0%, #ffffff 100%)', borderColor: 'rgba(6, 182, 212, 0.3)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'var(--cyan)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', boxShadow: '0 0 16px rgba(6,182,212,0.4)' }}>
               <CalendarIcon size={26} />
             </div>
             <div>
-              <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: 'white', margin: '0 0 4px' }}>
+              <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 4px' }}>
                 Government Exam Timeline & Verified Calendar (2026)
               </h2>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0 }}>
@@ -1992,7 +1915,7 @@ export const ExamCalendar: React.FC<ExamCalendarProps> = ({
             onClick={() => setActiveTab('TIMELINE')}
             style={{ fontSize: '0.9rem', padding: '9px 18px', display: 'flex', alignItems: 'center', gap: '8px' }}
           >
-            <Star size={16} color={activeTab === 'TIMELINE' ? 'white' : '#f59e0b'} />
+            <Star size={16} color={activeTab === 'TIMELINE' ? 'var(--text-primary)' : '#f59e0b'} />
             My Exam Timeline ({trackedExams.length})
           </button>
           <button 
@@ -2019,7 +1942,7 @@ export const ExamCalendar: React.FC<ExamCalendarProps> = ({
               <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(99, 102, 241, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', color: 'var(--primary)' }}>
                 <Bell size={30} />
               </div>
-              <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'white', marginBottom: '8px' }}>
+              <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px' }}>
                 No Exams Tracked in Your Timeline
               </h3>
               <p style={{ color: 'var(--text-secondary)', maxWidth: '460px', margin: '0 auto 24px', fontSize: '0.92rem', lineHeight: 1.5 }}>
@@ -2062,20 +1985,20 @@ export const ExamCalendar: React.FC<ExamCalendarProps> = ({
                         <span className="badge badge-verified">
                           <ShieldCheck size={14} /> OFFICIALLY VERIFIED
                         </span>
-                        <span className="badge badge-demo" style={{ background: 'rgba(99,102,241,0.2)', color: '#a5b4fc' }}>
+                        <span className="badge badge-demo" style={{ background: 'rgba(99,102,241,0.2)', color: '#4f46e5' }}>
                           {exam.code}
                         </span>
                         {exam.vacanciesTotal && (
-                          <span className="badge" style={{ background: 'rgba(16,185,129,0.15)', color: '#34d399' }}>
+                          <span className="badge" style={{ background: 'rgba(16,185,129,0.15)', color: '#15803d' }}>
                             {exam.vacanciesTotal}
                           </span>
                         )}
                       </div>
-                      <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'white', margin: '0 0 4px' }}>
+                      <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 4px' }}>
                         {exam.title}
                       </h3>
                       <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>
-                        Authority: <strong style={{ color: 'white' }}>{exam.authorityName}</strong> | Crucial Cut-off: <code style={{ color: 'var(--cyan)' }}>{exam.crucialEligibilityDate}</code>
+                        Authority: <strong style={{ color: 'var(--text-primary)' }}>{exam.authorityName}</strong> | Crucial Cut-off: <code style={{ color: 'var(--cyan)' }}>{exam.crucialEligibilityDate}</code>
                       </p>
                     </div>
 
@@ -2117,15 +2040,15 @@ export const ExamCalendar: React.FC<ExamCalendarProps> = ({
                     {nextUp && (
                       <div style={{ padding: '12px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.35)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                         <span className="badge badge-verified" style={{ fontSize: '0.65rem' }}>NEXT</span>
-                        <strong style={{ color: 'white', fontSize: '0.92rem' }}>{nextUp.label}</strong>
-                        <span style={{ color: '#a5b4fc', fontSize: '0.85rem' }}>
+                        <strong style={{ color: 'var(--text-primary)', fontSize: '0.92rem' }}>{nextUp.label}</strong>
+                        <span style={{ color: '#4f46e5', fontSize: '0.85rem' }}>
                           {nextUp.dateTimeStr.split(' ')[0]} · {relativeWhen(nextUp.dateTimeStr, now).text}
                         </span>
                       </div>
                     )}
 
                     {upcoming.length === 0 && completed.length > 0 && !pastOpen && (
-                      <div style={{ padding: '14px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', fontSize: '0.86rem', marginBottom: '12px' }}>
+                      <div style={{ padding: '14px 16px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', fontSize: '0.86rem', marginBottom: '12px' }}>
                         Every milestone on record for this exam has passed. The next cycle's dates appear here once SSC publishes them.
                       </div>
                     )}
@@ -2138,26 +2061,26 @@ export const ExamCalendar: React.FC<ExamCalendarProps> = ({
                         const isExam = date.type === 'EXAM_TIER1' || date.type === 'EXAM_TIER2';
                         const isResult = date.type === 'RESULT';
 
-                        let accentColor = 'rgba(255, 255, 255, 0.05)';
+                        let accentColor = 'var(--surface-2)';
                         let borderColor = 'var(--border-color)';
                         let tagColor = 'var(--text-muted)';
 
                         if (isClose) {
                           accentColor = 'rgba(239, 68, 68, 0.08)';
                           borderColor = 'rgba(239, 68, 68, 0.3)';
-                          tagColor = '#f87171';
+                          tagColor = '#dc2626';
                         } else if (isAdmit) {
                           accentColor = 'rgba(168, 85, 247, 0.08)';
                           borderColor = 'rgba(168, 85, 247, 0.3)';
-                          tagColor = '#c084fc';
+                          tagColor = '#7c3aed';
                         } else if (isExam) {
                           accentColor = 'rgba(245, 158, 11, 0.08)';
                           borderColor = 'rgba(245, 158, 11, 0.3)';
-                          tagColor = '#fbbf24';
+                          tagColor = '#b45309';
                         } else if (isResult) {
                           accentColor = 'rgba(16, 185, 129, 0.08)';
                           borderColor = 'rgba(16, 185, 129, 0.3)';
-                          tagColor = '#34d399';
+                          tagColor = '#15803d';
                         }
 
                         return (
@@ -2166,7 +2089,7 @@ export const ExamCalendar: React.FC<ExamCalendarProps> = ({
                             style={{
                               padding: '14px',
                               borderRadius: 'var(--radius-md)',
-                              background: when.isPast ? 'rgba(255,255,255,0.02)' : accentColor,
+                              background: when.isPast ? 'var(--surface-2)' : accentColor,
                               border: `1px solid ${when.isPast ? 'var(--border-color)' : borderColor}`,
                               opacity: when.isPast ? 0.62 : 1,
                               display: 'flex',
@@ -2179,16 +2102,16 @@ export const ExamCalendar: React.FC<ExamCalendarProps> = ({
                               <span style={{ fontSize: '0.7rem', fontWeight: 700, color: when.isPast ? 'var(--text-muted)' : tagColor, textTransform: 'uppercase' }}>
                                 {date.type.replace('_', ' ')}{when.isPast ? ' · done' : ''}
                               </span>
-                              <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'white', marginTop: '2px', lineHeight: 1.3 }}>
+                              <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px', lineHeight: 1.3 }}>
                                 {date.label}
                               </div>
                             </div>
 
-                            <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                              <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#93c5fd' }}>
+                            <div style={{ borderTop: '1px solid var(--surface-2)', paddingTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                              <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#2563eb' }}>
                                 {date.dateTimeStr.split(' ')[0]}
                               </div>
-                              <span style={{ fontSize: '0.7rem', color: when.isPast ? 'var(--text-muted)' : '#fbbf24', fontWeight: when.isPast ? 400 : 700 }}>
+                              <span style={{ fontSize: '0.7rem', color: when.isPast ? 'var(--text-muted)' : '#b45309', fontWeight: when.isPast ? 400 : 700 }}>
                                 {when.text || date.dateTimeStr.split(' ')[1] || 'IST'}
                               </span>
                             </div>
@@ -2261,7 +2184,7 @@ export const ExamCalendar: React.FC<ExamCalendarProps> = ({
             </p>
 
             {filteredEvents.length === 0 && (
-              <div style={{ padding: '22px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+              <div style={{ padding: '22px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
                 {timeFilter === 'UPCOMING'
                   ? 'Nothing ahead on record: every milestone GovOS holds has passed. Switch to Completed to see them, or check the Trust Panel for a live official check.'
                   : 'No milestones match this filter.'}
@@ -2279,7 +2202,7 @@ export const ExamCalendar: React.FC<ExamCalendarProps> = ({
                     style={{ 
                       padding: '20px', 
                       borderRadius: 'var(--radius-md)', 
-                      background: isTracked ? 'rgba(99, 102, 241, 0.05)' : 'rgba(255,255,255,0.02)', 
+                      background: isTracked ? 'rgba(99, 102, 241, 0.05)' : 'var(--surface-2)', 
                       border: isTracked ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid var(--border-color)',
                       display: 'flex',
                       alignItems: 'center',
@@ -2299,11 +2222,11 @@ export const ExamCalendar: React.FC<ExamCalendarProps> = ({
                           <span className="badge badge-demo" style={{ fontSize: '0.7rem' }}>
                             {ev.examCode}
                           </span>
-                          <span className="badge" style={{ fontSize: '0.65rem', background: 'rgba(255,255,255,0.05)', color: 'var(--text-secondary)' }}>
+                          <span className="badge" style={{ fontSize: '0.65rem', background: 'var(--surface-2)', color: 'var(--text-secondary)' }}>
                             {ev.type.replace('_', ' ')}
                           </span>
                         </div>
-                        <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'white' }}>
+                        <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                           {ev.label}
                         </div>
                         <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
@@ -2356,11 +2279,11 @@ export const ExamCalendar: React.FC<ExamCalendarProps> = ({
 const researchTrustMeta = (level: ResearchFinding['trustLevel']): { label: string; color: string; bg: string; border: string } => {
   switch (level) {
     case 'OFFICIAL':
-      return { label: 'OFFICIAL DOMAIN', color: '#34d399', bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.35)' };
+      return { label: 'OFFICIAL DOMAIN', color: '#15803d', bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.35)' };
     case 'TRUSTED_PUBLIC':
-      return { label: 'ACADEMIC / PUBLIC BODY', color: '#60a5fa', bg: 'rgba(59,130,246,0.12)', border: 'rgba(59,130,246,0.35)' };
+      return { label: 'ACADEMIC / PUBLIC BODY', color: '#2563eb', bg: 'rgba(59,130,246,0.12)', border: 'rgba(59,130,246,0.35)' };
     default:
-      return { label: 'UNVERIFIED SOURCE', color: '#fbbf24', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.35)' };
+      return { label: 'UNVERIFIED SOURCE', color: '#b45309', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.35)' };
   }
 };
 
@@ -2374,13 +2297,13 @@ const researchHost = (url: string): string => {
 
 const ResearchSetupNotice: React.FC<{ setup?: string }> = ({ setup }) => (
   <div style={{ padding: '18px 20px', borderRadius: 'var(--radius-md)', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.35)', display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-    <Lock size={18} color="#fbbf24" style={{ flexShrink: 0, marginTop: '2px' }} />
-    <div style={{ fontSize: '0.86rem', color: '#fef3c7', lineHeight: 1.5 }}>
+    <Lock size={18} color="#b45309" style={{ flexShrink: 0, marginTop: '2px' }} />
+    <div style={{ fontSize: '0.86rem', color: '#92400e', lineHeight: 1.5 }}>
       <strong>Live research is not configured on this server.</strong>
       <div style={{ marginTop: '6px', color: 'var(--text-secondary)' }}>
         {setup || 'Add TAVILY_API_KEY=tvly-... to the .env file next to app.py and restart python app.py.'}
       </div>
-      <div style={{ marginTop: '8px', fontFamily: 'var(--font-mono)', fontSize: '0.78rem', color: '#fbbf24' }}>
+      <div style={{ marginTop: '8px', fontFamily: 'var(--font-mono)', fontSize: '0.78rem', color: '#b45309' }}>
         TAVILY_API_KEY=tvly-xxxxxxxxxxxxxxxx
       </div>
       <div style={{ marginTop: '6px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
@@ -2439,7 +2362,7 @@ interface AssistantReply {
 const renderAssistantText = (text: string): React.ReactNode[] =>
   text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
     part.startsWith('**') && part.endsWith('**') && part.length > 4
-      ? <strong key={i} style={{ color: '#c7d2fe' }}>{part.slice(2, -2)}</strong>
+      ? <strong key={i} style={{ color: '#4f46e5' }}>{part.slice(2, -2)}</strong>
       : <React.Fragment key={i}>{part}</React.Fragment>
   );
 
@@ -3648,9 +3571,9 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal,
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       
       {/* Header */}
-      <div className="glass-card" style={{ padding: '24px', background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(17, 24, 39, 0.9) 100%)' }}>
+      <div className="glass-card" style={{ padding: '24px', background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, #ffffff 100%)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
+          <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-primary)' }}>
             <Bot size={24} />
           </div>
           <div>
@@ -3688,8 +3611,8 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal,
               style={{
                 alignSelf: msg.sender === 'USER' ? 'flex-end' : 'flex-start',
                 maxWidth: '82%',
-                background: msg.sender === 'USER' ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
-                color: 'white',
+                background: msg.sender === 'USER' ? 'var(--primary)' : 'var(--surface-2)',
+                color: 'var(--text-primary)',
                 padding: '16px 20px',
                 borderRadius: msg.sender === 'USER' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
                 border: msg.sender === 'AI' ? '1px solid var(--border-color)' : 'none',
@@ -3698,7 +3621,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal,
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                <span style={{ fontWeight: 700, fontSize: '0.8rem', color: msg.sender === 'USER' ? '#c7d2fe' : '#a855f7' }}>
+                <span style={{ fontWeight: 700, fontSize: '0.8rem', color: msg.sender === 'USER' ? '#4f46e5' : '#a855f7' }}>
                   {msg.sender === 'USER' ? 'CANDIDATE' : 'GOVOS GROUNDED AI'}
                 </span>
                 
@@ -3751,7 +3674,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal,
               )}
 
               {msg.citation && (
-                <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid var(--surface-3)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                     Citation: {msg.citation.documentTitle} (Page {msg.citation.pageNumber}, {msg.citation.clauseNumber})
                   </span>
@@ -3765,7 +3688,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal,
 
               {/* Live official-domain search: offered only when the grounded database had no answer */}
               {msg.liveSearchOffer && !msg.liveResults && !msg.liveError && (
-                <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid var(--surface-3)' }}>
                   <button
                     className="btn btn-secondary"
                     disabled={liveSearchingId !== null}
@@ -3782,7 +3705,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal,
                 <div style={{ marginTop: '12px' }}>
                   {msg.liveSetup
                     ? <ResearchSetupNotice setup={msg.liveSetup} />
-                    : <div style={{ fontSize: '0.8rem', color: '#fca5a5' }}><AlertCircle size={12} /> Live search failed: {msg.liveError}</div>}
+                    : <div style={{ fontSize: '0.8rem', color: '#dc2626' }}><AlertCircle size={12} /> Live search failed: {msg.liveError}</div>}
                 </div>
               )}
 
@@ -3793,7 +3716,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal,
               )}
 
               {msg.liveResults && msg.liveResults.length > 0 && (
-                <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid var(--surface-3)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                     <span className="badge badge-changed" style={{ fontSize: '0.65rem' }}>
                       <Globe size={11} /> LIVE WEB RESULTS — NOT YET VERIFIED BY GOVOS
@@ -3801,21 +3724,21 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal,
                     <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Restricted to official government domains · queued for verifier review</span>
                   </div>
                   {msg.liveAnswer && (
-                    <div style={{ fontSize: '0.84rem', color: '#e2e8f0', lineHeight: 1.5, padding: '8px 10px', borderRadius: 'var(--radius-sm)', background: 'rgba(0,0,0,0.25)' }}>
-                      <strong style={{ color: '#fbbf24' }}>Search summary (unverified):</strong> {msg.liveAnswer}
+                    <div style={{ fontSize: '0.84rem', color: '#334155', lineHeight: 1.5, padding: '8px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-3)' }}>
+                      <strong style={{ color: '#b45309' }}>Search summary (unverified):</strong> {msg.liveAnswer}
                     </div>
                   )}
                   {msg.liveResults.map(f => {
                     const meta = researchTrustMeta(f.trustLevel);
                     return (
-                      <div key={f.id} style={{ padding: '10px 12px', borderRadius: 'var(--radius-sm)', background: 'rgba(0,0,0,0.2)', border: `1px solid ${meta.border}` }}>
+                      <div key={f.id} style={{ padding: '10px 12px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-3)', border: `1px solid ${meta.border}` }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
                           <span style={{ fontSize: '0.66rem', fontWeight: 700, color: meta.color, letterSpacing: '0.04em' }}>{meta.label} · {researchHost(f.url)}</span>
-                          <a href={f.url} target="_blank" rel="noreferrer" style={{ fontSize: '0.74rem', color: '#93c5fd', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <a href={f.url} target="_blank" rel="noreferrer" style={{ fontSize: '0.74rem', color: '#2563eb', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                             Open <ExternalLink size={11} />
                           </a>
                         </div>
-                        <div style={{ fontSize: '0.86rem', fontWeight: 700, color: 'white' }}>{f.title}</div>
+                        <div style={{ fontSize: '0.86rem', fontWeight: 700, color: 'var(--text-primary)' }}>{f.title}</div>
                         <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.45, marginTop: '3px' }}>{f.snippet.slice(0, 260)}{f.snippet.length > 260 ? '…' : ''}</div>
                       </div>
                     );
@@ -3854,7 +3777,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal,
               borderRadius: 'var(--radius-md)',
               background: 'var(--bg-input)',
               border: '1px solid var(--border-color)',
-              color: 'white',
+              color: 'var(--text-primary)',
               fontSize: '0.95rem',
               outline: 'none'
             }}
@@ -4156,10 +4079,10 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
       
       {/* Header Banner */}
-      <div className="glass-card" style={{ padding: '24px', background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(17, 24, 39, 0.95) 100%)', borderColor: 'rgba(16, 185, 129, 0.3)' }}>
+      <div className="glass-card" style={{ padding: '24px', background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, #ffffff 100%)', borderColor: 'rgba(16, 185, 129, 0.3)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'var(--emerald)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
+            <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'var(--emerald)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-primary)' }}>
               <Terminal size={24} />
             </div>
             <div>
@@ -4194,7 +4117,7 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
         <button className={`btn ${activeTab === 'RESEARCH' ? 'btn-emerald' : 'btn-secondary'}`} onClick={() => setActiveTab('RESEARCH')} style={{ fontSize: '0.85rem' }}>
           <Globe size={16} /> Live Source Research
           {researchStatus && researchStatus.pendingReview > 0 && (
-            <span className="badge" style={{ fontSize: '0.62rem', background: 'rgba(245,158,11,0.2)', color: '#fbbf24', padding: '1px 6px', marginLeft: '4px' }}>
+            <span className="badge" style={{ fontSize: '0.62rem', background: 'rgba(245,158,11,0.2)', color: '#b45309', padding: '1px 6px', marginLeft: '4px' }}>
               {researchStatus.pendingReview} to review
             </span>
           )}
@@ -4218,14 +4141,14 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
                 style={{ 
                   padding: '20px', 
                   borderRadius: 'var(--radius-md)', 
-                  background: log.adminReviewStatus === 'CONFLICT_DETECTED' ? 'rgba(245, 158, 11, 0.08)' : 'rgba(255,255,255,0.03)',
+                  background: log.adminReviewStatus === 'CONFLICT_DETECTED' ? 'rgba(245, 158, 11, 0.08)' : 'var(--surface-2)',
                   border: `1px solid ${log.adminReviewStatus === 'CONFLICT_DETECTED' ? 'rgba(245, 158, 11, 0.4)' : 'var(--border-color)'}`
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: '10px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <span className="badge badge-verified" style={{ fontFamily: 'var(--font-mono)' }}>{log.authorityCode}</span>
-                    <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'white', wordBreak: 'break-all' }}>{log.endpointUrl}</span>
+                    <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)', wordBreak: 'break-all' }}>{log.endpointUrl}</span>
                   </div>
 
                   <span className={`badge ${log.adminReviewStatus === 'HEALTHY' ? 'badge-verified' : 'badge-changed'}`}>
@@ -4235,13 +4158,13 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
 
                 {log.textChanged && log.previousValue && (
                   <div style={{ padding: '14px', borderRadius: 'var(--radius-md)', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', marginBottom: '14px' }}>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#fbbf24', marginBottom: '4px' }}>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#b45309', marginBottom: '4px' }}>
                       🚨 SHA-256 Hash Divergence Detected (Corrigendum Event)
                     </div>
-                    <div style={{ fontSize: '0.85rem', color: '#fef3c7' }}>
+                    <div style={{ fontSize: '0.85rem', color: '#92400e' }}>
                       Old Fact: <span style={{ textDecoration: 'line-through' }}>{log.previousValue}</span>
                     </div>
-                    <div style={{ fontSize: '0.85rem', color: '#34d399', fontWeight: 700 }}>
+                    <div style={{ fontSize: '0.85rem', color: '#15803d', fontWeight: 700 }}>
                       New Fact: {log.newValue}
                     </div>
                   </div>
@@ -4249,7 +4172,7 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
                   <div>
-                    HTTP Status: <strong style={{ color: '#34d399' }}>{log.httpStatus} OK</strong> | Last Checked: {log.checkedAt}
+                    HTTP Status: <strong style={{ color: '#15803d' }}>{log.httpStatus} OK</strong> | Last Checked: {log.checkedAt}
                   </div>
                   <div>
                     DOM Hash: {log.normalizedContentHash.slice(0, 16)}...
@@ -4283,7 +4206,7 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
             {openConflicts.length === 0 ? (
               <div style={{ padding: '28px', textAlign: 'center', borderRadius: 'var(--radius-md)', background: 'rgba(16, 185, 129, 0.06)', border: '1px solid rgba(16, 185, 129, 0.25)' }}>
                 <CheckCircle2 size={32} color="var(--emerald)" style={{ marginBottom: '8px' }} />
-                <div style={{ fontWeight: 800, color: 'white', marginBottom: '4px' }}>No Open Conflicts</div>
+                <div style={{ fontWeight: 800, color: 'var(--text-primary)', marginBottom: '4px' }}>No Open Conflicts</div>
                 <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                   Every monitored official endpoint matches its last verified snapshot.
                 </div>
@@ -4295,15 +4218,15 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '10px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <span className="badge badge-verified" style={{ fontFamily: 'var(--font-mono)' }}>{log.authorityCode}</span>
-                        <span style={{ fontWeight: 700, color: 'white', wordBreak: 'break-all' }}>{log.endpointUrl}</span>
+                        <span style={{ fontWeight: 700, color: 'var(--text-primary)', wordBreak: 'break-all' }}>{log.endpointUrl}</span>
                       </div>
                       <span className="badge badge-changed">{log.adminReviewStatus}</span>
                     </div>
 
-                    <div style={{ fontSize: '0.85rem', color: '#fef3c7', marginBottom: '4px' }}>
+                    <div style={{ fontSize: '0.85rem', color: '#92400e', marginBottom: '4px' }}>
                       Old Fact: <span style={{ textDecoration: 'line-through' }}>{log.previousValue}</span>
                     </div>
-                    <div style={{ fontSize: '0.85rem', color: '#34d399', fontWeight: 700, marginBottom: '12px' }}>
+                    <div style={{ fontSize: '0.85rem', color: '#15803d', fontWeight: 700, marginBottom: '12px' }}>
                       New Fact: {log.newValue}
                     </div>
 
@@ -4335,14 +4258,14 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 {allCorrigenda.map(c => (
-                  <div key={c.examCode + '-' + c.id} style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)' }}>
+                  <div key={c.examCode + '-' + c.id} style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)' }}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '8px' }}>
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
                           <span className="badge badge-demo" style={{ fontSize: '0.7rem' }}>{c.examCode}</span>
                           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{c.noticeNumber}</span>
                         </div>
-                        <div style={{ fontSize: '1rem', fontWeight: 700, color: 'white' }}>{c.title}</div>
+                        <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>{c.title}</div>
                       </div>
                       <span className={c.status === 'ACTIVE' ? 'badge badge-verified' : 'badge badge-superseded'}>{c.status}</span>
                     </div>
@@ -4351,7 +4274,7 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
                       {c.summary}
                     </div>
 
-                    <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-sm)', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', fontSize: '0.82rem', color: '#fef3c7', marginBottom: '10px' }}>
+                    <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-sm)', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', fontSize: '0.82rem', color: '#92400e', marginBottom: '10px' }}>
                       <strong>Change Applied:</strong> {c.diffSummary}
                     </div>
 
@@ -4372,7 +4295,7 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
               <Compass size={20} color="var(--primary)" /> Syllabus Revisions — {syllabusExam.title}
             </h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '18px' }}>
-              The syllabus in the register was verified on <strong style={{ color: 'white' }}>{syllabusVerifiedOn}</strong>. SSC's notice board is read on the server; anything about this exam published since is listed here for you to read. Nothing changes the candidate-facing syllabus until you apply it below, citing the notice — the same rule as resource additions.
+              The syllabus in the register was verified on <strong style={{ color: 'var(--text-primary)' }}>{syllabusVerifiedOn}</strong>. SSC's notice board is read on the server; anything about this exam published since is listed here for you to read. Nothing changes the candidate-facing syllabus until you apply it below, citing the notice — the same rule as resource additions.
             </p>
 
             {/* What SSC has published since the verified date */}
@@ -4383,14 +4306,14 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
               {syllabusWatch === null ? (
                 <div style={{ fontSize: '0.84rem', color: 'var(--text-muted)' }}>Reading the notice board…</div>
               ) : syllabusWatch.items.length === 0 ? (
-                <div style={{ padding: '14px', borderRadius: 'var(--radius-md)', background: 'rgba(16, 185, 129, 0.06)', border: '1px solid rgba(16, 185, 129, 0.25)', fontSize: '0.84rem', color: '#6ee7b7', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ padding: '14px', borderRadius: 'var(--radius-md)', background: 'rgba(16, 185, 129, 0.06)', border: '1px solid rgba(16, 185, 129, 0.25)', fontSize: '0.84rem', color: '#15803d', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <CheckCircle2 size={15} /> Nothing about this exam has been published since the syllabus was verified.{syllabusWatch.error ? ` (Board refresh failed: ${syllabusWatch.error}; showing the last good copy.)` : ''}
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {syllabusWatch.items.map(n => (
                     <div key={n.id} style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.35)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', fontSize: '0.84rem' }}>
-                      <span style={{ color: '#fef3c7' }}><span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>{n.createdAt}</span> · {n.headline}</span>
+                      <span style={{ color: '#92400e' }}><span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>{n.createdAt}</span> · {n.headline}</span>
                       <div style={{ display: 'flex', gap: '6px' }}>
                         {n.files[0] && (
                           <a href={n.files[0].url} target="_blank" rel="noreferrer" className="btn btn-outline" style={{ fontSize: '0.72rem', padding: '3px 10px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
@@ -4412,12 +4335,12 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
             </div>
 
             {/* Apply a change */}
-            <div style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
+            <div style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
               <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Apply a revision</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                   Change
-                  <select value={revisionForm.kind} onChange={e => setRev({ kind: e.target.value as SyllabusRevision['kind'] })} style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white' }}>
+                  <select value={revisionForm.kind} onChange={e => setRev({ kind: e.target.value as SyllabusRevision['kind'] })} style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}>
                     <option value="AMEND">Amend an existing topic</option>
                     <option value="ADD">Add a new topic</option>
                     <option value="RETIRE">Retire a topic</option>
@@ -4426,7 +4349,7 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
                 {revisionForm.kind !== 'ADD' && (
                   <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                     Topic
-                    <select value={revisionForm.topicId} onChange={e => setRev({ topicId: e.target.value })} style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white' }}>
+                    <select value={revisionForm.topicId} onChange={e => setRev({ topicId: e.target.value })} style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}>
                       {syllabusExam.syllabus.map(t => <option key={t.id} value={t.id}>{t.subject} — {t.topicName}</option>)}
                     </select>
                   </label>
@@ -4437,14 +4360,14 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
                   <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                     Subject {revisionForm.kind === 'AMEND' && <span style={{ color: 'var(--text-muted)' }}>(blank = unchanged)</span>}
-                    <select value={revisionForm.subject} onChange={e => setRev({ subject: e.target.value })} style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white' }}>
+                    <select value={revisionForm.subject} onChange={e => setRev({ subject: e.target.value })} style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}>
                       <option value="">—</option>
                       {Array.from(new Set(syllabusExam.syllabus.map(t => t.subject))).map(sub => <option key={sub} value={sub}>{sub}</option>)}
                     </select>
                   </label>
                   <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                     Tier
-                    <select value={revisionForm.tier} onChange={e => setRev({ tier: e.target.value })} style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white' }}>
+                    <select value={revisionForm.tier} onChange={e => setRev({ tier: e.target.value })} style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}>
                       <option value="">—</option>
                       <option value="TIER_1">TIER_1</option>
                       <option value="TIER_2">TIER_2</option>
@@ -4453,23 +4376,23 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
                   </label>
                   <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                     Topic name
-                    <input value={revisionForm.topicName} onChange={e => setRev({ topicName: e.target.value })} placeholder={revisionForm.kind === 'ADD' ? 'e.g. Data Sufficiency' : 'leave blank to keep'} style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white' }} />
+                    <input value={revisionForm.topicName} onChange={e => setRev({ topicName: e.target.value })} placeholder={revisionForm.kind === 'ADD' ? 'e.g. Data Sufficiency' : 'leave blank to keep'} style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }} />
                   </label>
                   <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                     Subtopics, comma-separated
-                    <input value={revisionForm.subtopics} onChange={e => setRev({ subtopics: e.target.value })} placeholder="leave blank to keep" style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white' }} />
+                    <input value={revisionForm.subtopics} onChange={e => setRev({ subtopics: e.target.value })} placeholder="leave blank to keep" style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }} />
                   </label>
                   <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                     Weightage %
-                    <input type="number" value={revisionForm.weightagePercentage} onChange={e => setRev({ weightagePercentage: e.target.value })} placeholder="keep" style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white' }} />
+                    <input type="number" value={revisionForm.weightagePercentage} onChange={e => setRev({ weightagePercentage: e.target.value })} placeholder="keep" style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }} />
                   </label>
                   <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                     Avg questions / shift
-                    <input type="number" value={revisionForm.avgQuestions} onChange={e => setRev({ avgQuestions: e.target.value })} placeholder="keep" style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white' }} />
+                    <input type="number" value={revisionForm.avgQuestions} onChange={e => setRev({ avgQuestions: e.target.value })} placeholder="keep" style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }} />
                   </label>
                   <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                     High-yield
-                    <select value={revisionForm.isHighYield} onChange={e => setRev({ isHighYield: e.target.value as '' | 'yes' | 'no' })} style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white' }}>
+                    <select value={revisionForm.isHighYield} onChange={e => setRev({ isHighYield: e.target.value as '' | 'yes' | 'no' })} style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}>
                       <option value="">—</option>
                       <option value="yes">yes</option>
                       <option value="no">no</option>
@@ -4481,23 +4404,23 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                   Notice title
-                  <input value={revisionForm.noticeTitle} onChange={e => setRev({ noticeTitle: e.target.value })} placeholder="from the list above, or type" style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white' }} />
+                  <input value={revisionForm.noticeTitle} onChange={e => setRev({ noticeTitle: e.target.value })} placeholder="from the list above, or type" style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                   Notice URL
-                  <input value={revisionForm.noticeUrl} onChange={e => setRev({ noticeUrl: e.target.value })} placeholder="https://ssc.gov.in/…" style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white' }} />
+                  <input value={revisionForm.noticeUrl} onChange={e => setRev({ noticeUrl: e.target.value })} placeholder="https://ssc.gov.in/…" style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                   Notice date
-                  <input value={revisionForm.noticeDate} onChange={e => setRev({ noticeDate: e.target.value })} placeholder="YYYY-MM-DD" style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white' }} />
+                  <input value={revisionForm.noticeDate} onChange={e => setRev({ noticeDate: e.target.value })} placeholder="YYYY-MM-DD" style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }} />
                 </label>
               </div>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                 Verifier note (what the notice says, in your words)
-                <input value={revisionForm.note} onChange={e => setRev({ note: e.target.value })} placeholder="required if there is no notice URL" style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white' }} />
+                <input value={revisionForm.note} onChange={e => setRev({ note: e.target.value })} placeholder="required if there is no notice URL" style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }} />
               </label>
               {revisionError && (
-                <div style={{ fontSize: '0.82rem', color: '#fca5a5', display: 'flex', alignItems: 'center', gap: '6px' }}><AlertCircle size={14} /> {revisionError}</div>
+                <div style={{ fontSize: '0.82rem', color: '#dc2626', display: 'flex', alignItems: 'center', gap: '6px' }}><AlertCircle size={14} /> {revisionError}</div>
               )}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>
@@ -4524,7 +4447,7 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
                       <div key={r.id} style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', fontSize: '0.84rem' }}>
                         <div>
                           <span className="badge badge-changed" style={{ fontSize: '0.64rem', marginRight: '8px' }}>{r.kind}</span>
-                          <strong style={{ color: 'white' }}>{r.kind === 'ADD' ? r.topic?.topicName : target?.topicName || r.topicId}</strong>
+                          <strong style={{ color: 'var(--text-primary)' }}>{r.kind === 'ADD' ? r.topic?.topicName : target?.topicName || r.topicId}</strong>
                           <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
                             {r.appliedAt.slice(0, 10)} · {r.appliedBy}{r.noticeTitle ? ` · per ${r.noticeTitle}` : ''}{r.note ? ` · ${r.note}` : ''}
                           </div>
@@ -4568,13 +4491,13 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
           </div>
 
           {reportsStatus === 'OFFLINE' ? (
-            <div style={{ padding: '24px', borderRadius: 'var(--radius-md)', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.3)', fontSize: '0.88rem', color: '#fef3c7' }}>
+            <div style={{ padding: '24px', borderRadius: 'var(--radius-md)', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.3)', fontSize: '0.88rem', color: '#92400e' }}>
               <strong>Audit database unreachable.</strong> Start the GovOS server (<code style={{ fontFamily: 'var(--font-mono)' }}>python app.py</code>) to load the report queue from govos.db.
             </div>
           ) : reports.length === 0 ? (
-            <div style={{ padding: '28px', textAlign: 'center', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)' }}>
+            <div style={{ padding: '28px', textAlign: 'center', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)' }}>
               <CheckCircle2 size={30} color="var(--emerald)" style={{ marginBottom: '8px' }} />
-              <div style={{ fontWeight: 800, color: 'white', marginBottom: '4px' }}>Report Queue Empty</div>
+              <div style={{ fontWeight: 800, color: 'var(--text-primary)', marginBottom: '4px' }}>Report Queue Empty</div>
               <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                 No candidate has flagged a data discrepancy yet.
               </div>
@@ -4582,7 +4505,7 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {reports.map(r => (
-                <div key={r.id} style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)' }}>
+                <div key={r.id} style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '8px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                       <span className="badge badge-demo" style={{ fontSize: '0.7rem' }}>{r.entityType}</span>
@@ -4593,7 +4516,7 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
                     </span>
                   </div>
 
-                  <div style={{ fontSize: '0.9rem', color: '#e2e8f0', lineHeight: 1.5, marginBottom: '10px' }}>
+                  <div style={{ fontSize: '0.9rem', color: '#334155', lineHeight: 1.5, marginBottom: '10px' }}>
                     {r.description || <em style={{ color: 'var(--text-muted)' }}>No description provided.</em>}
                   </div>
 
@@ -4623,32 +4546,32 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
           {/* Pipeline explainer + status */}
-          <div className="glass-card" style={{ padding: '24px', background: 'linear-gradient(135deg, rgba(59,130,246,0.10) 0%, rgba(15,23,42,0.98) 60%)', border: '1px solid rgba(59,130,246,0.3)' }}>
+          <div className="glass-card" style={{ padding: '24px', background: 'linear-gradient(135deg, rgba(59,130,246,0.10) 0%, #ffffff 60%)', border: '1px solid rgba(59,130,246,0.3)' }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' }}>
                   <span className="badge badge-verified" style={{ fontSize: '0.68rem' }}><Globe size={12} /> LIVE SOURCE RESEARCH</span>
                   <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>powered by Tavily search · server-side, key never leaves app.py</span>
                 </div>
-                <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'white', margin: '0 0 6px' }}>Discover and verify official sources on the live web</h3>
+                <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px' }}>Discover and verify official sources on the live web</h3>
                 <p style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', margin: 0, maxWidth: '760px', lineHeight: 1.5 }}>
                   Search → every result is classified by domain (official / academic / unverified) → stored in the audit database → a verifier reviews it → only then can it be promoted into the platform. Nothing here reaches candidates automatically.
                 </p>
               </div>
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                <div style={{ padding: '10px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-color)', minWidth: '120px' }}>
+                <div style={{ padding: '10px 16px', borderRadius: 'var(--radius-md)', background: 'var(--surface-3)', border: '1px solid var(--border-color)', minWidth: '120px' }}>
                   <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Connector</div>
-                  <div style={{ fontSize: '0.95rem', fontWeight: 800, color: researchStatus?.configured ? '#34d399' : '#fbbf24' }}>
+                  <div style={{ fontSize: '0.95rem', fontWeight: 800, color: researchStatus?.configured ? '#15803d' : '#b45309' }}>
                     {researchStatus === null ? 'Checking…' : researchStatus.configured ? 'Connected' : 'Not configured'}
                   </div>
                 </div>
-                <div style={{ padding: '10px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-color)', minWidth: '120px' }}>
+                <div style={{ padding: '10px 16px', borderRadius: 'var(--radius-md)', background: 'var(--surface-3)', border: '1px solid var(--border-color)', minWidth: '120px' }}>
                   <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Runs stored</div>
-                  <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'white' }}>{researchStatus?.runCount ?? '—'}</div>
+                  <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-primary)' }}>{researchStatus?.runCount ?? '—'}</div>
                 </div>
-                <div style={{ padding: '10px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-color)', minWidth: '120px' }}>
+                <div style={{ padding: '10px 16px', borderRadius: 'var(--radius-md)', background: 'var(--surface-3)', border: '1px solid var(--border-color)', minWidth: '120px' }}>
                   <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Awaiting review</div>
-                  <div style={{ fontSize: '0.95rem', fontWeight: 800, color: (researchStatus?.pendingReview || 0) > 0 ? '#fbbf24' : 'white' }}>{researchStatus?.pendingReview ?? '—'}</div>
+                  <div style={{ fontSize: '0.95rem', fontWeight: 800, color: (researchStatus?.pendingReview || 0) > 0 ? '#b45309' : 'var(--text-primary)' }}>{researchStatus?.pendingReview ?? '—'}</div>
                 </div>
               </div>
             </div>
@@ -4668,10 +4591,10 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
                   onKeyDown={e => e.key === 'Enter' && runResearch()}
                   placeholder="e.g. SSC CGL 2026 corrigendum application date extended"
                   aria-label="Research query"
-                  style={{ width: '100%', padding: '11px 12px 11px 38px', borderRadius: 'var(--radius-md)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.92rem', fontFamily: 'var(--font-sans)', outline: 'none' }}
+                  style={{ width: '100%', padding: '11px 12px 11px 38px', borderRadius: 'var(--radius-md)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontSize: '0.92rem', fontFamily: 'var(--font-sans)', outline: 'none' }}
                 />
               </div>
-              <select value={researchExamId} onChange={e => setResearchExamId(e.target.value)} aria-label="Exam context" style={{ padding: '10px 12px', borderRadius: 'var(--radius-md)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.85rem', fontFamily: 'var(--font-sans)' }}>
+              <select value={researchExamId} onChange={e => setResearchExamId(e.target.value)} aria-label="Exam context" style={{ padding: '10px 12px', borderRadius: 'var(--radius-md)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontSize: '0.85rem', fontFamily: 'var(--font-sans)' }}>
                 {ALL_EXAMS.map(e => <option key={e.id} value={e.id}>{e.code.replace(/_/g, ' ')}</option>)}
               </select>
               <button className="btn btn-emerald" onClick={() => runResearch()} disabled={researchLoading || !researchQuery.trim()} style={{ fontSize: '0.86rem', display: 'inline-flex', alignItems: 'center', gap: '6px', opacity: researchLoading ? 0.7 : 1 }}>
@@ -4686,7 +4609,7 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
                 { key: 'NEWS', label: 'News · last 30 days', hint: 'recent coverage, any domain' },
                 { key: 'WEB', label: 'Whole web', hint: 'unrestricted' }
               ] as { key: ResearchMode; label: string; hint: string }[]).map(m => (
-                <button key={m.key} onClick={() => setResearchMode(m.key)} title={m.hint} style={{ padding: '6px 12px', borderRadius: 'var(--radius-full)', border: `1px solid ${researchMode === m.key ? 'var(--primary)' : 'var(--border-color)'}`, background: researchMode === m.key ? 'rgba(99,102,241,0.16)' : 'transparent', color: researchMode === m.key ? '#c7d2fe' : 'var(--text-secondary)', fontSize: '0.78rem', fontWeight: researchMode === m.key ? 700 : 500, fontFamily: 'var(--font-sans)', cursor: 'pointer' }}>
+                <button key={m.key} onClick={() => setResearchMode(m.key)} title={m.hint} style={{ padding: '6px 12px', borderRadius: 'var(--radius-full)', border: `1px solid ${researchMode === m.key ? 'var(--primary)' : 'var(--border-color)'}`, background: researchMode === m.key ? 'rgba(99,102,241,0.16)' : 'transparent', color: researchMode === m.key ? '#4f46e5' : 'var(--text-secondary)', fontSize: '0.78rem', fontWeight: researchMode === m.key ? 700 : 500, fontFamily: 'var(--font-sans)', cursor: 'pointer' }}>
                   {m.label}
                 </button>
               ))}
@@ -4706,7 +4629,7 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
             researchError.notConfigured
               ? <ResearchSetupNotice setup={researchError.setup} />
               : (
-                <div style={{ padding: '12px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.35)', fontSize: '0.84rem', color: '#fca5a5', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ padding: '12px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.35)', fontSize: '0.84rem', color: '#dc2626', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <AlertTriangle size={15} /> {researchError.error}
                 </div>
               )
@@ -4717,7 +4640,7 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
             <div className="glass-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
                 <div>
-                  <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'white', margin: 0 }}>{researchRun.results.length} results for “{researchRun.query}”</h4>
+                  <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>{researchRun.results.length} results for “{researchRun.query}”</h4>
                   <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '2px' }}>
                     Run #{researchRun.runId} · {researchRun.mode === 'OFFICIAL' ? 'official domains only' : researchRun.mode === 'NEWS' ? 'news, last 30 days' : 'whole web'} · {researchRun.results.filter(f => f.trustLevel === 'OFFICIAL').length} official · {researchRun.results.filter(f => f.trustLevel === 'UNVERIFIED').length} unverified{researchRun.filteredOut ? ` · ${researchRun.filteredOut} non-official result${researchRun.filteredOut === 1 ? '' : 's'} filtered out` : ''}
                   </div>
@@ -4725,8 +4648,8 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
               </div>
 
               {researchRun.answer && (
-                <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.3)', fontSize: '0.86rem', color: '#fef3c7', lineHeight: 1.5 }}>
-                  <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#fbbf24', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Search-engine summary — unverified, for orientation only</div>
+                <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.3)', fontSize: '0.86rem', color: '#92400e', lineHeight: 1.5 }}>
+                  <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#b45309', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Search-engine summary — unverified, for orientation only</div>
                   {researchRun.answer}
                 </div>
               )}
@@ -4739,11 +4662,11 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
                 const meta = researchTrustMeta(f.trustLevel);
                 const reviewed = f.reviewStatus !== 'PENDING_REVIEW';
                 return (
-                  <div key={f.id} style={{ padding: '16px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.025)', borderTop: `3px solid ${meta.color}`, borderRight: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)', borderLeft: '1px solid var(--border-color)', opacity: f.reviewStatus === 'REJECTED' ? 0.55 : 1 }}>
+                  <div key={f.id} style={{ padding: '16px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', borderTop: `3px solid ${meta.color}`, borderRight: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)', borderLeft: '1px solid var(--border-color)', opacity: f.reviewStatus === 'REJECTED' ? 0.55 : 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '6px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                         <span style={{ padding: '2px 9px', borderRadius: 'var(--radius-full)', background: meta.bg, color: meta.color, fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.04em' }}>{meta.label}</span>
-                        <span style={{ fontSize: '0.74rem', color: '#93c5fd', fontFamily: 'var(--font-mono)' }}>{researchHost(f.url)}</span>
+                        <span style={{ fontSize: '0.74rem', color: '#2563eb', fontFamily: 'var(--font-mono)' }}>{researchHost(f.url)}</span>
                         {f.publishedDate && <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Clock size={11} /> {f.publishedDate}</span>}
                         <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>relevance {Math.round(f.score * 100)}%</span>
                       </div>
@@ -4752,16 +4675,16 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
                       </span>
                     </div>
 
-                    <div style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '4px' }}>{f.title}</div>
+                    <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '4px' }}>{f.title}</div>
                     <div style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{f.snippet}</div>
 
                     {openExtractId === f.id && extractedText[f.id] && (
-                      <div style={{ marginTop: '10px', padding: '12px', borderRadius: 'var(--radius-sm)', background: 'rgba(0,0,0,0.35)', border: '1px solid var(--border-color)', fontSize: '0.8rem', color: '#e2e8f0', lineHeight: 1.55, maxHeight: '260px', overflowY: 'auto', whiteSpace: 'pre-wrap', fontFamily: 'var(--font-mono)' }}>
+                      <div style={{ marginTop: '10px', padding: '12px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-3)', border: '1px solid var(--border-color)', fontSize: '0.8rem', color: '#334155', lineHeight: 1.55, maxHeight: '260px', overflowY: 'auto', whiteSpace: 'pre-wrap', fontFamily: 'var(--font-mono)' }}>
                         {extractedText[f.id]}
                       </div>
                     )}
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '12px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '12px', paddingTop: '10px', borderTop: '1px solid var(--surface-2)' }}>
                       <a href={f.url} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ fontSize: '0.76rem', padding: '5px 11px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
                         Open source <ExternalLink size={12} />
                       </a>
@@ -4807,19 +4730,19 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
           )}
 
           {/* History */}
-          <div style={{ borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.02)' }}>
+          <div style={{ borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', background: 'var(--surface-2)' }}>
             <button onClick={() => setIsHistoryOpen(v => !v)} style={{ width: '100%', padding: '12px 16px', background: 'none', border: 'none', color: 'var(--text-secondary)', fontFamily: 'var(--font-sans)', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}><Database size={15} color="#60a5fa" /> Research history ({researchHistory.length} runs stored in govos.db)</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}><Database size={15} color="#2563eb" /> Research history ({researchHistory.length} runs stored in govos.db)</span>
               <ChevronDown size={15} style={{ transform: isHistoryOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }} />
             </button>
             {isHistoryOpen && (
               <div style={{ padding: '0 16px 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {researchHistory.length === 0 && <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>No research runs yet.</div>}
                 {researchHistory.map(run => (
-                  <div key={run.id} style={{ padding: '12px 14px', borderRadius: 'var(--radius-sm)', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)' }}>
+                  <div key={run.id} style={{ padding: '12px 14px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-3)', border: '1px solid var(--border-color)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
                       <div>
-                        <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'white' }}>{run.query}</div>
+                        <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)' }}>{run.query}</div>
                         <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                           Run #{run.id} · {run.mode} · {run.createdAt} · {run.findings.length} results · {run.findings.filter(f => f.reviewStatus === 'PENDING_REVIEW').length} pending · {run.findings.filter(f => f.reviewStatus === 'PROMOTED').length} promoted
                         </div>
@@ -4843,7 +4766,7 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
             Simulates PDF download → OCR text extraction → JSON schema mapping → Admin verification queue.
           </p>
 
-          <div style={{ background: 'var(--bg-input)', padding: '20px', borderRadius: 'var(--radius-md)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: '#34d399', lineHeight: 1.6, overflowX: 'auto' }}>
+          <div style={{ background: 'var(--bg-input)', padding: '20px', borderRadius: 'var(--radius-md)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: '#15803d', lineHeight: 1.6, overflowX: 'auto' }}>
 {`{
   "authority": "SSC",
   "document_title": "SSC CGL 2026 Official Notification.pdf",
@@ -4933,7 +4856,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.75)',
+        backgroundColor: 'var(--surface-3)',
         backdropFilter: 'blur(6px)',
         zIndex: 1000,
         display: 'flex',
@@ -4950,13 +4873,13 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
           borderLeft: '1px solid var(--border-color)',
           display: 'flex',
           flexDirection: 'column',
-          boxShadow: '-10px 0 30px rgba(0,0,0,0.5)',
+          boxShadow: '-10px 0 30px var(--surface-3)',
           overflow: 'hidden'
         }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div style={{ padding: '24px', borderBottom: '1px solid var(--border-color)', background: 'rgba(255, 255, 255, 0.02)' }}>
+        <div style={{ padding: '24px', borderBottom: '1px solid var(--border-color)', background: 'var(--surface-2)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <div style={{ 
@@ -4973,7 +4896,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                 <Bell size={20} />
               </div>
               <div>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: 'white' }}>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
                   Candidate Notifications
                 </h3>
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
@@ -5053,10 +4976,10 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {filteredNotifications.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
-              <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(255,255,255,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+              <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'var(--surface-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
                 <Bell size={28} />
               </div>
-              <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'white', marginBottom: '8px' }}>
+              <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>
                 {filterTab === 'UNREAD' ? 'No Unread Alerts' : 'No Notifications Found'}
               </h4>
               <p style={{ fontSize: '0.85rem', maxWidth: '360px', margin: '0 auto 20px', lineHeight: 1.5 }}>
@@ -5079,7 +5002,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                 style={{
                   padding: '16px',
                   borderRadius: 'var(--radius-md)',
-                  background: notif.isRead ? 'rgba(255, 255, 255, 0.02)' : 'rgba(99, 102, 241, 0.08)',
+                  background: notif.isRead ? 'var(--surface-2)' : 'rgba(99, 102, 241, 0.08)',
                   border: notif.isRead ? '1px solid var(--border-color)' : '1px solid rgba(99, 102, 241, 0.4)',
                   position: 'relative',
                   transition: 'all 0.2s ease'
@@ -5104,7 +5027,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                   <div style={{ 
                     padding: '10px', 
                     borderRadius: '10px', 
-                    background: notif.priority === 'CRITICAL' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(255,255,255,0.05)',
+                    background: notif.priority === 'CRITICAL' ? 'rgba(239, 68, 68, 0.15)' : 'var(--surface-2)',
                     border: notif.priority === 'CRITICAL' ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid var(--border-color)',
                     flexShrink: 0
                   }}>
@@ -5117,7 +5040,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                         {notif.examCode}
                       </span>
                       {notif.priority === 'CRITICAL' && (
-                        <span className="badge" style={{ fontSize: '0.65rem', background: 'rgba(239, 68, 68, 0.2)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.4)' }}>
+                        <span className="badge" style={{ fontSize: '0.65rem', background: 'rgba(239, 68, 68, 0.2)', color: '#dc2626', border: '1px solid rgba(239, 68, 68, 0.4)' }}>
                           CRITICAL DEADLINE
                         </span>
                       )}
@@ -5126,7 +5049,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                       </span>
                     </div>
 
-                    <h4 style={{ fontSize: '0.98rem', fontWeight: 700, color: 'white', marginBottom: '6px', lineHeight: 1.3 }}>
+                    <h4 style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px', lineHeight: 1.3 }}>
                       {notif.title}
                     </h4>
 
@@ -5145,9 +5068,9 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                               fontSize: '0.65rem', 
                               padding: '2px 6px', 
                               borderRadius: '4px', 
-                              background: 'rgba(255,255,255,0.06)',
-                              color: ch === 'WHATSAPP' ? '#34d399' : ch === 'EMAIL' ? '#60a5fa' : '#cbd5e1',
-                              border: '1px solid rgba(255,255,255,0.1)',
+                              background: 'var(--surface-2)',
+                              color: ch === 'WHATSAPP' ? '#15803d' : ch === 'EMAIL' ? '#2563eb' : '#334155',
+                              border: '1px solid var(--surface-3)',
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: '3px'
@@ -5358,7 +5281,7 @@ export const NotificationPreferencesModal: React.FC<NotificationPreferencesModal
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.75)',
+        backgroundColor: 'var(--surface-3)',
         backdropFilter: 'blur(6px)',
         zIndex: 1050,
         display: 'flex',
@@ -5376,7 +5299,7 @@ export const NotificationPreferencesModal: React.FC<NotificationPreferencesModal
           maxHeight: '90vh',
           display: 'flex',
           flexDirection: 'column',
-          boxShadow: '0 20px 50px rgba(0,0,0,0.6)',
+          boxShadow: '0 20px 50px var(--surface-3)',
           border: '1px solid var(--border-color)',
           borderRadius: 'var(--radius-lg)',
           overflow: 'hidden'
@@ -5390,7 +5313,7 @@ export const NotificationPreferencesModal: React.FC<NotificationPreferencesModal
               <Bell size={22} />
             </div>
             <div>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: 'white' }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
                 Notification & Reminder Preferences
               </h3>
               <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>
@@ -5409,19 +5332,19 @@ export const NotificationPreferencesModal: React.FC<NotificationPreferencesModal
           
           {/* Section 1: Delivery Channels */}
           <div>
-            <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'white', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Globe size={16} color="var(--primary)" /> 1. Delivery Channels
             </h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               
               {/* In-App Alerts */}
-              <div style={{ padding: '14px 18px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ padding: '14px 18px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(99,102,241,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}>
                     <Bell size={18} />
                   </div>
                   <div>
-                    <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'white' }}>In-App Notification Center</div>
+                    <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)' }}>In-App Notification Center</div>
                     <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Bell icon in header with unread badge counter (Default ON)</div>
                   </div>
                 </div>
@@ -5434,15 +5357,15 @@ export const NotificationPreferencesModal: React.FC<NotificationPreferencesModal
               </div>
 
               {/* Browser / Push */}
-              <div style={{ padding: '14px 18px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+              <div style={{ padding: '14px 18px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(6,182,212,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--cyan)' }}>
                     <Globe size={18} />
                   </div>
                   <div>
-                    <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'white', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                       Browser Push Notifications
-                      <span className="badge" style={{ fontSize: '0.65rem', background: browserPermission === 'granted' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.05)', color: browserPermission === 'granted' ? '#34d399' : 'var(--text-muted)' }}>
+                      <span className="badge" style={{ fontSize: '0.65rem', background: browserPermission === 'granted' ? 'rgba(16, 185, 129, 0.2)' : 'var(--surface-2)', color: browserPermission === 'granted' ? '#15803d' : 'var(--text-muted)' }}>
                         {browserPermission === 'granted' ? 'Permission Granted' : 'Requires Permission'}
                       </span>
                     </div>
@@ -5476,14 +5399,14 @@ export const NotificationPreferencesModal: React.FC<NotificationPreferencesModal
               </div>
 
               {/* Email Alerts (Optional) */}
-              <div style={{ padding: '14px 18px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)' }}>
+              <div style={{ padding: '14px 18px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(59,130,246,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#60a5fa' }}>
+                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(59,130,246,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563eb' }}>
                       <Mail size={18} />
                     </div>
                     <div>
-                      <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'white' }}>Email Alerts (Optional)</div>
+                      <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)' }}>Email Alerts (Optional)</div>
                       <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Receive critical deadline notices directly to your inbox</div>
                     </div>
                   </div>
@@ -5507,7 +5430,7 @@ export const NotificationPreferencesModal: React.FC<NotificationPreferencesModal
                         borderRadius: 'var(--radius-md)',
                         background: 'var(--bg-input)',
                         border: '1px solid var(--border-color)',
-                        color: 'white',
+                        color: 'var(--text-primary)',
                         fontSize: '0.85rem',
                         outline: 'none'
                       }}
@@ -5517,14 +5440,14 @@ export const NotificationPreferencesModal: React.FC<NotificationPreferencesModal
               </div>
 
               {/* WhatsApp Alerts (Optional & Verified) */}
-              <div style={{ padding: '14px 18px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)' }}>
+              <div style={{ padding: '14px 18px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(16,185,129,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#34d399' }}>
+                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(16,185,129,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#15803d' }}>
                       <Smartphone size={18} />
                     </div>
                     <div>
-                      <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'white', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                         WhatsApp Urgent Alerts (Optional)
                         {prefs.contactInfo.whatsappVerified && (
                           <span className="badge badge-verified" style={{ fontSize: '0.65rem' }}>
@@ -5565,7 +5488,7 @@ export const NotificationPreferencesModal: React.FC<NotificationPreferencesModal
                           borderRadius: 'var(--radius-md)',
                           background: 'var(--bg-input)',
                           border: '1px solid var(--border-color)',
-                          color: 'white',
+                          color: 'var(--text-primary)',
                           fontSize: '0.85rem',
                           outline: 'none'
                         }}
@@ -5581,8 +5504,8 @@ export const NotificationPreferencesModal: React.FC<NotificationPreferencesModal
 
                     {otpSent && (
                       <div style={{ marginTop: '10px', padding: '12px', borderRadius: 'var(--radius-md)', background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.3)' }}>
-                        <div style={{ fontSize: '0.78rem', color: '#34d399', marginBottom: '8px' }}>
-                          Simulated SMS sent! Use verification code: <strong style={{ color: 'white', letterSpacing: '2px' }}>{simulatedOtp}</strong>
+                        <div style={{ fontSize: '0.78rem', color: '#15803d', marginBottom: '8px' }}>
+                          Simulated SMS sent! Use verification code: <strong style={{ color: 'var(--text-primary)', letterSpacing: '2px' }}>{simulatedOtp}</strong>
                         </div>
                         <div style={{ display: 'flex', gap: '8px' }}>
                           <input 
@@ -5597,7 +5520,7 @@ export const NotificationPreferencesModal: React.FC<NotificationPreferencesModal
                               borderRadius: 'var(--radius-md)',
                               background: 'var(--bg-input)',
                               border: '1px solid var(--border-color)',
-                              color: 'white',
+                              color: 'var(--text-primary)',
                               fontSize: '0.85rem',
                               textAlign: 'center',
                               letterSpacing: '2px'
@@ -5612,7 +5535,7 @@ export const NotificationPreferencesModal: React.FC<NotificationPreferencesModal
                           </button>
                         </div>
                         {otpError && (
-                          <div style={{ fontSize: '0.75rem', color: '#f87171', marginTop: '6px' }}>
+                          <div style={{ fontSize: '0.75rem', color: '#dc2626', marginTop: '6px' }}>
                             {otpError}
                           </div>
                         )}
@@ -5620,7 +5543,7 @@ export const NotificationPreferencesModal: React.FC<NotificationPreferencesModal
                     )}
                   </div>
                 ) : (
-                  <div style={{ marginTop: '6px', paddingLeft: '44px', fontSize: '0.78rem', color: '#34d399' }}>
+                  <div style={{ marginTop: '6px', paddingLeft: '44px', fontSize: '0.78rem', color: '#15803d' }}>
                     Connected to +91 {phoneNumber || prefs.contactInfo.phone}
                   </div>
                 )}
@@ -5630,7 +5553,7 @@ export const NotificationPreferencesModal: React.FC<NotificationPreferencesModal
 
           {/* Section 2: Milestone Event Subscriptions */}
           <div>
-            <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'white', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <ShieldCheck size={16} color="#10b981" /> 2. Milestone Event Subscriptions
             </h4>
             <div className="grid-2" style={{ gap: '10px' }}>
@@ -5647,7 +5570,7 @@ export const NotificationPreferencesModal: React.FC<NotificationPreferencesModal
                   style={{
                     padding: '12px 16px',
                     borderRadius: 'var(--radius-md)',
-                    background: 'rgba(255,255,255,0.02)',
+                    background: 'var(--surface-2)',
                     border: '1px solid var(--border-color)',
                     display: 'flex',
                     alignItems: 'center',
@@ -5655,7 +5578,7 @@ export const NotificationPreferencesModal: React.FC<NotificationPreferencesModal
                     cursor: 'pointer'
                   }}
                 >
-                  <span style={{ fontSize: '0.85rem', color: '#e2e8f0' }}>{item.label}</span>
+                  <span style={{ fontSize: '0.85rem', color: '#334155' }}>{item.label}</span>
                   <input 
                     type="checkbox"
                     checked={(prefs.eventSubscriptions as any)[item.key]}
@@ -5675,7 +5598,7 @@ export const NotificationPreferencesModal: React.FC<NotificationPreferencesModal
 
           {/* Section 3: Multi-Stage Deadline Reminders */}
           <div>
-            <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'white', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Clock size={16} color="var(--amber)" /> 3. Multi-Stage Deadline Reminders
             </h4>
             <div className="grid-2" style={{ gap: '10px' }}>
@@ -5690,7 +5613,7 @@ export const NotificationPreferencesModal: React.FC<NotificationPreferencesModal
                   style={{
                     padding: '12px 16px',
                     borderRadius: 'var(--radius-md)',
-                    background: 'rgba(255,255,255,0.02)',
+                    background: 'var(--surface-2)',
                     border: '1px solid var(--border-color)',
                     display: 'flex',
                     alignItems: 'center',
@@ -5698,7 +5621,7 @@ export const NotificationPreferencesModal: React.FC<NotificationPreferencesModal
                     cursor: 'pointer'
                   }}
                 >
-                  <span style={{ fontSize: '0.85rem', color: '#e2e8f0' }}>{item.label}</span>
+                  <span style={{ fontSize: '0.85rem', color: '#334155' }}>{item.label}</span>
                   <input 
                     type="checkbox"
                     checked={(prefs.reminderSchedule as any)[item.key]}
@@ -5719,7 +5642,7 @@ export const NotificationPreferencesModal: React.FC<NotificationPreferencesModal
           {/* Section 4: Live Test Alert Dispatch */}
           <div style={{ padding: '16px', borderRadius: 'var(--radius-md)', background: 'rgba(99, 102, 241, 0.08)', border: '1px solid rgba(99, 102, 241, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
             <div>
-              <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'white', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Sparkles size={16} color="var(--primary)" /> Test Alert Simulation
               </div>
               <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
@@ -5736,13 +5659,13 @@ export const NotificationPreferencesModal: React.FC<NotificationPreferencesModal
           </div>
 
           {testAlertSent && (
-            <div className="animate-fade-in" style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.4)', color: '#34d399', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div className="animate-fade-in" style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.4)', color: '#15803d', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <CheckCircle2 size={16} /> Sample alert sent! Check your notification bell.
             </div>
           )}
 
           {saveSuccessMsg && (
-            <div className="animate-fade-in" style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.4)', color: '#34d399', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div className="animate-fade-in" style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.4)', color: '#15803d', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <CheckCircle2 size={16} /> {saveSuccessMsg}
             </div>
           )}
@@ -5844,7 +5767,7 @@ export const ResourceReaderModal: React.FC<ResourceReaderModalProps> = ({
           borderRadius: 'var(--radius-lg)',
           overflow: 'hidden',
           border: '1px solid rgba(59, 130, 246, 0.3)',
-          boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.8)',
+          boxShadow: '0 25px 60px -15px var(--surface-3)',
           background: 'var(--bg-card)'
         }}
       >
@@ -5855,7 +5778,7 @@ export const ResourceReaderModal: React.FC<ResourceReaderModalProps> = ({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          background: 'rgba(15, 23, 42, 0.95)',
+          background: '#ffffff',
           gap: '16px',
           flexWrap: 'wrap'
         }}>
@@ -5864,7 +5787,7 @@ export const ResourceReaderModal: React.FC<ResourceReaderModalProps> = ({
               padding: '8px',
               borderRadius: 'var(--radius-sm)',
               background: isYouTubeCourse || isYouTubeChannel ? 'rgba(239, 68, 68, 0.15)' : isPdf ? 'rgba(16, 185, 129, 0.15)' : 'rgba(59, 130, 246, 0.15)',
-              color: isYouTubeCourse || isYouTubeChannel ? '#ef4444' : isPdf ? '#34d399' : 'var(--primary)',
+              color: isYouTubeCourse || isYouTubeChannel ? '#ef4444' : isPdf ? '#15803d' : 'var(--primary)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -5878,18 +5801,18 @@ export const ResourceReaderModal: React.FC<ResourceReaderModalProps> = ({
                   {resource.subject}
                 </span>
                 {resource.officialTag && (
-                  <span className="badge" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', fontSize: '0.72rem' }}>
+                  <span className="badge" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#15803d', fontSize: '0.72rem' }}>
                     {resource.officialTag}
                   </span>
                 )}
-                <span className="badge" style={{ background: 'rgba(255, 255, 255, 0.06)', color: 'var(--text-muted)', fontSize: '0.7rem' }}>
+                <span className="badge" style={{ background: 'var(--surface-2)', color: 'var(--text-muted)', fontSize: '0.7rem' }}>
                   {isPdf ? 'DIRECT OFFICIAL PDF' : isYouTubeChannel ? 'YOUTUBE CHANNEL' : isYouTubeCourse ? 'VIDEO COURSE' : 'OFFICIAL PORTAL'}
                 </span>
               </div>
               <h3 style={{ 
                 fontSize: '1.15rem', 
                 fontWeight: 800, 
-                color: 'white', 
+                color: 'var(--text-primary)', 
                 margin: '3px 0 0 0',
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
@@ -5951,7 +5874,7 @@ export const ResourceReaderModal: React.FC<ResourceReaderModalProps> = ({
             <button 
               onClick={onClose}
               style={{ 
-                background: 'rgba(255, 255, 255, 0.05)', 
+                background: 'var(--surface-2)', 
                 border: 'none', 
                 color: 'var(--text-muted)', 
                 cursor: 'pointer',
@@ -5976,9 +5899,9 @@ export const ResourceReaderModal: React.FC<ResourceReaderModalProps> = ({
               {/* Notice Bar */}
               <div style={{ padding: '12px 24px', background: 'rgba(16, 185, 129, 0.08)', borderBottom: '1px solid rgba(16, 185, 129, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <ShieldCheck size={18} color="#34d399" style={{ flexShrink: 0 }} />
-                  <span style={{ fontSize: '0.82rem', color: '#e2e8f0' }}>
-                    <strong>Authoritative Open-Source / Government Document:</strong> Hosted directly at <code style={{ color: '#a5b4fc', fontFamily: 'var(--font-mono)' }}>{hostname}</code>. Zero AI-generated or modified text.
+                  <ShieldCheck size={18} color="#15803d" style={{ flexShrink: 0 }} />
+                  <span style={{ fontSize: '0.82rem', color: '#334155' }}>
+                    <strong>Authoritative Open-Source / Government Document:</strong> Hosted directly at <code style={{ color: '#4f46e5', fontFamily: 'var(--font-mono)' }}>{hostname}</code>. Zero AI-generated or modified text.
                   </span>
                 </div>
                 <a
@@ -5993,18 +5916,18 @@ export const ResourceReaderModal: React.FC<ResourceReaderModalProps> = ({
               </div>
 
               {/* Embedded Document Frame */}
-              <div style={{ flex: 1, width: '100%', minHeight: '520px', background: '#0f172a', position: 'relative' }}>
+              <div style={{ flex: 1, width: '100%', minHeight: '520px', background: 'var(--surface-3)', position: 'relative' }}>
                 <iframe 
                   src={`${pdfUrl}#toolbar=1&navpanes=0`} 
                   title={resource.title}
-                  style={{ width: '100%', height: '100%', minHeight: '520px', border: 'none', background: '#0f172a' }}
+                  style={{ width: '100%', height: '100%', minHeight: '520px', border: 'none', background: 'var(--surface-3)' }}
                 />
               </div>
 
               {/* Verified Meta Footer */}
-              <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border-color)', background: 'rgba(15, 23, 42, 0.95)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', fontSize: '0.82rem' }}>
+              <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border-color)', background: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', fontSize: '0.82rem' }}>
                 <div style={{ color: 'var(--text-secondary)' }}>
-                  <strong style={{ color: 'white' }}>Published By:</strong> {resource.author} • {resource.description}
+                  <strong style={{ color: 'var(--text-primary)' }}>Published By:</strong> {resource.author} • {resource.description}
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <a
@@ -6033,7 +5956,7 @@ export const ResourceReaderModal: React.FC<ResourceReaderModalProps> = ({
                 borderRadius: 'var(--radius-md)', 
                 background: '#000',
                 border: '1px solid var(--border-color)',
-                boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
+                boxShadow: '0 10px 30px var(--surface-3)'
               }}>
                 <iframe
                   src={`https://www.youtube-nocookie.com/embed/${resource.youtubeEmbedId}?rel=0&autoplay=1`}
@@ -6054,7 +5977,7 @@ export const ResourceReaderModal: React.FC<ResourceReaderModalProps> = ({
               <div style={{ 
                 padding: '20px 24px', 
                 borderRadius: 'var(--radius-md)', 
-                background: 'rgba(255,255,255,0.02)', 
+                background: 'var(--surface-2)', 
                 border: '1px solid var(--border-color)',
                 display: 'flex',
                 alignItems: 'center',
@@ -6063,13 +5986,13 @@ export const ResourceReaderModal: React.FC<ResourceReaderModalProps> = ({
                 gap: '16px'
               }}>
                 <div style={{ flex: 1, minWidth: '280px' }}>
-                  <span className="badge" style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#fca5a5', fontSize: '0.75rem', marginBottom: '6px' }}>
+                  <span className="badge" style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#dc2626', fontSize: '0.75rem', marginBottom: '6px' }}>
                     {resource.officialTag || 'VERIFIED DIRECT VIDEO'}
                   </span>
-                  <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'white', margin: '4px 0' }}>
+                  <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-primary)', margin: '4px 0' }}>
                     {resource.title}
                   </h3>
-                  <div style={{ fontSize: '0.85rem', color: '#93c5fd' }}>
+                  <div style={{ fontSize: '0.85rem', color: '#2563eb' }}>
                     Educator: <strong>{resource.author}</strong> {resource.rating ? `• ${resource.rating}` : ''}
                   </div>
                 </div>
@@ -6106,8 +6029,8 @@ export const ResourceReaderModal: React.FC<ResourceReaderModalProps> = ({
                 flexDirection: 'column',
                 gap: '6px'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#86efac', fontWeight: 700, fontSize: '0.9rem' }}>
-                  <CheckCircle2 size={16} color="#34d399" /> Recommended Preparation Approach:
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#15803d', fontWeight: 700, fontSize: '0.9rem' }}>
+                  <CheckCircle2 size={16} color="#15803d" /> Recommended Preparation Approach:
                 </div>
                 <p style={{ fontSize: '0.88rem', color: '#d1fae5', margin: 0, lineHeight: 1.5 }}>
                   {resource.recommendedFor}
@@ -6124,25 +6047,25 @@ export const ResourceReaderModal: React.FC<ResourceReaderModalProps> = ({
                   <PlayCircle size={32} />
                 </div>
                 <div>
-                  <span className="badge" style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#fca5a5', fontSize: '0.74rem', marginBottom: '6px' }}>
+                  <span className="badge" style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#dc2626', fontSize: '0.74rem', marginBottom: '6px' }}>
                     VERIFIED EDUCATIONAL YOUTUBE CHANNEL
                   </span>
-                  <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'white', margin: '4px 0' }}>
+                  <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-primary)', margin: '4px 0' }}>
                     {resource.title}
                   </h3>
-                  <div style={{ fontSize: '0.88rem', color: '#93c5fd' }}>
+                  <div style={{ fontSize: '0.88rem', color: '#2563eb' }}>
                     Educator / Channel: <strong>{resource.author}</strong> {resource.rating ? `• Rating: ${resource.rating}` : ''}
                   </div>
                 </div>
               </div>
 
-              <div style={{ padding: '22px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'white', margin: 0 }}>About This Channel & Coursework</h4>
-                <p style={{ fontSize: '0.92rem', color: '#cbd5e1', lineHeight: 1.65, margin: 0 }}>
+              <div style={{ padding: '22px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>About This Channel & Coursework</h4>
+                <p style={{ fontSize: '0.92rem', color: '#334155', lineHeight: 1.65, margin: 0 }}>
                   {resource.description}
                 </p>
-                <div style={{ fontSize: '0.86rem', color: '#86efac', lineHeight: 1.5, marginTop: '6px' }}>
-                  <strong style={{ color: '#6ee7b7' }}>Recommended Preparation Strategy:</strong> {resource.recommendedFor}
+                <div style={{ fontSize: '0.86rem', color: '#15803d', lineHeight: 1.5, marginTop: '6px' }}>
+                  <strong style={{ color: '#15803d' }}>Recommended Preparation Strategy:</strong> {resource.recommendedFor}
                 </div>
               </div>
 
@@ -6180,25 +6103,25 @@ export const ResourceReaderModal: React.FC<ResourceReaderModalProps> = ({
                   <Globe size={30} />
                 </div>
                 <div>
-                  <span className="badge" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', fontSize: '0.74rem', marginBottom: '6px' }}>
+                  <span className="badge" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#15803d', fontSize: '0.74rem', marginBottom: '6px' }}>
                     {resource.officialTag || 'OFFICIAL PORTAL'}
                   </span>
-                  <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'white', margin: '4px 0' }}>
+                  <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-primary)', margin: '4px 0' }}>
                     {resource.title}
                   </h3>
-                  <div style={{ fontSize: '0.88rem', color: '#93c5fd' }}>
+                  <div style={{ fontSize: '0.88rem', color: '#2563eb' }}>
                     Authority: <strong>{resource.author}</strong>
                   </div>
                 </div>
               </div>
 
-              <div style={{ padding: '22px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'white', margin: 0 }}>Official Source Information</h4>
-                <p style={{ fontSize: '0.92rem', color: '#cbd5e1', lineHeight: 1.65, margin: 0 }}>
+              <div style={{ padding: '22px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Official Source Information</h4>
+                <p style={{ fontSize: '0.92rem', color: '#334155', lineHeight: 1.65, margin: 0 }}>
                   {resource.description}
                 </p>
-                <div style={{ fontSize: '0.86rem', color: '#86efac', lineHeight: 1.5, marginTop: '6px' }}>
-                  <strong style={{ color: '#6ee7b7' }}>Recommended Usage:</strong> {resource.recommendedFor}
+                <div style={{ fontSize: '0.86rem', color: '#15803d', lineHeight: 1.5, marginTop: '6px' }}>
+                  <strong style={{ color: '#15803d' }}>Recommended Usage:</strong> {resource.recommendedFor}
                 </div>
               </div>
 
@@ -6571,16 +6494,16 @@ export const ResourceAIAssistant: React.FC<ResourceAIAssistantProps> = ({
   };
 
   return (
-    <div className="glass-card" style={{ padding: '24px', background: 'linear-gradient(135deg, rgba(30, 58, 138, 0.15) 0%, rgba(15, 23, 42, 0.95) 100%)', borderColor: 'rgba(59, 130, 246, 0.3)', marginBottom: '20px' }}>
+    <div className="glass-card" style={{ padding: '24px', background: 'linear-gradient(135deg, rgba(30, 58, 138, 0.15) 0%, #ffffff 100%)', borderColor: 'rgba(59, 130, 246, 0.3)', marginBottom: '20px' }}>
       
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={{ padding: '8px', borderRadius: '50%', background: 'rgba(59, 130, 246, 0.2)', border: '1px solid rgba(59, 130, 246, 0.4)' }}>
-            <Bot size={22} color="#60a5fa" />
+            <Bot size={22} color="#2563eb" />
           </div>
           <div>
-            <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'white', margin: 0 }}>
+            <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
               AI Resource Navigator & Instant Jumper
             </h4>
             <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
@@ -6600,9 +6523,9 @@ export const ResourceAIAssistant: React.FC<ResourceAIAssistantProps> = ({
               fontSize: '0.78rem',
               padding: '5px 12px',
               borderRadius: '20px',
-              background: 'rgba(255, 255, 255, 0.05)',
-              border: '1px solid rgba(255, 255, 255, 0.15)',
-              color: '#93c5fd',
+              background: 'var(--surface-2)',
+              border: '1px solid var(--surface-3)',
+              color: '#2563eb',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -6622,7 +6545,7 @@ export const ResourceAIAssistant: React.FC<ResourceAIAssistantProps> = ({
         flexDirection: 'column', 
         gap: '14px',
         padding: '12px',
-        background: 'rgba(0,0,0,0.25)',
+        background: 'var(--surface-3)',
         borderRadius: 'var(--radius-md)',
         border: '1px solid var(--border-color)',
         marginBottom: '16px'
@@ -6641,9 +6564,9 @@ export const ResourceAIAssistant: React.FC<ResourceAIAssistantProps> = ({
               maxWidth: '85%', 
               padding: '12px 16px', 
               borderRadius: 'var(--radius-md)', 
-              background: msg.sender === 'USER' ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
+              background: msg.sender === 'USER' ? 'var(--primary)' : 'var(--surface-2)',
               border: msg.sender === 'USER' ? 'none' : '1px solid var(--border-color)',
-              color: 'white',
+              color: 'var(--text-primary)',
               fontSize: '0.9rem',
               lineHeight: 1.5
             }}>
@@ -6671,7 +6594,7 @@ export const ResourceAIAssistant: React.FC<ResourceAIAssistantProps> = ({
                     style={{ 
                       padding: '12px 14px', 
                       borderRadius: 'var(--radius-md)', 
-                      background: 'rgba(15, 23, 42, 0.9)', 
+                      background: '#ffffff', 
                       border: '1px solid rgba(59, 130, 246, 0.3)',
                       display: 'flex',
                       flexDirection: 'column',
@@ -6682,11 +6605,11 @@ export const ResourceAIAssistant: React.FC<ResourceAIAssistantProps> = ({
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <span className="badge badge-verified" style={{ fontSize: '0.68rem' }}>{res.subject}</span>
-                        <span style={{ fontSize: '0.68rem', color: res.provenance?.verificationLevel === 'OFFICIALLY_VERIFIED' ? '#6ee7b7' : '#fbbf24', fontWeight: 700 }}>
+                        <span style={{ fontSize: '0.68rem', color: res.provenance?.verificationLevel === 'OFFICIALLY_VERIFIED' ? '#15803d' : '#b45309', fontWeight: 700 }}>
                           {res.provenance?.verificationLevel === 'OFFICIALLY_VERIFIED' ? 'OFFICIAL' : res.resourceFormat === 'YOUTUBE_CHANNEL' || res.resourceFormat === 'YOUTUBE_COURSE' ? 'FREE · COACHING' : 'LINK'}
                         </span>
                       </div>
-                      <h5 style={{ fontSize: '0.92rem', fontWeight: 700, color: 'white', margin: '4px 0 2px 0' }}>{res.title}</h5>
+                      <h5 style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-primary)', margin: '4px 0 2px 0' }}>{res.title}</h5>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>By: {res.author}</div>
                     </div>
 
@@ -6790,7 +6713,7 @@ export const ResourceAIAssistant: React.FC<ResourceAIAssistantProps> = ({
             borderRadius: 'var(--radius-md)',
             background: 'var(--bg-input)',
             border: '1px solid var(--border-color)',
-            color: 'white',
+            color: 'var(--text-primary)',
             fontSize: '0.9rem',
             outline: 'none'
           }}
@@ -6841,18 +6764,18 @@ export const PreparationPlanner: React.FC<PreparationPlannerProps> = ({ exam }) 
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       
       {/* Header Banner */}
-      <div className="glass-card" style={{ padding: '24px', background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(15, 23, 42, 0.95) 100%)', borderColor: 'rgba(99, 102, 241, 0.3)' }}>
+      <div className="glass-card" style={{ padding: '24px', background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, #ffffff 100%)', borderColor: 'rgba(99, 102, 241, 0.3)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
               <span className="badge badge-verified">
                 <ShieldCheck size={14} /> ADAPTIVE MULTI-TRACK PREPARATION ENGINE
               </span>
-              <span className="badge badge-demo" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399' }}>
+              <span className="badge badge-demo" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#15803d' }}>
                 Synced with 2026 Exam Timeline
               </span>
             </div>
-            <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'white', marginBottom: '6px' }}>
+            <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '6px' }}>
               Day 1 to Exam Hall Preparation Roadmap
             </h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
@@ -6860,7 +6783,7 @@ export const PreparationPlanner: React.FC<PreparationPlannerProps> = ({ exam }) 
             </p>
           </div>
 
-          <div style={{ padding: '14px 20px', borderRadius: 'var(--radius-md)', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-color)', textAlign: 'right' }}>
+          <div style={{ padding: '14px 20px', borderRadius: 'var(--radius-md)', background: 'var(--surface-3)', border: '1px solid var(--border-color)', textAlign: 'right' }}>
             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>ROADMAP COMPLETION</span>
             <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--emerald)' }}>{progressPercentage}%</div>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{completedCount} of {totalGoals} milestones completed</span>
@@ -6886,7 +6809,7 @@ export const PreparationPlanner: React.FC<PreparationPlannerProps> = ({ exam }) 
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <span style={{ fontSize: '1.1rem', fontWeight: 800, color: isSelected ? '#93c5fd' : 'white' }}>
+                <span style={{ fontSize: '1.1rem', fontWeight: 800, color: isSelected ? '#2563eb' : 'var(--text-primary)' }}>
                   {track.name}
                 </span>
                 <span className="badge badge-demo" style={{ fontSize: '0.75rem' }}>
@@ -6905,18 +6828,18 @@ export const PreparationPlanner: React.FC<PreparationPlannerProps> = ({ exam }) 
       <div className="glass-card" style={{ padding: '24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
           <Clock size={20} color="var(--primary)" />
-          <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'white' }}>
+          <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)' }}>
             Recommended Daily Study Schedule ({currentTrack.name})
           </h3>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
           {currentTrack.dailyTimetable.map((slot, idx) => (
-            <div key={idx} style={{ padding: '14px', borderRadius: 'var(--radius-md)', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--border-color)' }}>
+            <div key={idx} style={{ padding: '14px', borderRadius: 'var(--radius-md)', background: 'var(--surface-3)', border: '1px solid var(--border-color)' }}>
               <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--primary)', fontFamily: 'var(--font-mono)', marginBottom: '4px' }}>
                 {slot.timeSlot}
               </div>
-              <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'white', marginBottom: '4px' }}>
+              <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
                 {slot.activity}
               </div>
               <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
@@ -6929,7 +6852,7 @@ export const PreparationPlanner: React.FC<PreparationPlannerProps> = ({ exam }) 
 
       {/* Roadmap Phases & Weekly Milestones */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '10px' }}>
           <Target size={22} color="var(--emerald)" /> Weekly Milestones & Milestone Tests
         </h3>
 
@@ -6953,7 +6876,7 @@ export const PreparationPlanner: React.FC<PreparationPlannerProps> = ({ exam }) 
                     <span className="badge badge-verified" style={{ fontSize: '0.75rem' }}>
                       {phase.durationWeeks} WEEKS
                     </span>
-                    <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'white', margin: 0 }}>
+                    <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                       {phase.phaseTitle}
                     </h4>
                   </div>
@@ -6967,12 +6890,12 @@ export const PreparationPlanner: React.FC<PreparationPlannerProps> = ({ exam }) 
               {isExpanded && (
                 <div style={{ padding: '0 24px 24px 24px', borderTop: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '18px', paddingTop: '18px' }}>
                   {phase.weeklySchedule.map((week) => (
-                    <div key={week.weekNumber} style={{ padding: '16px', borderRadius: 'var(--radius-md)', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)' }}>
+                    <div key={week.weekNumber} style={{ padding: '16px', borderRadius: 'var(--radius-md)', background: 'var(--surface-3)', border: '1px solid var(--border-color)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '12px' }}>
-                        <div style={{ fontSize: '1rem', fontWeight: 700, color: '#93c5fd' }}>
+                        <div style={{ fontSize: '1rem', fontWeight: 700, color: '#2563eb' }}>
                           {week.weekTitle}
                         </div>
-                        <span className="badge badge-demo" style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#a5b4fc' }}>
+                        <span className="badge badge-demo" style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#4f46e5' }}>
                           Target: {week.suggestedDailyHours} hrs/day
                         </span>
                       </div>
@@ -7001,7 +6924,7 @@ export const PreparationPlanner: React.FC<PreparationPlannerProps> = ({ exam }) 
                               ) : (
                                 <Square size={18} color="var(--text-muted)" style={{ flexShrink: 0, marginTop: '2px' }} />
                               )}
-                              <span style={{ fontSize: '0.92rem', color: isDone ? '#86efac' : 'var(--text-secondary)', textDecoration: isDone ? 'line-through' : 'none' }}>
+                              <span style={{ fontSize: '0.92rem', color: isDone ? '#15803d' : 'var(--text-secondary)', textDecoration: isDone ? 'line-through' : 'none' }}>
                                 {goal}
                               </span>
                             </div>
@@ -7077,19 +7000,19 @@ export const PostStudyPathEngine: React.FC<PostStudyPathEngineProps> = ({
         );
       case 'PREPARATION_TOPIC':
         return (
-          <span className="badge" style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', fontSize: '0.7rem' }}>
+          <span className="badge" style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#2563eb', fontSize: '0.7rem' }}>
             SYLLABUS TOPIC
           </span>
         );
       case 'RECOMMENDED_PREPARATION':
         return (
-          <span className="badge" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', fontSize: '0.7rem' }}>
+          <span className="badge" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#15803d', fontSize: '0.7rem' }}>
             RECOMMENDED PREPARATION
           </span>
         );
       case 'OPTIONAL_RESOURCE':
         return (
-          <span className="badge" style={{ background: 'rgba(148, 163, 184, 0.15)', color: '#cbd5e1', fontSize: '0.7rem' }}>
+          <span className="badge" style={{ background: 'rgba(148, 163, 184, 0.15)', color: '#334155', fontSize: '0.7rem' }}>
             OPTIONAL RESOURCE
           </span>
         );
@@ -7100,18 +7023,18 @@ export const PostStudyPathEngine: React.FC<PostStudyPathEngineProps> = ({
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       
       {/* 1. Interactive Target Post Selector Banner */}
-      <div className="glass-card" style={{ padding: '24px', background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%)' }}>
+      <div className="glass-card" style={{ padding: '24px', background: 'linear-gradient(135deg, var(--surface-2) 0%, #ffffff 100%)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-              <span className="badge badge-demo" style={{ background: 'rgba(59, 130, 246, 0.2)', color: '#93c5fd', border: '1px solid rgba(59, 130, 246, 0.4)' }}>
+              <span className="badge badge-demo" style={{ background: 'rgba(59, 130, 246, 0.2)', color: '#2563eb', border: '1px solid rgba(59, 130, 246, 0.4)' }}>
                 <Compass size={13} /> DYNAMIC POST-SPECIFIC ENGINE
               </span>
-              <span style={{ fontSize: '0.8rem', color: '#34d399', fontWeight: 700 }}>
+              <span style={{ fontSize: '0.8rem', color: '#15803d', fontWeight: 700 }}>
                 • Zero Confusion Architecture
               </span>
             </div>
-            <h3 style={{ fontSize: '1.45rem', fontWeight: 800, color: 'white', margin: 0 }}>
+            <h3 style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
               What Exactly Should You Study for Your Target Post?
             </h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: '4px 0 0 0' }}>
@@ -7120,7 +7043,7 @@ export const PostStudyPathEngine: React.FC<PostStudyPathEngineProps> = ({
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span className="glass-pill" style={{ fontSize: '0.78rem', color: '#86efac', borderColor: 'rgba(16, 185, 129, 0.3)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span className="glass-pill" style={{ fontSize: '0.78rem', color: '#15803d', borderColor: 'rgba(16, 185, 129, 0.3)', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <Database size={13} /> {syncStatus}
             </span>
             <button 
@@ -7146,9 +7069,9 @@ export const PostStudyPathEngine: React.FC<PostStudyPathEngineProps> = ({
                 style={{
                   padding: '10px 16px',
                   borderRadius: 'var(--radius-md)',
-                  background: isSelected ? 'var(--primary)' : 'rgba(255, 255, 255, 0.04)',
+                  background: isSelected ? 'var(--primary)' : 'var(--surface-2)',
                   border: isSelected ? '1px solid #60a5fa' : '1px solid var(--border-color)',
-                  color: isSelected ? 'white' : 'var(--text-secondary)',
+                  color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)',
                   cursor: 'pointer',
                   textAlign: 'left',
                   display: 'flex',
@@ -7158,7 +7081,7 @@ export const PostStudyPathEngine: React.FC<PostStudyPathEngineProps> = ({
                   transition: 'all 0.15s ease'
                 }}
               >
-                <div style={{ fontSize: '0.88rem', fontWeight: 800, color: isSelected ? 'white' : '#f8fafc' }}>
+                <div style={{ fontSize: '0.88rem', fontWeight: 800, color: isSelected ? 'var(--text-primary)' : '#0f172a' }}>
                   {post.postName}
                 </div>
                 <div style={{ fontSize: '0.72rem', color: isSelected ? '#dbeafe' : 'var(--text-muted)' }}>
@@ -7174,10 +7097,10 @@ export const PostStudyPathEngine: React.FC<PostStudyPathEngineProps> = ({
       <div className="glass-card" style={{ padding: '20px', borderLeft: '4px solid var(--primary)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
           <div>
-            <div style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: '#93c5fd', fontWeight: 700 }}>
+            <div style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: '#2563eb', fontWeight: 700 }}>
               Active Post Preparation Profile:
             </div>
-            <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', margin: '2px 0' }}>
+            <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', margin: '2px 0' }}>
               {currentPath.postName} — {currentPath.department}
             </h4>
             <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
@@ -7217,14 +7140,14 @@ export const PostStudyPathEngine: React.FC<PostStudyPathEngineProps> = ({
         <div className="glass-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.85rem' }}>
+              <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(59, 130, 246, 0.2)', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.85rem' }}>
                 1
               </div>
               <div>
-                <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'white', margin: 0 }}>
+                <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                   STEP 1: Tier 1 Common Preparation (Preliminary Exam)
                 </h4>
-                <div style={{ fontSize: '0.8rem', color: '#93c5fd' }}>
+                <div style={{ fontSize: '0.8rem', color: '#2563eb' }}>
                   Mandatory Computer Based Examination (100 Questions, 200 Marks, 60 Minutes duration)
                 </div>
               </div>
@@ -7243,7 +7166,7 @@ export const PostStudyPathEngine: React.FC<PostStudyPathEngineProps> = ({
                   style={{
                     padding: '16px',
                     borderRadius: 'var(--radius-md)',
-                    background: isChecked ? 'rgba(16, 185, 129, 0.05)' : 'rgba(255, 255, 255, 0.02)',
+                    background: isChecked ? 'rgba(16, 185, 129, 0.05)' : 'var(--surface-2)',
                     border: isChecked ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid var(--border-color)',
                     display: 'flex',
                     flexDirection: 'column',
@@ -7259,13 +7182,13 @@ export const PostStudyPathEngine: React.FC<PostStudyPathEngineProps> = ({
                       </span>
                     </div>
 
-                    <h5 style={{ fontSize: '1rem', fontWeight: 700, color: 'white', margin: 0 }}>
+                    <h5 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
                       {mod.title}
                     </h5>
 
                     <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                       <span className="glass-pill" style={{ fontSize: '0.72rem' }}>{mod.questionsCount} Qs ({mod.marks} Marks)</span>
-                      <span className="glass-pill" style={{ fontSize: '0.72rem', color: '#f87171' }}>Neg: {mod.negativeMarking}</span>
+                      <span className="glass-pill" style={{ fontSize: '0.72rem', color: '#dc2626' }}>Neg: {mod.negativeMarking}</span>
                     </div>
 
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
@@ -7273,7 +7196,7 @@ export const PostStudyPathEngine: React.FC<PostStudyPathEngineProps> = ({
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--surface-2)', paddingTop: '8px' }}>
                     <button
                       onClick={() => toggleModule(mod.id)}
                       className="btn"
@@ -7281,15 +7204,15 @@ export const PostStudyPathEngine: React.FC<PostStudyPathEngineProps> = ({
                         padding: '4px 10px',
                         fontSize: '0.75rem',
                         borderRadius: 'var(--radius-sm)',
-                        background: isChecked ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.06)',
-                        color: isChecked ? '#34d399' : 'var(--text-secondary)',
+                        background: isChecked ? 'rgba(16, 185, 129, 0.2)' : 'var(--surface-2)',
+                        color: isChecked ? '#15803d' : 'var(--text-secondary)',
                         border: 'none',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '6px'
                       }}
                     >
-                      <CheckCircle2 size={13} color={isChecked ? '#34d399' : 'gray'} />
+                      <CheckCircle2 size={13} color={isChecked ? '#15803d' : 'gray'} />
                       {isChecked ? 'Marked Complete' : 'Mark as Studied'}
                     </button>
 
@@ -7316,14 +7239,14 @@ export const PostStudyPathEngine: React.FC<PostStudyPathEngineProps> = ({
         <div className="glass-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.2)', color: '#34d399', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.85rem' }}>
+              <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.2)', color: '#15803d', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.85rem' }}>
                 2
               </div>
               <div>
-                <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'white', margin: 0 }}>
+                <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                   STEP 2: Tier 2 Paper-I Mandatory Modules (Mains Exam)
                 </h4>
-                <div style={{ fontSize: '0.8rem', color: '#86efac' }}>
+                <div style={{ fontSize: '0.8rem', color: '#15803d' }}>
                   Decides Final Merit (150 Questions, 390 Marks + CKT Computer & DEST Typing)
                 </div>
               </div>
@@ -7342,7 +7265,7 @@ export const PostStudyPathEngine: React.FC<PostStudyPathEngineProps> = ({
                   style={{
                     padding: '16px',
                     borderRadius: 'var(--radius-md)',
-                    background: isChecked ? 'rgba(16, 185, 129, 0.05)' : 'rgba(255, 255, 255, 0.02)',
+                    background: isChecked ? 'rgba(16, 185, 129, 0.05)' : 'var(--surface-2)',
                     border: isChecked ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid var(--border-color)',
                     display: 'flex',
                     flexDirection: 'column',
@@ -7358,13 +7281,13 @@ export const PostStudyPathEngine: React.FC<PostStudyPathEngineProps> = ({
                       </span>
                     </div>
 
-                    <h5 style={{ fontSize: '1rem', fontWeight: 700, color: 'white', margin: 0 }}>
+                    <h5 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
                       {mod.title}
                     </h5>
 
                     <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                       <span className="glass-pill" style={{ fontSize: '0.72rem' }}>{mod.questionsCount} Qs ({mod.marks} Marks)</span>
-                      <span className="glass-pill" style={{ fontSize: '0.72rem', color: '#f87171' }}>Neg: {mod.negativeMarking}</span>
+                      <span className="glass-pill" style={{ fontSize: '0.72rem', color: '#dc2626' }}>Neg: {mod.negativeMarking}</span>
                     </div>
 
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
@@ -7372,7 +7295,7 @@ export const PostStudyPathEngine: React.FC<PostStudyPathEngineProps> = ({
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--surface-2)', paddingTop: '8px' }}>
                     <button
                       onClick={() => toggleModule(mod.id)}
                       className="btn"
@@ -7380,15 +7303,15 @@ export const PostStudyPathEngine: React.FC<PostStudyPathEngineProps> = ({
                         padding: '4px 10px',
                         fontSize: '0.75rem',
                         borderRadius: 'var(--radius-sm)',
-                        background: isChecked ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.06)',
-                        color: isChecked ? '#34d399' : 'var(--text-secondary)',
+                        background: isChecked ? 'rgba(16, 185, 129, 0.2)' : 'var(--surface-2)',
+                        color: isChecked ? '#15803d' : 'var(--text-secondary)',
                         border: 'none',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '6px'
                       }}
                     >
-                      <CheckCircle2 size={13} color={isChecked ? '#34d399' : 'gray'} />
+                      <CheckCircle2 size={13} color={isChecked ? '#15803d' : 'gray'} />
                       {isChecked ? 'Marked Complete' : 'Mark as Studied'}
                     </button>
 
@@ -7414,35 +7337,35 @@ export const PostStudyPathEngine: React.FC<PostStudyPathEngineProps> = ({
         <div className="glass-card" style={{ padding: '24px', border: '1px solid rgba(234, 179, 8, 0.4)', background: 'rgba(234, 179, 8, 0.03)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(234, 179, 8, 0.2)', color: '#fbbf24', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.85rem' }}>
+              <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(234, 179, 8, 0.2)', color: '#b45309', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.85rem' }}>
                 ⭐
               </div>
               <div>
-                <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#fde047', margin: 0 }}>
+                <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#a16207', margin: 0 }}>
                   Additional Mandatory Preparation for {currentPath.postName}
                 </h4>
-                <div style={{ fontSize: '0.8rem', color: '#fef08a' }}>
+                <div style={{ fontSize: '0.8rem', color: '#a16207' }}>
                   This paper is strictly required for this post in addition to Paper-I
                 </div>
               </div>
             </div>
-            <span className="badge" style={{ background: 'rgba(234, 179, 8, 0.2)', color: '#fde047' }}>
+            <span className="badge" style={{ background: 'rgba(234, 179, 8, 0.2)', color: '#a16207' }}>
               POST-SPECIFIC MANDATE
             </span>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '14px' }}>
             {currentPath.tier2.additionalModules.map(mod => (
-              <div key={mod.id} style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(234, 179, 8, 0.3)' }}>
+              <div key={mod.id} style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: 'var(--surface-3)', border: '1px solid rgba(234, 179, 8, 0.3)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                   <span className="badge badge-verified">{mod.officialClause}</span>
-                  <span style={{ fontSize: '0.8rem', color: '#fbbf24', fontWeight: 700 }}>100 Questions • 200 Marks • Negative: -0.50</span>
+                  <span style={{ fontSize: '0.8rem', color: '#b45309', fontWeight: 700 }}>100 Questions • 200 Marks • Negative: -0.50</span>
                 </div>
-                <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'white', margin: '4px 0' }}>{mod.title}</h4>
+                <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', margin: '4px 0' }}>{mod.title}</h4>
                 <p style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', margin: '6px 0 10px 0', lineHeight: 1.5 }}>
                   <strong>Mandatory Topics:</strong> {mod.highYieldTopics.join(', ')}
                 </p>
-                <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-sm)', background: 'rgba(234, 179, 8, 0.1)', fontSize: '0.82rem', color: '#fef08a' }}>
+                <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-sm)', background: 'rgba(234, 179, 8, 0.1)', fontSize: '0.82rem', color: '#a16207' }}>
                   💡 <strong>Preparation Strategy:</strong> {mod.keyTakeaways}
                 </div>
               </div>
@@ -7454,19 +7377,19 @@ export const PostStudyPathEngine: React.FC<PostStudyPathEngineProps> = ({
       {/* 6. Physical & Medical Standards for Field/Inspector Posts */}
       {currentPath.physicalMedical?.required && (
         <div className="glass-card" style={{ padding: '20px', border: '1px solid rgba(59, 130, 246, 0.4)', background: 'rgba(59, 130, 246, 0.04)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#93c5fd', fontWeight: 800, marginBottom: '10px' }}>
-            <Activity size={18} color="#60a5fa" /> Mandatory Physical & Medical Standards for {currentPath.postName}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#2563eb', fontWeight: 800, marginBottom: '10px' }}>
+            <Activity size={18} color="#2563eb" /> Mandatory Physical & Medical Standards for {currentPath.postName}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
             {currentPath.physicalMedical.maleHeightChest && (
-              <div style={{ padding: '12px', borderRadius: 'var(--radius-sm)', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', fontSize: '0.84rem' }}>
-                <strong style={{ color: 'white' }}>Male Measurement Standards:</strong>
+              <div style={{ padding: '12px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', fontSize: '0.84rem' }}>
+                <strong style={{ color: 'var(--text-primary)' }}>Male Measurement Standards:</strong>
                 <p style={{ margin: '4px 0 0 0', color: 'var(--text-secondary)' }}>{currentPath.physicalMedical.maleHeightChest}</p>
               </div>
             )}
             {currentPath.physicalMedical.physicalTest && (
-              <div style={{ padding: '12px', borderRadius: 'var(--radius-sm)', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', fontSize: '0.84rem' }}>
-                <strong style={{ color: 'white' }}>Physical Efficiency Test (PET):</strong>
+              <div style={{ padding: '12px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', fontSize: '0.84rem' }}>
+                <strong style={{ color: 'var(--text-primary)' }}>Physical Efficiency Test (PET):</strong>
                 <p style={{ margin: '4px 0 0 0', color: 'var(--text-secondary)' }}>{currentPath.physicalMedical.physicalTest}</p>
               </div>
             )}
@@ -7481,10 +7404,10 @@ export const PostStudyPathEngine: React.FC<PostStudyPathEngineProps> = ({
             🚫
           </div>
           <div>
-            <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#fca5a5', margin: 0 }}>
+            <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#dc2626', margin: 0 }}>
               YOU DON'T NEED TO STUDY (Not Required for {currentPath.postName})
             </h4>
-            <div style={{ fontSize: '0.8rem', color: '#fecaca' }}>
+            <div style={{ fontSize: '0.8rem', color: '#b91c1c' }}>
               Eliminating these unneeded subjects saves you over 100+ hours of wasted preparation time.
             </div>
           </div>
@@ -7493,21 +7416,21 @@ export const PostStudyPathEngine: React.FC<PostStudyPathEngineProps> = ({
         {currentPath.tier2.excludedModules.length > 0 ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '12px' }}>
             {currentPath.tier2.excludedModules.map(ex => (
-              <div key={ex.moduleId} style={{ padding: '16px', borderRadius: 'var(--radius-md)', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(239, 68, 68, 0.2)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#f87171', fontWeight: 700, fontSize: '0.95rem' }}>
+              <div key={ex.moduleId} style={{ padding: '16px', borderRadius: 'var(--radius-md)', background: 'var(--surface-3)', border: '1px solid rgba(239, 68, 68, 0.2)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#dc2626', fontWeight: 700, fontSize: '0.95rem' }}>
                   <XCircle size={16} /> {ex.moduleName}
                 </div>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>
                   {ex.reason}
                 </p>
                 <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                  Applicable Only To: <span style={{ color: '#93c5fd' }}>{ex.applicableOnlyTo}</span>
+                  Applicable Only To: <span style={{ color: '#2563eb' }}>{ex.applicableOnlyTo}</span>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <div style={{ padding: '12px 16px', borderRadius: 'var(--radius-sm)', background: 'rgba(255,255,255,0.02)', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+          <div style={{ padding: '12px 16px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-2)', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
             All standard Paper-I and Paper-II modules are required for Junior Statistical Officer (JSO).
           </div>
         )}
@@ -8409,18 +8332,18 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       
       {/* 1. TOP PRACTICE NAVIGATION & AUTO-SYNC BAR */}
-      <div className="glass-card" style={{ padding: '20px', background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%)' }}>
+      <div className="glass-card" style={{ padding: '20px', background: 'linear-gradient(135deg, var(--surface-2) 0%, #ffffff 100%)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px', marginBottom: '14px' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-              <span className="badge badge-demo" style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.4)' }}>
+              <span className="badge badge-demo" style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#15803d', border: '1px solid rgba(16, 185, 129, 0.4)' }}>
                 ⚡ OFFICIAL CBT ENGINE & ANIMATED SHORTCUTS
               </span>
-              <span style={{ fontSize: '0.8rem', color: '#93c5fd', fontWeight: 700 }}>
+              <span style={{ fontSize: '0.8rem', color: '#2563eb', fontWeight: 700 }}>
                 • Target: {hasTargetPost ? targetPath.postName : 'no target post chosen yet'}
               </span>
             </div>
-            <h3 style={{ fontSize: '1.45rem', fontWeight: 800, color: 'white', margin: 0 }}>
+            <h3 style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
               {scope === 'MOCKS'
                 ? `${examShortName} Mock Tests — Built To Your Specification`
                 : scope === 'PRACTICE'
@@ -8459,8 +8382,8 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
 
         {/* Sync Success Banner */}
         {syncSuccessNotice && (
-          <div className="animate-fade-in" style={{ padding: '10px 14px', borderRadius: 'var(--radius-sm)', background: 'rgba(16, 185, 129, 0.12)', border: '1px solid #10b981', color: '#86efac', fontSize: '0.84rem', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-            <ShieldCheck size={16} color="#34d399" />
+          <div className="animate-fade-in" style={{ padding: '10px 14px', borderRadius: 'var(--radius-sm)', background: 'rgba(16, 185, 129, 0.12)', border: '1px solid #10b981', color: '#15803d', fontSize: '0.84rem', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+            <ShieldCheck size={16} color="#15803d" />
             <span>{syncSuccessNotice}</span>
           </div>
         )}
@@ -8532,10 +8455,10 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
             <div>
-              <h4 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'white', margin: 0 }}>
+              <h4 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                 Verified Official Shift Papers ({availablePapers.length} Available Papers)
               </h4>
-              <span style={{ fontSize: '0.8rem', color: '#86efac' }}>
+              <span style={{ fontSize: '0.8rem', color: '#15803d' }}>
                 100 Questions / 200 Marks • 60 Minutes Real CBT Exam Clock
               </span>
             </div>
@@ -8545,7 +8468,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
           </div>
 
           {!bankIsForThisExam && (
-            <div style={{ padding: '18px 20px', borderRadius: 'var(--radius-md)', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.35)', fontSize: '0.88rem', color: '#fef3c7', lineHeight: 1.6 }}>
+            <div style={{ padding: '18px 20px', borderRadius: 'var(--radius-md)', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.35)', fontSize: '0.88rem', color: '#92400e', lineHeight: 1.6 }}>
               GovOS has not authored practice papers for {exam.title}: its shift papers, sectionals and drills are written to SSC CGL's pattern and would mislead here. This exam's real previous-year papers are official PDFs in the Resources section — use those. The test creator below still builds aptitude drills (percentage, ratio, reasoning) that suit an aptitude paper.
             </div>
           )}
@@ -8554,22 +8477,22 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
               <div 
                 key={paper.id}
                 className="glass-card"
-                style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px', border: '1px solid var(--border-color)', background: 'rgba(15, 23, 42, 0.9)' }}
+                style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px', border: '1px solid var(--border-color)', background: '#ffffff' }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <span className="badge badge-verified" style={{ fontSize: '0.72rem' }}>{paper.provenanceTag}</span>
-                  <span className="glass-pill" style={{ fontSize: '0.72rem', color: '#fbbf24' }}>{paper.examTier} • {paper.year}</span>
+                  <span className="glass-pill" style={{ fontSize: '0.72rem', color: '#b45309' }}>{paper.examTier} • {paper.year}</span>
                 </div>
 
                 <div>
-                  <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'white', margin: '0 0 6px 0' }}>{pIdx + 1}. {paper.title}</h4>
+                  <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px 0' }}>{pIdx + 1}. {paper.title}</h4>
                   <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>{paper.description}</p>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', padding: '10px', borderRadius: 'var(--radius-sm)', background: 'rgba(255,255,255,0.03)', fontSize: '0.78rem', textAlign: 'center' }}>
-                  <div><strong style={{ color: '#93c5fd' }}>Questions</strong><div style={{ color: 'white', fontWeight: 700 }}>{paper.totalQuestions} Qs</div></div>
-                  <div><strong style={{ color: '#93c5fd' }}>Duration</strong><div style={{ color: 'white', fontWeight: 700 }}>{paper.durationMinutes} Mins</div></div>
-                  <div><strong style={{ color: '#93c5fd' }}>Max Marks</strong><div style={{ color: '#86efac', fontWeight: 700 }}>{paper.totalMarks} Marks</div></div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', padding: '10px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-2)', fontSize: '0.78rem', textAlign: 'center' }}>
+                  <div><strong style={{ color: '#2563eb' }}>Questions</strong><div style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{paper.totalQuestions} Qs</div></div>
+                  <div><strong style={{ color: '#2563eb' }}>Duration</strong><div style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{paper.durationMinutes} Mins</div></div>
+                  <div><strong style={{ color: '#2563eb' }}>Max Marks</strong><div style={{ color: '#15803d', fontWeight: 700 }}>{paper.totalMarks} Marks</div></div>
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
@@ -8586,19 +8509,19 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
 
       {/* VIEW 2: CONVERSATIONAL AI MOCK CREATOR CHAT ASSISTANT */}
       {activePracticeTab === 'AI_CHAT_ASSISTANT' && (
-        <div className="glass-card" style={{ padding: '0', overflow: 'hidden', border: '1px solid rgba(16, 185, 129, 0.35)', background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(6, 78, 59, 0.2) 100%)', display: 'flex', flexDirection: 'column', height: '620px' }}>
+        <div className="glass-card" style={{ padding: '0', overflow: 'hidden', border: '1px solid rgba(16, 185, 129, 0.35)', background: 'linear-gradient(135deg, #ffffff 0%, #ecfdf5 100%)', display: 'flex', flexDirection: 'column', height: '620px' }}>
           
           {/* Chat Header */}
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(0,0,0,0.2)' }}>
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--surface-3)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.2)', border: '1px solid #10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#34d399' }}>
+              <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.2)', border: '1px solid #10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#15803d' }}>
                 <Bot size={20} />
               </div>
               <div>
-                <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'white', margin: 0 }}>
+                <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                   AI Mock Test Creator Assistant
                 </h4>
-                <span style={{ fontSize: '0.75rem', color: '#86efac' }}>
+                <span style={{ fontSize: '0.75rem', color: '#15803d' }}>
                   • Online • Context-Aware NLP Test Synthesis & Intelligent Timer
                 </span>
               </div>
@@ -8610,7 +8533,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
           </div>
 
           {/* Quick Context Prompt Pills */}
-          <div style={{ padding: '10px 16px', background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--border-color)', display: 'flex', gap: '6px', overflowX: 'auto' }}>
+          <div style={{ padding: '10px 16px', background: 'var(--surface-2)', borderBottom: '1px solid var(--border-color)', display: 'flex', gap: '6px', overflowX: 'auto' }}>
             {[
               { label: '⚡ 15-Q Hard Geometry & Algebra Drill', prompt: 'Create a 15-question hard test on Geometry & Algebra for Tier-2' },
               { label: '🏛️ 20-Q Polity Articles & Modern History', prompt: 'Give me a 20-question speed drill on Indian Polity Articles and Modern History' },
@@ -8621,7 +8544,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                 key={pIdx}
                 onClick={() => handleSendChatMessage(pill.prompt)}
                 className="glass-pill"
-                style={{ fontSize: '0.75rem', padding: '4px 10px', color: '#93c5fd', cursor: 'pointer', whiteSpace: 'nowrap', border: '1px solid rgba(59, 130, 246, 0.3)' }}
+                style={{ fontSize: '0.75rem', padding: '4px 10px', color: '#2563eb', cursor: 'pointer', whiteSpace: 'nowrap', border: '1px solid rgba(59, 130, 246, 0.3)' }}
               >
                 {pill.label}
               </button>
@@ -8641,7 +8564,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                 }}
               >
                 {msg.sender === 'assistant' && (
-                  <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.2)', border: '1px solid #10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#34d399', flexShrink: 0, marginTop: '2px' }}>
+                  <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.2)', border: '1px solid #10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#15803d', flexShrink: 0, marginTop: '2px' }}>
                     <Bot size={16} />
                   </div>
                 )}
@@ -8651,9 +8574,9 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                     maxWidth: '80%',
                     padding: '14px 18px',
                     borderRadius: 'var(--radius-md)',
-                    background: msg.sender === 'user' ? 'var(--primary)' : 'rgba(15, 23, 42, 0.95)',
+                    background: msg.sender === 'user' ? 'var(--primary)' : '#ffffff',
                     border: msg.sender === 'user' ? '1px solid #60a5fa' : '1px solid var(--border-color)',
-                    color: 'white',
+                    color: 'var(--text-primary)',
                     fontSize: '0.88rem',
                     lineHeight: 1.5,
                     display: 'flex',
@@ -8664,24 +8587,24 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                   <div style={{ whiteSpace: 'pre-line' }}>{msg.text}</div>
 
                   {msg.proposedTest && (
-                    <div style={{ padding: '14px', borderRadius: 'var(--radius-sm)', background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(16, 185, 129, 0.4)', display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '4px' }}>
+                    <div style={{ padding: '14px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-3)', border: '1px solid rgba(16, 185, 129, 0.4)', display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '4px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <span className="badge badge-verified" style={{ fontSize: '0.7rem' }}>
                           {msg.proposedTest.provenanceTag}
                         </span>
-                        <span style={{ fontSize: '0.75rem', color: '#fbbf24', fontWeight: 700 }}>
+                        <span style={{ fontSize: '0.75rem', color: '#b45309', fontWeight: 700 }}>
                           Level: {msg.proposedTest.difficulty}
                         </span>
                       </div>
 
-                      <div style={{ fontWeight: 800, color: 'white', fontSize: '0.95rem' }}>
+                      <div style={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '0.95rem' }}>
                         {msg.proposedTest.title}
                       </div>
 
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px', fontSize: '0.75rem', textAlign: 'center', background: 'rgba(255,255,255,0.03)', padding: '8px', borderRadius: '4px' }}>
-                        <div><strong style={{ color: '#93c5fd' }}>Questions</strong><div style={{ color: 'white' }}>{msg.proposedTest.totalQuestions} Qs</div></div>
-                        <div><strong style={{ color: '#93c5fd' }}>Timer</strong><div style={{ color: '#86efac', fontWeight: 700 }}>{msg.proposedTest.durationMinutes} Mins</div></div>
-                        <div><strong style={{ color: '#93c5fd' }}>Marks</strong><div style={{ color: 'white' }}>{msg.proposedTest.totalMarks} M</div></div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px', fontSize: '0.75rem', textAlign: 'center', background: 'var(--surface-2)', padding: '8px', borderRadius: '4px' }}>
+                        <div><strong style={{ color: '#2563eb' }}>Questions</strong><div style={{ color: 'var(--text-primary)' }}>{msg.proposedTest.totalQuestions} Qs</div></div>
+                        <div><strong style={{ color: '#2563eb' }}>Timer</strong><div style={{ color: '#15803d', fontWeight: 700 }}>{msg.proposedTest.durationMinutes} Mins</div></div>
+                        <div><strong style={{ color: '#2563eb' }}>Marks</strong><div style={{ color: 'var(--text-primary)' }}>{msg.proposedTest.totalMarks} M</div></div>
                       </div>
 
                       <button
@@ -8700,7 +8623,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                 </div>
 
                 {msg.sender === 'user' && (
-                  <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'rgba(59, 130, 246, 0.2)', border: '1px solid #3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#93c5fd', flexShrink: 0, marginTop: '2px' }}>
+                  <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'rgba(59, 130, 246, 0.2)', border: '1px solid #3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563eb', flexShrink: 0, marginTop: '2px' }}>
                     <User size={16} />
                   </div>
                 )}
@@ -8710,7 +8633,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
           </div>
 
           {/* Chat Input Bar */}
-          <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.3)', display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border-color)', background: 'var(--surface-3)', display: 'flex', gap: '10px', alignItems: 'center' }}>
             <input
               type="text"
               placeholder="e.g. 'Create a 15-question hard test on Geometry and Indian Polity with 15 mins timer'..."
@@ -8721,9 +8644,9 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                 flex: 1,
                 padding: '12px 16px',
                 borderRadius: 'var(--radius-md)',
-                background: 'rgba(255,255,255,0.05)',
+                background: 'var(--surface-2)',
                 border: '1px solid var(--border-color)',
-                color: 'white',
+                color: 'var(--text-primary)',
                 fontSize: '0.9rem'
               }}
             />
@@ -8743,10 +8666,10 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
       {activePracticeTab === 'SUBJECT_TESTS' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
-            <h4 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'white', margin: 0 }}>
+            <h4 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
               Subject-Wise Full Sectional Mocks (25 Questions / 50 Marks)
             </h4>
-            <span style={{ fontSize: '0.8rem', color: '#93c5fd' }}>
+            <span style={{ fontSize: '0.8rem', color: '#2563eb' }}>
               Targeted Subject Speed Calibration
             </span>
           </div>
@@ -8756,26 +8679,26 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
               <div 
                 key={paper.id}
                 className="glass-card"
-                style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px', border: '1px solid var(--border-color)', background: 'rgba(15, 23, 42, 0.9)' }}
+                style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px', border: '1px solid var(--border-color)', background: '#ffffff' }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <span className="badge badge-verified" style={{ fontSize: '0.72rem' }}>{paper.provenanceTag}</span>
-                  <span className="glass-pill" style={{ fontSize: '0.72rem', color: '#93c5fd' }}>{paper.subject}</span>
+                  <span className="glass-pill" style={{ fontSize: '0.72rem', color: '#2563eb' }}>{paper.subject}</span>
                 </div>
 
                 <div>
-                  <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'white', margin: '0 0 6px 0' }}>{paper.title}</h4>
+                  <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px 0' }}>{paper.title}</h4>
                   <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>{paper.description}</p>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', padding: '10px', borderRadius: 'var(--radius-sm)', background: 'rgba(255,255,255,0.03)', fontSize: '0.78rem', textAlign: 'center' }}>
-                  <div><strong style={{ color: '#93c5fd' }}>Questions</strong><div style={{ color: 'white', fontWeight: 700 }}>{paper.totalQuestions} Qs</div></div>
-                  <div><strong style={{ color: '#93c5fd' }}>Duration</strong><div style={{ color: 'white', fontWeight: 700 }}>{paper.durationMinutes} Mins</div></div>
-                  <div><strong style={{ color: '#93c5fd' }}>Max Marks</strong><div style={{ color: '#86efac', fontWeight: 700 }}>{paper.totalMarks} Marks</div></div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', padding: '10px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-2)', fontSize: '0.78rem', textAlign: 'center' }}>
+                  <div><strong style={{ color: '#2563eb' }}>Questions</strong><div style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{paper.totalQuestions} Qs</div></div>
+                  <div><strong style={{ color: '#2563eb' }}>Duration</strong><div style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{paper.durationMinutes} Mins</div></div>
+                  <div><strong style={{ color: '#2563eb' }}>Max Marks</strong><div style={{ color: '#15803d', fontWeight: 700 }}>{paper.totalMarks} Marks</div></div>
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
-                  <span style={{ fontSize: '0.75rem', color: '#fbbf24' }}>Level: {paper.difficulty}</span>
+                  <span style={{ fontSize: '0.75rem', color: '#b45309' }}>Level: {paper.difficulty}</span>
                   <button onClick={() => handleStartTest(paper)} className="btn btn-primary" style={{ fontSize: '0.85rem', padding: '8px 18px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800 }}>
                     <Play size={14} /> Start Sectional
                   </button>
@@ -8790,10 +8713,10 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
       {activePracticeTab === 'TOPIC_DRILLS' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
-            <h4 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'white', margin: 0 }}>
+            <h4 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
               Topic-Specific Focused Speed Drills (15 Questions)
             </h4>
-            <span style={{ fontSize: '0.8rem', color: '#fbbf24' }}>
+            <span style={{ fontSize: '0.8rem', color: '#b45309' }}>
               High-Frequency Concept Sharpener
             </span>
           </div>
@@ -8803,26 +8726,26 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
               <div 
                 key={paper.id}
                 className="glass-card"
-                style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px', border: '1px solid var(--border-color)', background: 'rgba(15, 23, 42, 0.9)' }}
+                style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px', border: '1px solid var(--border-color)', background: '#ffffff' }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <span className="badge badge-verified" style={{ fontSize: '0.72rem' }}>{paper.provenanceTag}</span>
-                  <span className="glass-pill" style={{ fontSize: '0.72rem', color: '#93c5fd' }}>{paper.subject}</span>
+                  <span className="glass-pill" style={{ fontSize: '0.72rem', color: '#2563eb' }}>{paper.subject}</span>
                 </div>
 
                 <div>
-                  <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'white', margin: '0 0 6px 0' }}>{paper.title}</h4>
+                  <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px 0' }}>{paper.title}</h4>
                   <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>{paper.description}</p>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', padding: '10px', borderRadius: 'var(--radius-sm)', background: 'rgba(255,255,255,0.03)', fontSize: '0.78rem', textAlign: 'center' }}>
-                  <div><strong style={{ color: '#93c5fd' }}>Questions</strong><div style={{ color: 'white', fontWeight: 700 }}>{paper.totalQuestions} Qs</div></div>
-                  <div><strong style={{ color: '#93c5fd' }}>Duration</strong><div style={{ color: 'white', fontWeight: 700 }}>{paper.durationMinutes} Mins</div></div>
-                  <div><strong style={{ color: '#93c5fd' }}>Max Marks</strong><div style={{ color: '#86efac', fontWeight: 700 }}>{paper.totalMarks} Marks</div></div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', padding: '10px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-2)', fontSize: '0.78rem', textAlign: 'center' }}>
+                  <div><strong style={{ color: '#2563eb' }}>Questions</strong><div style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{paper.totalQuestions} Qs</div></div>
+                  <div><strong style={{ color: '#2563eb' }}>Duration</strong><div style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{paper.durationMinutes} Mins</div></div>
+                  <div><strong style={{ color: '#2563eb' }}>Max Marks</strong><div style={{ color: '#15803d', fontWeight: 700 }}>{paper.totalMarks} Marks</div></div>
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
-                  <span style={{ fontSize: '0.75rem', color: '#fbbf24' }}>Level: {paper.difficulty}</span>
+                  <span style={{ fontSize: '0.75rem', color: '#b45309' }}>Level: {paper.difficulty}</span>
                   <button onClick={() => handleStartTest(paper)} className="btn btn-emerald" style={{ fontSize: '0.85rem', padding: '8px 18px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800 }}>
                     <Play size={14} /> Start Drill
                   </button>
@@ -8856,7 +8779,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                 >
                   {isTimerPaused ? <Play size={13} /> : <Pause size={13} />} {isTimerPaused ? 'Resume' : 'Pause Clock'}
                 </button>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: timerSeconds < 300 ? '#f87171' : '#34d399', fontWeight: 900, fontSize: '1.2rem', background: 'rgba(0,0,0,0.3)', padding: '6px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: timerSeconds < 300 ? '#dc2626' : '#15803d', fontWeight: 900, fontSize: '1.2rem', background: 'var(--surface-3)', padding: '6px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
                   <Clock size={18} /> {formatTimer(timerSeconds)}
                 </div>
               </div>
@@ -8896,21 +8819,21 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                     <span className="badge badge-verified" style={{ fontSize: '0.8rem' }}>
                       Question {currentIdx + 1} of {questionsList.length}
                     </span>
-                    <span className="glass-pill" style={{ fontSize: '0.78rem', color: '#93c5fd' }}>
+                    <span className="glass-pill" style={{ fontSize: '0.78rem', color: '#2563eb' }}>
                       {currentQ.subject}
                     </span>
-                    <span className="glass-pill" style={{ fontSize: '0.78rem', color: '#fbbf24' }}>
+                    <span className="glass-pill" style={{ fontSize: '0.78rem', color: '#b45309' }}>
                       {currentQ.topicName}
                     </span>
                   </div>
 
-                  <span style={{ fontSize: '0.8rem', color: '#86efac', fontWeight: 700 }}>
+                  <span style={{ fontSize: '0.8rem', color: '#15803d', fontWeight: 700 }}>
                     +2.0 Marks / -0.50 Neg
                   </span>
                 </div>
 
                 {/* Question Text */}
-                <div style={{ fontSize: '1.05rem', color: 'white', lineHeight: 1.6, fontWeight: 500 }}>
+                <div style={{ fontSize: '1.05rem', color: 'var(--text-primary)', lineHeight: 1.6, fontWeight: 500 }}>
                   {currentQ.questionText}
                 </div>
 
@@ -8925,9 +8848,9 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                         style={{
                           padding: '14px 18px',
                           borderRadius: 'var(--radius-md)',
-                          background: isSelected ? 'rgba(59, 130, 246, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+                          background: isSelected ? 'rgba(59, 130, 246, 0.15)' : 'var(--surface-2)',
                           border: isSelected ? '1px solid var(--primary)' : '1px solid var(--border-color)',
-                          color: isSelected ? '#93c5fd' : 'var(--text-secondary)',
+                          color: isSelected ? '#2563eb' : 'var(--text-secondary)',
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
@@ -8979,10 +8902,10 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
               {/* Right Palette Panel */}
               <div className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'white', margin: 0 }}>
+                  <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                     Question Palette ({questionsList.length} Qs)
                   </h4>
-                  <span style={{ fontSize: '0.75rem', color: '#86efac' }}>
+                  <span style={{ fontSize: '0.75rem', color: '#15803d' }}>
                     {Object.keys(userAnswers).length}/{questionsList.length} Done
                   </span>
                 </div>
@@ -8993,7 +8916,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                     const isReview = !!markedForReview[qIdx];
                     const isCurrent = currentIdx === qIdx;
 
-                    let bg = 'rgba(255, 255, 255, 0.05)';
+                    let bg = 'var(--surface-2)';
                     let border = '1px solid var(--border-color)';
                     let color = 'white';
 
@@ -9053,7 +8976,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                 <div style={{
                   padding: '18px 22px',
                   borderRadius: 'var(--radius-md)',
-                  background: 'linear-gradient(135deg, rgba(30, 58, 138, 0.45) 0%, rgba(15, 23, 42, 0.98) 100%)',
+                  background: 'linear-gradient(135deg, rgba(30, 58, 138, 0.45) 0%, #ffffff 100%)',
                   border: '1.5px solid rgba(96, 165, 250, 0.5)',
                   display: 'flex',
                   alignItems: 'center',
@@ -9068,15 +8991,15 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                     </div>
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                        <span style={{ fontWeight: 800, color: 'white', fontSize: '1.2rem' }}>
+                        <span style={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '1.2rem' }}>
                           Historical Test Review Mode: {reviewingAttempt.subject}
                         </span>
-                        <span className="badge" style={{ background: 'rgba(59, 130, 246, 0.25)', color: '#93c5fd', border: '1px solid rgba(96, 165, 250, 0.4)' }}>
+                        <span className="badge" style={{ background: 'rgba(59, 130, 246, 0.25)', color: '#2563eb', border: '1px solid rgba(96, 165, 250, 0.4)' }}>
                           Attempted: {reviewingAttempt.attempted_at || 'Saved Session'}
                         </span>
                       </div>
-                      <div style={{ fontSize: '0.86rem', color: '#cbd5e1', marginTop: '4px' }}>
-                        Performance Record: <strong style={{ color: '#86efac' }}>{reviewingAttempt.correct_count} Correct</strong>, <strong style={{ color: '#f87171' }}>{reviewingAttempt.incorrect_count} Wrong</strong>, <strong style={{ color: '#fde047' }}>{reviewingAttempt.unattempted_count} Unattempted</strong> • Score: <strong style={{ color: '#34d399' }}>{reviewingAttempt.score} / {reviewingAttempt.total_marks}</strong>
+                      <div style={{ fontSize: '0.86rem', color: '#334155', marginTop: '4px' }}>
+                        Performance Record: <strong style={{ color: '#15803d' }}>{reviewingAttempt.correct_count} Correct</strong>, <strong style={{ color: '#dc2626' }}>{reviewingAttempt.incorrect_count} Wrong</strong>, <strong style={{ color: '#a16207' }}>{reviewingAttempt.unattempted_count} Unattempted</strong> • Score: <strong style={{ color: '#15803d' }}>{reviewingAttempt.score} / {reviewingAttempt.total_marks}</strong>
                       </div>
                     </div>
                   </div>
@@ -9114,13 +9037,13 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                   borderRadius: 'var(--radius-md)',
                   background: 'rgba(245, 158, 11, 0.12)',
                   border: '1px solid rgba(245, 158, 11, 0.4)',
-                  color: '#fef08a',
+                  color: '#a16207',
                   fontSize: '0.92rem',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '10px'
                 }}>
-                  <AlertTriangle size={18} color="#fbbf24" style={{ flexShrink: 0 }} />
+                  <AlertTriangle size={18} color="#b45309" style={{ flexShrink: 0 }} />
                   <span>Detailed answer selections were not recorded for this attempt. You can still review the complete paper and all solutions.</span>
                 </div>
               )}
@@ -9131,28 +9054,28 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                   <span className="badge badge-verified" style={{ fontSize: '0.78rem' }}>
                     {reviewingAttempt ? '📖 HISTORICAL TEST REVIEW & SOLUTIONS' : '🎯 TEST EVALUATION COMPLETE & SYNCED TO SQLITE'}
                   </span>
-                  <h3 style={{ fontSize: '1.7rem', fontWeight: 800, color: 'white', margin: '6px 0 2px 0' }}>
+                  <h3 style={{ fontSize: '1.7rem', fontWeight: 800, color: 'var(--text-primary)', margin: '6px 0 2px 0' }}>
                     {reviewingAttempt ? `Reviewing: ${selectedPaper.title}` : 'In-Depth Diagnostic Clarity & Solutions Engine'}
                   </h3>
-                  <div style={{ fontSize: '0.85rem', color: '#93c5fd' }}>
+                  <div style={{ fontSize: '0.85rem', color: '#2563eb' }}>
                     Target Post: <strong>{hasTargetPost ? targetPath.postName : 'not chosen yet'}</strong>{hasTargetPost ? ` (${targetPath.department})` : ' — pick one in Exam Guide section 01 and this analysis follows it'}
                   </div>
                 </div>
 
                 <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                   <div style={{ padding: '12px 18px', borderRadius: 'var(--radius-md)', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', textAlign: 'center' }}>
-                    <div style={{ fontSize: '0.72rem', color: '#86efac', textTransform: 'uppercase', fontWeight: 700 }}>Final Score</div>
-                    <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#34d399' }}>{displayScore} / {displayTotalMarks}</div>
+                    <div style={{ fontSize: '0.72rem', color: '#15803d', textTransform: 'uppercase', fontWeight: 700 }}>Final Score</div>
+                    <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#15803d' }}>{displayScore} / {displayTotalMarks}</div>
                   </div>
 
                   <div style={{ padding: '12px 18px', borderRadius: 'var(--radius-md)', background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)', textAlign: 'center' }}>
-                    <div style={{ fontSize: '0.72rem', color: '#93c5fd', textTransform: 'uppercase', fontWeight: 700 }}>Accuracy Rate</div>
-                    <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#60a5fa' }}>{displayAccuracy}%</div>
+                    <div style={{ fontSize: '0.72rem', color: '#2563eb', textTransform: 'uppercase', fontWeight: 700 }}>Accuracy Rate</div>
+                    <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#2563eb' }}>{displayAccuracy}%</div>
                   </div>
 
                   <div style={{ padding: '12px 18px', borderRadius: 'var(--radius-md)', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', textAlign: 'center' }}>
-                    <div style={{ fontSize: '0.72rem', color: '#fde047', textTransform: 'uppercase', fontWeight: 700 }}>Correct / Total</div>
-                    <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#fbbf24' }}>{displayCorrect} / {questionsList.length}</div>
+                    <div style={{ fontSize: '0.72rem', color: '#a16207', textTransform: 'uppercase', fontWeight: 700 }}>Correct / Total</div>
+                    <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#b45309' }}>{displayCorrect} / {questionsList.length}</div>
                   </div>
                 </div>
               </div>
@@ -9161,7 +9084,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div>
-                    <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', margin: 0 }}>
+                    <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                       🔍 Enhanced Clarity Weakness & Topic Diagnosis
                     </h4>
                     <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
@@ -9175,10 +9098,10 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                   {/* 🔴 CRITICAL WEAK AREAS (< 50%) */}
                   <div style={{ padding: '20px', borderRadius: 'var(--radius-md)', background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.4)', display: 'flex', flexDirection: 'column', gap: '14px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#f87171', fontWeight: 800, fontSize: '1.05rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#dc2626', fontWeight: 800, fontSize: '1.05rem' }}>
                         <XCircle size={18} /> 🔴 Critical Weak Areas (&lt; 50% Accuracy)
                       </div>
-                      <span className="badge" style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#fca5a5' }}>{weakAreas.length} Needs Attention</span>
+                      <span className="badge" style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#dc2626' }}>{weakAreas.length} Needs Attention</span>
                     </div>
 
                     {weakAreas.length > 0 ? (
@@ -9186,13 +9109,13 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                         {weakAreas.map((w, wIdx) => {
                           const matchedDrill = TOPIC_DRILL_TESTS.find(t => t.subject === w.subject) || TOPIC_DRILL_TESTS[0];
                           return (
-                            <div key={wIdx} style={{ padding: '14px', borderRadius: 'var(--radius-sm)', background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(239,68,68,0.3)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <div key={wIdx} style={{ padding: '14px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-3)', border: '1px solid rgba(239,68,68,0.3)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                <strong style={{ color: 'white', fontSize: '0.95rem' }}>{w.topic}</strong>
-                                <span style={{ color: '#fca5a5', fontWeight: 800, fontSize: '0.82rem' }}>{w.accuracy}% Acc</span>
+                                <strong style={{ color: 'var(--text-primary)', fontSize: '0.95rem' }}>{w.topic}</strong>
+                                <span style={{ color: '#dc2626', fontWeight: 800, fontSize: '0.82rem' }}>{w.accuracy}% Acc</span>
                               </div>
 
-                              <div style={{ fontSize: '0.78rem', color: '#fecaca', lineHeight: 1.4 }}>
+                              <div style={{ fontSize: '0.78rem', color: '#b91c1c', lineHeight: 1.4 }}>
                                 <strong>What you scored here:</strong> {w.evidence}
                               </div>
 
@@ -9212,7 +9135,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                         })}
                       </div>
                     ) : (
-                      <div style={{ fontSize: '0.88rem', color: '#86efac', padding: '10px', background: 'rgba(16,185,129,0.1)', borderRadius: 'var(--radius-sm)' }}>
+                      <div style={{ fontSize: '0.88rem', color: '#15803d', padding: '10px', background: 'rgba(16,185,129,0.1)', borderRadius: 'var(--radius-sm)' }}>
                         🎉 Outstanding mastery! Zero critical weaknesses detected in this session.
                       </div>
                     )}
@@ -9221,21 +9144,21 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                   {/* 🟡 MODERATE ATTENTION (50% - 75%) */}
                   <div style={{ padding: '20px', borderRadius: 'var(--radius-md)', background: 'rgba(234, 179, 8, 0.05)', border: '1px solid rgba(234, 179, 8, 0.4)', display: 'flex', flexDirection: 'column', gap: '14px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#fbbf24', fontWeight: 800, fontSize: '1.05rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#b45309', fontWeight: 800, fontSize: '1.05rem' }}>
                         <AlertTriangle size={18} /> 🟡 Moderate Attention (50% - 75%)
                       </div>
-                      <span className="badge" style={{ background: 'rgba(234, 179, 8, 0.2)', color: '#fde047' }}>{mediumAreas.length} Topics</span>
+                      <span className="badge" style={{ background: 'rgba(234, 179, 8, 0.2)', color: '#a16207' }}>{mediumAreas.length} Topics</span>
                     </div>
 
                     {mediumAreas.length > 0 ? (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                         {mediumAreas.map((m, mIdx) => (
-                          <div key={mIdx} style={{ padding: '14px', borderRadius: 'var(--radius-sm)', background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(234,179,8,0.3)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          <div key={mIdx} style={{ padding: '14px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-3)', border: '1px solid rgba(234,179,8,0.3)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                              <strong style={{ color: 'white', fontSize: '0.95rem' }}>{m.topic}</strong>
-                              <span style={{ color: '#fde047', fontWeight: 800, fontSize: '0.82rem' }}>{m.accuracy}% Acc</span>
+                              <strong style={{ color: 'var(--text-primary)', fontSize: '0.95rem' }}>{m.topic}</strong>
+                              <span style={{ color: '#a16207', fontWeight: 800, fontSize: '0.82rem' }}>{m.accuracy}% Acc</span>
                             </div>
-                            <div style={{ fontSize: '0.78rem', color: '#fef08a' }}>
+                            <div style={{ fontSize: '0.78rem', color: '#a16207' }}>
                               <strong>💡 Speed Advice:</strong> {m.speedAdvice}
                             </div>
                           </div>
@@ -9251,21 +9174,21 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                   {/* 🟢 STRONG AREAS (> 75%) */}
                   <div style={{ padding: '20px', borderRadius: 'var(--radius-md)', background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.4)', display: 'flex', flexDirection: 'column', gap: '14px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#34d399', fontWeight: 800, fontSize: '1.05rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#15803d', fontWeight: 800, fontSize: '1.05rem' }}>
                         <CheckCircle2 size={18} /> 🟢 Mastered Areas (&gt; 75% Accuracy)
                       </div>
-                      <span className="badge" style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#86efac' }}>{strongAreas.length} Strengths</span>
+                      <span className="badge" style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#15803d' }}>{strongAreas.length} Strengths</span>
                     </div>
 
                     {strongAreas.length > 0 ? (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                         {strongAreas.map((s, sIdx) => (
-                          <div key={sIdx} style={{ padding: '14px', borderRadius: 'var(--radius-sm)', background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(16,185,129,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <div key={sIdx} style={{ padding: '14px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-3)', border: '1px solid rgba(16,185,129,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                             <div>
-                              <strong style={{ color: 'white', fontSize: '0.95rem' }}>{s.topic}</strong>
+                              <strong style={{ color: 'var(--text-primary)', fontSize: '0.95rem' }}>{s.topic}</strong>
                               <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Subject: {s.subject}</div>
                             </div>
-                            <span style={{ color: '#86efac', fontWeight: 800, fontSize: '0.85rem' }}>{s.accuracy}% Acc</span>
+                            <span style={{ color: '#15803d', fontWeight: 800, fontSize: '0.85rem' }}>{s.accuracy}% Acc</span>
                           </div>
                         ))}
                       </div>
@@ -9283,12 +9206,12 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
               <div className="glass-card" style={{ padding: '22px', border: '1px solid rgba(59, 130, 246, 0.3)', background: 'rgba(59, 130, 246, 0.04)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '14px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Compass size={20} color="#60a5fa" />
+                    <Compass size={20} color="#2563eb" />
                     <div>
-                      <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'white', margin: 0 }}>
+                      <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                         {dailyHours ? `Your ${studyHoursPlan.totalDailyHours} hours a day, split by subject` : 'How many hours a day can you study?'}
                       </h4>
-                      <span style={{ fontSize: '0.78rem', color: '#93c5fd' }}>
+                      <span style={{ fontSize: '0.78rem', color: '#2563eb' }}>
                         {dailyHours
                           ? `${studyHoursPlan.weightedByResults ? 'Weighted by the topics you are under 50% on' : 'Split by each section\u2019s marks in the paper — take a test and it re-weights to your own results'}${hasTargetPost ? ` · target post: ${targetPath.postName}` : ''}.`
                           : 'GovOS will not invent a number for you. Tell it your hours and it splits them by the sections you are weakest in.'}
@@ -9307,7 +9230,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                       onChange={e => setHoursDraft(e.target.value)}
                       placeholder="e.g. 6"
                       aria-label="Hours you can study each day"
-                      style={{ width: '90px', padding: '8px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.9rem' }}
+                      style={{ width: '90px', padding: '8px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontSize: '0.9rem' }}
                     />
                     <button
                       className="btn btn-primary"
@@ -9326,39 +9249,39 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                 </div>
 
                 {!dailyHours && (
-                  <div style={{ padding: '14px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '12px' }}>
+                  <div style={{ padding: '14px 16px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '12px' }}>
                     Enter your hours above and this splits them across the four sections. Everything below is computed from your own papers — GovOS does not decide how much time you have.
                   </div>
                 )}
 
                 <div style={{ display: dailyHours ? 'grid' : 'none', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
-                  <div style={{ padding: '14px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)' }}>
-                    <div style={{ fontSize: '0.75rem', color: '#93c5fd', textTransform: 'uppercase', fontWeight: 700 }}>Quantitative Aptitude</div>
-                    <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'white', margin: '4px 0' }}>{studyHoursPlan.quantHours} Hours</div>
+                  <div style={{ padding: '14px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)' }}>
+                    <div style={{ fontSize: '0.75rem', color: '#2563eb', textTransform: 'uppercase', fontWeight: 700 }}>Quantitative Aptitude</div>
+                    <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-primary)', margin: '4px 0' }}>{studyHoursPlan.quantHours} Hours</div>
                     <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
                       {weakTopicsFor('Quantitative Aptitude')}
                     </div>
                   </div>
 
-                  <div style={{ padding: '14px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)' }}>
-                    <div style={{ fontSize: '0.75rem', color: '#93c5fd', textTransform: 'uppercase', fontWeight: 700 }}>General Awareness</div>
-                    <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'white', margin: '4px 0' }}>{studyHoursPlan.gaHours} Hours</div>
+                  <div style={{ padding: '14px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)' }}>
+                    <div style={{ fontSize: '0.75rem', color: '#2563eb', textTransform: 'uppercase', fontWeight: 700 }}>General Awareness</div>
+                    <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-primary)', margin: '4px 0' }}>{studyHoursPlan.gaHours} Hours</div>
                     <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
                       {weakTopicsFor('General Awareness')}
                     </div>
                   </div>
 
-                  <div style={{ padding: '14px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)' }}>
-                    <div style={{ fontSize: '0.75rem', color: '#93c5fd', textTransform: 'uppercase', fontWeight: 700 }}>English Comprehension</div>
-                    <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'white', margin: '4px 0' }}>{studyHoursPlan.englishHours} Hours</div>
+                  <div style={{ padding: '14px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)' }}>
+                    <div style={{ fontSize: '0.75rem', color: '#2563eb', textTransform: 'uppercase', fontWeight: 700 }}>English Comprehension</div>
+                    <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-primary)', margin: '4px 0' }}>{studyHoursPlan.englishHours} Hours</div>
                     <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
                       {weakTopicsFor('English Comprehension')}
                     </div>
                   </div>
 
-                  <div style={{ padding: '14px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)' }}>
-                    <div style={{ fontSize: '0.75rem', color: '#93c5fd', textTransform: 'uppercase', fontWeight: 700 }}>Reasoning</div>
-                    <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'white', margin: '4px 0' }}>{studyHoursPlan.reasoningHours} Hours</div>
+                  <div style={{ padding: '14px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)' }}>
+                    <div style={{ fontSize: '0.75rem', color: '#2563eb', textTransform: 'uppercase', fontWeight: 700 }}>Reasoning</div>
+                    <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-primary)', margin: '4px 0' }}>{studyHoursPlan.reasoningHours} Hours</div>
                     <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
                       {weakTopicsFor('Reasoning')}
                     </div>
@@ -9366,9 +9289,9 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
 
                   {parseFloat(studyHoursPlan.statsHours) > 0 && targetPost && (
                     <div style={{ padding: '14px', borderRadius: 'var(--radius-md)', background: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.3)' }}>
-                      <div style={{ fontSize: '0.75rem', color: '#fbbf24', textTransform: 'uppercase', fontWeight: 700 }}>Tier-2 Paper-II Statistics</div>
-                      <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#fde047', margin: '4px 0' }}>{studyHoursPlan.statsHours} Hours</div>
-                      <div style={{ fontSize: '0.72rem', color: '#fef08a' }}>
+                      <div style={{ fontSize: '0.75rem', color: '#b45309', textTransform: 'uppercase', fontWeight: 700 }}>Tier-2 Paper-II Statistics</div>
+                      <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#a16207', margin: '4px 0' }}>{studyHoursPlan.statsHours} Hours</div>
+                      <div style={{ fontSize: '0.72rem', color: '#a16207' }}>
                         {targetPost.postName} requires it{targetPost.specialQualification ? ` — ${targetPost.specialQualification}` : ''}.
                       </div>
                     </div>
@@ -9380,7 +9303,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
               <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', borderTop: '1px solid var(--border-color)', paddingTop: '24px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
                   <div>
-                    <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', margin: 0 }}>
+                    <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                       📖 In-Depth Official Question Solutions & Animated Shortcut Tricks
                     </h4>
                     <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
@@ -9430,7 +9353,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                       </button>
                     ))
                   ) : (
-                    <span className="badge" style={{ background: 'rgba(59, 130, 246, 0.2)', color: '#93c5fd', fontSize: '0.8rem', padding: '6px 12px' }}>
+                    <span className="badge" style={{ background: 'rgba(59, 130, 246, 0.2)', color: '#2563eb', fontSize: '0.8rem', padding: '6px 12px' }}>
                       Showing All {questionsList.length} Official Questions &amp; Solutions
                     </span>
                   )}
@@ -9442,17 +9365,17 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                     style={{
                       padding: '6px 12px',
                       borderRadius: 'var(--radius-sm)',
-                      background: 'rgba(255,255,255,0.05)',
+                      background: 'var(--surface-2)',
                       border: '1px solid var(--border-color)',
-                      color: 'white',
+                      color: 'var(--text-primary)',
                       fontSize: '0.78rem'
                     }}
                   >
-                    <option value="ALL" style={{ background: '#111827' }}>All Subjects</option>
-                    <option value="Quantitative Aptitude" style={{ background: '#111827' }}>Quantitative Aptitude</option>
-                    <option value="Reasoning & General Intelligence" style={{ background: '#111827' }}>Reasoning</option>
-                    <option value="General Awareness" style={{ background: '#111827' }}>General Awareness</option>
-                    <option value="English Comprehension" style={{ background: '#111827' }}>English Comprehension</option>
+                    <option value="ALL" style={{ background: 'var(--bg-card-solid)' }}>All Subjects</option>
+                    <option value="Quantitative Aptitude" style={{ background: 'var(--bg-card-solid)' }}>Quantitative Aptitude</option>
+                    <option value="Reasoning & General Intelligence" style={{ background: 'var(--bg-card-solid)' }}>Reasoning</option>
+                    <option value="General Awareness" style={{ background: 'var(--bg-card-solid)' }}>General Awareness</option>
+                    <option value="English Comprehension" style={{ background: 'var(--bg-card-solid)' }}>English Comprehension</option>
                   </select>
                 </div>
 
@@ -9481,14 +9404,14 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                             : isUnattempted 
                             ? '1.5px solid rgba(245, 158, 11, 0.45)' 
                             : '1.5px solid rgba(239, 68, 68, 0.45)',
-                          background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.92) 100%)',
-                          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)'
+                          background: 'linear-gradient(135deg, #ffffff 0%, var(--surface-2) 100%)',
+                          boxShadow: '0 8px 32px var(--surface-3)'
                         }}
                       >
                         {/* Question Top Header */}
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', borderBottom: '1px solid var(--surface-2)', paddingBottom: '16px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                            <span style={{ fontWeight: 900, color: 'white', fontSize: '1.25rem' }}>
+                            <span style={{ fontWeight: 900, color: 'var(--text-primary)', fontSize: '1.25rem' }}>
                               Question {originalIdx + 1}
                             </span>
                             {isOlderAttemptWithoutAnswers ? (
@@ -9499,7 +9422,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                                   fontSize: '0.85rem',
                                   fontWeight: 800,
                                   background: 'rgba(59, 130, 246, 0.25)',
-                                  color: '#93c5fd',
+                                  color: '#2563eb',
                                   border: '1px solid #3b82f6'
                                 }}
                               >
@@ -9513,17 +9436,17 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                                   fontSize: '0.85rem',
                                   fontWeight: 800,
                                   background: isCorrect ? 'rgba(16, 185, 129, 0.25)' : isUnattempted ? 'rgba(245, 158, 11, 0.25)' : 'rgba(239, 68, 68, 0.25)',
-                                  color: isCorrect ? '#86efac' : isUnattempted ? '#fde047' : '#fca5a5',
+                                  color: isCorrect ? '#15803d' : isUnattempted ? '#a16207' : '#dc2626',
                                   border: isCorrect ? '1px solid #10b981' : isUnattempted ? '1px solid #f59e0b' : '1px solid #ef4444'
                                 }}
                               >
                                 {isCorrect ? '✅ Correct (+2.0 M)' : isUnattempted ? '⚠️ Unattempted (0.0 M)' : '❌ Incorrect (-0.50 M)'}
                               </span>
                             )}
-                            <span className="glass-pill" style={{ fontSize: '0.82rem', padding: '5px 12px', color: '#93c5fd', fontWeight: 600 }}>
+                            <span className="glass-pill" style={{ fontSize: '0.82rem', padding: '5px 12px', color: '#2563eb', fontWeight: 600 }}>
                               {q.subject}
                             </span>
-                            <span className="glass-pill" style={{ fontSize: '0.82rem', padding: '5px 12px', color: '#fbbf24', fontWeight: 600 }}>
+                            <span className="glass-pill" style={{ fontSize: '0.82rem', padding: '5px 12px', color: '#b45309', fontWeight: 600 }}>
                               {q.topicName}
                             </span>
                           </div>
@@ -9544,18 +9467,18 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                             const isThisCorrect = opt.id === q.correctOptionIndex;
                             const isThisUserSelected = !isOlderAttemptWithoutAnswers && userAns === opt.id;
 
-                            let optBg = 'rgba(255, 255, 255, 0.03)';
+                            let optBg = 'var(--surface-2)';
                             let optBorder = '1px solid var(--border-color)';
-                            let optColor = '#cbd5e1';
+                            let optColor = '#334155';
 
                             if (isThisCorrect) {
                               optBg = 'rgba(16, 185, 129, 0.18)';
                               optBorder = '1.5px solid #10b981';
-                              optColor = '#86efac';
+                              optColor = '#15803d';
                             } else if (isThisUserSelected && !isThisCorrect) {
                               optBg = 'rgba(239, 68, 68, 0.18)';
                               optBorder = '1.5px solid #ef4444';
-                              optColor = '#fca5a5';
+                              optColor = '#dc2626';
                             }
 
                             return (
@@ -9577,12 +9500,12 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                               >
                                 <span>{opt.text}</span>
                                 {isThisCorrect && (
-                                  <span style={{ fontWeight: 900, fontSize: '0.8rem', color: '#34d399' }}>
+                                  <span style={{ fontWeight: 900, fontSize: '0.8rem', color: '#15803d' }}>
                                     ✓ Correct Answer {!isOlderAttemptWithoutAnswers && isThisUserSelected ? '(Your Choice)' : ''}
                                   </span>
                                 )}
                                 {!isOlderAttemptWithoutAnswers && isThisUserSelected && !isThisCorrect && (
-                                  <span style={{ fontWeight: 900, fontSize: '0.8rem', color: '#f87171' }}>
+                                  <span style={{ fontWeight: 900, fontSize: '0.8rem', color: '#dc2626' }}>
                                     ✗ Your Choice
                                   </span>
                                 )}
@@ -9594,8 +9517,8 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                         {/* 1. 💡 SIMPLE PLAIN-ENGLISH EXPLANATION (NO JARGON) */}
                         {det && det.simpleExplanation && (
                           <div style={{ padding: '20px 22px', borderRadius: 'var(--radius-md)', background: 'rgba(16, 185, 129, 0.08)', border: '1.5px solid rgba(16, 185, 129, 0.45)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#34d399', fontWeight: 900, fontSize: '1.05rem' }}>
-                              <Sparkles size={20} color="#34d399" />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#15803d', fontWeight: 900, fontSize: '1.05rem' }}>
+                              <Sparkles size={20} color="#15803d" />
                               <span>💡 1. Plain & Simple Explanation (In Easy Everyday Words)</span>
                             </div>
                             <p style={{ fontSize: '1rem', color: '#f0fdf4', margin: 0, lineHeight: 1.75, fontWeight: 500 }}>
@@ -9607,14 +9530,14 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                         {/* 2. 📘 TECHNICAL TERMS & JARGON GLOSSARY */}
                         {det && det.technicalTerms && det.technicalTerms.length > 0 && (
                           <div style={{ padding: '18px 22px', borderRadius: 'var(--radius-md)', background: 'rgba(59, 130, 246, 0.06)', border: '1px solid rgba(59, 130, 246, 0.35)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#93c5fd', fontWeight: 900, fontSize: '1rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#2563eb', fontWeight: 900, fontSize: '1rem' }}>
                               <BookOpen size={18} />
                               <span>📘 2. Key Terms & Jargon Explained Simply</span>
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                               {det.technicalTerms.map((term, tIdx) => (
-                                <div key={tIdx} style={{ fontSize: '0.94rem', color: '#e2e8f0', lineHeight: 1.6, padding: '8px 12px', background: 'rgba(0,0,0,0.3)', borderRadius: 'var(--radius-sm)', borderLeft: '3px solid #60a5fa' }}>
-                                  <strong style={{ color: '#93c5fd' }}>{term.term}:</strong> {term.meaning}
+                                <div key={tIdx} style={{ fontSize: '0.94rem', color: '#334155', lineHeight: 1.6, padding: '8px 12px', background: 'var(--surface-3)', borderRadius: 'var(--radius-sm)', borderLeft: '3px solid #60a5fa' }}>
+                                  <strong style={{ color: '#2563eb' }}>{term.term}:</strong> {term.meaning}
                                 </div>
                               ))}
                             </div>
@@ -9623,14 +9546,14 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
 
                         {/* 3. ✍️ STEP-BY-STEP FORMAL METHOD */}
                         {det && det.stepByStepMethod && (
-                          <div style={{ padding: '18px 22px', borderRadius: 'var(--radius-md)', background: 'rgba(0,0,0,0.35)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                          <div style={{ padding: '18px 22px', borderRadius: 'var(--radius-md)', background: 'var(--surface-3)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ffffff', fontWeight: 900, fontSize: '1rem' }}>
-                              <FileText size={18} color="#34d399" />
+                              <FileText size={18} color="#15803d" />
                               <span>✍️ 3. Step-by-Step Formal Method</span>
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                               {det.stepByStepMethod.map((step, sIdx) => (
-                                <div key={sIdx} style={{ fontSize: '0.95rem', color: '#e2e8f0', lineHeight: 1.65, paddingLeft: '14px', borderLeft: '3px solid rgba(16, 185, 129, 0.6)' }}>
+                                <div key={sIdx} style={{ fontSize: '0.95rem', color: '#334155', lineHeight: 1.65, paddingLeft: '14px', borderLeft: '3px solid rgba(16, 185, 129, 0.6)' }}>
                                   {step}
                                 </div>
                               ))}
@@ -9653,7 +9576,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                             }}
                           >
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#fbbf24', fontWeight: 900, fontSize: '1.05rem' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#b45309', fontWeight: 900, fontSize: '1.05rem' }}>
                                 <Flame size={20} className="animate-pulse" color="#f59e0b" />
                                 <span>⚡ 4. Exam Speed Shortcut: {det.shortcutTrick.name}</span>
                               </div>
@@ -9663,7 +9586,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                             </div>
 
                             {det.shortcutTrick.formula && (
-                              <div style={{ padding: '10px 16px', borderRadius: '6px', background: 'rgba(0,0,0,0.6)', fontFamily: 'var(--font-mono)', fontSize: '0.98rem', color: '#fde047', fontWeight: 800 }}>
+                              <div style={{ padding: '10px 16px', borderRadius: '6px', background: 'var(--surface-3)', fontFamily: 'var(--font-mono)', fontSize: '0.98rem', color: '#a16207', fontWeight: 800 }}>
                                 📐 Formula: {det.shortcutTrick.formula}
                               </div>
                             )}
@@ -9676,16 +9599,16 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
 
                         {/* 5. 🎯 CRUCIAL EXAM TAKEAWAY */}
                         {det && det.crucialTakeaway && (
-                          <div style={{ fontSize: '0.92rem', color: '#86efac', background: 'rgba(16, 185, 129, 0.1)', padding: '12px 18px', borderRadius: 'var(--radius-md)', border: '1px solid rgba(16, 185, 129, 0.35)', lineHeight: 1.6 }}>
-                            <strong style={{ color: '#34d399' }}>🎯 Crucial Takeaway for Exam Day:</strong> {det.crucialTakeaway}
+                          <div style={{ fontSize: '0.92rem', color: '#15803d', background: 'rgba(16, 185, 129, 0.1)', padding: '12px 18px', borderRadius: 'var(--radius-md)', border: '1px solid rgba(16, 185, 129, 0.35)', lineHeight: 1.6 }}>
+                            <strong style={{ color: '#15803d' }}>🎯 Crucial Takeaway for Exam Day:</strong> {det.crucialTakeaway}
                           </div>
                         )}
 
                         {/* 6. 📄 WHERE THIS QUESTION CAME FROM */}
                         {q.provenance && (
-                          <div style={{ padding: '12px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+                          <div style={{ padding: '12px 16px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
                             <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5, flex: 1, minWidth: '240px' }}>
-                              <strong style={{ color: q.provenance.verificationLevel === 'OFFICIALLY_VERIFIED' ? '#34d399' : '#fbbf24' }}>
+                              <strong style={{ color: q.provenance.verificationLevel === 'OFFICIALLY_VERIFIED' ? '#15803d' : '#b45309' }}>
                                 {q.provenance.verificationLevel === 'OFFICIALLY_VERIFIED' ? '📄 Written from the official source:' : '✍️ GovOS practice question:'}
                               </strong>{' '}
                               {q.provenance.documentTitle}
@@ -9715,8 +9638,8 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
 
                         {/* Fallback Explanation if Detailed Object Not Present */}
                         {!det && (
-                          <div style={{ padding: '16px 18px', borderRadius: 'var(--radius-sm)', background: 'rgba(0,0,0,0.3)', fontSize: '0.95rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                            <strong style={{ color: '#93c5fd' }}>Official Explanation:</strong>
+                          <div style={{ padding: '16px 18px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-3)', fontSize: '0.95rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                            <strong style={{ color: '#2563eb' }}>Official Explanation:</strong>
                             <div style={{ marginTop: '6px', whiteSpace: 'pre-line' }}>{q.explanation}</div>
                           </div>
                         )}
@@ -9738,14 +9661,14 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
         <div className="glass-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
             <div>
-              <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', margin: 0 }}>
+              <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                 Historical Mock & PYQ Test Performance Matrix
               </h4>
               <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                Persistent record synced with SQLite database (<code style={{ color: '#93c5fd' }}>govos.db</code>) and browser local storage.
+                Persistent record synced with SQLite database (<code style={{ color: '#2563eb' }}>govos.db</code>) and browser local storage.
               </span>
             </div>
-            <span className="glass-pill" style={{ fontSize: '0.78rem', color: '#86efac', borderColor: 'rgba(16,185,129,0.3)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span className="glass-pill" style={{ fontSize: '0.78rem', color: '#15803d', borderColor: 'rgba(16,185,129,0.3)', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <Database size={13} /> {pastAttempts.length} Tests Recorded
             </span>
           </div>
@@ -9755,13 +9678,13 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
             borderRadius: 'var(--radius-sm)',
             background: 'rgba(59, 130, 246, 0.1)',
             border: '1px solid rgba(59, 130, 246, 0.3)',
-            color: '#93c5fd',
+            color: '#2563eb',
             fontSize: '0.85rem',
             display: 'flex',
             alignItems: 'center',
             gap: '10px'
           }}>
-            <Sparkles size={16} color="#60a5fa" style={{ flexShrink: 0 }} />
+            <Sparkles size={16} color="#2563eb" style={{ flexShrink: 0 }} />
             <span>
               <strong>Candidate Review Tip:</strong> Click on any row or the <strong>"Open &amp; Review"</strong> button to inspect your test, examine what you did right or wrong, and study detailed step-by-step solutions for future preparation.
             </span>
@@ -9771,14 +9694,14 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
                 <thead>
-                  <tr style={{ background: 'rgba(255, 255, 255, 0.04)', borderBottom: '1px solid var(--border-color)', textAlign: 'left' }}>
-                    <th style={{ padding: '12px 14px', color: '#93c5fd' }}>Test Title / Paper</th>
-                    <th style={{ padding: '12px 14px', color: '#93c5fd' }}>Score Earned</th>
-                    <th style={{ padding: '12px 14px', color: '#93c5fd' }}>Accuracy %</th>
-                    <th style={{ padding: '12px 14px', color: '#93c5fd' }}>Correct / Total</th>
-                    <th style={{ padding: '12px 14px', color: '#93c5fd' }}>Time Taken</th>
-                    <th style={{ padding: '12px 14px', color: '#93c5fd' }}>Date Attempted</th>
-                    <th style={{ padding: '12px 14px', color: '#93c5fd', textAlign: 'center' }}>Action</th>
+                  <tr style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border-color)', textAlign: 'left' }}>
+                    <th style={{ padding: '12px 14px', color: '#2563eb' }}>Test Title / Paper</th>
+                    <th style={{ padding: '12px 14px', color: '#2563eb' }}>Score Earned</th>
+                    <th style={{ padding: '12px 14px', color: '#2563eb' }}>Accuracy %</th>
+                    <th style={{ padding: '12px 14px', color: '#2563eb' }}>Correct / Total</th>
+                    <th style={{ padding: '12px 14px', color: '#2563eb' }}>Time Taken</th>
+                    <th style={{ padding: '12px 14px', color: '#2563eb' }}>Date Attempted</th>
+                    <th style={{ padding: '12px 14px', color: '#2563eb', textAlign: 'center' }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -9789,7 +9712,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                         key={aIdx} 
                         onClick={() => handleReviewPastAttempt(att)}
                         style={{ 
-                          borderBottom: '1px solid rgba(255, 255, 255, 0.05)', 
+                          borderBottom: '1px solid var(--surface-2)', 
                           background: aIdx % 2 === 0 ? 'rgba(255, 255, 255, 0.01)' : 'transparent',
                           cursor: 'pointer',
                           transition: 'background 0.2s ease'
@@ -9798,22 +9721,22 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                         onMouseLeave={(e) => (e.currentTarget.style.background = aIdx % 2 === 0 ? 'rgba(255, 255, 255, 0.01)' : 'transparent')}
                         title="Click to open and review test questions and solutions"
                       >
-                        <td style={{ padding: '12px 14px', fontWeight: 700, color: 'white' }}>
+                        <td style={{ padding: '12px 14px', fontWeight: 700, color: 'var(--text-primary)' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <FileText size={15} color="#60a5fa" />
+                            <FileText size={15} color="#2563eb" />
                             <span>{att.subject}</span>
                           </div>
                         </td>
-                        <td style={{ padding: '12px 14px', color: att.score >= 0 ? '#86efac' : '#f87171', fontWeight: 800 }}>
+                        <td style={{ padding: '12px 14px', color: att.score >= 0 ? '#15803d' : '#dc2626', fontWeight: 800 }}>
                           {att.score} / {att.total_marks}
                         </td>
                         <td style={{ padding: '12px 14px' }}>
-                          <span className="badge" style={{ background: acc >= 75 ? 'rgba(16, 185, 129, 0.2)' : acc >= 50 ? 'rgba(234, 179, 8, 0.2)' : 'rgba(239, 68, 68, 0.2)', color: acc >= 75 ? '#86efac' : acc >= 50 ? '#fde047' : '#fca5a5' }}>
+                          <span className="badge" style={{ background: acc >= 75 ? 'rgba(16, 185, 129, 0.2)' : acc >= 50 ? 'rgba(234, 179, 8, 0.2)' : 'rgba(239, 68, 68, 0.2)', color: acc >= 75 ? '#15803d' : acc >= 50 ? '#a16207' : '#dc2626' }}>
                             {acc}%
                           </span>
                         </td>
                         <td style={{ padding: '12px 14px', color: 'var(--text-secondary)' }}>
-                          <span style={{ color: '#86efac', fontWeight: 600 }}>{att.correct_count} Correct</span>, <span style={{ color: '#f87171', fontWeight: 600 }}>{att.incorrect_count} Wrong</span>
+                          <span style={{ color: '#15803d', fontWeight: 600 }}>{att.correct_count} Correct</span>, <span style={{ color: '#dc2626', fontWeight: 600 }}>{att.incorrect_count} Wrong</span>
                         </td>
                         <td style={{ padding: '12px 14px', color: 'var(--text-muted)' }}>
                           {Math.floor(att.time_taken_seconds / 60)}m {att.time_taken_seconds % 60}s
@@ -10319,18 +10242,18 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
       {/* Top Simulator Banner */}
-      <div className="glass-card" style={{ padding: '20px', background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%)' }}>
+      <div className="glass-card" style={{ padding: '20px', background: 'linear-gradient(135deg, var(--surface-2) 0%, #ffffff 100%)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-              <span className="badge badge-demo" style={{ background: 'rgba(59, 130, 246, 0.2)', color: '#93c5fd', border: '1px solid rgba(59, 130, 246, 0.4)' }}>
+              <span className="badge badge-demo" style={{ background: 'rgba(59, 130, 246, 0.2)', color: '#2563eb', border: '1px solid rgba(59, 130, 246, 0.4)' }}>
                 📝 REAL SSC APPLICATION SIMULATOR + FILE VERIFIER
               </span>
-              <span style={{ fontSize: '0.8rem', color: '#86efac', fontWeight: 700 }}>
+              <span style={{ fontSize: '0.8rem', color: '#15803d', fontWeight: 700 }}>
                 • Live File Analysis & Diagnostics
               </span>
             </div>
-            <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'white', margin: 0 }}>
+            <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
               Practice Mock Application & Document Verifier
             </h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', margin: '4px 0 0 0' }}>
@@ -10362,9 +10285,9 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
                 style={{
                   padding: '8px 14px',
                   borderRadius: 'var(--radius-md)',
-                  background: currentStep === st.num ? 'var(--primary)' : 'rgba(255, 255, 255, 0.04)',
+                  background: currentStep === st.num ? 'var(--primary)' : 'var(--surface-2)',
                   border: currentStep === st.num ? '1px solid #60a5fa' : '1px solid var(--border-color)',
-                  color: currentStep === st.num ? 'white' : 'var(--text-secondary)',
+                  color: currentStep === st.num ? 'var(--text-primary)' : 'var(--text-secondary)',
                   fontSize: '0.82rem',
                   fontWeight: currentStep === st.num ? 700 : 500,
                   cursor: 'pointer',
@@ -10381,13 +10304,13 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
 
       {/* FORM BODY OR POST-SUBMISSION RESULTS */}
       {!isSubmitted ? (
-        <div className="glass-card" style={{ padding: '24px', background: 'rgba(15, 23, 42, 0.95)', border: '1px solid var(--border-color)' }}>
+        <div className="glass-card" style={{ padding: '24px', background: '#ffffff', border: '1px solid var(--border-color)' }}>
 
           {/* STEP 1: PERSONAL DETAILS */}
           {currentStep === 1 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
               <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
-                <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'white', margin: 0 }}>
+                <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                   1. Candidate's Personal Details
                 </h4>
                 <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
@@ -10397,49 +10320,49 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
                 <div>
-                  <label style={{ fontSize: '0.82rem', color: '#cbd5e1', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '0.82rem', color: '#334155', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
                     Candidate's Full Name *
                   </label>
                   <input
                     type="text"
                     value={form.candidateName}
                     onChange={e => setForm({ ...form, candidateName: e.target.value })}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-sm)', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.9rem' }}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontSize: '0.9rem' }}
                   />
                 </div>
 
                 <div>
-                  <label style={{ fontSize: '0.82rem', color: '#cbd5e1', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '0.82rem', color: '#334155', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
                     Father's Name *
                   </label>
                   <input
                     type="text"
                     value={form.fatherName}
                     onChange={e => setForm({ ...form, fatherName: e.target.value })}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-sm)', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.9rem' }}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontSize: '0.9rem' }}
                   />
                 </div>
 
                 <div>
-                  <label style={{ fontSize: '0.82rem', color: '#cbd5e1', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '0.82rem', color: '#334155', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
                     Date of Birth (DD/MM/YYYY) *
                   </label>
                   <input
                     type="date"
                     value={form.dob}
                     onChange={e => setForm({ ...form, dob: e.target.value })}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-sm)', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.9rem' }}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontSize: '0.9rem' }}
                   />
                 </div>
 
                 <div>
-                  <label style={{ fontSize: '0.82rem', color: '#cbd5e1', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '0.82rem', color: '#334155', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
                     Gender *
                   </label>
                   <select
                     value={form.gender}
                     onChange={e => setForm({ ...form, gender: e.target.value as any })}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-sm)', background: '#1e293b', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.9rem' }}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontSize: '0.9rem' }}
                   >
                     <option value="Male">Male</option>
                     <option value="Female">Female</option>
@@ -10454,7 +10377,7 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
           {currentStep === 2 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
               <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
-                <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'white', margin: 0 }}>
+                <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                   2. Essential Educational Qualification (Clause 8.1)
                 </h4>
                 <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
@@ -10464,13 +10387,13 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
                 <div>
-                  <label style={{ fontSize: '0.82rem', color: '#cbd5e1', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '0.82rem', color: '#334155', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
                     Highest Educational Qualification *
                   </label>
                   <select
                     value={form.highestQualification}
                     onChange={e => setForm({ ...form, highestQualification: e.target.value })}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-sm)', background: '#1e293b', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.9rem' }}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontSize: '0.9rem' }}
                   >
                     <option value="Bachelor Degree (Graduation)">Bachelor's Degree (Graduation)</option>
                     <option value="Post Graduation (Master's)">Post Graduation (Master's Degree)</option>
@@ -10479,13 +10402,13 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
                 </div>
 
                 <div>
-                  <label style={{ fontSize: '0.82rem', color: '#cbd5e1', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '0.82rem', color: '#334155', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
                     Degree Passing Status (Crucial Date 01-08-2026) *
                   </label>
                   <select
                     value={form.graduationStatus}
                     onChange={e => setForm({ ...form, graduationStatus: e.target.value })}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-sm)', background: '#1e293b', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.9rem' }}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontSize: '0.9rem' }}
                   >
                     <option value="Passed on or before 01-08-2026">Passed on or before 01-08-2026 (Eligible)</option>
                     <option value="Result Awaited after 01-08-2026">Result expected AFTER 01-08-2026 (Disqualified)</option>
@@ -10494,11 +10417,11 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
 
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                    <label style={{ fontSize: '0.82rem', color: '#cbd5e1', fontWeight: 600 }}>
+                    <label style={{ fontSize: '0.82rem', color: '#334155', fontWeight: 600 }}>
                       Percentage Scored in Mathematics at 12th Standard *
                     </label>
                     {form.mathTwelfthPercentage > 100 && (
-                      <span style={{ fontSize: '0.72rem', color: '#f87171', fontWeight: 700 }}>
+                      <span style={{ fontSize: '0.72rem', color: '#dc2626', fontWeight: 700 }}>
                         ⚠️ Invalid &gt; 100%
                       </span>
                     )}
@@ -10514,14 +10437,14 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
                       width: '100%', 
                       padding: '10px 12px', 
                       borderRadius: 'var(--radius-sm)', 
-                      background: form.mathTwelfthPercentage > 100 ? 'rgba(239, 68, 68, 0.15)' : 'rgba(255,255,255,0.05)', 
+                      background: form.mathTwelfthPercentage > 100 ? 'rgba(239, 68, 68, 0.15)' : 'var(--surface-2)', 
                       border: form.mathTwelfthPercentage > 100 ? '1px solid #ef4444' : '1px solid var(--border-color)', 
-                      color: 'white', 
+                      color: 'var(--text-primary)', 
                       fontSize: '0.9rem' 
                     }}
                   />
                   {form.mathTwelfthPercentage > 100 ? (
-                    <span style={{ fontSize: '0.72rem', color: '#fca5a5' }}>
+                    <span style={{ fontSize: '0.72rem', color: '#dc2626' }}>
                       ❌ Percentage cannot exceed 100%. Please enter a valid number (e.g. 65).
                     </span>
                   ) : (
@@ -10530,13 +10453,13 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
                 </div>
 
                 <div>
-                  <label style={{ fontSize: '0.82rem', color: '#cbd5e1', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '0.82rem', color: '#334155', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
                     Did you study Statistics in all 3 years of Graduation?
                   </label>
                   <select
                     value={form.hasStatisticsInDegree ? 'YES' : 'NO'}
                     onChange={e => setForm({ ...form, hasStatisticsInDegree: e.target.value === 'YES' })}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-sm)', background: '#1e293b', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.9rem' }}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontSize: '0.9rem' }}
                   >
                     <option value="NO">No, did not have Statistics as a subject</option>
                     <option value="YES">Yes, had Statistics in Graduation Degree</option>
@@ -10545,9 +10468,9 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
               </div>
 
               {/* Optional Marksheet File Upload Verification */}
-              <div style={{ marginTop: '10px', padding: '14px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.02)', border: '1px dashed var(--border-color)' }}>
+              <div style={{ marginTop: '10px', padding: '14px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px dashed var(--border-color)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '0.82rem', color: '#93c5fd', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontSize: '0.82rem', color: '#2563eb', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <Upload size={14} /> Optional: Test Uploading 12th Marksheet / Degree Certificate
                   </span>
                   <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Supported: PDF, JPG, PNG (Max 500 KB)</span>
@@ -10559,7 +10482,7 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
                   style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}
                 />
                 {form.marksheetUpload && (
-                  <div style={{ marginTop: '8px', fontSize: '0.8rem', color: form.marksheetUpload.isSizeValid ? '#86efac' : '#f87171' }}>
+                  <div style={{ marginTop: '8px', fontSize: '0.8rem', color: form.marksheetUpload.isSizeValid ? '#15803d' : '#dc2626' }}>
                     {form.marksheetUpload.validationMessage}
                   </div>
                 )}
@@ -10571,7 +10494,7 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
           {currentStep === 3 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
               <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
-                <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'white', margin: 0 }}>
+                <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                   3. Category & Age Relaxation Rules
                 </h4>
                 <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
@@ -10581,13 +10504,13 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
                 <div>
-                  <label style={{ fontSize: '0.82rem', color: '#cbd5e1', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '0.82rem', color: '#334155', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
                     Candidate Category *
                   </label>
                   <select
                     value={form.category}
                     onChange={e => setForm({ ...form, category: e.target.value as any })}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-sm)', background: '#1e293b', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.9rem' }}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontSize: '0.9rem' }}
                   >
                     <option value="UR">UR (Unreserved / General)</option>
                     <option value="OBC_NCL">OBC (Non-Creamy Layer) — Annexure-VI</option>
@@ -10598,13 +10521,13 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
                 </div>
 
                 <div>
-                  <label style={{ fontSize: '0.82rem', color: '#cbd5e1', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '0.82rem', color: '#334155', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
                     Seeking Age Relaxation? *
                   </label>
                   <select
                     value={form.seekingAgeRelaxation ? 'YES' : 'NO'}
                     onChange={e => setForm({ ...form, seekingAgeRelaxation: e.target.value === 'YES' })}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-sm)', background: '#1e293b', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.9rem' }}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontSize: '0.9rem' }}
                   >
                     <option value="NO">No (Age is within standard 18-30/32 limit)</option>
                     <option value="YES">Yes (Claiming OBC +3 yrs / SC-ST +5 yrs / PwBD +10 yrs)</option>
@@ -10614,9 +10537,9 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
 
               {/* Optional Category Certificate Upload */}
               {form.category !== 'UR' && (
-                <div style={{ marginTop: '10px', padding: '14px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.02)', border: '1px dashed var(--border-color)' }}>
+                <div style={{ marginTop: '10px', padding: '14px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px dashed var(--border-color)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
-                    <span style={{ fontSize: '0.82rem', color: '#93c5fd', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ fontSize: '0.82rem', color: '#2563eb', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <Upload size={14} /> Test Uploading {form.category} Certificate Document
                     </span>
                     <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Supported: PDF, JPG (Max 500 KB)</span>
@@ -10628,7 +10551,7 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
                     style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}
                   />
                   {form.certUpload && (
-                    <div style={{ marginTop: '8px', fontSize: '0.8rem', color: form.certUpload.isSizeValid ? '#86efac' : '#f87171' }}>
+                    <div style={{ marginTop: '8px', fontSize: '0.8rem', color: form.certUpload.isSizeValid ? '#15803d' : '#dc2626' }}>
                       {form.certUpload.validationMessage}
                     </div>
                   )}
@@ -10641,7 +10564,7 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
           {currentStep === 4 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
               <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
-                <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'white', margin: 0 }}>
+                <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                   4. Preference of Posts (Order of Merit Allocation)
                 </h4>
                 <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
@@ -10651,13 +10574,13 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
                 <div>
-                  <label style={{ fontSize: '0.82rem', color: '#93c5fd', fontWeight: 700, display: 'block', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '0.82rem', color: '#2563eb', fontWeight: 700, display: 'block', marginBottom: '6px' }}>
                     1st Preference (Top Priority) *
                   </label>
                   <select
                     value={form.pref1}
                     onChange={e => setForm({ ...form, pref1: e.target.value })}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-sm)', background: '#1e293b', border: '1px solid var(--primary)', color: 'white', fontSize: '0.9rem' }}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--primary)', color: 'var(--text-primary)', fontSize: '0.9rem' }}
                   >
                     {postsList.map(p => (
                       <option key={p.id} value={p.id}>{p.name}</option>
@@ -10666,13 +10589,13 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
                 </div>
 
                 <div>
-                  <label style={{ fontSize: '0.82rem', color: '#cbd5e1', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '0.82rem', color: '#334155', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
                     2nd Preference *
                   </label>
                   <select
                     value={form.pref2}
                     onChange={e => setForm({ ...form, pref2: e.target.value })}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-sm)', background: '#1e293b', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.9rem' }}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontSize: '0.9rem' }}
                   >
                     {postsList.map(p => (
                       <option key={p.id} value={p.id}>{p.name}</option>
@@ -10681,13 +10604,13 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
                 </div>
 
                 <div>
-                  <label style={{ fontSize: '0.82rem', color: '#cbd5e1', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '0.82rem', color: '#334155', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
                     3rd Preference *
                   </label>
                   <select
                     value={form.pref3}
                     onChange={e => setForm({ ...form, pref3: e.target.value })}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-sm)', background: '#1e293b', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.9rem' }}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontSize: '0.9rem' }}
                   >
                     {postsList.map(p => (
                       <option key={p.id} value={p.id}>{p.name}</option>
@@ -10696,13 +10619,13 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
                 </div>
 
                 <div>
-                  <label style={{ fontSize: '0.82rem', color: '#cbd5e1', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '0.82rem', color: '#334155', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
                     4th Preference *
                   </label>
                   <select
                     value={form.pref4}
                     onChange={e => setForm({ ...form, pref4: e.target.value })}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-sm)', background: '#1e293b', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.9rem' }}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontSize: '0.9rem' }}
                   >
                     {postsList.map(p => (
                       <option key={p.id} value={p.id}>{p.name}</option>
@@ -10718,7 +10641,7 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
                 <div>
-                  <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'white', margin: 0 }}>
+                  <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                     5. Upload Photograph & Signature Verification
                   </h4>
                   <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
@@ -10727,7 +10650,7 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
                 </div>
 
                 {/* Switcher: Real File Upload vs Preset Traps */}
-                <div style={{ display: 'flex', gap: '6px', background: 'rgba(255,255,255,0.06)', padding: '3px', borderRadius: 'var(--radius-sm)' }}>
+                <div style={{ display: 'flex', gap: '6px', background: 'var(--surface-2)', padding: '3px', borderRadius: 'var(--radius-sm)' }}>
                   <button
                     onClick={() => setForm({ ...form, uploadMode: 'REAL_UPLOAD' })}
                     className={`btn ${form.uploadMode === 'REAL_UPLOAD' ? 'btn-primary' : 'btn-secondary'}`}
@@ -10750,15 +10673,15 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
                   
                   {/* Photo Real Upload Card */}
-                  <div style={{ padding: '20px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div style={{ padding: '20px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '14px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#93c5fd', fontWeight: 800, fontSize: '0.95rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#2563eb', fontWeight: 800, fontSize: '0.95rem' }}>
                         <Camera size={18} /> Candidate Live Photograph *
                       </div>
                       <span className="badge badge-verified" style={{ fontSize: '0.7rem' }}>20 KB – 50 KB</span>
                     </div>
 
-                    <div style={{ padding: '16px', borderRadius: 'var(--radius-sm)', background: 'rgba(0,0,0,0.2)', border: '1px dashed #3b82f6', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ padding: '16px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-3)', border: '1px dashed #3b82f6', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                       <input
                         type="file"
                         accept="image/jpeg,image/png,image/jpg"
@@ -10775,18 +10698,18 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
                     </div>
 
                     {form.photoUpload ? (
-                      <div style={{ display: 'flex', gap: '14px', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: 'var(--radius-sm)' }}>
+                      <div style={{ display: 'flex', gap: '14px', alignItems: 'center', background: 'var(--surface-2)', padding: '12px', borderRadius: 'var(--radius-sm)' }}>
                         <img 
                           src={form.photoUpload.previewUrl} 
                           alt="Photo Preview" 
                           style={{ width: '70px', height: '90px', objectFit: 'cover', borderRadius: '4px', border: form.photoUpload.isSizeValid && form.photoUpload.isDimensionValid ? '2px solid #10b981' : '2px solid #ef4444' }} 
                         />
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '0.8rem' }}>
-                          <div style={{ fontWeight: 700, color: 'white' }}>{form.photoUpload.name}</div>
-                          <div style={{ color: form.photoUpload.isSizeValid ? '#86efac' : '#f87171' }}>
+                          <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{form.photoUpload.name}</div>
+                          <div style={{ color: form.photoUpload.isSizeValid ? '#15803d' : '#dc2626' }}>
                             Size: <strong>{form.photoUpload.sizeKb} KB</strong> {form.photoUpload.isSizeValid ? '✅ (Valid 20-50 KB)' : '❌ (Must be 20-50 KB)'}
                           </div>
-                          <div style={{ color: form.photoUpload.isDimensionValid ? '#86efac' : '#fbbf24' }}>
+                          <div style={{ color: form.photoUpload.isDimensionValid ? '#15803d' : '#b45309' }}>
                             Resolution: <strong>{form.photoUpload.width} × {form.photoUpload.height} px</strong>
                           </div>
                           <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
@@ -10802,15 +10725,15 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
                   </div>
 
                   {/* Signature Real Upload Card */}
-                  <div style={{ padding: '20px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div style={{ padding: '20px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '14px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#93c5fd', fontWeight: 800, fontSize: '0.95rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#2563eb', fontWeight: 800, fontSize: '0.95rem' }}>
                         <PenTool size={18} /> Candidate Signature Image *
                       </div>
                       <span className="badge badge-verified" style={{ fontSize: '0.7rem' }}>10 KB – 20 KB</span>
                     </div>
 
-                    <div style={{ padding: '16px', borderRadius: 'var(--radius-sm)', background: 'rgba(0,0,0,0.2)', border: '1px dashed #3b82f6', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ padding: '16px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-3)', border: '1px dashed #3b82f6', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                       <input
                         type="file"
                         accept="image/jpeg,image/png,image/jpg"
@@ -10827,18 +10750,18 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
                     </div>
 
                     {form.signUpload ? (
-                      <div style={{ display: 'flex', gap: '14px', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: 'var(--radius-sm)' }}>
+                      <div style={{ display: 'flex', gap: '14px', alignItems: 'center', background: 'var(--surface-2)', padding: '12px', borderRadius: 'var(--radius-sm)' }}>
                         <img 
                           src={form.signUpload.previewUrl} 
                           alt="Signature Preview" 
                           style={{ width: '100px', height: '50px', objectFit: 'contain', background: 'white', borderRadius: '4px', border: form.signUpload.isSizeValid ? '2px solid #10b981' : '2px solid #ef4444' }} 
                         />
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '0.8rem' }}>
-                          <div style={{ fontWeight: 700, color: 'white' }}>{form.signUpload.name}</div>
-                          <div style={{ color: form.signUpload.isSizeValid ? '#86efac' : '#f87171' }}>
+                          <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{form.signUpload.name}</div>
+                          <div style={{ color: form.signUpload.isSizeValid ? '#15803d' : '#dc2626' }}>
                             Size: <strong>{form.signUpload.sizeKb} KB</strong> {form.signUpload.isSizeValid ? '✅ (Valid 10-20 KB)' : '❌ (Must be 10-20 KB)'}
                           </div>
-                          <div style={{ color: form.signUpload.isDimensionValid ? '#86efac' : '#fbbf24' }}>
+                          <div style={{ color: form.signUpload.isDimensionValid ? '#15803d' : '#b45309' }}>
                             Dimensions: <strong>{form.signUpload.width} × {form.signUpload.height} px</strong>
                           </div>
                           <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
@@ -10858,8 +10781,8 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
 
                 /* MODE B: SIMULATED PRESET TRAPS */
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '18px' }}>
-                  <div style={{ padding: '16px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#93c5fd', fontWeight: 700, fontSize: '0.9rem' }}>
+                  <div style={{ padding: '16px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#2563eb', fontWeight: 700, fontSize: '0.9rem' }}>
                       <Camera size={18} /> Simulated Photograph Framing Trap
                     </div>
                     <label style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
@@ -10868,7 +10791,7 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
                     <select
                       value={form.photoType}
                       onChange={e => setForm({ ...form, photoType: e.target.value as any })}
-                      style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-sm)', background: '#1e293b', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.88rem' }}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontSize: '0.88rem' }}
                     >
                       <option value="CLEAN_WHITE_BG">✅ Clean, front-facing, white background, no glasses (Valid)</option>
                       <option value="WITH_GLASSES">⚠️ Wearing Spectacles / Reading Glasses (Common Trap!)</option>
@@ -10877,8 +10800,8 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
                     </select>
                   </div>
 
-                  <div style={{ padding: '16px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#93c5fd', fontWeight: 700, fontSize: '0.9rem' }}>
+                  <div style={{ padding: '16px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#2563eb', fontWeight: 700, fontSize: '0.9rem' }}>
                       <PenTool size={18} /> Simulated Signature Formatting Trap
                     </div>
                     <label style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
@@ -10887,7 +10810,7 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
                     <select
                       value={form.signType}
                       onChange={e => setForm({ ...form, signType: e.target.value as any })}
-                      style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-sm)', background: '#1e293b', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.88rem' }}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontSize: '0.88rem' }}
                     >
                       <option value="VALID_RUNNING_HAND">✅ Running Handwriting on White Paper, 10-20 KB (Valid)</option>
                       <option value="CAPITAL_LETTERS">⚠️ Signature in FULL CAPITAL LETTERS (Common Trap!)</option>
@@ -10903,7 +10826,7 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
           {currentStep === 6 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
               <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
-                <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'white', margin: 0 }}>
+                <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                   6. Final Application Form Preview
                 </h4>
                 <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
@@ -10911,39 +10834,39 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
                 </span>
               </div>
 
-              <div style={{ padding: '20px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px', fontSize: '0.85rem' }}>
-                <div><strong style={{ color: '#93c5fd' }}>Candidate Name:</strong> <div style={{ color: 'white' }}>{form.candidateName}</div></div>
-                <div><strong style={{ color: '#93c5fd' }}>Father's Name:</strong> <div style={{ color: 'white' }}>{form.fatherName}</div></div>
-                <div><strong style={{ color: '#93c5fd' }}>Date of Birth:</strong> <div style={{ color: 'white' }}>{form.dob}</div></div>
-                <div><strong style={{ color: '#93c5fd' }}>Category:</strong> <div style={{ color: 'white' }}>{form.category}</div></div>
-                <div><strong style={{ color: '#93c5fd' }}>Highest Qualification:</strong> <div style={{ color: 'white' }}>{form.highestQualification}</div></div>
+              <div style={{ padding: '20px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px', fontSize: '0.85rem' }}>
+                <div><strong style={{ color: '#2563eb' }}>Candidate Name:</strong> <div style={{ color: 'var(--text-primary)' }}>{form.candidateName}</div></div>
+                <div><strong style={{ color: '#2563eb' }}>Father's Name:</strong> <div style={{ color: 'var(--text-primary)' }}>{form.fatherName}</div></div>
+                <div><strong style={{ color: '#2563eb' }}>Date of Birth:</strong> <div style={{ color: 'var(--text-primary)' }}>{form.dob}</div></div>
+                <div><strong style={{ color: '#2563eb' }}>Category:</strong> <div style={{ color: 'var(--text-primary)' }}>{form.category}</div></div>
+                <div><strong style={{ color: '#2563eb' }}>Highest Qualification:</strong> <div style={{ color: 'var(--text-primary)' }}>{form.highestQualification}</div></div>
                 <div>
-                  <strong style={{ color: '#93c5fd' }}>12th Math %:</strong> 
-                  <div style={{ color: form.mathTwelfthPercentage > 100 ? '#f87171' : 'white', fontWeight: form.mathTwelfthPercentage > 100 ? 800 : 400 }}>
+                  <strong style={{ color: '#2563eb' }}>12th Math %:</strong> 
+                  <div style={{ color: form.mathTwelfthPercentage > 100 ? '#dc2626' : 'white', fontWeight: form.mathTwelfthPercentage > 100 ? 800 : 400 }}>
                     {form.mathTwelfthPercentage}% {form.mathTwelfthPercentage > 100 && '(⚠️ Invalid > 100%)'}
                   </div>
                 </div>
-                <div><strong style={{ color: '#93c5fd' }}>1st Post Preference:</strong> <div style={{ color: 'white' }}>{postsList.find(p => p.id === form.pref1)?.name}</div></div>
+                <div><strong style={{ color: '#2563eb' }}>1st Post Preference:</strong> <div style={{ color: 'var(--text-primary)' }}>{postsList.find(p => p.id === form.pref1)?.name}</div></div>
                 
                 {form.uploadMode === 'REAL_UPLOAD' ? (
                   <>
                     <div>
-                      <strong style={{ color: '#93c5fd' }}>Photo Upload:</strong> 
-                      <div style={{ color: form.photoUpload?.isSizeValid ? '#86efac' : '#f87171' }}>
+                      <strong style={{ color: '#2563eb' }}>Photo Upload:</strong> 
+                      <div style={{ color: form.photoUpload?.isSizeValid ? '#15803d' : '#dc2626' }}>
                         {form.photoUpload ? `${form.photoUpload.name} (${form.photoUpload.sizeKb} KB)` : 'Not Uploaded'}
                       </div>
                     </div>
                     <div>
-                      <strong style={{ color: '#93c5fd' }}>Signature Upload:</strong> 
-                      <div style={{ color: form.signUpload?.isSizeValid ? '#86efac' : '#f87171' }}>
+                      <strong style={{ color: '#2563eb' }}>Signature Upload:</strong> 
+                      <div style={{ color: form.signUpload?.isSizeValid ? '#15803d' : '#dc2626' }}>
                         {form.signUpload ? `${form.signUpload.name} (${form.signUpload.sizeKb} KB)` : 'Not Uploaded'}
                       </div>
                     </div>
                   </>
                 ) : (
                   <>
-                    <div><strong style={{ color: '#93c5fd' }}>Photo Status:</strong> <div style={{ color: form.photoType === 'CLEAN_WHITE_BG' ? '#86efac' : '#f87171' }}>{form.photoType}</div></div>
-                    <div><strong style={{ color: '#93c5fd' }}>Signature Status:</strong> <div style={{ color: form.signType === 'VALID_RUNNING_HAND' ? '#86efac' : '#f87171' }}>{form.signType}</div></div>
+                    <div><strong style={{ color: '#2563eb' }}>Photo Status:</strong> <div style={{ color: form.photoType === 'CLEAN_WHITE_BG' ? '#15803d' : '#dc2626' }}>{form.photoType}</div></div>
+                    <div><strong style={{ color: '#2563eb' }}>Signature Status:</strong> <div style={{ color: form.signType === 'VALID_RUNNING_HAND' ? '#15803d' : '#dc2626' }}>{form.signType}</div></div>
                   </>
                 )}
               </div>
@@ -10998,14 +10921,14 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
       ) : (
 
         /* POST-SUBMISSION ERROR & PITFALL DIAGNOSTIC */
-        <div className="glass-card animate-fade-in" style={{ padding: '28px', border: mistakes.length > 0 ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid rgba(16, 185, 129, 0.4)', background: 'rgba(15, 23, 42, 0.98)', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div className="glass-card animate-fade-in" style={{ padding: '28px', border: mistakes.length > 0 ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid rgba(16, 185, 129, 0.4)', background: '#ffffff', display: 'flex', flexDirection: 'column', gap: '20px' }}>
           
           <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
             <div>
-              <span className="badge" style={{ background: mistakes.length > 0 ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)', color: mistakes.length > 0 ? '#fca5a5' : '#86efac', fontSize: '0.8rem' }}>
+              <span className="badge" style={{ background: mistakes.length > 0 ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)', color: mistakes.length > 0 ? '#dc2626' : '#15803d', fontSize: '0.8rem' }}>
                 {mistakes.length > 0 ? `🎯 PRACTICE COMPLETE — ${mistakes.length} MISTAKES DETECTED` : '🌟 100% PERFECT APPLICATION & FILES VERIFIED'}
               </span>
-              <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white', margin: '6px 0 0 0' }}>
+              <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)', margin: '6px 0 0 0' }}>
                 Application Diagnostic & Document Verification Report
               </h3>
             </div>
@@ -11018,7 +10941,7 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
           {/* Mistakes Breakdown */}
           {mistakes.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <p style={{ color: '#fca5a5', fontSize: '0.92rem', margin: 0, fontWeight: 600 }}>
+              <p style={{ color: '#dc2626', fontSize: '0.92rem', margin: 0, fontWeight: 600 }}>
                 You made {mistakes.length} mistake{mistakes.length > 1 ? 's' : ''} that would cause rejection or disqualification in the actual SSC portal:
               </p>
 
@@ -11036,7 +10959,7 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#f87171', fontWeight: 800, fontSize: '1.05rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#dc2626', fontWeight: 800, fontSize: '1.05rem' }}>
                       <XCircle size={18} /> 🔴 {idx + 1}. {err.title}
                     </div>
                     <span className="badge badge-verified" style={{ fontSize: '0.72rem' }}>
@@ -11044,7 +10967,7 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
                     </span>
                   </div>
 
-                  <div style={{ fontSize: '0.88rem', color: '#fecaca', lineHeight: 1.5 }}>
+                  <div style={{ fontSize: '0.88rem', color: '#b91c1c', lineHeight: 1.5 }}>
                     <strong>Problem:</strong> {err.problem}
                   </div>
 
@@ -11059,7 +10982,7 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
               ))}
             </div>
           ) : (
-            <div style={{ padding: '20px', borderRadius: 'var(--radius-md)', background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#86efac', fontSize: '0.95rem', lineHeight: 1.6 }}>
+            <div style={{ padding: '20px', borderRadius: 'var(--radius-md)', background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#15803d', fontSize: '0.95rem', lineHeight: 1.6 }}>
               🎉 <strong>Outstanding!</strong> Your practice application meets all statutory gazette parameters with zero discrepancies in educational criteria, post preferences, photograph framing, or signature standards.
             </div>
           )}
@@ -11067,7 +10990,7 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
           {/* Clean Checks Passed */}
           {passedChecks.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
-              <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#86efac', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#15803d', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <CheckCircle2 size={16} /> 🟢 Everything else looks good:
               </div>
               <ul style={{ margin: '4px 0 0 0', paddingLeft: '22px', fontSize: '0.84rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -11177,18 +11100,18 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       
       {/* Header Banner */}
-      <div className="glass-card" style={{ padding: '24px', background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%)' }}>
+      <div className="glass-card" style={{ padding: '24px', background: 'linear-gradient(135deg, var(--surface-2) 0%, #ffffff 100%)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
               <span className="badge badge-verified">
                 <ShieldCheck size={14} /> 100% OFFICIAL APPLICATION PROTOCOL
               </span>
-              <span className="badge badge-demo" style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa' }}>
+              <span className="badge badge-demo" style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#2563eb' }}>
                 {guide.officialPortal.replace(/^https?:\/\//, '').replace(/\/$/, '')}
               </span>
             </div>
-            <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'white', marginBottom: '6px' }}>
+            <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '6px' }}>
               Interactive Application & Document Compliance Assistant
             </h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
@@ -11209,7 +11132,7 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
       </div>
 
       {/* Top Mode Switcher: Practice Simulator vs Step-by-Step Instructions */}
-      <div style={{ display: 'flex', gap: '8px', background: 'rgba(255, 255, 255, 0.04)', padding: '6px', borderRadius: 'var(--radius-md)' }}>
+      <div style={{ display: 'flex', gap: '8px', background: 'var(--surface-2)', padding: '6px', borderRadius: 'var(--radius-md)' }}>
         <button
           onClick={() => setApplicationMode('PRACTICE_SIMULATOR')}
           className={`btn ${applicationMode === 'PRACTICE_SIMULATOR' ? 'btn-primary' : 'btn-secondary'}`}
@@ -11279,9 +11202,9 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {isSscPortal && (
           <div style={{ padding: '14px 18px', background: 'rgba(59, 130, 246, 0.08)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(59, 130, 246, 0.3)', display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <Info size={22} color="#60a5fa" />
+            <Info size={22} color="#2563eb" />
             <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-              <strong style={{ color: 'white' }}>Important Notice:</strong> SSC has permanently discontinued the old portal (<code style={{ color: '#93c5fd' }}>ssc.nic.in</code>). All aspirants must create a fresh <strong>One-Time Registration (OTR)</strong> on <code style={{ color: '#93c5fd' }}>ssc.gov.in</code>.
+              <strong style={{ color: 'var(--text-primary)' }}>Important Notice:</strong> SSC has permanently discontinued the old portal (<code style={{ color: '#2563eb' }}>ssc.nic.in</code>). All aspirants must create a fresh <strong>One-Time Registration (OTR)</strong> on <code style={{ color: '#2563eb' }}>ssc.gov.in</code>.
             </div>
           </div>
           )}
@@ -11307,17 +11230,17 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
                         width: '32px',
                         height: '32px',
                         borderRadius: '50%',
-                        background: isExpanded ? 'var(--primary)' : 'rgba(255, 255, 255, 0.1)',
+                        background: isExpanded ? 'var(--primary)' : 'var(--surface-3)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         fontWeight: 800,
                         fontSize: '0.95rem',
-                        color: 'white'
+                        color: 'var(--text-primary)'
                       }}>
                         {step.stepNumber}
                       </div>
-                      <span style={{ fontSize: '1.05rem', fontWeight: 700, color: 'white' }}>
+                      <span style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                         {step.title}
                       </span>
                     </div>
@@ -11327,7 +11250,7 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
                   {isExpanded && (
                     <div style={{ padding: '0 24px 24px 24px', borderTop: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '16px', paddingTop: '16px' }}>
                       <div>
-                        <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#93c5fd', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>
+                        <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#2563eb', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>
                           Step-by-Step Action Items
                         </h4>
                         <ul style={{ listStyleType: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -11342,7 +11265,7 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
 
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginTop: '8px' }}>
                         <div style={{ padding: '14px', borderRadius: 'var(--radius-md)', background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
-                          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#34d399', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#15803d', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
                             <CheckCircle2 size={15} /> Mandatory Required Documents / Details
                           </span>
                           <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
@@ -11353,7 +11276,7 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
                         </div>
 
                         <div style={{ padding: '14px', borderRadius: 'var(--radius-md)', background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
-                          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#f87171', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#dc2626', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
                             <AlertTriangle size={15} /> Common Mistakes to Avoid
                           </span>
                           <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
@@ -11379,19 +11302,19 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
           {/* Live Photo Box */}
           <div className="glass-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ padding: '10px', borderRadius: 'var(--radius-md)', background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa' }}>
+              <div style={{ padding: '10px', borderRadius: 'var(--radius-md)', background: 'rgba(59, 130, 246, 0.15)', color: '#2563eb' }}>
                 <Camera size={24} />
               </div>
               <div>
-                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'white' }}>Live Webcam Photo Capture</h3>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)' }}>Live Webcam Photo Capture</h3>
                 <span className="badge badge-verified" style={{ fontSize: '0.75rem', marginTop: '2px' }}>
                   SSC MANDATORY RULE
                 </span>
               </div>
             </div>
 
-            <div style={{ padding: '14px', background: 'rgba(0,0,0,0.3)', borderRadius: 'var(--radius-md)', border: '1px dashed var(--border-color)', textAlign: 'center' }}>
-              <div style={{ fontSize: '0.85rem', color: '#93c5fd', fontWeight: 600 }}>Format: Live WebRTC / SSC App Stream</div>
+            <div style={{ padding: '14px', background: 'var(--surface-3)', borderRadius: 'var(--radius-md)', border: '1px dashed var(--border-color)', textAlign: 'center' }}>
+              <div style={{ fontSize: '0.85rem', color: '#2563eb', fontWeight: 600 }}>Format: Live WebRTC / SSC App Stream</div>
               <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>Upload of pre-saved passport photos is completely disabled.</div>
             </div>
 
@@ -11413,25 +11336,25 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
           {/* Scanned Signature Box */}
           <div className="glass-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ padding: '10px', borderRadius: 'var(--radius-md)', background: 'rgba(16, 185, 129, 0.15)', color: '#34d399' }}>
+              <div style={{ padding: '10px', borderRadius: 'var(--radius-md)', background: 'rgba(16, 185, 129, 0.15)', color: '#15803d' }}>
                 <PenTool size={24} />
               </div>
               <div>
-                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'white' }}>Scanned Signature Specimen</h3>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)' }}>Scanned Signature Specimen</h3>
                 <span className="badge badge-verified" style={{ fontSize: '0.75rem', marginTop: '2px' }}>
                   DIMENSION: 4.0 cm × 2.0 cm
                 </span>
               </div>
             </div>
 
-            <div style={{ padding: '14px', background: 'rgba(0,0,0,0.3)', borderRadius: 'var(--radius-md)', border: '1px dashed var(--border-color)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', textAlign: 'center' }}>
+            <div style={{ padding: '14px', background: 'var(--surface-3)', borderRadius: 'var(--radius-md)', border: '1px dashed var(--border-color)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', textAlign: 'center' }}>
               <div>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>FILE SIZE</span>
-                <div style={{ fontWeight: 700, color: 'white' }}>10 KB to 20 KB</div>
+                <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>10 KB to 20 KB</div>
               </div>
               <div>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>FILE FORMAT</span>
-                <div style={{ fontWeight: 700, color: 'white' }}>JPEG / JPG only</div>
+                <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>JPEG / JPG only</div>
               </div>
             </div>
 
@@ -11480,7 +11403,7 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
                     borderRadius: 'var(--radius-md)',
                     background: 'var(--bg-input)',
                     border: '1px solid var(--border-color)',
-                    color: 'white',
+                    color: 'var(--text-primary)',
                     fontSize: '0.95rem'
                   }}
                 >
@@ -11508,7 +11431,7 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
                     borderRadius: 'var(--radius-md)',
                     background: 'var(--bg-input)',
                     border: '1px solid var(--border-color)',
-                    color: 'white',
+                    color: 'var(--text-primary)',
                     fontSize: '0.95rem'
                   }}
                 />
@@ -11532,7 +11455,7 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
                 background: certValidityResult.valid ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
                 border: certValidityResult.valid ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(239, 68, 68, 0.4)',
                 fontSize: '0.95rem',
-                color: certValidityResult.valid ? '#34d399' : '#f87171',
+                color: certValidityResult.valid ? '#15803d' : '#dc2626',
                 marginBottom: '20px'
               }}>
                 {certValidityResult.message}
@@ -11540,26 +11463,26 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
             )}
 
             {/* Selected Certificate Official Specs */}
-            <div style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: 'var(--surface-3)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-                <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'white' }}>{selectedCert.title}</h4>
+                <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>{selectedCert.title}</h4>
                 <span className="badge badge-verified">{selectedCert.officialAnnexure}</span>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px', fontSize: '0.88rem' }}>
                 <div>
                   <span style={{ color: 'var(--text-muted)' }}>Financial Year / Validity:</span>
-                  <div style={{ fontWeight: 600, color: 'white' }}>{selectedCert.financialYearValidity}</div>
+                  <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{selectedCert.financialYearValidity}</div>
                 </div>
                 <div>
                   <span style={{ color: 'var(--text-muted)' }}>Crucial Date Window:</span>
-                  <div style={{ fontWeight: 600, color: '#93c5fd' }}>{selectedCert.crucialDate}</div>
+                  <div style={{ fontWeight: 600, color: '#2563eb' }}>{selectedCert.crucialDate}</div>
                 </div>
               </div>
 
               <div>
                 <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Competent Issuing Authorities:</span>
-                <div style={{ fontSize: '0.9rem', color: 'white', marginTop: '2px' }}>
+                <div style={{ fontSize: '0.9rem', color: 'var(--text-primary)', marginTop: '2px' }}>
                   {selectedCert.issuingAuthority.join(' • ')}
                 </div>
               </div>
@@ -11581,7 +11504,7 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
       {activeTab === 'PITFALLS' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div style={{ padding: '14px 18px', background: 'rgba(239, 68, 68, 0.08)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(239, 68, 68, 0.3)', display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <AlertTriangle size={22} color="#f87171" />
+            <AlertTriangle size={22} color="#dc2626" />
             <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
               Over <strong>2.5 Lakh applications</strong> are cancelled each year in SSC examinations due to preventable administrative and photo errors. Review these 10 pitfalls carefully.
             </div>
@@ -11596,7 +11519,7 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
                     height: '26px',
                     borderRadius: '50%',
                     background: 'rgba(239, 68, 68, 0.2)',
-                    color: '#f87171',
+                    color: '#dc2626',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -11605,16 +11528,16 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
                   }}>
                     {pIdx + 1}
                   </div>
-                  <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'white' }}>
+                  <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                     {pitfall.pitfall}
                   </h4>
                 </div>
 
-                <div style={{ padding: '10px', borderRadius: 'var(--radius-sm)', background: 'rgba(239, 68, 68, 0.05)', fontSize: '0.85rem', color: '#fca5a5' }}>
+                <div style={{ padding: '10px', borderRadius: 'var(--radius-sm)', background: 'rgba(239, 68, 68, 0.05)', fontSize: '0.85rem', color: '#dc2626' }}>
                   <strong>Consequence:</strong> {pitfall.consequence}
                 </div>
 
-                <div style={{ padding: '10px', borderRadius: 'var(--radius-sm)', background: 'rgba(16, 185, 129, 0.05)', fontSize: '0.85rem', color: '#86efac' }}>
+                <div style={{ padding: '10px', borderRadius: 'var(--radius-sm)', background: 'rgba(16, 185, 129, 0.05)', fontSize: '0.85rem', color: '#15803d' }}>
                   <strong>How to Prevent:</strong> {pitfall.prevention}
                 </div>
               </div>
@@ -11674,8 +11597,8 @@ export const AdmitCardSection: React.FC<AdmitCardSectionProps> = ({
         style={{ 
           padding: '24px', 
           background: isAvailable 
-            ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(17, 24, 39, 0.95) 100%)'
-            : 'linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(17, 24, 39, 0.95) 100%)',
+            ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, #ffffff 100%)'
+            : 'linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, #ffffff 100%)',
           borderColor: isAvailable ? 'rgba(16, 185, 129, 0.35)' : 'rgba(245, 158, 11, 0.35)'
         }}
       >
@@ -11685,12 +11608,12 @@ export const AdmitCardSection: React.FC<AdmitCardSectionProps> = ({
               <span className={`badge ${isAvailable ? 'badge-verified' : 'badge-demo'}`}>
                 {isAvailable ? '🟢 ADMIT CARD ACTIVE & DOWNLOADABLE' : '🟡 CITY INTIMATION RELEASED — ADMIT CARD SOON'}
               </span>
-              <span className="badge" style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--text-secondary)' }}>
+              <span className="badge" style={{ background: 'var(--surface-2)', color: 'var(--text-secondary)' }}>
                 Official Board: {exam.authorityName}
               </span>
             </div>
 
-            <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white', margin: '0 0 6px' }}>
+            <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px' }}>
               e-Admit Card & Exam City Intimation Slip
             </h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0 }}>
@@ -11719,7 +11642,7 @@ export const AdmitCardSection: React.FC<AdmitCardSectionProps> = ({
         
         {/* Box 1: How to Download & Required Credentials */}
         <div className="glass-card" style={{ padding: '24px' }}>
-          <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'white', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <ShieldCheck size={18} color="var(--primary)" /> Required Login Credentials
           </h4>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
@@ -11727,26 +11650,26 @@ export const AdmitCardSection: React.FC<AdmitCardSectionProps> = ({
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '10px' }}>
               <User size={16} color="var(--cyan)" />
               <div>
-                <strong style={{ fontSize: '0.88rem', color: 'white' }}>Registration Number / Roll Number</strong>
+                <strong style={{ fontSize: '0.88rem', color: 'var(--text-primary)' }}>Registration Number / Roll Number</strong>
                 <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Received via SMS / Email during initial application submission</div>
               </div>
             </div>
 
-            <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '10px' }}>
               <Calendar size={16} color="var(--emerald)" />
               <div>
-                <strong style={{ fontSize: '0.88rem', color: 'white' }}>Date of Birth (Password)</strong>
+                <strong style={{ fontSize: '0.88rem', color: 'var(--text-primary)' }}>Date of Birth (Password)</strong>
                 <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Format: DD/MM/YYYY or as chosen during registration</div>
               </div>
             </div>
 
-            <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <FileText size={16} color="#fbbf24" />
+            <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <FileText size={16} color="#b45309" />
               <div>
-                <strong style={{ fontSize: '0.88rem', color: 'white' }}>Live Photo & Mother's Name (Alternative Fallback)</strong>
+                <strong style={{ fontSize: '0.88rem', color: 'var(--text-primary)' }}>Live Photo & Mother's Name (Alternative Fallback)</strong>
                 <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>If Registration ID is misplaced, use Candidate Name + Father/Mother Name + DoB</div>
               </div>
             </div>
@@ -11755,22 +11678,22 @@ export const AdmitCardSection: React.FC<AdmitCardSectionProps> = ({
 
         {/* Box 2: Crucial Printing & Verification Guidelines */}
         <div className="glass-card" style={{ padding: '24px' }}>
-          <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'white', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Printer size={18} color="#60a5fa" /> Essential Printing Rules
+          <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Printer size={18} color="#2563eb" /> Essential Printing Rules
           </h4>
 
           <ul style={{ paddingLeft: '20px', margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '10px', lineHeight: 1.5 }}>
             <li>
-              <strong style={{ color: 'white' }}>Print in High Resolution:</strong> Both Color or Laser Black & White prints are acceptable, but the <strong style={{ color: '#93c5fd' }}>QR Code / Barcode</strong> and candidate photograph must be crisp and easily scannable.
+              <strong style={{ color: 'var(--text-primary)' }}>Print in High Resolution:</strong> Both Color or Laser Black & White prints are acceptable, but the <strong style={{ color: '#2563eb' }}>QR Code / Barcode</strong> and candidate photograph must be crisp and easily scannable.
             </li>
             <li>
-              <strong style={{ color: 'white' }}>Check Candidate Particulars:</strong> Verify Name spelling, Category, Sub-Category, and Date of Birth against your official Class 10th Certificate.
+              <strong style={{ color: 'var(--text-primary)' }}>Check Candidate Particulars:</strong> Verify Name spelling, Category, Sub-Category, and Date of Birth against your official Class 10th Certificate.
             </li>
             <li>
-              <strong style={{ color: 'white' }}>Exam Lab & Shift Timing:</strong> Note the precise <strong style={{ color: '#f87171' }}>Reporting Time and Gate Closing Time</strong>. No candidate is permitted inside the examination center after gate closure.
+              <strong style={{ color: 'var(--text-primary)' }}>Exam Lab & Shift Timing:</strong> Note the precise <strong style={{ color: '#dc2626' }}>Reporting Time and Gate Closing Time</strong>. No candidate is permitted inside the examination center after gate closure.
             </li>
             <li>
-              <strong style={{ color: 'white' }}>Self-Declaration Form:</strong> Complete the Covid / Scribe / Identity self-declaration paragraphs in your own handwriting <em>only inside the exam hall in front of the Invigilator</em>.
+              <strong style={{ color: 'var(--text-primary)' }}>Self-Declaration Form:</strong> Complete the Covid / Scribe / Identity self-declaration paragraphs in your own handwriting <em>only inside the exam hall in front of the Invigilator</em>.
             </li>
           </ul>
         </div>
@@ -11781,7 +11704,7 @@ export const AdmitCardSection: React.FC<AdmitCardSectionProps> = ({
       <div className="glass-card" style={{ padding: '24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
           <div>
-            <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'white', margin: '0 0 4px' }}>
+            <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 4px' }}>
               Regional & Zonal Download Mirrors
             </h4>
             <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0 }}>
@@ -11800,7 +11723,7 @@ export const AdmitCardSection: React.FC<AdmitCardSectionProps> = ({
               style={{
                 padding: '14px',
                 borderRadius: 'var(--radius-md)',
-                background: selectedRegion === rp.code ? 'rgba(99,102,241,0.1)' : 'rgba(255,255,255,0.02)',
+                background: selectedRegion === rp.code ? 'rgba(99,102,241,0.1)' : 'var(--surface-2)',
                 border: selectedRegion === rp.code ? '1px solid var(--primary)' : '1px solid var(--border-color)',
                 display: 'flex',
                 flexDirection: 'column',
@@ -11811,13 +11734,13 @@ export const AdmitCardSection: React.FC<AdmitCardSectionProps> = ({
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
                   <span className="badge badge-demo" style={{ fontSize: '0.7rem' }}>REGION: {rp.code}</span>
-                  <span style={{ fontSize: '0.7rem', color: '#34d399', fontWeight: 600 }}>Active Portal</span>
+                  <span style={{ fontSize: '0.7rem', color: '#15803d', fontWeight: 600 }}>Active Portal</span>
                 </div>
-                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'white' }}>{rp.name}</div>
+                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>{rp.name}</div>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '8px' }}>
-                <code style={{ fontSize: '0.75rem', color: '#93c5fd' }}>{rp.url.replace('https://', '')}</code>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--surface-2)', paddingTop: '8px' }}>
+                <code style={{ fontSize: '0.75rem', color: '#2563eb' }}>{rp.url.replace('https://', '')}</code>
                 <a 
                   href={rp.url} 
                   target="_blank" 
@@ -11839,7 +11762,7 @@ export const AdmitCardSection: React.FC<AdmitCardSectionProps> = ({
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <QrCode size={20} color="var(--primary)" />
-            <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'white', margin: 0 }}>
+            <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
               Sample Hall Ticket Format Preview
             </h4>
           </div>
@@ -11848,11 +11771,11 @@ export const AdmitCardSection: React.FC<AdmitCardSectionProps> = ({
           </span>
         </div>
 
-        <div style={{ padding: '20px', borderRadius: 'var(--radius-md)', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border-color)' }}>
+        <div style={{ padding: '20px', borderRadius: 'var(--radius-md)', background: 'var(--surface-3)', border: '1px solid var(--border-color)' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '16px' }}>
             <div>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Candidate Name</span>
-              <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'white' }}>CANDIDATE ASPIRANT</div>
+              <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>CANDIDATE ASPIRANT</div>
             </div>
             <div>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Roll Number / User ID</span>
@@ -11860,17 +11783,17 @@ export const AdmitCardSection: React.FC<AdmitCardSectionProps> = ({
             </div>
             <div>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Exam Date & Shift</span>
-              <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#fbbf24' }}>
+              <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#b45309' }}>
                 {examDate?.dateTimeStr.split(' ')[0] || '28 Oct 2026'} (Shift 1: 09:00 - 10:00 AM)
               </div>
             </div>
             <div>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Reporting & Gate Closure</span>
-              <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#f87171' }}>07:30 AM (Gate Closes: 08:30 AM Strict)</div>
+              <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#dc2626' }}>07:30 AM (Gate Closes: 08:30 AM Strict)</div>
             </div>
           </div>
 
-          <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+          <div style={{ borderTop: '1px solid var(--surface-2)', paddingTop: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
               <MapPin size={14} color="var(--primary)" />
               <span>Test Venue: iON Digital Zone iDZ, Central Assessment Centre Lab 4, New Delhi</span>
@@ -12067,9 +11990,9 @@ export const ExamDayChecklistSection: React.FC<ExamDayChecklistSectionProps> = (
   const progressPercent = Math.round((completedCount / totalItems) * 100);
 
   const categories = [
-    { key: 'DOCUMENTS', name: '1. Mandatory Documents to Carry', icon: FileText, color: '#60a5fa' },
+    { key: 'DOCUMENTS', name: '1. Mandatory Documents to Carry', icon: FileText, color: '#2563eb' },
     { key: 'TIMING', name: '2. Reporting Schedule & Strict Gate Closing', icon: Clock, color: '#f59e0b' },
-    { key: 'ITEMS_ALLOWED', name: '3. Allowed Physical Items', icon: CheckCircle2, color: '#34d399' },
+    { key: 'ITEMS_ALLOWED', name: '3. Allowed Physical Items', icon: CheckCircle2, color: '#15803d' },
     { key: 'ITEMS_PROHIBITED', name: '4. Strictly Prohibited Articles (Debarment Risk)', icon: Ban, color: '#ef4444' },
     { key: 'CENTRE_RULES', name: '5. Computer Lab & CBT Examination Protocols', icon: ShieldCheck, color: 'var(--primary)' }
   ];
@@ -12078,7 +12001,7 @@ export const ExamDayChecklistSection: React.FC<ExamDayChecklistSectionProps> = (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       
       {/* Top Banner with Packing Progress Bar */}
-      <div className="glass-card" style={{ padding: '24px', background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(17, 24, 39, 0.95) 100%)', borderColor: 'rgba(99, 102, 241, 0.35)' }}>
+      <div className="glass-card" style={{ padding: '24px', background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, #ffffff 100%)', borderColor: 'rgba(99, 102, 241, 0.35)' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px', marginBottom: '16px' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
@@ -12090,7 +12013,7 @@ export const ExamDayChecklistSection: React.FC<ExamDayChecklistSectionProps> = (
               </span>
             </div>
 
-            <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white', margin: '0 0 4px' }}>
+            <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 4px' }}>
               Candidate Exam-Day Readiness Checklist
             </h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0 }}>
@@ -12110,15 +12033,15 @@ export const ExamDayChecklistSection: React.FC<ExamDayChecklistSectionProps> = (
         {/* Live Progress Bar */}
         <div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.85rem' }}>
-            <span style={{ color: '#e2e8f0', fontWeight: 600 }}>
-              Packing & Verification Status: <strong style={{ color: progressPercent === 100 ? '#34d399' : 'var(--primary)' }}>{completedCount} of {totalItems} confirmed</strong>
+            <span style={{ color: '#334155', fontWeight: 600 }}>
+              Packing & Verification Status: <strong style={{ color: progressPercent === 100 ? '#15803d' : 'var(--primary)' }}>{completedCount} of {totalItems} confirmed</strong>
             </span>
-            <span style={{ fontWeight: 800, color: progressPercent === 100 ? '#34d399' : 'var(--primary)' }}>
+            <span style={{ fontWeight: 800, color: progressPercent === 100 ? '#15803d' : 'var(--primary)' }}>
               {progressPercent}% READY
             </span>
           </div>
 
-          <div style={{ width: '100%', height: '8px', borderRadius: '4px', background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+          <div style={{ width: '100%', height: '8px', borderRadius: '4px', background: 'var(--surface-2)', overflow: 'hidden' }}>
             <div 
               style={{ 
                 width: `${progressPercent}%`, 
@@ -12130,7 +12053,7 @@ export const ExamDayChecklistSection: React.FC<ExamDayChecklistSectionProps> = (
           </div>
 
           {progressPercent === 100 && (
-            <div className="animate-fade-in" style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', color: '#34d399' }}>
+            <div className="animate-fade-in" style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', color: '#15803d' }}>
               <Sparkles size={16} /> All mandatory documents and items packed! Best wishes for your examination.
             </div>
           )}
@@ -12139,7 +12062,7 @@ export const ExamDayChecklistSection: React.FC<ExamDayChecklistSectionProps> = (
 
       {/* Shift Timing Reference Table */}
       <div className="glass-card" style={{ padding: '24px' }}>
-        <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'white', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Clock size={18} color="var(--amber)" /> Standard Shift Timings & Gate Closing Deadlines
         </h4>
 
@@ -12149,7 +12072,7 @@ export const ExamDayChecklistSection: React.FC<ExamDayChecklistSectionProps> = (
               <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
                 <th style={{ padding: '10px 14px' }}>Shift</th>
                 <th style={{ padding: '10px 14px' }}>Reporting Time</th>
-                <th style={{ padding: '10px 14px', color: '#f87171' }}>Gate Closing (Strict)</th>
+                <th style={{ padding: '10px 14px', color: '#dc2626' }}>Gate Closing (Strict)</th>
                 <th style={{ padding: '10px 14px' }}>Exam Timing (1 Hour CBT)</th>
               </tr>
             </thead>
@@ -12160,11 +12083,11 @@ export const ExamDayChecklistSection: React.FC<ExamDayChecklistSectionProps> = (
                 { shift: 'Shift 3 (Afternoon)', rep: '01:15 PM', close: '02:00 PM', exam: '02:30 PM – 03:30 PM' },
                 { shift: 'Shift 4 (Evening)', rep: '04:00 PM', close: '04:45 PM', exam: '05:15 PM – 06:15 PM' }
               ].map(s => (
-                <tr key={s.shift} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                  <td style={{ padding: '12px 14px', fontWeight: 600, color: 'white' }}>{s.shift}</td>
+                <tr key={s.shift} style={{ borderBottom: '1px solid var(--surface-2)' }}>
+                  <td style={{ padding: '12px 14px', fontWeight: 600, color: 'var(--text-primary)' }}>{s.shift}</td>
                   <td style={{ padding: '12px 14px', color: 'var(--text-secondary)' }}>{s.rep}</td>
-                  <td style={{ padding: '12px 14px', fontWeight: 700, color: '#f87171' }}>{s.close}</td>
-                  <td style={{ padding: '12px 14px', fontWeight: 600, color: '#93c5fd' }}>{s.exam}</td>
+                  <td style={{ padding: '12px 14px', fontWeight: 700, color: '#dc2626' }}>{s.close}</td>
+                  <td style={{ padding: '12px 14px', fontWeight: 600, color: '#2563eb' }}>{s.exam}</td>
                 </tr>
               ))}
             </tbody>
@@ -12179,7 +12102,7 @@ export const ExamDayChecklistSection: React.FC<ExamDayChecklistSectionProps> = (
 
         return (
           <div key={cat.key} className="glass-card" style={{ padding: '24px' }}>
-            <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'white', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <CatIcon size={18} color={cat.color} /> {cat.name}
             </h4>
 
@@ -12194,7 +12117,7 @@ export const ExamDayChecklistSection: React.FC<ExamDayChecklistSectionProps> = (
                     style={{
                       padding: '14px 18px',
                       borderRadius: 'var(--radius-md)',
-                      background: isChecked ? 'rgba(16, 185, 129, 0.05)' : 'rgba(255, 255, 255, 0.02)',
+                      background: isChecked ? 'rgba(16, 185, 129, 0.05)' : 'var(--surface-2)',
                       border: isChecked ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid var(--border-color)',
                       display: 'flex',
                       alignItems: 'flex-start',
@@ -12212,13 +12135,13 @@ export const ExamDayChecklistSection: React.FC<ExamDayChecklistSectionProps> = (
                         <div style={{ 
                           fontSize: '0.95rem', 
                           fontWeight: 700, 
-                          color: isChecked ? '#e2e8f0' : 'white',
+                          color: isChecked ? '#334155' : 'white',
                           textDecoration: isChecked ? 'line-through' : 'none'
                         }}>
                           {item.title}
                         </div>
                         {item.isCrucial && (
-                          <span className="badge" style={{ fontSize: '0.65rem', background: 'rgba(239, 68, 68, 0.2)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.4)' }}>
+                          <span className="badge" style={{ fontSize: '0.65rem', background: 'rgba(239, 68, 68, 0.2)', color: '#dc2626', border: '1px solid rgba(239, 68, 68, 0.4)' }}>
                             MANDATORY
                           </span>
                         )}
@@ -12636,7 +12559,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
         status: 'CSAT_DISQUALIFIED',
         badgeText: '⚠️ PRELIMS CSAT PAPER-II NOT QUALIFIED (< 66.66)',
         badgeBg: 'rgba(239, 68, 68, 0.2)',
-        badgeColor: '#f87171',
+        badgeColor: '#dc2626',
         borderColor: '#ef4444',
         headline: `CSAT Qualifying Benchmark Missed: ${upscCsat} / 200 (Min 66.66 required)`,
         summaryText: `Even though your GS-1 score is ${upscGs1 ?? '—'}, UPSC Examination Rule 15 mandates a minimum of 33% (66.66 marks) in CSAT Paper-II. Your GS-1 paper cannot be evaluated for Mains qualification.`,
@@ -12651,7 +12574,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
           status: 'MISSED_PRELIMS',
           badgeText: '❌ MISSED PRELIMS GS-1 CUTOFF',
           badgeBg: 'rgba(239, 68, 68, 0.2)',
-          badgeColor: '#f87171',
+          badgeColor: '#dc2626',
           borderColor: '#ef4444',
           headline: `Did Not Clear Civil Services Preliminary GS-1 in ${selectedYear}`,
           summaryText: `Your GS Paper-I score of ${upscGs1} was ${Math.abs(upscGs1Margin!)} marks below the ${selectedYear} cutoff (${upscGs1Cutoff}) for ${activeCategory}.`,
@@ -12670,7 +12593,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                   status: 'FINAL_SELECTION',
                   badgeText: '🏆 RECOMMENDED FOR CIVIL SERVICES APPOINTMENT',
                   badgeBg: 'rgba(16, 185, 129, 0.2)',
-                  badgeColor: '#34d399',
+                  badgeColor: '#15803d',
                   borderColor: '#10b981',
                   headline: `Merit Recommendation Achieved for ${selectedYear} (${activeCategory})`,
                   summaryText: `Outstanding achievement! You cleared Prelims GS-1 (${upscGs1} vs ${upscGs1Cutoff}), Mains Written (${upscMains} vs ${upscMainsCutoff}), and achieved a Final Consolidated Total of ${upscFinalTotal} / 2025 (+${upscFinalMargin} above cutoff ${upscFinalCutoff}).`,
@@ -12684,7 +12607,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                   status: 'MISSED_FINAL',
                   badgeText: '⚠️ CLEARED MAINS WRITTEN · MISSED FINAL MERIT',
                   badgeBg: 'rgba(245, 158, 11, 0.2)',
-                  badgeColor: '#fbbf24',
+                  badgeColor: '#b45309',
                   borderColor: '#f59e0b',
                   headline: `Appeared in Personality Test, but missed final merit by ${Math.abs(upscFinalMargin!)} marks`,
                   summaryText: `You scored ${upscMains} in Mains Written (Cutoff: ${upscMainsCutoff}) and ${upscInterview ?? '—'} in Personality Test. Consolidated total ${upscFinalTotal} fell short of the final merit cutoff (${upscFinalCutoff}) by ${Math.abs(upscFinalMargin!)} marks.`,
@@ -12699,8 +12622,8 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                 status: 'SUMMONED_INTERVIEW',
                 badgeText: '🎯 CLEARED MAINS WRITTEN · SUMMONED FOR PERSONALITY TEST',
                 badgeBg: 'rgba(56, 189, 248, 0.2)',
-                badgeColor: '#38bdf8',
-                borderColor: '#38bdf8',
+                badgeColor: '#0284c7',
+                borderColor: '#0284c7',
                 headline: `Qualified for UPSC Personality Test / Interview at Dholpur House!`,
                 summaryText: `Your Mains Written score of ${upscMains} cleared the ${selectedYear} written cutoff (${upscMainsCutoff}) by +${upscMainsMargin} marks.`,
                 conclusion: `Comprehensive Multi-Stage Conclusion: Candidate is officially shortlisted for the Personality Test (275 marks) conducted by UPSC Boards in New Delhi. Final ranking will be based on Written (1750) + Interview (275) = 2025 Marks.`,
@@ -12714,7 +12637,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
               status: 'MISSED_MAINS',
               badgeText: '⚠️ CLEARED PRELIMS · MISSED MAINS WRITTEN CUTOFF',
               badgeBg: 'rgba(245, 158, 11, 0.2)',
-              badgeColor: '#fbbf24',
+              badgeColor: '#b45309',
               borderColor: '#f59e0b',
               headline: `Cleared Prelims GS-1, but fell short in Mains Written by ${Math.abs(upscMainsMargin!)} marks`,
               summaryText: `You cleared Prelims (+${upscGs1Margin}), but your Mains Written total of ${upscMains} / 1750 fell short of the ${selectedYear} cutoff (${upscMainsCutoff}) by ${Math.abs(upscMainsMargin!)} marks.`,
@@ -12729,8 +12652,8 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
             status: 'CLEARED_PRELIMS_AWAITING_MAINS',
             badgeText: '✅ CLEARED PRELIMS · SHORTLISTED FOR MAINS WRITTEN',
             badgeBg: 'rgba(56, 189, 248, 0.2)',
-            badgeColor: '#38bdf8',
-            borderColor: '#38bdf8',
+            badgeColor: '#0284c7',
+            borderColor: '#0284c7',
             headline: `Through to Civil Services (Main) Examination (Target: ${upscMainsCutoff}+ Marks)`,
             summaryText: `Your Prelims GS-1 score of ${upscGs1} cleared the cutoff (${upscGs1Cutoff}) by +${upscGs1Margin} marks, with qualifying CSAT.`,
             conclusion: `Comprehensive Multi-Stage Conclusion: Candidate is officially shortlisted for the Civil Services (Main) Examination. Prelims marks are not counted for final ranking; merit is determined 100% by Mains Written (1750) + Interview (275).`,
@@ -12772,7 +12695,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
           status: 'SELECTED',
           badgeText: '🏆 CLEARED ALL TIERS · FINAL SELECTION ZONE',
           badgeBg: 'rgba(16, 185, 129, 0.2)',
-          badgeColor: '#34d399',
+          badgeColor: '#15803d',
           borderColor: '#10b981',
           headline: `Merit Selection Achieved for ${selectedYear} (${activeCategory})`,
           summaryText: `You successfully cleared Tier-1 by +${t1Margin} marks and cleared the final Tier-2 merit cutoff by +${t2Margin} marks.`,
@@ -12785,7 +12708,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
           status: 'MISSED_TIER2',
           badgeText: '⚠️ CLEARED TIER-1 · MISSED FINAL TIER-2 ALLOCATION',
           badgeBg: 'rgba(245, 158, 11, 0.2)',
-          badgeColor: '#fbbf24',
+          badgeColor: '#b45309',
           borderColor: '#f59e0b',
           headline: `Qualified Tier-1 & Skill Test, but missed final post merit in ${selectedYear}`,
           summaryText: `You cleared Tier-1 by +${t1Margin} marks (Cutoff: ${t1Cutoff}) and met all skill test standards. However, your Tier-2 score of ${candidateT2} fell short of the final merit cutoff of ${t2Cutoff} by ${Math.abs(t2Margin!)} marks.`,
@@ -12798,7 +12721,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
           status: 'MISSED_TIER1',
           badgeText: '❌ MISSED TIER-1 CUTOFF',
           badgeBg: 'rgba(239, 68, 68, 0.2)',
-          badgeColor: '#f87171',
+          badgeColor: '#dc2626',
           borderColor: '#ef4444',
           headline: `Did Not Clear Tier-1 Prelims in ${selectedYear}`,
           summaryText: `Your Tier-1 score of ${candidateT1} was ${Math.abs(t1Margin!)} marks below the ${selectedYear} cutoff (${t1Cutoff}) for ${activeCategory}.`,
@@ -12813,8 +12736,8 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
           status: 'CLEARED_TIER1_AWAITING_TIER2',
           badgeText: '✅ CLEARED TIER-1 · SHORTLISTED FOR TIER-2',
           badgeBg: 'rgba(56, 189, 248, 0.2)',
-          badgeColor: '#38bdf8',
-          borderColor: '#38bdf8',
+          badgeColor: '#0284c7',
+          borderColor: '#0284c7',
           headline: `Through to Tier-2 (Target Cutoff: ${t2Cutoff || '298+'} Marks)`,
           summaryText: `Your Tier-1 score of ${candidateT1} cleared the ${selectedYear} cutoff (${t1Cutoff}) by +${t1Margin} marks.`,
           conclusion: `Comprehensive Multi-Tier Conclusion: Candidate is officially shortlisted for Tier-2 examination. Tier-1 is qualifying; final all-India merit and Ministry allocation will be decided entirely by Tier-2 score.`,
@@ -12826,7 +12749,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
           status: 'MISSED_TIER1',
           badgeText: '❌ MISSED TIER-1 CUTOFF',
           badgeBg: 'rgba(239, 68, 68, 0.2)',
-          badgeColor: '#f87171',
+          badgeColor: '#dc2626',
           borderColor: '#ef4444',
           headline: `Did Not Clear Tier-1 Prelims in ${selectedYear}`,
           summaryText: `Your Tier-1 score of ${candidateT1} is ${Math.abs(t1Margin!)} marks below the ${selectedYear} cutoff (${t1Cutoff}) for ${activeCategory}.`,
@@ -12849,22 +12772,22 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       
       {/* Top Banner — Exam-Specific Styling & Content */}
-      <div className="glass-card" style={{ padding: '24px', background: isUPSC ? 'linear-gradient(135deg, rgba(217, 119, 6, 0.15) 0%, rgba(15, 23, 42, 0.95) 100%)' : 'linear-gradient(135deg, rgba(234, 179, 8, 0.12) 0%, rgba(17, 24, 39, 0.95) 100%)', borderColor: isUPSC ? 'rgba(245, 158, 11, 0.4)' : 'rgba(234, 179, 8, 0.35)' }}>
+      <div className="glass-card" style={{ padding: '24px', background: isUPSC ? 'linear-gradient(135deg, rgba(217, 119, 6, 0.15) 0%, #ffffff 100%)' : 'linear-gradient(135deg, rgba(234, 179, 8, 0.12) 0%, #ffffff 100%)', borderColor: isUPSC ? 'rgba(245, 158, 11, 0.4)' : 'rgba(234, 179, 8, 0.35)' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
-              <span className="badge" style={{ background: isUPSC ? 'rgba(245, 158, 11, 0.2)' : 'rgba(234, 179, 8, 0.2)', color: isUPSC ? '#fbbf24' : '#facc15', border: `1px solid ${isUPSC ? 'rgba(245, 158, 11, 0.4)' : 'rgba(234, 179, 8, 0.4)'}` }}>
+              <span className="badge" style={{ background: isUPSC ? 'rgba(245, 158, 11, 0.2)' : 'rgba(234, 179, 8, 0.2)', color: isUPSC ? '#b45309' : '#facc15', border: `1px solid ${isUPSC ? 'rgba(245, 158, 11, 0.4)' : 'rgba(234, 179, 8, 0.4)'}` }}>
                 {isUPSC ? '🏛️ UPSC CIVIL SERVICES 3-STAGE RESULT & VERDICT ENGINE' : '🏆 MULTI-TIER RESULT & VERDICT ENGINE'}
               </span>
               <span className="badge badge-verified">
                 OFFICIALLY AUDITED SCHEME
               </span>
-              <span className="badge" style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', fontSize: '0.72rem' }}>
+              <span className="badge" style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#0284c7', fontSize: '0.72rem' }}>
                 ISOLATED STORAGE: {exam.code}
               </span>
             </div>
 
-            <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white', margin: '0 0 6px' }}>
+            <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px' }}>
               {isUPSC 
                 ? 'UPSC Civil Services 3-Stage Scorecard & Final Allocation Analysis'
                 : 'Multi-Tier Scorecard Analysis & Unified Conclusion'}
@@ -12877,10 +12800,10 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
           </div>
 
           {matchedCutoff && (
-            <div style={{ padding: '10px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-color)', textAlign: 'right' }}>
+            <div style={{ padding: '10px 16px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', textAlign: 'right' }}>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Cutoffs Benchmark ({selectedYear} · {activeCategory})</div>
               {isUPSC ? (
-                <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#fbbf24' }}>
+                <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#b45309' }}>
                   GS-1: {upscGs1Cutoff} | Mains: {upscMainsCutoff} | Final: {upscFinalCutoff}
                 </div>
               ) : (
@@ -12897,7 +12820,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
       <div className="glass-card" style={{ padding: '22px', border: '1px solid rgba(99,102,241,0.3)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '14px' }}>
           <div>
-            <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'white', margin: '0 0 4px' }}>
+            <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 4px' }}>
               {isUPSC ? 'Enter UPSC Civil Services Marks or Upload Scorecard' : 'Your Examination Scores & Scorecard Upload'}
             </h4>
             <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0 }}>
@@ -12912,10 +12835,10 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
             <select
               value={selectedYear}
               onChange={e => setSelectedYear(parseInt(e.target.value))}
-              style={{ padding: '6px 12px', borderRadius: 'var(--radius-sm)', background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.4)', color: '#c7d2fe', fontWeight: 700, fontSize: '0.85rem' }}
+              style={{ padding: '6px 12px', borderRadius: 'var(--radius-sm)', background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.4)', color: '#4f46e5', fontWeight: 700, fontSize: '0.85rem' }}
             >
               {availableYears.map(yr => (
-                <option key={yr} value={yr} style={{ background: '#0f172a', color: 'white' }}>{yr} Examination Cycle</option>
+                <option key={yr} value={yr} style={{ background: 'var(--surface-3)', color: 'var(--text-primary)' }}>{yr} Examination Cycle</option>
               ))}
             </select>
           </div>
@@ -12934,7 +12857,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                   value={upscGs1Input}
                   onChange={e => setUpscGs1Input(e.target.value)}
                   placeholder="e.g. 96.50"
-                  style={{ width: '150px', padding: '9px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.9rem' }}
+                  style={{ width: '150px', padding: '9px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontSize: '0.9rem' }}
                 />
               </div>
 
@@ -12947,7 +12870,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                   value={upscCsatInput}
                   onChange={e => setUpscCsatInput(e.target.value)}
                   placeholder="e.g. 78.50 (min 66.66)"
-                  style={{ width: '160px', padding: '9px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.9rem' }}
+                  style={{ width: '160px', padding: '9px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontSize: '0.9rem' }}
                 />
               </div>
 
@@ -12960,7 +12883,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                   value={upscMainsInput}
                   onChange={e => setUpscMainsInput(e.target.value)}
                   placeholder="e.g. 752.00"
-                  style={{ width: '170px', padding: '9px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.9rem' }}
+                  style={{ width: '170px', padding: '9px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontSize: '0.9rem' }}
                 />
               </div>
 
@@ -12973,7 +12896,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                   value={upscInterviewInput}
                   onChange={e => setUpscInterviewInput(e.target.value)}
                   placeholder="e.g. 182.00"
-                  style={{ width: '135px', padding: '9px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.9rem' }}
+                  style={{ width: '135px', padding: '9px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontSize: '0.9rem' }}
                 />
               </div>
             </>
@@ -12986,7 +12909,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                   value={tier1Input}
                   onChange={e => setTier1Input(e.target.value)}
                   placeholder="e.g. 113.12"
-                  style={{ width: '140px', padding: '9px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.9rem' }}
+                  style={{ width: '140px', padding: '9px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontSize: '0.9rem' }}
                 />
               </div>
 
@@ -12997,7 +12920,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                   value={tier2Input}
                   onChange={e => setTier2Input(e.target.value)}
                   placeholder="e.g. 255.95"
-                  style={{ width: '140px', padding: '9px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.9rem' }}
+                  style={{ width: '140px', padding: '9px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontSize: '0.9rem' }}
                 />
               </div>
             </>
@@ -13008,7 +12931,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
             <select
               value={categoryInput}
               onChange={e => setCategoryInput(e.target.value)}
-              style={{ padding: '9px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.9rem', minWidth: '160px' }}
+              style={{ padding: '9px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontSize: '0.9rem', minWidth: '160px' }}
             >
               {cutoffRows.map(row => (
                 <option key={row.category} value={row.category}>{row.category}</option>
@@ -13066,7 +12989,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
 
         {/* OCR Result Details */}
         {parsed && !parsed.ok && (
-          <div style={{ marginTop: '14px', padding: '12px 14px', borderRadius: 'var(--radius-md)', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.35)', color: '#fcd34d', fontSize: '0.85rem', lineHeight: 1.5 }}>
+          <div style={{ marginTop: '14px', padding: '12px 14px', borderRadius: 'var(--radius-md)', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.35)', color: '#b45309', fontSize: '0.85rem', lineHeight: 1.5 }}>
             {parsed.message}
           </div>
         )}
@@ -13074,18 +12997,18 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
           <div style={{ marginTop: '14px', padding: '16px 18px', borderRadius: 'var(--radius-md)', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.35)', fontSize: '0.86rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <strong style={{ color: 'white', fontSize: '0.92rem' }}>
+                <strong style={{ color: 'var(--text-primary)', fontSize: '0.92rem' }}>
                   {parsed.method === 'OCR' ? 'Scorecard Scan Analyzed by Multi-Exam OCR' : 'Scorecard Text Read Directly'}
                 </strong>
-                <span className="badge" style={{ fontSize: '0.65rem', background: 'rgba(16,185,129,0.15)', color: '#34d399' }}>
+                <span className="badge" style={{ fontSize: '0.65rem', background: 'rgba(16,185,129,0.15)', color: '#15803d' }}>
                   {isUPSC ? 'UPSC SCHEME DETECTED' : 'MULTI-TIER EXTRACTED'}
                 </span>
-                <span className="badge" style={{ fontSize: '0.65rem', background: 'rgba(56,189,248,0.15)', color: '#38bdf8' }}>
+                <span className="badge" style={{ fontSize: '0.65rem', background: 'rgba(56,189,248,0.15)', color: '#0284c7' }}>
                   AUTO-POPULATED
                 </span>
               </div>
               {parsed.fields?.examYear && (
-                <span className="badge" style={{ background: 'rgba(99,102,241,0.2)', color: '#c7d2fe', fontWeight: 700, fontSize: '0.72rem' }}>
+                <span className="badge" style={{ background: 'rgba(99,102,241,0.2)', color: '#4f46e5', fontWeight: 700, fontSize: '0.72rem' }}>
                   EXAM CYCLE: {parsed.fields.examYear}
                 </span>
               )}
@@ -13093,52 +13016,52 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
 
             <div style={{ marginTop: '10px', display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
               {parsed.fields?.candidateName && (
-                <div>• Candidate: <strong style={{ color: 'white' }}>{parsed.fields.candidateName}</strong></div>
+                <div>• Candidate: <strong style={{ color: 'var(--text-primary)' }}>{parsed.fields.candidateName}</strong></div>
               )}
               {parsed.fields?.rollNumber && (
-                <div>• Roll No: <strong style={{ color: '#e2e8f0', fontFamily: 'var(--font-mono)' }}>{parsed.fields.rollNumber}</strong></div>
+                <div>• Roll No: <strong style={{ color: '#334155', fontFamily: 'var(--font-mono)' }}>{parsed.fields.rollNumber}</strong></div>
               )}
               {parsed.fields?.category && (
-                <div>• Category: <strong style={{ color: '#6ee7b7' }}>{parsed.fields.category}</strong></div>
+                <div>• Category: <strong style={{ color: '#15803d' }}>{parsed.fields.category}</strong></div>
               )}
 
               {isUPSC ? (
                 <>
                   {parsed.fields?.upscPrelimsGs1Marks !== undefined && (
-                    <div>• GS Paper-I: <strong style={{ color: '#38bdf8' }}>{parsed.fields.upscPrelimsGs1Marks} / 200</strong></div>
+                    <div>• GS Paper-I: <strong style={{ color: '#0284c7' }}>{parsed.fields.upscPrelimsGs1Marks} / 200</strong></div>
                   )}
                   {parsed.fields?.upscPrelimsCsatMarks !== undefined && (
-                    <div>• CSAT: <strong style={{ color: '#fbbf24' }}>{parsed.fields.upscPrelimsCsatMarks} / 200</strong></div>
+                    <div>• CSAT: <strong style={{ color: '#b45309' }}>{parsed.fields.upscPrelimsCsatMarks} / 200</strong></div>
                   )}
                   {parsed.fields?.upscMainsWrittenMarks !== undefined && (
-                    <div>• Mains Written: <strong style={{ color: '#818cf8' }}>{parsed.fields.upscMainsWrittenMarks} / 1750</strong></div>
+                    <div>• Mains Written: <strong style={{ color: '#4f46e5' }}>{parsed.fields.upscMainsWrittenMarks} / 1750</strong></div>
                   )}
                   {parsed.fields?.upscInterviewMarks !== undefined && (
                     <div>• Personality Test: <strong style={{ color: '#a78bfa' }}>{parsed.fields.upscInterviewMarks} / 275</strong></div>
                   )}
                   {parsed.fields?.upscFinalTotalMarks !== undefined && (
-                    <div>• Final Total: <strong style={{ color: '#34d399' }}>{parsed.fields.upscFinalTotalMarks} / 2025</strong></div>
+                    <div>• Final Total: <strong style={{ color: '#15803d' }}>{parsed.fields.upscFinalTotalMarks} / 2025</strong></div>
                   )}
                   {parsed.fields?.allocatedService && (
-                    <div>• Allocated Service: <strong style={{ color: '#34d399' }}>{parsed.fields.allocatedService}</strong></div>
+                    <div>• Allocated Service: <strong style={{ color: '#15803d' }}>{parsed.fields.allocatedService}</strong></div>
                   )}
                 </>
               ) : (
                 <>
                   {parsed.fields?.tier1Marks !== undefined && (
-                    <div>• Tier-1: <strong style={{ color: '#38bdf8' }}>{parsed.fields.tier1Marks}</strong></div>
+                    <div>• Tier-1: <strong style={{ color: '#0284c7' }}>{parsed.fields.tier1Marks}</strong></div>
                   )}
                   {parsed.fields?.tier2Marks !== undefined && (
-                    <div>• Tier-2 Total: <strong style={{ color: '#818cf8' }}>{parsed.fields.tier2Marks}</strong></div>
+                    <div>• Tier-2 Total: <strong style={{ color: '#4f46e5' }}>{parsed.fields.tier2Marks}</strong></div>
                   )}
                   {parsed.fields?.computerKnowledgeMarks !== undefined && (
-                    <div>• CKT: <strong style={{ color: '#fbbf24' }}>{parsed.fields.computerKnowledgeMarks} / 60</strong></div>
+                    <div>• CKT: <strong style={{ color: '#b45309' }}>{parsed.fields.computerKnowledgeMarks} / 60</strong></div>
                   )}
                   {parsed.fields?.destMistakesPercent !== undefined && (
-                    <div>• DEST: <strong style={{ color: '#34d399' }}>{parsed.fields.destMistakesPercent}% Error</strong></div>
+                    <div>• DEST: <strong style={{ color: '#15803d' }}>{parsed.fields.destMistakesPercent}% Error</strong></div>
                   )}
                   {parsed.fields?.allocatedPost && (
-                    <div>• Allocated Post: <strong style={{ color: parsed.fields.allocatedPost === 'NOT_ALLOCATED' ? '#f87171' : '#34d399' }}>{parsed.fields.allocatedPost}</strong></div>
+                    <div>• Allocated Post: <strong style={{ color: parsed.fields.allocatedPost === 'NOT_ALLOCATED' ? '#dc2626' : '#15803d' }}>{parsed.fields.allocatedPost}</strong></div>
                   )}
                 </>
               )}
@@ -13154,7 +13077,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
               marginTop: '18px',
               padding: '22px',
               borderRadius: 'var(--radius-lg)',
-              background: 'linear-gradient(145deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%)',
+              background: 'linear-gradient(145deg, #ffffff 0%, var(--surface-2) 100%)',
               border: `2px solid ${unifiedVerdict.borderColor}`,
               boxShadow: `0 10px 30px -5px ${unifiedVerdict.badgeBg}`
             }}
@@ -13178,16 +13101,16 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                 >
                   {unifiedVerdict.badgeText}
                 </span>
-                <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', margin: '0 0 4px' }}>
+                <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 4px' }}>
                   {unifiedVerdict.headline}
                 </h4>
-                <div style={{ fontSize: '0.86rem', color: '#cbd5e1' }}>
+                <div style={{ fontSize: '0.86rem', color: '#334155' }}>
                   Candidate: <strong>{entry?.candidateName || 'Candidate'}</strong> · Roll No: <strong>{entry?.rollNumber || '—'}</strong> · Category: <strong>{activeCategory}</strong> · Benchmark Cycle: <strong>{selectedYear}</strong>
                 </div>
               </div>
 
               <div style={{ textAlign: 'right' }}>
-                <span className="badge" style={{ fontSize: '0.72rem', background: 'rgba(255,255,255,0.06)', color: '#94a3b8' }}>
+                <span className="badge" style={{ fontSize: '0.72rem', background: 'var(--surface-2)', color: '#64748b' }}>
                   AUTHORITATIVE {isUPSC ? 'UPSC CSE' : 'MULTI-TIER'} CONCLUSION
                 </span>
               </div>
@@ -13200,18 +13123,18 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                 {/* Stage 1: Preliminary */}
                 <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: (upscGs1Passed && upscCsatPassed) ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)', border: `1px solid ${(upscGs1Passed && upscCsatPassed) ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}` }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                    <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, color: '#94a3b8' }}>Stage 1: Preliminary</span>
-                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: (upscGs1Passed && upscCsatPassed) ? '#34d399' : '#f87171' }}>
+                    <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, color: '#64748b' }}>Stage 1: Preliminary</span>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: (upscGs1Passed && upscCsatPassed) ? '#15803d' : '#dc2626' }}>
                       {(upscGs1Passed && upscCsatPassed) ? '✅ QUALIFIED' : '❌ NOT QUALIFIED'}
                     </span>
                   </div>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'white' }}>
-                    GS-1: {upscGs1 !== null ? upscGs1 : '—'} <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>/ 200</span>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                    GS-1: {upscGs1 !== null ? upscGs1 : '—'} <span style={{ fontSize: '0.72rem', color: '#64748b' }}>/ 200</span>
                   </div>
-                  <div style={{ fontSize: '0.78rem', color: '#cbd5e1', marginTop: '2px' }}>
-                    CSAT: <strong style={{ color: upscCsatPassed ? '#34d399' : '#f87171' }}>{upscCsat !== null ? `${upscCsat} / 200` : 'Qualifying (min 66.66)'}</strong>
+                  <div style={{ fontSize: '0.78rem', color: '#334155', marginTop: '2px' }}>
+                    CSAT: <strong style={{ color: upscCsatPassed ? '#15803d' : '#dc2626' }}>{upscCsat !== null ? `${upscCsat} / 200` : 'Qualifying (min 66.66)'}</strong>
                   </div>
-                  <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '4px' }}>
+                  <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '4px' }}>
                     GS-1 Cutoff: <strong>{upscGs1Cutoff}</strong> ({upscGs1Margin !== null ? (upscGs1Margin >= 0 ? `+${upscGs1Margin} margin` : `${upscGs1Margin} margin`) : 'Merit Decider'})
                   </div>
                 </div>
@@ -13219,56 +13142,56 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                 {/* Stage 2: Mains Written */}
                 <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: upscMainsPassed ? 'rgba(16,185,129,0.08)' : upscMains !== null ? 'rgba(239,68,68,0.08)' : 'rgba(56,189,248,0.08)', border: `1px solid ${upscMainsPassed ? 'rgba(16,185,129,0.3)' : upscMains !== null ? 'rgba(239,68,68,0.3)' : 'rgba(56,189,248,0.3)'}` }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                    <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, color: '#94a3b8' }}>Stage 2: Mains Written</span>
-                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: upscMainsPassed ? '#34d399' : upscMains !== null ? '#f87171' : '#38bdf8' }}>
+                    <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, color: '#64748b' }}>Stage 2: Mains Written</span>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: upscMainsPassed ? '#15803d' : upscMains !== null ? '#dc2626' : '#0284c7' }}>
                       {upscMainsPassed ? '✅ CLEARED' : upscMains !== null ? '❌ MISSED WRITTEN' : '⏳ AWAITING'}
                     </span>
                   </div>
-                  <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'white' }}>
-                    {upscMains !== null ? upscMains : `Target: ${upscMainsCutoff}`} <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>/ 1750</span>
+                  <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                    {upscMains !== null ? upscMains : `Target: ${upscMainsCutoff}`} <span style={{ fontSize: '0.75rem', color: '#64748b' }}>/ 1750</span>
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#cbd5e1', marginTop: '4px' }}>
+                  <div style={{ fontSize: '0.75rem', color: '#334155', marginTop: '4px' }}>
                     7 Merit Papers · Cutoff: <strong>{upscMainsCutoff}</strong>
                   </div>
-                  <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '2px' }}>
+                  <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px' }}>
                     {upscMainsMargin !== null ? (upscMainsMargin >= 0 ? `+${upscMainsMargin} above cutoff` : `${upscMainsMargin} shortfall`) : 'Essay + GS 1-4 + Optional'}
                   </div>
                 </div>
 
                 {/* Stage 3: Personality Test (Interview) */}
-                <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: upscInterview !== null ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: upscInterview !== null ? 'rgba(16,185,129,0.08)' : 'var(--surface-2)', border: '1px solid var(--surface-3)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                    <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, color: '#94a3b8' }}>Stage 3: Interview</span>
-                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: upscInterview !== null ? '#34d399' : '#a855f7' }}>
+                    <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, color: '#64748b' }}>Stage 3: Interview</span>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: upscInterview !== null ? '#15803d' : '#a855f7' }}>
                       {upscInterview !== null ? 'APPEARED' : 'DHOLPUR HOUSE'}
                     </span>
                   </div>
-                  <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'white' }}>
-                    {upscInterview !== null ? upscInterview : 'Target: 180+'} <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>/ 275</span>
+                  <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                    {upscInterview !== null ? upscInterview : 'Target: 180+'} <span style={{ fontSize: '0.75rem', color: '#64748b' }}>/ 275</span>
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#cbd5e1', marginTop: '4px' }}>
+                  <div style={{ fontSize: '0.75rem', color: '#334155', marginTop: '4px' }}>
                     Board Personality Test
                   </div>
-                  <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '2px' }}>
+                  <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px' }}>
                     No qualifying minimum; decisive for cadre
                   </div>
                 </div>
 
                 {/* Stage 4: Final Recommendation & Allocation */}
-                <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: upscFinalPassed ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.04)', border: `1px solid ${upscFinalPassed ? 'rgba(16,185,129,0.3)' : 'rgba(255,255,255,0.1)'}` }}>
+                <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: upscFinalPassed ? 'rgba(16,185,129,0.08)' : 'var(--surface-2)', border: `1px solid ${upscFinalPassed ? 'rgba(16,185,129,0.3)' : 'var(--surface-3)'}` }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                    <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, color: '#94a3b8' }}>Stage 4: Final Selection</span>
-                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: upscFinalPassed ? '#34d399' : upscFinalTotal !== null ? '#f87171' : '#fbbf24' }}>
+                    <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, color: '#64748b' }}>Stage 4: Final Selection</span>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: upscFinalPassed ? '#15803d' : upscFinalTotal !== null ? '#dc2626' : '#b45309' }}>
                       {upscFinalPassed ? 'RECOMMENDED' : upscFinalTotal !== null ? 'NOT RECOMMENDED' : 'OUT OF 2025'}
                     </span>
                   </div>
-                  <div style={{ fontSize: '1.15rem', fontWeight: 800, color: upscFinalPassed ? '#34d399' : 'white' }}>
-                    {upscFinalTotal !== null ? upscFinalTotal : `Cutoff: ${upscFinalCutoff}`} <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>/ 2025</span>
+                  <div style={{ fontSize: '1.15rem', fontWeight: 800, color: upscFinalPassed ? '#15803d' : 'var(--text-primary)' }}>
+                    {upscFinalTotal !== null ? upscFinalTotal : `Cutoff: ${upscFinalCutoff}`} <span style={{ fontSize: '0.75rem', color: '#64748b' }}>/ 2025</span>
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#cbd5e1', marginTop: '4px' }}>
+                  <div style={{ fontSize: '0.75rem', color: '#334155', marginTop: '4px' }}>
                     Service: <strong>{upscAllocatedService || (upscFinalPassed ? 'IAS / IFS / IPS' : 'Pending Rank')}</strong>
                   </div>
-                  <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '2px' }}>
+                  <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px' }}>
                     Written (1750) + Interview (275)
                   </div>
                 </div>
@@ -13279,66 +13202,66 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                 {/* Stage 1: Tier-1 */}
                 <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: t1Passed ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)', border: `1px solid ${t1Passed ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}` }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                    <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, color: '#94a3b8' }}>Stage 1: Tier-1 CBT</span>
-                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: t1Passed ? '#34d399' : '#f87171' }}>
+                    <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, color: '#64748b' }}>Stage 1: Tier-1 CBT</span>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: t1Passed ? '#15803d' : '#dc2626' }}>
                       {t1Passed ? '✅ CLEARED' : '❌ MISSED'}
                     </span>
                   </div>
-                  <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'white' }}>
-                    {candidateT1 !== null ? candidateT1 : '—'} <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>/ 200</span>
+                  <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                    {candidateT1 !== null ? candidateT1 : '—'} <span style={{ fontSize: '0.75rem', color: '#64748b' }}>/ 200</span>
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#cbd5e1', marginTop: '4px' }}>
+                  <div style={{ fontSize: '0.75rem', color: '#334155', marginTop: '4px' }}>
                     Cutoff: <strong>{t1Cutoff}</strong> ({t1Margin !== null && t1Margin >= 0 ? `+${t1Margin} margin` : `${t1Margin} margin`})
                   </div>
                 </div>
 
                 {/* Stage 2: Tier-2 */}
-                <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: t2Cutoff ? (t2Passed ? 'rgba(16,185,129,0.08)' : candidateT2 !== null ? 'rgba(239,68,68,0.08)' : 'rgba(56,189,248,0.08)') : 'rgba(255,255,255,0.04)', border: `1px solid ${t2Cutoff ? (t2Passed ? 'rgba(16,185,129,0.3)' : candidateT2 !== null ? 'rgba(239,68,68,0.3)' : 'rgba(56,189,248,0.3)') : 'rgba(255,255,255,0.1)'}` }}>
+                <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: t2Cutoff ? (t2Passed ? 'rgba(16,185,129,0.08)' : candidateT2 !== null ? 'rgba(239,68,68,0.08)' : 'rgba(56,189,248,0.08)') : 'var(--surface-2)', border: `1px solid ${t2Cutoff ? (t2Passed ? 'rgba(16,185,129,0.3)' : candidateT2 !== null ? 'rgba(239,68,68,0.3)' : 'rgba(56,189,248,0.3)') : 'var(--surface-3)'}` }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                    <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, color: '#94a3b8' }}>Stage 2: Tier-2 CBT</span>
-                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: t2Cutoff ? (t2Passed ? '#34d399' : candidateT2 !== null ? '#f87171' : '#38bdf8') : '#94a3b8' }}>
+                    <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, color: '#64748b' }}>Stage 2: Tier-2 CBT</span>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: t2Cutoff ? (t2Passed ? '#15803d' : candidateT2 !== null ? '#dc2626' : '#0284c7') : '#64748b' }}>
                       {t2Cutoff ? (t2Passed ? '✅ CLEARED' : candidateT2 !== null ? '❌ MISSED MERIT' : '⏳ AWAITING') : 'N/A'}
                     </span>
                   </div>
-                  <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'white' }}>
-                    {candidateT2 !== null ? candidateT2 : (t2Cutoff ? `Target: ${t2Cutoff}` : '—')} <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>/ 390</span>
+                  <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                    {candidateT2 !== null ? candidateT2 : (t2Cutoff ? `Target: ${t2Cutoff}` : '—')} <span style={{ fontSize: '0.75rem', color: '#64748b' }}>/ 390</span>
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#cbd5e1', marginTop: '4px' }}>
+                  <div style={{ fontSize: '0.75rem', color: '#334155', marginTop: '4px' }}>
                     Cutoff: <strong>{t2Cutoff || '—'}</strong> ({t2Margin !== null ? (t2Margin >= 0 ? `+${t2Margin} margin` : `${t2Margin} margin`) : 'Target Merit Score'})
                   </div>
                 </div>
 
                 {/* Stage 3: Modules */}
-                <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: (candidateCKT !== null || candidateDEST !== null) ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: (candidateCKT !== null || candidateDEST !== null) ? 'rgba(16,185,129,0.08)' : 'var(--surface-2)', border: '1px solid var(--surface-3)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                    <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, color: '#94a3b8' }}>Stage 3: Modules</span>
-                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#34d399' }}>
+                    <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, color: '#64748b' }}>Stage 3: Modules</span>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#15803d' }}>
                       {(candidateCKT !== null || candidateDEST !== null) ? '✅ QUALIFIED' : 'QUALIFYING'}
                     </span>
                   </div>
-                  <div style={{ fontSize: '0.85rem', color: 'white', fontWeight: 600 }}>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 600 }}>
                     CKT: <strong style={{ color: '#facc15' }}>{candidateCKT !== null ? `${candidateCKT} / 60` : 'Min 15.0'}</strong>
                   </div>
-                  <div style={{ fontSize: '0.85rem', color: 'white', fontWeight: 600, marginTop: '2px' }}>
-                    DEST: <strong style={{ color: '#34d399' }}>{candidateDEST !== null ? `${candidateDEST}% Error` : 'Max 20%'}</strong>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 600, marginTop: '2px' }}>
+                    DEST: <strong style={{ color: '#15803d' }}>{candidateDEST !== null ? `${candidateDEST}% Error` : 'Max 20%'}</strong>
                   </div>
-                  <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '4px' }}>
+                  <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '4px' }}>
                     {cktPassed && destPassed ? 'All qualifying thresholds met' : 'Non-merit qualifying stage'}
                   </div>
                 </div>
 
                 {/* Stage 4: Post Allocation */}
-                <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: allocatedPost && allocatedPost !== 'NOT_ALLOCATED' ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: allocatedPost && allocatedPost !== 'NOT_ALLOCATED' ? 'rgba(16,185,129,0.08)' : 'var(--surface-2)', border: '1px solid var(--surface-3)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                    <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, color: '#94a3b8' }}>Stage 4: Post Allocation</span>
-                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: allocatedPost && allocatedPost !== 'NOT_ALLOCATED' ? '#34d399' : '#f87171' }}>
+                    <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, color: '#64748b' }}>Stage 4: Post Allocation</span>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: allocatedPost && allocatedPost !== 'NOT_ALLOCATED' ? '#15803d' : '#dc2626' }}>
                       {allocatedPost && allocatedPost !== 'NOT_ALLOCATED' ? 'ALLOCATED' : 'NOT ALLOCATED'}
                     </span>
                   </div>
-                  <div style={{ fontSize: '1.05rem', fontWeight: 800, color: allocatedPost && allocatedPost !== 'NOT_ALLOCATED' ? '#34d399' : '#e2e8f0' }}>
+                  <div style={{ fontSize: '1.05rem', fontWeight: 800, color: allocatedPost && allocatedPost !== 'NOT_ALLOCATED' ? '#15803d' : '#334155' }}>
                     {allocatedPost && allocatedPost !== 'NOT_ALLOCATED' ? allocatedPost : 'None (No Post Allocated)'}
                   </div>
-                  <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '4px' }}>
+                  <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '4px' }}>
                     Matches {selectedYear} Merit Result
                   </div>
                 </div>
@@ -13346,14 +13269,14 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
             )}
 
             {/* Authoritative Conclusion Callout */}
-            <div style={{ padding: '14px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', marginBottom: '12px', fontSize: '0.88rem', color: '#e2e8f0', lineHeight: 1.6 }}>
-              <strong style={{ color: '#38bdf8' }}>📋 Authoritative Examination Conclusion: </strong>
+            <div style={{ padding: '14px 16px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--surface-2)', marginBottom: '12px', fontSize: '0.88rem', color: '#334155', lineHeight: 1.6 }}>
+              <strong style={{ color: '#0284c7' }}>📋 Authoritative Examination Conclusion: </strong>
               {unifiedVerdict.conclusion}
             </div>
 
             {/* Next Action Strategy */}
-            <div style={{ padding: '12px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.25)', fontSize: '0.84rem', color: '#cbd5e1', lineHeight: 1.55 }}>
-              <strong style={{ color: '#c7d2fe' }}>🎯 Strategic Recommendation: </strong>
+            <div style={{ padding: '12px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.25)', fontSize: '0.84rem', color: '#334155', lineHeight: 1.55 }}>
+              <strong style={{ color: '#4f46e5' }}>🎯 Strategic Recommendation: </strong>
               {unifiedVerdict.nextAction}
             </div>
           </div>
@@ -13365,7 +13288,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '14px' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-              <span className="badge" style={{ background: 'rgba(56,189,248,0.2)', color: '#38bdf8', border: '1px solid rgba(56,189,248,0.4)', fontSize: '0.72rem', fontWeight: 800 }}>
+              <span className="badge" style={{ background: 'rgba(56,189,248,0.2)', color: '#0284c7', border: '1px solid rgba(56,189,248,0.4)', fontSize: '0.72rem', fontWeight: 800 }}>
                 🎯 DYNAMIC RESULT-DRIVEN NEXT STEPS
               </span>
               {!statusChosenManually && unifiedVerdict && (
@@ -13374,7 +13297,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                 </span>
               )}
             </div>
-            <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'white', margin: '0 0 4px' }}>
+            <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 4px' }}>
               {!statusChosenManually && unifiedVerdict
                 ? `Next Action Pathway for Your Result: ${unifiedVerdict.headline}`
                 : 'Select an Examination Stage Pathway to Explore:'}
@@ -13403,12 +13326,12 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                 onClick={() => { setSelectedStatus('UPSC_MAINS_PREP'); setStatusChosenManually(true); }}
                 style={{ fontSize: '0.82rem', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', textAlign: 'left' }}
               >
-                <Award size={18} color={selectedStatus === 'UPSC_MAINS_PREP' ? 'white' : '#38bdf8'} />
+                <Award size={18} color={selectedStatus === 'UPSC_MAINS_PREP' ? 'var(--text-primary)' : '#0284c7'} />
                 <div>
                   <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
                     Mains Answer Blueprint
                     {unifiedVerdict?.recommendedTab === 'UPSC_MAINS_PREP' && (
-                      <span style={{ fontSize: '0.62rem', background: '#38bdf8', color: '#0f172a', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>ACTIVE</span>
+                      <span style={{ fontSize: '0.62rem', background: '#0284c7', color: '#0f172a', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>ACTIVE</span>
                     )}
                   </div>
                   <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>7 Merit Papers (1750 Marks) & DAF-1</div>
@@ -13421,7 +13344,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                 onClick={() => { setSelectedStatus('UPSC_INTERVIEW_PREP'); setStatusChosenManually(true); }}
                 style={{ fontSize: '0.82rem', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', textAlign: 'left' }}
               >
-                <Sparkles size={18} color={selectedStatus === 'UPSC_INTERVIEW_PREP' ? 'white' : '#a855f7'} />
+                <Sparkles size={18} color={selectedStatus === 'UPSC_INTERVIEW_PREP' ? 'var(--text-primary)' : '#a855f7'} />
                 <div>
                   <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
                     Personality Test (Interview)
@@ -13439,12 +13362,12 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                 onClick={() => { setSelectedStatus('UPSC_FINAL_SELECTION'); setStatusChosenManually(true); }}
                 style={{ fontSize: '0.82rem', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', textAlign: 'left' }}
               >
-                <CheckCircle2 size={18} color={selectedStatus === 'UPSC_FINAL_SELECTION' ? 'white' : '#34d399'} />
+                <CheckCircle2 size={18} color={selectedStatus === 'UPSC_FINAL_SELECTION' ? 'var(--text-primary)' : '#15803d'} />
                 <div>
                   <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
                     Service Allocation & LBSNAA
                     {unifiedVerdict?.recommendedTab === 'UPSC_FINAL_SELECTION' && (
-                      <span style={{ fontSize: '0.62rem', background: '#34d399', color: '#0f172a', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>ACTIVE</span>
+                      <span style={{ fontSize: '0.62rem', background: '#15803d', color: '#0f172a', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>ACTIVE</span>
                     )}
                   </div>
                   <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>Cadre Policy & Foundation Course</div>
@@ -13457,7 +13380,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                 onClick={() => { setSelectedStatus('UPSC_CSAT_RECOVERY'); setStatusChosenManually(true); }}
                 style={{ fontSize: '0.82rem', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', textAlign: 'left' }}
               >
-                <Target size={18} color={selectedStatus === 'UPSC_CSAT_RECOVERY' ? 'white' : '#f59e0b'} />
+                <Target size={18} color={selectedStatus === 'UPSC_CSAT_RECOVERY' ? 'var(--text-primary)' : '#f59e0b'} />
                 <div>
                   <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
                     CSAT Paper-II Turnaround
@@ -13475,12 +13398,12 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                 onClick={() => { setSelectedStatus('UPSC_PRELIMS_RECOVERY'); setStatusChosenManually(true); }}
                 style={{ fontSize: '0.82rem', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', textAlign: 'left' }}
               >
-                <RefreshCw size={18} color={selectedStatus === 'UPSC_PRELIMS_RECOVERY' ? 'white' : '#f87171'} />
+                <RefreshCw size={18} color={selectedStatus === 'UPSC_PRELIMS_RECOVERY' ? 'var(--text-primary)' : '#dc2626'} />
                 <div>
                   <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
                     Prelims GS-1 Core Comeback
                     {unifiedVerdict?.recommendedTab === 'UPSC_PRELIMS_RECOVERY' && (
-                      <span style={{ fontSize: '0.62rem', background: '#f87171', color: 'white', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>ACTIVE</span>
+                      <span style={{ fontSize: '0.62rem', background: '#dc2626', color: 'var(--text-primary)', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>ACTIVE</span>
                     )}
                   </div>
                   <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>Master Core 4: Polity, Econ, Env, Hist</div>
@@ -13495,12 +13418,12 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                 onClick={() => { setSelectedStatus('TIER2_PREP'); setStatusChosenManually(true); }}
                 style={{ fontSize: '0.82rem', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', textAlign: 'left' }}
               >
-                <Award size={18} color={(selectedStatus === 'TIER2_PREP' || selectedStatus === 'QUALIFIED_TIER2') ? 'white' : '#38bdf8'} />
+                <Award size={18} color={(selectedStatus === 'TIER2_PREP' || selectedStatus === 'QUALIFIED_TIER2') ? 'var(--text-primary)' : '#0284c7'} />
                 <div>
                   <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
                     Tier-2 Mains Plan
                     {unifiedVerdict?.recommendedTab === 'TIER2_PREP' && (
-                      <span style={{ fontSize: '0.62rem', background: '#38bdf8', color: '#0f172a', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>ACTIVE</span>
+                      <span style={{ fontSize: '0.62rem', background: '#0284c7', color: '#0f172a', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>ACTIVE</span>
                     )}
                   </div>
                   <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>Next step if Tier-1 cleared</div>
@@ -13513,12 +13436,12 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                 onClick={() => { setSelectedStatus('BOTH_PASSED_SELECTION'); setStatusChosenManually(true); }}
                 style={{ fontSize: '0.82rem', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', textAlign: 'left' }}
               >
-                <CheckCircle2 size={18} color={(selectedStatus === 'BOTH_PASSED_SELECTION' || selectedStatus === 'DOC_VERIFICATION') ? 'white' : '#34d399'} />
+                <CheckCircle2 size={18} color={(selectedStatus === 'BOTH_PASSED_SELECTION' || selectedStatus === 'DOC_VERIFICATION') ? 'var(--text-primary)' : '#15803d'} />
                 <div>
                   <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
                     Final Allocation & DV
                     {unifiedVerdict?.recommendedTab === 'BOTH_PASSED_SELECTION' && (
-                      <span style={{ fontSize: '0.62rem', background: '#34d399', color: '#0f172a', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>ACTIVE</span>
+                      <span style={{ fontSize: '0.62rem', background: '#15803d', color: '#0f172a', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>ACTIVE</span>
                     )}
                   </div>
                   <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>Next step if both tiers passed</div>
@@ -13531,12 +13454,12 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                 onClick={() => { setSelectedStatus('TIER2_MISSED_RECOVERY'); setStatusChosenManually(true); }}
                 style={{ fontSize: '0.82rem', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', textAlign: 'left' }}
               >
-                <Target size={18} color={selectedStatus === 'TIER2_MISSED_RECOVERY' ? 'white' : '#fbbf24'} />
+                <Target size={18} color={selectedStatus === 'TIER2_MISSED_RECOVERY' ? 'var(--text-primary)' : '#b45309'} />
                 <div>
                   <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
                     Bridge Tier-2 Gap
                     {unifiedVerdict?.recommendedTab === 'TIER2_MISSED_RECOVERY' && (
-                      <span style={{ fontSize: '0.62rem', background: '#fbbf24', color: '#0f172a', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>ACTIVE</span>
+                      <span style={{ fontSize: '0.62rem', background: '#b45309', color: '#0f172a', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>ACTIVE</span>
                     )}
                   </div>
                   <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>Tier-1 cleared · merit shortfall plan</div>
@@ -13549,12 +13472,12 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                 onClick={() => { setSelectedStatus('TIER1_FAILED_RECOVERY'); setStatusChosenManually(true); }}
                 style={{ fontSize: '0.82rem', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', textAlign: 'left' }}
               >
-                <RefreshCw size={18} color={(selectedStatus === 'TIER1_FAILED_RECOVERY' || (selectedStatus === 'NOT_QUALIFIED' && !t1Passed)) ? 'white' : '#f87171'} />
+                <RefreshCw size={18} color={(selectedStatus === 'TIER1_FAILED_RECOVERY' || (selectedStatus === 'NOT_QUALIFIED' && !t1Passed)) ? 'var(--text-primary)' : '#dc2626'} />
                 <div>
                   <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
                     Tier-1 Comeback Plan
                     {unifiedVerdict?.recommendedTab === 'TIER1_FAILED_RECOVERY' && (
-                      <span style={{ fontSize: '0.62rem', background: '#f87171', color: 'white', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>ACTIVE</span>
+                      <span style={{ fontSize: '0.62rem', background: '#dc2626', color: 'var(--text-primary)', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>ACTIVE</span>
                     )}
                   </div>
                   <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>Next step if Tier-1 missed</div>
@@ -13567,7 +13490,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                 onClick={() => { setSelectedStatus('SKILL_TEST'); setStatusChosenManually(true); }}
                 style={{ fontSize: '0.82rem', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', textAlign: 'left' }}
               >
-                <Keyboard size={18} color={selectedStatus === 'SKILL_TEST' ? 'white' : '#a855f7'} />
+                <Keyboard size={18} color={selectedStatus === 'SKILL_TEST' ? 'var(--text-primary)' : '#a855f7'} />
                 <div>
                   <div style={{ fontWeight: 700 }}>Skill Test / DEST</div>
                   <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>Typing speed & error standards</div>
@@ -13587,10 +13510,10 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
         <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div className="glass-card" style={{ padding: '24px', borderLeft: '4px solid #38bdf8' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(56,189,248,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#38bdf8' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(56,189,248,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0284c7' }}>
                 <Award size={20} />
               </div>
-              <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', margin: 0 }}>
+              <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                 {upscGs1Margin !== null && upscGs1Margin >= 0
                   ? `Prelims Cleared with ${upscGs1} (+${upscGs1Margin} above cutoff)! Your Mains Written Masterplan`
                   : 'Civil Services (Main) Examination 1750-Mark Action Blueprint'}
@@ -13605,7 +13528,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
             <div className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '14px' }}>
               <div>
                 <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>PRIORITY STEP 1</span>
-                <h5 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'white', margin: '0 0 6px' }}>
+                <h5 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 6px' }}>
                   Detailed Application Form-1 (DAF-I) Submission
                 </h5>
                 <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
@@ -13624,7 +13547,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
             <div className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '14px' }}>
               <div>
                 <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>PRIORITY STEP 2</span>
-                <h5 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'white', margin: '0 0 6px' }}>
+                <h5 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 6px' }}>
                   The 10-Marker (150 Words) & 15-Marker (250 Words) Formula
                 </h5>
                 <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
@@ -13643,7 +13566,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
             <div className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '14px' }}>
               <div>
                 <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>PRIORITY STEP 3</span>
-                <h5 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'white', margin: '0 0 6px' }}>
+                <h5 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 6px' }}>
                   Optional Subject Consolidation (500 Marks)
                 </h5>
                 <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
@@ -13662,7 +13585,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
             <div className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '14px' }}>
               <div>
                 <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>PRIORITY STEP 4</span>
-                <h5 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'white', margin: '0 0 6px' }}>
+                <h5 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 6px' }}>
                   Qualifying Language Papers A & B (Min 25%)
                 </h5>
                 <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
@@ -13686,12 +13609,12 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
       {/* UPSC PATHWAY 2: PERSONALITY TEST / INTERVIEW MASTERCLASS */}
       {isUPSC && (selectedStatus === 'UPSC_INTERVIEW_PREP') && (
         <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div className="glass-card" style={{ padding: '24px', borderLeft: '4px solid #a855f7', background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, rgba(15, 23, 42, 0.95) 100%)' }}>
+          <div className="glass-card" style={{ padding: '24px', borderLeft: '4px solid #a855f7', background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, #ffffff 100%)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(168, 85, 247, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#c084fc' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(168, 85, 247, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#7c3aed' }}>
                 <Sparkles size={20} />
               </div>
-              <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', margin: 0 }}>
+              <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                 🏛️ Dholpur House Personality Test (Interview) Masterclass — 275 Marks
               </h4>
             </div>
@@ -13703,7 +13626,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
           <div className="grid-3" style={{ gap: '16px' }}>
             <div className="glass-card" style={{ padding: '20px' }}>
               <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>STEP 1: DAF-II DETAILED SCRUTINY</span>
-              <h6 style={{ fontSize: '1rem', fontWeight: 700, color: 'white', margin: '6px 0' }}>DAF-II Dissection</h6>
+              <h6 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', margin: '6px 0' }}>DAF-II Dissection</h6>
               <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45 }}>
                 Every keyword in your DAF-II is potential question territory: Home district issues, college alma mater, hobbies/interests, employment history, and service/cadre preferences. Prepare 100+ anticipated questions on your personal profile.
               </p>
@@ -13711,7 +13634,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
 
             <div className="glass-card" style={{ padding: '20px' }}>
               <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>STEP 2: BOARD INTERVIEW TRAITS</span>
-              <h6 style={{ fontSize: '1rem', fontWeight: 700, color: 'white', margin: '6px 0' }}>Constitutional Poise & Balance</h6>
+              <h6 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', margin: '6px 0' }}>Constitutional Poise & Balance</h6>
               <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45 }}>
                 The Board tests intellectual integrity, mental alertness, balance of judgement, and emotional composure under questioning. If you do not know a factual query, politely state: <em>"Sir/Madam, I am unable to recall at this moment, but I will read up on this."</em>
               </p>
@@ -13719,7 +13642,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
 
             <div className="glass-card" style={{ padding: '20px' }}>
               <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>STEP 3: MOCK INTERVIEW DRILLS</span>
-              <h6 style={{ fontSize: '1rem', fontWeight: 700, color: 'white', margin: '6px 0' }}>Video Recorded Simulation</h6>
+              <h6 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', margin: '6px 0' }}>Video Recorded Simulation</h6>
               <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45 }}>
                 Attend 3 to 4 mock panels with retired senior civil servants. Review body language recordings: eye contact across all board members, upright posture, calm modulation of voice, and avoiding dogmatic or polarising stances.
               </p>
@@ -13731,12 +13654,12 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
       {/* UPSC PATHWAY 3: FINAL SELECTION & LBSNAA FORMALITIES */}
       {isUPSC && (selectedStatus === 'UPSC_FINAL_SELECTION') && (
         <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div className="glass-card" style={{ padding: '24px', borderLeft: '4px solid #10b981', background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, rgba(15, 23, 42, 0.95) 100%)' }}>
+          <div className="glass-card" style={{ padding: '24px', borderLeft: '4px solid #10b981', background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, #ffffff 100%)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#34d399' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#15803d' }}>
                 <CheckCircle2 size={20} />
               </div>
-              <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', margin: 0 }}>
+              <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                 🏆 Recommended by UPSC! Next Step: Service & Cadre Allocation Formalities
               </h4>
             </div>
@@ -13748,7 +13671,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
           <div className="grid-3" style={{ gap: '16px' }}>
             <div className="glass-card" style={{ padding: '20px' }}>
               <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>STAGE 1: SERVICE & CADRE ALLOCATION</span>
-              <h6 style={{ fontSize: '1rem', fontWeight: 700, color: 'white', margin: '6px 0' }}>DoPT Cadre Allocation Order</h6>
+              <h6 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', margin: '6px 0' }}>DoPT Cadre Allocation Order</h6>
               <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45 }}>
                 The Department of Personnel and Training (DoPT) issues formal service allocation based on your rank, category, and preferences submitted in DAF-II. Cadre allocation for IAS and IPS follows the 5-Zone policy with a 1:2 Insider/Outsider ratio.
               </p>
@@ -13756,7 +13679,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
 
             <div className="glass-card" style={{ padding: '20px' }}>
               <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>STAGE 2: MEDICAL BOARD SCRUTINY</span>
-              <h6 style={{ fontSize: '1rem', fontWeight: 700, color: 'white', margin: '6px 0' }}>Central Standing Medical Board</h6>
+              <h6 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', margin: '6px 0' }}>Central Standing Medical Board</h6>
               <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45 }}>
                 Undergo medical check-ups at designated hospitals in New Delhi (Dr. RML Hospital, Safdarjung Hospital, Sucheta Kriplani). Height, chest expansion, and colour vision standards are strictly verified for technical services like IPS, IRPFS, and DANIPS.
               </p>
@@ -13764,7 +13687,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
 
             <div className="glass-card" style={{ padding: '20px' }}>
               <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>STAGE 3: LBSNAA FOUNDATION COURSE</span>
-              <h6 style={{ fontSize: '1rem', fontWeight: 700, color: 'white', margin: '6px 0' }}>Reporting to Mussoorie</h6>
+              <h6 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', margin: '6px 0' }}>Reporting to Mussoorie</h6>
               <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45 }}>
                 Report to the Lal Bahadur Shastri National Academy of Administration (LBSNAA) in Mussoorie for the 15-week Foundation Course. Police verification dossiers and original document scrutiny are completed before the formal swearing-in.
               </p>
@@ -13776,17 +13699,17 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
       {/* UPSC PATHWAY 4: CSAT TURNAROUND PLAN */}
       {isUPSC && (selectedStatus === 'UPSC_CSAT_RECOVERY') && (
         <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div className="glass-card" style={{ padding: '24px', borderLeft: '4px solid #f59e0b', background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(15, 23, 42, 0.95) 100%)' }}>
+          <div className="glass-card" style={{ padding: '24px', borderLeft: '4px solid #f59e0b', background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, #ffffff 100%)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fbbf24' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#b45309' }}>
                 <Target size={20} />
               </div>
-              <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', margin: 0 }}>
+              <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                 ⚡ CSAT Paper-II Turnaround Plan: Bridge the 33% Qualifying Threshold
               </h4>
             </div>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0, lineHeight: 1.6 }}>
-              <strong style={{ color: '#fbbf24' }}>Authoritative Diagnostic Verdict: </strong>
+              <strong style={{ color: '#b45309' }}>Authoritative Diagnostic Verdict: </strong>
               CSAT Paper-II is the single largest hurdle in UPSC Preliminary screening. Even with high GS-1 scores, candidates are disqualified if they score below <strong>66.66 marks out of 200 (27 net correct questions out of 80)</strong>. CSAT carries a steep negative marking penalty of <strong>-0.83 marks per wrong question</strong>. Follow this structured turnaround plan:
             </p>
           </div>
@@ -13796,7 +13719,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
               <span className="badge" style={{ background: 'rgba(245, 158, 11, 0.2)', color: '#facc15', fontSize: '0.7rem', marginBottom: '8px' }}>
                 MODULE 1: READING COMPREHENSION
               </span>
-              <h5 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'white', margin: '0 0 6px' }}>
+              <h5 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 6px' }}>
                 Inference & Assumption Mastery (27–30 Questions)
               </h5>
               <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
@@ -13808,7 +13731,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
               <span className="badge" style={{ background: 'rgba(245, 158, 11, 0.2)', color: '#facc15', fontSize: '0.7rem', marginBottom: '8px' }}>
                 MODULE 2: HIGH-YIELD QUANT CLUSTERS
               </span>
-              <h5 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'white', margin: '0 0 6px' }}>
+              <h5 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 6px' }}>
                 Number System & Permutations Focus (20+ Questions)
               </h5>
               <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
@@ -13824,10 +13747,10 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
         <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div className="glass-card" style={{ padding: '24px', borderLeft: '4px solid #ef4444' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(239,68,68,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f87171' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(239,68,68,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626' }}>
                 <Target size={20} />
               </div>
-              <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', margin: 0 }}>
+              <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                 Civil Services Preliminary GS-1 Core Comeback Strategy
               </h4>
             </div>
@@ -13839,7 +13762,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
           <div className="grid-2" style={{ gap: '16px' }}>
             <div className="glass-card" style={{ padding: '20px' }}>
               <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>CORE SUBJECT 1: INDIAN POLITY</span>
-              <h5 style={{ fontSize: '1rem', fontWeight: 700, color: 'white', margin: '4px 0' }}>15–18 Questions · High Predictability</h5>
+              <h5 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', margin: '4px 0' }}>15–18 Questions · High Predictability</h5>
               <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45 }}>
                 Master Constitution Articles, Fundamental Rights, DPSP, Parliament procedures, and Supreme Court constitutional bench rulings. Aim for 85%+ accuracy in this section.
               </p>
@@ -13847,7 +13770,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
 
             <div className="glass-card" style={{ padding: '20px' }}>
               <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>CORE SUBJECT 2: ENVIRONMENT & ECOLOGY</span>
-              <h5 style={{ fontSize: '1rem', fontWeight: 700, color: 'white', margin: '4px 0' }}>15–17 Questions · High Weightage</h5>
+              <h5 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', margin: '4px 0' }}>15–17 Questions · High Weightage</h5>
               <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45 }}>
                 Focus on National Parks and Biosphere Reserves, Wildlife Protection Act schedules, IUCN Red List species, and global climate summits (UNFCCC COP resolutions).
               </p>
@@ -13855,7 +13778,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
 
             <div className="glass-card" style={{ padding: '20px' }}>
               <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>CORE SUBJECT 3: INDIAN ECONOMY</span>
-              <h5 style={{ fontSize: '1rem', fontWeight: 700, color: 'white', margin: '4px 0' }}>14–16 Questions · Concept Driven</h5>
+              <h5 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', margin: '4px 0' }}>14–16 Questions · Concept Driven</h5>
               <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45 }}>
                 Grasp macro principles: Monetary policy tools, inflation indices (CPI vs WPI), Balance of Payments, external debt composition, and major fiscal schemes.
               </p>
@@ -13863,7 +13786,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
 
             <div className="glass-card" style={{ padding: '20px' }}>
               <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>CORE SUBJECT 4: MODERN HISTORY</span>
-              <h5 style={{ fontSize: '1rem', fontWeight: 700, color: 'white', margin: '4px 0' }}>12–15 Questions · Chronology</h5>
+              <h5 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', margin: '4px 0' }}>12–15 Questions · Chronology</h5>
               <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45 }}>
                 Cover the Freedom Struggle chronologically from 1857 to 1947: Non-Cooperation, Civil Disobedience, Quit India, Constitutional acts (1909, 1919, 1935), and personality contributions.
               </p>
@@ -13877,10 +13800,10 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
         <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div className="glass-card" style={{ padding: '24px', borderLeft: '4px solid #f59e0b' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fbbf24' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#b45309' }}>
                 <Target size={20} />
               </div>
-              <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', margin: 0 }}>
+              <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                 ⚡ Bridge the Mains Written Shortfall: Strategy to Gain +40 to +60 Marks
               </h4>
             </div>
@@ -13892,7 +13815,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
           <div className="grid-3" style={{ gap: '16px' }}>
             <div className="glass-card" style={{ padding: '20px' }}>
               <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>LEVER 1: OPTIONAL SUBJECT</span>
-              <h6 style={{ fontSize: '1rem', fontWeight: 700, color: 'white', margin: '6px 0' }}>+25 to +35 Marks Potential</h6>
+              <h6 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', margin: '6px 0' }}>+25 to +35 Marks Potential</h6>
               <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45 }}>
                 Deepen theoretical mastery, quote scholarly literature/case studies, and solve every PYQ from the last 15 years.
               </p>
@@ -13900,7 +13823,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
 
             <div className="glass-card" style={{ padding: '20px' }}>
               <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>LEVER 2: GS-4 ETHICS CASE STUDIES</span>
-              <h6 style={{ fontSize: '1rem', fontWeight: 700, color: 'white', margin: '6px 0' }}>+15 to +20 Marks Potential</h6>
+              <h6 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', margin: '6px 0' }}>+15 to +20 Marks Potential</h6>
               <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45 }}>
                 Structure case studies with clear stakeholder mapping, moral dilemmas, course of action evaluation, and practical ethical justification.
               </p>
@@ -13908,7 +13831,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
 
             <div className="glass-card" style={{ padding: '20px' }}>
               <span className="badge badge-demo" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>LEVER 3: ESSAY PAPER POLISHING</span>
-              <h6 style={{ fontSize: '1rem', fontWeight: 700, color: 'white', margin: '6px 0' }}>+10 to +15 Marks Potential</h6>
+              <h6 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', margin: '6px 0' }}>+10 to +15 Marks Potential</h6>
               <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45 }}>
                 Use multi-dimensional frameworks (historical, social, economic, ethical, environmental, international) and engaging real-world anecdotes.
               </p>
@@ -13964,10 +13887,10 @@ const resourceTypeLabel = (type: ResourceItem['type']): string => {
 const resourceTypeColor = (type: ResourceItem['type']): string => {
   switch (type) {
     case 'OFFICIAL_PDF':
-    case 'OFFICIAL_PORTAL': return '#34d399';
-    case 'VIDEO_LECTURE': return '#f87171';
-    case 'ONLINE_TOOL': return '#fbbf24';
-    default: return '#a5b4fc';
+    case 'OFFICIAL_PORTAL': return '#15803d';
+    case 'VIDEO_LECTURE': return '#dc2626';
+    case 'ONLINE_TOOL': return '#b45309';
+    default: return '#4f46e5';
   }
 };
 
@@ -14211,13 +14134,13 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
     const check = linkChecks[r.url];
     if (check) {
       const ok = check.status === 'HEALTHY' || check.status === 'REDIRECT';
-      if (ok) return { text: `Live now · HTTP ${check.httpCode}`, color: '#34d399', bg: 'rgba(16,185,129,0.12)' };
-      if (check.status === 'BLOCKED') return { text: 'Blocks automated checks · open to confirm', color: '#fbbf24', bg: 'rgba(245,158,11,0.12)' };
-      if (check.status === 'UNREACHABLE') return { text: 'Could not reach automatically · open to confirm', color: '#fbbf24', bg: 'rgba(245,158,11,0.12)' };
-      return { text: `Link broken · HTTP ${check.httpCode}`, color: '#f87171', bg: 'rgba(239,68,68,0.12)' };
+      if (ok) return { text: `Live now · HTTP ${check.httpCode}`, color: '#15803d', bg: 'rgba(16,185,129,0.12)' };
+      if (check.status === 'BLOCKED') return { text: 'Blocks automated checks · open to confirm', color: '#b45309', bg: 'rgba(245,158,11,0.12)' };
+      if (check.status === 'UNREACHABLE') return { text: 'Could not reach automatically · open to confirm', color: '#b45309', bg: 'rgba(245,158,11,0.12)' };
+      return { text: `Link broken · HTTP ${check.httpCode}`, color: '#dc2626', bg: 'rgba(239,68,68,0.12)' };
     }
-    if (r.linkVerifiedDate) return { text: `Link verified ${formatVerifiedDate(r.linkVerifiedDate)}`, color: '#34d399', bg: 'rgba(16,185,129,0.1)' };
-    if (r.provenance?.verificationLevel === 'UNDER_VERIFICATION') return { text: 'Link check pending', color: '#fbbf24', bg: 'rgba(245,158,11,0.1)' };
+    if (r.linkVerifiedDate) return { text: `Link verified ${formatVerifiedDate(r.linkVerifiedDate)}`, color: '#15803d', bg: 'rgba(16,185,129,0.1)' };
+    if (r.provenance?.verificationLevel === 'UNDER_VERIFICATION') return { text: 'Link check pending', color: '#b45309', bg: 'rgba(245,158,11,0.1)' };
     return null;
   };
 
@@ -14242,7 +14165,7 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
     borderRadius: 'var(--radius-full)',
     border: `1px solid ${active ? accent : 'var(--border-color)'}`,
     background: active ? 'rgba(99, 102, 241, 0.16)' : 'transparent',
-    color: active ? '#c7d2fe' : 'var(--text-secondary)',
+    color: active ? '#4f46e5' : 'var(--text-secondary)',
     fontSize: '0.78rem',
     fontWeight: active ? 700 : 500,
     fontFamily: 'var(--font-sans)',
@@ -14282,7 +14205,7 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
         style={{
           padding: '18px',
           borderRadius: 'var(--radius-md)',
-          background: 'rgba(255, 255, 255, 0.025)',
+          background: 'var(--surface-2)',
           borderTop: `3px solid ${typeColor}`,
           borderRight: `1px solid ${saved ? 'rgba(99, 102, 241, 0.45)' : 'var(--border-color)'}`,
           borderBottom: `1px solid ${saved ? 'rgba(99, 102, 241, 0.45)' : 'var(--border-color)'}`,
@@ -14296,7 +14219,7 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', fontWeight: 700, color: typeColor, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
             <ResourceTypeIcon type={r.type} /> {resourceTypeLabel(r.type)}
             {r.isEssential && (
-              <span style={{ marginLeft: '6px', padding: '1px 7px', borderRadius: 'var(--radius-full)', background: 'rgba(16,185,129,0.15)', color: '#6ee7b7', fontSize: '0.66rem' }}>
+              <span style={{ marginLeft: '6px', padding: '1px 7px', borderRadius: 'var(--radius-full)', background: 'rgba(16,185,129,0.15)', color: '#15803d', fontSize: '0.66rem' }}>
                 ESSENTIAL
               </span>
             )}
@@ -14305,23 +14228,23 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
             onClick={() => toggleBookmark(r)}
             title={saved ? 'Remove from saved' : 'Save for later'}
             aria-label={saved ? 'Remove from saved' : 'Save for later'}
-            style={{ ...iconButtonStyle, borderColor: saved ? 'var(--primary)' : 'var(--border-color)', color: saved ? '#a5b4fc' : 'var(--text-muted)', background: saved ? 'rgba(99,102,241,0.14)' : 'transparent' }}
+            style={{ ...iconButtonStyle, borderColor: saved ? 'var(--primary)' : 'var(--border-color)', color: saved ? '#4f46e5' : 'var(--text-muted)', background: saved ? 'rgba(99,102,241,0.14)' : 'transparent' }}
           >
-            <Bookmark size={15} fill={saved ? '#a5b4fc' : 'none'} />
+            <Bookmark size={15} fill={saved ? '#4f46e5' : 'none'} />
           </button>
         </div>
 
         <div>
-          <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', margin: '0 0 3px', lineHeight: 1.3 }}>{r.title}</h4>
-          <div style={{ fontSize: '0.78rem', color: '#93c5fd', fontWeight: 600 }}>{r.author}</div>
+          <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 3px', lineHeight: 1.3 }}>{r.title}</h4>
+          <div style={{ fontSize: '0.78rem', color: '#2563eb', fontWeight: 600 }}>{r.author}</div>
         </div>
 
         <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as any, overflow: 'hidden' }}>
           {r.description}
         </p>
 
-        <div style={{ fontSize: '0.78rem', color: '#86efac', lineHeight: 1.4 }}>
-          <strong style={{ color: '#6ee7b7' }}>Best for:</strong> {r.recommendedFor}
+        <div style={{ fontSize: '0.78rem', color: '#15803d', lineHeight: 1.4 }}>
+          <strong style={{ color: '#15803d' }}>Best for:</strong> {r.recommendedFor}
         </div>
 
         {r.resourceFormat === 'YOUTUBE_CHANNEL' && (() => {
@@ -14329,12 +14252,12 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
           const feed = cid ? channelFeeds[cid] : undefined;
           if (!feed || feed.items.length === 0) return null;
           return (
-            <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '8px' }}>
-              <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#fca5a5', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}>
+            <div style={{ borderTop: '1px solid var(--surface-2)', paddingTop: '8px' }}>
+              <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#dc2626', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}>
                 Latest uploads · fetched {formatFetched(feed.fetchedAt)}
               </div>
               {feed.items.slice(0, 3).map(v => (
-                <a key={v.videoId} href={v.url} target="_blank" rel="noreferrer" title={v.title} style={{ display: 'flex', gap: '8px', fontSize: '0.78rem', color: '#e2e8f0', textDecoration: 'none', lineHeight: 1.35, padding: '3px 0' }}>
+                <a key={v.videoId} href={v.url} target="_blank" rel="noreferrer" title={v.title} style={{ display: 'flex', gap: '8px', fontSize: '0.78rem', color: '#334155', textDecoration: 'none', lineHeight: 1.35, padding: '3px 0' }}>
                   <span style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', flexShrink: 0 }}>{v.published.slice(5)}</span>
                   <span style={{ display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical' as any, overflow: 'hidden' }}>{v.title}</span>
                 </a>
@@ -14351,19 +14274,19 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
               </span>
             )}
             {r.officialTag && (
-              <span style={{ padding: '2px 9px', borderRadius: 'var(--radius-full)', background: 'rgba(255,255,255,0.05)', color: 'var(--text-secondary)', fontSize: '0.68rem', fontWeight: 600 }}>
+              <span style={{ padding: '2px 9px', borderRadius: 'var(--radius-full)', background: 'var(--surface-2)', color: 'var(--text-secondary)', fontSize: '0.68rem', fontWeight: 600 }}>
                 {r.officialTag}
               </span>
             )}
             {r.rating && (
-              <span style={{ fontSize: '0.72rem', color: '#fbbf24', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                <Star size={11} fill="#fbbf24" color="#fbbf24" /> {r.rating}
+              <span style={{ fontSize: '0.72rem', color: '#b45309', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                <Star size={11} fill="#b45309" color="#b45309" /> {r.rating}
               </span>
             )}
           </div>
         )}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: 'auto', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: 'auto', paddingTop: '10px', borderTop: '1px solid var(--surface-2)' }}>
           {action.href ? (
             <a href={action.href} target="_blank" rel="noreferrer" className="btn btn-emerald" style={{ fontSize: '0.8rem', padding: '7px 14px', display: 'inline-flex', alignItems: 'center', gap: '6px', flex: 1, justifyContent: 'center' }}>
               {action.label} <ExternalLink size={13} />
@@ -14395,7 +14318,7 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
             </button>
           )}
           {r.provenance && (
-            <button onClick={() => onOpenProvenanceModal(r.provenance!)} title="View source verification" aria-label="View source verification" style={{ ...iconButtonStyle, color: '#34d399' }}>
+            <button onClick={() => onOpenProvenanceModal(r.provenance!)} title="View source verification" aria-label="View source verification" style={{ ...iconButtonStyle, color: '#15803d' }}>
               <ShieldCheck size={14} />
             </button>
           )}
@@ -14411,7 +14334,7 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'white', margin: 0 }}>
+          <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
             {showSectionNumber ? '08 — Resource Library' : `Resource Library — ${exam.title}`}
           </h3>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', margin: '4px 0 0 0' }}>
@@ -14440,7 +14363,7 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
       </div>
 
       {verifySummary && (
-        <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.3)', fontSize: '0.82rem', color: '#c7d2fe', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.3)', fontSize: '0.82rem', color: '#4f46e5', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Info size={14} /> {verifySummary}
         </div>
       )}
@@ -14456,7 +14379,7 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
               onChange={e => setQuery(e.target.value)}
               placeholder="Search by title, author, subject or use case…"
               aria-label="Search resources"
-              style={{ width: '100%', padding: '10px 36px 10px 38px', borderRadius: 'var(--radius-md)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.9rem', fontFamily: 'var(--font-sans)', outline: 'none' }}
+              style={{ width: '100%', padding: '10px 36px 10px 38px', borderRadius: 'var(--radius-md)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontSize: '0.9rem', fontFamily: 'var(--font-sans)', outline: 'none' }}
             />
             {query && (
               <button onClick={() => setQuery('')} aria-label="Clear search" style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex' }}>
@@ -14465,7 +14388,7 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
             )}
           </div>
           <button onClick={() => setSavedOnly(v => !v)} style={chipStyle(savedOnly)} aria-pressed={savedOnly}>
-            <Bookmark size={13} fill={savedOnly ? '#c7d2fe' : 'none'} /> Saved ({savedCount})
+            <Bookmark size={13} fill={savedOnly ? '#4f46e5' : 'none'} /> Saved ({savedCount})
           </button>
         </div>
 
@@ -14491,13 +14414,13 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
       </div>
 
       {/* Resource Navigator (existing assistant, collapsed by default) */}
-      <div style={{ borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.02)' }}>
+      <div style={{ borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', background: 'var(--surface-2)' }}>
         <button
           onClick={() => setIsNavigatorOpen(v => !v)}
           style={{ width: '100%', padding: '12px 16px', background: 'none', border: 'none', color: 'var(--text-secondary)', fontFamily: 'var(--font-sans)', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
         >
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-            <Sparkles size={15} color="#60a5fa" /> Not sure what to open? Ask the Resource Navigator
+            <Sparkles size={15} color="#2563eb" /> Not sure what to open? Ask the Resource Navigator
           </span>
           <ChevronDown size={15} style={{ transform: isNavigatorOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }} />
         </button>
@@ -14511,19 +14434,19 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
       {/* Live: UPSC's What's New, for a UPSC exam. The list carries no dates, so the badge says
           when GovOS first saw each item rather than pretending to a publication date. */}
       {isUpscExam && !isFiltered && upscFeed && (
-        <div className="glass-card" style={{ padding: '20px', background: 'linear-gradient(135deg, rgba(99,102,241,0.10) 0%, rgba(15,23,42,0.98) 60%)', border: '1px solid rgba(99,102,241,0.35)' }}>
+        <div className="glass-card" style={{ padding: '20px', background: 'linear-gradient(135deg, rgba(99,102,241,0.10) 0%, #ffffff 60%)', border: '1px solid rgba(99,102,241,0.35)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <Bell size={18} color="#a5b4fc" />
-              <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'white', margin: 0 }}>Latest from UPSC's What's New — Civil Services</h4>
+              <Bell size={18} color="#4f46e5" />
+              <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Latest from UPSC's What's New — Civil Services</h4>
               <span className="badge badge-verified" style={{ fontSize: '0.62rem' }}>LIVE · OFFICIAL</span>
             </div>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              Read {formatFetched(upscFeed.fetchedAt)}{upscFeed.stale ? ' · last good copy' : ''} · <a href={upscFeed.source} target="_blank" rel="noreferrer" style={{ color: '#a5b4fc' }}>upsc.gov.in/whats-new</a>
+              Read {formatFetched(upscFeed.fetchedAt)}{upscFeed.stale ? ' · last good copy' : ''} · <a href={upscFeed.source} target="_blank" rel="noreferrer" style={{ color: '#4f46e5' }}>upsc.gov.in/whats-new</a>
             </span>
           </div>
           {upscFeed.error && upscFeed.items.length === 0 && (
-            <div style={{ fontSize: '0.82rem', color: '#fcd34d' }}>UPSC's page could not be read just now ({upscFeed.error}). Open it directly.</div>
+            <div style={{ fontSize: '0.82rem', color: '#b45309' }}>UPSC's page could not be read just now ({upscFeed.error}). Open it directly.</div>
           )}
           {!upscFeed.error && upscFeed.items.length === 0 && (
             <div style={{ fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
@@ -14532,8 +14455,8 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
           )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {upscFeed.items.map(n => (
-              <a key={n.id} href={n.files[0]?.url || upscFeed.source} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '10px 12px', borderRadius: 'var(--radius-sm)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', textDecoration: 'none' }}>
-                <span style={{ fontSize: '0.86rem', color: '#e2e8f0' }}>{n.headline}</span>
+              <a key={n.id} href={n.files[0]?.url || upscFeed.source} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '10px 12px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', textDecoration: 'none' }}>
+                <span style={{ fontSize: '0.86rem', color: '#334155' }}>{n.headline}</span>
                 <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>first seen {n.createdAt} <ExternalLink size={11} /></span>
               </a>
             ))}
@@ -14543,11 +14466,11 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
 
       {/* Live: SSC's own notice board */}
       {isSscExam && !isFiltered && sscFeed && (sscFeed.items.length > 0 || sscFeed.total > 0 || sscFeed.error) && (
-        <div className="glass-card" style={{ padding: '20px', background: 'linear-gradient(135deg, rgba(99,102,241,0.10) 0%, rgba(15,23,42,0.98) 60%)', border: '1px solid rgba(99,102,241,0.35)' }}>
+        <div className="glass-card" style={{ padding: '20px', background: 'linear-gradient(135deg, rgba(99,102,241,0.10) 0%, #ffffff 60%)', border: '1px solid rgba(99,102,241,0.35)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <Bell size={18} color="#a5b4fc" />
-              <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'white', margin: 0 }}>Latest from SSC's notice board</h4>
+              <Bell size={18} color="#4f46e5" />
+              <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Latest from SSC's notice board</h4>
               <span className="badge badge-verified" style={{ fontSize: '0.62rem' }}>LIVE · OFFICIAL</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
@@ -14557,7 +14480,7 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
           </div>
 
           {sscFeed.error && sscFeed.items.length === 0 && (
-            <div style={{ fontSize: '0.84rem', color: '#fbbf24' }}>Could not reach SSC's notice board just now ({sscFeed.error}). It is retried automatically.</div>
+            <div style={{ fontSize: '0.84rem', color: '#b45309' }}>Could not reach SSC's notice board just now ({sscFeed.error}). It is retried automatically.</div>
           )}
           {!sscFeed.error && sscFeed.items.length === 0 && (
             <div style={{ fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
@@ -14567,9 +14490,9 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {sscFeed.items.map(n => (
-              <div key={n.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '10px 12px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '0.74rem', color: '#a5b4fc', fontFamily: 'var(--font-mono)', flexShrink: 0, paddingTop: '2px' }}>{n.createdAt}</span>
-                <div style={{ flex: 1, minWidth: '220px', fontSize: '0.88rem', color: 'white', lineHeight: 1.45 }}>{n.headline}</div>
+              <div key={n.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '10px 12px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.74rem', color: '#4f46e5', fontFamily: 'var(--font-mono)', flexShrink: 0, paddingTop: '2px' }}>{n.createdAt}</span>
+                <div style={{ flex: 1, minWidth: '220px', fontSize: '0.88rem', color: 'var(--text-primary)', lineHeight: 1.45 }}>{n.headline}</div>
                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                   {n.files.map(f => (
                     <a key={f.url} href={f.url} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ fontSize: '0.74rem', padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
@@ -14584,18 +14507,18 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
           <div style={{ marginTop: '10px', fontSize: '0.74rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
             <Info size={12} />
             Read from ssc.gov.in's own notice-board API, fetched {formatFetched(sscFeed.fetchedAt)}{sscFeed.stale ? ' (could not refresh; showing the last copy)' : ''} · refreshes every {sscFeed.intervalHours} h · every file opens on ssc.gov.in.
-            <a href={sscFeed.source} target="_blank" rel="noreferrer" style={{ color: '#a5b4fc', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>Open the full board <ExternalLink size={11} /></a>
+            <a href={sscFeed.source} target="_blank" rel="noreferrer" style={{ color: '#4f46e5', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>Open the full board <ExternalLink size={11} /></a>
           </div>
         </div>
       )}
 
       {/* Start here shelf */}
       {!isFiltered && essentials.length > 0 && (
-        <div className="glass-card" style={{ padding: '20px', background: 'linear-gradient(135deg, rgba(16,185,129,0.09) 0%, rgba(15,23,42,0.98) 60%)', border: '1px solid rgba(16,185,129,0.3)' }}>
+        <div className="glass-card" style={{ padding: '20px', background: 'linear-gradient(135deg, rgba(16,185,129,0.09) 0%, #ffffff 60%)', border: '1px solid rgba(16,185,129,0.3)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '14px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Compass size={18} color="var(--emerald)" />
-              <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'white', margin: 0 }}>Start here — the essentials</h4>
+              <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Start here — the essentials</h4>
             </div>
             <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
               The {essentials.length} sources every candidate should open first
@@ -14610,7 +14533,7 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
       {/* Results */}
       {isFiltered && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-          <span>Showing <strong style={{ color: 'white' }}>{matches.length}</strong> of {resources.length} resources</span>
+          <span>Showing <strong style={{ color: 'var(--text-primary)' }}>{matches.length}</strong> of {resources.length} resources</span>
           <button onClick={resetFilters} className="btn btn-secondary" style={{ fontSize: '0.76rem', padding: '4px 12px' }}>Clear filters</button>
         </div>
       )}
@@ -14618,7 +14541,7 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
       {matches.length === 0 ? (
         <div className="glass-card" style={{ padding: '40px 24px', textAlign: 'center' }}>
           <AlertTriangle size={26} color="var(--text-muted)" style={{ marginBottom: '8px' }} />
-          <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'white', marginBottom: '6px' }}>
+          <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '6px' }}>
             {savedOnly && savedCount === 0 ? 'Nothing saved yet' : 'No resources match'}
           </h4>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', maxWidth: '420px', margin: '0 auto 14px' }}>
@@ -14632,7 +14555,7 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
         grouped.map(group => (
           <section key={group.subject} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>
-              <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', margin: 0 }}>{group.subject}</h4>
+              <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>{group.subject}</h4>
               <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>{group.items.length} resource{group.items.length === 1 ? '' : 's'}</span>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '14px' }}>
@@ -14688,6 +14611,9 @@ const REFERENCE_SECTIONS = [
 
 interface ExamDetailViewProps {
   exam: Exam;
+  /** "Back to Home" and the "Need help?" card in the sidebar. */
+  onBackHome?: () => void;
+  onAskAI?: () => void;
   onOpenProvenanceModal: (provenance: DataProvenance) => void;
   onOpenReportModal: (entityType: string, entityId: string) => void;
   onNavigateEligibility?: () => void;
@@ -14701,6 +14627,8 @@ interface ExamDetailViewProps {
 
 export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
   exam,
+  onBackHome,
+  onAskAI,
   onOpenProvenanceModal,
   onOpenReportModal,
   onNavigateEligibility,
@@ -14816,78 +14744,140 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
     setActiveSection(secNum);
   };
 
+  // The four tiles under the exam name: the milestones a candidate looks for first.
+  const liveDates = exam.dates.filter(d => d.status !== 'SUPERSEDED');
+  const tileFor = (types: ImportantDate['type'][], label: string) => {
+    const d = liveDates.find(x => types.includes(x.type));
+    return { label: d && d.isTentative ? `${label} (Tentative)` : label, value: d ? d.dateTimeStr.slice(0, 10) : 'TBA' };
+  };
+  const stageLabel = (idx: number, fallback: string) => {
+    const st = exam.stages[idx];
+    if (!st) return fallback;
+    const name = st.stageName.split(' — ')[0].split(':')[0];
+    return name.length > 26 ? fallback : name.replace(/^Civil Services \((\w+)\) Examination$/, '$1');
+  };
+  const tiles = [
+    tileFor(['APPLICATION_OPEN', 'NOTIFICATION'], 'Application Starts'),
+    tileFor(['APPLICATION_CLOSE'], 'Application Ends'),
+    tileFor(['EXAM_TIER1'], stageLabel(0, 'Tier 1')),
+    tileFor(['EXAM_TIER2'], stageLabel(1, 'Tier 2'))
+  ];
+  const examInitials = exam.code.split('_').slice(0, 2).join(' ');
+  const shareExam = async () => {
+    const payload = { title: exam.title, text: `${exam.title} on GovOS`, url: exam.officialDomain };
+    try {
+      if (navigator.share) await navigator.share(payload);
+      else if (navigator.clipboard) await navigator.clipboard.writeText(exam.officialDomain);
+    } catch { /* the candidate closed the share sheet */ }
+  };
+  const latestUpdates = [
+    ...exam.corrigendums.map(c => ({ id: c.id, title: c.title, date: c.publishedDate, isNew: true })),
+    ...liveDates.map(d => ({ id: d.id, title: d.label, date: d.dateTimeStr.slice(0, 10), isNew: false }))
+  ].sort((x, y) => {
+    // most recently published first; what is still ahead follows, nearest first
+    const today = new Date().toISOString().slice(0, 10);
+    const xPast = x.date <= today, yPast = y.date <= today;
+    if (xPast !== yPast) return xPast ? -1 : 1;
+    return xPast ? y.date.localeCompare(x.date) : x.date.localeCompare(y.date);
+  }).slice(0, 5);
+
   return (
-    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      
-      {/* Exam Header Title Banner */}
-      <div className="glass-card" style={{ padding: '28px', background: 'linear-gradient(135deg, rgba(17, 24, 39, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%)' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
+    <div className="animate-fade-in exam-layout">
+      {/* ================= SIDEBAR: the 13 parts, then the reference sections ================= */}
+      <aside className="glass-card side-nav">
+        <button className="side-link" onClick={onBackHome} style={{ color: 'var(--text-muted)' }}>
+          <ArrowLeft size={15} /> Back to Home
+        </button>
+        <div style={{ height: '6px' }} />
+        {EXAM_SECTIONS.map(sec => {
+          const SecIcon = sec.icon;
+          return (
+            <button key={sec.num} className={`side-link ${activeSection === sec.num ? 'active' : ''}`} onClick={() => goToSection(sec.num)}>
+              <SecIcon size={15} /> {sec.label}
+            </button>
+          );
+        })}
+        <div className="side-heading">Also in this exam</div>
+        {REFERENCE_SECTIONS.map(sec => {
+          const SecIcon = sec.icon;
+          return (
+            <button key={sec.num} className={`side-link minor ${activeSection === sec.num ? 'active' : ''}`} onClick={() => goToSection(sec.num)} title={`Reference for ${sec.under}`}>
+              <SecIcon size={13} /> {sec.label}
+            </button>
+          );
+        })}
+        <div style={{ marginTop: '12px', padding: '14px', borderRadius: '12px', background: 'var(--primary-soft)', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+          <Bot size={18} color="var(--primary)" style={{ flexShrink: 0, marginTop: '2px' }} />
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
-              {exam.isGoldenJourney && (
-                <span className="badge badge-demo" style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.4)' }}>
-                  🌟 GOLDEN BENCHMARK EXAM
-                </span>
-              )}
-              <span className="badge badge-verified">
-                <ShieldCheck size={14} /> 100% OFFICIALLY VERIFIED
-              </span>
-              {exam.vacanciesTotal && (
-                <span className="badge badge-demo" style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa' }}>
-                  {exam.vacanciesTotal}
-                </span>
-              )}
-            </div>
-
-            <h2 style={{ fontSize: '2rem', fontWeight: 800, color: 'white', marginBottom: '6px' }}>
-              {exam.title}
-            </h2>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', margin: 0 }}>
-              Conducting Body: <strong style={{ color: 'white' }}>{exam.authorityName}</strong> | Official Domain: <a href={exam.officialDomain} target="_blank" rel="noreferrer" style={{ color: '#93c5fd' }}>{exam.officialDomain}</a>
-            </p>
-          </div>
-
-          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-            {onToggleTrack && (
-              <button 
-                className={`btn ${isTracked ? 'btn-emerald' : 'btn-secondary'}`}
-                onClick={onToggleTrack}
-                style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}
-                title={isTracked ? 'Currently tracked in My Exam Timeline' : 'Track this exam for personalized deadline notifications'}
-              >
-                {isTracked ? <><Check size={16} /> Tracking</> : <><Bell size={16} /> Track Exam</>}
-              </button>
-            )}
-            <button 
-              className={`btn ${isBookmarked ? 'btn-amber' : 'btn-secondary'}`}
-              onClick={handleToggleBookmark}
-              style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px', background: isBookmarked ? 'rgba(245, 158, 11, 0.2)' : undefined, color: isBookmarked ? '#fbbf24' : undefined, borderColor: isBookmarked ? 'rgba(245, 158, 11, 0.4)' : undefined }}
-              title={isBookmarked ? 'Exam saved in bookmarks' : 'Bookmark this exam'}
-            >
-              <Bookmark size={16} fill={isBookmarked ? 'currentColor' : 'none'} />
-              {isBookmarked ? 'Bookmarked' : 'Bookmark'}
-            </button>
-            <button className="btn btn-secondary" onClick={() => onOpenReportModal('Exam', exam.id)} style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Flag size={16} /> Report Error
-            </button>
-            <a 
-              href={exam.officialDomain} 
-              target="_blank" 
-              rel="noreferrer" 
-              className="btn btn-emerald" 
-              style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}
-              onClick={() => {
-                storageService.recordInteraction({
-                  type: 'RESOURCE_ACCESS',
-                  examId: exam.id,
-                  metadata: { target: exam.officialDomain, action: 'Opened Official Domain Portal' }
-                });
-              }}
-            >
-              Official Website <ExternalLink size={16} />
-            </a>
+            <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-primary)' }}>Need Help?</div>
+            <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Ask GovOS AI</div>
+            <button className="nav-link" onClick={onAskAI} style={{ padding: '4px 0', color: 'var(--primary)', fontSize: '0.78rem' }}>Get instant answers →</button>
           </div>
         </div>
+      </aside>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', minWidth: 0 }}>
+
+      {/* Exam Header Title Banner */}
+      <div className="glass-card" style={{ padding: '22px 24px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
+          <div style={{ display: 'flex', gap: '14px', alignItems: 'center', minWidth: 0 }}>
+            <div className="exam-logo">{examInitials}</div>
+            <div style={{ minWidth: 0 }}>
+              <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0, lineHeight: 1.2 }}>{exam.title}</h2>
+              <div style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '2px' }}>{exam.authorityName}</div>
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginTop: '2px', display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                <span>Greater Opportunities. A Stronger You.</span>
+                {exam.vacanciesTotal && <span className="badge badge-demo" style={{ fontSize: '0.62rem' }}>{exam.vacanciesTotal}</span>}
+                {exam.isGoldenJourney && <span className="badge badge-verified" style={{ fontSize: '0.62rem' }}>Golden benchmark exam</span>}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+            {onToggleTrack && (
+              <button className={`btn ${isTracked ? 'btn-emerald' : 'btn-secondary'}`} onClick={onToggleTrack} style={{ fontSize: '0.85rem', padding: '8px 14px' }} title={isTracked ? 'Currently tracked in My Timeline' : 'Track this exam for deadline notifications'}>
+                {isTracked ? <><Check size={15} /> Tracking</> : <><Bell size={15} /> Track Exam</>}
+              </button>
+            )}
+            <button className="btn btn-secondary" onClick={shareExam} style={{ fontSize: '0.85rem', padding: '8px 14px' }} title="Share the official page">
+              <Share2 size={15} /> Share
+            </button>
+            <button className="icon-btn" onClick={handleToggleBookmark} title={isBookmarked ? 'Exam saved in bookmarks' : 'Bookmark this exam'} style={{ color: isBookmarked ? '#b45309' : undefined, background: isBookmarked ? 'var(--amber-soft)' : undefined }}>
+              <Bookmark size={16} fill={isBookmarked ? 'currentColor' : 'none'} />
+            </button>
+            <button className="icon-btn" onClick={() => onOpenReportModal('Exam', exam.id)} title="Report an error in this exam's data">
+              <Flag size={16} />
+            </button>
+            <button className="btn btn-primary" onClick={onAskAI} style={{ fontSize: '0.85rem', padding: '8px 14px' }}>
+              <Bot size={15} /> Ask about this exam!
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* The four milestones a candidate looks for first */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '12px' }}>
+        {tiles.map(t => (
+          <div key={t.label} className="stat-tile">
+            <div className="tile-icon"><Calendar size={17} /></div>
+            <div>
+              <div className="tile-label">{t.label}</div>
+              <div className="tile-value">{t.value}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Banner strip */}
+      <div className="exam-banner">
+        <div style={{ maxWidth: '640px', fontSize: '0.95rem', color: 'var(--text-primary)', lineHeight: 1.55 }}>
+          {exam.overviewDescription.length > 260 ? exam.overviewDescription.slice(0, 257).replace(/\s+\S*$/, '') + '…' : exam.overviewDescription}
+        </div>
+        <a href={exam.officialDomain} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ fontSize: '0.85rem', whiteSpace: 'nowrap' }}
+          onClick={() => storageService.recordInteraction({ type: 'RESOURCE_ACCESS', examId: exam.id, metadata: { target: exam.officialDomain, action: 'Opened Official Domain Portal' } })}>
+          Official Website <ExternalLink size={15} />
+        </a>
       </div>
 
       {/* Corrigendum Change Notification Bar */}
@@ -14896,10 +14886,10 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <RefreshCw size={22} color="var(--amber)" />
             <div>
-              <div style={{ fontSize: '0.9rem', fontWeight: 800, color: '#fbbf24', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ fontSize: '0.9rem', fontWeight: 800, color: '#b45309', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 ACTIVE CORRIGENDUM NOTICE: {activeCorrigendum.noticeNumber}
               </div>
-              <div style={{ fontSize: '0.85rem', color: '#fef3c7' }}>
+              <div style={{ fontSize: '0.85rem', color: '#92400e' }}>
                 {activeCorrigendum.diffSummary}
               </div>
             </div>
@@ -14910,100 +14900,53 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
         </div>
       )}
 
-      {/* ================= EXAM SECTION NAVIGATION ================= */}
-      {/* The 13 parts of this exam. Everything exam-scoped is reached from here. */}
-      <div className="glass-card" style={{ padding: '18px 20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-            <BookOpen size={16} color="var(--text-muted)" />
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                {exam.title} · everything for this exam
-              </div>
-              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                Reading: <strong style={{ color: '#cbd5e1' }}>{activeSectionMeta?.name || 'Overview'}</strong>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-          {EXAM_SECTIONS.map(sec => {
-            const isActive = activeSection === sec.num;
-            const SecIcon = sec.icon;
-            return (
-              <button
-                key={sec.num}
-                onClick={() => goToSection(sec.num)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '7px',
-                  padding: '8px 13px',
-                  borderRadius: 'var(--radius-sm)',
-                  background: isActive ? 'rgba(99, 102, 241, 0.16)' : 'rgba(255, 255, 255, 0.025)',
-                  border: isActive ? '1px solid rgba(99, 102, 241, 0.6)' : '1px solid var(--border-color)',
-                  color: isActive ? '#a5b4fc' : 'var(--text-secondary)',
-                  fontSize: '0.82rem',
-                  fontWeight: isActive ? 700 : 500,
-                  fontFamily: 'var(--font-sans)',
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <SecIcon size={14} color={isActive ? '#a5b4fc' : 'var(--text-muted)'} />
-                {sec.label}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Reference material, named by the part it backs up rather than hidden in an index. */}
-        <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-          <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            Also in this exam
-          </span>
-          {REFERENCE_SECTIONS.map(sec => {
-            const isActive = activeSection === sec.num;
-            const SecIcon = sec.icon;
-            return (
-              <button
-                key={sec.num}
-                onClick={() => goToSection(sec.num)}
-                title={`Reference for ${sec.under}`}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '5px 11px',
-                  borderRadius: 'var(--radius-sm)',
-                  background: isActive ? 'rgba(99, 102, 241, 0.14)' : 'transparent',
-                  border: isActive ? '1px solid rgba(99, 102, 241, 0.55)' : '1px solid var(--border-color)',
-                  color: isActive ? '#a5b4fc' : 'var(--text-muted)',
-                  fontSize: '0.76rem',
-                  fontWeight: isActive ? 700 : 500,
-                  fontFamily: 'var(--font-sans)',
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                <SecIcon size={12} />
-                {sec.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
       {/* Section Content Views */}
       <div className="glass-card" style={{ padding: '28px' }}>
 
         {/* Section 01: Overview & Posts */}
         {activeSection === 1 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
+              <div style={{ padding: '4px 0' }}>
+                <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px' }}>Quick Info</h4>
+                {[
+                  { icon: <Building size={16} />, label: 'Conducting Body', value: exam.authorityName },
+                  { icon: <Award size={16} />, label: 'Exam Level', value: exam.minimumQualification === 'GRADUATION' ? 'Graduation' : (exam.minimumQualification || 'See notice') },
+                  { icon: <Briefcase size={16} />, label: 'Posts', value: `${exam.posts.length} posts · ${Array.from(new Set(exam.posts.map(p => p.classification))).join(', ')}` },
+                  { icon: <Layers size={16} />, label: 'Selection Process', value: exam.stages.map((st, i) => `${st.stageName.split(' — ')[0].split(':')[0]}`).join(' → ') },
+                  { icon: <Globe size={16} />, label: 'Official Website', value: exam.officialDomain, href: exam.officialDomain }
+                ].map(row => (
+                  <div key={row.label} className="info-row">
+                    <div className="info-icon">{row.icon}</div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>{row.label}</div>
+                      {row.href
+                        ? <a href={row.href} target="_blank" rel="noreferrer" style={{ fontSize: '0.9rem', fontWeight: 600 }}>{row.value} <ExternalLink size={12} /></a>
+                        : <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>{row.value}</div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ padding: '4px 0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Latest Updates</h4>
+                  <button className="nav-link" style={{ padding: '2px 6px', fontSize: '0.8rem', color: 'var(--primary)' }} onClick={() => goToSection(2)}>View All</button>
+                </div>
+                {latestUpdates.map(u => (
+                  <div key={u.id} className="info-row">
+                    <div className="info-icon">{u.isNew ? <RefreshCw size={15} /> : <Calendar size={15} />}</div>
+                    <div>
+                      <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                        {u.isNew && <span className="badge badge-verified" style={{ fontSize: '0.58rem', padding: '1px 7px' }}>Notice</span>}{u.title}
+                      </div>
+                      <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>{u.date}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'white', margin: 0 }}>
+              <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                 01 — Official Exam Profile & All {exam.posts.length} Posts Breakdown
               </h3>
               {exam.posts[0] && (
@@ -15019,10 +14962,10 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
               {exam.posts.map(p => (
-                <div key={p.id} style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div key={p.id} style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
                     <div>
-                      <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'white', margin: 0 }}>{p.postName}</h4>
+                      <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>{p.postName}</h4>
                       <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '2px' }}>{p.department}</div>
                       {p.ministry && <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{p.ministry}</div>}
                     </div>
@@ -15030,7 +14973,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                   </div>
 
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                    <span className="glass-pill" style={{ color: '#34d399', borderColor: 'rgba(16,185,129,0.3)', fontSize: '0.75rem' }}>{p.payScale}</span>
+                    <span className="glass-pill" style={{ color: '#15803d', borderColor: 'rgba(16,185,129,0.3)', fontSize: '0.75rem' }}>{p.payScale}</span>
                     <span className="glass-pill" style={{ fontSize: '0.75rem' }}>Age: {p.minAge}–{p.maxAge} Yrs</span>
                     <span className="glass-pill" style={{ fontSize: '0.75rem' }}>{p.classification}</span>
                   </div>
@@ -15042,12 +14985,12 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                   )}
 
                   {p.physicalRequired && (
-                    <div style={{ padding: '8px 10px', borderRadius: 'var(--radius-sm)', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', fontSize: '0.78rem', color: '#fef3c7' }}>
+                    <div style={{ padding: '8px 10px', borderRadius: 'var(--radius-sm)', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', fontSize: '0.78rem', color: '#92400e' }}>
                       ⚡ <strong>Uniformed Physical Post:</strong> {p.physicalNote || 'Physical test & measurement required.'}
                     </div>
                   )}
 
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid rgba(255, 255, 255, 0.06)', paddingTop: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--surface-2)', paddingTop: '8px' }}>
                     <button 
                       className="btn btn-outline" 
                       onClick={() => onOpenProvenanceModal(p.provenance)}
@@ -15080,13 +15023,13 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
             const d = m.d;
             const isNext = next && d.id === next.d.id;
             return (
-              <div key={d.id} style={{ padding: '16px 20px', borderRadius: 'var(--radius-md)', background: d.status === 'SUPERSEDED' ? 'rgba(239, 68, 68, 0.05)' : isNext ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255,255,255,0.03)', border: d.status === 'SUPERSEDED' ? '1px dashed rgba(239, 68, 68, 0.3)' : isNext ? '1px solid rgba(16, 185, 129, 0.45)' : '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+              <div key={d.id} style={{ padding: '16px 20px', borderRadius: 'var(--radius-md)', background: d.status === 'SUPERSEDED' ? 'rgba(239, 68, 68, 0.05)' : isNext ? 'rgba(16, 185, 129, 0.08)' : 'var(--surface-2)', border: d.status === 'SUPERSEDED' ? '1px dashed rgba(239, 68, 68, 0.3)' : isNext ? '1px solid rgba(16, 185, 129, 0.45)' : '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                     {isNext && (
                       <span className="badge badge-verified" style={{ fontSize: '0.68rem' }}>NEXT</span>
                     )}
-                    <span style={{ fontSize: '1rem', fontWeight: 700, color: d.status === 'SUPERSEDED' ? '#fca5a5' : 'white', textDecoration: d.status === 'SUPERSEDED' ? 'line-through' : 'none' }}>
+                    <span style={{ fontSize: '1rem', fontWeight: 700, color: d.status === 'SUPERSEDED' ? '#dc2626' : 'white', textDecoration: d.status === 'SUPERSEDED' ? 'line-through' : 'none' }}>
                       {d.label}
                     </span>
                     {d.status === 'SUPERSEDED' && (
@@ -15095,14 +15038,14 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                   </div>
                   <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
                     {m.when.text && (
-                      <strong style={{ color: m.when.isPast ? 'var(--text-muted)' : '#6ee7b7' }}>{m.when.text}</strong>
+                      <strong style={{ color: m.when.isPast ? 'var(--text-muted)' : '#15803d' }}>{m.when.text}</strong>
                     )}
                     {m.when.text ? ' · ' : ''}Timezone: {d.timezone} {d.isTentative && '(Tentative Schedule)'}
                   </div>
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: '1.05rem', fontWeight: 800, fontFamily: 'var(--font-mono)', color: d.status === 'SUPERSEDED' ? '#fca5a5' : 'var(--primary)' }}>
+                  <span style={{ fontSize: '1.05rem', fontWeight: 800, fontFamily: 'var(--font-mono)', color: d.status === 'SUPERSEDED' ? '#dc2626' : 'var(--primary)' }}>
                     {d.dateTimeStr}
                   </span>
                   {d.type === 'ADMIT_CARD' && (
@@ -15132,7 +15075,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
                 <div>
-                  <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'white', margin: 0 }}>
+                  <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                     Dates & Timeline — {exam.title}
                   </h3>
                   <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', margin: '4px 0 0' }}>
@@ -15165,7 +15108,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                     <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                       Next milestone
                     </div>
-                    <div style={{ fontSize: '1rem', fontWeight: 800, color: '#6ee7b7' }}>
+                    <div style={{ fontSize: '1rem', fontWeight: 800, color: '#15803d' }}>
                       {next.d.label} — {next.when.text}
                     </div>
                   </div>
@@ -15173,7 +15116,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
               )}
 
               {upcoming.length === 0 ? (
-                <div style={{ padding: '22px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                <div style={{ padding: '22px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
                   Every date the register holds for this exam has passed. The next cycle's dates appear here as soon as the commission publishes them.
                 </div>
               ) : (
@@ -15207,7 +15150,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
               <div>
-                <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'white', margin: 0 }}>
+                <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                   03 — Configured Eligibility Rules (Crucial Date: {exam.crucialEligibilityDate})
                 </h3>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: '4px 0 0 0' }}>
@@ -15226,9 +15169,9 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
               {/* Each exam states its own rules; the cards are data, cited, not component prose. */}
               {(exam.eligibilityHighlights || []).map((card, idx) => {
                 const palette = [
-                  { bg: 'rgba(59, 130, 246, 0.08)', border: 'rgba(59, 130, 246, 0.3)', color: '#93c5fd' },
-                  { bg: 'rgba(16, 185, 129, 0.08)', border: 'rgba(16, 185, 129, 0.3)', color: '#34d399' },
-                  { bg: 'rgba(245, 158, 11, 0.08)', border: 'rgba(245, 158, 11, 0.3)', color: '#fbbf24' },
+                  { bg: 'rgba(59, 130, 246, 0.08)', border: 'rgba(59, 130, 246, 0.3)', color: '#2563eb' },
+                  { bg: 'rgba(16, 185, 129, 0.08)', border: 'rgba(16, 185, 129, 0.3)', color: '#15803d' },
+                  { bg: 'rgba(245, 158, 11, 0.08)', border: 'rgba(245, 158, 11, 0.3)', color: '#b45309' },
                   { bg: 'rgba(168, 85, 247, 0.08)', border: 'rgba(168, 85, 247, 0.3)', color: '#c4b5fd' }
                 ][idx % 4];
                 return (
@@ -15242,8 +15185,8 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                 );
               })}
               {(exam.eligibilityHighlights || []).length === 0 && exam.globalRuleGroup.rules.map(rule => (
-                <div key={rule.id} style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)' }}>
-                  <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'white', marginBottom: '6px' }}>{rule.ruleType.replace(/_/g, ' ')}</h4>
+                <div key={rule.id} style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)' }}>
+                  <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>{rule.ruleType.replace(/_/g, ' ')}</h4>
                   <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', margin: 0 }}>{rule.operator} {Array.isArray(rule.ruleValue) ? rule.ruleValue.join(', ') : String(rule.ruleValue)}</p>
                 </div>
               ))}
@@ -15262,19 +15205,19 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
         {/* Section 05: Exam Pattern */}
         {activeSection === 5 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'white', margin: 0 }}>
+            <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
               05 — Complete 2-Tier Exam Pattern & Scheme
             </h3>
 
             {exam.stages.map(stage => (
-              <div key={stage.id} style={{ padding: '22px', borderRadius: 'var(--radius-md)', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div key={stage.id} style={{ padding: '22px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
                   <div>
                     <span className="badge badge-verified" style={{ marginBottom: '4px' }}>{stage.tier}</span>
-                    <h4 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'white', margin: 0 }}>{stage.stageName}</h4>
+                    <h4 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>{stage.stageName}</h4>
                   </div>
                   <div style={{ display: 'flex', gap: '10px' }}>
-                    <span className="glass-pill" style={{ color: '#38bdf8' }}>{stage.durationMinutes} Mins</span>
+                    <span className="glass-pill" style={{ color: '#0284c7' }}>{stage.durationMinutes} Mins</span>
                     <span className="glass-pill" style={{ color: 'var(--emerald)' }}>{stage.totalMarks} Marks</span>
                     <span className="glass-pill">{stage.negativeMarking}</span>
                   </div>
@@ -15286,16 +15229,16 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {stage.sections.map((sec, sIdx) => (
-                    <div key={sIdx} style={{ padding: '14px', borderRadius: 'var(--radius-sm)', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+                    <div key={sIdx} style={{ padding: '14px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-3)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
                       <div>
-                        <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'white' }}>{sec.sectionName}</div>
+                        <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>{sec.sectionName}</div>
                         <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
                           {sec.modules.join(' • ')}
                         </div>
                       </div>
 
                       <div style={{ display: 'flex', gap: '12px', fontSize: '0.85rem' }}>
-                        <span style={{ color: '#93c5fd' }}>{sec.questions} Questions</span>
+                        <span style={{ color: '#2563eb' }}>{sec.questions} Questions</span>
                         <span style={{ color: 'var(--emerald)', fontWeight: 700 }}>{sec.marks} Marks</span>
                         <span style={{ color: 'var(--text-muted)' }}>{sec.durationMinutes} Mins</span>
                       </div>
@@ -15312,7 +15255,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
               <div>
-                <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'white', margin: 0 }}>
+                <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                   06 — Targeted Post Study Plan & Official Syllabus
                 </h3>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', margin: '4px 0 0 0' }}>
@@ -15321,7 +15264,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
               </div>
 
               {/* View Switcher: Post-Specific Plan vs Official Legal Blueprint */}
-              <div style={{ display: 'flex', gap: '6px', background: 'rgba(255, 255, 255, 0.05)', padding: '4px', borderRadius: 'var(--radius-md)' }}>
+              <div style={{ display: 'flex', gap: '6px', background: 'var(--surface-2)', padding: '4px', borderRadius: 'var(--radius-md)' }}>
                 <button
                   onClick={() => setSyllabusViewMode('POST_STUDY_PATH')}
                   className={`btn ${syllabusViewMode === 'POST_STUDY_PATH' ? 'btn-primary' : 'btn-secondary'}`}
@@ -15341,7 +15284,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
 
             {/* View 1: Dynamic Post Study Path Engine */}
             {syllabusViewMode === 'POST_STUDY_PATH' && !examHasStudyPaths(exam) && (
-              <div style={{ padding: '16px 18px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+              <div style={{ padding: '16px 18px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
                 GovOS has not authored post-wise study paths for {exam.title} yet: every service allotted through it is selected by the same papers, so the Official Syllabus view is the plan. Post-wise paths exist for SSC CGL, where posts differ in papers and thresholds.
               </div>
             )}
@@ -15355,7 +15298,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
             {/* View 2: Official Micro-Topic Syllabus Blueprint */}
             {syllabusViewMode === 'OFFICIAL_BLUEPRINT' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-                <div style={{ padding: '14px 18px', borderRadius: 'var(--radius-md)', background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.25)', fontSize: '0.86rem', color: '#93c5fd', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ padding: '14px 18px', borderRadius: 'var(--radius-md)', background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.25)', fontSize: '0.86rem', color: '#2563eb', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <div>
                     ℹ️ <strong>Official Legal Blueprint:</strong> This is the unadjusted statutory syllabus extracted directly from {exam.syllabusSourceNote || `the official ${exam.authorityName} notification`}.
                   </div>
@@ -15378,7 +15321,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                     <Info size={13} /> {syllabusWatch.note || 'No live notice board is wired for this exam yet.'} The syllabus shown is the register's verified version.
                   </div>
                 ) : syllabusWatch.items.length === 0 ? (
-                  <div style={{ fontSize: '0.8rem', color: '#6ee7b7', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <div style={{ fontSize: '0.8rem', color: '#15803d', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                     <CheckCircle2 size={13} /> Watching {syllabusWatch.source.replace(/^https?:\/\/(www\.)?/, '')}: nothing published about this exam since {syllabusVerifiedOn || 'verification'}.
                     <span style={{ color: 'var(--text-muted)' }}>Checked {formatFetched(syllabusWatch.fetchedAt)}{syllabusWatch.stale ? ' · last good copy, refresh failed' : ''}.</span>
                   </div>
@@ -15386,7 +15329,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                   <div style={{ padding: '16px 18px', borderRadius: 'var(--radius-md)', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.4)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                       <AlertTriangle size={18} color="var(--amber)" />
-                      <strong style={{ color: '#fbbf24', fontSize: '0.92rem' }}>
+                      <strong style={{ color: '#b45309', fontSize: '0.92rem' }}>
                         {exam.authorityName.split(' (')[0]} has published {syllabusWatch.items.length} notice{syllabusWatch.items.length === 1 ? '' : 's'} about this exam since the syllabus was verified on {syllabusVerifiedOn}
                       </strong>
                       <span className="badge badge-verified" style={{ fontSize: '0.62rem' }}>LIVE · OFFICIAL</span>
@@ -15394,7 +15337,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                       {syllabusWatch.items.map(n => (
                         <div key={n.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', fontSize: '0.84rem' }}>
-                          <span style={{ color: '#fef3c7' }}><span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>{n.createdAt}</span> · {n.headline}</span>
+                          <span style={{ color: '#92400e' }}><span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>{n.createdAt}</span> · {n.headline}</span>
                           {n.files[0] && (
                             <a href={n.files[0].url} target="_blank" rel="noreferrer" className="btn btn-outline" style={{ fontSize: '0.72rem', padding: '3px 10px', borderColor: 'var(--amber)', color: 'var(--amber)', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
                               Open notice <ExternalLink size={11} />
@@ -15412,17 +15355,17 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                 {exam.syllabus.map(topic => {
                   const isDone = !!completedTopics[topic.id];
                   return (
-                    <div key={topic.id} style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: isDone ? 'rgba(16, 185, 129, 0.04)' : 'rgba(255, 255, 255, 0.02)', border: isDone ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div key={topic.id} style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: isDone ? 'rgba(16, 185, 129, 0.04)' : 'var(--surface-2)', border: isDone ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                           <div onClick={() => toggleTopic(topic.id)} style={{ cursor: 'pointer' }}>
                             {isDone ? <CheckSquare size={22} color="var(--emerald)" /> : <Square size={22} color="var(--text-muted)" />}
                           </div>
                           <div>
-                            <div style={{ fontSize: '0.78rem', color: '#93c5fd', fontWeight: 700, textTransform: 'uppercase' }}>
+                            <div style={{ fontSize: '0.78rem', color: '#2563eb', fontWeight: 700, textTransform: 'uppercase' }}>
                               {topic.subject} • {topic.tier}
                             </div>
-                            <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: isDone ? '#86efac' : 'white', margin: 0 }}>
+                            <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: isDone ? '#15803d' : 'white', margin: 0 }}>
                               {topic.topicName}
                             </h4>
                           </div>
@@ -15430,7 +15373,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                           {topic.isHighYield && (
-                            <span className="badge badge-demo" style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#f87171' }}>
+                            <span className="badge badge-demo" style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#dc2626' }}>
                               🔥 HIGH-YIELD TOPIC
                             </span>
                           )}
@@ -15505,7 +15448,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
         {/* Section 10: Cutoff History */}
         {activeSection === 10 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'white', margin: 0 }}>
+            <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
               10 — Official Category Cutoff History{exam.cutoffsHistory.length > 0 ? ` (${Math.min(...exam.cutoffsHistory.map(c => c.year))} to ${Math.max(...exam.cutoffsHistory.map(c => c.year))})` : ''}
             </h3>
             <div style={{ overflowX: 'auto' }}>
@@ -15521,9 +15464,9 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                 </thead>
                 <tbody>
                   {exam.cutoffsHistory.map((c, idx) => (
-                    <tr key={idx} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
-                      <td style={{ padding: '12px', fontWeight: 700, color: 'white' }}>{c.year}</td>
-                      <td style={{ padding: '12px', color: '#93c5fd' }}>{c.category}</td>
+                    <tr key={idx} style={{ borderBottom: '1px solid var(--surface-2)' }}>
+                      <td style={{ padding: '12px', fontWeight: 700, color: 'var(--text-primary)' }}>{c.year}</td>
+                      <td style={{ padding: '12px', color: '#2563eb' }}>{c.category}</td>
                       <td style={{ padding: '12px', fontWeight: 700, color: 'var(--emerald)', fontFamily: 'var(--font-mono)' }}>{c.tier1Cutoff}</td>
                       <td style={{ padding: '12px', fontWeight: 700, color: 'var(--primary)', fontFamily: 'var(--font-mono)' }}>{c.tier2Cutoff || 'N/A'}</td>
                       <td style={{ padding: '12px' }}>
@@ -15539,7 +15482,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
 
             <div style={{ padding: '16px 20px', borderRadius: 'var(--radius-md)', background: 'rgba(234, 179, 8, 0.08)', border: '1px solid rgba(234, 179, 8, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
               <div>
-                <strong style={{ fontSize: '1rem', color: 'white' }}>Results or Scorecard Released?</strong>
+                <strong style={{ fontSize: '1rem', color: 'var(--text-primary)' }}>Results or Scorecard Released?</strong>
                 <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: '2px 0 0' }}>
                   Explore your personalized next steps based on whether you qualified for Tier-2, Skill Test DEST, or need a recovery pathway.
                 </p>
@@ -15558,13 +15501,13 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
         {/* Section 11: FAQs & Clauses */}
         {activeSection === 11 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'white', margin: 0 }}>
+            <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
               11 — Frequently Asked Questions with Official Gazette Citations
             </h3>
             {exam.faqs.map(faq => (
-              <div key={faq.id} style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div key={faq.id} style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-                  <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'white', margin: 0 }}>{faq.question}</h4>
+                  <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>{faq.question}</h4>
                   <span className="badge badge-verified" style={{ fontSize: '0.72rem' }}>{faq.officialClause}</span>
                 </div>
                 <p style={{ fontSize: '0.92rem', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
@@ -15583,7 +15526,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
         {/* Section 12: Official Links */}
         {activeSection === 12 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-            <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'white', margin: 0 }}>
+            <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
               12 — Authoritative Government Portals & Directory
             </h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
@@ -15593,7 +15536,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
               ).map(link => (
                 <a key={link.url} href={link.url} target="_blank" rel="noreferrer" className="glass-card" style={{ padding: '18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div>
-                    <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'white' }}>{link.title}</h4>
+                    <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>{link.title}</h4>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{link.note}</div>
                   </div>
                   <ExternalLink size={18} color="var(--primary)" />
@@ -15606,7 +15549,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
         {/* Section 13: Corrigenda Log */}
         {activeSection === 13 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'white', margin: 0 }}>
+            <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
               13 — Official Corrigenda & Modification Notices Log
             </h3>
             {exam.corrigendums.map(corr => (
@@ -15615,8 +15558,8 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                   <span className="badge badge-changed">{corr.status}</span>
                   <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Published: {corr.publishedDate}</span>
                 </div>
-                <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fbbf24', margin: 0 }}>{corr.title}</h4>
-                <div style={{ fontSize: '0.82rem', color: '#fef3c7', fontWeight: 600 }}>Notice Ref: {corr.noticeNumber}</div>
+                <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#b45309', margin: 0 }}>{corr.title}</h4>
+                <div style={{ fontSize: '0.82rem', color: '#92400e', fontWeight: 600 }}>Notice Ref: {corr.noticeNumber}</div>
                 <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: 0 }}>{corr.summary}</p>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
                   <a href={corr.pdfUrl} target="_blank" rel="noreferrer" className="btn btn-outline" style={{ fontSize: '0.8rem', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -15652,6 +15595,8 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
             onSelectAlternativeExam={onSelectAlternativeExam}
           />
         )}
+      </div>
+
       </div>
 
       {/* Resource Reader & YouTube Video Player Modal */}

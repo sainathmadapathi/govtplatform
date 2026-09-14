@@ -1,6 +1,6 @@
 # GovOS — India's Exam & Career Navigation Platform
 
-Single-page React app (dark "glassmorphism" UI) that turns fragmented Indian government
+Single-page React app (light, card-based UI) that turns fragmented Indian government
 recruitment notifications into a verified, provenance-cited, personalized exam journey.
 SSC CGL 2026 is the "Golden Journey" reference exam and UPSC CSE 2026 is authored to the
 same depth from UPSC's own documents; IBPS PO and the two APPSC exams are thin skeletons.
@@ -588,11 +588,41 @@ modal, the report-error modal, the two notification modals, and the React root.
 call.
 
 ### Styling
-All CSS lives in `index.html`'s `<style>` block: tokens (`--primary` indigo, `--emerald`,
-`--amber`, `--rose`, `--bg-dark`) and utilities `.glass-card`, `.glass-pill`, `.btn` /
-`.btn-primary|emerald|secondary|outline`, `.badge-verified|changed|superseded|demo|pending`,
-`.taxonomy-*`, `.modal-overlay`, `.animate-fade-in`, `.trick-card-animated`. Components use
-inline `style={{}}` objects for everything else. No Tailwind, no CSS modules.
+All CSS lives in `index.html`'s `<style>` block. The look is the light, card-based design
+from the user's mockup (white cards on `#f4f7fb`, blue `--primary: #2f6bff`, soft shadows,
+14–16 px radii). **Token and class names were kept from the earlier dark theme** so that the
+~14k lines of inline styles did not have to change: `--bg-dark` is now the light page ground,
+`.glass-card` is a white card, and `.btn-*`, `.badge-*`, `.taxonomy-*`, `.modal-*`,
+`.stepper`, `.corrigendum-bar`, `.animate-fade-in`, `.trick-card-animated` all still exist.
+New surface tokens: `--surface-2` / `--surface-3` (tinted insets), `--primary-soft`,
+`--emerald-soft`, `--amber-soft`, `--rose-soft`. New layout classes for the mockup: `.topbar`,
+`.nav-link(.active|.subtle)`, `.avatar`, `.icon-btn`, `.hero`, `.hero-art`, `.search-bar`,
+`.chip`, `.feature-grid`/`.feature-card`, `.quote-strip`, `.exam-layout`, `.side-nav`,
+`.side-link(.active|.minor)`, `.side-heading`, `.stat-tile`, `.exam-logo`, `.exam-banner`,
+`.info-row`/`.info-icon`.
+
+**Inline colours were re-mapped, not rewritten.** The scratchpad `p24_light_colors.py`
+walked every `style={{…}}` block and mapped literals that only made sense on near-black:
+`color: 'white'` → `var(--text-primary)` except where the same block has a solid brand fill
+(a blue icon box, a red badge — 9 kept), pale accents (`#93c5fd`, `#a5b4fc`, `#34d399`,
+`#fbbf24`, `#cbd5e1`…) → their dark equivalents (`#2563eb`, `#4f46e5`, `#15803d`, `#b45309`,
+`#334155`…), translucent-white surfaces → `--surface-2/3`, translucent-black insets →
+`--surface-3`, and the dark gradient panels (`rgba(17,24,39,…)`, `rgba(15,23,42,…)`) → white.
+When adding UI, write colours as tokens; a new hex meant for a dark ground will read wrong.
+
+**Three layouts follow the mockup.** `Header` is the `.topbar` (Home · the current exam ·
+Compare · My Timeline · Ask AI, then Am I Eligible? and Trust Panel as subtle links, bell,
+avatar). `ExamFinder` opens with the `.hero` (headline, search bound to the finder's own
+`searchQuery`, popular chips, an illustration built in CSS), five `.feature-card`s that open
+the real features through `onNavigate` (the shell's `navigate()`), and the quote strip; the
+recommendation engine and the discovery engine follow unchanged. `ExamDetailView` is the
+`.exam-layout` grid: a sticky `.side-nav` with Back to Home, the 13 parts, the four reference
+sections and a "Need Help? Ask GovOS AI" card (`onBackHome` / `onAskAI` props), then the
+header card (exam initials tile, title, authority, Tracking / Share / Bookmark / Report /
+"Ask about this exam!"), four `.stat-tile`s read from `exam.dates` by type, the banner, the
+corrigendum bar, and the sections. Overview gains **Quick Info** (authority, level, posts,
+selection process from `exam.stages`, official site) and **Latest Updates** (corrigenda and
+dates, most recently published first, then upcoming nearest first). No component logic moved.
 
 ### `app.py`
 Flask + flask-cors, no ORM, no auth. Creates 9 tables on startup and seeds a single
