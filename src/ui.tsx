@@ -2,6 +2,7 @@
 // GovOS UI: every candidate-facing and admin component, in dependency order.
 
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import heroIllustration from './hero-illustration.png';
 import {
   Activity,
@@ -191,12 +192,38 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
-  return (
-    <div className="modal-overlay animate-fade-in" onClick={onClose} style={{ zIndex: 1200 }}>
+  const modalContent = (
+    <div
+      className="modal-overlay animate-fade-in"
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 99999,
+        background: 'rgba(15, 23, 42, 0.55)',
+        backdropFilter: 'blur(6px)',
+        WebkitBackdropFilter: 'blur(6px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px'
+      }}
+    >
       <div
         className="modal-content animate-fade-in"
         onClick={e => e.stopPropagation()}
-        style={{ maxWidth: '520px', padding: '24px 28px', borderRadius: '20px' }}
+        style={{
+          maxWidth: '520px',
+          width: '100%',
+          padding: '26px 28px',
+          borderRadius: '24px',
+          background: '#ffffff',
+          boxShadow: '0 25px 60px -15px rgba(15, 23, 42, 0.35)',
+          border: '1px solid #e2e8f0',
+          position: 'relative',
+          maxHeight: '90vh',
+          overflowY: 'auto'
+        }}
       >
         {/* Header with Close */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
@@ -357,6 +384,10 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined'
+    ? createPortal(modalContent, document.body)
+    : modalContent;
 };
 
 interface HeaderProps {
@@ -497,7 +528,7 @@ export const Header: React.FC<HeaderProps> = ({
         </button>
       </div>
 
-      {isProfileOpen && (
+      {(!onOpenProfile && isProfileOpen) && (
         <UserProfileModal
           isOpen={isProfileOpen}
           onClose={() => setIsProfileOpen(false)}
