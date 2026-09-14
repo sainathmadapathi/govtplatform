@@ -45,8 +45,7 @@ import {
   PracticeEngine,
   PreparationPlanner,
   ResourceLibrary,
-  ResourceReaderModal,
-  UserProfileModal
+  ResourceReaderModal
 } from './ui';
 
 export const App: React.FC = () => {
@@ -117,7 +116,6 @@ export const App: React.FC = () => {
   const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreference>(() => storageService.getNotificationPreferences());
   const [isNotificationsModalOpen, setIsNotificationsModalOpen] = useState<boolean>(false);
   const [isPreferencesModalOpen, setIsPreferencesModalOpen] = useState<boolean>(false);
-  const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
 
   // Modals state
   const [provenanceModalData, setProvenanceModalData] = useState<DataProvenance | null>(null);
@@ -253,7 +251,6 @@ export const App: React.FC = () => {
         trackedCount={trackedExamIds.length}
         onOpenNotifications={() => setIsNotificationsModalOpen(true)}
         onOpenTimeline={() => setActiveTab('CALENDAR')}
-        onOpenProfile={() => setIsProfileModalOpen(true)}
       />
 
       {/* View Render */}
@@ -554,17 +551,6 @@ export const App: React.FC = () => {
         preferences={notificationPreferences}
         onSavePreferences={handleSavePreferences}
         onDispatchTestAlert={handleDispatchTestAlert}
-      />
-
-      {/* User & Admin Profile Modal */}
-      <UserProfileModal
-        isOpen={isProfileModalOpen}
-        onClose={() => setIsProfileModalOpen(false)}
-        onNavigate={(tab, section) => {
-          setIsProfileModalOpen(false);
-          navigate(tab, section);
-        }}
-        trackedCount={trackedExamIds.length}
       />
 
     </div>

@@ -412,6 +412,27 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenProfile
 }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isProfileOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
+        setIsProfileOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsProfileOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isProfileOpen]);
 
   const link = (tab: HeaderProps['activeTab'], label: React.ReactNode, extra?: string, onClick?: () => void) => (
     <button
@@ -479,66 +500,230 @@ export const Header: React.FC<HeaderProps> = ({
             </span>
           )}
         </button>
-        <button
-          onClick={() => {
-            if (onOpenProfile) onOpenProfile();
-            else setIsProfileOpen(true);
-          }}
-          title="Admin Profile — Sainath (Administrator)"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            background: '#ffffff',
-            border: '1px solid #e2e8f0',
-            borderRadius: '9999px',
-            padding: '4px 14px 4px 4px',
-            cursor: 'pointer',
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
-            transition: 'all 0.15s ease'
-          }}
-        >
-          <div style={{
-            width: '32px',
-            height: '32px',
-            borderRadius: '50%',
-            background: '#2563eb',
-            color: '#ffffff',
-            fontWeight: 700,
-            fontSize: '0.88rem',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            position: 'relative'
-          }}>
-            S
-            <span style={{
-              position: 'absolute',
-              bottom: '0',
-              right: '0',
-              width: '8px',
-              height: '8px',
-              background: '#10b981',
+        {/* User Profile Dropdown Anchor */}
+        <div style={{ position: 'relative' }} ref={profileMenuRef}>
+          <button
+            onClick={() => setIsProfileOpen(prev => !prev)}
+            title="Admin Profile — Sainath (Administrator)"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              background: '#ffffff',
+              border: isProfileOpen ? '1.5px solid #2563eb' : '1px solid #e2e8f0',
+              borderRadius: '9999px',
+              padding: '4px 14px 4px 4px',
+              cursor: 'pointer',
+              boxShadow: isProfileOpen ? '0 0 0 3px rgba(37, 99, 235, 0.15)' : '0 1px 3px rgba(0, 0, 0, 0.04)',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <div style={{
+              width: '32px',
+              height: '32px',
               borderRadius: '50%',
-              border: '1.5px solid #fff'
-            }} title="Active Admin" />
-          </div>
-          <span style={{ fontSize: '0.88rem', fontWeight: 600, color: '#1e293b' }}>Hi, Sainath</span>
-          <ChevronDown size={14} color="#64748b" />
-        </button>
-      </div>
+              background: '#2563eb',
+              color: '#ffffff',
+              fontWeight: 700,
+              fontSize: '0.88rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              position: 'relative'
+            }}>
+              S
+              <span style={{
+                position: 'absolute',
+                bottom: '0',
+                right: '0',
+                width: '8px',
+                height: '8px',
+                background: '#10b981',
+                borderRadius: '50%',
+                border: '1.5px solid #fff'
+              }} title="Active Admin" />
+            </div>
+            <span style={{ fontSize: '0.88rem', fontWeight: 600, color: '#1e293b' }}>Hi, Sainath</span>
+            <ChevronDown size={14} color="#64748b" style={{ transform: isProfileOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }} />
+          </button>
 
-      {(!onOpenProfile && isProfileOpen) && (
-        <UserProfileModal
-          isOpen={isProfileOpen}
-          onClose={() => setIsProfileOpen(false)}
-          onNavigate={(tab, section) => {
-            setIsProfileOpen(false);
-            setActiveTab(tab);
-          }}
-          trackedCount={trackedCount}
-        />
-      )}
+          {/* Anchored Profile Dropdown Menu */}
+          {isProfileOpen && (
+            <div
+              className="animate-fade-in"
+              style={{
+                position: 'absolute',
+                top: 'calc(100% + 10px)',
+                right: 0,
+                width: '370px',
+                maxWidth: '92vw',
+                background: '#ffffff',
+                border: '1px solid #e2e8f0',
+                borderRadius: '20px',
+                boxShadow: '0 25px 60px -10px rgba(15, 23, 42, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.04)',
+                padding: '20px',
+                zIndex: 10000,
+                color: '#0f172a'
+              }}
+            >
+              {/* Header inside dropdown */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                <span className="badge badge-verified" style={{ fontSize: '0.7rem' }}>
+                  <ShieldCheck size={13} /> Official Admin Session
+                </span>
+                <button
+                  onClick={() => setIsProfileOpen(false)}
+                  aria-label="Close"
+                  style={{ width: '26px', height: '26px', border: 'none', borderRadius: '50%', background: 'var(--surface-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-secondary)' }}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+
+              {/* User Identity Card */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '14px',
+                padding: '14px 16px',
+                background: 'linear-gradient(135deg, #f0f6ff 0%, #ffffff 100%)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '16px',
+                marginBottom: '14px'
+              }}>
+                <div style={{
+                  position: 'relative',
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '50%',
+                  background: 'var(--primary)',
+                  color: '#fff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '1.25rem',
+                  fontWeight: 800,
+                  boxShadow: 'var(--shadow-glow)',
+                  flexShrink: 0
+                }}>
+                  S
+                  <span style={{
+                    position: 'absolute',
+                    bottom: '0',
+                    right: '0',
+                    width: '12px',
+                    height: '12px',
+                    background: '#10b981',
+                    borderRadius: '50%',
+                    border: '2px solid #fff'
+                  }} title="Active" />
+                </div>
+
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                      Sainath
+                    </h3>
+                    <span className="badge badge-demo" style={{ fontSize: '0.62rem', padding: '1px 7px' }}>
+                      ADMIN
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '1px' }}>
+                    admin@govos.in · System Administrator
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--emerald)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px', marginTop: '3px' }}>
+                    <CheckCircle2 size={11} /> Full Platform & Engine Privileges
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Specs */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', marginBottom: '14px' }}>
+                <div style={{ padding: '8px 10px', background: '#fafcff', border: '1px solid var(--border-color)', borderRadius: '10px' }}>
+                  <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Current Role</div>
+                  <div style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <Lock size={12} color="var(--primary)" /> Administrator
+                  </div>
+                </div>
+                <div style={{ padding: '8px 10px', background: '#fafcff', border: '1px solid var(--border-color)', borderRadius: '10px' }}>
+                  <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Database Sync</div>
+                  <div style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <Database size={12} color="var(--emerald)" /> SQLite 3 Active
+                  </div>
+                </div>
+              </div>
+
+              {/* Navigation Actions */}
+              <div style={{ marginBottom: '12px' }}>
+                <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>
+                  Administrative Actions & Navigation
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <button
+                    className="side-link"
+                    onClick={() => { setIsProfileOpen(false); setActiveTab('ADMIN'); }}
+                    style={{ padding: '10px 12px', background: 'var(--surface-2)', border: '1px solid var(--border-color)', borderRadius: '12px', textAlign: 'left' }}
+                  >
+                    <ShieldCheck size={16} color="var(--primary)" />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-primary)' }}>Trust Panel & Audit Reports</div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>Review candidate error submissions & official notices</div>
+                    </div>
+                    <ChevronRight size={14} color="var(--text-muted)" />
+                  </button>
+
+                  <button
+                    className="side-link"
+                    onClick={() => { setIsProfileOpen(false); setActiveTab('MY_EXAMS'); }}
+                    style={{ padding: '10px 12px', background: '#fff', border: '1px solid var(--border-color)', borderRadius: '12px', textAlign: 'left' }}
+                  >
+                    <Bookmark size={16} color="#6d28d9" />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-primary)' }}>My Tracked Exams</div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>View bookmarked exam workspaces ({trackedCount} tracked)</div>
+                    </div>
+                    <ChevronRight size={14} color="var(--text-muted)" />
+                  </button>
+
+                  <button
+                    className="side-link"
+                    onClick={() => { setIsProfileOpen(false); setActiveTab('ELIGIBILITY'); }}
+                    style={{ padding: '10px 12px', background: '#fff', border: '1px solid var(--border-color)', borderRadius: '12px', textAlign: 'left' }}
+                  >
+                    <UserCheck size={16} color="var(--emerald)" />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-primary)' }}>Candidate Profile & Eligibility</div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>Configure degree, category, and age parameters</div>
+                    </div>
+                    <ChevronRight size={14} color="var(--text-muted)" />
+                  </button>
+
+                  <button
+                    className="side-link"
+                    onClick={() => { setIsProfileOpen(false); setActiveTab('AI_ASSISTANT'); }}
+                    style={{ padding: '10px 12px', background: '#fff', border: '1px solid var(--border-color)', borderRadius: '12px', textAlign: 'left' }}
+                  >
+                    <Bot size={16} color="var(--primary)" />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-primary)' }}>Ask GovOS AI</div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>Query official notices & pattern breakdown</div>
+                    </div>
+                    <ChevronRight size={14} color="var(--text-muted)" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '10px', borderTop: '1px solid var(--border-color)' }}>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>GovOS Administrator Active</span>
+                <button className="btn btn-secondary" onClick={() => setIsProfileOpen(false)} style={{ fontSize: '0.78rem', padding: '5px 12px' }}>
+                  Close
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </header>
   );
 };
@@ -1537,7 +1722,7 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
             left: 0,
             right: 0,
             bottom: 0,
-            background: 'var(--surface-3)',
+            background: 'rgba(15, 23, 42, 0.55)',
             backdropFilter: 'blur(6px)',
             display: 'flex',
             alignItems: 'center',
@@ -1555,9 +1740,9 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
               maxHeight: '85vh',
               overflowY: 'auto',
               padding: '28px',
-              background: 'var(--surface-3)',
-              border: '1px solid rgba(99, 102, 241, 0.4)',
-              boxShadow: '0 25px 50px -12px var(--surface-3)'
+              background: '#ffffff',
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 25px 60px -15px rgba(15, 23, 42, 0.35)'
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -5607,7 +5792,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'var(--surface-3)',
+        backgroundColor: 'rgba(15, 23, 42, 0.55)',
         backdropFilter: 'blur(6px)',
         zIndex: 1000,
         display: 'flex',
@@ -6032,7 +6217,7 @@ export const NotificationPreferencesModal: React.FC<NotificationPreferencesModal
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'var(--surface-3)',
+        backgroundColor: 'rgba(15, 23, 42, 0.55)',
         backdropFilter: 'blur(6px)',
         zIndex: 1050,
         display: 'flex',
