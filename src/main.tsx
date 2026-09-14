@@ -241,7 +241,7 @@ export const App: React.FC = () => {
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
   return (
-    <div className="app-container">
+    <div className="app-container" style={activeTab === 'EXAM_DETAIL' ? { paddingBottom: '12px' } : undefined}>
       {/* Top Header */}
       <Header 
         activeTab={activeTab}
@@ -254,7 +254,7 @@ export const App: React.FC = () => {
       />
 
       {/* View Render */}
-      <main style={{ paddingBottom: '60px' }}>
+      <main style={{ paddingBottom: activeTab === 'EXAM_DETAIL' ? '0' : '60px' }}>
         {activeTab === 'FINDER' && (
           <ExamFinder
             onNavigate={navigate}

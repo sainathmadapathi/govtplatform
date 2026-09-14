@@ -44,6 +44,7 @@ import {
   Flame,
   Globe,
   HelpCircle,
+  Home,
   Image as ImageIcon,
   Info,
   Keyboard,
@@ -60,6 +61,7 @@ import {
   PlayCircle,
   Printer,
   QrCode,
+  Quote,
   RefreshCw,
   RotateCcw,
   Scale,
@@ -171,6 +173,192 @@ import {
 /** The nine top-level views. `main.tsx` switches on this; the assistant navigates with it. */
 export type GovOSTab = 'FINDER' | 'ELIGIBILITY' | 'EXAM_DETAIL' | 'PLANNER' | 'PRACTICE' | 'RESOURCES' | 'COMPARE' | 'CALENDAR' | 'AI_ASSISTANT' | 'ADMIN' | 'MY_EXAMS';
 
+// ==========================================================================
+// UserProfileModal.tsx — Admin & Candidate Profile representation
+// ==========================================================================
+export interface UserProfileModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onNavigate: (tab: GovOSTab, section?: number) => void;
+  trackedCount?: number;
+}
+
+export const UserProfileModal: React.FC<UserProfileModalProps> = ({
+  isOpen,
+  onClose,
+  onNavigate,
+  trackedCount = 0
+}) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="modal-overlay animate-fade-in" onClick={onClose} style={{ zIndex: 1200 }}>
+      <div
+        className="modal-content animate-fade-in"
+        onClick={e => e.stopPropagation()}
+        style={{ maxWidth: '520px', padding: '24px 28px', borderRadius: '20px' }}
+      >
+        {/* Header with Close */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span className="badge badge-verified" style={{ fontSize: '0.72rem' }}>
+              <ShieldCheck size={13} /> Official Admin Session
+            </span>
+          </div>
+          <button
+            className="icon-btn"
+            onClick={onClose}
+            aria-label="Close"
+            style={{ width: '32px', height: '32px', border: 'none', background: 'var(--surface-2)' }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* User Identity Card */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '16px',
+          padding: '18px 20px',
+          background: 'linear-gradient(135deg, #f0f6ff 0%, #ffffff 100%)',
+          border: '1px solid var(--border-color)',
+          borderRadius: '16px',
+          marginBottom: '20px'
+        }}>
+          <div style={{
+            position: 'relative',
+            width: '56px',
+            height: '56px',
+            borderRadius: '50%',
+            background: 'var(--primary)',
+            color: '#fff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '1.4rem',
+            fontWeight: 800,
+            boxShadow: 'var(--shadow-glow)',
+            flexShrink: 0
+          }}>
+            S
+            <span style={{
+              position: 'absolute',
+              bottom: '0',
+              right: '0',
+              width: '14px',
+              height: '14px',
+              background: '#10b981',
+              borderRadius: '50%',
+              border: '2px solid #fff'
+            }} title="Active" />
+          </div>
+
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                Sainath
+              </h3>
+              <span className="badge badge-demo" style={{ fontSize: '0.65rem', padding: '2px 8px' }}>
+                ADMIN
+              </span>
+            </div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+              admin@govos.in · System Administrator
+            </div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--emerald)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
+              <CheckCircle2 size={12} /> Full Platform & Engine Privileges
+            </div>
+          </div>
+        </div>
+
+        {/* System & Session Specs */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', marginBottom: '20px' }}>
+          <div style={{ padding: '12px 14px', background: '#fafcff', border: '1px solid var(--border-color)', borderRadius: '12px' }}>
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Current Role</div>
+            <div style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Lock size={13} color="var(--primary)" /> Administrator
+            </div>
+          </div>
+          <div style={{ padding: '12px 14px', background: '#fafcff', border: '1px solid var(--border-color)', borderRadius: '12px' }}>
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Database Sync</div>
+            <div style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Database size={13} color="var(--emerald)" /> SQLite 3 Active
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Navigation & Administrative Controls */}
+        <div style={{ marginBottom: '16px' }}>
+          <div style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '10px' }}>
+            Administrative Actions & Navigation
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <button
+              className="side-link"
+              onClick={() => { onClose(); onNavigate('ADMIN'); }}
+              style={{ padding: '12px 14px', background: 'var(--surface-2)', border: '1px solid var(--border-color)', borderRadius: '12px' }}
+            >
+              <ShieldCheck size={18} color="var(--primary)" />
+              <div style={{ flex: 1, textAlign: 'left' }}>
+                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>Trust Panel & Audit Reports</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Review candidate error submissions and verify official source notices</div>
+              </div>
+              <ChevronRight size={16} color="var(--text-muted)" />
+            </button>
+
+            <button
+              className="side-link"
+              onClick={() => { onClose(); onNavigate('MY_EXAMS'); }}
+              style={{ padding: '12px 14px', background: '#fff', border: '1px solid var(--border-color)', borderRadius: '12px' }}
+            >
+              <Bookmark size={18} color="#6d28d9" />
+              <div style={{ flex: 1, textAlign: 'left' }}>
+                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>My Tracked Exams</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>View bookmarked exam workspaces ({trackedCount} currently tracked)</div>
+              </div>
+              <ChevronRight size={16} color="var(--text-muted)" />
+            </button>
+
+            <button
+              className="side-link"
+              onClick={() => { onClose(); onNavigate('ELIGIBILITY'); }}
+              style={{ padding: '12px 14px', background: '#fff', border: '1px solid var(--border-color)', borderRadius: '12px' }}
+            >
+              <UserCheck size={18} color="var(--emerald)" />
+              <div style={{ flex: 1, textAlign: 'left' }}>
+                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>Candidate Profile & Eligibility</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Configure degree, category, and age parameters for diagnostic testing</div>
+              </div>
+              <ChevronRight size={16} color="var(--text-muted)" />
+            </button>
+
+            <button
+              className="side-link"
+              onClick={() => { onClose(); onNavigate('AI_ASSISTANT'); }}
+              style={{ padding: '12px 14px', background: '#fff', border: '1px solid var(--border-color)', borderRadius: '12px' }}
+            >
+              <Bot size={18} color="var(--primary)" />
+              <div style={{ flex: 1, textAlign: 'left' }}>
+                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>Ask GovOS AI</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Query official notices, pattern breakdown, and dates across all exams</div>
+              </div>
+              <ChevronRight size={16} color="var(--text-muted)" />
+            </button>
+          </div>
+        </div>
+
+        {/* Footer actions */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '16px', paddingTop: '14px', borderTop: '1px solid var(--border-color)' }}>
+          <button className="btn btn-secondary" onClick={onClose} style={{ fontSize: '0.85rem', padding: '8px 16px' }}>
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 interface HeaderProps {
   activeTab: GovOSTab;
   setActiveTab: (tab: GovOSTab) => void;
@@ -179,6 +367,7 @@ interface HeaderProps {
   trackedCount?: number;
   onOpenNotifications?: () => void;
   onOpenTimeline?: () => void;
+  onOpenProfile?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -188,8 +377,11 @@ export const Header: React.FC<HeaderProps> = ({
   unreadCount = 0,
   trackedCount = 0,
   onOpenNotifications,
-  onOpenTimeline
+  onOpenTimeline,
+  onOpenProfile
 }) => {
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+
   const link = (tab: HeaderProps['activeTab'], label: React.ReactNode, extra?: string, onClick?: () => void) => (
     <button
       className={`nav-link ${activeTab === tab ? 'active' : ''} ${extra || ''}`}
@@ -201,32 +393,121 @@ export const Header: React.FC<HeaderProps> = ({
   const examShort = selectedExamTitle ? selectedExamTitle.replace(/\s*\(.*?\)\s*/g, ' ').replace(/Combined Graduate Level|Civil Services Examination|Probationary Officer/g, '').replace(/\s+/g, ' ').trim() : 'My Exam';
   return (
     <header className="topbar">
-      <div className="brand" onClick={() => setActiveTab('FINDER')}>GovOS</div>
+      <div className="brand" onClick={() => setActiveTab('FINDER')} style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', textDecoration: 'none' }}>
+        <div style={{ fontSize: '1.65rem', fontWeight: 800, letterSpacing: '-0.025em', lineHeight: 1.05 }}>
+          <span style={{ color: '#1d4ed8' }}>Gov</span><span style={{ color: '#ea580c' }}>OS</span>
+        </div>
+        <span style={{ fontSize: '0.62rem', fontWeight: 600, color: '#64748b', letterSpacing: '0.01em', marginTop: '1px' }}>
+          Exams Today. A Better Tomorrow.
+        </span>
+      </div>
 
-      <nav style={{ display: 'flex', alignItems: 'center', gap: '2px', overflowX: 'auto', flexWrap: 'wrap' }}>
-        {link('FINDER', <><Compass size={15} /> Home</>)}
+      <nav style={{ display: 'flex', alignItems: 'center', gap: '6px', overflowX: 'auto', flexWrap: 'wrap' }}>
+        {activeTab === 'FINDER' ? (
+          <button
+            className="nav-link active-home-pill"
+            onClick={() => setActiveTab('FINDER')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: '#fff1e7',
+              color: '#ea580c',
+              fontWeight: 600,
+              fontSize: '0.9rem',
+              borderRadius: '9999px',
+              padding: '6px 16px',
+              border: 'none',
+              cursor: 'pointer'
+            }}
+          >
+            <Home size={15} color="#ea580c" /> Home
+          </button>
+        ) : (
+          link('FINDER', <><Home size={15} /> Home</>)
+        )}
         {link('FINDER', 'Exam Finder', undefined, () => setTimeout(() => document.getElementById('exam-finder-engine')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60))}
-        {link('MY_EXAMS', <>My Exams{trackedCount > 0 && <span className="badge badge-verified" style={{ fontSize: '0.6rem', padding: '1px 7px' }}>{trackedCount}</span>}</>)}
-        {link('COMPARE', 'Compare Exams')}
-        {link('AI_ASSISTANT', 'Ask GovOS AI')}
+        {link('COMPARE', 'Compare')}
         {link('CALENDAR', 'My Timeline', undefined, onOpenTimeline)}
+        {link('AI_ASSISTANT', 'Ask AI')}
         {link('ADMIN', 'Trust Panel')}
+        {trackedCount > 0 && activeTab === 'MY_EXAMS' && (
+          link('MY_EXAMS', <>My Exams <span className="badge badge-verified" style={{ fontSize: '0.6rem', padding: '1px 7px' }}>{trackedCount}</span></>)
+        )}
         {activeTab === 'EXAM_DETAIL' && selectedExamTitle && (
           <span className="nav-link active" style={{ cursor: 'default' }}><BookOpen size={14} /> {examShort}</span>
         )}
       </nav>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <button className="icon-btn" onClick={onOpenNotifications} title="Candidate Notifications & Alerts">
-          <Bell size={18} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+        <button className="icon-btn" onClick={onOpenNotifications} title="Candidate Notifications & Alerts" style={{ position: 'relative' }}>
+          <Bell size={18} color="#0f172a" />
           {unreadCount > 0 && (
-            <span style={{ position: 'absolute', top: '-5px', right: '-5px', background: '#ef4444', color: '#fff', borderRadius: '50%', width: '18px', height: '18px', fontSize: '0.62rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ position: 'absolute', top: '-4px', right: '-4px', background: '#ef4444', color: '#fff', borderRadius: '50%', width: '18px', height: '18px', fontSize: '0.62rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}
         </button>
-        <button className="avatar" onClick={() => setActiveTab('ELIGIBILITY')} title="Profile — your candidate details and post-by-post eligibility" style={{ border: 'none', cursor: 'pointer' }}>S</button>
+        <button
+          onClick={() => {
+            if (onOpenProfile) onOpenProfile();
+            else setIsProfileOpen(true);
+          }}
+          title="Admin Profile — Sainath (Administrator)"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            background: '#ffffff',
+            border: '1px solid #e2e8f0',
+            borderRadius: '9999px',
+            padding: '4px 14px 4px 4px',
+            cursor: 'pointer',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <div style={{
+            width: '32px',
+            height: '32px',
+            borderRadius: '50%',
+            background: '#2563eb',
+            color: '#ffffff',
+            fontWeight: 700,
+            fontSize: '0.88rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            position: 'relative'
+          }}>
+            S
+            <span style={{
+              position: 'absolute',
+              bottom: '0',
+              right: '0',
+              width: '8px',
+              height: '8px',
+              background: '#10b981',
+              borderRadius: '50%',
+              border: '1.5px solid #fff'
+            }} title="Active Admin" />
+          </div>
+          <span style={{ fontSize: '0.88rem', fontWeight: 600, color: '#1e293b' }}>Hi, Sainath</span>
+          <ChevronDown size={14} color="#64748b" />
+        </button>
       </div>
+
+      {isProfileOpen && (
+        <UserProfileModal
+          isOpen={isProfileOpen}
+          onClose={() => setIsProfileOpen(false)}
+          onNavigate={(tab, section) => {
+            setIsProfileOpen(false);
+            setActiveTab(tab);
+          }}
+          trackedCount={trackedCount}
+        />
+      )}
     </header>
   );
 };
@@ -532,123 +813,438 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
   };
 
   return (
-    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
-      
-      {/* Hero */}
-      <section className="hero">
-        <div>
-          <span className="badge badge-verified" style={{ marginBottom: '16px', background: 'var(--emerald-soft)' }}>
-            <Sparkles size={13} /> Your path. A brighter tomorrow.
-          </span>
-          <h1>Government Exams.<br /><span className="accent">Simplified</span> for You.</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', margin: '16px 0 22px', maxWidth: '520px', lineHeight: 1.6 }}>
-            Find exams, get reliable information, prepare smarter, and never miss an important date.
-          </p>
-          <div className="search-bar" style={{ maxWidth: '520px' }}>
-            <Search size={18} color="var(--text-muted)" />
-            <input
-              type="text"
-              placeholder="Search exams (e.g., SSC CGL, UPSC, RRB...)"
-              value={searchQuery}
-              onChange={(e) => handleSearchChange(e.target.value)}
-            />
-            <button className="btn btn-primary" style={{ padding: '10px 14px', borderRadius: '10px' }} aria-label="Search">
-              <Search size={16} />
+    <div className="homepage animate-fade-in" style={{ position: 'relative', width: '100%' }}>
+      {/* Explicit Background Effects Layer matching reference image */}
+      <div className="homepage-bg-layer" aria-hidden="true">
+        <div className="bg-mesh-sky" />
+        <div className="bg-mesh-sun" />
+        <div className="bg-mesh-teal" />
+        <div className="bg-decor-dots" />
+        <div className="bg-decor-pill" />
+        <div className="bg-decor-circle" />
+        <div className="bg-decor-sun-glow" />
+        <div className="bg-decor-foliage">
+          <svg viewBox="0 0 240 240" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M220 220C170 190 145 140 155 90C130 130 135 180 175 210C150 185 105 170 80 195C110 190 145 200 165 220" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" opacity="0.45"/>
+            <path d="M230 180C200 155 185 110 198 70C172 100 175 145 205 175" stroke="#059669" strokeWidth="2" strokeLinecap="round" opacity="0.35"/>
+            <path d="M185 235C160 210 150 168 165 130C145 155 148 190 172 220" stroke="#059669" strokeWidth="2" strokeLinecap="round" opacity="0.35"/>
+          </svg>
+        </div>
+      </div>
+
+      <div className="homepage-content-layer" style={{ display: 'flex', flexDirection: 'column', gap: '28px', position: 'relative', zIndex: 1 }}>
+        
+        {/* Seamless Hero Section */}
+        <section className="hero-seamless">
+          <div className="hero-content-seamless">
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              background: '#e8f8ee',
+              border: '1px solid #bbf7d0',
+              borderRadius: '9999px',
+              padding: '6px 14px',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              color: '#16a34a',
+              letterSpacing: '0.04em',
+              textTransform: 'uppercase',
+              marginBottom: '18px'
+            }}>
+              <Sparkles size={14} color="#16a34a" /> YOUR PATH. A BRIGHTER TOMORROW.
+            </div>
+
+            <h1 style={{
+              fontSize: '3.1rem',
+              fontWeight: 800,
+              lineHeight: 1.12,
+              letterSpacing: '-0.035em',
+              color: '#0f172a',
+              margin: '0 0 16px'
+            }}>
+              Government Exams.<br />
+              <span style={{ color: '#2563eb' }}>Simplified</span> for You.
+            </h1>
+
+            <p style={{
+              color: '#475569',
+              fontSize: '1.05rem',
+              lineHeight: 1.6,
+              maxWidth: '520px',
+              margin: '0 0 24px'
+            }}>
+              Find exams, get reliable information, prepare smarter, and never miss an important date.
+            </p>
+
+            {/* Pill Search Bar with Blue Circular Search Button */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              background: '#ffffff',
+              border: '1px solid #e2e8f0',
+              borderRadius: '9999px',
+              padding: '6px 8px 6px 18px',
+              boxShadow: '0 10px 28px -6px rgba(0, 0, 0, 0.05)',
+              maxWidth: '520px',
+              marginBottom: '18px'
+            }}>
+              <Search size={18} color="#64748b" style={{ flexShrink: 0, marginRight: '10px' }} />
+              <input
+                type="text"
+                placeholder="Search exams (e.g., SSC CGL, UPSC, RRB...)"
+                value={searchQuery}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    document.getElementById('exam-finder-engine')?.scrollIntoView({ behavior: 'smooth' });
+                  }
+                }}
+                style={{
+                  flex: 1,
+                  border: 'none',
+                  outline: 'none',
+                  fontSize: '0.95rem',
+                  color: '#0f172a',
+                  background: 'transparent'
+                }}
+              />
+              <button
+                onClick={() => document.getElementById('exam-finder-engine')?.scrollIntoView({ behavior: 'smooth' })}
+                style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '50%',
+                  background: '#2563eb',
+                  color: '#ffffff',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  boxShadow: '0 4px 12px rgba(37, 99, 235, 0.35)',
+                  transition: 'all 0.2s ease'
+                }}
+                aria-label="Search"
+              >
+                <Search size={16} />
+              </button>
+            </div>
+
+            {/* Popular Exam Chips */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '24px' }}>
+              <span style={{ fontSize: '0.84rem', color: '#64748b', fontWeight: 600 }}>Popular:</span>
+              {['SSC CGL', 'UPSC CSE', 'RRB NTPC', 'IBPS PO', 'State PSC'].map(name => (
+                <button
+                  key={name}
+                  onClick={() => handleSearchChange(name)}
+                  style={{
+                    background: '#ffffff',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '9999px',
+                    padding: '5px 14px',
+                    fontSize: '0.82rem',
+                    fontWeight: 600,
+                    color: '#334155',
+                    cursor: 'pointer',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  {name}
+                </button>
+              ))}
+            </div>
+
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => document.getElementById('exam-finder-engine')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  background: '#2563eb',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '9999px',
+                  padding: '12px 24px',
+                  fontSize: '0.95rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: '0 8px 20px -4px rgba(37, 99, 235, 0.4)',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <Search size={16} /> Find My Exam <ArrowRight size={16} />
+              </button>
+              <button
+                onClick={() => document.getElementById('featured-exams')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  background: '#ffffff',
+                  color: '#1e293b',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '9999px',
+                  padding: '12px 22px',
+                  fontSize: '0.95rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <Compass size={16} color="#2563eb" /> Explore Exams
+              </button>
+            </div>
+          </div>
+
+          {/* Right Hero Illustration */}
+          <div className="hero-art-seamless" aria-hidden="true">
+            <img src={heroIllustration} alt="GovOS Aspirant Journey" />
+          </div>
+        </section>
+
+        {/* 4 Feature Action Cards */}
+        <div className="feature-grid-4">
+          {[
+            {
+              title: 'Find the Right Exam',
+              desc: 'Discover exams that match your profile',
+              bg: '#f4fcf7',
+              borderColor: 'rgba(16, 185, 129, 0.15)',
+              iconBg: '#d1fae5',
+              icon: <Search size={20} color="#059669" />,
+              onClick: () => onNavigateEligibility()
+            },
+            {
+              title: 'Track Important Dates',
+              desc: 'Never miss a deadline again',
+              bg: '#fff8f6',
+              borderColor: 'rgba(225, 29, 72, 0.15)',
+              iconBg: '#ffe4e6',
+              icon: <Calendar size={20} color="#e11d48" />,
+              onClick: () => onNavigate ? onNavigate('CALENDAR') : onSelectExam(ALL_EXAMS[0])
+            },
+            {
+              title: 'Verified Resources',
+              desc: 'Study from trusted sources only',
+              bg: '#faf6fe',
+              borderColor: 'rgba(124, 58, 237, 0.15)',
+              iconBg: '#ede9fe',
+              icon: <BookOpen size={20} color="#7c3aed" />,
+              onClick: () => onNavigate ? onNavigate('EXAM_DETAIL', 8) : onSelectExam(ALL_EXAMS[0])
+            },
+            {
+              title: 'Practice & Improve',
+              desc: 'PYQs, mocks and smart analysis',
+              bg: '#f4fbf8',
+              borderColor: 'rgba(13, 148, 136, 0.15)',
+              iconBg: '#ccfbf1',
+              icon: <BarChart2 size={20} color="#0d9488" />,
+              onClick: () => onNavigate ? onNavigate('EXAM_DETAIL', 9) : onSelectExam(ALL_EXAMS[0])
+            }
+          ].map(card => (
+            <div
+              key={card.title}
+              className="feature-action-card"
+              onClick={card.onClick}
+              style={{ background: card.bg, borderColor: card.borderColor }}
+            >
+              <div>
+                <div style={{
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '12px',
+                  background: card.iconBg,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '14px'
+                }}>
+                  {card.icon}
+                </div>
+                <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a', margin: '0 0 6px' }}>{card.title}</h4>
+                <p style={{ fontSize: '0.84rem', color: '#64748b', margin: 0, lineHeight: 1.45 }}>{card.desc}</p>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '14px' }}>
+                <ArrowRight size={18} color="#0f172a" />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* How GovOS Works + Motivational Quote */}
+        <div style={{ marginTop: '16px' }}>
+          <div style={{ marginBottom: '16px' }}>
+            <h3 style={{ fontSize: '1.45rem', fontWeight: 800, color: '#0f172a', margin: '0 0 4px' }}>How GovOS Works</h3>
+            <p style={{ fontSize: '0.92rem', color: '#64748b', margin: 0 }}>A simple way to stay ahead in your government exam journey.</p>
+          </div>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '20px', alignItems: 'stretch' }}>
+            {/* 3-Step Process Card */}
+            <div style={{
+              background: '#ffffff',
+              border: '1px solid #f1f5f9',
+              borderRadius: '20px',
+              padding: '24px 28px',
+              boxShadow: '0 4px 20px -4px rgba(0, 0, 0, 0.04)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '16px'
+            }}>
+              {/* Step 1 */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#dbeafe', color: '#2563eb', fontWeight: 800, fontSize: '0.82rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>1</div>
+                <div style={{ width: '38px', height: '38px', borderRadius: '12px', background: '#e0f2fe', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Search size={18} color="#0284c7" />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.92rem' }}>Find Your Exam</div>
+                  <div style={{ fontSize: '0.78rem', color: '#64748b', lineHeight: 1.4 }}>Search and select the exam that matches your goals.</div>
+                </div>
+              </div>
+              <ArrowRight size={18} color="#94a3b8" style={{ flexShrink: 0 }} />
+
+              {/* Step 2 */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#d1fae5', color: '#059669', fontWeight: 800, fontSize: '0.82rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>2</div>
+                <div style={{ width: '38px', height: '38px', borderRadius: '12px', background: '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <FileText size={18} color="#059669" />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.92rem' }}>Get Verified Information</div>
+                  <div style={{ fontSize: '0.78rem', color: '#64748b', lineHeight: 1.4 }}>Access accurate and up-to-date details from official sources.</div>
+                </div>
+              </div>
+              <ArrowRight size={18} color="#94a3b8" style={{ flexShrink: 0 }} />
+
+              {/* Step 3 */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#ffedd5', color: '#ea580c', fontWeight: 800, fontSize: '0.82rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>3</div>
+                <div style={{ width: '38px', height: '38px', borderRadius: '12px', background: '#fff7ed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <BarChart2 size={18} color="#ea580c" />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.92rem' }}>Prepare and Track</div>
+                  <div style={{ fontSize: '0.78rem', color: '#64748b', lineHeight: 1.4 }}>Use resources, practice, and track your progress in one place.</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Motivational Quote Card */}
+            <div style={{
+              background: '#ffffff',
+              border: '1px solid #f1f5f9',
+              borderRadius: '20px',
+              padding: '24px 26px',
+              boxShadow: '0 4px 20px -4px rgba(0, 0, 0, 0.04)',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              position: 'relative'
+            }}>
+              <Quote size={28} color="#ea580c" style={{ opacity: 0.85, marginBottom: '6px' }} />
+              <p style={{ fontSize: '0.92rem', fontWeight: 600, color: '#334155', lineHeight: 1.5, margin: '0 0 10px' }}>
+                A small step towards preparation can create a big opportunity tomorrow.
+              </p>
+              <div style={{ width: '40px', height: '3px', borderRadius: '2px', background: '#ea580c', opacity: 0.8 }} />
+            </div>
+          </div>
+        </div>
+
+        {/* Popular Exams Row */}
+        <div id="featured-exams" style={{ marginTop: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: '16px' }}>
+            <div>
+              <h3 style={{ fontSize: '1.45rem', fontWeight: 800, color: '#0f172a', margin: '0 0 4px' }}>Popular Exams</h3>
+              <p style={{ fontSize: '0.92rem', color: '#64748b', margin: 0 }}>Explore the most sought-after government exams in India.</p>
+            </div>
+            <button
+              onClick={() => document.getElementById('exam-finder-engine')?.scrollIntoView({ behavior: 'smooth' })}
+              style={{ background: 'none', border: 'none', color: '#2563eb', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+            >
+              View All Exams <ArrowRight size={15} />
             </button>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '14px' }}>
-            <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: 600 }}>Popular:</span>
-            {['SSC CGL', 'UPSC CSE', 'RRB NTPC', 'IBPS PO', 'State PSC'].map(name => (
-              <button key={name} className="chip" onClick={() => handleSearchChange(name)}>{name}</button>
+
+          <div className="popular-exams-row">
+            {[
+              {
+                name: 'SSC CGL',
+                sub: 'Staff Selection Commission',
+                badgeBg: '#b91c1c',
+                badgeBorder: '#fef08a',
+                icon: <ShieldCheck size={20} color="#fef08a" />,
+                onClick: () => onSelectExam(ALL_EXAMS.find(e => e.id.includes('ssc')) || ALL_EXAMS[0])
+              },
+              {
+                name: 'UPSC CSE',
+                sub: 'Union Public Service Commission',
+                badgeBg: 'linear-gradient(135deg, #fef3c7, #fde68a)',
+                badgeBorder: '#d97706',
+                icon: <Award size={20} color="#b45309" />,
+                onClick: () => onSelectExam(ALL_EXAMS.find(e => e.id.includes('upsc')) || ALL_EXAMS[1])
+              },
+              {
+                name: 'RRB NTPC',
+                sub: 'Railway Recruitment Board',
+                badgeBg: '#dc2626',
+                badgeBorder: '#ffffff',
+                icon: <Activity size={20} color="#ffffff" />,
+                onClick: () => {
+                  handleSearchChange('RRB NTPC');
+                  document.getElementById('exam-finder-engine')?.scrollIntoView({ behavior: 'smooth' });
+                }
+              },
+              {
+                name: 'IBPS PO',
+                sub: 'Institute of Banking Personnel',
+                badgeBg: '#1e40af',
+                badgeBorder: '#bfdbfe',
+                icon: <Building size={18} color="#ffffff" />,
+                onClick: () => onSelectExam(ALL_EXAMS.find(e => e.id.includes('ibps')) || ALL_EXAMS[2])
+              },
+              {
+                name: 'State PSC',
+                sub: 'State Public Service Commission',
+                badgeBg: '#0f766e',
+                badgeBorder: '#99f6e4',
+                icon: <Layers size={18} color="#ffffff" />,
+                onClick: () => onSelectExam(ALL_EXAMS.find(e => e.id.includes('appsc')) || ALL_EXAMS[3])
+              }
+            ].map(exam => (
+              <div
+                key={exam.name}
+                className="popular-exam-card"
+                onClick={exam.onClick}
+              >
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '50%',
+                  background: exam.badgeBg,
+                  border: `1.5px solid ${exam.badgeBorder}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.08)'
+                }}>
+                  {exam.icon}
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a', margin: '0 0 2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{exam.name}</h4>
+                  <p style={{ fontSize: '0.78rem', color: '#64748b', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{exam.sub}</p>
+                </div>
+              </div>
             ))}
           </div>
-          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '18px' }}>
-            <button className="btn btn-primary" onClick={() => document.getElementById('exam-finder-engine')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
-              <Search size={18} /> Find My Exam
-            </button>
-            <button className="btn btn-secondary" onClick={() => document.getElementById('featured-exams')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
-              <Award size={18} /> Explore Exams
-            </button>
-          </div>
         </div>
-        <div className="hero-art" aria-hidden="true">
-          <img src={heroIllustration} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center bottom' }} />
-        </div>
-      </section>
-
-      {/* Quick actions — each opens the real feature */}
-      <div className="feature-grid">
-        {[
-          { icon: <UserCheck size={22} />, tint: '#e8f0ff', color: '#2563eb', title: 'Find the Right Exam', text: 'Check eligibility for every post', go: () => onNavigateEligibility() },
-          { icon: <Calendar size={22} />, tint: '#e8f7ee', color: '#15803d', title: 'Track Important Dates', text: 'Deadlines and reminders in one place', go: () => onNavigate ? onNavigate('CALENDAR') : onSelectExam(ALL_EXAMS[0]) },
-          { icon: <Library size={22} />, tint: '#f1ebfe', color: '#6d28d9', title: 'Verified Resources', text: 'Links to official sources, checked', go: () => onNavigate ? onNavigate('EXAM_DETAIL', 8) : onSelectExam(ALL_EXAMS[0]) },
-          { icon: <Award size={22} />, tint: '#fff4e0', color: '#b45309', title: 'Practice & Improve', text: 'PYQs, mocks and smart analysis', go: () => onNavigate ? onNavigate('EXAM_DETAIL', 9) : onSelectExam(ALL_EXAMS[0]) }
-        ].map(card => (
-          <button key={card.title} className="feature-card" onClick={card.go}>
-            <div className="feature-icon" style={{ background: card.tint, color: card.color }}>{card.icon}</div>
-            <h4>{card.title}</h4>
-            <p>{card.text}</p>
-          </button>
-        ))}
-      </div>
-
-      {/* How GovOS works */}
-      <div className="glass-card" style={{ padding: '26px 28px' }}>
-        <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 16px' }}>How GovOS works</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
-          {[
-            { n: 1, title: 'Find Your Exam', text: 'Search or answer three questions; GovOS matches exams to your qualification.' },
-            { n: 2, title: 'Get Verified Information', text: 'Dates, eligibility, pattern and syllabus, each cited to the official notice.' },
-            { n: 3, title: 'Prepare and Track Everything', text: 'Resources, practice, mocks and reminders, all inside your exam\'s workspace.' }
-          ].map(step => (
-            <div key={step.n} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-              <div style={{ width: '34px', height: '34px', borderRadius: '10px', background: 'var(--primary-soft)', color: 'var(--primary)', fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{step.n}</div>
-              <div>
-                <div style={{ fontWeight: 800, color: 'var(--text-primary)' }}>{step.title}</div>
-                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.45 }}>{step.text}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Featured exams — each card opens that exam's workspace */}
-      <div id="featured-exams" className="glass-card" style={{ padding: '26px 28px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '16px' }}>
-          <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Featured exams</h3>
-          <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>{ALL_EXAMS.length} exams in the register</span>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: '12px' }}>
-          {ALL_EXAMS.map(exam => (
-            <button key={exam.id} className="feature-card" onClick={() => onSelectExam(exam)} style={{ display: 'flex', gap: '12px', alignItems: 'center', padding: '16px' }}>
-              <div className="exam-logo" style={{ width: '44px', height: '44px', fontSize: '0.7rem' }}>{exam.code.split('_').slice(0, 2).join(' ')}</div>
-              <div style={{ minWidth: 0 }}>
-                <h4 style={{ margin: 0 }}>{exam.title.replace(/\s*\(.*?\)\s*/g, ' ').trim()}</h4>
-                <p style={{ margin: 0 }}>{exam.authorityName.replace(/\s*\(.*?\)\s*/g, '').trim()}</p>
-              </div>
-              <ChevronRight size={16} color="var(--text-muted)" style={{ marginLeft: 'auto', flexShrink: 0 }} />
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Trust — what candidates get, without the pipeline internals */}
-      <div className="glass-card" style={{ padding: '22px 28px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '14px' }}>
-        {[
-          { icon: <ShieldCheck size={18} />, title: 'Official sources', text: 'Every fact links to the commission\'s own document.' },
-          { icon: <CheckCircle2 size={18} />, title: 'Verified information', text: 'Reviewed before it reaches you; nothing guessed.' },
-          { icon: <Bell size={18} />, title: 'Update monitoring', text: 'Corrigenda and notices are watched and flagged.' },
-          { icon: <Lock size={18} />, title: 'Candidate-safe', text: 'Links only, no stored documents, no form submissions on your behalf.' }
-        ].map(item => (
-          <div key={item.title} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-            <div className="info-icon" style={{ color: '#15803d', background: 'var(--emerald-soft)' }}>{item.icon}</div>
-            <div>
-              <div style={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '0.92rem' }}>{item.title}</div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>{item.text}</div>
-            </div>
-          </div>
-        ))}
-      </div>
 
       {/* Recommended for You Shelf (Time-Decayed BPR) */}
       <div id="exam-finder-engine" />
@@ -1299,6 +1895,7 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
             </div>
           ))}
         </div>
+      </div>
       </div>
     </div>
   );
@@ -14932,7 +15529,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
         </div>
       </aside>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', minWidth: 0 }}>
+      <div className="exam-main-content" style={{ display: 'flex', flexDirection: 'column', gap: '20px', minWidth: 0 }}>
 
       {/* Exam Header Title Banner */}
       <div className="glass-card" style={{ padding: '22px 24px' }}>
