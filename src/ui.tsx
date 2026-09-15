@@ -7,6 +7,9 @@ import heroIllustration from './hero-illustration.png';
 import {
   Activity,
   AlertCircle,
+  Minus,
+  Plus,
+  Maximize2,
   AlertTriangle,
   ArrowLeft,
   ArrowRight,
@@ -117,6 +120,7 @@ import {
   ResourceAddition,
   SscNoticeFeed,
   SyllabusRevision,
+  SyllabusTopic,
   SyllabusRevisionTopic,
   SyllabusWatch,
   ExamRecommendation,
@@ -15508,6 +15512,361 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
  * 14 — and only the grouping and the names are new. Mock Tests takes a fresh number (17)
  * for the same reason.
  */
+// =====================================================================================
+// SyllabusTreeMap — the syllabus already on the page, drawn as a hierarchy
+// =====================================================================================
+/**
+ * Reads `exam.syllabus` (the same merged, revision-aware array section 06 lists) and lays it
+ * out left to right: the exam's syllabus, its subjects, each subject's topics, and each
+ * topic's `subtopics` where the record carries them. It owns no syllabus content of its own —
+ * every label is a field of a `SyllabusTopic` — so it cannot drift from the list, and nothing
+ * is invented when a field is missing.
+ *
+ * Clicking a topic hands over to the existing blueprint entry (`onOpenTopic`) rather than
+ * repeating its detail: the list is the content, this is the map.
+ */
+interface SyllabusTreeNode {
+  id: string;
+  label: string;
+  kind: 'ROOT' | 'SUBJECT' | 'TOPIC' | 'SUBTOPIC';
+  topicId?: string;
+  meta?: string;
+  children: SyllabusTreeNode[];
+}
+
+/** Node geometry, in the tree's own (unscaled) coordinates. */
+const TREE_ROW_H = 34;
+const TREE_ROW_GAP = 8;
+/**
+ * Two column geometries, chosen by the width actually available. Narrowing the columns keeps
+ * the label at its readable size on a phone — scaling the whole tree down to fit would shrink
+ * the text with it, and a map you cannot read is not a map.
+ */
+const TREE_COLS_WIDE = { x: [0, 236, 500, 838], w: [200, 232, 306, 300] };
+const TREE_COLS_NARROW = { x: [0, 140, 310, 530], w: [124, 154, 204, 210] };
+
+const SyllabusTreeMap: React.FC<{
+  exam: Exam;
+  completedTopics: Record<string, boolean>;
+  onOpenTopic: (topicId: string) => void;
+}> = ({ exam, completedTopics, onOpenTopic }) => {
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [zoom, setZoom] = useState<number>(1);
+  const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [dragging, setDragging] = useState<boolean>(false);
+  const dragRef = useRef<{ x: number; y: number; px: number; py: number } | null>(null);
+  const viewportRef = useRef<HTMLDivElement | null>(null);
+  const [narrow, setNarrow] = useState<boolean>(false);
+  useEffect(() => {
+    const measure = () => setNarrow((viewportRef.current?.clientWidth || 0) < 560);
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, []);
+  const COL = narrow ? TREE_COLS_NARROW : TREE_COLS_WIDE;
+
+  // --------------------------------------------------------------- the tree, from the record
+  // Subjects keep the order they appear in the register, so the map reads in the same order as
+  // the list. A topic gets a subtopic branch only where the record actually has subtopics.
+  const root: SyllabusTreeNode = React.useMemo(() => {
+    const bySubject = new Map<string, SyllabusTopic[]>();
+    exam.syllabus.forEach(t => {
+      const list = bySubject.get(t.subject);
+      if (list) list.push(t);
+      else bySubject.set(t.subject, [t]);
+    });
+    const subjects: SyllabusTreeNode[] = [...bySubject.entries()].map(([subject, topics]) => ({
+      id: `subject:${subject}`,
+      label: subject,
+      kind: 'SUBJECT' as const,
+      meta: `${topics.length}`,
+      children: topics.map(t => ({
+        id: `topic:${t.id}`,
+        label: t.topicName,
+        kind: 'TOPIC' as const,
+        topicId: t.id,
+        meta: t.tier === 'BOTH' ? 'T1+T2' : t.tier === 'TIER_1' ? 'T1' : 'T2',
+        children: (t.subtopics || []).map((sub: string, i: number) => ({
+          id: `sub:${t.id}:${i}`,
+          label: sub,
+          kind: 'SUBTOPIC' as const,
+          children: []
+        }))
+      }))
+    }));
+    return {
+      id: 'root',
+      // `code` is the register's machine id (SSC_CGL_2026); the root reads as a name. On a
+      // phone the word "Syllabus" is dropped — the card's own heading already says it, and the
+      // exam's name is what has to survive in a narrow node.
+      label: `${(exam.code || exam.title).replace(/_/g, ' ')}${narrow ? '' : ' Syllabus'}`,
+      kind: 'ROOT',
+      children: subjects
+    };
+  }, [exam, narrow]);
+
+  // Subjects are open by default; a topic's subtopics open on its chevron, so a long syllabus
+  // stays readable instead of unfolding hundreds of leaves at once.
+  const isOpen = (n: SyllabusTreeNode): boolean =>
+    n.kind === 'ROOT' ? true : n.kind === 'SUBJECT' ? expanded[n.id] !== false : expanded[n.id] === true;
+
+  // --------------------------------------------------------------- layout
+  // One pass: every visible node gets a y, and a parent sits at the centre of its children.
+  const laid = React.useMemo(() => {
+    const out: ({ node: SyllabusTreeNode; depth: number; y: number } | null)[] = [];
+    let cursor = 0;
+    const place = (n: SyllabusTreeNode, depth: number): number => {
+      const kids = isOpen(n) ? n.children : [];
+      if (kids.length === 0) {
+        const y = cursor;
+        cursor += TREE_ROW_H + TREE_ROW_GAP;
+        out.push({ node: n, depth, y });
+        return y;
+      }
+      const slot = out.length;
+      out.push(null); // reserved: a parent's y is only known once its children are placed
+      const ys = kids.map(k => place(k, depth + 1));
+      const y = (ys[0] + ys[ys.length - 1]) / 2;
+      out[slot] = { node: n, depth, y };
+      return y;
+    };
+    place(root, 0);
+    const nodes = out.filter(Boolean) as { node: SyllabusTreeNode; depth: number; y: number }[];
+    return { nodes, height: Math.max(cursor, TREE_ROW_H) };
+  }, [root, expanded]);
+
+  const maxDepth = laid.nodes.reduce((m, e) => Math.max(m, e.depth), 0);
+  const contentW = COL.x[maxDepth] + COL.w[maxDepth] + 24;
+  const contentH = laid.height + 24;
+
+  // The chain from the root down to the selected node, plus everything under it: that is the
+  // branch a click lights up.
+  const branch = React.useMemo(() => {
+    if (!selectedId) return new Set<string>();
+    const lit = new Set<string>();
+    const all = (n: SyllabusTreeNode) => { lit.add(n.id); n.children.forEach(all); };
+    const walk = (n: SyllabusTreeNode, trail: SyllabusTreeNode[]): boolean => {
+      const next = [...trail, n];
+      if (n.id === selectedId) { next.forEach(a => lit.add(a.id)); all(n); return true; }
+      return n.children.some(c => walk(c, next));
+    };
+    walk(root, []);
+    return lit;
+  }, [selectedId, root]);
+
+  const parentOf = React.useMemo(() => {
+    const map = new Map<string, { depth: number; y: number }>();
+    laid.nodes.forEach(p => p.node.children.forEach(c => map.set(c.id, { depth: p.depth, y: p.y })));
+    return map;
+  }, [laid]);
+
+  const connectors = laid.nodes
+    .filter(e => e.depth > 0 && parentOf.has(e.node.id))
+    .map(e => {
+      const p = parentOf.get(e.node.id)!;
+      const x1 = COL.x[p.depth] + COL.w[p.depth];
+      const y1 = p.y + TREE_ROW_H / 2;
+      const x2 = COL.x[e.depth];
+      const y2 = e.y + TREE_ROW_H / 2;
+      const mid = (x1 + x2) / 2;
+      return {
+        id: e.node.id,
+        d: `M ${x1} ${y1} C ${mid} ${y1}, ${mid} ${y2}, ${x2} ${y2}`,
+        lit: branch.has(e.node.id)
+      };
+    });
+
+  // --------------------------------------------------------------- pan, zoom, recentre
+  const clampZoom = (z: number) => Math.min(1.6, Math.max(0.45, Math.round(z * 100) / 100));
+  // The root sits at the vertical centre of its subjects, which on a long syllabus is well
+  // below the fold, so the opening view is scrolled to put it on screen rather than at y=0.
+  const centredPan = (z: number) => {
+    const rootEntry = laid.nodes.find(e => e.depth === 0);
+    const h = viewportRef.current?.clientHeight || 0;
+    if (!rootEntry || !h) return { x: 0, y: 0 };
+    return { x: 0, y: Math.min(0, h / 2 - (rootEntry.y + TREE_ROW_H / 2) * z - 16) };
+  };
+  const reset = () => { setZoom(1); setPan(centredPan(1)); setSelectedId(null); };
+  // Centre once the viewport has a measured height, and again if the branches change shape.
+  useEffect(() => { setPan(centredPan(zoom)); }, [laid.height]);
+  const onPointerDown = (ev: React.PointerEvent) => {
+    if ((ev.target as HTMLElement).closest('button[data-tree-node]')) return;
+    dragRef.current = { x: ev.clientX, y: ev.clientY, px: pan.x, py: pan.y };
+    setDragging(true);
+    (ev.currentTarget as HTMLElement).setPointerCapture(ev.pointerId);
+  };
+  const onPointerMove = (ev: React.PointerEvent) => {
+    const d = dragRef.current;
+    if (!d) return;
+    setPan({ x: d.px + (ev.clientX - d.x), y: d.py + (ev.clientY - d.y) });
+  };
+  const endDrag = () => { dragRef.current = null; setDragging(false); };
+
+  const nodeStyle = (n: SyllabusTreeNode, lit: boolean, done: boolean): React.CSSProperties => {
+    const base: React.CSSProperties = {
+      position: 'absolute',
+      height: `${TREE_ROW_H}px`,
+      display: 'flex',
+      alignItems: 'center',
+      gap: '7px',
+      padding: '0 10px',
+      borderRadius: '9px',
+      fontFamily: 'var(--font-sans)',
+      fontSize: '0.8rem',
+      fontWeight: 600,
+      textAlign: 'left',
+      cursor: 'pointer',
+      overflow: 'hidden',
+      background: '#ffffff',
+      border: '1px solid var(--border-color)',
+      color: 'var(--text-primary)'
+    };
+    if (n.kind === 'ROOT') {
+      return { ...base, background: 'var(--primary)', border: '1px solid var(--primary)', color: '#ffffff', fontWeight: 800, fontSize: '0.86rem' };
+    }
+    if (n.kind === 'SUBJECT') {
+      return {
+        ...base,
+        background: lit ? 'var(--primary-soft)' : 'var(--surface-3)',
+        border: `1px solid ${lit ? 'var(--primary)' : 'var(--border-color)'}`,
+        color: lit ? 'var(--primary)' : 'var(--text-primary)',
+        fontWeight: 700
+      };
+    }
+    if (n.kind === 'TOPIC') {
+      return {
+        ...base,
+        background: done ? 'var(--emerald-soft)' : '#ffffff',
+        border: `1px solid ${lit ? 'var(--primary)' : done ? 'rgba(21, 128, 61, 0.35)' : 'var(--border-color)'}`,
+        color: lit ? 'var(--primary)' : 'var(--text-primary)'
+      };
+    }
+    return {
+      ...base,
+      background: 'transparent',
+      border: `1px dashed ${lit ? 'var(--primary)' : 'var(--border-color)'}`,
+      color: 'var(--text-secondary)',
+      fontWeight: 500,
+      fontSize: '0.76rem'
+    };
+  };
+
+  return (
+    <div className="glass-card" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+        <div style={{ minWidth: 0 }}>
+          <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Compass size={16} color="var(--primary)" /> Syllabus Tree Map
+          </h4>
+          <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: '4px 0 0 0', lineHeight: 1.5, maxWidth: '640px' }}>
+            The same {exam.syllabus.length} topics shown above, as a hierarchy. Drag to pan; a chevron opens a subject or a
+            topic's subtopics. Choosing a topic opens its entry in the syllabus list.
+          </p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <button className="btn btn-secondary" onClick={() => setZoom(z => clampZoom(z - 0.15))} title="Zoom out" aria-label="Zoom out" style={{ padding: '6px 10px' }}>
+            <Minus size={14} />
+          </button>
+          <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', minWidth: '44px', textAlign: 'center' }}>
+            {Math.round(zoom * 100)}%
+          </span>
+          <button className="btn btn-secondary" onClick={() => setZoom(z => clampZoom(z + 0.15))} title="Zoom in" aria-label="Zoom in" style={{ padding: '6px 10px' }}>
+            <Plus size={14} />
+          </button>
+          <button className="btn btn-secondary" onClick={reset} title="Reset the view" aria-label="Reset the view" style={{ padding: '6px 10px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+            <Maximize2 size={14} /> Reset
+          </button>
+        </div>
+      </div>
+
+      <div
+        ref={viewportRef}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        style={{
+          position: 'relative',
+          height: 'clamp(320px, 52vh, 620px)',
+          borderRadius: 'var(--radius-md)',
+          border: '1px solid var(--border-color)',
+          background: 'var(--surface-2)',
+          overflow: 'hidden',
+          touchAction: 'none',
+          cursor: dragging ? 'grabbing' : 'grab'
+        }}
+      >
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            transform: `translate(${pan.x + 16}px, ${pan.y + 16}px) scale(${zoom})`,
+            transformOrigin: '0 0',
+            width: `${contentW}px`,
+            height: `${contentH}px`
+          }}
+        >
+          <svg width={contentW} height={contentH} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'visible' }} aria-hidden="true">
+            {connectors.map(c => (
+              <path key={c.id} d={c.d} fill="none" stroke={c.lit ? 'var(--primary)' : '#cbd5e1'} strokeWidth={c.lit ? 1.6 : 1} />
+            ))}
+          </svg>
+
+          {laid.nodes.map(({ node, depth, y }) => {
+            const lit = branch.has(node.id);
+            const done = !!(node.topicId && completedTopics[node.topicId]);
+            const hasKids = node.children.length > 0;
+            const open = isOpen(node);
+            return (
+              <button
+                key={node.id}
+                data-tree-node="1"
+                onClick={() => {
+                  setSelectedId(node.id);
+                  if (node.kind === 'TOPIC' && node.topicId) onOpenTopic(node.topicId);
+                  if (hasKids && node.kind !== 'ROOT') setExpanded(e => ({ ...e, [node.id]: !open }));
+                }}
+                title={node.label}
+                style={{ ...nodeStyle(node, lit, done), left: `${COL.x[depth]}px`, top: `${y}px`, width: `${COL.w[depth]}px` }}
+              >
+                <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {node.label}
+                </span>
+                {node.kind !== 'ROOT' && node.meta && (
+                  <span style={{ fontSize: '0.66rem', color: lit ? 'var(--primary)' : 'var(--text-muted)', fontWeight: 700, flexShrink: 0 }}>{node.meta}</span>
+                )}
+                {hasKids && node.kind !== 'ROOT' && (
+                  open ? <ChevronDown size={13} style={{ flexShrink: 0 }} /> : <ChevronRight size={13} style={{ flexShrink: 0 }} />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap', fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ width: '12px', height: '12px', borderRadius: '4px', background: 'var(--primary)' }} /> Syllabus
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ width: '12px', height: '12px', borderRadius: '4px', background: 'var(--surface-3)', border: '1px solid var(--border-color)' }} /> Subject
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ width: '12px', height: '12px', borderRadius: '4px', background: '#fff', border: '1px solid var(--border-color)' }} /> Topic
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ width: '12px', height: '12px', borderRadius: '4px', border: '1px dashed var(--border-color)' }} /> Subtopic
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ width: '12px', height: '12px', borderRadius: '4px', background: 'var(--emerald-soft)', border: '1px solid rgba(21,128,61,0.35)' }} /> Marked done
+        </span>
+      </div>
+    </div>
+  );
+};
+
 const EXAM_SECTIONS = [
   { num: 1, label: 'Overview', icon: Info },
   { num: 2, label: 'Dates & Timeline', icon: Calendar },
@@ -16284,7 +16643,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                 {exam.syllabus.map(topic => {
                   const isDone = !!completedTopics[topic.id];
                   return (
-                    <div key={topic.id} style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: isDone ? 'rgba(16, 185, 129, 0.04)' : 'var(--surface-2)', border: isDone ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div key={topic.id} id={`syllabus-topic-${topic.id}`} style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: isDone ? 'rgba(16, 185, 129, 0.04)' : 'var(--surface-2)', border: isDone ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                           <div onClick={() => toggleTopic(topic.id)} style={{ cursor: 'pointer' }}>
@@ -16339,6 +16698,20 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                 })}
               </div>
             )}
+
+            {/* The same syllabus as a hierarchy. Additive: the views above remain the content,
+                and a topic chosen here is opened in the Official Syllabus list, not repeated. */}
+            <SyllabusTreeMap
+              exam={exam}
+              completedTopics={completedTopics}
+              onOpenTopic={topicId => {
+                setSyllabusViewMode('OFFICIAL_BLUEPRINT');
+                window.setTimeout(() => {
+                  const el = document.getElementById(`syllabus-topic-${topicId}`);
+                  el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 80);
+              }}
+            />
           </div>
         )}
 

@@ -270,6 +270,24 @@ from UPSC's What's New — Civil Services" shelf for a UPSC exam, with an honest
 when none of the latest items concern the CSE, and the syllabus watch judges UPSC items by
 first sighting and says so in its `note`.
 
+### The syllabus, also as a map
+`SyllabusTreeMap` sits at the foot of section 06, under both of that section's views. It reads
+`exam.syllabus` — the same merged, revision-aware array the list above it renders — and lays it
+out left to right: the exam's syllabus, its subjects (grouped by `topic.subject`, in register
+order), each subject's topics, and a topic's `subtopics` only where the record has them. It
+**holds no syllabus content of its own**: every label is a field of a `SyllabusTopic`, so it
+cannot drift from the list and cannot become a second dataset. The count is the check — the
+blueprint renders one `#syllabus-topic-<id>` anchor per topic and the map one topic node, and
+those two numbers must stay equal (22 for SSC CGL, 18 for UPSC).
+
+Choosing a topic in the map does not repeat its detail: it switches section 06 to the Official
+Syllabus view and scrolls that topic's existing card into view. Subjects open by default,
+subtopics on a chevron, so a long syllabus stays readable. Pan by dragging, zoom and reset from
+the header; the opening view is scrolled to put the root on screen, because the root sits at the
+vertical centre of its subjects and on a long syllabus that is below the fold. Under 560 px of
+available width the **columns narrow rather than the tree scaling down** — shrinking the whole
+map would shrink the labels with it, and a map you cannot read is not a map.
+
 ### Conversation context — one model, three chats
 Every chat answers from the same context, assembled per message by `buildChatContext(exam,
 channel)` in `services.ts`: the active exam, the target post (`storageService.getTargetPost()`
@@ -410,6 +428,7 @@ All 20 components, ordered leaves-first so composites can reference them:
 `NotificationPreferencesModal` · `ResourceReaderModal` · `ResourceAIAssistant` ·
 `PreparationPlanner` · `PostStudyPathEngine` · `PracticeEngine` ·
 `PracticeApplicationSimulator` · `ApplicationGuide` · `AdmitCardSection` ·
+`SyllabusTreeMap` ·
 `ExamDayChecklistSection` · `ResultNextStepsSection` · `ResourceLibrary` · `ExamDetailView`
 
 **The assistant answers, it does not deflect.** `AIAssistant` used to have three hardcoded
