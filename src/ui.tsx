@@ -10,6 +10,8 @@ import {
   Minus,
   Plus,
   Maximize2,
+  Minimize2,
+  Crosshair,
   AlertTriangle,
   ArrowLeft,
   ArrowRight,
@@ -15535,8 +15537,10 @@ interface SyllabusTreeNode {
 }
 
 /** Node geometry, in the tree's own (unscaled) coordinates. */
-const TREE_ROW_H = 34;
-const TREE_ROW_GAP = 8;
+// Kept tight on purpose: a 22-topic syllabus is ~800px tall at this pitch, which is what lets
+// the whole tree fit a full-screen box at a readable zoom instead of a shrunken one.
+const TREE_ROW_H = 30;
+const TREE_ROW_GAP = 6;
 /**
  * Two column geometries, chosen by the width actually available. Narrowing the columns keeps
  * the label at its readable size on a phone — scaling the whole tree down to fit would shrink
@@ -15555,15 +15559,34 @@ const SyllabusTreeMap: React.FC<{
   const [zoom, setZoom] = useState<number>(1);
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [dragging, setDragging] = useState<boolean>(false);
+  const [fullScreen, setFullScreen] = useState<boolean>(false);
   const dragRef = useRef<{ x: number; y: number; px: number; py: number } | null>(null);
   const viewportRef = useRef<HTMLDivElement | null>(null);
-  const [narrow, setNarrow] = useState<boolean>(false);
+  // Escape leaves the expanded view, and the page behind it must not scroll under it.
   useEffect(() => {
-    const measure = () => setNarrow((viewportRef.current?.clientWidth || 0) < 560);
+    if (!fullScreen) return;
+    const onKey = (ev: KeyboardEvent) => { if (ev.key === 'Escape') setFullScreen(false); };
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', onKey);
+    return () => { document.body.style.overflow = prev; window.removeEventListener('keydown', onKey); };
+  }, [fullScreen]);
+  const [narrow, setNarrow] = useState<boolean>(false);
+  const [box, setBox] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
+  useEffect(() => {
+    const measure = () => {
+      const el = viewportRef.current;
+      if (!el) return;
+      setNarrow(el.clientWidth < 560);
+      setBox({ w: el.clientWidth, h: el.clientHeight });
+    };
     measure();
+    // The box changes size on expand/collapse and on rotation, not only on a window resize.
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
+    if (ro && viewportRef.current) ro.observe(viewportRef.current);
     window.addEventListener('resize', measure);
-    return () => window.removeEventListener('resize', measure);
-  }, []);
+    return () => { ro?.disconnect(); window.removeEventListener('resize', measure); };
+  }, [fullScreen]);
   const COL = narrow ? TREE_COLS_NARROW : TREE_COLS_WIDE;
 
   // --------------------------------------------------------------- the tree, from the record
@@ -15678,18 +15701,39 @@ const SyllabusTreeMap: React.FC<{
     });
 
   // --------------------------------------------------------------- pan, zoom, recentre
-  const clampZoom = (z: number) => Math.min(1.6, Math.max(0.45, Math.round(z * 100) / 100));
-  // The root sits at the vertical centre of its subjects, which on a long syllabus is well
-  // below the fold, so the opening view is scrolled to put it on screen rather than at y=0.
-  const centredPan = (z: number) => {
-    const rootEntry = laid.nodes.find(e => e.depth === 0);
-    const h = viewportRef.current?.clientHeight || 0;
-    if (!rootEntry || !h) return { x: 0, y: 0 };
-    return { x: 0, y: Math.min(0, h / 2 - (rootEntry.y + TREE_ROW_H / 2) * z - 16) };
+  const clampZoom = (z: number) => Math.min(1.8, Math.max(0.3, Math.round(z * 100) / 100));
+
+  /**
+   * The zoom at which the whole tree fits the box. Capped at 1 so a small syllabus is not
+   * blown up, and floored at 0.5 so a very long one stays legible and is panned instead —
+   * "fit" must never mean "unreadable".
+   */
+  const fitZoom = (): number => {
+    if (!box.w || !box.h) return 1;
+    const z = Math.min((box.w - 32) / contentW, (box.h - 32) / contentH);
+    return Math.min(1, Math.max(0.5, Math.round(z * 100) / 100));
   };
-  const reset = () => { setZoom(1); setPan(centredPan(1)); setSelectedId(null); };
-  // Centre once the viewport has a measured height, and again if the branches change shape.
-  useEffect(() => { setPan(centredPan(zoom)); }, [laid.height]);
+  /** Centre the drawn tree in the box at a given zoom. */
+  const centredPan = (z: number) => ({
+    x: Math.max(0, (box.w - contentW * z) / 2) - 16,
+    y: Math.max(0, (box.h - contentH * z) / 2) - 16
+  });
+  const fitToView = () => { const z = fitZoom(); setZoom(z); setPan(centredPan(z)); };
+  const reset = () => { fitToView(); setSelectedId(null); };
+
+  /**
+   * The opening view. On a wide box the whole tree is fitted, which is the useful overview.
+   * On a phone fitting would land at the 0.5 floor and the labels would be unreadable, so it
+   * opens at full size with the root on screen and the candidate pans — Fit is still a button
+   * away when they want the shape rather than the words.
+   */
+  useEffect(() => {
+    if (!box.w || !box.h) return;
+    if (!narrow) { fitToView(); return; }
+    const rootEntry = laid.nodes.find(e => e.depth === 0);
+    setZoom(1);
+    setPan({ x: 0, y: rootEntry ? Math.min(0, box.h / 2 - (rootEntry.y + TREE_ROW_H / 2) - 16) : 0 });
+  }, [laid.height, contentW, box.w, box.h, narrow]);
   const onPointerDown = (ev: React.PointerEvent) => {
     if ((ev.target as HTMLElement).closest('button[data-tree-node]')) return;
     dragRef.current = { x: ev.clientX, y: ev.clientY, px: pan.x, py: pan.y };
@@ -15752,19 +15796,28 @@ const SyllabusTreeMap: React.FC<{
     };
   };
 
-  return (
-    <div className="glass-card" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+  const card = (
+    <div
+      className="glass-card"
+      style={{
+        padding: '18px 20px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '12px',
+        ...(fullScreen ? { height: '100%', borderRadius: 'var(--radius-md)', margin: 0 } : {})
+      }}
+    >
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
         <div style={{ minWidth: 0 }}>
           <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Compass size={16} color="var(--primary)" /> Syllabus Tree Map
           </h4>
           <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: '4px 0 0 0', lineHeight: 1.5, maxWidth: '640px' }}>
-            The same {exam.syllabus.length} topics shown above, as a hierarchy. Drag to pan; a chevron opens a subject or a
-            topic's subtopics. Choosing a topic opens its entry in the syllabus list.
+            The same {exam.syllabus.length} topics as the Official Gazette Syllabus view, as a hierarchy. Drag to pan; a
+            chevron opens a subject or a topic's subtopics. Choosing a topic opens its entry in that view.
           </p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
           <button className="btn btn-secondary" onClick={() => setZoom(z => clampZoom(z - 0.15))} title="Zoom out" aria-label="Zoom out" style={{ padding: '6px 10px' }}>
             <Minus size={14} />
           </button>
@@ -15774,8 +15827,17 @@ const SyllabusTreeMap: React.FC<{
           <button className="btn btn-secondary" onClick={() => setZoom(z => clampZoom(z + 0.15))} title="Zoom in" aria-label="Zoom in" style={{ padding: '6px 10px' }}>
             <Plus size={14} />
           </button>
-          <button className="btn btn-secondary" onClick={reset} title="Reset the view" aria-label="Reset the view" style={{ padding: '6px 10px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-            <Maximize2 size={14} /> Reset
+          <button className="btn btn-secondary" onClick={reset} title="Fit the whole tree in view" aria-label="Fit the whole tree in view" style={{ padding: '6px 12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+            <Crosshair size={14} /> Fit
+          </button>
+          <button
+            className={`btn ${fullScreen ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setFullScreen(v => !v)}
+            title={fullScreen ? 'Leave full screen (Esc)' : 'Open full screen'}
+            aria-label={fullScreen ? 'Leave full screen' : 'Open full screen'}
+            style={{ padding: '6px 12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          >
+            {fullScreen ? <><Minimize2 size={14} /> Close</> : <><Maximize2 size={14} /> Full screen</>}
           </button>
         </div>
       </div>
@@ -15788,12 +15850,17 @@ const SyllabusTreeMap: React.FC<{
         onPointerCancel={endDrag}
         style={{
           position: 'relative',
-          height: 'clamp(320px, 52vh, 620px)',
+          // Full screen takes what is left of the card; inline it is tall enough to hold a
+          // 22-topic tree at a readable size rather than a letterbox strip.
+          ...(fullScreen ? { flex: 1, minHeight: 0 } : { height: 'clamp(420px, 68vh, 760px)' }),
           borderRadius: 'var(--radius-md)',
           border: '1px solid var(--border-color)',
           background: 'var(--surface-2)',
           overflow: 'hidden',
           touchAction: 'none',
+          // Without this a drag selects the node labels it passes over.
+          userSelect: 'none',
+          WebkitUserSelect: 'none',
           cursor: dragging ? 'grabbing' : 'grab'
         }}
       >
@@ -15825,7 +15892,9 @@ const SyllabusTreeMap: React.FC<{
                 data-tree-node="1"
                 onClick={() => {
                   setSelectedId(node.id);
-                  if (node.kind === 'TOPIC' && node.topicId) onOpenTopic(node.topicId);
+                  // Handing over to the syllabus list means leaving the map, so the expanded
+                  // view closes with it — otherwise the list scrolls behind the overlay.
+                  if (node.kind === 'TOPIC' && node.topicId) { setFullScreen(false); onOpenTopic(node.topicId); }
                   if (hasKids && node.kind !== 'ROOT') setExpanded(e => ({ ...e, [node.id]: !open }));
                 }}
                 title={node.label}
@@ -15862,9 +15931,28 @@ const SyllabusTreeMap: React.FC<{
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
           <span style={{ width: '12px', height: '12px', borderRadius: '4px', background: 'var(--emerald-soft)', border: '1px solid rgba(21,128,61,0.35)' }} /> Marked done
         </span>
+        {fullScreen && <span style={{ marginLeft: 'auto' }}>Press Esc to close</span>}
       </div>
     </div>
   );
+
+  // Full screen is the same card over the page, so the tree gets the whole window on a long
+  // syllabus. Rendered through a portal so no ancestor's overflow or stacking context clips it.
+  if (fullScreen) {
+    return createPortal(
+      <div
+        className="modal-overlay"
+        onClick={ev => { if (ev.target === ev.currentTarget) setFullScreen(false); }}
+        // `.modal-overlay` centres its child; the expanded map has to fill the window instead,
+        // or the card collapses to the height of its own header.
+        style={{ padding: 'clamp(12px, 3vw, 32px)', display: 'flex', alignItems: 'stretch', justifyContent: 'center' }}
+      >
+        <div style={{ flex: 1, minWidth: 0, maxWidth: '1500px', display: 'flex', flexDirection: 'column' }}>{card}</div>
+      </div>,
+      document.body
+    );
+  }
+  return card;
 };
 
 const EXAM_SECTIONS = [
@@ -15956,7 +16044,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
   }, [initialSection]);
   const [isGuideIndexOpen, setIsGuideIndexOpen] = useState<boolean>(false);
   const [selectedResourceForModal, setSelectedResourceForModal] = useState<ResourceItem | null>(null);
-  const [syllabusViewMode, setSyllabusViewMode] = useState<'POST_STUDY_PATH' | 'OFFICIAL_BLUEPRINT'>('POST_STUDY_PATH');
+  const [syllabusViewMode, setSyllabusViewMode] = useState<'POST_STUDY_PATH' | 'OFFICIAL_BLUEPRINT' | 'TREE_MAP'>('POST_STUDY_PATH');
   const [completedTopics, setCompletedTopics] = useState<Record<string, boolean>>(
     () => {
       const saved = storageService.getCompletedTopics(exam.id);
@@ -16567,6 +16655,13 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                 >
                   <FileText size={14} /> Official Gazette Syllabus
                 </button>
+                <button
+                  onClick={() => setSyllabusViewMode('TREE_MAP')}
+                  className={`btn ${syllabusViewMode === 'TREE_MAP' ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ fontSize: '0.82rem', padding: '6px 14px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <Share2 size={14} /> Tree Map
+                </button>
               </div>
             </div>
 
@@ -16699,19 +16794,21 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
               </div>
             )}
 
-            {/* The same syllabus as a hierarchy. Additive: the views above remain the content,
-                and a topic chosen here is opened in the Official Syllabus list, not repeated. */}
-            <SyllabusTreeMap
-              exam={exam}
-              completedTopics={completedTopics}
-              onOpenTopic={topicId => {
-                setSyllabusViewMode('OFFICIAL_BLUEPRINT');
-                window.setTimeout(() => {
-                  const el = document.getElementById(`syllabus-topic-${topicId}`);
-                  el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }, 80);
-              }}
-            />
+            {/* View 3: the same syllabus as a hierarchy. It adds no content of its own — a
+                topic chosen here opens in the Official Syllabus view, which stays the record. */}
+            {syllabusViewMode === 'TREE_MAP' && (
+              <SyllabusTreeMap
+                exam={exam}
+                completedTopics={completedTopics}
+                onOpenTopic={topicId => {
+                  setSyllabusViewMode('OFFICIAL_BLUEPRINT');
+                  window.setTimeout(() => {
+                    const el = document.getElementById(`syllabus-topic-${topicId}`);
+                    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }, 80);
+                }}
+              />
+            )}
           </div>
         )}
 

@@ -271,7 +271,8 @@ when none of the latest items concern the CSE, and the syllabus watch judges UPS
 first sighting and says so in its `note`.
 
 ### The syllabus, also as a map
-`SyllabusTreeMap` sits at the foot of section 06, under both of that section's views. It reads
+`SyllabusTreeMap` is section 06's **third view** — the switcher reads Post Study Plan ·
+Official Gazette Syllabus · Tree Map — not a card stacked under the others. It reads
 `exam.syllabus` — the same merged, revision-aware array the list above it renders — and lays it
 out left to right: the exam's syllabus, its subjects (grouped by `topic.subject`, in register
 order), each subject's topics, and a topic's `subtopics` only where the record has them. It
@@ -281,12 +282,21 @@ blueprint renders one `#syllabus-topic-<id>` anchor per topic and the map one to
 those two numbers must stay equal (22 for SSC CGL, 18 for UPSC).
 
 Choosing a topic in the map does not repeat its detail: it switches section 06 to the Official
-Syllabus view and scrolls that topic's existing card into view. Subjects open by default,
-subtopics on a chevron, so a long syllabus stays readable. Pan by dragging, zoom and reset from
-the header; the opening view is scrolled to put the root on screen, because the root sits at the
-vertical centre of its subjects and on a long syllabus that is below the fold. Under 560 px of
-available width the **columns narrow rather than the tree scaling down** — shrinking the whole
-map would shrink the labels with it, and a map you cannot read is not a map.
+Syllabus view and scrolls that topic's existing card into view (leaving full screen if it was
+open, or the list would scroll behind the overlay). Subjects open by default, subtopics on a
+chevron, so a long syllabus stays readable.
+
+**Making 22 topics actually viewable is the whole design problem**, and three things solve it.
+Pan by dragging, ± to zoom and **Fit** to put the whole tree in the box. **Full screen** renders
+the same card through a portal over the page (Esc or a click outside closes it, body scroll is
+locked while it is open) — on a 1366×900 window Fit lands at 80% there against 71% inline, which
+is the difference between readable and squinting. And the row pitch is deliberately tight
+(30 px + 6), because that is what keeps a 22-topic tree near 800 px tall and therefore fittable
+at a legible zoom. Two things are measured, not assumed: a `ResizeObserver` on the viewport
+(it changes size on expand/collapse and rotation, not only on a window resize), and from it the
+choice of column geometry — under 560 px the **columns narrow rather than the tree scaling
+down**, and the opening view stays at 100% with the root on screen instead of fitting, because
+fitting a phone would land on the 0.5 floor and a map you cannot read is not a map.
 
 ### Conversation context — one model, three chats
 Every chat answers from the same context, assembled per message by `buildChatContext(exam,
