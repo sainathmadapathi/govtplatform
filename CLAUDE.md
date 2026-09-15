@@ -281,10 +281,21 @@ cannot drift from the list and cannot become a second dataset. The count is the 
 blueprint renders one `#syllabus-topic-<id>` anchor per topic and the map one topic node, and
 those two numbers must stay equal (22 for SSC CGL, 18 for UPSC).
 
-Choosing a topic in the map does not repeat its detail: it switches section 06 to the Official
-Syllabus view and scrolls that topic's existing card into view (leaving full screen if it was
-open, or the list would scroll behind the overlay). Subjects open by default, subtopics on a
+**A node has two hit targets, and it must.** The label opens the topic's entry in the Official
+Syllabus view — which switches section 06 and therefore *unmounts the map* — while the chevron
+only unfolds the branch. They shared one handler at first, so every attempt to expand a topic
+navigated away in the same click and nothing ever appeared to open. Opening a topic also leaves
+full screen, or the list scrolls behind the overlay. Subjects open by default, subtopics on a
 chevron, so a long syllabus stays readable.
+
+**Gestures.** One pointer drags, two pinch (`pointersRef` holds every pointer down; the second
+turns the drag into a pinch measured from the span it started at), and ctrl/meta+wheel zooms —
+that is what a trackpad pinch and a mouse ctrl+wheel both send. A plain wheel is deliberately
+left alone so the page still scrolls. Every zoom goes through `zoomAbout(z, sx, sy)`, which
+keeps the content under the fingers (or under the box centre, for the buttons) fixed; the
+buttons used to scale about the origin and the tree jumped. `touchAction` is `none` only in full
+screen, where the map owns the window; inline it is `pan-y`, so a vertical swipe scrolls past
+the map instead of being trapped by it.
 
 **Making 22 topics actually viewable is the whole design problem**, and three things solve it.
 Pan by dragging, ± to zoom and **Fit** to put the whole tree in the box. **Full screen** renders

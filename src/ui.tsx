@@ -15541,6 +15541,8 @@ interface SyllabusTreeNode {
 // the whole tree fit a full-screen box at a readable zoom instead of a shrunken one.
 const TREE_ROW_H = 30;
 const TREE_ROW_GAP = 6;
+/** Inset of the drawn layer inside the viewport; part of every screen<->content conversion. */
+const TREE_PAD = 16;
 /**
  * Two column geometries, chosen by the width actually available. Narrowing the columns keeps
  * the label at its readable size on a phone — scaling the whole tree down to fit would shrink
@@ -15561,6 +15563,9 @@ const SyllabusTreeMap: React.FC<{
   const [dragging, setDragging] = useState<boolean>(false);
   const [fullScreen, setFullScreen] = useState<boolean>(false);
   const dragRef = useRef<{ x: number; y: number; px: number; py: number } | null>(null);
+  // Every pointer currently down on the canvas: one is a drag, two are a pinch.
+  const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const pinchRef = useRef<{ dist: number; zoom: number } | null>(null);
   const viewportRef = useRef<HTMLDivElement | null>(null);
   // Escape leaves the expanded view, and the page behind it must not scroll under it.
   useEffect(() => {
@@ -15710,13 +15715,13 @@ const SyllabusTreeMap: React.FC<{
    */
   const fitZoom = (): number => {
     if (!box.w || !box.h) return 1;
-    const z = Math.min((box.w - 32) / contentW, (box.h - 32) / contentH);
+    const z = Math.min((box.w - TREE_PAD * 2) / contentW, (box.h - TREE_PAD * 2) / contentH);
     return Math.min(1, Math.max(0.5, Math.round(z * 100) / 100));
   };
   /** Centre the drawn tree in the box at a given zoom. */
   const centredPan = (z: number) => ({
-    x: Math.max(0, (box.w - contentW * z) / 2) - 16,
-    y: Math.max(0, (box.h - contentH * z) / 2) - 16
+    x: Math.max(0, (box.w - contentW * z) / 2) - TREE_PAD,
+    y: Math.max(0, (box.h - contentH * z) / 2) - TREE_PAD
   });
   const fitToView = () => { const z = fitZoom(); setZoom(z); setPan(centredPan(z)); };
   const reset = () => { fitToView(); setSelectedId(null); };
@@ -15732,20 +15737,86 @@ const SyllabusTreeMap: React.FC<{
     if (!narrow) { fitToView(); return; }
     const rootEntry = laid.nodes.find(e => e.depth === 0);
     setZoom(1);
-    setPan({ x: 0, y: rootEntry ? Math.min(0, box.h / 2 - (rootEntry.y + TREE_ROW_H / 2) - 16) : 0 });
+    setPan({ x: 0, y: rootEntry ? Math.min(0, box.h / 2 - (rootEntry.y + TREE_ROW_H / 2) - TREE_PAD) : 0 });
   }, [laid.height, contentW, box.w, box.h, narrow]);
+  /**
+   * Zoom about a point of the viewport, so whatever is under the fingers (or under the box's
+   * centre, for the buttons) stays put. The layer is drawn at `pan + TREE_PAD` then scaled, so
+   * the content point under a viewport point s is `(s - pan - TREE_PAD) / zoom`.
+   */
+  const zoomAbout = (nextZoom: number, sx: number, sy: number) => {
+    const z2 = clampZoom(nextZoom);
+    setPan(prev => ({
+      x: sx - TREE_PAD - ((sx - prev.x - TREE_PAD) / zoom) * z2,
+      y: sy - TREE_PAD - ((sy - prev.y - TREE_PAD) / zoom) * z2
+    }));
+    setZoom(z2);
+  };
+  const zoomByButton = (delta: number) => zoomAbout(zoom + delta, box.w / 2, box.h / 2);
+
+  const localPoint = (ev: { clientX: number; clientY: number }) => {
+    const r = viewportRef.current?.getBoundingClientRect();
+    return { x: ev.clientX - (r?.left || 0), y: ev.clientY - (r?.top || 0) };
+  };
+
   const onPointerDown = (ev: React.PointerEvent) => {
-    if ((ev.target as HTMLElement).closest('button[data-tree-node]')) return;
+    if ((ev.target as HTMLElement).closest('[data-tree-node]')) return;
+    pointersRef.current.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    // Capture can be refused (a pointer already released, a synthetic event); the gesture still
+    // works without it, so a refusal must not throw out of the handler.
+    try { (ev.currentTarget as HTMLElement).setPointerCapture(ev.pointerId); } catch { /* not capturable */ }
+    if (pointersRef.current.size === 2) {
+      // A second finger turns the drag into a pinch: remember the span and the zoom it started
+      // from, so the gesture scales relative to where it began rather than jumping.
+      const [a, b] = [...pointersRef.current.values()];
+      dragRef.current = null;
+      pinchRef.current = { dist: Math.hypot(a.x - b.x, a.y - b.y) || 1, zoom };
+      setDragging(false);
+      return;
+    }
     dragRef.current = { x: ev.clientX, y: ev.clientY, px: pan.x, py: pan.y };
     setDragging(true);
-    (ev.currentTarget as HTMLElement).setPointerCapture(ev.pointerId);
   };
+
   const onPointerMove = (ev: React.PointerEvent) => {
+    if (pointersRef.current.has(ev.pointerId)) pointersRef.current.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    const pinch = pinchRef.current;
+    if (pinch && pointersRef.current.size === 2) {
+      const [a, b] = [...pointersRef.current.values()];
+      const dist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+      const mid = localPoint({ clientX: (a.x + b.x) / 2, clientY: (a.y + b.y) / 2 });
+      zoomAbout(pinch.zoom * (dist / pinch.dist), mid.x, mid.y);
+      return;
+    }
     const d = dragRef.current;
     if (!d) return;
     setPan({ x: d.px + (ev.clientX - d.x), y: d.py + (ev.clientY - d.y) });
   };
-  const endDrag = () => { dragRef.current = null; setDragging(false); };
+
+  const endDrag = (ev?: React.PointerEvent) => {
+    if (ev) pointersRef.current.delete(ev.pointerId);
+    if (pointersRef.current.size < 2) pinchRef.current = null;
+    dragRef.current = null;
+    setDragging(false);
+  };
+
+  /**
+   * A trackpad pinch and a mouse ctrl+wheel both arrive as a ctrl-modified wheel event, so that
+   * is what zooms. A plain wheel is left alone and scrolls the page, because a map that eats the
+   * page's scroll is worse than one you zoom with a button.
+   */
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+    const onWheel = (ev: WheelEvent) => {
+      if (!ev.ctrlKey && !ev.metaKey) return;
+      ev.preventDefault();
+      const p = localPoint(ev);
+      zoomAbout(zoom * (ev.deltaY < 0 ? 1.08 : 1 / 1.08), p.x, p.y);
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [zoom, box.w, box.h]);
 
   const nodeStyle = (n: SyllabusTreeNode, lit: boolean, done: boolean): React.CSSProperties => {
     const base: React.CSSProperties = {
@@ -15818,13 +15889,13 @@ const SyllabusTreeMap: React.FC<{
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-          <button className="btn btn-secondary" onClick={() => setZoom(z => clampZoom(z - 0.15))} title="Zoom out" aria-label="Zoom out" style={{ padding: '6px 10px' }}>
+          <button className="btn btn-secondary" onClick={() => zoomByButton(-0.15)} title="Zoom out" aria-label="Zoom out" style={{ padding: '6px 10px' }}>
             <Minus size={14} />
           </button>
           <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', minWidth: '44px', textAlign: 'center' }}>
             {Math.round(zoom * 100)}%
           </span>
-          <button className="btn btn-secondary" onClick={() => setZoom(z => clampZoom(z + 0.15))} title="Zoom in" aria-label="Zoom in" style={{ padding: '6px 10px' }}>
+          <button className="btn btn-secondary" onClick={() => zoomByButton(0.15)} title="Zoom in" aria-label="Zoom in" style={{ padding: '6px 10px' }}>
             <Plus size={14} />
           </button>
           <button className="btn btn-secondary" onClick={reset} title="Fit the whole tree in view" aria-label="Fit the whole tree in view" style={{ padding: '6px 12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
@@ -15857,7 +15928,11 @@ const SyllabusTreeMap: React.FC<{
           border: '1px solid var(--border-color)',
           background: 'var(--surface-2)',
           overflow: 'hidden',
-          touchAction: 'none',
+          // Full screen the map owns every gesture. Inline it must not trap the page: a vertical
+          // swipe still scrolls past it (`pan-y`), while horizontal drags pan and two fingers
+          // pinch. The browser fires pointercancel when it takes a scroll over, which ends the
+          // drag cleanly. Fit and Full screen cover what one-finger vertical panning would.
+          touchAction: fullScreen ? 'none' : 'pan-y',
           // Without this a drag selects the node labels it passes over.
           userSelect: 'none',
           WebkitUserSelect: 'none',
@@ -15869,7 +15944,7 @@ const SyllabusTreeMap: React.FC<{
             position: 'absolute',
             top: 0,
             left: 0,
-            transform: `translate(${pan.x + 16}px, ${pan.y + 16}px) scale(${zoom})`,
+            transform: `translate(${pan.x + TREE_PAD}px, ${pan.y + TREE_PAD}px) scale(${zoom})`,
             transformOrigin: '0 0',
             width: `${contentW}px`,
             height: `${contentH}px`
@@ -15886,30 +15961,53 @@ const SyllabusTreeMap: React.FC<{
             const done = !!(node.topicId && completedTopics[node.topicId]);
             const hasKids = node.children.length > 0;
             const open = isOpen(node);
+            // Two targets, not one: the label opens the topic's entry in the syllabus list —
+            // which switches section 06 to that view and unmounts this map — while the chevron
+            // only unfolds the branch. Sharing a handler meant every attempt to expand a topic
+            // navigated away in the same click, so nothing ever appeared to open.
             return (
-              <button
+              <div
                 key={node.id}
                 data-tree-node="1"
-                onClick={() => {
-                  setSelectedId(node.id);
-                  // Handing over to the syllabus list means leaving the map, so the expanded
-                  // view closes with it — otherwise the list scrolls behind the overlay.
-                  if (node.kind === 'TOPIC' && node.topicId) { setFullScreen(false); onOpenTopic(node.topicId); }
-                  if (hasKids && node.kind !== 'ROOT') setExpanded(e => ({ ...e, [node.id]: !open }));
-                }}
-                title={node.label}
-                style={{ ...nodeStyle(node, lit, done), left: `${COL.x[depth]}px`, top: `${y}px`, width: `${COL.w[depth]}px` }}
+                style={{ ...nodeStyle(node, lit, done), left: `${COL.x[depth]}px`, top: `${y}px`, width: `${COL.w[depth]}px`, padding: 0 }}
               >
-                <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {node.label}
-                </span>
-                {node.kind !== 'ROOT' && node.meta && (
-                  <span style={{ fontSize: '0.66rem', color: lit ? 'var(--primary)' : 'var(--text-muted)', fontWeight: 700, flexShrink: 0 }}>{node.meta}</span>
-                )}
+                <button
+                  onClick={() => {
+                    setSelectedId(node.id);
+                    // Handing over to the list means leaving the map, so the expanded view
+                    // closes with it — otherwise the list scrolls behind the overlay.
+                    if (node.kind === 'TOPIC' && node.topicId) { setFullScreen(false); onOpenTopic(node.topicId); }
+                  }}
+                  title={node.kind === 'TOPIC' ? `${node.label} — open in the syllabus list` : node.label}
+                  style={{
+                    flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: '7px', height: '100%',
+                    padding: hasKids && node.kind !== 'ROOT' ? '0 4px 0 10px' : '0 10px',
+                    background: 'transparent', border: 'none', color: 'inherit', font: 'inherit',
+                    cursor: 'pointer', textAlign: 'left'
+                  }}
+                >
+                  <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {node.label}
+                  </span>
+                  {node.kind !== 'ROOT' && node.meta && (
+                    <span style={{ fontSize: '0.66rem', color: lit ? 'var(--primary)' : 'var(--text-muted)', fontWeight: 700, flexShrink: 0 }}>{node.meta}</span>
+                  )}
+                </button>
                 {hasKids && node.kind !== 'ROOT' && (
-                  open ? <ChevronDown size={13} style={{ flexShrink: 0 }} /> : <ChevronRight size={13} style={{ flexShrink: 0 }} />
+                  <button
+                    onClick={() => { setSelectedId(node.id); setExpanded(e => ({ ...e, [node.id]: !open })); }}
+                    title={open ? `Collapse ${node.label}` : `Expand ${node.label}`}
+                    aria-expanded={open}
+                    style={{
+                      flexShrink: 0, width: '26px', height: '100%', display: 'flex', alignItems: 'center',
+                      justifyContent: 'center', background: 'transparent', border: 'none',
+                      borderLeft: '1px solid var(--border-color)', color: 'inherit', cursor: 'pointer'
+                    }}
+                  >
+                    {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                  </button>
                 )}
-              </button>
+              </div>
             );
           })}
         </div>
