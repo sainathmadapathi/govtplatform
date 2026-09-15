@@ -149,6 +149,7 @@ import {
   REASONING_TEMPLATES,
   SSC_CGL_EXAM,
   PRACTICE_BANK_EXAM_ID,
+  UPSC_CSE_EXAM,
   examHasStudyPaths,
   SUBJECT_MOCK_TESTS,
   TOPIC_CATALOG,
@@ -15541,6 +15542,176 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
  * for the same reason.
  */
 // =====================================================================================
+// UpscPracticeEngine — the CSE's own practice engine, not SSC's
+// =====================================================================================
+/**
+ * SSC CGL's engine is built around a 100-question objective Tier-1 paper with +2/-0.5 scoring,
+ * shift papers, sectionals and topic drills. The CSE is a different exam: a two-paper objective
+ * Prelims where CSAT only has to be cleared, then nine descriptive papers. Running one engine
+ * over both would judge UPSC by SSC's pattern, so the exam picks its engine.
+ *
+ * **Built so far: Previous Year Papers.** Every paper here is UPSC's own booklet, opened at
+ * upsc.gov.in — GovOS holds no CSE question items, and nothing on this screen is generated.
+ * The remaining stages are listed as what they are: not built yet. An attemptable CSE bank has
+ * to be transcribed from these booklets and checked before it can exist, and until then a
+ * generated question dressed as a past paper would be a lie about provenance.
+ */
+const UPSC_ENGINE_ROADMAP: { step: number; label: string; detail: string }[] = [
+  { step: 2, label: 'Subject and topic practice', detail: 'Drawn from the CSE syllabus on record, written by GovOS and labelled as such.' },
+  { step: 3, label: 'CSAT practice', detail: 'Kept separate, because CSAT only has to be cleared at 33% — it is not a merit paper.' },
+  { step: 4, label: 'Full-length tests', detail: 'GS Paper-I at 100 questions in 2 hours, on the real clock and the notice\'s marking.' },
+  { step: 5, label: 'Attempt history and review', detail: 'The same record and review chain the SSC engine keeps.' }
+];
+
+interface UpscPracticeEngineProps {
+  exam: Exam;
+  onOpenProvenanceModal: (provenance: DataProvenance) => void;
+  /** PRACTICE opens on the papers; MOCKS opens on what full-length testing will be. */
+  scope?: PracticeScope;
+}
+
+/** Every official question paper an exam's register carries, whichever exam it is. */
+export const officialQuestionPapers = (exam: Exam): ResourceItem[] =>
+  exam.resources.filter(r => r.subject === 'Previous Year Papers' && r.type === 'OFFICIAL_PDF');
+
+export const UpscPracticeEngine: React.FC<UpscPracticeEngineProps> = ({ exam, onOpenProvenanceModal, scope = 'ALL' }) => {
+  const papers = officialQuestionPapers(exam);
+  const prelims = papers.filter(p => /prelim/i.test(p.title));
+  const mains = papers.filter(p => /\bmain/i.test(p.title));
+  const other = papers.filter(p => !prelims.includes(p) && !mains.includes(p));
+  const prelimStage = exam.stages.find(s => s.tier === 'TIER_1');
+  const papersPage = exam.resources.find(r => r.subject === 'Previous Year Papers' && r.type === 'OFFICIAL_PORTAL');
+
+  const group = (title: string, note: string, list: ResourceItem[]) => list.length === 0 ? null : (
+    <div key={title} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <div>
+        <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>{title} <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>({list.length})</span></h4>
+        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '3px 0 0 0' }}>{note}</p>
+      </div>
+      <div className="grid-2">
+        {list.map(p => (
+          <div key={p.id} style={{ padding: '16px 18px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <span className="badge badge-verified" style={{ fontSize: '0.62rem' }}>OFFICIAL PAPER</span>
+              {p.officialTag && <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700 }}>{p.officialTag}</span>}
+            </div>
+            <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.4 }}>{p.title}</div>
+            {p.recommendedFor && <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{p.recommendedFor}</div>}
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '2px' }}>
+              <a href={p.directPdfUrl || p.url} target="_blank" rel="noreferrer" className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '7px 14px', display: 'inline-flex', alignItems: 'center', gap: '6px', textDecoration: 'none' }}>
+                <ExternalLink size={13} /> Open the paper on {new URL(p.url).hostname.replace(/^www\./, '')}
+              </a>
+              {p.provenance && (
+                <button className="btn btn-outline" onClick={() => onOpenProvenanceModal(p.provenance!)} style={{ fontSize: '0.78rem', padding: '7px 12px' }}>
+                  Sourced clause
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <div>
+        <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+          {scope === 'MOCKS' ? '17 — Mock Tests' : '09 — Practice & Previous Year Papers'}
+        </h3>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', margin: '4px 0 0 0', lineHeight: 1.55 }}>
+          {exam.title} has its own practice engine. The CSE is a two-paper objective Prelims followed by nine
+          descriptive papers, so it is not run through the SSC Tier-1 engine and its pattern.
+        </p>
+      </div>
+
+      {/* The separation the whole engine rests on, stated before anything else. */}
+      <div style={{ padding: '16px 18px', borderRadius: 'var(--radius-md)', background: 'var(--emerald-soft)', border: '1px solid rgba(21, 128, 61, 0.35)', display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+        <ShieldCheck size={18} color="#15803d" style={{ flexShrink: 0, marginTop: '2px' }} />
+        <div style={{ fontSize: '0.86rem', color: '#065f46', lineHeight: 1.55 }}>
+          <strong>Everything below is UPSC's own paper.</strong> Each one opens at {exam.officialDomain.replace(/^https?:\/\/(www\.)?/, '')},
+          where the Commission published it — GovOS stores no CSE question items and has written none.
+          When practice GovOS authors does arrive, it will be labelled as authored and kept apart from these,
+          never presented as a past paper.
+        </div>
+      </div>
+
+      {papers.length === 0 ? (
+        <div style={{ padding: '16px 18px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
+          No official question papers are on record for {exam.title} yet.
+          {papersPage && <> UPSC publishes every stage and year on <a href={papersPage.url} target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', fontWeight: 700 }}>its previous-papers page</a>.</>}
+        </div>
+      ) : (
+        <>
+          {group(
+            'Preliminary Examination',
+            prelimStage
+              ? `Objective. ${prelimStage.negativeMarking}`
+              : 'Objective papers, as published by the Commission.',
+            prelims
+          )}
+          {group('Main Examination', 'Descriptive papers. There is no negative marking and no option key — these are for answer writing.', mains)}
+          {group('Other official papers', 'Published by the Commission alongside the question papers.', other)}
+        </>
+      )}
+
+      {papersPage && (
+        <div style={{ fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
+          Earlier years: UPSC keeps every stage and year on{' '}
+          <a href={papersPage.url} target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', fontWeight: 700 }}>its official previous-papers page</a>.
+          GovOS lists the {papers.length} papers of the current cycle rather than mirroring the archive.
+        </div>
+      )}
+
+      {/* What is not built, said plainly, so nothing here has to pretend. */}
+      <div className="glass-card" style={{ padding: '18px 20px', background: 'var(--surface-2)' }}>
+        <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 4px' }}>
+          Being built next, in this order
+        </h4>
+        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '0 0 12px' }}>
+          None of it exists yet, and none of it is on this screen pretending to.
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {UPSC_ENGINE_ROADMAP.map(r => (
+            <div key={r.step} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+              <span style={{ flexShrink: 0, width: '20px', height: '20px', borderRadius: '50%', background: 'var(--surface-3)', color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{r.step}</span>
+              <div>
+                <div style={{ fontSize: '0.86rem', fontWeight: 700, color: 'var(--text-primary)' }}>{r.label}</div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.45 }}>{r.detail}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// =====================================================================================
+// ExamPracticeEngine — the exam chooses its engine
+// =====================================================================================
+/**
+ * One practice engine for every exam would judge each of them by SSC's Tier-1 pattern. The
+ * exam selects instead, which is the whole point of the split:
+ *
+ *   SSC CGL   -> PracticeEngine      (PYQ shift papers, sectionals, topic drills, mock creator)
+ *   UPSC CSE  -> UpscPracticeEngine  (the Commission's own papers; the rest built in order)
+ *   others    -> PracticeEngine      (its honest empty state, until they are given their own)
+ *
+ * Add an exam's engine here, not by widening one of the existing ones.
+ */
+const ExamPracticeEngine: React.FC<{
+  exam: Exam;
+  scope: PracticeScope;
+  onOpenProvenanceModal: (provenance: DataProvenance) => void;
+}> = ({ exam, scope, onOpenProvenanceModal }) => {
+  if (exam.id === UPSC_CSE_EXAM.id) {
+    return <UpscPracticeEngine exam={exam} scope={scope} onOpenProvenanceModal={onOpenProvenanceModal} />;
+  }
+  return <PracticeEngine exam={exam} scope={scope} onOpenProvenanceModal={onOpenProvenanceModal} />;
+};
+
+// =====================================================================================
 // SyllabusTreeMap — the syllabus already on the page, drawn as a hierarchy
 // =====================================================================================
 /**
@@ -17024,7 +17195,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
 
         {/* Section 09: Practice & PYQs (Embeds PracticeEngine, practice door) */}
         {activeSection === 9 && (
-          <PracticeEngine
+          <ExamPracticeEngine
             exam={exam}
             scope="PRACTICE"
             onOpenProvenanceModal={onOpenProvenanceModal}
@@ -17033,7 +17204,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
 
         {/* Section 17: Mock Tests (the same engine, opened at the test creator) */}
         {activeSection === 17 && (
-          <PracticeEngine
+          <ExamPracticeEngine
             exam={exam}
             scope="MOCKS"
             onOpenProvenanceModal={onOpenProvenanceModal}

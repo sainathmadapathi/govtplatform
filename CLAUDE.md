@@ -491,7 +491,7 @@ All 20 components, ordered leaves-first so composites can reference them:
 `NotificationPreferencesModal` · `ResourceReaderModal` · `ResourceAIAssistant` ·
 `PreparationPlanner` · `PostStudyPathEngine` · `PracticeEngine` ·
 `PracticeApplicationSimulator` · `ApplicationGuide` · `AdmitCardSection` ·
-`SyllabusTreeMap` ·
+`UpscPracticeEngine` · `ExamPracticeEngine` · `SyllabusTreeMap` ·
 `ExamDayChecklistSection` · `ResultNextStepsSection` · `ResourceLibrary` · `ExamDetailView`
 
 **The assistant answers, it does not deflect.** `AIAssistant` used to have three hardcoded
@@ -643,6 +643,34 @@ action and notification goes through — translates them into `EXAM_DETAIL` at s
 and 7. `main.tsx` still renders those three tabs as a safety net for any path that sets the
 tab directly. When you move a feature, update `EXAM_SCOPED_TABS` and `PLATFORM_MAP` in the
 same edit.
+
+### The exam chooses its practice engine
+One engine over every exam judges each of them by SSC's Tier-1 pattern, so `ExamPracticeEngine`
+dispatches on the exam and sections 09 and 17 both go through it:
+
+```
+SSC CGL   -> PracticeEngine      PYQ shift papers · sectionals · topic drills · mock creator
+UPSC CSE  -> UpscPracticeEngine  the Commission's own papers; the rest built in order
+others    -> PracticeEngine      its honest empty state, until each is given its own
+```
+
+Add an exam's engine there, never by widening one of the existing ones.
+
+**`UpscPracticeEngine` is being built in order, and step 1 is what exists: Previous Year Papers.**
+It lists the 7 question papers already in the UPSC record (2 Preliminary, 5 Main) grouped by
+stage, each opening at upsc.gov.in with its provenance — `officialQuestionPapers(exam)` derives
+them from `subject: 'Previous Year Papers'` + `type: 'OFFICIAL_PDF'`, which is a marker any exam
+can use, so nothing is duplicated and a new exam's papers appear by tagging them. Prelims carries
+the stage's real negative-marking rule from the record; Mains says plainly there is no key.
+Steps 2-5 (subject/topic practice, CSAT kept separate because it is only qualifying at 33%,
+full-length tests, attempt history) are listed on the page as **not built**, with nothing on
+screen pretending otherwise.
+
+**The separation is the point, and it is stated on the page.** GovOS holds no CSE question items
+and has written none; every paper here is UPSC's own. When authored CSE practice arrives it must
+render as GovOS-authored and sit apart from these — a generated question presented as a past
+paper would be a lie about provenance, which is the one thing this product cannot do. The same
+rule already governs the SSC bank (`GOVOS_AUTHORED` vs `OFFICIAL_EXERCISE`).
 
 **One engine, two doors.** `PracticeEngine` takes `scope`: `PRACTICE` offers PYQ shift
 papers, subject sectionals and topic drills; `MOCKS` opens on the AI test creator; `ALL` is
