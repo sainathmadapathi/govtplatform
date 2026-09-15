@@ -300,9 +300,12 @@ that is what a trackpad pinch and a mouse ctrl+wheel both send. A plain wheel is
 left alone so the page still scrolls. **A pinch is damped, not linear.** Mapping zoom straight
 to the finger-span ratio is geometrically honest and feels violent: fingers that start close
 together swing that ratio enormously over a centimetre, so the tree leapt from fitted to twice
-size. The ratio is raised to `TREE_PINCH_DAMPING` (0.55), which turns a 2.3x spread into about
-1.6x of zoom and stays symmetric in both directions, and movement under `TREE_PINCH_DEADZONE`
-(8 px) is read as tremor. Because every frame is measured from the span the gesture *started*
+size. The ratio is raised to `TREE_PINCH_DAMPING`, which stays symmetric in both directions;
+**0.8 is the settled value** — 0.55 was tried and felt dead, 1.0 (no damping) ran away, and 0.8
+tracks the fingers closely (a 2.3x spread is about 2x of zoom) while taking the edge off the
+first centimetre, which is where the runaway was. Movement under `TREE_PINCH_DEADZONE` (4 px)
+is read as tremor; a wider dead zone than that reads as an unresponsive gesture, which is the
+opposite of the problem it solves. Because every frame is measured from the span the gesture *started*
 at, a slow pinch and a fast one land on the same zoom — nothing accumulates. The wheel step is
 likewise scaled by the delta reported (`exp(-deltaY * 0.0016)`, clamped), so one mouse notch is
 a step and a trackpad's stream of small deltas is a glide. Every zoom goes through `zoomAbout(z, sx, sy)`, which
