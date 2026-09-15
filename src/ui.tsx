@@ -15544,6 +15544,16 @@ const TREE_ROW_GAP = 6;
 /** Inset of the drawn layer inside the viewport; part of every screen<->content conversion. */
 const TREE_PAD = 16;
 /**
+ * How hard a pinch bites. Mapping zoom straight to the ratio of the finger span (exponent 1)
+ * is geometrically honest but feels violent here: fingers that start close together swing the
+ * ratio enormously for a centimetre of travel, so the tree leaps from fitted to twice size.
+ * Raising the ratio to this power damps that — a 2.3x spread becomes about 1.5x of zoom — and
+ * the gesture still runs both ways from wherever it started.
+ */
+const TREE_PINCH_DAMPING = 0.55;
+/** Finger travel under this many pixels is hand tremor, not a pinch. */
+const TREE_PINCH_DEADZONE = 8;
+/**
  * Two column geometries, chosen by the width actually available. Narrowing the columns keeps
  * the label at its readable size on a phone — scaling the whole tree down to fit would shrink
  * the text with it, and a map you cannot read is not a map.
@@ -15793,8 +15803,9 @@ const SyllabusTreeMap: React.FC<{
     if (pinch && pointersRef.current.size === 2) {
       const [a, b] = [...pointersRef.current.values()];
       const dist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+      if (Math.abs(dist - pinch.dist) < TREE_PINCH_DEADZONE) return;
       const mid = localPoint({ clientX: (a.x + b.x) / 2, clientY: (a.y + b.y) / 2 });
-      zoomAbout(pinch.zoom * (dist / pinch.dist), mid.x, mid.y);
+      zoomAbout(pinch.zoom * Math.pow(dist / pinch.dist, TREE_PINCH_DAMPING), mid.x, mid.y);
       return;
     }
     const d = dragRef.current;
@@ -15822,7 +15833,10 @@ const SyllabusTreeMap: React.FC<{
       if (!ev.ctrlKey && !ev.metaKey) return;
       ev.preventDefault();
       const p = localPoint(ev);
-      zoomAbout(zoom * (ev.deltaY < 0 ? 1.08 : 1 / 1.08), p.x, p.y);
+      // Scale by the distance reported, not a fixed notch: a trackpad pinch sends a stream of
+      // small deltas and a mouse wheel one large one, and both should move the zoom sensibly.
+      const step = Math.exp(-Math.max(-120, Math.min(120, ev.deltaY)) * 0.0016);
+      zoomAbout(zoom * step, p.x, p.y);
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);

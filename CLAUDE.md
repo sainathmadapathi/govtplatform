@@ -297,7 +297,15 @@ and the full-screen toggle deliberately take it back.
 **Gestures.** One pointer drags, two pinch (`pointersRef` holds every pointer down; the second
 turns the drag into a pinch measured from the span it started at), and ctrl/meta+wheel zooms —
 that is what a trackpad pinch and a mouse ctrl+wheel both send. A plain wheel is deliberately
-left alone so the page still scrolls. Every zoom goes through `zoomAbout(z, sx, sy)`, which
+left alone so the page still scrolls. **A pinch is damped, not linear.** Mapping zoom straight
+to the finger-span ratio is geometrically honest and feels violent: fingers that start close
+together swing that ratio enormously over a centimetre, so the tree leapt from fitted to twice
+size. The ratio is raised to `TREE_PINCH_DAMPING` (0.55), which turns a 2.3x spread into about
+1.6x of zoom and stays symmetric in both directions, and movement under `TREE_PINCH_DEADZONE`
+(8 px) is read as tremor. Because every frame is measured from the span the gesture *started*
+at, a slow pinch and a fast one land on the same zoom — nothing accumulates. The wheel step is
+likewise scaled by the delta reported (`exp(-deltaY * 0.0016)`, clamped), so one mouse notch is
+a step and a trackpad's stream of small deltas is a glide. Every zoom goes through `zoomAbout(z, sx, sy)`, which
 keeps the content under the fingers (or under the box centre, for the buttons) fixed; the
 buttons used to scale about the origin and the tree jumped. `touchAction` is `none` only in full
 screen, where the map owns the window; inline it is `pan-y`, so a vertical swipe scrolls past
