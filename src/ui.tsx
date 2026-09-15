@@ -15544,19 +15544,6 @@ const TREE_ROW_GAP = 6;
 /** Inset of the drawn layer inside the viewport; part of every screen<->content conversion. */
 const TREE_PAD = 16;
 /**
- * How hard a pinch bites. Mapping zoom straight to the ratio of the finger span (exponent 1)
- * is geometrically honest but feels violent here — fingers that start close together swing the
- * ratio enormously over a centimetre, and the tree leaps from fitted to twice size. Raising the
- * ratio to this power damps that. 0.55 went too far the other way and the gesture felt dead,
- * and 0.8 was still a touch slow; 0.9 all but tracks the fingers — a 2.3x spread is about 2.1x
- * of zoom — while keeping just enough of the edge off the first centimetre, which is where the
- * runaway was.
- */
-const TREE_PINCH_DAMPING = 0.9;
-/** Finger travel under this many pixels is hand tremor, not a pinch. Small: a wide dead zone
- *  reads as an unresponsive gesture, which is the opposite of the problem it solves. */
-const TREE_PINCH_DEADZONE = 4;
-/**
  * Two column geometries, chosen by the width actually available. Narrowing the columns keeps
  * the label at its readable size on a phone — scaling the whole tree down to fit would shrink
  * the text with it, and a map you cannot read is not a map.
@@ -15806,9 +15793,9 @@ const SyllabusTreeMap: React.FC<{
     if (pinch && pointersRef.current.size === 2) {
       const [a, b] = [...pointersRef.current.values()];
       const dist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
-      if (Math.abs(dist - pinch.dist) < TREE_PINCH_DEADZONE) return;
       const mid = localPoint({ clientX: (a.x + b.x) / 2, clientY: (a.y + b.y) / 2 });
-      zoomAbout(pinch.zoom * Math.pow(dist / pinch.dist, TREE_PINCH_DAMPING), mid.x, mid.y);
+      // Zoom follows the finger span one for one: the span doubles, the tree doubles.
+      zoomAbout(pinch.zoom * (dist / pinch.dist), mid.x, mid.y);
       return;
     }
     const d = dragRef.current;
@@ -15836,10 +15823,7 @@ const SyllabusTreeMap: React.FC<{
       if (!ev.ctrlKey && !ev.metaKey) return;
       ev.preventDefault();
       const p = localPoint(ev);
-      // Scale by the distance reported, not a fixed notch: a trackpad pinch sends a stream of
-      // small deltas and a mouse wheel one large one, and both should move the zoom sensibly.
-      const step = Math.exp(-Math.max(-120, Math.min(120, ev.deltaY)) * 0.0016);
-      zoomAbout(zoom * step, p.x, p.y);
+      zoomAbout(zoom * (ev.deltaY < 0 ? 1.08 : 1 / 1.08), p.x, p.y);
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
