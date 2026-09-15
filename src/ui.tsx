@@ -15533,6 +15533,8 @@ interface SyllabusTreeNode {
   kind: 'ROOT' | 'SUBJECT' | 'TOPIC' | 'SUBTOPIC';
   topicId?: string;
   meta?: string;
+  /** Carried from the merged topic so a verifier's change is visible on the map too. */
+  revision?: SyllabusTopic['revision'];
   children: SyllabusTreeNode[];
 }
 
@@ -15611,12 +15613,14 @@ const SyllabusTreeMap: React.FC<{
       label: subject,
       kind: 'SUBJECT' as const,
       meta: `${topics.length}`,
+      revision: topics.find(t => t.revision)?.revision,
       children: topics.map(t => ({
         id: `topic:${t.id}`,
         label: t.topicName,
         kind: 'TOPIC' as const,
         topicId: t.id,
         meta: t.tier === 'BOTH' ? 'T1+T2' : t.tier === 'TIER_1' ? 'T1' : 'T2',
+        revision: t.revision,
         children: (t.subtopics || []).map((sub: string, i: number) => ({
           id: `sub:${t.id}:${i}`,
           label: sub,
@@ -15635,6 +15639,10 @@ const SyllabusTreeMap: React.FC<{
       children: subjects
     };
   }, [exam, narrow]);
+
+  // A different exam is a different tree, and its node ids mean nothing here — a subject name
+  // two exams share would otherwise inherit the other's open/closed state.
+  useEffect(() => { setExpanded({}); setSelectedId(null); }, [exam.id]);
 
   // Subjects are open by default; a topic's subtopics open on its chevron, so a long syllabus
   // stays readable instead of unfolding hundreds of leaves at once.
@@ -16002,6 +16010,17 @@ const SyllabusTreeMap: React.FC<{
                   <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {node.label}
                   </span>
+                  {node.revision && (
+                    <span
+                      title={`${node.revision.kind === 'ADD' ? 'Added' : 'Revised'} ${node.revision.noticeDate || node.revision.appliedAt.slice(0, 10)}${node.revision.noticeTitle ? ` — ${node.revision.noticeTitle}` : ''}`}
+                      style={{
+                        flexShrink: 0, fontSize: '0.6rem', fontWeight: 800, letterSpacing: '0.04em',
+                        padding: '1px 5px', borderRadius: '5px', background: 'var(--amber-soft)', color: '#b45309'
+                      }}
+                    >
+                      {node.revision.kind === 'ADD' ? 'NEW' : 'REV'}
+                    </span>
+                  )}
                   {node.kind !== 'ROOT' && node.meta && (
                     <span style={{ fontSize: '0.66rem', color: lit ? 'var(--primary)' : 'var(--text-muted)', fontWeight: 700, flexShrink: 0 }}>{node.meta}</span>
                   )}
@@ -16041,6 +16060,10 @@ const SyllabusTreeMap: React.FC<{
         </span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
           <span style={{ width: '12px', height: '12px', borderRadius: '4px', background: 'var(--emerald-soft)', border: '1px solid rgba(21,128,61,0.35)' }} /> Marked done
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ fontSize: '0.6rem', fontWeight: 800, padding: '1px 5px', borderRadius: '5px', background: 'var(--amber-soft)', color: '#b45309' }}>NEW</span>
+          Added or revised by a verifier since the syllabus was last verified
         </span>
         {fullScreen && <span style={{ marginLeft: 'auto' }}>Press Esc to close</span>}
       </div>
@@ -16095,6 +16118,9 @@ const REFERENCE_SECTIONS = [
 ];
 
 interface ExamDetailViewProps {
+  /** Called when the Syllabus section is opened, so the shell can re-read the verifier's
+   *  revisions — a revision applied in the Trust Panel then shows without leaving the page. */
+  onSyllabusOpened?: () => void;
   exam: Exam;
   /** "Back to Home" and the "Need help?" card in the sidebar. */
   onBackHome?: () => void;
@@ -16113,6 +16139,7 @@ interface ExamDetailViewProps {
 export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
   exam,
   onBackHome,
+  onSyllabusOpened,
   onAskAI,
   onOpenProvenanceModal,
   onOpenReportModal,
@@ -16228,6 +16255,12 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
   const goToSection = (secNum: number) => {
     setActiveSection(secNum);
   };
+
+  // Opening the Syllabus section re-reads the verifier's revisions, so a change applied in the
+  // Trust Panel reaches the list and the tree map without leaving the exam page.
+  useEffect(() => {
+    if (activeSection === 6) onSyllabusOpened?.();
+  }, [activeSection]);
 
   // On a narrow screen the section list is one horizontally scrolling row, so the part the
   // candidate just opened has to be brought into view — otherwise the highlight is off-screen.

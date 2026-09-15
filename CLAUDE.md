@@ -281,6 +281,19 @@ cannot drift from the list and cannot become a second dataset. The count is the 
 blueprint renders one `#syllabus-topic-<id>` anchor per topic and the map one topic node, and
 those two numbers must stay equal (22 for SSC CGL, 18 for UPSC).
 
+**Because it reads the merged array, a verifier's revision reaches it for free**, and this was
+checked against a running server rather than assumed: an ADD grows the subject's branch (and
+starts a new subject branch if the topic names one the exam did not have), an AMEND renames the
+node in place, a RETIRE removes it, and retiring the revisions rolls all of it back to the
+register's seed. A changed topic carries a small amber **NEW / REV** chip with the notice in its
+tooltip, and its subject carries one too, so a change is visible without opening the branch —
+the same fact the list states with its REVISED / ADDED badge. Opening section 06 calls
+`onSyllabusOpened`, which makes `main.tsx` re-read `/api/syllabus/revisions`, so a change applied
+in the Trust Panel appears on the next visit to the section instead of only after leaving the
+exam page. Switching exam clears `expanded` and `selectedId`: node ids are built from subject
+names and topic ids, and two exams sharing a subject name would otherwise inherit each other's
+open branches.
+
 **A node has two hit targets, and it must.** The label opens the topic's entry in the Official
 Syllabus view — which switches section 06 and therefore *unmounts the map* — while the chevron
 only unfolds the branch. They shared one handler at first, so every attempt to expand a topic

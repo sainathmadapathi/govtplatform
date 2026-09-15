@@ -99,13 +99,14 @@ export const App: React.FC = () => {
    * exam page is entered, so a revision applied in the Trust Panel shows without a reload.
    */
   const [syllabusRevisions, setSyllabusRevisions] = useState<SyllabusRevision[]>([]);
+  const [syllabusReadCount, setSyllabusReadCount] = useState<number>(0);
   useEffect(() => {
     let cancelled = false;
     syllabusLiveService.revisions(selectedExam.id).then(found => {
       if (!cancelled) setSyllabusRevisions(found);
     });
     return () => { cancelled = true; };
-  }, [selectedExam.id, activeTab]);
+  }, [selectedExam.id, activeTab, syllabusReadCount]);
 
   /** The exam every exam-scoped feature is handed: identity from the register, syllabus as revised. */
   const liveExam = useMemo(() => applySyllabusRevisions(selectedExam, syllabusRevisions), [selectedExam, syllabusRevisions]);
@@ -276,6 +277,7 @@ export const App: React.FC = () => {
         {activeTab === 'EXAM_DETAIL' && (
           <ExamDetailView
             exam={liveExam}
+            onSyllabusOpened={() => setSyllabusReadCount(n => n + 1)}
             onBackHome={() => navigate('FINDER')}
             onAskAI={() => navigate('AI_ASSISTANT')}
             initialSection={examSection}
