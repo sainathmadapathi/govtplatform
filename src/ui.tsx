@@ -777,7 +777,7 @@ export const MyExams: React.FC<MyExamsProps> = ({ trackedExamIds, currentExamId,
           Nothing here yet. Track an exam from the Exam Finder and it appears on this shelf.
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(300px, 100%), 1fr))', gap: '16px' }}>
           {mine.map(exam => {
             const tracked = trackedExamIds.includes(exam.id);
             const next = nextDate(exam);
@@ -1776,7 +1776,7 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
               <p style={{ margin: '0 0 8px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                 Differentiated half-lives reflect real government exam preparation cycles (weeks/months) so that serious commitments don't prematurely decay:
               </p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px', fontSize: '0.75rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))', gap: '8px', fontSize: '0.75rem' }}>
                 <span className="glass-pill" style={{ borderColor: 'rgba(16, 185, 129, 0.4)', color: '#15803d' }}>
                   🎯 FOLLOW: T½ = 180d · 2.0x (Exam cycle)
                 </span>
@@ -2989,11 +2989,11 @@ export const ExamCalendar: React.FC<ExamCalendarProps> = ({
 
                     {upcoming.length === 0 && completed.length > 0 && !pastOpen && (
                       <div style={{ padding: '14px 16px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', fontSize: '0.86rem', marginBottom: '12px' }}>
-                        Every milestone on record for this exam has passed. The next cycle's dates appear here once SSC publishes them.
+                        Every milestone on record for this exam has passed. The next cycle's dates appear here once {exam.authorityName.split(' (')[0]} publishes them.
                       </div>
                     )}
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: '12px' }}>
                       {visibleDates.map(date => {
                         const when = relativeWhen(date.dateTimeStr, now);
                         const isClose = date.type === 'APPLICATION_CLOSE';
@@ -3840,7 +3840,7 @@ export function answerCandidateQuery(query: string, context?: ChatContext): Assi
   if (/^(hi|hii|hello|hey|namaste|namaskar|good (morning|afternoon|evening))\b[\s!.]*$/.test(raw)) {
     return {
       verified: true,
-      text: 'Hello. I answer from the verified SSC CGL 2026 register — eligibility, dates, pattern, posts, syllabus, application, admit card, cutoffs — and I can take you to any part of this platform.\n\nAsk something like "am I eligible", "last date to apply", or "where are the resources".'
+      text: `Hello. I answer from the verified ${ctx.exam.title} register — eligibility, dates, pattern, posts, syllabus, application, admit card, cutoffs — and I can take you to any part of this platform.\n\nAsk something like "am I eligible", "last date to apply", or "where are the resources"`,
     };
   }
   if (/^(thanks|thank you|thankyou|thx|ok|okay|great|nice|got it|cool)\b[\s!.]*$/.test(raw)) {
@@ -4098,7 +4098,7 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
         action: { label: 'Open Practice & PYQs', tab: 'EXAM_DETAIL', section: 9 }
       },
       POST_EXAM: {
-        line: `Tier-1 is done. Watch for the answer key and the challenge window, then the result — section 16 sets out each stage.`,
+        line: `${exam.stages[0] ? exam.stages[0].stageName.split(/[:—(]/)[0].trim() : 'The first stage'} is done. Watch for the answer key and the challenge window, then the result — section 16 sets out each stage.`,
         action: { label: 'Open Result & Next Steps', tab: 'EXAM_DETAIL', section: 16 }
       }
     };
@@ -5314,7 +5314,7 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
             {/* Apply a change */}
             <div style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
               <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Apply a revision</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: '10px' }}>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                   Change
                   <select value={revisionForm.kind} onChange={e => setRev({ kind: e.target.value as SyllabusRevision['kind'] })} style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}>
@@ -5334,7 +5334,7 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
               </div>
 
               {revisionForm.kind !== 'RETIRE' && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: '10px' }}>
                   <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                     Subject {revisionForm.kind === 'AMEND' && <span style={{ color: 'var(--text-muted)' }}>(blank = unchanged)</span>}
                     <select value={revisionForm.subject} onChange={e => setRev({ subject: e.target.value })} style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}>
@@ -5378,7 +5378,7 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
                 </div>
               )}
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: '10px' }}>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                   Notice title
                   <input value={revisionForm.noticeTitle} onChange={e => setRev({ noticeTitle: e.target.value })} placeholder="from the list above, or type" style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }} />
@@ -7560,7 +7560,7 @@ export const ResourceAIAssistant: React.FC<ResourceAIAssistantProps> = ({
             {msg.matchedResources && msg.matchedResources.length > 0 && (
               <div style={{ 
                 display: 'grid', 
-                gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', 
+                gridTemplateColumns: 'repeat(auto-fit, minmax(min(260px, 100%), 1fr))', 
                 gap: '10px', 
                 width: '100%',
                 marginTop: '4px'
@@ -7725,6 +7725,14 @@ export const PreparationPlanner: React.FC<PreparationPlannerProps> = ({ exam }) 
   );
 
   const currentTrack: RoadmapTrack = tracks.find(t => t.id === selectedTrackId) || tracks[0];
+  /**
+   * A track can be on record without its week-by-week phases being authored yet. That is a
+   * missing piece of data, not a missing feature: the track, its hours and its focus are real
+   * and stay on screen, and only the two panels that need phases are replaced by a note saying
+   * so. Nothing is invented to fill them, and no other exam's plan is substituted.
+   */
+  const hasAuthoredPhases = (currentTrack?.phases || []).length > 0;
+  const hasTimetable = (currentTrack?.dailyTimetable || []).length > 0;
 
   const toggleGoal = (goalKey: string) => {
     setCompletedGoals(storageService.toggleRoadmapGoal(exam.id, goalKey));
@@ -7769,7 +7777,7 @@ export const PreparationPlanner: React.FC<PreparationPlannerProps> = ({ exam }) 
       </div>
 
       {/* Track Selector Tabs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '14px' }}>
         {tracks.map(track => {
           const isSelected = track.id === selectedTrackId;
           return (
@@ -7809,8 +7817,18 @@ export const PreparationPlanner: React.FC<PreparationPlannerProps> = ({ exam }) 
             Recommended Daily Study Schedule ({currentTrack.name})
           </h3>
         </div>
+        {!hasTimetable && (
+          <div style={{ padding: '14px 16px', borderRadius: 'var(--radius-md)', background: 'var(--amber-soft)', border: '1px solid rgba(180, 83, 9, 0.3)', fontSize: '0.86rem', color: '#92400e', lineHeight: 1.55 }}>
+            <strong>A day-by-day timetable has not been authored for {exam.title} yet.</strong>
+            <div style={{ marginTop: '4px' }}>
+              The track above is this exam&apos;s own. GovOS does not fill this in with another exam&apos;s
+              schedule. What is on record for {exam.title} right now: its {exam.syllabus.length}-topic
+              syllabus in section 06 and its stage-by-stage pattern in section 05.
+            </div>
+          </div>
+        )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '12px' }}>
           {currentTrack.dailyTimetable.map((slot, idx) => (
             <div key={idx} style={{ padding: '14px', borderRadius: 'var(--radius-md)', background: 'var(--surface-3)', border: '1px solid var(--border-color)' }}>
               <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--primary)', fontFamily: 'var(--font-mono)', marginBottom: '4px' }}>
@@ -7832,6 +7850,16 @@ export const PreparationPlanner: React.FC<PreparationPlannerProps> = ({ exam }) 
         <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '10px' }}>
           <Target size={22} color="var(--emerald)" /> Weekly Milestones & Milestone Tests
         </h3>
+        {!hasAuthoredPhases && (
+          <div style={{ padding: '14px 16px', borderRadius: 'var(--radius-md)', background: 'var(--amber-soft)', border: '1px solid rgba(180, 83, 9, 0.3)', fontSize: '0.86rem', color: '#92400e', lineHeight: 1.55 }}>
+            <strong>Week-by-week milestones have not been authored for {exam.title} yet.</strong>
+            <div style={{ marginTop: '4px' }}>
+              That is the one missing piece here — the track, its daily hours and its focus above are
+              this exam&apos;s own. Milestones are written from the exam&apos;s syllabus and its dates, and
+              GovOS will not borrow another exam&apos;s plan to fill the gap.
+            </div>
+          </div>
+        )}
 
         {currentTrack.phases.map((phase) => {
           const isExpanded = expandedPhase === phase.phaseNumber;
@@ -8134,7 +8162,7 @@ export const PostStudyPathEngine: React.FC<PostStudyPathEngineProps> = ({
             </span>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '14px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: '14px' }}>
             {currentPath.tier1.commonModules.map(mod => {
               const isChecked = !!completedModules[mod.id];
               return (
@@ -8233,7 +8261,7 @@ export const PostStudyPathEngine: React.FC<PostStudyPathEngineProps> = ({
             </span>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '14px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: '14px' }}>
             {currentPath.tier2.commonModules.map(mod => {
               const isChecked = !!completedModules[mod.id];
               return (
@@ -8357,7 +8385,7 @@ export const PostStudyPathEngine: React.FC<PostStudyPathEngineProps> = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#2563eb', fontWeight: 800, marginBottom: '10px' }}>
             <Activity size={18} color="#2563eb" /> Mandatory Physical & Medical Standards for {currentPath.postName}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '12px' }}>
             {currentPath.physicalMedical.maleHeightChest && (
               <div style={{ padding: '12px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', fontSize: '0.84rem' }}>
                 <strong style={{ color: 'var(--text-primary)' }}>Male Measurement Standards:</strong>
@@ -8391,7 +8419,7 @@ export const PostStudyPathEngine: React.FC<PostStudyPathEngineProps> = ({
         </div>
 
         {currentPath.tier2.excludedModules.length > 0 ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: '12px' }}>
             {currentPath.tier2.excludedModules.map(ex => (
               <div key={ex.moduleId} style={{ padding: '16px', borderRadius: 'var(--radius-md)', background: 'var(--surface-3)', border: '1px solid rgba(239, 68, 68, 0.2)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#dc2626', fontWeight: 700, fontSize: '0.95rem' }}>
@@ -9450,7 +9478,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
               GovOS has not authored practice papers for {exam.title}: its shift papers, sectionals and drills are written to SSC CGL's pattern and would mislead here. This exam's real previous-year papers are official PDFs in the Resources section — use those. The test creator below still builds aptitude drills (percentage, ratio, reasoning) that suit an aptitude paper.
             </div>
           )}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(340px, 100%), 1fr))', gap: '16px' }}>
             {availablePapers.map((paper, pIdx) => (
               <div 
                 key={paper.id}
@@ -9652,7 +9680,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
             </span>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: '16px' }}>
             {sectionalTests.map((paper, pIdx) => (
               <div 
                 key={paper.id}
@@ -9699,7 +9727,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
             </span>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: '16px' }}>
             {drillTests.map((paper, pIdx) => (
               <div 
                 key={paper.id}
@@ -10071,7 +10099,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: '16px' }}>
                   
                   {/* 🔴 CRITICAL WEAK AREAS (< 50%) */}
                   <div style={{ padding: '20px', borderRadius: 'var(--radius-md)', background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.4)', display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -10232,7 +10260,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                   </div>
                 )}
 
-                <div style={{ display: dailyHours ? 'grid' : 'none', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+                <div style={{ display: dailyHours ? 'grid' : 'none', gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))', gap: '12px' }}>
                   <div style={{ padding: '14px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)' }}>
                     <div style={{ fontSize: '0.75rem', color: '#2563eb', textTransform: 'uppercase', fontWeight: 700 }}>Quantitative Aptitude</div>
                     <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-primary)', margin: '4px 0' }}>{studyHoursPlan.quantHours} Hours</div>
@@ -10440,7 +10468,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                         </div>
 
                         {/* Options Breakdown with Generous Padding */}
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(260px, 100%), 1fr))', gap: '12px' }}>
                           {q.options.map(opt => {
                             const isThisCorrect = opt.id === q.correctOptionIndex;
                             const isThisUserSelected = !isOlderAttemptWithoutAnswers && userAns === opt.id;
@@ -11298,7 +11326,7 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
                 </span>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '16px' }}>
                 <div>
                   <label style={{ fontSize: '0.82rem', color: '#334155', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
                     Candidate's Full Name *
@@ -11365,7 +11393,7 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
                 </span>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '16px' }}>
                 <div>
                   <label style={{ fontSize: '0.82rem', color: '#334155', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
                     Highest Educational Qualification *
@@ -11482,7 +11510,7 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
                 </span>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '16px' }}>
                 <div>
                   <label style={{ fontSize: '0.82rem', color: '#334155', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
                     Candidate Category *
@@ -11552,7 +11580,7 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
                 </span>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '16px' }}>
                 <div>
                   <label style={{ fontSize: '0.82rem', color: '#2563eb', fontWeight: 700, display: 'block', marginBottom: '6px' }}>
                     1st Preference (Top Priority) *
@@ -11650,7 +11678,7 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
 
               {/* MODE A: REAL FILE UPLOAD WITH LIVE CANVAS INSPECTOR */}
               {form.uploadMode === 'REAL_UPLOAD' ? (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: '20px' }}>
                   
                   {/* Photo Real Upload Card */}
                   <div style={{ padding: '20px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -11760,7 +11788,7 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
               ) : (
 
                 /* MODE B: SIMULATED PRESET TRAPS */
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '18px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '18px' }}>
                   <div style={{ padding: '16px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#2563eb', fontWeight: 700, fontSize: '0.9rem' }}>
                       <Camera size={18} /> Simulated Photograph Framing Trap
@@ -11814,7 +11842,7 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
                 </span>
               </div>
 
-              <div style={{ padding: '20px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px', fontSize: '0.85rem' }}>
+              <div style={{ padding: '20px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(240px, 100%), 1fr))', gap: '14px', fontSize: '0.85rem' }}>
                 <div><strong style={{ color: '#2563eb' }}>Candidate Name:</strong> <div style={{ color: 'var(--text-primary)' }}>{form.candidateName}</div></div>
                 <div><strong style={{ color: '#2563eb' }}>Father's Name:</strong> <div style={{ color: 'var(--text-primary)' }}>{form.fatherName}</div></div>
                 <div><strong style={{ color: '#2563eb' }}>Date of Birth:</strong> <div style={{ color: 'var(--text-primary)' }}>{form.dob}</div></div>
@@ -12243,7 +12271,7 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
                         </ul>
                       </div>
 
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginTop: '8px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '16px', marginTop: '8px' }}>
                         <div style={{ padding: '14px', borderRadius: 'var(--radius-md)', background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
                           <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#15803d', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
                             <CheckCircle2 size={15} /> Mandatory Required Documents / Details
@@ -12277,7 +12305,7 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
 
       {/* Tab Content 2: Photo & Signature */}
       {activeTab === 'PHOTO_SIGNATURE' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: '20px' }}>
           
           {/* Live Photo Box */}
           <div className="glass-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -12366,7 +12394,7 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
               Verify whether your category certificate meets the strict Central Government cutoff dates and DoP&T format guidelines.
             </p>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(240px, 100%), 1fr))', gap: '16px', marginBottom: '20px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
                   Select Reservation Category
@@ -12449,7 +12477,7 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
                 <span className="badge badge-verified">{selectedCert.officialAnnexure}</span>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px', fontSize: '0.88rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: '12px', fontSize: '0.88rem' }}>
                 <div>
                   <span style={{ color: 'var(--text-muted)' }}>Financial Year / Validity:</span>
                   <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{selectedCert.financialYearValidity}</div>
@@ -12490,7 +12518,7 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: '16px' }}>
             {guide.rejectionPitfalls.map((pitfall, pIdx) => (
               <div key={pIdx} className="glass-card" style={{ padding: '18px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -12556,7 +12584,11 @@ export const AdmitCardSection: React.FC<AdmitCardSectionProps> = ({
   const admitDetails = exam.admitCardDetails;
 
   // Determine availability status
+  // Three states, not two. An exam whose record carries no admit-card milestone at all must say
+  // so: it used to fall to the "city intimation released" branch and assert a slip the authority
+  // has not issued, while the same panel read "To be announced".
   const isAvailable = admitDetails?.status === 'AVAILABLE' || admitDate?.status === 'AVAILABLE';
+  const hasAnnouncedDate = !!(admitDetails?.releaseDateStr || admitDate?.dateTimeStr);
   const releaseDateStr = admitDetails?.releaseDateStr || admitDate?.dateTimeStr || 'To be announced';
 
   // Regional download mirrors are authority-specific, so they come from the exam
@@ -12585,8 +12617,12 @@ export const AdmitCardSection: React.FC<AdmitCardSectionProps> = ({
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
-              <span className={`badge ${isAvailable ? 'badge-verified' : 'badge-demo'}`}>
-                {isAvailable ? '🟢 ADMIT CARD ACTIVE & DOWNLOADABLE' : '🟡 CITY INTIMATION RELEASED — ADMIT CARD SOON'}
+              <span className={`badge ${isAvailable ? 'badge-verified' : hasAnnouncedDate ? 'badge-demo' : 'badge-pending'}`}>
+                {isAvailable
+                  ? '🟢 ADMIT CARD ACTIVE & DOWNLOADABLE'
+                  : hasAnnouncedDate
+                    ? '🟡 CITY INTIMATION RELEASED — ADMIT CARD SOON'
+                    : '⚪ ADMIT CARD NOT ANNOUNCED YET'}
               </span>
               <span className="badge" style={{ background: 'var(--surface-2)', color: 'var(--text-secondary)' }}>
                 Official Board: {exam.authorityName}
@@ -12597,9 +12633,11 @@ export const AdmitCardSection: React.FC<AdmitCardSectionProps> = ({
               e-Admit Card & Exam City Intimation Slip
             </h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0 }}>
-              {isAvailable 
+              {isAvailable
                 ? 'Your Computer Based Examination (CBT) Call Letter and reporting schedule are live.'
-                : `Official admit cards are scheduled for release on ${releaseDateStr}. You can check your exam city intimation slip now.`}
+                : hasAnnouncedDate
+                  ? `Official admit cards are scheduled for release on ${releaseDateStr}. You can check your exam city intimation slip now.`
+                  : `${exam.authorityName.split(' (')[0]} has not announced an admit card date for this exam yet. The steps below are the download process for when it opens; nothing is downloadable at the moment.`}
             </p>
           </div>
 
@@ -12696,7 +12734,7 @@ export const AdmitCardSection: React.FC<AdmitCardSectionProps> = ({
           </span>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(240px, 100%), 1fr))', gap: '12px' }}>
           {regionalPortals.map(rp => (
             <div 
               key={rp.code}
@@ -12752,7 +12790,7 @@ export const AdmitCardSection: React.FC<AdmitCardSectionProps> = ({
         </div>
 
         <div style={{ padding: '20px', borderRadius: 'var(--radius-md)', background: 'var(--surface-3)', border: '1px solid var(--border-color)' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))', gap: '16px', marginBottom: '16px' }}>
             <div>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Candidate Name</span>
               <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>CANDIDATE ASPIRANT</div>
@@ -13189,6 +13227,21 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
   const isUPSC = exam.code?.includes('UPSC') || exam.id?.includes('upsc') || exam.title?.toLowerCase().includes('civil services');
   const isIBPS = exam.code?.includes('IBPS') || exam.id?.includes('ibps');
   const isSSC = exam.code?.includes('SSC') || exam.id?.includes('ssc');
+
+  /**
+   * Stage names for this exam, from its own record. This panel used to label every exam's
+   * stages "Tier-1" and "Tier-2" and to offer a "Skill Test / DEST" tab — DEST is SSC CGL's
+   * Data Entry Speed Test, which IBPS and APPSC do not have.
+   */
+  const stageOne = exam.stages[0];
+  const stageTwo = exam.stages[1];
+  const shortStage = (st: typeof stageOne, fallback: string) =>
+    st ? st.stageName.split(/[:—(]/)[0].trim() || fallback : fallback;
+  const stageOneName = shortStage(stageOne, 'Stage 1');
+  const stageTwoName = shortStage(stageTwo, 'Stage 2');
+  /** Only an exam whose record actually carries a skill/typing stage gets that tab. */
+  const hasSkillStage = exam.stages.some(st => /skill|typing|dest|computer proficiency/i.test(st.stageName))
+    || exam.stages.some(st => (st.sections || []).some(sec => /skill|typing|dest/i.test(sec.sectionName)));
 
   // Available benchmark cycles from cutoffs history
   const availableYears = Array.from(new Set(exam.cutoffsHistory.map(c => c.year))).sort((a, b) => b - a);
@@ -13775,7 +13828,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0 }}>
               {isUPSC 
                 ? 'GovOS evaluates performance across all three stages: Stage 1 (Prelims GS-1 Merit & CSAT Qualifying), Stage 2 (Mains Written 1750), Stage 3 (Personality Test 275), and Stage 4 (Final Total 2025 & Service Allocation: IAS, IFS, IPS, IRS).'
-                : 'GovOS evaluates performance across every stage (Tier-1 Prelims, Tier-2 Mains, Skill Test, CKT, and Post Allocation) to deliver one definitive examination conclusion.'}
+                : `GovOS evaluates performance across every stage this exam has on record (${exam.stages.map(st => st.stageName.split(/[:—(]/)[0].trim()).join(', ')}) to deliver one definitive examination conclusion.`}
             </p>
           </div>
 
@@ -13788,7 +13841,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                 </div>
               ) : (
                 <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--primary)' }}>
-                  Tier-1: {t1Cutoff || '—'} | Tier-2: {t2Cutoff || '—'}
+                  {stageOneName}: {t1Cutoff || '—'} | {stageTwoName}: {t2Cutoff || '—'}
                 </div>
               )}
             </div>
@@ -13806,7 +13859,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
             <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0 }}>
               {isUPSC 
                 ? 'Type marks for Prelims GS-I, CSAT, Mains Written, and Personality Test, or upload your official UPSC mark sheet scan.'
-                : 'Upload your official scorecard or type marks for Tier-1 and Tier-2. GovOS evaluates all stages together.'}
+                : `Upload your official scorecard or type marks for ${stageOneName} and ${stageTwoName}. GovOS evaluates all stages together.`}
             </p>
           </div>
 
@@ -14029,7 +14082,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
               ) : (
                 <>
                   {parsed.fields?.tier1Marks !== undefined && (
-                    <div>• Tier-1: <strong style={{ color: '#0284c7' }}>{parsed.fields.tier1Marks}</strong></div>
+                    <div>• {stageOneName}: <strong style={{ color: '#0284c7' }}>{parsed.fields.tier1Marks}</strong></div>
                   )}
                   {parsed.fields?.tier2Marks !== undefined && (
                     <div>• Tier-2 Total: <strong style={{ color: '#4f46e5' }}>{parsed.fields.tier2Marks}</strong></div>
@@ -14099,7 +14152,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
             {/* Stage-by-Stage Breakdown Pipeline */}
             {isUPSC ? (
               // UPSC 4-STAGE PIPELINE
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '18px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))', gap: '12px', marginBottom: '18px' }}>
                 {/* Stage 1: Preliminary */}
                 <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: (upscGs1Passed && upscCsatPassed) ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)', border: `1px solid ${(upscGs1Passed && upscCsatPassed) ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}` }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
@@ -14178,7 +14231,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
               </div>
             ) : (
               // SSC CGL / GENERIC PIPELINE
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '18px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))', gap: '12px', marginBottom: '18px' }}>
                 {/* Stage 1: Tier-1 */}
                 <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: t1Passed ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)', border: `1px solid ${t1Passed ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}` }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
@@ -14297,7 +14350,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
         </div>
 
         {/* Dynamic Navigation Tabs — Customized for UPSC or SSC */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '10px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(210px, 100%), 1fr))', gap: '10px' }}>
           {isUPSC ? (
             <>
               {/* UPSC Tab 1: Mains Written Strategy */}
@@ -14401,12 +14454,12 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                 <Award size={18} color={(selectedStatus === 'TIER2_PREP' || selectedStatus === 'QUALIFIED_TIER2') ? 'var(--text-primary)' : '#0284c7'} />
                 <div>
                   <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    Tier-2 Mains Plan
+                    {stageTwoName} Plan
                     {unifiedVerdict?.recommendedTab === 'TIER2_PREP' && (
                       <span style={{ fontSize: '0.62rem', background: '#0284c7', color: '#0f172a', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>ACTIVE</span>
                     )}
                   </div>
-                  <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>Next step if Tier-1 cleared</div>
+                  <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>Next step if {stageOneName} cleared</div>
                 </div>
               </button>
 
@@ -14437,12 +14490,12 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                 <Target size={18} color={selectedStatus === 'TIER2_MISSED_RECOVERY' ? 'var(--text-primary)' : '#b45309'} />
                 <div>
                   <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    Bridge Tier-2 Gap
+                    Bridge {stageTwoName} Gap
                     {unifiedVerdict?.recommendedTab === 'TIER2_MISSED_RECOVERY' && (
                       <span style={{ fontSize: '0.62rem', background: '#b45309', color: '#0f172a', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>ACTIVE</span>
                     )}
                   </div>
-                  <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>Tier-1 cleared · merit shortfall plan</div>
+                  <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>{stageOneName} cleared · merit shortfall plan</div>
                 </div>
               </button>
 
@@ -14455,16 +14508,18 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                 <RefreshCw size={18} color={(selectedStatus === 'TIER1_FAILED_RECOVERY' || (selectedStatus === 'NOT_QUALIFIED' && !t1Passed)) ? 'var(--text-primary)' : '#dc2626'} />
                 <div>
                   <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    Tier-1 Comeback Plan
+                    {stageOneName} Comeback Plan
                     {unifiedVerdict?.recommendedTab === 'TIER1_FAILED_RECOVERY' && (
                       <span style={{ fontSize: '0.62rem', background: '#dc2626', color: 'var(--text-primary)', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>ACTIVE</span>
                     )}
                   </div>
-                  <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>Next step if Tier-1 missed</div>
+                  <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>Next step if {stageOneName} missed</div>
                 </div>
               </button>
 
-              {/* SSC Tab 5: Skill Test / DEST */}
+              {/* Only where the exam's own record carries a skill/typing stage. SSC CGL has
+                  DEST; IBPS and APPSC do not, and were being offered it. */}
+              {hasSkillStage && (
               <button 
                 className={`btn ${selectedStatus === 'SKILL_TEST' ? 'btn-primary' : 'btn-secondary'}`}
                 onClick={() => { setSelectedStatus('SKILL_TEST'); setStatusChosenManually(true); }}
@@ -14476,6 +14531,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                   <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>Typing speed & error standards</div>
                 </div>
               </button>
+              )}
             </>
           )}
         </div>
@@ -15504,7 +15560,7 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
               The {essentials.length} sources every candidate should open first
             </span>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(280px, 100%), 1fr))', gap: '12px' }}>
             {essentials.map(renderCard)}
           </div>
         </div>
@@ -15538,7 +15594,7 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
               <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>{group.subject}</h4>
               <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>{group.items.length} resource{group.items.length === 1 ? '' : 's'}</span>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '14px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(300px, 100%), 1fr))', gap: '14px' }}>
               {group.items.map(renderCard)}
             </div>
           </section>
@@ -17086,7 +17142,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
       </div>
 
       {/* The four milestones a candidate looks for first */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '12px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(190px, 100%), 1fr))', gap: '12px' }}>
         {tiles.map(t => (
           <div key={t.label} className="stat-tile">
             <div className="tile-icon"><Calendar size={17} /></div>
@@ -17134,7 +17190,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
         {/* Section 01: Overview & Posts */}
         {activeSection === 1 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: '16px' }}>
               <div style={{ padding: '4px 0' }}>
                 <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px' }}>Quick Info</h4>
                 {[
@@ -17188,7 +17244,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
               {exam.overviewDescription}
             </p>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: '16px' }}>
               {exam.posts.map(p => (
                 <div key={p.id} style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
@@ -17393,7 +17449,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
               )}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '14px' }}>
               {/* Each exam states its own rules; the cards are data, cited, not component prose. */}
               {(exam.eligibilityHighlights || []).map((card, idx) => {
                 const palette = [
@@ -17751,7 +17807,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
               <div>
                 <strong style={{ fontSize: '1rem', color: 'var(--text-primary)' }}>Results or Scorecard Released?</strong>
                 <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: '2px 0 0' }}>
-                  Explore your personalized next steps based on whether you qualified for Tier-2, Skill Test DEST, or need a recovery pathway.
+                  Explore your personalized next steps for each stage {exam.authorityName.split(' (')[0]} runs, or a recovery pathway if a stage was missed.
                 </p>
               </div>
               <button 
@@ -17796,7 +17852,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
             <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
               12 — Authoritative Government Portals & Directory
             </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '14px' }}>
               {(exam.officialLinks && exam.officialLinks.length > 0
                 ? exam.officialLinks
                 : [{ title: exam.authorityName, url: exam.officialDomain, note: exam.officialDomain.replace(/^https?:\/\//, '') }]
@@ -17819,6 +17875,13 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
             <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
               13 — Official Corrigenda & Modification Notices Log
             </h3>
+            {/* An exam with no corrigendum showed a bare heading and nothing else. Say it. */}
+            {exam.corrigendums.length === 0 && (
+              <div style={{ padding: '16px 18px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+                {exam.authorityName.split(' (')[0]} has published no corrigendum or modification notice for {exam.title} so far.
+                Any it issues appears here, with the notice itself linked — GovOS does not change a published date or rule without one.
+              </div>
+            )}
             {exam.corrigendums.map(corr => (
               <div key={corr.id} style={{ padding: '20px', borderRadius: 'var(--radius-md)', background: 'rgba(245, 158, 11, 0.06)', border: '1px solid rgba(245, 158, 11, 0.3)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>

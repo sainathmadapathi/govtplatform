@@ -955,11 +955,28 @@ Remaining by design, not defects:
   map sends candidates to the wrong tab, which is worse than no answer.
 - **The past-paper corpus is 35 templates** (see `data.ts` above). Custom tests are not
   limited to it — they generate per topic — but full shift papers still cycle these.
-- **IBPS and APPSC datasets are thin** next to SSC CGL and UPSC CSE. Views degrade
-  gracefully (the roadmap shows "0 of 0 milestones", practice shows its empty state), but
-  the data, not the code, is the limit. UPSC's Result & Next Steps and Exam-Day sections
-  still use the component-local, Tier-shaped content (see the Section 15/16 notes) — the
-  `resultNextSteps` / `examDayChecklist` record fields exist but nothing reads them yet.
+- **IBPS and APPSC datasets are thin** next to SSC CGL and UPSC CSE, but the *features* now
+  work for all five and the thin parts say precisely what is missing rather than showing an
+  empty shell. Every exam has its own posts, dates, stages, syllabus, resources, FAQs,
+  cutoffs, roadmap track and application guide; `officialLinks`, `eligibilityHighlights` and
+  `admitCardDetails` are authored only for SSC and UPSC (the others fall back to the
+  authority's own domain), and `examDayChecklist` / `resultNextSteps` are authored for none.
+
+  **A shared workflow must take its labels from the exam, not from SSC.** Results & Next Steps
+  offered every exam "Tier-1 Prelims, Tier-2 Mains, Skill Test, CKT" and a **Skill Test / DEST**
+  tab — DEST is SSC CGL's Data Entry Speed Test, which IBPS and APPSC do not have. Stage names
+  now come from `exam.stages` (`stageOneName` / `stageTwoName`) and the skill tab renders only
+  where the record carries such a stage (`hasSkillStage`). The Admit Card badge was a binary, so
+  an exam with no admit-card milestone was told "CITY INTIMATION RELEASED" while the same panel
+  read "To be announced"; it has a third `hasAnnouncedDate` state. The Study Roadmap rendered
+  "0 of 0 milestones" under two empty headings for exams whose track has no authored phases —
+  the track is real and stays, and each empty panel names the missing piece. Corrigenda Log
+  showed a bare heading for exams with none.
+
+- **A bare `minmax(Npx, 1fr)` breaks phones.** A track with that floor cannot shrink below N, so
+  SSC's Practice section pushed the page 22 px sideways at 375 px. All 43 inline grid tracks in
+  `ui.tsx` use `minmax(min(Npx, 100%), 1fr)`, as `.grid-2`/`.grid-3` already did; desktop layout
+  is unchanged. Write new grids that way.
 - **YouTube's Atom feed refused this machine while UPSC's channels were added** (404/500 on
   known-good IDs too), so their upload shelves were not seen live; the ids are the channel
   pages' canonical ids and the library already tolerates a failed refresh.
