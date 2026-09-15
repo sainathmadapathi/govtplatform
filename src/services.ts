@@ -318,6 +318,20 @@ export interface CandidateProfile {
   qualification: string;
 }
 
+/**
+ * Exam ids that were written by an earlier build and mean a current exam. This is a record of
+ * a *known* association, not a guess: the Application Practice Simulator only ever ran for SSC
+ * CGL and wrote a short id. An attempt whose exam is genuinely unknown is never mapped here —
+ * it simply fails to match and is left out of every exam's history.
+ */
+const LEGACY_ATTEMPT_EXAM_IDS: Record<string, string> = {
+  'ssc-cgl-2026': 'exam-ssc-cgl-2026'
+};
+
+/** The id an attempt should be matched on, after legacy ids are resolved. */
+export const canonicalExamId = (examId: string | undefined): string =>
+  !examId ? '' : (LEGACY_ATTEMPT_EXAM_IDS[examId] || examId);
+
 export interface MockAttemptRecord {
   id: string;
   exam_id: string;
@@ -566,16 +580,31 @@ class StorageService {
   }
 
   // --- 3. Mock Test Attempts & Practice History ---
-  getMockAttempts(): MockAttemptRecord[] {
+  /**
+   * Practice history is per exam. `getMockAttempts(examId)` returns only that exam's attempts;
+   * calling it with no id returns everything and is for the sync/export paths alone, never for
+   * anything a candidate sees — an exam must never show another exam's scores.
+   *
+   * The filter is defensive on purpose: a record whose `exam_id` does not match is dropped and
+   * logged rather than shown or quietly re-labelled, because a wrong exam association is worse
+   * than a missing row.
+   */
+  getMockAttempts(examId?: string): MockAttemptRecord[] {
+    let all: MockAttemptRecord[] = [];
     try {
       const raw = localStorage.getItem(STORAGE_KEYS.MOCK_ATTEMPTS);
-      if (raw) {
-        return JSON.parse(raw);
-      }
+      if (raw) all = JSON.parse(raw);
     } catch (e) {
       console.warn('LocalStorage mock parse error:', e);
     }
-    return [];
+    if (!examId) return all;
+    const wanted = canonicalExamId(examId);
+    const mine = all.filter(a => canonicalExamId(a.exam_id) === wanted);
+    const strays = all.length - mine.length;
+    if (strays > 0) {
+      console.debug(`[GovOS] practice history: ${strays} attempt(s) belong to another exam and were not shown for ${examId}.`);
+    }
+    return mine;
   }
 
   saveMockAttempt(attempt: MockAttemptRecord): void {
@@ -589,9 +618,11 @@ class StorageService {
     }
   }
 
-  async loadMockAttemptsFromSQLite(): Promise<MockAttemptRecord[]> {
+  async loadMockAttemptsFromSQLite(examId?: string): Promise<MockAttemptRecord[]> {
     try {
-      const res = await fetch('/api/sqlite/mock-attempts');
+      // Scoped in the query, not in the UI: the server must not hand back another exam's rows.
+      const qs = examId ? `?exam_id=${encodeURIComponent(canonicalExamId(examId))}` : '';
+      const res = await fetch(`/api/sqlite/mock-attempts${qs}`);
       if (res.ok) {
         const data = await res.json();
         if (data.attempts && Array.isArray(data.attempts)) {
@@ -615,14 +646,15 @@ class StorageService {
             });
             const merged = Array.from(map.values());
             localStorage.setItem(STORAGE_KEYS.MOCK_ATTEMPTS, JSON.stringify(merged.slice(0, 50)));
-            return merged;
+            // The store holds every exam; the caller only ever receives the exam it asked for.
+            return this.getMockAttempts(examId);
           }
         }
       }
     } catch {
       // Offline fallback
     }
-    return this.getMockAttempts();
+    return this.getMockAttempts(examId);
   }
 
   // --- 4. Candidate Tracked Exams ("My Exam Timeline") ---

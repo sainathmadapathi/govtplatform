@@ -8678,7 +8678,8 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
   const chatBottomRef = useRef<HTMLDivElement>(null);
   
   // Past Attempts History & Target Post
-  const [pastAttempts, setPastAttempts] = useState<MockAttemptRecord[]>(() => storageService.getMockAttempts());
+  // Scoped to this exam: Past Tests History must never show another exam's attempts.
+  const [pastAttempts, setPastAttempts] = useState<MockAttemptRecord[]>(() => storageService.getMockAttempts(exam.id));
   const [reviewingAttempt, setReviewingAttempt] = useState<MockAttemptRecord | null>(null);
   const targetPostId = storageService.getTargetPost();
   const hasTargetPost = targetPostId !== '';
@@ -8693,7 +8694,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
 
   // Sync latest mock attempts from SQLite on component mount
   useEffect(() => {
-    storageService.loadMockAttemptsFromSQLite().then(records => {
+    storageService.loadMockAttemptsFromSQLite(exam.id).then(records => {
       if (records && records.length > 0) {
         setPastAttempts(records);
       }
@@ -8994,7 +8995,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
     };
 
     storageService.saveMockAttempt(newAttempt);
-    setPastAttempts(storageService.getMockAttempts());
+    setPastAttempts(storageService.getMockAttempts(exam.id));
   };
 
   // Open and Review Past Test Attempt Handler
@@ -11179,7 +11180,9 @@ export const PracticeApplicationSimulator: React.FC<PracticeApplicationSimulator
     const checksRun = passedChecks.length + mistakes.length;
     storageService.saveMockAttempt({
       id: `app-practice-${Date.now()}`,
-      exam_id: 'ssc-cgl-2026',
+      // The register's real id. It used to write 'ssc-cgl-2026', which matched no exam once
+      // practice history became exam-scoped; `canonicalExamId` still resolves those old rows.
+      exam_id: SSC_CGL_EXAM.id,
       subject: 'Application Practice Simulator',
       // the candidate's own result and their own time — both were constants before
       score: checksRun > 0 ? Math.round((passedChecks.length / checksRun) * 100) : 0,
@@ -15688,27 +15691,112 @@ export const UpscPracticeEngine: React.FC<UpscPracticeEngineProps> = ({ exam, on
 };
 
 // =====================================================================================
-// ExamPracticeEngine — the exam chooses its engine
+// ExamPracticeRouter — the one place an exam is matched to its practice engine
 // =====================================================================================
 /**
- * One practice engine for every exam would judge each of them by SSC's Tier-1 pattern. The
- * exam selects instead, which is the whole point of the split:
+ * ============================ RULE FOR EVERY NEW EXAM ============================
+ * Every exam gets its OWN practice engine and its OWN configuration. An exam must never be
+ * handed another exam's engine as a fallback: its questions, PYQs, topics, pattern, marking,
+ * timer, mock configuration, labels and practice history all belong to it alone.
  *
- *   SSC CGL   -> PracticeEngine      (PYQ shift papers, sectionals, topic drills, mock creator)
- *   UPSC CSE  -> UpscPracticeEngine  (the Commission's own papers; the rest built in order)
- *   others    -> PracticeEngine      (its honest empty state, until they are given their own)
+ * To add an exam:
+ *   1. give it a stable id in `data.ts` (the id is what routes — never the title);
+ *   2. write its `PracticeEngineEntry` config below;
+ *   3. write its engine component;
+ *   4. register it in PRACTICE_ENGINES, keyed by that id;
+ *   5. add only that exam's own verified practice data.
+ * Adding an exam must not touch any other exam's entry.
  *
- * Add an exam's engine here, not by widening one of the existing ones.
+ * An exam with no entry gets `UnavailablePracticeEngine`, which says so plainly. That is
+ * deliberate: a missing engine is a visible gap, while a borrowed one silently teaches the
+ * wrong exam's pattern.
+ * ================================================================================
  */
-const ExamPracticeEngine: React.FC<{
-  exam: Exam;
-  scope: PracticeScope;
-  onOpenProvenanceModal: (provenance: DataProvenance) => void;
-}> = ({ exam, scope, onOpenProvenanceModal }) => {
-  if (exam.id === UPSC_CSE_EXAM.id) {
-    return <UpscPracticeEngine exam={exam} scope={scope} onOpenProvenanceModal={onOpenProvenanceModal} />;
+interface PracticeEngineEntry {
+  /** What this exam's practice is judged by, read from its own record. Never shared. */
+  config: {
+    patternSummary: (exam: Exam) => string;
+    supportedModes: string[];
+  };
+  render: (props: { exam: Exam; scope: PracticeScope; onOpenProvenanceModal: (p: DataProvenance) => void }) => React.ReactElement;
+}
+
+/** An exam whose engine is not built yet. It never borrows another exam's. */
+const UnavailablePracticeEngine: React.FC<{ exam: Exam; scope: PracticeScope }> = ({ exam, scope }) => {
+  const stage = exam.stages[0];
+  return (
+    <div className="animate-fade-in glass-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+      <div>
+        <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+          {scope === 'MOCKS' ? '17 — Mock Tests' : '09 — Practice & PYQs'}
+        </h3>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', margin: '4px 0 0 0' }}>{exam.title}</p>
+      </div>
+      <div style={{ padding: '16px 18px', borderRadius: 'var(--radius-md)', background: 'var(--amber-soft)', border: '1px solid rgba(180, 83, 9, 0.3)', fontSize: '0.9rem', color: '#92400e', lineHeight: 1.6 }}>
+        <strong>{exam.title} practice is not available yet.</strong>
+        <div style={{ marginTop: '6px' }}>
+          GovOS has not built a practice engine for this exam. It is left empty rather than run
+          through another exam&apos;s engine: {stage ? `this exam's ${stage.stageName.split(' — ')[0]} ` : 'this exam '}
+          has its own pattern, marking and timing, and questions written to a different exam&apos;s paper
+          would teach the wrong thing.
+        </div>
+      </div>
+      <div style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+        What does exist for {exam.title} today: the <strong>Exam Pattern</strong> and <strong>Syllabus</strong> sections,
+        read from {exam.authorityName.split(' (')[0]}&apos;s own notice, and whatever official papers the authority
+        has published, in <strong>Resources</strong>.
+      </div>
+    </div>
+  );
+};
+
+/**
+ * The registry. Keyed by the exam's stable id — never its title, its subject, its position in
+ * `ALL_EXAMS`, or anything a candidate can change.
+ */
+const PRACTICE_ENGINES: Record<string, PracticeEngineEntry> = {
+  [SSC_CGL_EXAM.id]: {
+    config: {
+      patternSummary: exam => {
+        const t1 = exam.stages.find(st => st.tier === 'TIER_1');
+        return t1 ? `${t1.stageName.split(' — ')[0]} · ${t1.totalMarks} marks · ${t1.durationMinutes} minutes` : 'Objective CBT';
+      },
+      supportedModes: ['PYQ shift papers', 'Subject sectionals', 'Topic drills', 'AI test creator', 'Attempt review']
+    },
+    render: ({ exam, scope, onOpenProvenanceModal }) =>
+      <PracticeEngine exam={exam} scope={scope} onOpenProvenanceModal={onOpenProvenanceModal} />
+  },
+  [UPSC_CSE_EXAM.id]: {
+    config: {
+      patternSummary: exam => {
+        const pre = exam.stages.find(st => st.tier === 'TIER_1');
+        return pre ? `${pre.stageName.split(' — ')[0]} · ${pre.totalMarks} marks, then nine descriptive papers` : 'Prelims, Mains, Interview';
+      },
+      supportedModes: ['Previous year papers']
+    },
+    render: ({ exam, scope, onOpenProvenanceModal }) =>
+      <UpscPracticeEngine exam={exam} scope={scope} onOpenProvenanceModal={onOpenProvenanceModal} />
   }
-  return <PracticeEngine exam={exam} scope={scope} onOpenProvenanceModal={onOpenProvenanceModal} />;
+  // IBPS PO and both APPSC exams have no engine yet, on purpose: they fall to
+  // UnavailablePracticeEngine rather than inherit SSC's pattern. Register each here when its
+  // own engine and its own verified data exist.
+};
+
+/**
+ * Both practice doors (section 09 and section 17) and the PRACTICE tab go through this, so no
+ * two entry points can disagree about which engine an exam gets.
+ *
+ * `key={exam.id}` is load-bearing: changing exam remounts the engine, so no question, score,
+ * timer, topic or label can survive the switch.
+ */
+export const ExamPracticeRouter: React.FC<{
+  exam: Exam;
+  scope?: PracticeScope;
+  onOpenProvenanceModal: (provenance: DataProvenance) => void;
+}> = ({ exam, scope = 'ALL', onOpenProvenanceModal }) => {
+  const entry = PRACTICE_ENGINES[exam.id];
+  if (!entry) return <UnavailablePracticeEngine key={exam.id} exam={exam} scope={scope} />;
+  return <React.Fragment key={exam.id}>{entry.render({ exam, scope, onOpenProvenanceModal })}</React.Fragment>;
 };
 
 // =====================================================================================
@@ -17195,7 +17283,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
 
         {/* Section 09: Practice & PYQs (Embeds PracticeEngine, practice door) */}
         {activeSection === 9 && (
-          <ExamPracticeEngine
+          <ExamPracticeRouter
             exam={exam}
             scope="PRACTICE"
             onOpenProvenanceModal={onOpenProvenanceModal}
@@ -17204,7 +17292,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
 
         {/* Section 17: Mock Tests (the same engine, opened at the test creator) */}
         {activeSection === 17 && (
-          <ExamPracticeEngine
+          <ExamPracticeRouter
             exam={exam}
             scope="MOCKS"
             onOpenProvenanceModal={onOpenProvenanceModal}

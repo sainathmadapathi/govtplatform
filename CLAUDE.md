@@ -645,16 +645,39 @@ tab directly. When you move a feature, update `EXAM_SCOPED_TABS` and `PLATFORM_M
 same edit.
 
 ### The exam chooses its practice engine
-One engine over every exam judges each of them by SSC's Tier-1 pattern, so `ExamPracticeEngine`
-dispatches on the exam and sections 09 and 17 both go through it:
+**No exam may inherit another exam's practice context** — questions, PYQs, topics, pattern,
+marking, timer, mock configuration, labels or history. That isolation outranks code reuse.
+`ExamPracticeRouter` is the single place an exam is matched to an engine, and **all three entry
+points go through it** (section 09, section 17, and the `PRACTICE` safety-net tab), so no two
+can disagree:
 
 ```
-SSC CGL   -> PracticeEngine      PYQ shift papers · sectionals · topic drills · mock creator
-UPSC CSE  -> UpscPracticeEngine  the Commission's own papers; the rest built in order
-others    -> PracticeEngine      its honest empty state, until each is given its own
+PRACTICE_ENGINES        keyed by the exam's stable id — never its title or its array position
+  SSC_CGL_EXAM.id   ->  PracticeEngine       PYQs · sectionals · drills · creator · review
+  UPSC_CSE_EXAM.id  ->  UpscPracticeEngine   the Commission's own papers
+  (no entry)        ->  UnavailablePracticeEngine
 ```
 
-Add an exam's engine there, never by widening one of the existing ones.
+`UnavailablePracticeEngine` is the point of the design, not a stub: IBPS and both APPSC exams
+say *"practice is not available yet"* rather than borrow SSC's engine, because a missing engine
+is a visible gap while a borrowed one silently teaches the wrong exam's pattern. **Never add a
+fallback to another exam's engine.** `key={exam.id}` on the router remounts on every switch, so
+no question, score, timer, topic or label survives it.
+
+To add an exam: give it a stable id, write its `PracticeEngineEntry` config, write its engine,
+register it by id, add only its own verified data. Adding one must not touch another's entry.
+
+**Practice history is scoped by exam, in the query.** `getMockAttempts(examId)` filters the
+store and `GET /api/sqlite/mock-attempts?exam_id=` filters in SQL — rows for another exam never
+leave the database, rather than being fetched and filtered in the UI. A record whose `exam_id`
+does not match is dropped and logged, never re-labelled. This was a real leak: Past Tests History
+read every attempt, so IBPS PO displayed 13 SSC attempts as its own.
+
+`canonicalExamId` / `LEGACY_EXAM_ID_ALIASES` resolve one short id (`ssc-cgl-2026`) an earlier
+build wrote; `init_database()` migrates those rows once and prints what it moved. That map holds
+only *known* associations — every one of those 8 rows was an Application Simulator or SSC engine
+attempt. An attempt whose exam cannot be known is never reassigned: it is left alone and printed
+as `[SQLite] REVIEW:` for a human.
 
 **`UpscPracticeEngine` is being built in order, and step 1 is what exists: Previous Year Papers.**
 It lists the 7 question papers already in the UPSC record (2 Preliminary, 5 Main) grouped by

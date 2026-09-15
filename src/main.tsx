@@ -42,7 +42,7 @@ import {
   MyExams,
   NotificationCenterModal,
   NotificationPreferencesModal,
-  PracticeEngine,
+  ExamPracticeRouter,
   PreparationPlanner,
   ResourceLibrary,
   ResourceReaderModal
@@ -301,8 +301,10 @@ export const App: React.FC = () => {
           />
         )}
 
+        {/* The safety-net tab goes through the same router as sections 09 and 17, so no two
+            entry points can disagree about which engine an exam gets. */}
         {activeTab === 'PRACTICE' && (
-          <PracticeEngine
+          <ExamPracticeRouter
             exam={liveExam}
             onOpenProvenanceModal={handleOpenProvenance}
           />

@@ -22,6 +22,12 @@ from flask_cors import CORS
 
 DB_FILE = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'govos.db')
 
+# Exam ids written by an earlier build that are known to mean a current exam. Only a
+# documented, certain association belongs here — never a guess.
+LEGACY_EXAM_ID_ALIASES = {
+    'ssc-cgl-2026': 'exam-ssc-cgl-2026',
+}
+
 def get_db_connection():
     """Get a connection to the local SQLite database."""
     conn = sqlite3.connect(DB_FILE)
@@ -276,6 +282,24 @@ def init_database():
         ON user_interactions(user_id, timestamp DESC)
     ''')
 
+    # ---------------------------------------------------------------- exam-id migration
+    # Practice history is scoped by exam_id, so an attempt carrying an id that matches no exam
+    # would simply disappear from every exam's history. One short id was written by an earlier
+    # build of the Application Practice Simulator and the SSC engine; it is a *known* alias for
+    # SSC CGL, not a guess, so those rows are corrected in place. Idempotent, nothing deleted.
+    # An attempt whose exam cannot be known is never reassigned - it is left alone and reported
+    # below for a human to decide.
+    for legacy_id, canonical_id in LEGACY_EXAM_ID_ALIASES.items():
+        cursor.execute('UPDATE mock_attempts SET exam_id = ? WHERE exam_id = ?', (canonical_id, legacy_id))
+        if cursor.rowcount:
+            print(f"[SQLite] Practice history: {cursor.rowcount} attempt(s) moved from '{legacy_id}' to '{canonical_id}'.")
+
+    for row in cursor.execute(
+        "SELECT exam_id, COUNT(*) FROM mock_attempts WHERE exam_id NOT LIKE 'exam-%' GROUP BY exam_id"
+    ).fetchall():
+        print(f"[SQLite] REVIEW: {row[1]} practice attempt(s) carry exam_id '{row[0]}', which matches "
+              f"no exam in the register. Left unchanged - assign deliberately.")
+
     conn.commit()
     conn.close()
     print(f"[SQLite] Database initialized at: {DB_FILE}")
@@ -452,7 +476,16 @@ def handle_mock_attempts():
     cursor = conn.cursor()
 
     if request.method == 'GET':
-        cursor.execute("SELECT * FROM mock_attempts WHERE user_id = ? ORDER BY attempted_at DESC LIMIT 50", (user_id,))
+        # Practice history is per exam: the scope is enforced in the query, so another exam's
+        # rows never leave the database, rather than being fetched and filtered in the UI.
+        exam_id = (request.args.get('exam_id') or '').strip()
+        if exam_id:
+            cursor.execute(
+                "SELECT * FROM mock_attempts WHERE user_id = ? AND exam_id = ? ORDER BY attempted_at DESC LIMIT 50",
+                (user_id, exam_id)
+            )
+        else:
+            cursor.execute("SELECT * FROM mock_attempts WHERE user_id = ? ORDER BY attempted_at DESC LIMIT 50", (user_id,))
         rows = cursor.fetchall()
         conn.close()
         attempts = []
