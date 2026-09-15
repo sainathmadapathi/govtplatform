@@ -297,19 +297,15 @@ and the full-screen toggle deliberately take it back.
 **Gestures.** One pointer drags, two pinch (`pointersRef` holds every pointer down; the second
 turns the drag into a pinch measured from the span it started at), and ctrl/meta+wheel zooms —
 that is what a trackpad pinch and a mouse ctrl+wheel both send. A plain wheel is deliberately
-left alone so the page still scrolls. **A pinch is damped, not linear.** Mapping zoom straight
-to the finger-span ratio is geometrically honest and feels violent: fingers that start close
-together swing that ratio enormously over a centimetre, so the tree leapt from fitted to twice
-size. The ratio is raised to `TREE_PINCH_DAMPING`, which stays symmetric in both directions;
-**0.9 is the settled value**, arrived at by feel — 1.0 (no damping) ran away, 0.55 felt dead,
-0.8 was still a touch slow. At 0.9 the gesture all but tracks the fingers (a 2.3x spread is
-about 2.1x of zoom) while keeping just enough of the edge off the first centimetre, which is
-where the runaway was. Movement under `TREE_PINCH_DEADZONE` (4 px)
-is read as tremor; a wider dead zone than that reads as an unresponsive gesture, which is the
-opposite of the problem it solves. Because every frame is measured from the span the gesture *started*
-at, a slow pinch and a fast one land on the same zoom — nothing accumulates. The wheel step is
-likewise scaled by the delta reported (`exp(-deltaY * 0.0016)`, clamped), so one mouse notch is
-a step and a trackpad's stream of small deltas is a glide. Every zoom goes through `zoomAbout(z, sx, sy)`, which
+left alone so the page still scrolls. **The pinch is one for one with the finger span** — the
+span doubles, the tree doubles — and the wheel is a fixed 1.08 notch. A damping exponent and a
+dead zone were tried over several rounds (0.55, 0.8, 0.9); the user asked for the original
+straight mapping back each time, so leave it linear unless they ask again. Because every frame
+is measured from the span the gesture *started* at, a slow pinch and a fast one land on the same
+zoom — nothing accumulates. **On Windows and macOS a trackpad pinch arrives as a ctrl+wheel
+event, not as two pointers**, so on a laptop it is the wheel step that governs how the gesture
+feels and the pointer path only runs on a real touchscreen; tune the one actually in use.
+Every zoom goes through `zoomAbout(z, sx, sy)`, which
 keeps the content under the fingers (or under the box centre, for the buttons) fixed; the
 buttons used to scale about the origin and the tree jumped. `touchAction` is `none` only in full
 screen, where the map owns the window; inline it is `pan-y`, so a vertical swipe scrolls past
