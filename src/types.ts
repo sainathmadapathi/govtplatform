@@ -237,6 +237,42 @@ export interface InAppChapter {
   contentMarkdown: string;
 }
 
+/**
+ * A question taken from an authority's own published question paper.
+ *
+ * Three rules this type exists to enforce:
+ *   - `examId` is the exact register id and is stored on the record. A question's exam is never
+ *     inferred from its subject, its wording, its paper title or the screen it is shown on.
+ *   - `officialAnswerKey` is `null` wherever the authority has not published a key. It is never
+ *     filled in by inference — an unkeyed question is shown unkeyed, or not shown at all.
+ *   - `provenance` names the exact document and page, so every item can be checked against the
+ *     original before it is trusted.
+ */
+export interface OfficialPaperQuestion {
+  id: string;
+  /** The exact exam this belongs to. Only that exam's engine may load it. */
+  examId: string;
+  /** The paper it was printed in, as the authority names it. */
+  paperName: string;
+  paperYear: number;
+  stage: 'PRELIMS' | 'MAINS';
+  section?: string;
+  questionNumber: number;
+  /** The question as printed. English text only; bilingual papers keep their English side. */
+  promptEnglish: string;
+  marks: number;
+  /**
+   * DESCRIPTIVE papers have no option key and are not machine-scored — that is how the
+   * authority marks them too, so GovOS does not invent a score for them.
+   */
+  answerFormat: 'DESCRIPTIVE' | 'MCQ';
+  options?: string[];
+  /** null when the authority has published no answer key. Never guessed. */
+  officialAnswerKey: string | null;
+  officialAnswerKeyNote?: string;
+  provenance: DataProvenance;
+}
+
 export interface ResourceItem {
   id: string;
   title: string;

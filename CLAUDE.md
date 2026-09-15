@@ -678,10 +678,34 @@ another exam's engine**, and never add a default. `key={exam.id}` on the router 
 switch, so no question, score, timer, topic or label survives it — verified mid-test: an SSC
 paper running at 59:23 with a 100-button palette leaves nothing behind on UPSC.
 
-**Questions are the limit, not the architecture.** Only SSC CGL has a question bank. UPSC, IBPS
-and both APPSC engines own their real pattern, sections, marking, timing, topics and papers from
-their own records, and say plainly that attemptable tests do not exist yet. Do not fabricate
-items to fill them.
+**Questions are the limit, not the architecture**, and the limit is the *authorities'* publishing,
+not the code. What was actually checked on 2026-09-15:
+
+| exam | official papers | official answer key |
+|---|---|---|
+| SSC CGL | (authored bank) | n/a |
+| UPSC CSE | 7, all **scanned images, no text layer** | **none published** — the Answer Keys page lists nothing for 2026 |
+| IBPS PO | none — ibps.in publishes no papers or keys | none |
+| APPSC Group-I / II | none found on psc.ap.gov.in | none |
+
+So three of the four cannot be given questions at all, and UPSC's Prelims cannot be *scored*:
+without a key, marking would mean inventing answers.
+
+**`OfficialPaperQuestion` (types.ts) is how a real question is stored**, and
+`officialQuestionsForExam(examId)` is the only accessor an engine may use — it filters on the
+exact id, so one exam's paper cannot surface in another. Three rules are baked into the type:
+`examId` is stored, never inferred from subject, wording or screen; `officialAnswerKey` is `null`
+wherever the authority has published none and is never filled in by inference; `provenance` names
+the document **and page**, so every item can be checked against the original.
+
+**What shipped: the CSE 2026 Essay paper**, `UPSC_OFFICIAL_QUESTIONS` — all 8 topics UPSC printed,
+125 marks each, two to attempt (one per section). A descriptive paper needs no key, which is
+exactly why it could ship when the Prelims could not, and GovOS records the attempt (words, time)
+without scoring it, because the Commission marks it by examiner assessment too. The items were
+read from the PDF by **OCR** and carry `UNDER_VERIFICATION` with the page number until a person
+checks them — the same honesty the scorecard OCR path uses. **OCR is not transcription:** sampling
+the Prelims booklet showed lost word spacing and an option label `(b)` read as `(q)`, which is why
+no Prelims item was published.
 
 To add an exam: give it a stable id, write its `PracticeEngineEntry` config, write its engine,
 register it by id, add only its own verified data. Adding one must not touch another's entry.

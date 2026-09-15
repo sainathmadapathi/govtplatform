@@ -123,6 +123,7 @@ import {
   SscNoticeFeed,
   SyllabusRevision,
   SyllabusTopic,
+  OfficialPaperQuestion,
   SyllabusRevisionTopic,
   SyllabusWatch,
   ExamRecommendation,
@@ -149,6 +150,7 @@ import {
   REASONING_TEMPLATES,
   SSC_CGL_EXAM,
   PRACTICE_BANK_EXAM_ID,
+  officialQuestionsForExam,
   UPSC_CSE_EXAM,
   IBPS_PO_EXAM,
   APPSC_GROUP1_EXAM,
@@ -15728,6 +15730,135 @@ const UPSC_PRACTICE_CONFIG = {
   questionSource: null as null | string
 };
 
+/**
+ * Answer-writing practice on the CSE's real Essay paper.
+ *
+ * Every prompt is a question UPSC printed, loaded through `officialQuestionsForExam` with this
+ * exam's own id — no other exam's questions can reach here. An essay has no option key and UPSC
+ * marks it by examiner assessment, so GovOS records the attempt and never invents a score.
+ */
+const UpscEssayPractice: React.FC<{ exam: Exam; onOpenProvenanceModal: (p: DataProvenance) => void }> = ({ exam, onOpenProvenanceModal }) => {
+  const questions = officialQuestionsForExam(exam.id).filter(q => q.paperName.includes('Essay'));
+  const [active, setActive] = useState<OfficialPaperQuestion | null>(null);
+  const [answer, setAnswer] = useState<string>('');
+  const [startedAt, setStartedAt] = useState<number>(0);
+  const [elapsed, setElapsed] = useState<number>(0);
+  const [saved, setSaved] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!active) return;
+    const t = setInterval(() => setElapsed(Math.floor((Date.now() - startedAt) / 1000)), 1000);
+    return () => clearInterval(t);
+  }, [active, startedAt]);
+
+  if (questions.length === 0) return null;
+
+  const words = answer.trim() ? answer.trim().split(/\s+/).length : 0;
+  const hhmmss = (sec: number) =>
+    `${String(Math.floor(sec / 3600)).padStart(2, '0')}:${String(Math.floor((sec % 3600) / 60)).padStart(2, '0')}:${String(sec % 60).padStart(2, '0')}`;
+
+  const submit = () => {
+    if (!active) return;
+    const seconds = Math.max(1, Math.floor((Date.now() - startedAt) / 1000));
+    storageService.saveMockAttempt({
+      // The exam is taken from the question's own record, never from the screen or the title.
+      id: `upsc-essay-${active.id}-${Date.now()}`,
+      exam_id: active.examId,
+      subject: `${active.paperName} — Q${active.questionNumber}: ${active.promptEnglish.slice(0, 48)}`,
+      score: 0,
+      total_marks: active.marks,
+      correct_count: 0,
+      incorrect_count: 0,
+      unattempted_count: 0,
+      time_taken_seconds: seconds,
+      details: { words, answer, questionId: active.id, notScored: true }
+    });
+    setSaved(`Saved — ${words} words in ${hhmmss(seconds)}. Not scored: an essay has no official key.`);
+    setActive(null);
+    setAnswer('');
+  };
+
+  if (active) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 700 }}>
+            {active.paperName} · {active.section} · Q{active.questionNumber} · {active.marks} marks
+          </div>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '1rem', fontWeight: 800, color: 'var(--primary)' }}>
+            {hhmmss(elapsed)}
+          </div>
+        </div>
+        <div style={{ fontSize: '1.08rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.5 }}>
+          {active.promptEnglish}
+        </div>
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+          UPSC asks for about 1000–1200 words. You have written <strong>{words}</strong>.
+        </div>
+        <textarea
+          value={answer}
+          onChange={e => setAnswer(e.target.value)}
+          placeholder="Write or plan your essay here…"
+          style={{ width: '100%', minHeight: '260px', padding: '12px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', background: '#fff', color: 'var(--text-primary)', fontFamily: 'var(--font-sans)', fontSize: '0.92rem', lineHeight: 1.6, resize: 'vertical' }}
+        />
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <button className="btn btn-primary" onClick={submit} style={{ fontSize: '0.84rem', padding: '8px 16px' }}>
+            Submit &amp; save this attempt
+          </button>
+          <button className="btn btn-secondary" onClick={() => { setActive(null); setAnswer(''); }} style={{ fontSize: '0.84rem', padding: '8px 16px' }}>
+            Cancel
+          </button>
+          {active.provenance && (
+            <button className="btn btn-outline" onClick={() => onOpenProvenanceModal(active.provenance)} style={{ fontSize: '0.8rem', padding: '8px 14px' }}>
+              Sourced clause
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  const sections = Array.from(new Set(questions.map(q => q.section || '')));
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div>
+        <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+          Essay answer writing — the real 2026 paper
+        </h4>
+        <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: '4px 0 0 0', lineHeight: 1.5 }}>
+          All {questions.length} topics UPSC printed. Two are to be attempted, one from each section, about
+          1000–1200 words each, three hours. GovOS records what you write and how long you took; it does not
+          mark it, because an essay has no official key and the Commission marks it by examiner assessment.
+        </p>
+      </div>
+      {saved && (
+        <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-sm)', background: 'var(--emerald-soft)', color: '#065f46', fontSize: '0.84rem', fontWeight: 600 }}>
+          {saved}
+        </div>
+      )}
+      {sections.map(sec => (
+        <div key={sec} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <div style={{ fontSize: '0.74rem', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{sec}</div>
+          {questions.filter(q => (q.section || '') === sec).map(q => (
+            <div key={q.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap', padding: '10px 14px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-2)', border: '1px solid var(--border-color)' }}>
+              <span style={{ fontSize: '0.88rem', color: 'var(--text-primary)', fontWeight: 600 }}>
+                <span style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Q{q.questionNumber}.</span> {q.promptEnglish}
+              </span>
+              <button className="btn btn-secondary" onClick={() => { setActive(q); setStartedAt(Date.now()); setElapsed(0); setSaved(null); }} style={{ fontSize: '0.78rem', padding: '6px 12px', flexShrink: 0 }}>
+                Write this one
+              </button>
+            </div>
+          ))}
+        </div>
+      ))}
+      <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+        Read from UPSC's own PDF by OCR and marked under verification — open the Sourced clause on any
+        question to check it against the page it came from.
+      </div>
+    </div>
+  );
+};
+
 export const UPSCPracticeEngine: React.FC<{
   exam: Exam;
   scope?: PracticeScope;
@@ -15796,10 +15927,14 @@ export const UPSCPracticeEngine: React.FC<{
         })}
       </div>
 
+      {group === 'Mains' && <UpscEssayPractice exam={exam} onOpenProvenanceModal={onOpenProvenanceModal} />}
+
       <FeatureUnavailable
-        title="Attemptable CSE tests are not available yet."
-        reason="GovOS holds no Civil Services question items. The 2026 booklets above are scanned, so every item has to be transcribed from UPSC's own PDF and checked before a test can be sat — and a generated question presented as a past paper would be a lie about where it came from."
-        nextStep="Until then: open the papers above and attempt them on the Commission's own marking, shown on each card."
+        title={group === 'Prelims' ? 'Prelims tests cannot be scored yet.' : 'Only the Essay paper is attemptable so far.'}
+        reason={group === 'Prelims'
+          ? "UPSC has published no answer key for CSE 2026 — its Answer Keys page lists none for this cycle — so a Prelims paper cannot be marked without inventing the answers. The booklets are also scans, so each of the 100 items must be transcribed and checked first."
+          : "The other Main papers have been read but not yet checked against their pages, so they are not offered for attempt. No question here is generated."}
+        nextStep="Open the official papers below and work them on the Commission's own marking, shown on each card."
       />
 
       <ExamPatternPanel exam={exam} />

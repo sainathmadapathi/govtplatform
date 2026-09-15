@@ -1,6 +1,7 @@
 // GovOS verified exam register, mock-paper repository and post study paths.
 
 import {
+  OfficialPaperQuestion,
   DataProvenance,
   DetailedExplanation,
   Exam,
@@ -4517,6 +4518,76 @@ export const APPSC_GROUP2_EXAM: Exam = {
     }
   ]
 };
+
+// =====================================================================================
+// Official question papers, transcribed per exam
+// =====================================================================================
+/**
+ * Questions read from an authority's own published paper. Each carries the exact `examId`, and
+ * `officialQuestionsForExam()` is the ONLY way an engine may reach them — it filters on that id,
+ * so one exam's paper can never surface inside another.
+ *
+ * These were read from the official PDF by OCR (UPSC's booklets are scans with no text layer),
+ * so each item names the page it came from and is marked UNDER_VERIFICATION until a person has
+ * checked it against that page. Nothing here is generated, and no answer is inferred.
+ */
+const upscEssayProvenance = (page: number): DataProvenance => ({
+  id: `prov-upsc-essay-p${page}`,
+  documentTitle: 'Civil Services (Main) Examination, 2026 — Essay paper (KVMS-G-ESSY)',
+  officialUrl: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-ESSAY.pdf',
+  pageNumber: page,
+  publishedDate: '2026-09-01',
+  verifiedDate: '2026-09-15',
+  verifiedBy: 'GovOS — read from the official PDF by OCR, pending a human check against the page',
+  taxonomyType: 'FACT',
+  verificationLevel: 'UNDER_VERIFICATION',
+  excerptText: 'Write two essays, choosing one topic from each of the following Sections A and B, in about 1000-1200 words each. 125x2=250'
+});
+
+/**
+ * UPSC CSE 2026 Main, Essay paper: eight topics, two to be attempted (one per section),
+ * 125 marks each, three hours. A descriptive paper has no option key, so none is stored — and
+ * none is needed, because UPSC does not machine-mark it either.
+ */
+export const UPSC_OFFICIAL_QUESTIONS: OfficialPaperQuestion[] = ([
+  [1, 'Section A', 'Oxymorons reflect the ironies of life.', 2],
+  [2, 'Section A', 'A grateful mind is very beautiful.', 2],
+  [3, 'Section A', 'A thorn is a changed bud.', 2],
+  [4, 'Section A', 'When two elephants fight, it is the grass that gets trampled.', 2],
+  [5, 'Section B', 'Nature is the symbol of the spirit.', 3],
+  [6, 'Section B', 'A well-educated mind will always have more questions than answers.', 3],
+  [7, 'Section B', 'Shelving hard decisions is the least ethical course.', 3],
+  [8, 'Section B', 'A good leader is one who follows the followers.', 3]
+] as [number, string, string, number][]).map(([num, section, prompt, page]) => ({
+  id: `upsc-2026-essay-q${num}`,
+  examId: 'exam-upsc-cse-2026',
+  paperName: 'CSE 2026 Main — Paper I: Essay',
+  paperYear: 2026,
+  stage: 'MAINS' as const,
+  section,
+  questionNumber: num,
+  promptEnglish: prompt,
+  marks: 125,
+  answerFormat: 'DESCRIPTIVE' as const,
+  officialAnswerKey: null,
+  officialAnswerKeyNote: 'An essay has no official answer key; UPSC marks it by examiner assessment, so GovOS does not score it.',
+  provenance: upscEssayProvenance(page)
+}));
+
+/** Every official question on record, across exams. An engine must never read this directly. */
+const ALL_OFFICIAL_QUESTIONS: OfficialPaperQuestion[] = [
+  ...UPSC_OFFICIAL_QUESTIONS
+  // IBPS PO, APPSC Group-I and Group-II publish no question papers, so there is nothing to
+  // transcribe for them. Add an exam's questions here only from that authority's own paper,
+  // carrying that exam's own id.
+];
+
+/**
+ * The only accessor an engine may use. Filters on the exact id, so an engine asking for its own
+ * exam cannot be handed another exam's paper even by mistake.
+ */
+export const officialQuestionsForExam = (examId: string): OfficialPaperQuestion[] =>
+  ALL_OFFICIAL_QUESTIONS.filter(q => q.examId === examId);
 
 /** The authored question bank, shift papers, sectionals and drills are written to this exam's pattern. */
 export const PRACTICE_BANK_EXAM_ID = 'exam-ssc-cgl-2026';
