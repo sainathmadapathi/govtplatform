@@ -4737,8 +4737,16 @@ interface AdminVerificationPanelProps {
 export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ onOpenProvenanceModal }) => {
   const [activeTab, setActiveTab] = useState<'HEALTH' | 'EXTRACTION' | 'CORRIGENDUM' | 'REPORTS' | 'RESEARCH'>('HEALTH');
 
-  // ---- Syllabus revisions (SSC CGL: the one exam with an authored syllabus and a live board) ----
-  const syllabusExam = SSC_CGL_EXAM;
+  // ---- Syllabus revisions, for whichever exam the verifier picks ----
+  // This was pinned to SSC CGL, which meant no other exam's syllabus could be revised at all —
+  // the watch, the form and the applied list were all SSC's. It reads the register instead, so
+  // UPSC works today and a newly added exam works the day it lands. It opens on the exam the
+  // candidate last had open, because that is usually the one the report came from.
+  const revisableExams = ALL_EXAMS.filter(e => e.syllabus.length > 0);
+  const [syllabusExamId, setSyllabusExamId] = useState<string>(
+    () => storageService.getCurrentExamId() || revisableExams[0]?.id || SSC_CGL_EXAM.id
+  );
+  const syllabusExam = revisableExams.find(e => e.id === syllabusExamId) || revisableExams[0] || SSC_CGL_EXAM;
   const syllabusVerifiedOn = syllabusExam.syllabus[0]?.officialProvenance?.verifiedDate || '';
   const [syllabusWatch, setSyllabusWatch] = useState<SyllabusWatch | null>(null);
   const [syllabusRevisions, setSyllabusRevisions] = useState<SyllabusRevision[]>([]);
@@ -4761,6 +4769,11 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
   };
   const [revisionForm, setRevisionForm] = useState(emptyRevisionForm);
   const setRev = (patch: Partial<typeof emptyRevisionForm>) => setRevisionForm(prev => ({ ...prev, ...patch }));
+  // A topic id from one exam means nothing in another, so the form resets with the exam.
+  useEffect(() => {
+    setRevisionForm({ ...emptyRevisionForm, topicId: syllabusExam.syllabus[0]?.id || '' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [syllabusExam.id]);
 
   const loadSyllabusMeta = async () => {
     const [watch, revisions] = await Promise.all([
@@ -4773,7 +4786,8 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
   useEffect(() => {
     if (activeTab === 'CORRIGENDUM') loadSyllabusMeta();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]);
+    // (syllabusExam.id included so switching exam re-reads its board and revisions)
+  }, [activeTab, syllabusExam.id]);
 
   /** Record one verifier decision about the syllabus, citing the notice it came from. */
   const applySyllabusRevision = async () => {
@@ -5224,11 +5238,23 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
           </div>
           {/* Syllabus: what the board says has changed, and what the verifier has applied */}
           <div className="glass-card" style={{ padding: '28px' }}>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Compass size={20} color="var(--primary)" /> Syllabus Revisions — {syllabusExam.title}
-            </h3>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '6px' }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Compass size={20} color="var(--primary)" /> Syllabus Revisions — {syllabusExam.title}
+              </h3>
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                Exam
+                <select
+                  value={syllabusExam.id}
+                  onChange={e => setSyllabusExamId(e.target.value)}
+                  style={{ padding: '6px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', background: '#fff', color: 'var(--text-primary)', fontFamily: 'var(--font-sans)', fontSize: '0.82rem' }}
+                >
+                  {revisableExams.map(e => <option key={e.id} value={e.id}>{e.title} ({e.syllabus.length})</option>)}
+                </select>
+              </label>
+            </div>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '18px' }}>
-              The syllabus in the register was verified on <strong style={{ color: 'var(--text-primary)' }}>{syllabusVerifiedOn}</strong>. SSC's notice board is read on the server; anything about this exam published since is listed here for you to read. Nothing changes the candidate-facing syllabus until you apply it below, citing the notice — the same rule as resource additions.
+              The {syllabusExam.syllabus.length}-topic syllabus in the register was verified on <strong style={{ color: 'var(--text-primary)' }}>{syllabusVerifiedOn}</strong>. {syllabusExam.authorityName.split(' (')[0]}'s notice board is read on the server; anything about this exam published since is listed here for you to read. Nothing changes the candidate-facing syllabus until you apply it below, citing the notice — the same rule as resource additions.
             </p>
 
             {/* What SSC has published since the verified date */}
@@ -16182,7 +16208,17 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
   }, [initialSection]);
   const [isGuideIndexOpen, setIsGuideIndexOpen] = useState<boolean>(false);
   const [selectedResourceForModal, setSelectedResourceForModal] = useState<ResourceItem | null>(null);
-  const [syllabusViewMode, setSyllabusViewMode] = useState<'POST_STUDY_PATH' | 'OFFICIAL_BLUEPRINT' | 'TREE_MAP'>('POST_STUDY_PATH');
+  /**
+   * Section 06 opens on the view this exam has something to show in. Post-wise study paths
+   * exist only where posts differ in papers (SSC CGL); defaulting every exam to that view made
+   * UPSC's fully authored 18-topic syllabus look empty, because the first thing a candidate saw
+   * was the notice explaining why there are no post-wise paths. Driven by the record, so a new
+   * exam lands correctly the day it is added.
+   */
+  const defaultSyllabusView = (): 'POST_STUDY_PATH' | 'OFFICIAL_BLUEPRINT' =>
+    examHasStudyPaths(exam) ? 'POST_STUDY_PATH' : 'OFFICIAL_BLUEPRINT';
+  const [syllabusViewMode, setSyllabusViewMode] = useState<'POST_STUDY_PATH' | 'OFFICIAL_BLUEPRINT' | 'TREE_MAP'>(defaultSyllabusView);
+  useEffect(() => { setSyllabusViewMode(defaultSyllabusView()); }, [exam.id]);
   const [completedTopics, setCompletedTopics] = useState<Record<string, boolean>>(
     () => {
       const saved = storageService.getCompletedTopics(exam.id);
@@ -16811,8 +16847,24 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
 
             {/* View 1: Dynamic Post Study Path Engine */}
             {syllabusViewMode === 'POST_STUDY_PATH' && !examHasStudyPaths(exam) && (
-              <div style={{ padding: '16px 18px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
-                GovOS has not authored post-wise study paths for {exam.title} yet: every service allotted through it is selected by the same papers, so the Official Syllabus view is the plan. Post-wise paths exist for SSC CGL, where posts differ in papers and thresholds.
+              <div style={{ padding: '16px 18px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.55, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div>
+                  Every service allotted through {exam.title} is selected by the same papers, so there is no post-wise
+                  path to author — the official syllabus <strong>is</strong> the plan. {exam.syllabus.length} topics are on
+                  record for it. Post-wise paths exist for SSC CGL, where posts differ in papers and thresholds.
+                </div>
+                {/* Never dead-end: the views that do hold this exam's syllabus are one click away. */}
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <button className="btn btn-primary" onClick={() => setSyllabusViewMode('OFFICIAL_BLUEPRINT')} style={{ fontSize: '0.82rem', padding: '7px 14px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <FileText size={14} /> Open the official syllabus ({exam.syllabus.length} topics)
+                  </button>
+                  <button className="btn btn-secondary" onClick={() => setSyllabusViewMode('TREE_MAP')} style={{ fontSize: '0.82rem', padding: '7px 14px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <Share2 size={14} /> See it as a tree map
+                  </button>
+                  <button className="btn btn-secondary" onClick={() => goToSection(7)} style={{ fontSize: '0.82rem', padding: '7px 14px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <Target size={14} /> Study roadmap
+                  </button>
+                </div>
               </div>
             )}
             {syllabusViewMode === 'POST_STUDY_PATH' && examHasStudyPaths(exam) && (

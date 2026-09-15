@@ -245,6 +245,21 @@ for SSC moved into the SSC record, and the UPSC record supplies its own:
 - Section 06 names `exam.syllabusSourceNote`; the Post Study Plan view appears only where
   `examHasStudyPaths(exam)` — SSC's posts differ in papers, UPSC's services are all selected
   by the same papers, so UPSC gets a sentence saying so rather than the ASO path.
+  **It also opens on the view that exam has content in** (`defaultSyllabusView`, re-run on
+  `exam.id`): defaulting everything to Post Study Plan meant UPSC's fully authored 18-topic
+  syllabus looked *empty*, because the first thing shown was the notice explaining why there
+  are no post-wise paths. An exam without study paths opens on the Official Gazette Syllabus,
+  and that notice now carries buttons into the syllabus, the tree map and the roadmap rather
+  than dead-ending. This is read from the register, so a newly added exam behaves correctly the
+  day it lands.
+- **The Trust Panel's syllabus revisions are no longer SSC-only.** The Corrigendum tab pinned
+  `syllabusExam` to `SSC_CGL_EXAM`, so no other exam's syllabus could be revised at all — the
+  watch, the topic dropdown, the form and the applied list were all SSC's. It now has an exam
+  picker over every register entry with a syllabus, opens on the candidate's current exam, and
+  re-reads the board and the revisions when the exam changes; the form resets with it, because
+  a topic id from one exam means nothing in another. Verified end to end: a UPSC AMEND applied
+  through the API is listed in the panel under UPSC, reaches UPSC's syllabus list and carries a
+  REV chip on its tree-map node, and is absent when the picker is switched back to SSC.
 - Section 10's heading and column labels come from the exam's cut-off years and stages, so
   UPSC reads "Preliminary ... (General Studies Paper-I, of 200)" and "Main ... (of 1750)".
 - Section 12 maps `exam.officialLinks` (six for UPSC, SSC's three).
