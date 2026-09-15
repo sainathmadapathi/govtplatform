@@ -288,6 +288,12 @@ navigated away in the same click and nothing ever appeared to open. Opening a to
 full screen, or the list scrolls behind the overlay. Subjects open by default, subtopics on a
 chevron, so a long syllabus stays readable.
 
+**The view is the candidate's once they touch it.** The opening fit runs for a *new canvas*
+only — first measurement, a change of exam, entering or leaving full screen, crossing the narrow
+breakpoint — and `adjustedRef` stops even those once they have zoomed or panned by hand. It used
+to depend on the tree's height, so every chevron re-fitted and threw their view away. Only **Fit**
+and the full-screen toggle deliberately take it back.
+
 **Gestures.** One pointer drags, two pinch (`pointersRef` holds every pointer down; the second
 turns the drag into a pinch measured from the span it started at), and ctrl/meta+wheel zooms —
 that is what a trackpad pinch and a mouse ctrl+wheel both send. A plain wheel is deliberately

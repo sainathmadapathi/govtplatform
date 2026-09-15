@@ -15566,6 +15566,8 @@ const SyllabusTreeMap: React.FC<{
   // Every pointer currently down on the canvas: one is a drag, two are a pinch.
   const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
   const pinchRef = useRef<{ dist: number; zoom: number } | null>(null);
+  /** True once the candidate has zoomed or panned by hand; their view is then left alone. */
+  const adjustedRef = useRef<boolean>(false);
   const viewportRef = useRef<HTMLDivElement | null>(null);
   // Escape leaves the expanded view, and the page behind it must not scroll under it.
   useEffect(() => {
@@ -15724,27 +15726,34 @@ const SyllabusTreeMap: React.FC<{
     y: Math.max(0, (box.h - contentH * z) / 2) - TREE_PAD
   });
   const fitToView = () => { const z = fitZoom(); setZoom(z); setPan(centredPan(z)); };
-  const reset = () => { fitToView(); setSelectedId(null); };
+  /** Fit is the one control that takes the view back, so it also un-sticks the manual view. */
+  const reset = () => { adjustedRef.current = false; fitToView(); setSelectedId(null); };
 
   /**
    * The opening view. On a wide box the whole tree is fitted, which is the useful overview.
    * On a phone fitting would land at the 0.5 floor and the labels would be unreadable, so it
    * opens at full size with the root on screen and the candidate pans — Fit is still a button
    * away when they want the shape rather than the words.
+   *
+   * It runs for a **new canvas** only — first measurement, a change of exam, entering or
+   * leaving full screen, crossing the narrow breakpoint — and never because the tree changed
+   * shape. Expanding a branch is the candidate reading the map, not a reason to throw away the
+   * zoom and pan they set: it used to re-fit on every chevron, which is exactly that bug.
    */
   useEffect(() => {
-    if (!box.w || !box.h) return;
+    if (!box.w || !box.h || adjustedRef.current) return;
     if (!narrow) { fitToView(); return; }
     const rootEntry = laid.nodes.find(e => e.depth === 0);
     setZoom(1);
     setPan({ x: 0, y: rootEntry ? Math.min(0, box.h / 2 - (rootEntry.y + TREE_ROW_H / 2) - TREE_PAD) : 0 });
-  }, [laid.height, contentW, box.w, box.h, narrow]);
+  }, [box.w, box.h, narrow, exam.id]);
   /**
    * Zoom about a point of the viewport, so whatever is under the fingers (or under the box's
    * centre, for the buttons) stays put. The layer is drawn at `pan + TREE_PAD` then scaled, so
    * the content point under a viewport point s is `(s - pan - TREE_PAD) / zoom`.
    */
   const zoomAbout = (nextZoom: number, sx: number, sy: number) => {
+    adjustedRef.current = true;
     const z2 = clampZoom(nextZoom);
     setPan(prev => ({
       x: sx - TREE_PAD - ((sx - prev.x - TREE_PAD) / zoom) * z2,
@@ -15790,6 +15799,7 @@ const SyllabusTreeMap: React.FC<{
     }
     const d = dragRef.current;
     if (!d) return;
+    adjustedRef.current = true;
     setPan({ x: d.px + (ev.clientX - d.x), y: d.py + (ev.clientY - d.y) });
   };
 
@@ -15903,7 +15913,9 @@ const SyllabusTreeMap: React.FC<{
           </button>
           <button
             className={`btn ${fullScreen ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setFullScreen(v => !v)}
+            // Entering or leaving full screen is a deliberate "show me this differently", and the
+            // canvas changes size completely, so that one does fit again.
+            onClick={() => { adjustedRef.current = false; setFullScreen(v => !v); }}
             title={fullScreen ? 'Leave full screen (Esc)' : 'Open full screen'}
             aria-label={fullScreen ? 'Leave full screen' : 'Open full screen'}
             style={{ padding: '6px 12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
