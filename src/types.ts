@@ -489,8 +489,81 @@ export interface PostStudyPath {
   };
 }
 
+/**
+ * A mock application form, authored from one exam's own notice.
+ *
+ * The simulator component holds no form content of its own: every module, field, option
+ * and trap below is read from the authority's document and names the page it came from,
+ * so the practice form cannot drift from the real one and cannot inherit another exam's
+ * shape. `examId` is checked before anything renders — a spec is served to exactly one exam.
+ */
+export interface ApplicationSimulatorField {
+  id: string;
+  label: string;
+  kind: 'TEXT' | 'DATE' | 'SELECT' | 'RADIO';
+  /** Prefilled so the candidate edits a realistic form rather than typing one from blank. */
+  defaultValue: string;
+  options?: { value: string; label: string }[];
+  /** What the notice itself says about this field, shown under the input. */
+  noteFromNotice?: string;
+}
+
+export interface ApplicationSimulatorModule {
+  moduleNumber: number;
+  /** The portal's own name for this card/module, not a name GovOS invented. */
+  cardName: string;
+  title: string;
+  introduction: string;
+  /** Where in the source document this module is described. */
+  noticeReference: string;
+  fields: ApplicationSimulatorField[];
+}
+
+/**
+ * When a mistake fires. Every rule is a fact the notice states, never a guess:
+ * - VALUE_IN      the candidate picked an option the notice rules out
+ * - VALUE_IN_ALL  a combination the notice rules out (e.g. claiming a fee exemption
+ *                 that the candidate's own category does not carry)
+ * - DATE_OUTSIDE  a date outside the window the notice prints
+ */
+export type ApplicationSimulatorRule =
+  | { kind: 'VALUE_IN'; fieldId: string; values: string[] }
+  | { kind: 'VALUE_IN_ALL'; conditions: { fieldId: string; values: string[] }[] }
+  | { kind: 'DATE_OUTSIDE'; fieldId: string; earliest: string; latest: string };
+
+export interface ApplicationSimulatorTrap {
+  id: string;
+  rule: ApplicationSimulatorRule;
+  severity: 'CRITICAL' | 'WARNING';
+  title: string;
+  problem: string;
+  whyItMatters: string;
+  rememberRule: string;
+  /** The notice's own wording, and where it sits. */
+  officialClause: string;
+  noticeReference: string;
+}
+
+export interface ApplicationSimulatorSpec {
+  /** The one exam this form belongs to. Checked before render; never defaulted. */
+  examId: string;
+  portalName: string;
+  portalUrl: string;
+  sourceDocumentTitle: string;
+  sourceDocumentUrl: string;
+  /** One line naming what the mock form is modelled on, shown above it. */
+  modelledOnNote: string;
+  modules: ApplicationSimulatorModule[];
+  traps: ApplicationSimulatorTrap[];
+  /** Shown when a submission trips no trap at all. */
+  cleanSubmissionNote: string;
+  provenance: DataProvenance;
+}
+
 export interface ApplicationGuideData {
   officialPortal: string;
+  /** Present only where the exam's own form has been authored from its own notice. */
+  simulator?: ApplicationSimulatorSpec;
   otrSteps: OTRStep[];
   photoRules: DocumentSpecification;
   signatureRules: DocumentSpecification;

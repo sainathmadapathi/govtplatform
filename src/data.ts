@@ -1,6 +1,7 @@
 // GovOS verified exam register, mock-paper repository and post study paths.
 
 import {
+  ApplicationSimulatorSpec,
   OfficialPaperQuestion,
   DataProvenance,
   DetailedExplanation,
@@ -2403,6 +2404,26 @@ const upscDocument = (id: string, documentTitle: string, officialUrl: string, pu
   excerptText
 });
 
+/**
+ * UPSC's own examination page for CSE 2026. It is a different source from the notice and it
+ * outranks it on the application deadline: the page carries the extended last date, which the
+ * notice PDF (revised 06.02.2026) predates.
+ */
+const UPSC_CSE_PAGE_URL = 'https://www.upsc.gov.in/examinations/Civil%20Services%20%28Preliminary%29%20Examination%2C%202026';
+const upscProvenanceLastDate: DataProvenance = {
+  id: 'prov-upsc-lastdate',
+  documentTitle: 'UPSC — Civil Services (Preliminary) Examination, 2026 (the Commission’s own examination page)',
+  officialUrl: UPSC_CSE_PAGE_URL,
+  pageNumber: 1,
+  clauseNumber: 'Examination details table — Last Date for Receipt of Applications',
+  publishedDate: '2026-02-04',
+  verifiedDate: '2026-09-15',
+  verifiedBy: 'GovOS verifier — read from the Commission’s examination page on 2026-09-15',
+  taxonomyType: 'FACT',
+  verificationLevel: 'OFFICIALLY_VERIFIED',
+  excerptText: 'Date of Notification 04/02/2026 · Date of Commencement of Examination 24/05/2026 · Last Date for Receipt of Applications 27/02/2026 - 6:00pm.'
+};
+
 const upscProvenance = upscNotice('prov-upsc-01', 'Cover and Section I', 1,
   'EXAMINATION NOTICE NO 05/2026-CSE DATE: 04.02.2026 (LAST DATE FOR SUBMISSION OF ONLINE APPLICATIONS: 24.02.2026 of CIVIL SERVICES EXAMINATION, 2026).');
 const upscProvenanceEligibility = upscNotice('prov-upsc-elig', 'Section II — Conditions of Eligibility (I) Nationality, (II) Age Limits, (III) Minimum Educational Qualification, (IV) Number of attempts', 14,
@@ -2506,6 +2527,488 @@ const upscGroupB = (id: string, postName: string, department: string, ministry: 
   provenance: upscPayProvenance
 });
 
+/**
+ * UPSC's own application form, as a practice form.
+ *
+ * Read from Examination Notice No. 05/2026-CSE on 2026-09-15. The portal's four cards
+ * (p.1), the photo-ID list (p.2, §2.2), the live-capture and signature rules (p.2, NOTE 2
+ * and NOTE 3), the no-correction rule (p.2, §2.1), the fee and its modes (p.16, §4), the
+ * centre ceiling (p.10) and the 6:00 PM deadline (p.3) are all the notice's, quoted where
+ * they are used. GovOS invented no field and no rule; where the notice defers to the
+ * portal's own upload screen, the form says so instead of printing a made-up size.
+ */
+const UPSC_APPLICATION_SIMULATOR: ApplicationSimulatorSpec = {
+  examId: 'exam-upsc-cse-2026',
+  portalName: 'UPSC Online Application Portal',
+  portalUrl: 'https://upsconline.nic.in',
+  sourceDocumentTitle: UPSC_NOTICE_TITLE,
+  sourceDocumentUrl: UPSC_NOTICE_URL,
+  modelledOnNote:
+    'This mock follows the four cards of UPSC’s own Online Application Portal, in the order the Commission fills them, from Examination Notice No. 05/2026-CSE. It is a practice form inside GovOS — nothing here reaches the Commission, and no application is submitted on your behalf.',
+  cleanSubmissionNote:
+    'No rule in the notice was broken by these answers. On the real portal the next thing you would see is the Application Number, which you keep alongside your URN for every future communication with the Commission.',
+  provenance: upscNotice('prov-upsc-appsim', 'Section 2 — How to Apply, and Section 4 — Fee', 2,
+    'Candidates are required to apply online by using the website https://upsconline.nic.in. … The Online Application Portal of Union Public Service Commission for registration and filling up of application form online, has four cards/modules.'),
+  modules: [
+    {
+      moduleNumber: 1,
+      cardName: 'Card 1 — Account creation',
+      title: 'Create your account on upsconline.nic.in',
+      introduction:
+        'The first of the portal’s four cards. Three of them — Account creation, Universal Registration and the Common Application Form — are common to every UPSC examination and can be filled at any time; only the fourth opens during an examination’s own window.',
+      noticeReference: 'Notice p.1, Important Information for the Candidates; p.3, §4 (Issuance of e-Admit Card)',
+      fields: [
+        {
+          id: 'accountEmail',
+          label: 'E-mail address',
+          kind: 'TEXT',
+          defaultValue: 'rahul.sharma1998@gmail.com',
+          noteFromNotice: 'The e-Admit Card is published on the portal — it is sent by neither post nor e-mail — but the Commission may contact you electronically.'
+        },
+        {
+          id: 'emailOwnership',
+          label: 'Whose e-mail and mobile are these?',
+          kind: 'RADIO',
+          defaultValue: 'OWN_ACTIVE',
+          options: [
+            { value: 'OWN_ACTIVE', label: 'My own, and I will keep both active until the final result' },
+            { value: 'CYBER_CAFE', label: 'The cyber-café’s — they created it while filling my form' },
+            { value: 'FRIEND', label: 'A friend’s — mine is full' }
+          ]
+        },
+        {
+          id: 'accountMobile',
+          label: 'Mobile number',
+          kind: 'TEXT',
+          defaultValue: '98765 43210'
+        }
+      ]
+    },
+    {
+      moduleNumber: 2,
+      cardName: 'Card 2 — Universal Registration (URN)',
+      title: 'Register once, for every UPSC examination',
+      introduction:
+        'The URN is generated once and is common to all the Commission’s examinations. It is registered only once in a lifetime and stays constant; the Application Number, by contrast, is generated per examination and changes each time.',
+      noticeReference: 'Notice p.1, Important Information; p.2, §2.2 and NOTE 1',
+      fields: [
+        { id: 'candidateName', label: 'Name (as on the Matriculation certificate)', kind: 'TEXT', defaultValue: 'Rahul Sharma' },
+        { id: 'fatherName', label: 'Father’s name', kind: 'TEXT', defaultValue: 'Suresh Sharma' },
+        {
+          id: 'dob',
+          label: 'Date of birth',
+          kind: 'DATE',
+          defaultValue: '1998-05-14',
+          noteFromNotice: 'For CSE 2026 the candidate must have been born not earlier than 2 August 1994 and not later than 1 August 2005, before any relaxation.'
+        },
+        {
+          id: 'photoIdType',
+          label: 'Photo ID card',
+          kind: 'SELECT',
+          defaultValue: 'AADHAAR',
+          options: [
+            { value: 'AADHAAR', label: 'Aadhaar Card' },
+            { value: 'VOTER', label: 'Voter Card (EPIC)' },
+            { value: 'PAN', label: 'PAN Card' },
+            { value: 'PASSPORT', label: 'Passport' },
+            { value: 'DL', label: 'Driving Licence' },
+            { value: 'OTHER_GOVT', label: 'Other photo ID issued by the State/Central Government' }
+          ],
+          noteFromNotice: 'The notice lists exactly these, and advises Aadhaar for easy, effortless and seamless verification.'
+        },
+        { id: 'photoIdNumber', label: 'Photo ID number', kind: 'TEXT', defaultValue: 'XXXX XXXX 1234' },
+        {
+          id: 'photoIdCardPlan',
+          label: 'Which card will you carry to the examination and the Personality Test?',
+          kind: 'RADIO',
+          defaultValue: 'CARRY_SAME',
+          options: [
+            { value: 'CARRY_SAME', label: 'This same card, every time' },
+            { value: 'CARRY_DIFFERENT', label: 'Whichever photo ID I happen to have on the day' }
+          ]
+        },
+        {
+          id: 'urnPlan',
+          label: 'Before locking the URN profile',
+          kind: 'RADIO',
+          defaultValue: 'LOCK_ONCE',
+          options: [
+            { value: 'LOCK_ONCE', label: 'Check every detail against my certificates, then lock it' },
+            { value: 'FIX_LATER', label: 'Lock it now — I can edit the URN later and my application will pick the change up' },
+            { value: 'SECOND_ACCOUNT', label: 'If I find a mistake I will just make a second account' }
+          ]
+        }
+      ]
+    },
+    {
+      moduleNumber: 3,
+      cardName: 'Card 3 — Common Application Form (CAF)',
+      title: 'The form shared across the Commission’s examinations',
+      introduction:
+        'Education, category, the photograph and the signature live here. Two of the Commission’s most-repeated instructions are in this card, and both are easy to get wrong: the photograph is both uploaded and captured live, and the signature is signed three times.',
+      noticeReference: 'Notice p.2, NOTE 2 and NOTE 3; p.14, Section II (III) Minimum Educational Qualification; p.18, §5(b)',
+      fields: [
+        {
+          id: 'highestQualification',
+          label: 'Educational qualification',
+          kind: 'SELECT',
+          defaultValue: 'GRADUATE_PASSED',
+          options: [
+            { value: 'GRADUATE_PASSED', label: 'Graduate degree of a recognised University — passed' },
+            { value: 'FINAL_YEAR', label: 'Appearing in the final year of the degree' },
+            { value: 'DIPLOMA_ONLY', label: 'Diploma / 12th pass only' }
+          ],
+          noteFromNotice: 'A candidate must hold a Graduate degree of a recognised University or an equivalent qualification.'
+        },
+        {
+          id: 'category',
+          label: 'Category',
+          kind: 'SELECT',
+          defaultValue: 'GENERAL',
+          options: [
+            { value: 'GENERAL', label: 'General' },
+            { value: 'EWS', label: 'EWS' },
+            { value: 'OBC', label: 'OBC' },
+            { value: 'SC', label: 'Scheduled Caste' },
+            { value: 'ST', label: 'Scheduled Tribe' }
+          ]
+        },
+        {
+          id: 'gender',
+          label: 'Gender',
+          kind: 'SELECT',
+          defaultValue: 'MALE',
+          options: [
+            { value: 'MALE', label: 'Male' },
+            { value: 'FEMALE', label: 'Female' },
+            { value: 'TRANSGENDER', label: 'Transgender' }
+          ]
+        },
+        {
+          id: 'isPwBD',
+          label: 'Person with Benchmark Disability?',
+          kind: 'SELECT',
+          defaultValue: 'NO',
+          options: [
+            { value: 'NO', label: 'No' },
+            { value: 'YES', label: 'Yes — and I hold the Certificate of Disability' }
+          ]
+        },
+        {
+          id: 'photoStep',
+          label: 'Photograph',
+          kind: 'RADIO',
+          defaultValue: 'UPLOAD_AND_LIVE',
+          options: [
+            { value: 'UPLOAD_AND_LIVE', label: 'Upload the photograph AND capture the live photograph' },
+            { value: 'UPLOAD_ONLY', label: 'Upload the photograph only — the live capture looks optional' },
+            { value: 'LIVE_ONLY', label: 'Capture live only — no upload needed' }
+          ],
+          noteFromNotice: 'The portal states the sizes on its own upload screen; the notice does not print them, so GovOS does not either.'
+        },
+        {
+          id: 'signatureSheet',
+          label: 'Signature',
+          kind: 'RADIO',
+          defaultValue: 'THREE_BLACK',
+          options: [
+            { value: 'THREE_BLACK', label: 'Signed three times, one below the other, on plain white paper in black ink' },
+            { value: 'ONCE_BLACK', label: 'Signed once, in black ink' },
+            { value: 'THREE_BLUE', label: 'Signed three times, in blue ink' },
+            { value: 'TYPED', label: 'My name typed in a signature font' }
+          ]
+        },
+        {
+          id: 'govtServant',
+          label: 'Are you already in Government service?',
+          kind: 'RADIO',
+          defaultValue: 'NOT_IN_SERVICE',
+          options: [
+            { value: 'NOT_IN_SERVICE', label: 'No' },
+            { value: 'INFORMED', label: 'Yes — and I have informed my Head of Office/Department in writing' },
+            { value: 'NOT_INFORMED', label: 'Yes — but I have not told my office' }
+          ]
+        }
+      ]
+    },
+    {
+      moduleNumber: 4,
+      cardName: 'Card 4 — Examination-specific module (CSE 2026)',
+      title: 'Centre, fee and the final submit',
+      introduction:
+        'The only card tied to this examination and its window. Once this is submitted there is no withdrawal and no correction of any field — which makes this the one screen worth re-reading twice.',
+      noticeReference: 'Notice p.3, §3; p.9–10, Centres; p.16, §4 Fee; p.2, §2.1',
+      fields: [
+        {
+          id: 'prelimsCentre',
+          label: 'Centre for the Preliminary Examination',
+          kind: 'SELECT',
+          defaultValue: 'DELHI',
+          options: [
+            { value: 'DELHI', label: 'Delhi' },
+            { value: 'BENGALURU', label: 'Bengaluru' },
+            { value: 'CHENNAI', label: 'Chennai' },
+            { value: 'DISPUR', label: 'Dispur' },
+            { value: 'HYDERABAD', label: 'Hyderabad' },
+            { value: 'KOLKATA', label: 'Kolkata' },
+            { value: 'LUCKNOW', label: 'Lucknow' },
+            { value: 'MUMBAI', label: 'Mumbai' },
+            { value: 'NAGPUR', label: 'Nagpur' },
+            { value: 'PRAYAGRAJ', label: 'Prayagraj (Allahabad)' }
+          ],
+          noteFromNotice: 'The notice lists 83 Preliminary centres; ten of them are offered here so the mock stays readable. Every centre has a ceiling except Chennai, Dispur, Kolkata and Nagpur.'
+        },
+        {
+          id: 'mainsCentre',
+          label: 'Centre for the Main Examination',
+          kind: 'SELECT',
+          defaultValue: 'DELHI',
+          options: [
+            { value: 'DELHI', label: 'Delhi' },
+            { value: 'BENGALURU', label: 'Bengaluru' },
+            { value: 'BHOPAL', label: 'Bhopal' },
+            { value: 'CHENNAI', label: 'Chennai' },
+            { value: 'DISPUR', label: 'Dispur (Guwahati)' },
+            { value: 'HYDERABAD', label: 'Hyderabad' },
+            { value: 'JAIPUR', label: 'Jaipur' },
+            { value: 'KOLKATA', label: 'Kolkata' },
+            { value: 'LUCKNOW', label: 'Lucknow' },
+            { value: 'MUMBAI', label: 'Mumbai' }
+          ],
+          noteFromNotice: 'The notice lists 27 Main centres; ten are offered here.'
+        },
+        {
+          id: 'centreTiming',
+          label: 'When will you submit, given how centres are allotted?',
+          kind: 'RADIO',
+          defaultValue: 'APPLY_EARLY',
+          options: [
+            { value: 'APPLY_EARLY', label: 'Early — centres go first-apply-first-allot' },
+            { value: 'WAIT_LAST_DAY', label: 'On the last day — my centre will still be there' }
+          ]
+        },
+        {
+          id: 'feeLiability',
+          label: 'Fee',
+          kind: 'RADIO',
+          defaultValue: 'PAY_100',
+          options: [
+            { value: 'PAY_100', label: 'Pay ₹100 for the Preliminary Examination' },
+            { value: 'CLAIM_EXEMPT', label: 'Claim exemption — no fee payable' }
+          ],
+          noteFromNotice: 'Female, SC, ST and PwBD candidates are exempt. Candidates admitted to the Main Examination pay a further ₹200 later, in a 10-day window after the Preliminary result.'
+        },
+        {
+          id: 'feeMode',
+          label: 'How will you pay?',
+          kind: 'RADIO',
+          defaultValue: 'PRESCRIBED',
+          options: [
+            { value: 'PRESCRIBED', label: 'Net banking, or Visa/Master/RuPay credit or debit card, or UPI' },
+            { value: 'DEMAND_DRAFT', label: 'Demand draft posted to the Commission' },
+            { value: 'CASH_CSC', label: 'Cash at a common service centre' }
+          ]
+        },
+        {
+          id: 'submitTiming',
+          label: 'Final submission',
+          kind: 'RADIO',
+          defaultValue: 'BEFORE_DEADLINE',
+          options: [
+            { value: 'BEFORE_DEADLINE', label: 'Well before 27 February 2026, 6:00 PM' },
+            { value: 'AFTER_6PM', label: 'On 27 February 2026, some time in the evening after 6:00 PM' }
+          ]
+        },
+        {
+          id: 'finalCheck',
+          label: 'Before the last click',
+          kind: 'RADIO',
+          defaultValue: 'CHECK_THEN_SUBMIT',
+          options: [
+            { value: 'CHECK_THEN_SUBMIT', label: 'Read every field once more — nothing can be changed afterwards' },
+            { value: 'SUBMIT_THEN_EDIT', label: 'Submit now, correct anything wrong later' }
+          ]
+        }
+      ]
+    }
+  ],
+  traps: [
+    {
+      id: 'upsc-trap-email',
+      rule: { kind: 'VALUE_IN', fieldId: 'emailOwnership', values: ['CYBER_CAFE', 'FRIEND'] },
+      severity: 'CRITICAL',
+      title: 'The account is on an e-mail you do not control',
+      problem: 'The account was created on a cyber-café’s or a friend’s e-mail, so the Commission’s electronic communication goes somewhere you cannot read.',
+      whyItMatters: 'No admit card is posted or e-mailed — it is downloaded from the portal — but the Commission may contact you electronically, and the account is also how you reach the QPRep window and any scribe request.',
+      rememberRule: 'Register an e-mail and mobile you will still control on the day the final result is declared.',
+      officialClause: 'All the applicants are requested to provide valid & active e-mail i.d. while creating account as the Commission may use electronic mode for contacting them.',
+      noticeReference: 'Notice p.3, §4'
+    },
+    {
+      id: 'upsc-trap-age',
+      rule: { kind: 'DATE_OUTSIDE', fieldId: 'dob', earliest: '1994-08-02', latest: '2005-08-01' },
+      severity: 'CRITICAL',
+      title: 'The date of birth is outside the age window',
+      problem: 'For CSE 2026 the candidate must have been born on or after 2 August 1994 and on or before 1 August 2005. This date is outside that band.',
+      whyItMatters: 'Age is checked against the Matriculation certificate; a claim outside the band fails at verification, and admission to every stage is only provisional until then.',
+      rememberRule: 'Count the age on 1 August 2026, not on the date you apply. Relaxation — five years for SC/ST, three for OBC — sits on top of this band, and only with the certificate.',
+      officialClause: 'A candidate must have attained the age of 21 years and must not have attained the age of 32 years on the 1st of August, 2026 i.e., the candidate must have been born not earlier than 2nd August, 1994 and not later than 1st August, 2005.',
+      noticeReference: 'Notice p.14, Section II (II) Age Limits'
+    },
+    {
+      id: 'upsc-trap-photoid',
+      rule: { kind: 'VALUE_IN', fieldId: 'photoIdCardPlan', values: ['CARRY_DIFFERENT'] },
+      severity: 'CRITICAL',
+      title: 'A different photo ID on the day',
+      problem: 'The ID entered in the URN profile is the one the Commission holds on record, but you plan to carry whichever card is handy.',
+      whyItMatters: 'That ID is used for every future reference, and every candidate now also goes through face authentication at the venue. A mismatch is an identity problem at the door, not a paperwork one.',
+      rememberRule: 'Enter one photo ID in the URN profile and carry that same card to every session and to the Personality Test.',
+      officialClause: 'The details of this Photo ID Card will have to be provided by the candidate while filling up the Universal Registration Number (URN) Profile. This Photo ID Card will be used for all future reference and the candidate is advised to carry this Photo ID Card while appearing for Examination/Personality Test.',
+      noticeReference: 'Notice p.2, §2.2'
+    },
+    {
+      id: 'upsc-trap-urn-edit',
+      rule: { kind: 'VALUE_IN', fieldId: 'urnPlan', values: ['FIX_LATER'] },
+      severity: 'CRITICAL',
+      title: 'Editing the URN later will not repair a submitted application',
+      problem: 'The plan relies on correcting the URN profile afterwards and expecting the change to reach this application.',
+      whyItMatters: 'The one-time modification facility changes the profile for applications submitted only after it is re-locked. An application already in is untouched by it — and it cannot be corrected on its own either.',
+      rememberRule: 'The URN edit is a one-time facility and it works forward only. Get the profile right before you submit anything.',
+      officialClause: 'The Commission provides a one-time facility for candidates to update or modify their Universal Registration Number (URN) profile. Please note that any changes made to the URN Profile will not be reflected in applications already submitted.',
+      noticeReference: 'Notice p.2, NOTE 1'
+    },
+    {
+      id: 'upsc-trap-second-account',
+      rule: { kind: 'VALUE_IN', fieldId: 'urnPlan', values: ['SECOND_ACCOUNT'] },
+      severity: 'CRITICAL',
+      title: 'A second account is not a second chance',
+      problem: 'The plan is to open another account if something is wrong.',
+      whyItMatters: 'The URN is registered once in a lifetime and is common to every UPSC examination. A duplicate registration is not the clean slate it looks like.',
+      rememberRule: 'One account, one URN, for life. The Application Number is the thing that changes from examination to examination.',
+      officialClause: 'Once a candidate has registered on the Online Application Portal, a Universal Registration Number (URN) is generated which is common for all the examinations of the Commission. … The URN has to be registered only once in lifetime.',
+      noticeReference: 'Notice p.1, Important Information for the Candidates'
+    },
+    {
+      id: 'upsc-trap-qualification',
+      rule: { kind: 'VALUE_IN', fieldId: 'highestQualification', values: ['DIPLOMA_ONLY'] },
+      severity: 'CRITICAL',
+      title: 'A degree is the minimum qualification',
+      problem: 'A diploma or Class 12 alone was entered as the qualification.',
+      whyItMatters: 'The CSE requires a graduate degree; without one the candidature does not survive verification, which the Commission runs against originals after the candidate qualifies for the Personality Test.',
+      rememberRule: 'A graduate degree of a recognised University, or an equivalent, is the floor — there is no diploma route.',
+      officialClause: 'A candidate must hold a Graduate degree of any of the Universities incorporated by an Act of the central or State Legislature in India … or possess an equivalent qualification.',
+      noticeReference: 'Notice p.14, Section II (III)'
+    },
+    {
+      id: 'upsc-trap-finalyear',
+      rule: { kind: 'VALUE_IN', fieldId: 'highestQualification', values: ['FINAL_YEAR'] },
+      severity: 'WARNING',
+      title: 'Final-year candidates may apply — with a deadline attached',
+      problem: 'You are appearing in the final year. That is allowed, and this is not a mistake — but it carries a condition worth knowing now.',
+      whyItMatters: 'You are eligible for the written part, but if you are called for the Personality Test you must produce proof of passing within the time limit in Rule 13 of the CSE Rules, 2026.',
+      rememberRule: 'Apply, and plan for the degree certificate or final mark sheet to exist by the Personality Test.',
+      officialClause: 'Candidates who have appeared at a qualifying examination … but have not been informed of the result as also the candidates who intend to appear at such a qualifying examination will also be eligible for admission to the written part of Civil Services Examination, 2026.',
+      noticeReference: 'Notice p.14, Section II (III), Note-I'
+    },
+    {
+      id: 'upsc-trap-photo',
+      rule: { kind: 'VALUE_IN', fieldId: 'photoStep', values: ['UPLOAD_ONLY', 'LIVE_ONLY'] },
+      severity: 'CRITICAL',
+      title: 'The photograph is both uploaded and captured live',
+      problem: 'Only one of the two photograph steps was done.',
+      whyItMatters: 'The CAF asks for an uploaded photograph and a live capture, both of them, and both must be clear. Treating either as optional leaves the form incomplete.',
+      rememberRule: 'Upload the photograph, then capture the live one. Two steps, not a choice between two.',
+      officialClause: 'Applicants are required to upload their photograph and also capture their live photograph while filling up the Common Application Form (CAF). Applicants must ensure that the uploaded photograph and the live photograph captured is clear.',
+      noticeReference: 'Notice p.2, NOTE 2'
+    },
+    {
+      id: 'upsc-trap-signature',
+      rule: { kind: 'VALUE_IN', fieldId: 'signatureSheet', values: ['ONCE_BLACK', 'THREE_BLUE', 'TYPED'] },
+      severity: 'CRITICAL',
+      title: 'The signature is not in the form the Commission asks for',
+      problem: 'UPSC asks for three signatures, one below the other, on plain white paper, in black ink. This upload is not that.',
+      whyItMatters: 'This is the single most specific upload instruction in the notice, and it is unusual enough that candidates who have filled other forms get it wrong out of habit — one signature, or blue ink.',
+      rememberRule: 'Three signatures, one under the other, plain white paper, black ink, clear and legible.',
+      officialClause: 'Applicants are required to sign three times (one below the other) on a plain white paper using a black ink and upload the same while filling up the Common Application Form (CAF). The uploaded signatures should be clear and legible.',
+      noticeReference: 'Notice p.2, NOTE 3'
+    },
+    {
+      id: 'upsc-trap-govtservant',
+      rule: { kind: 'VALUE_IN', fieldId: 'govtServant', values: ['NOT_INFORMED'] },
+      severity: 'CRITICAL',
+      title: 'Your office has not been told in writing',
+      problem: 'You are in Government service but have not informed your Head of Office or Department in writing that you have applied.',
+      whyItMatters: 'Serving candidates must submit an undertaking that they have given that intimation. If the employer writes to the Commission withholding permission, the application is liable to be rejected.',
+      rememberRule: 'Inform the Head of Office in writing before you submit, and keep the acknowledgement.',
+      officialClause: 'Persons already in Government Service … are however, required to submit an undertaking that they have informed in writing to their Head of Office/Department that they have applied for the Examination.',
+      noticeReference: 'Notice p.18, §5(b)'
+    },
+    {
+      id: 'upsc-trap-centre-timing',
+      rule: { kind: 'VALUE_IN', fieldId: 'centreTiming', values: ['WAIT_LAST_DAY'] },
+      severity: 'WARNING',
+      title: 'Centres fill up, and then they close',
+      problem: 'Leaving the application to the last day, on the assumption that the chosen centre will still be available.',
+      whyItMatters: 'Every centre except Chennai, Dispur, Kolkata and Nagpur has a ceiling, and allotment is first-apply-first-allot. Once a centre is full it disappears from the list for non-PwBD candidates and you pick from what is left.',
+      rememberRule: 'Apply early if the centre matters to you — this is the one part of the form that rewards being early rather than being careful.',
+      officialClause: 'Allotment of Centres will be on the “first-apply-first-allot” basis, and once the capacity of a particular Centre is attained, the centre will no longer be available as an option for Non-PwBD candidates.',
+      noticeReference: 'Notice p.10'
+    },
+    {
+      id: 'upsc-trap-fee-mode',
+      rule: { kind: 'VALUE_IN', fieldId: 'feeMode', values: ['DEMAND_DRAFT', 'CASH_CSC'] },
+      severity: 'CRITICAL',
+      title: 'That payment mode is not accepted',
+      problem: 'The fee was paid by a mode the notice does not list.',
+      whyItMatters: 'The notice names the modes and then says an application submitted without the prescribed fee or mode is summarily rejected — not queried, not held.',
+      rememberRule: 'Net banking, Visa/Master/RuPay card, or UPI. Nothing else, and the fee is never refunded once paid.',
+      officialClause: 'Candidates should note that payment of examination fee can be made only through the modes prescribed above. Payment of fee through any other mode is neither valid nor acceptable. Applications submitted without the prescribed fee/mode (unless remission of fee is claimed) shall be summarily rejected.',
+      noticeReference: 'Notice pp.16–17, §4 Note I'
+    },
+    {
+      id: 'upsc-trap-fee-exemption',
+      rule: {
+        kind: 'VALUE_IN_ALL',
+        conditions: [
+          { fieldId: 'feeLiability', values: ['CLAIM_EXEMPT'] },
+          { fieldId: 'category', values: ['GENERAL', 'EWS', 'OBC'] },
+          { fieldId: 'gender', values: ['MALE'] },
+          { fieldId: 'isPwBD', values: ['NO'] }
+        ]
+      },
+      severity: 'CRITICAL',
+      title: 'You are not in an exempt category',
+      problem: 'Exemption from the fee was claimed, but the category, gender and disability status entered do not carry one.',
+      whyItMatters: 'Exemption covers Female, SC, ST and PwBD candidates. An application without the prescribed fee, where no remission is due, is summarily rejected.',
+      rememberRule: 'Check the exemption against your own category before skipping the payment — ₹100 is cheaper than a rejected form.',
+      officialClause: 'All the candidates (Except Female/SC/ST/Persons with Benchmark Disability Candidates who are exempted from payment of fee) are required to pay fee of Rs. 100/- … Applications without the prescribed Fee (unless remission of Fee is claimed) shall be summarily rejected.',
+      noticeReference: 'Notice p.16, §4 and Note IV'
+    },
+    {
+      id: 'upsc-trap-deadline',
+      rule: { kind: 'VALUE_IN', fieldId: 'submitTiming', values: ['AFTER_6PM'] },
+      severity: 'CRITICAL',
+      title: 'The window closes at 6:00 PM, not at midnight',
+      problem: 'The plan is to submit on the last day, in the evening, after 6:00 PM.',
+      whyItMatters: 'Applications closed at 6:00 PM on 27 February 2026 — the notice printed 24 February and the Commission then extended it by three days, which is its usual step, so the operative date is the one on the examination page. Either way an evening that still feels like “the last day” is already past the close.',
+      rememberRule: 'Read the closing time, not just the closing date.',
+      officialClause: 'Last Date for Receipt of Applications 27/02/2026 - 6:00pm. (The notice at p.3 §3 printed “upto 24th February, 2026 till 6:00 PM”; the Commission’s examination page carries the extended date.)',
+      noticeReference: 'UPSC examination page for CS(P) 2026, read 2026-09-15 — superseding Notice p.3, §3'
+    },
+    {
+      id: 'upsc-trap-no-correction',
+      rule: { kind: 'VALUE_IN', fieldId: 'finalCheck', values: ['SUBMIT_THEN_EDIT'] },
+      severity: 'CRITICAL',
+      title: 'There is no correction window at all',
+      problem: 'The plan assumes mistakes can be fixed after submission.',
+      whyItMatters: 'UPSC allows neither withdrawal nor any correction, alteration or modification in any field once the form is in. Several other recruitment bodies do run correction windows, which is exactly why this catches people out.',
+      rememberRule: 'The last click is final. Re-read the form before it, because there is no afterwards.',
+      officialClause: 'The candidates will not be allowed to withdraw their applications after the submission of the same. Further no correction/alteration/modification in any field(s) of the Application Form is allowed after submission.',
+      noticeReference: 'Notice p.2, §2.1 (repeated p.18, NOTE 4)'
+    }
+  ]
+};
+
 export const UPSC_CSE_EXAM: Exam = {
   id: 'exam-upsc-cse-2026',
   code: 'UPSC_CSE_2026',
@@ -2552,7 +3055,9 @@ export const UPSC_CSE_EXAM: Exam = {
   dates: [
     { id: 'date-upsc-notif', type: 'NOTIFICATION', label: 'Examination Notice No. 05/2026-CSE published', dateTimeStr: '2026-02-04 10:00:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: upscProvenance },
     { id: 'date-upsc-open', type: 'APPLICATION_OPEN', label: 'Online application opens on upsconline.nic.in', dateTimeStr: '2026-02-04 10:00:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: upscProvenanceApply },
-    { id: 'date-upsc-close', type: 'APPLICATION_CLOSE', label: 'Last date for online applications (6:00 PM)', dateTimeStr: '2026-02-24 18:00:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: upscProvenanceFee },
+    { id: 'date-upsc-close', type: 'APPLICATION_CLOSE', label: 'Last date for online applications (6:00 PM, as extended)', dateTimeStr: '2026-02-27 18:00:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: upscProvenanceLastDate },
+    // The notice's own date, kept because the record is the chain, not just the latest value.
+    { id: 'date-upsc-close-orig', type: 'APPLICATION_CLOSE', label: 'Last date printed in the notice (superseded)', dateTimeStr: '2026-02-24 18:00:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'SUPERSEDED', provenance: upscProvenanceFee },
     { id: 'date-upsc-eadmit', type: 'ADMIT_CARD', label: 'Preliminary e-Admit Cards uploaded on upsconline.nic.in', dateTimeStr: '2026-05-15 10:00:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: upscProvenanceEAdmit },
     { id: 'date-upsc-prelims', type: 'EXAM_TIER1', label: 'Civil Services (Preliminary) Examination — two sessions, see e-Admit Card', dateTimeStr: '2026-05-24 09:30:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: upscProvenanceEAdmit },
     { id: 'date-upsc-prelims-result', type: 'RESULT', label: 'Preliminary result declared (roll numbers 15 June; names 18 June)', dateTimeStr: '2026-06-15 18:00:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: upscProvenancePrelimsResult },
@@ -2593,7 +3098,7 @@ export const UPSC_CSE_EXAM: Exam = {
     },
     {
       title: '4. Fee and how to apply',
-      body: 'Apply only on upsconline.nic.in: create an account, complete Universal Registration (URN) with one photo ID, fill the Common Application Form with a live photo capture, then the exam-specific module. Fee ₹100 (Female, SC, ST and PwBD candidates exempt); ₹200 more if admitted to the Main Examination. No withdrawal and no correction after submission. The 2026 window closed on 24 February 2026 at 6:00 PM.',
+      body: 'Apply only on upsconline.nic.in: create an account, complete Universal Registration (URN) with one photo ID, fill the Common Application Form with a live photo capture, then the exam-specific module. Fee ₹100 (Female, SC, ST and PwBD candidates exempt); ₹200 more if admitted to the Main Examination. No withdrawal and no correction after submission. The 2026 window closed on 27 February 2026 at 6:00 PM, three days later than the date printed in the notice.',
       provenance: upscProvenanceFee
     }
   ],
@@ -2695,6 +3200,17 @@ export const UPSC_CSE_EXAM: Exam = {
   practiceQuestions: [],
 
   corrigendums: [
+    {
+      id: 'corr-upsc-02',
+      title: 'Last date for applications extended from 24 February to 27 February 2026, 6:00 PM',
+      noticeNumber: 'UPSC — Civil Services (Preliminary) Examination, 2026 (Commission’s examination page)',
+      publishedDate: '2026-02-04',
+      effectiveDate: '2026-02-24',
+      summary: 'Examination Notice No. 05/2026-CSE, including its 06.02.2026 revision, prints 24 February 2026 till 6:00 PM as the last date for online applications. The Commission’s own examination page for CS(P) 2026 records the Last Date for Receipt of Applications as 27/02/2026 - 6:00pm. GovOS follows the page, which is the later statement, and keeps the notice’s date struck through rather than deleting it.',
+      pdfUrl: UPSC_CSE_PAGE_URL,
+      status: 'ACTIVE',
+      diffSummary: 'Last date: 24-02-2026, 6:00 PM (notice) → 27-02-2026, 6:00 PM (Commission’s examination page).'
+    },
     {
       id: 'corr-upsc-01',
       title: 'Vacancy position revised: 1,016 vacancies notified against the approximate 933 printed in the notice',
@@ -3235,6 +3751,7 @@ export const UPSC_CSE_EXAM: Exam = {
 
   applicationGuide: {
     officialPortal: 'https://upsconline.nic.in',
+    simulator: UPSC_APPLICATION_SIMULATOR,
     otrSteps: [
       {
         stepNumber: 1,
@@ -3272,12 +3789,12 @@ export const UPSC_CSE_EXAM: Exam = {
         portalUrl: 'https://upsconline.nic.in',
         instructions: [
           'Complete the CAF, which is shared across the Commission’s examinations: education, address, preferences for centre.',
-          'Capture the photograph live through the portal as instructed (Note 2 of the notice); a previously taken photo is not accepted where live capture is prescribed.',
-          'Upload the signature and any documents in the sizes the portal states on the upload screen.'
+          'Upload a photograph AND capture the live photograph through the portal (Note 2 of the notice) — the CAF asks for both, and neither replaces the other.',
+          'Sign three times, one below the other, on plain white paper in black ink, and upload that sheet (Note 3 of the notice); the portal states the sizes on its own upload screen.'
         ],
-        mandatoryFields: ['Live photograph', 'Signature image', 'Educational qualification details'],
+        mandatoryFields: ['Uploaded photograph', 'Live photo capture', 'Signature sheet (three signatures, black ink)', 'Educational qualification details'],
         commonMistakesToAvoid: [
-          'Poor lighting or a covered face in the live capture — the same image appears on the e-Admit Card.',
+          'Doing only one of the two photograph steps — the upload and the live capture are both required.',
           'Leaving the CAF unlocked; the examination-specific module cannot be submitted until it is complete.'
         ]
       },
@@ -3286,7 +3803,7 @@ export const UPSC_CSE_EXAM: Exam = {
         title: 'Examination-specific module for CSE and fee payment',
         portalUrl: 'https://upsconline.nic.in',
         instructions: [
-          'Within the notified window (for 2026: 4 to 24 February, 6:00 PM) open the Civil Services (Preliminary) Examination module.',
+          'Within the notified window (for 2026: 4 to 27 February, 6:00 PM — the notice printed 24 February and the Commission extended it) open the Civil Services (Preliminary) Examination module.',
           'Choose the centre for the Preliminary Examination from the 83 listed and the Main centre from the 27 listed; the Commission may reallocate.',
           'Pay ₹100 by net banking, card or UPI unless exempt (Female / SC / ST / PwBD). Keep the Application Number with the URN.',
           'Submit. There is no withdrawal and no correction afterwards — check every field before the final click.'
@@ -3299,27 +3816,28 @@ export const UPSC_CSE_EXAM: Exam = {
       }
     ],
     photoRules: {
-      documentType: 'Live-captured photograph (Common Application Form)',
-      dimensions: 'As framed by the portal’s live-capture screen',
-      fileFormat: 'Captured by the portal (no upload where live capture is prescribed)',
-      fileSize: 'Set by the portal',
+      documentType: 'Uploaded photograph AND live photo capture (Common Application Form)',
+      dimensions: 'As stated on the portal’s own upload screen',
+      fileFormat: 'One photograph uploaded, plus a live capture through the portal — both are required',
+      fileSize: 'Set by the portal (Instructions and FAQs > Instruction for filling the form > Photos and Signature)',
       rules: [
-        'Face fully visible, looking at the camera, no dark glasses or headgear except religious.',
-        'Plain, well-lit background; the same image is printed on the e-Admit Card and matched at the venue.',
-        'Capture again if the preview is blurred — a rejected photograph invalidates the application.'
+        'The notice asks for both: upload a photograph and also capture the live photograph while filling the CAF. Neither one substitutes for the other.',
+        'Both images must be clear, as per the portal’s Photos and Signature instructions.',
+        'Face fully visible, looking at the camera; the image is matched at the venue, where face authentication is now mandatory for every candidate.'
       ],
-      sampleDescription: 'A recent, front-facing colour photograph on a plain background, captured live in the portal.'
+      sampleDescription: 'A recent, front-facing colour photograph on a plain background, uploaded — and a live capture taken in the portal alongside it.'
     },
     signatureRules: {
-      documentType: 'Signature image',
+      documentType: 'Signature sheet — three signatures, one below the other',
       dimensions: 'As specified on the portal’s upload screen',
-      fileFormat: 'JPG as accepted by the portal',
+      fileFormat: 'As accepted by the portal',
       fileSize: 'Within the limit shown on the upload screen',
       rules: [
-        'Sign in black or blue ink on white paper and scan; do not type your name.',
-        'The signature on the e-Admit Card is the one the invigilator compares at the venue.'
+        'Sign three times, one below the other, on a plain white paper, using black ink — this is what the notice prescribes, and it is unusual enough that candidates used to other forms sign once out of habit.',
+        'Black ink specifically; the notice does not offer blue as an alternative.',
+        'The uploaded signatures should be clear and legible — the signature on the e-Admit Card is the one compared at the venue.'
       ],
-      sampleDescription: 'A clear scan of your usual signature on white paper.'
+      sampleDescription: 'A plain white sheet carrying your usual signature three times, one under the other, in black ink.'
     },
     certificateRules: [
       {

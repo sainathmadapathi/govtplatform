@@ -263,8 +263,47 @@ for SSC moved into the SSC record, and the UPSC record supplies its own:
 - Section 10's heading and column labels come from the exam's cut-off years and stages, so
   UPSC reads "Preliminary ... (General Studies Paper-I, of 200)" and "Main ... (of 1750)".
 - Section 12 maps `exam.officialLinks` (six for UPSC, SSC's three).
-- `ApplicationGuide` names the guide's own portal; the SSC form simulator and the ssc.nic.in
-  notice show only for an `ssc.gov.in` portal (`isSscPortal`), with a sentence for others.
+- `ApplicationGuide` names the guide's own portal, and **each exam's mock application form is
+  its own**. `ApplicationSimulatorSpec` (types.ts) holds one exam's form as data — the portal's
+  own cards, the fields it collects, and a list of traps, each firing on a declarative rule
+  (`VALUE_IN`, `VALUE_IN_ALL`, `DATE_OUTSIDE`) and quoting the clause it breaks with its page.
+  `ExamApplicationSimulator` renders whatever spec it is handed and holds no form content of
+  its own, so a new exam gets a working simulator by authoring its form from its own notice and
+  nothing else. It carries `examId` and refuses to render for any other exam, the same rule the
+  practice engines follow. Order of preference in the guide: the exam's own spec, then SSC's
+  bespoke `PracticeApplicationSimulator` (kept because it validates real image uploads against
+  SSC's published pixel specs — no other authority prints those in its notice), then an honest
+  "not authored yet" note. **Never point one exam at another's form.**
+- **UPSC CSE's form was read from the notice on 2026-09-15** and follows the portal's real four
+  cards: Account creation → Universal Registration (URN) → Common Application Form (CAF) → the
+  examination-specific module (notice p.1). Fifteen traps, all the notice's own: the signature
+  is signed **three times, one below the other, in black ink** (p.2, NOTE 3); the photograph is
+  **uploaded *and* captured live**, neither replacing the other (NOTE 2); there is **no
+  withdrawal and no correction of any field** after submission (§2.1); the one-time URN edit
+  applies only to applications submitted after it is re-locked (NOTE 1); the URN is registered
+  once in a lifetime; centres are **first-apply-first-allot** with a ceiling on all but Chennai,
+  Dispur, Kolkata and Nagpur (p.10); the fee is ₹100 by net banking/card/UPI only, exempt for
+  Female/SC/ST/PwBD, and any other mode is **summarily rejected** (p.16, §4 Note I); the window
+  closes at **6:00 PM** on the last date, not midnight (p.3); the age band is 2 Aug 1994 to
+  1 Aug 2005 (p.14). Reading the notice for this also corrected two clauses the record had
+  wrong — it had said the live capture replaces the upload, and that blue ink was acceptable.
+  Where the notice defers to the portal's own upload screen for sizes, the form says so rather
+  than printing a made-up specification.
+- **A notice PDF is not the last word on a date — check the Commission's examination page.**
+  The notice (revised 06.02.2026) prints 24 February 2026, 6:00 PM as the CSE 2026 last date.
+  UPSC's own page for Civil Services (Preliminary) Examination, 2026 records **27/02/2026 -
+  6:00pm**: the Commission extended the window by three days after publishing the notice, which
+  is its habitual step (upsconline.nic.in was showing the same "extended by three (03) days"
+  wording for an unrelated post the day this was checked). The user caught this; the form had
+  been built from the notice alone, which by construction cannot see a later extension. Both
+  dates are now in the record — 27 February operative and cited to the page
+  (`upscProvenanceLastDate`), 24 February kept as a `SUPERSEDED` entry, and `corr-upsc-02`
+  explaining the move — so the timeline shows one struck through and the chat answers with the
+  other. **Rule: for anything that can be extended or rescheduled (application windows, exam
+  dates, fee windows), the authority's examination page outranks the notice PDF, and a
+  discrepancy is a corrigendum to record, never a value to silently overwrite.** The exam
+  pages are plain HTML tables at `upsc.gov.in/examinations/<exam name, URL-encoded>`, linked
+  from Active Examinations; the site's Drupal views need a real browser, not urllib.
 - `EligibilityCalculator` takes `exam` (main passes `liveExam`); the JSO and physical
   checks appear only where the exam has such posts.
 - **The practice bank belongs to one exam.** `PRACTICE_BANK_EXAM_ID` in `data.ts` is SSC
@@ -829,6 +868,37 @@ item in the Exam-Day checklist white-on-white. They now read from the tokens. A 
 over every tab and all 17 exam sections is the check: walk the DOM, compare each text node's
 colour against its nearest opaque background, and flag anything under 3:1. Run it again after
 touching colours; **never introduce a bare light hex as a text colour.**
+
+**Every text colour now clears WCAG AA against the background it is actually painted on**, and
+the sweep that proves it is the check to re-run after touching any colour. Two kinds of defect
+were found across all six tabs, all 17 sections of all five exams, and the modals:
+
+1. **Dark text on a solid brand fill.** The candidate's chat bubble is a `--primary` fill but
+   carried `var(--text-primary)` (3.97:1) with a `#4f46e5` label on top of it — indigo on blue
+   at **1.40:1**, which is what the user reported as unreadable. The SSC application stepper's
+   active step had the same shape (3.44:1). A solid brand fill takes white text; that rule was
+   already followed for the nine brand-filled boxes the light re-skin kept.
+2. **Accent colours a little too light for their own tints.** `--amber` on the corrigendum bar
+   was 2.83:1 across 34 places, `--cyan` 3.28, `--primary` on `--primary-soft` 3.94, and so on.
+   Each token was darkened by **the smallest amount that clears 4.5:1 on every background it is
+   actually painted on**, computed in the browser, not guessed: `--primary` #2f6bff→#2b62eb,
+   `--emerald` #15803d→#147a3a, `--amber` #d97706→#a55a05, `--cyan` #0891b2→#067590,
+   `--text-muted` #6b7689→#656f81. Hue is untouched, so the theme reads the same; where a colour
+   is *also* a fill under white text, darkening improves that direction too (white on `--primary`
+   went 4.50→5.17). The literals that duplicate the tokens had to move with them — ~380
+   occurrences of `#dc2626`, `#15803d`, `#2563eb`, `#b45309`, `#a16207`, `#0284c7`, `#64748b`,
+   `#ef4444` — or the same colour would render two different ways.
+
+Result: **669 failures across 51 colour pairs → 0.** Re-run the sweep after any colour change.
+
+**The audit itself must composite backgrounds correctly, or it invents defects.** The first
+version walked ancestors accumulating `background-color` but flattened the first translucent
+layer to opaque and stopped, which reported colours that are never painted — "red on red at
+1.0:1", "red on green at 1.52:1" — for badges that were merely `rgba(…, 0.2)` over a white card.
+Acting on those numbers would have meant "fixing" things that were fine and reporting false
+severity. The correct method: **collect the background stack inner→outer until an opaque layer,
+then composite outermost-first over the page ground**, and only then compare. Thresholds are
+4.5:1 for body text and 3:1 for large text (≥24px, or ≥18.66px bold).
 
 **The page must not scroll sideways.** `repeat(N, 1fr)` has a min-content floor, so a long
 authority name in the Popular Exams row widened its track and pushed the whole document into a
