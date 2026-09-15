@@ -385,7 +385,16 @@ selected exam/post, then the candidate's own data, then the register.
   the dates' `isTentative`. The test creator has `PRACTICE_CONCEPTS` ("money problems",
   "odd one out", "the whole thing" → a full mock, "the law of the land" → polity) and the
   navigator `NAVIGATOR_CONCEPTS` ("the government's own paper", "bills explained simply").
-- **Every chat is scoped to the exam in hand, visibly.** `AIAssistant` shows a "current exam
+- **Exam-agnostic answers must not carry one exam's wording.** Eight chat answers ran for whichever
+exam was selected but named SSC: the vacancy answer credited "SSC" and listed *SSC CGL's* posts
+(Assistant Section Officer to Junior Statistical Officer) under APPSC, the fee and application
+answers named "SSC's own portal", the resources answer said "verified entries for SSC CGL", the
+admit-card answer named SSC's regional websites, three citations labelled any exam's provenance
+"SSC CGL 2026 Official Notice", and the practice answer described SSC's shift papers and Tier-1
+marking. They now read `exam.authorityName`, `exam.posts` and `exam.title`. **When you write an
+answer inside a `factId` branch, every noun must come from `exam`** — the branch runs for all five.
+
+**Every chat is scoped to the exam in hand, visibly.** `AIAssistant` shows a "current exam
   context" strip naming the exam and saying that naming another exam switches it;
   `ResourceAIAssistant` names the library it is searching. `namedResourceAnswer`, `dateOfType`
   and the live official-domain search all take the exam from context instead of reading
@@ -710,9 +719,14 @@ no Prelims item was published.
 To add an exam: give it a stable id, write its `PracticeEngineEntry` config, write its engine,
 register it by id, add only its own verified data. Adding one must not touch another's entry.
 
-**An attempt must name its exam.** `POST /api/sqlite/mock-attempts` used to default a missing
-`exam_id` to SSC CGL, so any caller that forgot the field silently filed under another exam; it
-now answers 400. **Practice history is scoped by exam, in the query.** `getMockAttempts(examId)` filters the
+**An attempt must name its exam — on every route.** `POST /api/sqlite/mock-attempts` used to
+default a missing `exam_id` to SSC CGL, so any caller that forgot the field silently filed under
+another exam; it now answers 400. `POST /api/sqlite/sync-all` had the **same defect and survived
+the first fix**: it defaulted to the *legacy* `'ssc-cgl-2026'`, which both mis-filed the attempt
+and re-introduced an id matching no registered exam. It now skips such attempts and returns them
+in `skippedAttemptsWithoutExamId`. When you add a write path for attempts, require the exam id
+there too — the release audit found the second one only by replaying the first one's test.
+`target_exam_id` defaults likewise use the canonical id, never the legacy one. **Practice history is scoped by exam, in the query.** `getMockAttempts(examId)` filters the
 store and `GET /api/sqlite/mock-attempts?exam_id=` filters in SQL — rows for another exam never
 leave the database, rather than being fetched and filtered in the UI. A record whose `exam_id`
 does not match is dropped and logged, never re-labelled. This was a real leak: Past Tests History

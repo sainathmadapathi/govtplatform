@@ -45,7 +45,7 @@ def init_database():
             id TEXT PRIMARY KEY,
             username TEXT NOT NULL DEFAULT 'Candidate',
             target_post_id TEXT DEFAULT 'post-aso-css',
-            target_exam_id TEXT DEFAULT 'ssc-cgl-2026',
+            target_exam_id TEXT DEFAULT 'exam-ssc-cgl-2026',
             category TEXT DEFAULT 'UR (Unreserved)',
             qualification TEXT DEFAULT 'Graduation Degree',
             dob TEXT,
@@ -203,7 +203,7 @@ def init_database():
         cursor.execute('''
             INSERT INTO users (id, username, target_post_id, target_exam_id, category, qualification)
             VALUES (?, ?, ?, ?, ?, ?)
-        ''', ('default-candidate', 'Candidate Aspirant', 'post-aso-css', 'ssc-cgl-2026', 'UR (Unreserved)', 'Bachelor Degree'))
+        ''', ('default-candidate', 'Candidate Aspirant', 'post-aso-css', 'exam-ssc-cgl-2026', 'UR (Unreserved)', 'Bachelor Degree'))
 
     # Seed default tracking for SSC CGL 2026 if no exams tracked yet
     cursor.execute('SELECT COUNT(*) FROM tracked_exams WHERE user_id = ?', ('default-candidate',))
@@ -412,7 +412,7 @@ def handle_profile():
         data = request.get_json(silent=True) or {}
         username = data.get('username', 'Candidate')
         target_post_id = data.get('target_post_id', 'post-aso-css')
-        target_exam_id = data.get('target_exam_id', 'ssc-cgl-2026')
+        target_exam_id = data.get('target_exam_id') or 'exam-ssc-cgl-2026'
         category = data.get('category', 'UR (Unreserved)')
         qualification = data.get('qualification', 'Bachelor Degree')
         dob = data.get('dob', '')
@@ -545,6 +545,7 @@ def sync_all():
     profile = payload.get('profile', {})
     completed_modules = payload.get('completed_modules', {})
     mock_attempts = payload.get('mock_attempts', [])
+    skipped_attempts = []
 
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -565,7 +566,7 @@ def sync_all():
                 user_id,
                 profile.get('username', 'Candidate'),
                 profile.get('target_post_id', 'post-aso-css'),
-                profile.get('target_exam_id', 'ssc-cgl-2026'),
+                profile.get('target_exam_id') or 'exam-ssc-cgl-2026',
                 profile.get('category', 'UR (Unreserved)'),
                 profile.get('qualification', 'Bachelor Degree')
             ))
@@ -588,6 +589,14 @@ def sync_all():
                     'paperData': m.get('paperData')
                 }
                 details_json = json.dumps(details) if details else None
+                # An attempt must name its exam. This defaulted to 'ssc-cgl-2026', so a payload
+                # that omitted the field was filed under SSC - silently, and under a legacy id
+                # that matches no registered exam. Skipped and reported instead of guessed.
+                attempt_exam_id = (m.get('exam_id') or '').strip()
+                attempt_exam_id = LEGACY_EXAM_ID_ALIASES.get(attempt_exam_id, attempt_exam_id)
+                if not attempt_exam_id:
+                    skipped_attempts.append(m.get('id'))
+                    continue
                 cursor.execute('''
                     INSERT INTO mock_attempts (id, user_id, exam_id, topic_id, subject, score, total_marks, correct_count, incorrect_count, unattempted_count, time_taken_seconds, details_json)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -600,7 +609,7 @@ def sync_all():
                 ''', (
                     m['id'],
                     user_id,
-                    m.get('exam_id', 'ssc-cgl-2026'),
+                    attempt_exam_id,
                     m.get('topic_id', ''),
                     m.get('subject', 'General'),
                     float(m.get('score', 0)),
@@ -614,7 +623,14 @@ def sync_all():
 
         conn.commit()
         conn.close()
-        return jsonify({"status": "synchronized", "db_type": "SQLite 3", "user_id": user_id})
+        if skipped_attempts:
+            print(f"[SQLite] sync-all: skipped {len(skipped_attempts)} attempt(s) carrying no exam_id: {skipped_attempts}")
+        return jsonify({
+            "status": "synchronized",
+            "db_type": "SQLite 3",
+            "user_id": user_id,
+            "skippedAttemptsWithoutExamId": skipped_attempts
+        })
     except Exception as e:
         conn.rollback()
         conn.close()

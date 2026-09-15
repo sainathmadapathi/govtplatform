@@ -417,8 +417,10 @@
           white-space: nowrap;
           align-self: center;
         }
-        /* "Ask GovOS AI" has its own place in the top bar; the card would be a third copy. */
-        .side-nav > div:last-child { display: none; }
+        /* "Ask GovOS AI" has its own place in the top bar; in the chip row the card would be a
+           third copy and it stretched the row. The card carries an inline `display: flex`, so
+           the override has to win over it. */
+        .side-nav > div:last-child { display: none !important; }
         .exam-main-content {
           overflow-y: visible;
           padding-right: 0;
@@ -516,8 +518,10 @@
       .taxonomy-explain { background: #f1ebfe; color: #6d28d9; }
       .taxonomy-recom { background: var(--amber-soft); color: #b45309; }
 
-      .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
-      .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+      /* min(320px, 100%) so a track can still shrink on a narrow phone: a bare minmax(320px, 1fr)
+         cannot go below 320px and pushes its container off the screen under ~360px of content. */
+      .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 20px; }
+      .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 20px; }
 
       input, select, textarea { font-family: var(--font-sans); }
       input[type="text"], input[type="number"], input[type="email"], input[type="date"], select, textarea { color: var(--text-primary); }

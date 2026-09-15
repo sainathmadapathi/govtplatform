@@ -3828,6 +3828,11 @@ function threadExam(ctx: ChatContext): Exam {
 }
 
 export function answerCandidateQuery(query: string, context?: ChatContext): AssistantReply {
+  // Callers in the app always pass the current exam's context. If one ever does not, say so
+  // loudly rather than answering about SSC CGL under another exam's name.
+  if (!context) {
+    console.warn('[GovOS] answerCandidateQuery called with no exam context; falling back to the register default. The caller should pass buildChatContext(exam, channel).');
+  }
   const ctx = context || defaultChatContext();
   const raw = query.toLowerCase().trim();
 
@@ -4200,16 +4205,20 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
     return {
       verified: true,
       text: `Examination pattern on record:\n\n${lines}\n\nThe practice engine uses exactly this marking, so your mock scores are comparable to the real thing.`,
-      citation: citeFrom(exam.stages[0].provenance, 'SSC CGL 2026 Official Notice'),
+      citation: exam.stages[0] ? citeFrom(exam.stages[0].provenance, `${exam.title} official notice`) : undefined,
       action: { label: 'Open the pattern section', tab: 'EXAM_DETAIL', section: 5 }
     };
   }
 
+  // The authority that actually runs the selected exam. These branches used to say "SSC"
+  // whatever exam a candidate was looking at.
+  const authority = exam.authorityName.split(' (')[0];
+
   if (factId === 'vacancy') {
     return {
       verified: true,
-      text: `${exam.vacanciesTotal ? `Vacancies on record: ${exam.vacanciesTotal}.` : 'The vacancy figure is announced separately by SSC and is not final in the register yet.'}\n\nThe register carries ${exam.posts.length} posts across departments, from Assistant Section Officer to Junior Statistical Officer, each with its own pay level and eligibility conditions.\n\nSSC publishes the final post-wise, category-wise vacancy table after the application window closes, so treat any earlier figure as indicative.`,
-      citation: citeFrom(exam.posts[0].provenance, 'SSC CGL 2026 Official Notice'),
+      text: `${exam.vacanciesTotal ? `Vacancies on record: ${exam.vacanciesTotal}.` : `The vacancy figure is announced separately by ${authority} and is not final in the register yet.`}${exam.posts.length > 0 ? `\n\nThe register carries ${exam.posts.length} post${exam.posts.length === 1 ? '' : 's'}, from ${exam.posts[0].postName} to ${exam.posts[exam.posts.length - 1].postName}, each with its own pay level and eligibility conditions.` : ''}\n\n${authority} publishes the final post-wise, category-wise vacancy table after the application window closes, so treat any earlier figure as indicative.`,
+      citation: exam.posts[0] ? citeFrom(exam.posts[0].provenance, `${exam.title} official notice`) : undefined,
       action: { label: 'See all posts', tab: 'EXAM_DETAIL', section: 1 }
     };
   }
@@ -4223,7 +4232,7 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
     return {
       verified: true,
       text: `Pay by post, straight from the register:\n\n${top}\n\nAll ${exam.posts.length} posts with their pay levels, departments and nature of work are in section 01 of the Exam Guide. The figures are the pay scale; allowances vary by posting city.`,
-      citation: citeFrom(exam.posts[0].provenance, 'SSC CGL 2026 Official Notice'),
+      citation: exam.posts[0] ? citeFrom(exam.posts[0].provenance, `${exam.title} official notice`) : undefined,
       action: { label: 'See all posts and pay', tab: 'EXAM_DETAIL', section: 1 }
     };
   }
@@ -4252,7 +4261,7 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
     }
     return {
       verified: false,
-      text: 'The application fee is paid on SSC\'s own portal while submitting the form; women, SC, ST, PwBD and ex-servicemen candidates are exempted under the notice.\n\nGovOS does not hold the current fee figure as a verified field, so check the fee clause of the notice itself before paying — section 04 links to it, and I can search official domains live if you want the current figure.',
+      text: `The application fee is paid on ${authority}'s own portal while submitting the form; women, SC, ST, PwBD and ex-servicemen candidates are exempted under the notice.\n\nGovOS does not hold the current fee figure as a verified field, so check the fee clause of the notice itself before paying — section 04 links to it, and I can search official domains live if you want the current figure.`,
       action: { label: 'Open the application guide', tab: 'EXAM_DETAIL', section: 4 }
     };
   }
@@ -4263,7 +4272,7 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
     const portals = exam.resources.filter(r => r.resourceFormat === 'OFFICIAL_PORTAL').length;
     return {
       verified: true,
-      text: `The Resources tab holds ${exam.resources.length} verified entries for SSC CGL: ${pdfs} direct PDFs (the notice, the reopening notice and the Constitution official text), ${portals} official portals (previous-year papers, answer keys, the exam calendar, NCERT, SWAYAM, NIOS, Census and MoSPI data) and ${videos} video lessons.\n\nEvery one links to the publisher's own server — GovOS stores no study material, so nothing goes stale here. Each card shows when the link was last checked, and "Verify all links now" re-checks them live.`,
+      text: `The Resources tab holds ${exam.resources.length} verified entries for ${exam.title}: ${pdfs} direct PDFs (the notice, the reopening notice and the Constitution official text), ${portals} official portals (previous-year papers, answer keys, the exam calendar, NCERT, SWAYAM, NIOS, Census and MoSPI data) and ${videos} video lessons.\n\nEvery one links to the publisher's own server — GovOS stores no study material, so nothing goes stale here. Each card shows when the link was last checked, and "Verify all links now" re-checks them live.`,
       action: { label: 'Open Resources', tab: 'EXAM_DETAIL', section: 8 }
     };
   }
@@ -4272,8 +4281,8 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
     const ac = dateOfType('ADMIT_CARD', exam);
     return {
       verified: true,
-      text: `${ac ? `Admit card: ${ac.dateTimeStr}${ac.isTentative ? ' (tentative)' : ''}.\n\n` : 'The admit card date has not been announced in the register yet.\n\n'}Admit cards are issued by the SSC regional website for your centre, not the national portal, and you must carry a printed copy with an original photo ID. Section 14 covers the download steps and what to do if it fails.`,
-      citation: ac ? citeFrom(ac.provenance, 'SSC CGL 2026 Official Notice') : undefined,
+      text: `${ac ? `Admit card: ${ac.dateTimeStr}${ac.isTentative ? ' (tentative)' : ''}.\n\n` : 'The admit card date has not been announced in the register yet.\n\n'}Admit cards are issued by ${authority} for your centre, and you must carry a printed copy with an original photo ID. Section 14 covers the download steps and what to do if it fails.`,
+      citation: ac ? citeFrom(ac.provenance, `${exam.title} official notice`) : undefined,
       action: { label: 'Open Admit Card', tab: 'EXAM_DETAIL', section: 14 }
     };
   }
@@ -4324,7 +4333,7 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
   if (factId === 'apply') {
     return {
       verified: true,
-      text: `Applications are submitted on SSC's own portal, ${exam.applicationGuide.officialPortal}. One Time Registration comes first (${exam.applicationGuide.otrSteps.length} steps in the guide), then the exam form.\n\nSection 04 gives the photo and signature specifications, the certificates that must be valid on the crucial date, and ${exam.applicationGuide.rejectionPitfalls.length} rejection pitfalls with how to avoid each.\n\nGovOS never submits anything on your behalf.`,
+      text: `Applications are submitted on ${authority}'s own portal, ${exam.applicationGuide.officialPortal}. One Time Registration comes first (${exam.applicationGuide.otrSteps.length} steps in the guide), then the exam form.\n\nSection 04 gives the photo and signature specifications, the certificates that must be valid on the crucial date, and ${exam.applicationGuide.rejectionPitfalls.length} rejection pitfalls with how to avoid each.\n\nGovOS never submits anything on your behalf.`,
       action: { label: 'Open the application guide', tab: 'EXAM_DETAIL', section: 4 }
     };
   }
@@ -4332,7 +4341,9 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
   if (factId === 'practice') {
     return {
       verified: true,
-      text: '**Practice & PYQs** has the full shift papers on a real CBT clock, subject sectionals and topic drills; **Mock Tests** has the chat that builds a paper to order — ask it for "12 questions on percentage" or "8 hard questions on time and work".\n\nMarking is the real SSC Tier-1 scheme (+2 correct, −0.5 wrong). After submitting you get weak-topic diagnosis and a five-layer solution for every question, each naming the document it was written from.',
+      text: exam.id === PRACTICE_BANK_EXAM_ID
+        ? `**Practice & PYQs** has the full shift papers on a real CBT clock, subject sectionals and topic drills; **Mock Tests** has the chat that builds a paper to order.\n\nMarking is this exam's own scheme, and every attempt is saved so you can review it.`
+        : `**Practice & PYQs** and **Mock Tests** open ${exam.title}'s own practice engine. What it offers depends on what ${authority} has published — where GovOS has no verified questions for this exam it says so rather than showing another exam's paper.`,
       action: { label: 'Open Practice & PYQs', tab: 'EXAM_DETAIL', section: 9 }
     };
   }
@@ -4349,7 +4360,7 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
   if (asksLocation(q)) {
     return {
       verified: true,
-      text: 'I could not tell which part of the platform you mean. Here is the whole map:\n\nInside the {exam} page:\n• **Overview** — the profile and every post\n• **Dates & Timeline** — milestones counted against the clock\n• **Eligibility & Posts** — the written rules\n• **Application & Documents** — the guide and the form simulator\n• **Exam Pattern** · **Syllabus** · **Study Roadmap**\n• **Resources** — verified PDFs, portals and videos\n• **Practice & PYQs** — shift papers, sectionals, drills, past attempts\n• **Mock Tests** — a paper built to your specification\n• **Admit Card** · **Exam Day** · **Results & Next Steps**\n• Also in the exam: FAQs, Corrigenda, Official Links, Cutoff History\n\nAcross all exams: **Find Exam** · **Am I Eligible?** · **Compare Exams** · **All-Exam Calendar** · **Trust Panel**\n\nName the thing you are looking for and I will take you straight there.',
+      text: 'I could not tell which part of the platform you mean. Here is the whole map:\n\nInside the {exam} page:\n• **Overview** — the profile and every post\n• **Dates & Timeline** — milestones counted against the clock\n• **Eligibility & Posts** — the written rules\n• **Application & Documents** — the guide and the form simulator\n• **Exam Pattern** · **Syllabus** · **Study Roadmap**\n• **Resources** — verified PDFs, portals and videos\n• **Practice & PYQs** — the practice engine for this exam\n• **Mock Tests** — a paper built to your specification\n• **Admit Card** · **Exam Day** · **Results & Next Steps**\n• Also in the exam: FAQs, Corrigenda, Official Links, Cutoff History\n\nAcross all exams: **Find Exam** · **Am I Eligible?** · **Compare Exams** · **All-Exam Calendar** · **Trust Panel**\n\nName the thing you are looking for and I will take you straight there.',
       action: { label: 'Open the Exam Guide', tab: 'EXAM_DETAIL', section: 1 }
     };
   }
@@ -15673,13 +15684,20 @@ const FeatureUnavailable: React.FC<{ title: string; reason: string; nextStep?: s
 /** This exam's own attempt history. Scoped by its own id, in the query, every time. */
 const ExamAttemptHistory: React.FC<{ exam: Exam }> = ({ exam }) => {
   const [attempts, setAttempts] = useState<MockAttemptRecord[]>(() => storageService.getMockAttempts(exam.id));
+  const [reloadKey, setReloadKey] = useState<number>(0);
   useEffect(() => {
     let cancelled = false;
     storageService.loadMockAttemptsFromSQLite(exam.id).then(found => {
       if (!cancelled) setAttempts(found.filter(a => canonicalExamId(a.exam_id) === canonicalExamId(exam.id)));
     });
     return () => { cancelled = true; };
-  }, [exam.id]);
+  }, [exam.id, reloadKey]);
+  // An attempt submitted beside this panel used to appear only after the engine remounted.
+  useEffect(() => {
+    const onSaved = () => setReloadKey(k => k + 1);
+    window.addEventListener('govos:attempt-saved', onSaved);
+    return () => window.removeEventListener('govos:attempt-saved', onSaved);
+  }, []);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
       <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
@@ -15774,6 +15792,8 @@ const UpscEssayPractice: React.FC<{ exam: Exam; onOpenProvenanceModal: (p: DataP
       details: { words, answer, questionId: active.id, notScored: true }
     });
     setSaved(`Saved — ${words} words in ${hhmmss(seconds)}. Not scored: an essay has no official key.`);
+    // Tell this exam's history panel to re-read, so the attempt shows without a remount.
+    window.dispatchEvent(new CustomEvent('govos:attempt-saved'));
     setActive(null);
     setAnswer('');
   };
