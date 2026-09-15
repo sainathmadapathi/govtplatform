@@ -474,6 +474,9 @@
       }
       .exam-banner {
         border-radius: 16px; padding: 26px 30px; min-height: 130px; display: flex; align-items: center; justify-content: space-between; gap: 20px;
+        /* Without this the description and the nowrap Ask button cannot both fit a phone's
+           content box, and the button is pushed past the viewport edge. */
+        flex-wrap: wrap;
         background:
           radial-gradient(circle at 85% 30%, #ffe7c2 0%, transparent 30%),
           linear-gradient(120deg, #eaf1ff 0%, #f6f9ff 50%, #e9f3e6 100%);

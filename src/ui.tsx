@@ -4333,7 +4333,7 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
   if (factId === 'apply') {
     return {
       verified: true,
-      text: `Applications are submitted on ${authority}'s own portal, ${exam.applicationGuide.officialPortal}. One Time Registration comes first (${exam.applicationGuide.otrSteps.length} steps in the guide), then the exam form.\n\nSection 04 gives the photo and signature specifications, the certificates that must be valid on the crucial date, and ${exam.applicationGuide.rejectionPitfalls.length} rejection pitfalls with how to avoid each.\n\nGovOS never submits anything on your behalf.`,
+      text: `Applications are submitted on ${authority}'s own portal, ${exam.applicationGuide.officialPortal}. ${exam.applicationGuide.otrSteps.length > 0 ? `One Time Registration comes first (${exam.applicationGuide.otrSteps.length} step${exam.applicationGuide.otrSteps.length === 1 ? '' : 's'} in the guide), then the exam form.` : 'One Time Registration comes first, then the exam form; the step-by-step breakdown is not on record for this exam yet.'}\n\nSection 04 gives the photo and signature specifications, the certificates that must be valid on the crucial date, and ${exam.applicationGuide.rejectionPitfalls.length} rejection pitfalls with how to avoid each.\n\nGovOS never submits anything on your behalf.`,
       action: { label: 'Open the application guide', tab: 'EXAM_DETAIL', section: 4 }
     };
   }
@@ -4724,6 +4724,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal,
             onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
             style={{
               flex: 1,
+              minWidth: 0,
               padding: '14px 18px',
               borderRadius: 'var(--radius-md)',
               background: 'var(--bg-input)',
@@ -4734,7 +4735,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal,
             }}
           />
 
-          <button className="btn btn-primary" onClick={handleSendMessage} style={{ padding: '14px 24px' }}>
+          <button className="btn btn-primary" onClick={handleSendMessage} style={{ padding: '14px 24px', flexShrink: 0 }}>
             Send <Send size={18} />
           </button>
         </div>
@@ -7686,6 +7687,7 @@ export const ResourceAIAssistant: React.FC<ResourceAIAssistantProps> = ({
           placeholder="e.g. geometry video, constitution pdf, previous year papers, reasoning channel"
           style={{
             flex: 1,
+            minWidth: 0,
             padding: '10px 16px',
             borderRadius: 'var(--radius-md)',
             background: 'var(--bg-input)',
@@ -7698,7 +7700,7 @@ export const ResourceAIAssistant: React.FC<ResourceAIAssistantProps> = ({
         <button 
           onClick={() => handleSendMessage()} 
           className="btn btn-primary"
-          style={{ padding: '0 20px', display: 'flex', alignItems: 'center', gap: '6px' }}
+          style={{ padding: '0 20px', display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}
         >
           <Send size={15} /> Jump
         </button>
@@ -7770,8 +7772,19 @@ export const PreparationPlanner: React.FC<PreparationPlannerProps> = ({ exam }) 
 
           <div style={{ padding: '14px 20px', borderRadius: 'var(--radius-md)', background: 'var(--surface-3)', border: '1px solid var(--border-color)', textAlign: 'right' }}>
             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>ROADMAP COMPLETION</span>
-            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--emerald)' }}>{progressPercentage}%</div>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{completedCount} of {totalGoals} milestones completed</span>
+            {/* With no authored milestones there is nothing to complete, and "0% / 0 of 0"
+                reads as a broken tracker rather than as missing data. */}
+            {totalGoals > 0 ? (
+              <>
+                <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--emerald)' }}>{progressPercentage}%</div>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{completedCount} of {totalGoals} milestones completed</span>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-muted)' }}>Not tracked yet</div>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>No milestones authored for this exam</span>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -9648,6 +9661,9 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
               onKeyDown={e => e.key === 'Enter' && handleSendChatMessage()}
               style={{
                 flex: 1,
+                // An input's min-width is auto, i.e. its size=20 width; without this it refuses
+                // to shrink and pushes Send out of the card, which clips it on a phone.
+                minWidth: 0,
                 padding: '12px 16px',
                 borderRadius: 'var(--radius-md)',
                 background: 'var(--surface-2)',
@@ -9659,7 +9675,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
             <button
               onClick={() => handleSendChatMessage()}
               className="btn btn-emerald"
-              style={{ padding: '12px 20px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800 }}
+              style={{ padding: '12px 20px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800, flexShrink: 0 }}
             >
               <Send size={16} /> Send
             </button>
@@ -17156,7 +17172,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
 
       {/* Banner strip */}
       <div className="exam-banner">
-        <div style={{ maxWidth: '640px', fontSize: '0.95rem', color: 'var(--text-primary)', lineHeight: 1.55 }}>
+        <div style={{ maxWidth: '640px', minWidth: 0, fontSize: '0.95rem', color: 'var(--text-primary)', lineHeight: 1.55 }}>
           {exam.overviewDescription.length > 260 ? exam.overviewDescription.slice(0, 257).replace(/\s+\S*$/, '') + '…' : exam.overviewDescription}
         </div>
         <button className="btn btn-primary" onClick={onAskAI} style={{ fontSize: '0.85rem', whiteSpace: 'nowrap' }}>

@@ -836,6 +836,22 @@ horizontal scroll; every fixed-count grid is `repeat(N, minmax(0, 1fr))` and `.h
 collapses to one column under 1100 px. `.homepage` carries `overflow-x: clip` so the decorative
 glow and the illustration may bleed past the content column without ever creating a scrollbar.
 
+**A flex item's `min-width` is `auto`, and that is what clips buttons on a phone.** Three chat
+bars (Ask GovOS AI, the test creator, the resource navigator) put a `flex: 1` text input beside a
+`nowrap` button. `flex: 1` sets the basis to 0 but not the *minimum*, and an `<input>`'s
+min-content width is its `size=20` width (~192 px), so at 375 px the row needed 304 px in a 220 px
+box and pushed Send out of a card whose `overflow-x` is `hidden` — the button was cut in half,
+not merely off-centre. The input now carries `minWidth: 0` and the button `flexShrink: 0`. The
+same trap caught `.exam-banner`, a nowrap flex row: APPSC Group-II's description plus the "Ask
+about this exam" button overflowed the viewport by 3 px on every one of its 17 sections. It now
+carries `flex-wrap: wrap` (the corrigendum bar right below it always did) and its description
+`minWidth: 0`; nothing moves at 820 px or 1366 px, where both still fit one row. **When you put a
+control next to a growing text field, give the field `minWidth: 0` and the control
+`flexShrink: 0`** — the release sweep is the check: walk every section at 1366 / 820 / 375 and
+flag any control whose `right` exceeds `clientWidth` *and* which sits in no `overflow-x: auto`
+scroller (the stepper, post picker and practice tab rows are deliberate scrollers and must be
+excluded, or they read as false positives).
+
 **Decoration must not animate forever.** An interactive particle canvas with a `MutationObserver`
 on the whole body, plus two 600 px blurred glows on infinite keyframes, repainted continuously in
 a React app that re-renders often — the page never idled. The glows are static now and the canvas
