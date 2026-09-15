@@ -652,22 +652,43 @@ points go through it** (section 09, section 17, and the `PRACTICE` safety-net ta
 can disagree:
 
 ```
-PRACTICE_ENGINES        keyed by the exam's stable id — never its title or its array position
-  SSC_CGL_EXAM.id   ->  PracticeEngine       PYQs · sectionals · drills · creator · review
-  UPSC_CSE_EXAM.id  ->  UpscPracticeEngine   the Commission's own papers
-  (no entry)        ->  UnavailablePracticeEngine
+PRACTICE_ENGINES            keyed by the exam's stable id — never its title or array position
+  exam-ssc-cgl-2026      -> PracticeEngine             PYQs · sectionals · drills · creator
+  exam-upsc-cse-2026     -> UPSCPracticeEngine         Prelims/Mains papers, UPSC marking
+  exam-ibps-po-2026      -> IBPSPracticeEngine         sectional timing, −0.25
+  exam-appsc-group1-2026 -> APPSCGroup1PracticeEngine  descriptive Mains, −0.33
+  exam-appsc-group2-2026 -> APPSCGroup2PracticeEngine  two objective Mains papers, −0.33
+  (no entry)             -> UnavailablePracticeEngine
 ```
 
-`UnavailablePracticeEngine` is the point of the design, not a stub: IBPS and both APPSC exams
-say *"practice is not available yet"* rather than borrow SSC's engine, because a missing engine
-is a visible gap while a borrowed one silently teaches the wrong exam's pattern. **Never add a
-fallback to another exam's engine.** `key={exam.id}` on the router remounts on every switch, so
-no question, score, timer, topic or label survives it.
+**Group-I and Group-II are different exams** and have deliberately separate engines, ids,
+configs and histories, even though APPSC conducts both: Group-I's Mains is conventional and
+descriptive, Group-II's is two objective papers. Never point one at the other.
+
+Each engine **serves exactly one id and checks it** — `assertExamMatches()` refuses to render
+and logs when handed the wrong exam, rather than relabelling. Only four things are shared, all
+pure renderers of whatever `Exam` they are given: `PracticeShell`, `ExamPatternPanel`,
+`OfficialPapersPanel`, `ExamAttemptHistory`. None of them may import `TOPIC_CATALOG`,
+`SSC_CGL_EXAM` or any other exam-specific data, **and `TOPIC_CATALOG` must stay inside SSC's
+boundary** — it is SSC's topic list and reaching it from another engine would judge that exam by
+SSC's syllabus.
+
+`UnavailablePracticeEngine` is the point of the design, not a stub. **Never add a fallback to
+another exam's engine**, and never add a default. `key={exam.id}` on the router remounts on every
+switch, so no question, score, timer, topic or label survives it — verified mid-test: an SSC
+paper running at 59:23 with a 100-button palette leaves nothing behind on UPSC.
+
+**Questions are the limit, not the architecture.** Only SSC CGL has a question bank. UPSC, IBPS
+and both APPSC engines own their real pattern, sections, marking, timing, topics and papers from
+their own records, and say plainly that attemptable tests do not exist yet. Do not fabricate
+items to fill them.
 
 To add an exam: give it a stable id, write its `PracticeEngineEntry` config, write its engine,
 register it by id, add only its own verified data. Adding one must not touch another's entry.
 
-**Practice history is scoped by exam, in the query.** `getMockAttempts(examId)` filters the
+**An attempt must name its exam.** `POST /api/sqlite/mock-attempts` used to default a missing
+`exam_id` to SSC CGL, so any caller that forgot the field silently filed under another exam; it
+now answers 400. **Practice history is scoped by exam, in the query.** `getMockAttempts(examId)` filters the
 store and `GET /api/sqlite/mock-attempts?exam_id=` filters in SQL — rows for another exam never
 leave the database, rather than being fetched and filtered in the UI. A record whose `exam_id`
 does not match is dropped and logged, never re-labelled. This was a real leak: Past Tests History

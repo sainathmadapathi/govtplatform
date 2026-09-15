@@ -150,6 +150,9 @@ import {
   SSC_CGL_EXAM,
   PRACTICE_BANK_EXAM_ID,
   UPSC_CSE_EXAM,
+  IBPS_PO_EXAM,
+  APPSC_GROUP1_EXAM,
+  APPSC_GROUP2_EXAM,
   examHasStudyPaths,
   SUBJECT_MOCK_TESTS,
   TOPIC_CATALOG,
@@ -160,6 +163,7 @@ import {
 import {
   buildChatContext,
   conversationService,
+  canonicalExamId,
   researchService,
   resourceLiveService,
   syllabusLiveService,
@@ -15545,54 +15549,89 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
  * for the same reason.
  */
 // =====================================================================================
-// UpscPracticeEngine — the CSE's own practice engine, not SSC's
+// Shared practice infrastructure — presentation only, never configuration
 // =====================================================================================
 /**
- * SSC CGL's engine is built around a 100-question objective Tier-1 paper with +2/-0.5 scoring,
- * shift papers, sectionals and topic drills. The CSE is a different exam: a two-paper objective
- * Prelims where CSAT only has to be cleared, then nine descriptive papers. Running one engine
- * over both would judge UPSC by SSC's pattern, so the exam picks its engine.
- *
- * **Built so far: Previous Year Papers.** Every paper here is UPSC's own booklet, opened at
- * upsc.gov.in — GovOS holds no CSE question items, and nothing on this screen is generated.
- * The remaining stages are listed as what they are: not built yet. An attemptable CSE bank has
- * to be transcribed from these booklets and checked before it can exist, and until then a
- * generated question dressed as a past paper would be a lie about provenance.
+ * These four are the ONLY things every exam's engine is allowed to share, and each is a pure
+ * renderer of whatever exam it is handed: it reads nothing but the `Exam` passed in. No pattern,
+ * marking rule, topic list, question, timing or label is defined here — those live in each
+ * exam's own engine and in its own record. Nothing in this block may import `TOPIC_CATALOG`,
+ * `SSC_CGL_EXAM`, or any other exam-specific data.
  */
-const UPSC_ENGINE_ROADMAP: { step: number; label: string; detail: string }[] = [
-  { step: 2, label: 'Subject and topic practice', detail: 'Drawn from the CSE syllabus on record, written by GovOS and labelled as such.' },
-  { step: 3, label: 'CSAT practice', detail: 'Kept separate, because CSAT only has to be cleared at 33% — it is not a merit paper.' },
-  { step: 4, label: 'Full-length tests', detail: 'GS Paper-I at 100 questions in 2 hours, on the real clock and the notice\'s marking.' },
-  { step: 5, label: 'Attempt history and review', detail: 'The same record and review chain the SSC engine keeps.' }
-];
 
-interface UpscPracticeEngineProps {
+/** Refuses to render an engine that has been handed the wrong exam. */
+const assertExamMatches = (engine: string, expectedId: string, exam: Exam): boolean => {
+  if (exam.id === expectedId) return true;
+  // Rejected, never relabelled: showing this exam's content under another exam's name is the
+  // exact failure the per-exam architecture exists to prevent.
+  console.error(
+    `[GovOS] ${engine} was handed "${exam.id}" but only serves "${expectedId}". Refusing to render.`
+  );
+  return false;
+};
+
+const PracticeShell: React.FC<{
   exam: Exam;
-  onOpenProvenanceModal: (provenance: DataProvenance) => void;
-  /** PRACTICE opens on the papers; MOCKS opens on what full-length testing will be. */
-  scope?: PracticeScope;
-}
-
-/** Every official question paper an exam's register carries, whichever exam it is. */
-export const officialQuestionPapers = (exam: Exam): ResourceItem[] =>
-  exam.resources.filter(r => r.subject === 'Previous Year Papers' && r.type === 'OFFICIAL_PDF');
-
-export const UpscPracticeEngine: React.FC<UpscPracticeEngineProps> = ({ exam, onOpenProvenanceModal, scope = 'ALL' }) => {
-  const papers = officialQuestionPapers(exam);
-  const prelims = papers.filter(p => /prelim/i.test(p.title));
-  const mains = papers.filter(p => /\bmain/i.test(p.title));
-  const other = papers.filter(p => !prelims.includes(p) && !mains.includes(p));
-  const prelimStage = exam.stages.find(s => s.tier === 'TIER_1');
-  const papersPage = exam.resources.find(r => r.subject === 'Previous Year Papers' && r.type === 'OFFICIAL_PORTAL');
-
-  const group = (title: string, note: string, list: ResourceItem[]) => list.length === 0 ? null : (
-    <div key={title} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-      <div>
-        <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>{title} <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>({list.length})</span></h4>
-        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '3px 0 0 0' }}>{note}</p>
+  scope: PracticeScope;
+  patternSummary: string;
+  intro: string;
+  children: React.ReactNode;
+}> = ({ exam, scope, patternSummary, intro, children }) => (
+  <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <div>
+      <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+        {scope === 'MOCKS' ? '17 — Mock Tests' : '09 — Practice & PYQs'}
+      </h3>
+      <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', margin: '4px 0 0 0', lineHeight: 1.55 }}>
+        {intro}
+      </p>
+      <div style={{ marginTop: '8px', display: 'inline-flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+        <span className="badge badge-verified" style={{ fontSize: '0.62rem' }}>{exam.code.replace(/_/g, ' ')}</span>
+        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>{patternSummary}</span>
       </div>
+    </div>
+    {children}
+  </div>
+);
+
+/** One exam's own pattern, read from its own stages. Nothing is assumed about any other exam. */
+const ExamPatternPanel: React.FC<{ exam: Exam }> = ({ exam }) => (
+  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+    <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+      What this exam is scored on
+    </h4>
+    {exam.stages.map(st => (
+      <div key={st.id} style={{ padding: '14px 16px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)' }}>
+        <div style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-primary)' }}>{st.stageName}</div>
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '3px' }}>
+          {st.totalMarks} marks{st.durationMinutes ? ` · ${st.durationMinutes} minutes` : ''}
+          {st.negativeMarking ? ` · negative marking: ${st.negativeMarking}` : ''}
+        </div>
+        {st.sections && st.sections.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
+            {st.sections.map((sec, i) => (
+              <span key={i} className="glass-pill" style={{ fontSize: '0.74rem' }}>
+                {sec.sectionName}{sec.questions ? ` · ${sec.questions} Q` : ''}{sec.marks ? ` · ${sec.marks} marks` : ''}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    ))}
+  </div>
+);
+
+/** One exam's own official papers, from its own resources. Never another exam's. */
+const OfficialPapersPanel: React.FC<{ exam: Exam; onOpenProvenanceModal: (p: DataProvenance) => void }> = ({ exam, onOpenProvenanceModal }) => {
+  const papers = exam.resources.filter(r => r.subject === 'Previous Year Papers' && r.type === 'OFFICIAL_PDF');
+  if (papers.length === 0) return null;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+        {exam.authorityName.split(' (')[0]}&apos;s own question papers <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>({papers.length})</span>
+      </h4>
       <div className="grid-2">
-        {list.map(p => (
+        {papers.map(p => (
           <div key={p.id} style={{ padding: '16px 18px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <span className="badge badge-verified" style={{ fontSize: '0.62rem' }}>OFFICIAL PAPER</span>
@@ -15600,9 +15639,9 @@ export const UpscPracticeEngine: React.FC<UpscPracticeEngineProps> = ({ exam, on
             </div>
             <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.4 }}>{p.title}</div>
             {p.recommendedFor && <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{p.recommendedFor}</div>}
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '2px' }}>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               <a href={p.directPdfUrl || p.url} target="_blank" rel="noreferrer" className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '7px 14px', display: 'inline-flex', alignItems: 'center', gap: '6px', textDecoration: 'none' }}>
-                <ExternalLink size={13} /> Open the paper on {new URL(p.url).hostname.replace(/^www\./, '')}
+                <ExternalLink size={13} /> Open the paper
               </a>
               {p.provenance && (
                 <button className="btn btn-outline" onClick={() => onOpenProvenanceModal(p.provenance!)} style={{ fontSize: '0.78rem', padding: '7px 12px' }}>
@@ -15615,78 +15654,277 @@ export const UpscPracticeEngine: React.FC<UpscPracticeEngineProps> = ({ exam, on
       </div>
     </div>
   );
+};
 
+/** A feature this exam does not have the data for yet. Stated, never faked. */
+const FeatureUnavailable: React.FC<{ title: string; reason: string; nextStep?: string }> = ({ title, reason, nextStep }) => (
+  <div style={{ padding: '16px 18px', borderRadius: 'var(--radius-md)', background: 'var(--amber-soft)', border: '1px solid rgba(180, 83, 9, 0.3)', display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+    <AlertTriangle size={17} color="#b45309" style={{ flexShrink: 0, marginTop: '2px' }} />
+    <div style={{ fontSize: '0.86rem', color: '#92400e', lineHeight: 1.55 }}>
+      <strong>{title}</strong>
+      <div style={{ marginTop: '4px' }}>{reason}</div>
+      {nextStep && <div style={{ marginTop: '4px', color: 'var(--text-secondary)' }}>{nextStep}</div>}
+    </div>
+  </div>
+);
+
+/** This exam's own attempt history. Scoped by its own id, in the query, every time. */
+const ExamAttemptHistory: React.FC<{ exam: Exam }> = ({ exam }) => {
+  const [attempts, setAttempts] = useState<MockAttemptRecord[]>(() => storageService.getMockAttempts(exam.id));
+  useEffect(() => {
+    let cancelled = false;
+    storageService.loadMockAttemptsFromSQLite(exam.id).then(found => {
+      if (!cancelled) setAttempts(found.filter(a => canonicalExamId(a.exam_id) === canonicalExamId(exam.id)));
+    });
+    return () => { cancelled = true; };
+  }, [exam.id]);
   return (
-    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      <div>
-        <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
-          {scope === 'MOCKS' ? '17 — Mock Tests' : '09 — Practice & Previous Year Papers'}
-        </h3>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', margin: '4px 0 0 0', lineHeight: 1.55 }}>
-          {exam.title} has its own practice engine. The CSE is a two-paper objective Prelims followed by nine
-          descriptive papers, so it is not run through the SSC Tier-1 engine and its pattern.
-        </p>
-      </div>
-
-      {/* The separation the whole engine rests on, stated before anything else. */}
-      <div style={{ padding: '16px 18px', borderRadius: 'var(--radius-md)', background: 'var(--emerald-soft)', border: '1px solid rgba(21, 128, 61, 0.35)', display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-        <ShieldCheck size={18} color="#15803d" style={{ flexShrink: 0, marginTop: '2px' }} />
-        <div style={{ fontSize: '0.86rem', color: '#065f46', lineHeight: 1.55 }}>
-          <strong>Everything below is UPSC's own paper.</strong> Each one opens at {exam.officialDomain.replace(/^https?:\/\/(www\.)?/, '')},
-          where the Commission published it — GovOS stores no CSE question items and has written none.
-          When practice GovOS authors does arrive, it will be labelled as authored and kept apart from these,
-          never presented as a past paper.
-        </div>
-      </div>
-
-      {papers.length === 0 ? (
-        <div style={{ padding: '16px 18px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
-          No official question papers are on record for {exam.title} yet.
-          {papersPage && <> UPSC publishes every stage and year on <a href={papersPage.url} target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', fontWeight: 700 }}>its previous-papers page</a>.</>}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+        Past tests <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>({attempts.length})</span>
+      </h4>
+      {attempts.length === 0 ? (
+        <div style={{ fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
+          No attempts recorded for {exam.title}. This list only ever holds this exam&apos;s attempts.
         </div>
       ) : (
-        <>
-          {group(
-            'Preliminary Examination',
-            prelimStage
-              ? `Objective. ${prelimStage.negativeMarking}`
-              : 'Objective papers, as published by the Commission.',
-            prelims
-          )}
-          {group('Main Examination', 'Descriptive papers. There is no negative marking and no option key — these are for answer writing.', mains)}
-          {group('Other official papers', 'Published by the Commission alongside the question papers.', other)}
-        </>
-      )}
-
-      {papersPage && (
-        <div style={{ fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
-          Earlier years: UPSC keeps every stage and year on{' '}
-          <a href={papersPage.url} target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', fontWeight: 700 }}>its official previous-papers page</a>.
-          GovOS lists the {papers.length} papers of the current cycle rather than mirroring the archive.
-        </div>
-      )}
-
-      {/* What is not built, said plainly, so nothing here has to pretend. */}
-      <div className="glass-card" style={{ padding: '18px 20px', background: 'var(--surface-2)' }}>
-        <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 4px' }}>
-          Being built next, in this order
-        </h4>
-        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '0 0 12px' }}>
-          None of it exists yet, and none of it is on this screen pretending to.
-        </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {UPSC_ENGINE_ROADMAP.map(r => (
-            <div key={r.step} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-              <span style={{ flexShrink: 0, width: '20px', height: '20px', borderRadius: '50%', background: 'var(--surface-3)', color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{r.step}</span>
-              <div>
-                <div style={{ fontSize: '0.86rem', fontWeight: 700, color: 'var(--text-primary)' }}>{r.label}</div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.45 }}>{r.detail}</div>
-              </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          {attempts.slice(0, 10).map(a => (
+            <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', padding: '8px 12px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-2)', fontSize: '0.82rem' }}>
+              <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{a.subject}</span>
+              <span style={{ color: 'var(--text-secondary)' }}>{a.score} / {a.total_marks}</span>
             </div>
           ))}
         </div>
-      </div>
+      )}
     </div>
+  );
+};
+
+// =====================================================================================
+// UPSCPracticeEngine — exam-upsc-cse-2026, and nothing else
+// =====================================================================================
+/**
+ * Serves ONE exam id. Its papers, marking, timing and topics come from the UPSC record alone;
+ * it imports no SSC question data, no SSC topic catalogue and no SSC configuration.
+ *
+ * The CSE is two objective Prelims papers (one of which is only qualifying) followed by nine
+ * descriptive papers. None of that is scored the way an SSC Tier-1 paper is, which is why this
+ * engine exists rather than a widened shared one.
+ */
+const UPSC_PRACTICE_CONFIG = {
+  examId: 'exam-upsc-cse-2026',
+  /** The papers, in the order a candidate meets them. Each names the section in UPSC's own record. */
+  papers: [
+    { group: 'Prelims' as const, key: 'gs1', label: 'General Studies Paper-I', sectionMatch: /General Studies Paper-I/i, paperMatch: /Preliminary.*Paper-I/i, objective: true },
+    { group: 'Prelims' as const, key: 'csat', label: 'General Studies Paper-II (CSAT)', sectionMatch: /CSAT/i, paperMatch: /CSAT/i, objective: true },
+    { group: 'Mains' as const, key: 'essay', label: 'Paper I — Essay', sectionMatch: /Essay/i, paperMatch: /Essay/i, objective: false },
+    { group: 'Mains' as const, key: 'gsI', label: 'Paper II — General Studies-I', sectionMatch: /General Studies-I\b/i, paperMatch: /GENERAL STUDIES PAPER - I\b|General Studies Paper-I \(official/i, objective: false },
+    { group: 'Mains' as const, key: 'gsII', label: 'Paper III — General Studies-II', sectionMatch: /General Studies-II\b/i, paperMatch: /General Studies Paper-II \(official/i, objective: false },
+    { group: 'Mains' as const, key: 'gsIII', label: 'Paper IV — General Studies-III', sectionMatch: /General Studies-III/i, paperMatch: /General Studies Paper-III/i, objective: false },
+    { group: 'Mains' as const, key: 'gsIV', label: 'Paper V — General Studies-IV (Ethics)', sectionMatch: /General Studies-IV/i, paperMatch: /Paper-IV, Ethics/i, objective: false }
+  ],
+  /** No attemptable item bank exists for the CSE. Saying so is the feature. */
+  questionSource: null as null | string
+};
+
+export const UPSCPracticeEngine: React.FC<{
+  exam: Exam;
+  scope?: PracticeScope;
+  onOpenProvenanceModal: (provenance: DataProvenance) => void;
+}> = ({ exam, scope = 'ALL', onOpenProvenanceModal }) => {
+  if (!assertExamMatches('UPSCPracticeEngine', UPSC_PRACTICE_CONFIG.examId, exam)) return null;
+  const [group, setGroup] = useState<'Prelims' | 'Mains'>('Prelims');
+
+  const sectionFor = (re: RegExp) => {
+    for (const st of exam.stages) {
+      const hit = (st.sections || []).find(s => re.test(s.sectionName));
+      if (hit) return { stage: st, section: hit };
+    }
+    return null;
+  };
+  const paperFor = (re: RegExp) =>
+    exam.resources.find(r => r.subject === 'Previous Year Papers' && r.type === 'OFFICIAL_PDF' && re.test(r.title));
+
+  const shown = UPSC_PRACTICE_CONFIG.papers.filter(p => p.group === group);
+
+  return (
+    <PracticeShell
+      exam={exam}
+      scope={scope}
+      patternSummary="Prelims: 2 objective papers · Mains: 9 descriptive papers"
+      intro={`${exam.title} practice, built on the Commission's own papers and its own marking. Nothing here is drawn from another exam.`}
+    >
+      <div style={{ display: 'flex', gap: '6px', background: 'var(--surface-2)', padding: '4px', borderRadius: 'var(--radius-md)', width: 'fit-content' }}>
+        {(['Prelims', 'Mains'] as const).map(g => (
+          <button key={g} onClick={() => setGroup(g)} className={`btn ${group === g ? 'btn-primary' : 'btn-secondary'}`} style={{ fontSize: '0.82rem', padding: '6px 16px' }}>
+            {g === 'Prelims' ? 'Preliminary' : 'Main'}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        {shown.map(p => {
+          const found = sectionFor(p.sectionMatch);
+          const paper = paperFor(p.paperMatch);
+          return (
+            <div key={p.key} style={{ padding: '16px 18px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ fontSize: '0.98rem', fontWeight: 800, color: 'var(--text-primary)' }}>{p.label}</div>
+              {found ? (
+                <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                  {found.section.questions ? `${found.section.questions} questions · ` : ''}{found.section.marks} marks
+                  {found.stage.durationMinutes ? ` · ${found.stage.durationMinutes} minutes` : ''}
+                  {found.section.negativeMarking ? ` · negative marking ${found.section.negativeMarking}` : ''}
+                </div>
+              ) : (
+                <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Specification not separately itemised in the notice.</div>
+              )}
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                {paper ? (
+                  <a href={paper.directPdfUrl || paper.url} target="_blank" rel="noreferrer" className="btn btn-primary" style={{ fontSize: '0.78rem', padding: '6px 12px', display: 'inline-flex', alignItems: 'center', gap: '6px', textDecoration: 'none' }}>
+                    <ExternalLink size={12} /> Open the 2026 paper
+                  </a>
+                ) : (
+                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>No 2026 paper on record for this one.</span>
+                )}
+                <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                  {p.objective ? 'Objective — attemptable once items are transcribed' : 'Descriptive — answer writing, no option key'}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <FeatureUnavailable
+        title="Attemptable CSE tests are not available yet."
+        reason="GovOS holds no Civil Services question items. The 2026 booklets above are scanned, so every item has to be transcribed from UPSC's own PDF and checked before a test can be sat — and a generated question presented as a past paper would be a lie about where it came from."
+        nextStep="Until then: open the papers above and attempt them on the Commission's own marking, shown on each card."
+      />
+
+      <ExamPatternPanel exam={exam} />
+      <OfficialPapersPanel exam={exam} onOpenProvenanceModal={onOpenProvenanceModal} />
+      <ExamAttemptHistory exam={exam} />
+    </PracticeShell>
+  );
+};
+
+// =====================================================================================
+// IBPSPracticeEngine — exam-ibps-po-2026, and nothing else
+// =====================================================================================
+/**
+ * Serves ONE exam id. IBPS PO is sectionally timed (each Prelims section has its own clock) and
+ * penalises 0.25 — neither is true of SSC CGL or the CSE, so none of their configuration is
+ * imported here. No question bank exists for it yet, and none is invented.
+ */
+const IBPS_PRACTICE_CONFIG = {
+  examId: 'exam-ibps-po-2026',
+  questionSource: null as null | string,
+  /** IBPS's own distinguishing rule, quoted from its own record at render time. */
+  note: 'Each Preliminary section is separately timed, so a single whole-paper clock would not reproduce this exam.'
+};
+
+export const IBPSPracticeEngine: React.FC<{
+  exam: Exam;
+  scope?: PracticeScope;
+  onOpenProvenanceModal: (provenance: DataProvenance) => void;
+}> = ({ exam, scope = 'ALL', onOpenProvenanceModal }) => {
+  if (!assertExamMatches('IBPSPracticeEngine', IBPS_PRACTICE_CONFIG.examId, exam)) return null;
+  const prelim = exam.stages.find(st => /prelim/i.test(st.stageName));
+  return (
+    <PracticeShell
+      exam={exam}
+      scope={scope}
+      patternSummary={prelim ? `${prelim.stageName.split(' (')[0]} · ${prelim.totalMarks} marks` : 'Objective CBT'}
+      intro={`${exam.title} practice. Its pattern, timing and marking are read from ${exam.authorityName.split(' (')[0]}'s own notification — no part of it comes from another exam.`}
+    >
+      <FeatureUnavailable
+        title="IBPS PO practice questions are not available yet."
+        reason={`GovOS has no verified IBPS question bank. ${IBPS_PRACTICE_CONFIG.note} Rather than run this exam on another exam's questions and clock, practice is left unavailable until genuine IBPS material exists.`}
+        nextStep="The pattern below is real and comes from IBPS's own notification; the Syllabus and Resources sections hold what is on record."
+      />
+      <ExamPatternPanel exam={exam} />
+      <OfficialPapersPanel exam={exam} onOpenProvenanceModal={onOpenProvenanceModal} />
+      <ExamAttemptHistory exam={exam} />
+    </PracticeShell>
+  );
+};
+
+// =====================================================================================
+// APPSCGroup1PracticeEngine — exam-appsc-group1-2026, and nothing else
+// =====================================================================================
+/**
+ * Serves ONE exam id. Group-I is a screening Prelims followed by CONVENTIONAL DESCRIPTIVE main
+ * papers. Group-II's Mains is objective. They are different exams and share nothing here —
+ * this engine must never be registered for Group-II, nor Group-II's for this.
+ */
+const APPSC_GROUP1_PRACTICE_CONFIG = {
+  examId: 'exam-appsc-group1-2026',
+  questionSource: null as null | string,
+  note: 'Group-I\'s Main Examination is conventional and descriptive, so it is not scored by an option key at all.'
+};
+
+export const APPSCGroup1PracticeEngine: React.FC<{
+  exam: Exam;
+  scope?: PracticeScope;
+  onOpenProvenanceModal: (provenance: DataProvenance) => void;
+}> = ({ exam, scope = 'ALL', onOpenProvenanceModal }) => {
+  if (!assertExamMatches('APPSCGroup1PracticeEngine', APPSC_GROUP1_PRACTICE_CONFIG.examId, exam)) return null;
+  return (
+    <PracticeShell
+      exam={exam}
+      scope={scope}
+      patternSummary="Screening Prelims · conventional descriptive Mains"
+      intro={`${exam.title} practice. Group-I is its own exam — its pattern and marking are not shared with APPSC Group-II, and nothing here is drawn from it.`}
+    >
+      <FeatureUnavailable
+        title="APPSC Group-I practice questions are not available yet."
+        reason={`GovOS has no verified Group-I question bank. ${APPSC_GROUP1_PRACTICE_CONFIG.note} Nothing is borrowed from Group-II or from any other exam to fill the gap.`}
+        nextStep="The pattern below comes from APPSC's own notification."
+      />
+      <ExamPatternPanel exam={exam} />
+      <OfficialPapersPanel exam={exam} onOpenProvenanceModal={onOpenProvenanceModal} />
+      <ExamAttemptHistory exam={exam} />
+    </PracticeShell>
+  );
+};
+
+// =====================================================================================
+// APPSCGroup2PracticeEngine — exam-appsc-group2-2026, and nothing else
+// =====================================================================================
+/**
+ * Serves ONE exam id. Deliberately separate from Group-I: same authority, different exam.
+ * Group-II's Mains is two OBJECTIVE papers where Group-I's is descriptive, so sharing an engine
+ * between them would misstate the paper a candidate is preparing for.
+ */
+const APPSC_GROUP2_PRACTICE_CONFIG = {
+  examId: 'exam-appsc-group2-2026',
+  questionSource: null as null | string,
+  note: 'Group-II\'s Main Examination is two objective papers, unlike Group-I\'s descriptive Mains.'
+};
+
+export const APPSCGroup2PracticeEngine: React.FC<{
+  exam: Exam;
+  scope?: PracticeScope;
+  onOpenProvenanceModal: (provenance: DataProvenance) => void;
+}> = ({ exam, scope = 'ALL', onOpenProvenanceModal }) => {
+  if (!assertExamMatches('APPSCGroup2PracticeEngine', APPSC_GROUP2_PRACTICE_CONFIG.examId, exam)) return null;
+  return (
+    <PracticeShell
+      exam={exam}
+      scope={scope}
+      patternSummary="Screening Prelims · two objective Mains papers"
+      intro={`${exam.title} practice. Group-II is its own exam — it does not share a question bank, a pattern or a history with APPSC Group-I.`}
+    >
+      <FeatureUnavailable
+        title="APPSC Group-II practice questions are not available yet."
+        reason={`GovOS has no verified Group-II question bank. ${APPSC_GROUP2_PRACTICE_CONFIG.note} Group-I's material is not used here, and this exam's is not used there.`}
+        nextStep="The pattern below comes from APPSC's own notification."
+      />
+      <ExamPatternPanel exam={exam} />
+      <OfficialPapersPanel exam={exam} onOpenProvenanceModal={onOpenProvenanceModal} />
+      <ExamAttemptHistory exam={exam} />
+    </PracticeShell>
   );
 };
 
@@ -15759,7 +15997,7 @@ const PRACTICE_ENGINES: Record<string, PracticeEngineEntry> = {
     config: {
       patternSummary: exam => {
         const t1 = exam.stages.find(st => st.tier === 'TIER_1');
-        return t1 ? `${t1.stageName.split(' — ')[0]} · ${t1.totalMarks} marks · ${t1.durationMinutes} minutes` : 'Objective CBT';
+        return t1 ? `${t1.stageName.split(':')[0]} · ${t1.totalMarks} marks · ${t1.durationMinutes} minutes` : 'Objective CBT';
       },
       supportedModes: ['PYQ shift papers', 'Subject sectionals', 'Topic drills', 'AI test creator', 'Attempt review']
     },
@@ -15768,18 +16006,38 @@ const PRACTICE_ENGINES: Record<string, PracticeEngineEntry> = {
   },
   [UPSC_CSE_EXAM.id]: {
     config: {
-      patternSummary: exam => {
-        const pre = exam.stages.find(st => st.tier === 'TIER_1');
-        return pre ? `${pre.stageName.split(' — ')[0]} · ${pre.totalMarks} marks, then nine descriptive papers` : 'Prelims, Mains, Interview';
-      },
-      supportedModes: ['Previous year papers']
+      patternSummary: () => 'Prelims: 2 objective papers · Mains: 9 descriptive papers',
+      supportedModes: ['Official papers by stage', 'Exam pattern', 'Attempt history']
     },
     render: ({ exam, scope, onOpenProvenanceModal }) =>
-      <UpscPracticeEngine exam={exam} scope={scope} onOpenProvenanceModal={onOpenProvenanceModal} />
+      <UPSCPracticeEngine exam={exam} scope={scope} onOpenProvenanceModal={onOpenProvenanceModal} />
+  },
+  [IBPS_PO_EXAM.id]: {
+    config: {
+      patternSummary: () => 'Sectionally timed Prelims · Mains with descriptive English',
+      supportedModes: ['Exam pattern', 'Attempt history']
+    },
+    render: ({ exam, scope, onOpenProvenanceModal }) =>
+      <IBPSPracticeEngine exam={exam} scope={scope} onOpenProvenanceModal={onOpenProvenanceModal} />
+  },
+  [APPSC_GROUP1_EXAM.id]: {
+    config: {
+      patternSummary: () => 'Screening Prelims · conventional descriptive Mains',
+      supportedModes: ['Exam pattern', 'Attempt history']
+    },
+    render: ({ exam, scope, onOpenProvenanceModal }) =>
+      <APPSCGroup1PracticeEngine exam={exam} scope={scope} onOpenProvenanceModal={onOpenProvenanceModal} />
+  },
+  [APPSC_GROUP2_EXAM.id]: {
+    config: {
+      patternSummary: () => 'Screening Prelims · two objective Mains papers',
+      supportedModes: ['Exam pattern', 'Attempt history']
+    },
+    render: ({ exam, scope, onOpenProvenanceModal }) =>
+      <APPSCGroup2PracticeEngine exam={exam} scope={scope} onOpenProvenanceModal={onOpenProvenanceModal} />
   }
-  // IBPS PO and both APPSC exams have no engine yet, on purpose: they fall to
-  // UnavailablePracticeEngine rather than inherit SSC's pattern. Register each here when its
-  // own engine and its own verified data exist.
+  // A future exam is added here, keyed by its own stable id, with its own engine and its own
+  // verified data. Never point two exams at one engine, and never add a default.
 };
 
 /**

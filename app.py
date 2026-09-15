@@ -509,7 +509,15 @@ def handle_mock_attempts():
     elif request.method == 'POST':
         data = request.get_json(silent=True) or {}
         attempt_id = data.get('id', f"mock-{os.urandom(4).hex()}")
-        exam_id = data.get('exam_id', 'ssc-cgl-2026')
+        # An attempt MUST name its exam. This used to default to SSC CGL, which meant any
+        # caller that forgot the field silently filed its attempt under another exam - the one
+        # failure mode the per-exam architecture exists to prevent. Rejected, never guessed.
+        exam_id = (data.get('exam_id') or '').strip()
+        if not exam_id:
+            conn.close()
+            return jsonify({"error": "exam_id is required on a practice attempt; it is never inferred"}), 400
+        if exam_id in LEGACY_EXAM_ID_ALIASES:
+            exam_id = LEGACY_EXAM_ID_ALIASES[exam_id]
         topic_id = data.get('topic_id', '')
         subject = data.get('subject', 'Full Mock')
         score = float(data.get('score', 0))
