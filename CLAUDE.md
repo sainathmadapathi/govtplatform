@@ -301,9 +301,10 @@ left alone so the page still scrolls. **A pinch is damped, not linear.** Mapping
 to the finger-span ratio is geometrically honest and feels violent: fingers that start close
 together swing that ratio enormously over a centimetre, so the tree leapt from fitted to twice
 size. The ratio is raised to `TREE_PINCH_DAMPING`, which stays symmetric in both directions;
-**0.8 is the settled value** — 0.55 was tried and felt dead, 1.0 (no damping) ran away, and 0.8
-tracks the fingers closely (a 2.3x spread is about 2x of zoom) while taking the edge off the
-first centimetre, which is where the runaway was. Movement under `TREE_PINCH_DEADZONE` (4 px)
+**0.9 is the settled value**, arrived at by feel — 1.0 (no damping) ran away, 0.55 felt dead,
+0.8 was still a touch slow. At 0.9 the gesture all but tracks the fingers (a 2.3x spread is
+about 2.1x of zoom) while keeping just enough of the edge off the first centimetre, which is
+where the runaway was. Movement under `TREE_PINCH_DEADZONE` (4 px)
 is read as tremor; a wider dead zone than that reads as an unresponsive gesture, which is the
 opposite of the problem it solves. Because every frame is measured from the span the gesture *started*
 at, a slow pinch and a fast one land on the same zoom — nothing accumulates. The wheel step is

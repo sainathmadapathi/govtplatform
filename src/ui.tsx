@@ -15547,11 +15547,12 @@ const TREE_PAD = 16;
  * How hard a pinch bites. Mapping zoom straight to the ratio of the finger span (exponent 1)
  * is geometrically honest but feels violent here — fingers that start close together swing the
  * ratio enormously over a centimetre, and the tree leaps from fitted to twice size. Raising the
- * ratio to this power damps that. 0.55 went too far the other way and the gesture felt dead;
- * 0.8 tracks the fingers closely — a 2.3x spread is about 2x of zoom — while taking the edge
- * off the first centimetre, which is where the runaway was.
+ * ratio to this power damps that. 0.55 went too far the other way and the gesture felt dead,
+ * and 0.8 was still a touch slow; 0.9 all but tracks the fingers — a 2.3x spread is about 2.1x
+ * of zoom — while keeping just enough of the edge off the first centimetre, which is where the
+ * runaway was.
  */
-const TREE_PINCH_DAMPING = 0.8;
+const TREE_PINCH_DAMPING = 0.9;
 /** Finger travel under this many pixels is hand tremor, not a pinch. Small: a wide dead zone
  *  reads as an unresponsive gesture, which is the opposite of the problem it solves. */
 const TREE_PINCH_DEADZONE = 4;
