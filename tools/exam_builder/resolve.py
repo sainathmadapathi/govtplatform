@@ -23,6 +23,9 @@ _GENERIC = {
     'the', 'of', 'for', 'and', 'in', 'to', 'india', 'indian', 'government', 'govt',
     'post', 'posts', 'officer', 'officers', 'grade', 'level', 'paper', 'online',
     'notification', 'apply', 'application', 'result', 'admit', 'card', 'syllabus',
+    # Short words that occur inside longer ones. "non" (from "Non-Technical") matches
+    # inside "announcement", which would attach an unrelated notice to the exam.
+    'non', 'pre', 'sub', 'all', 'new', 'old', 'per', 'via', 'and', 'any',
 }
 
 #: Page-title words that name a *page*, not a body. "SSC Notice Board" is a notice board.
