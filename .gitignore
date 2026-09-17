@@ -15,3 +15,6 @@ archive/
 
 # Exam-authoring cache: fetched government documents, never committed (see CLAUDE.md)
 .exam_cache/
+
+# Staged exam records awaiting review; never the live register
+.exam_staging/
