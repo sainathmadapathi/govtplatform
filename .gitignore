@@ -12,3 +12,6 @@ archive/
 
 # Stray downloads: study material is linked, never stored (see CLAUDE.md)
 *.pdf
+
+# Exam-authoring cache: fetched government documents, never committed (see CLAUDE.md)
+.exam_cache/

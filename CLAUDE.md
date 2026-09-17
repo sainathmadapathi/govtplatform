@@ -18,6 +18,7 @@ govt-platform/
 ├── tsconfig.json
 
 ├── .env / .gitignore          # .env holds TAVILY_API_KEY (never committed)
+├── tools/exam_authoring/      # build-time: read an authority's documents into an Exam record
 
 └── src/
     ├── main.tsx               # App shell, global modals, React root
@@ -992,6 +993,66 @@ Tables: `users`, `study_progress`, `research_runs`, `research_findings`, `resour
 `audit_reports`, `tracked_exams`, `notification_preferences`, `candidate_notifications`.
 `candidate_notes` has a schema but no endpoints and no frontend writers — harmless, but
 nothing reads it. `bookmarked_resources` backs the Resource Library's Saved shelf.
+
+## Authoring an exam from its authority's documents
+
+`tools/exam_authoring` turns an exam's name into a `data.ts`-shaped `Exam` record read from
+**that authority's own** pages and PDFs. It is a build-time tool, not part of the app; the
+runtime is still five frontend files and `app.py`. See its README for the full contract.
+
+```bash
+python -m tools.exam_authoring "Civil Services"                  # list matches
+python -m tools.exam_authoring "Civil Services Preliminary 2026" --pick 0 --emit out.ts
+```
+
+**Every field lands in one of four states, and the last two must never be merged.** `FOUND`
+is sourced with document and page; `NEEDS_REVIEW` is read but unconfident and is emitted
+`UNDER_VERIFICATION`; `NOT_PUBLISHED` means the authority genuinely publishes no such thing,
+established from its own listing; `NOT_EXTRACTED` means the document was read but no pattern
+matched — **a gap in the tool, not a fact about the authority**. Reporting the fourth as the
+third would tell a candidate "UPSC publishes no answer key" when the truth is "our regex
+missed it", which is the exact class of discrepancy this product exists to avoid. There is
+no state for "guessed": an unsourced field is emitted as an empty array, and the UI already
+renders honest empty states for those.
+
+**Isolation is enforced before emission, not after.** `verify.py` refuses to emit when a run
+read a URL outside the exam's own authority, or when the exam id is malformed. One record
+holds one exam, adapters never import each other, and a mention of another authority inside
+an extracted value is *reported* for a person to judge rather than silently stripped — a
+state notice may legitimately cite a central rule.
+
+**The UPSC adapter covers every UPSC exam, not just the CSE**, because the Commission
+publishes the same two things for all of them: `/examinations/active-exams` links each exam
+to `/examinations/<name>`, and that page is a label/value table plus a link to the notice
+PDF. Verified on CSE (Prelims and Main), Engineering Services, Combined Medical Services and
+Combined Defence Services; each produced a record that compiles against `Exam`.
+
+**Checking the generated record against the real interface is part of the job, not optional.**
+Typechecking the emitted file is what caught `ImportantDate.type` having no `TIER_1` or
+`OTHER` member, and `PostRequirement.classification` being a required union. The second is
+instructive: UPSC prints "Group 'A'" for most services but not for the IAS, IFS or IPS, and
+those three being Group A is knowledge from outside the document — so the emitter writes the
+posts whose Group is printed and **names the rest in the file header** for a person to
+complete, rather than supplying the answer from memory.
+
+**Extraction bugs found by checking output against the hand-authored UPSC record**, all of
+which would otherwise have read as "the authority is silent":
+- every date pattern required a `20xx` year, so a `19xx` birth year — the one place a 19xx
+  year must appear — could never parse;
+- PDFs wrap sentences mid-clause, so matching raw page text missed every multi-line rule;
+  `pages_of()` normalises each page first and keeps the page number for the citation;
+- a service name was matched as a run of non-bracket characters, which truncated
+  "Indian Railway Management Service (Traffic), Group 'A'" to its first four words and
+  collapsed the Traffic, Personnel and Accounts services into three identical entries. Items
+  are now the text *between* list markers;
+- the Group letter is wrapped in curly quotation marks in the PDFs, not ASCII apostrophes.
+
+**Two rules from this repo are encoded in the pipeline.** A notice PDF is not the last word
+on a date — the authority's examination page carries later changes, so dates come from the
+page, rules from the PDF, and a disagreement is emitted as a `SUPERSEDED` date plus a
+corrigendum. The pipeline reproduces the CSE 2026 24→27 February correction on its own. And
+a scanned PDF is reported as unreadable rather than empty, because "we could not read it"
+and "they published nothing" are different claims.
 
 ## Known issues
 
