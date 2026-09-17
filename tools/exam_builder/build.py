@@ -19,6 +19,9 @@ from ..exam_authoring import extract as X
 from ..exam_authoring.record import Citation, ExamRecord, Field
 from ..exam_authoring.sources import FetchError, load_html, load_pdf
 from .contract import CONTRACT, Coverage, coverage_from
+from .gate import BuildState
+from .identity import ExamIdentity, IdentityCheck, IdentityVerdict, field_is_attributable
+from .identity import verify as verify_identity
 from .discover import DiscoveredDoc, DocKind, SourceSet, discover, exam_aliases
 from .resolve import ResolvedExam, resolve, stable_exam_id
 
@@ -34,6 +37,10 @@ class BuildResult:
     coverage: Coverage
     record: ExamRecord
     notes: list[str] = dc_field(default_factory=list)
+    #: Whether the build itself completed, separately from any field's status.
+    build_state: BuildState = BuildState.COMPLETE
+    #: url -> what the document's own text says it is about.
+    identity: dict[str, IdentityCheck] = dc_field(default_factory=dict)
 
 
 def _load(doc: DiscoveredDoc):
@@ -43,7 +50,8 @@ def _load(doc: DiscoveredDoc):
     return load_html(doc.url)
 
 
-def _semantic_read(field_name: str, sources, loaded: dict, rec: ExamRecord):
+def _semantic_read(field_name: str, sources, loaded: dict, rec: ExamRecord,
+                   identity: dict | None = None, target=None):
     """Try every loaded document for one field, semantically.
 
     The best-evidenced reading across documents wins; a document that does not state the
@@ -68,6 +76,15 @@ def _semantic_read(field_name: str, sources, loaded: dict, rec: ExamRecord):
                       page_of=lambda span, d=document: _page_of(d, span))
         if got is None:
             continue
+        # A document naming several exams may still supply a fact, but only where the span
+        # carrying that fact names this exam itself. Otherwise the fact could belong to any
+        # of the exams the document covers.
+        check = (identity or {}).get(doc.url)
+        if check is not None and check.verdict is IdentityVerdict.AMBIGUOUS:
+            if target is None or not field_is_attributable(text, target, got.evidence.span):
+                rec.note(f'{field_name}: evidence found in a multi-exam document but the '
+                         f'span does not name this exam; not attributed ({doc.url})')
+                continue
         if best is None or got.confidence > best[0].confidence:
             best = (got, doc)
 
@@ -133,6 +150,28 @@ def build(exam_query: str, *, year: str = '', sibling_exam_words: list[str] | No
         except FetchError as exc:
             rec.note(f'could not read {doc.url}: {exc}')
 
+    # ---- content identity: does each document's own text belong to this exam?
+    target = ExamIdentity(exam_id=exam_id, query=resolved.query,
+                          official_name=resolved.official_name, year=resolved.year,
+                          authority_name=resolved.authority.name)
+    identity: dict[str, IdentityCheck] = {}
+    for doc in list(sources.docs):
+        document = loaded.get(doc.url)
+        if document is None:
+            continue
+        text = document.all_text() if hasattr(document, 'all_text') else ''
+        check = verify_identity(text, target, source_url=doc.url, document_title=doc.title)
+        identity[doc.url] = check
+        if check.verdict is IdentityVerdict.MISMATCH:
+            # Dropped before extraction: a document about another exam may not contribute a
+            # single fact, however official its source.
+            loaded.pop(doc.url, None)
+            rec.note(f'content identity MISMATCH, excluded from extraction: {doc.url} '
+                     f'({"; ".join(check.reasons)[:120]})')
+        elif check.verdict is IdentityVerdict.AMBIGUOUS:
+            rec.note(f'content identity AMBIGUOUS: {doc.url} '
+                     f'({"; ".join(check.reasons)[:120]})')
+
     # What the pipeline already established is not a gap. The resolver settled the exam's
     # name and its authority; routing them to an extractor reported NOT_EXTRACTED for two
     # facts sitting in the record.
@@ -153,6 +192,14 @@ def build(exam_query: str, *, year: str = '', sibling_exam_words: list[str] | No
         if status == 'INTRINSIC':
             continue
         if status == 'NO_SOURCE':
+            if sources.infrastructure_failed:
+                # We did not finish looking. Calling this "not published" would blame the
+                # authority for our own outage.
+                rec.set(Field.not_extracted(
+                    cf.name, resolved.authority.domain,
+                    f'{cf.name} (search or fetch did not complete: '
+                    f'{sources.infrastructure_note[:120]})'))
+                continue
             # Nothing discovered could answer it. That is a statement about what the
             # authority published, and it is recorded as such rather than as an extraction
             # failure — the two must never be collapsed.
@@ -176,7 +223,7 @@ def build(exam_query: str, *, year: str = '', sibling_exam_words: list[str] | No
         # Semantic extraction first: it reads a fact however the authority worded it, and
         # only accepts a value whose evidence span is found verbatim in the document. The
         # older pattern extractors stay as a fallback for fields it has no spec for.
-        got = _semantic_read(cf.name, sources, loaded, rec)
+        got = _semantic_read(cf.name, sources, loaded, rec, identity, target)
         if got is not None:
             rec.set(got)
             continue
@@ -208,4 +255,7 @@ def build(exam_query: str, *, year: str = '', sibling_exam_words: list[str] | No
         rec.set(got if got is not None else
                 Field.not_extracted(cf.name, resolved.authority.domain, cf.name))
 
-    return BuildResult(resolved=resolved, sources=sources, coverage=coverage, record=rec)
+    state = (BuildState.PAUSED_INFRASTRUCTURE if sources.infrastructure_failed
+             else BuildState.COMPLETE)
+    return BuildResult(resolved=resolved, sources=sources, coverage=coverage, record=rec,
+                       build_state=state, identity=identity)

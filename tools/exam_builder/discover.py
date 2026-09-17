@@ -108,6 +108,11 @@ class SourceSet:
     docs: list[DiscoveredDoc] = field(default_factory=list)
     rejected: list[DiscoveredDoc] = field(default_factory=list)
     log: list[str] = field(default_factory=list)
+    #: True when search or fetch did not complete. A document kind missing after an
+    #: infrastructure failure means "not looked for", never "not published" — without this
+    #: flag a DNS outage reads exactly like an authority that publishes nothing.
+    infrastructure_failed: bool = False
+    infrastructure_note: str = ''
 
     def of_kind(self, kind: DocKind) -> list[DiscoveredDoc]:
         return [d for d in self.docs if d.kind is kind]
@@ -204,7 +209,10 @@ def discover(resolved: ResolvedExam, *, exam_id: str, max_pages: int = 6,
         try:
             page = load_html(seed)
         except FetchError as exc:
-            out.log.append(f'could not read {seed}: {exc}')
+            # A page we could not fetch is a page we did not look at.
+            out.infrastructure_failed = True
+            out.infrastructure_note = f'could not read {seed}: {exc}'
+            out.log.append(out.infrastructure_note)
             continue
 
         title = _title_of(page)
@@ -278,7 +286,9 @@ def _search_for_missing_kinds(out: SourceSet, resolved: ResolvedExam, words: lis
             hits = web_search(f'{resolved.query} {phrase} {host}',
                               max_results=8, official_only=False)
         except SearchUnavailable as exc:
-            out.log.append(f'search unavailable while looking for {kind.value}: {exc}')
+            out.infrastructure_failed = True
+            out.infrastructure_note = f'search unavailable while looking for {kind.value}: {exc}'
+            out.log.append(out.infrastructure_note)
             return
         for h in hits:
             hit_host = (h.host or '').replace('www.', '')
