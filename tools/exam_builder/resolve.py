@@ -126,7 +126,23 @@ def _authority_name_from(host: str, hits: list[Hit]) -> str:
                 if not any(c != other and c in other for other in by_count)]
         if full:
             by_count = {c: by_count[c] for c in full}
-        return sorted(by_count.items(), key=lambda kv: (-kv[1], len(kv[0])))[0][0]
+
+        # The decisive signal: an authority's domain is nearly always its own acronym.
+        # ssc.gov.in -> "Staff Selection Commission", upsc.gov.in -> "Union Public Service
+        # Commission". Without this the winner was "Department of Personnel" for both,
+        # because the notices cite DoPT as the rule-making ministry far more often than
+        # they name the commission that is actually conducting the exam.
+        root = host.split('.')[0].lower()
+
+        def acronym_of(name: str) -> str:
+            return ''.join(w[0] for w in re.findall(r'\b[A-Za-z]+\b', name)
+                           if w.lower() not in ('of', 'and', 'the', 'for')).lower()
+
+        def rank(item: tuple[str, int]) -> tuple:
+            name, count = item
+            return (0 if acronym_of(name) == root else 1, -count, len(name))
+
+        return sorted(by_count.items(), key=rank)[0][0]
     root = host.split('.')[0]
     return root.upper() if len(root) <= 6 else root.replace('-', ' ').title()
 

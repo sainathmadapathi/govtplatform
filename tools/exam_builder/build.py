@@ -1,0 +1,124 @@
+"""resolve -> discover -> contract -> extract, for one exam and only that exam.
+
+This is the orchestrator the single command drives. It holds no knowledge of any authority:
+the resolver finds who publishes, discovery finds what they published for this exam, the
+contract says what GovOS wants to know and which document kinds could answer it, and the
+extractors read whatever was actually found.
+
+The contract is consulted *before* extraction runs, which is what keeps two very different
+statements apart — "the authority published nothing that could answer this" (NO_SOURCE) and
+"we read the document and our pattern missed it" (NOT_EXTRACTED).
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass, field as dc_field
+
+from ..exam_authoring import extract as X
+from ..exam_authoring.record import ExamRecord, Field
+from ..exam_authoring.sources import FetchError, load_html, load_pdf
+from .contract import CONTRACT, Coverage, coverage_from
+from .discover import DiscoveredDoc, DocKind, SourceSet, discover, exam_aliases
+from .resolve import ResolvedExam, resolve, stable_exam_id
+
+
+@dataclass
+class BuildResult:
+    resolved: ResolvedExam
+    sources: SourceSet
+    coverage: Coverage
+    record: ExamRecord
+    notes: list[str] = dc_field(default_factory=list)
+
+
+def _load(doc: DiscoveredDoc):
+    """Fetch a discovered document as something the extractors can read."""
+    if doc.is_pdf:
+        return load_pdf(doc.url)
+    return load_html(doc.url)
+
+
+def build(exam_query: str, *, year: str = '', sibling_exam_words: list[str] | None = None,
+          max_docs: int = 8) -> BuildResult:
+    resolved = resolve(exam_query, year=year)
+    exam_id = stable_exam_id(resolved)
+
+    own = exam_aliases(resolved.query, resolved.official_name)
+    siblings = [w for w in (sibling_exam_words or []) if w not in own]
+    sources = discover(resolved, exam_id=exam_id, sibling_exam_words=siblings)
+
+    available = {d.kind for d in sources.docs}
+    coverage = coverage_from(available)
+
+    rec = ExamRecord(
+        exam_id=exam_id,
+        code=exam_id.replace('exam-', '').upper().replace('-', '_'),
+        title=resolved.official_name or resolved.query,
+        authority_name=resolved.authority.name,
+        official_domain=resolved.authority.domain,
+    )
+    rec.sources_read.extend(d.url for d in sources.docs)
+    rec.log.extend(sources.log)
+    if resolved.authority.corroborated_by:
+        rec.note(f'{resolved.authority.domain} is not a government domain; it was accepted '
+                 f'because {resolved.authority.corroborated_by} names it.')
+    if sources.rejected:
+        rec.note(f'{len(sources.rejected)} document(s) were rejected as belonging to another '
+                 f'exam on the same site — the isolation gate working, not an error.')
+
+    # Read each document once, then let every contract field that names its kind try it.
+    loaded: dict[str, object] = {}
+    for doc in sources.docs[:max_docs]:
+        try:
+            loaded[doc.url] = _load(doc)
+        except FetchError as exc:
+            rec.note(f'could not read {doc.url}: {exc}')
+
+    for cf in CONTRACT:
+        status = coverage.supplied.get(cf.name, 'NO_SOURCE')
+        if status == 'INTRINSIC':
+            continue
+        if status == 'NO_SOURCE':
+            # Nothing discovered could answer it. That is a statement about what the
+            # authority published, and it is recorded as such rather than as an extraction
+            # failure — the two must never be collapsed.
+            rec.set(Field.not_published(
+                cf.name,
+                f'No document of kind {" or ".join(k.value for k in cf.sources)} was found '
+                f'for this exam on {resolved.authority.domain}.'))
+            continue
+        if not cf.extractor:
+            # A source exists but no reader is written yet. Our gap, stated as ours.
+            rec.set(Field.not_extracted(cf.name, resolved.authority.domain,
+                                        f'{cf.name} reader (source present, extractor not written)'))
+            continue
+
+        fn = getattr(X, cf.extractor, None)
+        if fn is None:
+            rec.set(Field.not_extracted(cf.name, resolved.authority.domain,
+                                        f'{cf.name} (extractor "{cf.extractor}" missing)'))
+            continue
+
+        got = None
+        for kind in cf.sources:
+            for doc in (d for d in sources.docs if d.kind is kind and d.url in loaded):
+                document = loaded[doc.url]
+                title = f'{rec.title} — {kind.value.replace("_", " ").title()}'
+                try:
+                    if cf.extractor == 'dates_from_rows':
+                        from ..exam_authoring.sources import html_rows
+                        if getattr(document, 'kind', '') != 'HTML':
+                            continue
+                        got = fn(document, html_rows(document), title)
+                    else:
+                        got = fn(document, title)
+                except Exception as exc:                        # noqa: BLE001
+                    rec.note(f'{cf.extractor} failed on {doc.url}: {exc!r}')
+                    continue
+                if got is not None and got.ok:
+                    break
+            if got is not None and got.ok:
+                break
+        rec.set(got if got is not None else
+                Field.not_extracted(cf.name, resolved.authority.domain, cf.name))
+
+    return BuildResult(resolved=resolved, sources=sources, coverage=coverage, record=rec)

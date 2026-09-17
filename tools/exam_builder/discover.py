@@ -204,9 +204,30 @@ def discover(resolved: ResolvedExam, *, exam_id: str, max_pages: int = 6,
     out = SourceSet(exam_id=exam_id, authority_domain=resolved.authority.domain)
     seen_urls: set[str] = set()
 
+    # A seed that is itself a PDF is a *document*, not a page to crawl. The resolver's best
+    # hit for "SSC CGL 2026" was Notice_of_adv_cgl_2026.pdf — the notification itself — and
+    # handing it to an HTML parser found nothing at all.
+    pdf_seeds = [u for u in dict.fromkeys(resolved.seed_urls)
+                 if u.lower().split('?')[0].endswith('.pdf')]
+    for url in pdf_seeds:
+        seen_urls.add(url)
+        path = urlparse(url).path
+        rel, matched, foreign = gate(path, url, exam_words=words,
+                                     page_is_exam_specific=False,
+                                     sibling_exam_words=sibling_exam_words)
+        if rel is Relevance.REJECTED:
+            out.rejected.append(DiscoveredDoc(url=url, kind=classify_kind(path, url),
+                                              title=path.rsplit('/', 1)[-1],
+                                              relevance=rel, foreign_words=foreign))
+            continue
+        out.docs.append(DiscoveredDoc(
+            url=url, kind=classify_kind(path, url), title=path.rsplit('/', 1)[-1],
+            relevance=rel, matched=matched, found_on='(search result)'))
+        out.log.append(f'seed is a document, not a page: {url}')
+
     # Visit the most exam-specific seeds first, so inheritance starts from a real exam page.
-    seeds = sorted(dict.fromkeys(resolved.seed_urls),
-                   key=lambda u: -sum(1 for w in words if w in u.lower()))
+    seeds = sorted((u for u in dict.fromkeys(resolved.seed_urls) if u not in seen_urls),
+                   key=lambda u: -sum(1 for w in words if w in urlparse(u).path.lower()))
 
     for seed in seeds[:max_pages]:
         if seed in seen_urls:
@@ -251,8 +272,65 @@ def discover(resolved: ResolvedExam, *, exam_id: str, max_pages: int = 6,
                 continue
             out.docs.append(doc)
 
+    _search_for_missing_kinds(out, resolved, words, host, sibling_exam_words)
     _dedupe(out)
     return out
+
+
+#: The words to search with for each kind GovOS needs. Generic recruitment vocabulary, not
+#: any one authority's menu labels.
+_KIND_QUERIES: list[tuple[DocKind, str]] = [
+    (DocKind.NOTIFICATION, 'notification notice of examination'),
+    (DocKind.SYLLABUS, 'syllabus scheme of examination'),
+    (DocKind.QUESTION_PAPER, 'previous year question paper'),
+    (DocKind.ANSWER_KEY, 'answer key'),
+    (DocKind.ADMIT_CARD, 'admit card'),
+    (DocKind.RESULT, 'result'),
+    (DocKind.CUTOFF, 'cut off marks'),
+    (DocKind.CORRIGENDUM, 'corrigendum'),
+]
+
+
+def _search_for_missing_kinds(out: SourceSet, resolved: ResolvedExam, words: list[str],
+                              host: str, sibling_exam_words: list[str] | None) -> None:
+    """Ask for what crawling did not reach, restricted to the authority's own estate.
+
+    Several of these sites render their document lists with JavaScript, so a link crawler
+    sees a homepage and nothing else — ssc.gov.in returned no usable links at all. Search
+    is how the rest is found, and every hit still goes through the same gate, so nothing
+    enters by a softer route than a crawled link would.
+    """
+    from .search import SearchUnavailable, search as web_search
+
+    have = {d.kind for d in out.docs}
+    for kind, phrase in _KIND_QUERIES:
+        if kind in have:
+            continue
+        try:
+            hits = web_search(f'{resolved.query} {phrase} {host}',
+                              max_results=8, official_only=False)
+        except SearchUnavailable as exc:
+            out.log.append(f'search unavailable while looking for {kind.value}: {exc}')
+            return
+        for h in hits:
+            hit_host = (h.host or '').replace('www.', '')
+            if not (hit_host == host or hit_host.endswith('.' + host)):
+                continue                       # someone else writing about this exam
+            path = urlparse(h.url).path
+            rel, matched, foreign = gate(f'{h.title} {path}', h.url, exam_words=words,
+                                         page_is_exam_specific=False,
+                                         sibling_exam_words=sibling_exam_words)
+            found_kind = classify_kind(f'{h.title} {path}', h.url)
+            doc = DiscoveredDoc(url=h.url, kind=found_kind, title=h.title[:160],
+                                relevance=rel, matched=matched,
+                                found_on='(targeted search)', foreign_words=foreign)
+            if rel is Relevance.REJECTED:
+                out.rejected.append(doc)
+                continue
+            if found_kind is DocKind.UNKNOWN:
+                continue
+            out.docs.append(doc)
+            have.add(found_kind)
 
 
 def _title_of(page: Document) -> str:
