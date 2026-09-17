@@ -43,6 +43,60 @@ def _load(doc: DiscoveredDoc):
     return load_html(doc.url)
 
 
+def _semantic_read(field_name: str, sources, loaded: dict, rec: ExamRecord):
+    """Try every loaded document for one field, semantically.
+
+    The best-evidenced reading across documents wins; a document that does not state the
+    field simply yields nothing, which is not an error.
+    """
+    from .evidence import EvidenceStatus
+    from .semantic import SPEC_BY_NAME, extract
+
+    if field_name not in SPEC_BY_NAME:
+        return None
+
+    best = None
+    for doc in sources.docs:
+        document = loaded.get(doc.url)
+        if document is None:
+            continue
+        text = document.all_text() if hasattr(document, 'all_text') else ''
+        if not text:
+            continue
+        got = extract(field_name, text, source_url=doc.url,
+                      document_title=f'{rec.title} — {doc.kind.value.replace("_", " ").title()}',
+                      page_of=lambda span, d=document: _page_of(d, span))
+        if got is None:
+            continue
+        if best is None or got.confidence > best[0].confidence:
+            best = (got, doc)
+
+    if best is None:
+        return None
+    got, doc = best
+    cite = Citation(document_title=got.evidence.document_title, url=got.evidence.source_url,
+                    page=got.evidence.page, clause=f'Read semantically ({field_name})',
+                    excerpt=got.evidence.span, verified_date=_today())
+    # Evidence was verified inside extract(); a low-confidence reading is still offered to a
+    # person rather than dropped, because the span is real either way.
+    if got.confidence >= 0.66 and got.evidence.status is EvidenceStatus.VERIFIED:
+        return Field.found(field_name, got.value, cite)
+    return Field.needs_review(
+        field_name, got.value,
+        f'Read from the source and the evidence span was verified, but only '
+        f'{len(got.cues_matched)} supporting cue(s) fired — confirm the reading.', cite)
+
+
+def _page_of(document, span: str) -> int:
+    """Which page a span sits on, so a citation can name it."""
+    pages = getattr(document, 'pages', None) or []
+    needle = ' '.join(span.split())[:60]
+    for i, page in enumerate(pages, start=1):
+        if needle and needle in ' '.join(page.split()):
+            return i
+    return 1
+
+
 def build(exam_query: str, *, year: str = '', sibling_exam_words: list[str] | None = None,
           max_docs: int = 8) -> BuildResult:
     resolved = resolve(exam_query, year=year)
@@ -119,7 +173,14 @@ def build(exam_query: str, *, year: str = '', sibling_exam_words: list[str] | No
                                         f'{cf.name} (extractor "{cf.extractor}" missing)'))
             continue
 
-        got = None
+        # Semantic extraction first: it reads a fact however the authority worded it, and
+        # only accepts a value whose evidence span is found verbatim in the document. The
+        # older pattern extractors stay as a fallback for fields it has no spec for.
+        got = _semantic_read(cf.name, sources, loaded, rec)
+        if got is not None:
+            rec.set(got)
+            continue
+
         for kind in cf.sources:
             for doc in (d for d in sources.docs if d.kind is kind and d.url in loaded):
                 document = loaded[doc.url]

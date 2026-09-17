@@ -75,6 +75,38 @@ def distinctive_words(name: str) -> list[str]:
             if len(w) > 2 and w not in _GENERIC and not w.isdigit()]
 
 
+def exam_aliases(query: str, official_name: str = '') -> list[str]:
+    """Every token that legitimately names this exam, expansion and acronym alike.
+
+    Authorities mix the two freely: the page is titled "Combined Graduate Level
+    Examination" and the link beside it says "CGL 2026 Notice". Matching only the words of
+    the official name rejected the exam's own documents, and matching only the acronym
+    misses the page that spells it out. Both go in the set.
+
+    Acronyms are built from the name the authority prints, never from a table of exams — a
+    hand-kept table is the thing this engine exists to avoid.
+    """
+    words = list(dict.fromkeys(distinctive_words(query) + distinctive_words(official_name)))
+    aliases = set(words)
+
+    for source in (official_name, query):
+        tokens = distinctive_words(source)
+        # "Combined Graduate Level" -> "cgl". Built over runs of 2+ words, and over the run
+        # with the leading authority code dropped, since "SSC CGL" acronymises to both.
+        for start in (0, 1):
+            run = tokens[start:]
+            if len(run) >= 2:
+                acronym = ''.join(w[0] for w in run)
+                if 2 <= len(acronym) <= 6:
+                    aliases.add(acronym)
+        # An acronym the user typed directly ("CGL", "NTPC", "AAO").
+        for raw in re.findall(r'\b[A-Z]{2,6}\b', source or ''):
+            aliases.add(raw.lower())
+
+    # Two letters is too little to identify anything; it would match inside other words.
+    return sorted(a for a in aliases if len(a) >= 3)
+
+
 def _year_in(text: str) -> str:
     m = re.search(r'\b(20\d{2})\b', text or '')
     return m.group(1) if m else ''
@@ -281,6 +313,8 @@ def resolve(exam_query: str, *, year: str = '', min_confidence: float = 0.34) ->
                 0 if (year and year in t) else 1,
                 len(t))
 
+    aliases = exam_aliases(exam_query, '')
+
     def looks_like_a_name(t: str) -> bool:
         # A title is a name, not a sentence. The first live run picked
         # "i.e. https://ssc.gov.in on 21-05-2026) (Website of the ..." because it merely
@@ -293,9 +327,24 @@ def resolve(exam_query: str, *, year: str = '', min_confidence: float = 0.34) ->
             return False
         if re.match(r'^(i\.e|e\.g|note|click|read|download)\b', t, re.I):
             return False
+        # Site chrome, not an exam: "Home", "Welcome to ...", "Official Website".
+        if re.match(r'^(home|welcome|index|official website|sitemap|login|main page)\b', t, re.I):
+            return False
+        # A title must name this exam. Aliases, not the query's raw words: the query says
+        # "CGL" while the authority's own title spells out "Combined Graduate Level", and
+        # checking only the query's words rejected the very title we want.
+        if not any(a in t.lower() for a in aliases):
+            return False
         return bool(re.search(r'[A-Za-z]{3}', t))
 
-    titles = [re.sub(r'\s*[|]\s*[^|]*$', '', h.title).strip() for h in top_hits if h.title]
+    # Separators vary (|, ｜, –, —, ·, ::) and so does which side carries the name, so every
+    # segment is considered rather than assuming the first. "Home | Staff Selection
+    # Commission" survived a strip that only knew the ASCII bar.
+    def segments(title: str) -> list[str]:
+        parts = re.split(r'\s*[|｜–—·]+\s*|\s+::\s+', title)
+        return [p.strip() for p in parts if p.strip()]
+
+    titles = [seg for h in top_hits if h.title for seg in segments(h.title)]
     titles = [t for t in titles if looks_like_a_name(t)]
     # The query is the fallback: the user named the exam, and a bad scrape must not
     # overwrite that with a fragment.

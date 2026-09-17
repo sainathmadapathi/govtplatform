@@ -28,7 +28,7 @@ from enum import Enum
 from urllib.parse import urlparse
 
 from ..exam_authoring.sources import Document, FetchError, html_links, load_html
-from .resolve import ResolvedExam, distinctive_words
+from .resolve import ResolvedExam, distinctive_words, exam_aliases  # noqa: F401
 
 
 class DocKind(str, Enum):
@@ -117,38 +117,6 @@ class SourceSet:
         for d in self.docs:
             out[d.kind.value] = out.get(d.kind.value, 0) + 1
         return out
-
-
-def exam_aliases(query: str, official_name: str = '') -> list[str]:
-    """Every token that legitimately names this exam, expansion and acronym alike.
-
-    Authorities mix the two freely: the page is titled "Combined Graduate Level
-    Examination" and the link beside it says "CGL 2026 Notice". Matching only the words of
-    the official name rejected the exam's own documents, and matching only the acronym
-    misses the page that spells it out. Both go in the set.
-
-    Acronyms are built from the name the authority prints, never from a table of exams — a
-    hand-kept table is the thing this engine exists to avoid.
-    """
-    words = list(dict.fromkeys(distinctive_words(query) + distinctive_words(official_name)))
-    aliases = set(words)
-
-    for source in (official_name, query):
-        tokens = distinctive_words(source)
-        # "Combined Graduate Level" -> "cgl". Built over runs of 2+ words, and over the run
-        # with the leading authority code dropped, since "SSC CGL" acronymises to both.
-        for start in (0, 1):
-            run = tokens[start:]
-            if len(run) >= 2:
-                acronym = ''.join(w[0] for w in run)
-                if 2 <= len(acronym) <= 6:
-                    aliases.add(acronym)
-        # An acronym the user typed directly ("CGL", "NTPC", "AAO").
-        for raw in re.findall(r'\b[A-Z]{2,6}\b', source or ''):
-            aliases.add(raw.lower())
-
-    # Two letters is too little to identify anything; it would match inside other words.
-    return sorted(a for a in aliases if len(a) >= 3)
 
 
 def gate(link_text: str, link_url: str, *, exam_words: list[str],

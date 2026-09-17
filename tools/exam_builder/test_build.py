@@ -94,16 +94,19 @@ def test_routing() -> None:
 
     # --- sourced from the notice
     age = rec.fields.get('ageLimits')
-    check('ageLimits found', age.status if age else None, Status.FOUND)
-    if age and age.ok:
+    # FOUND or NEEDS_REVIEW are both real readings with verified evidence; they differ only
+    # in how strongly the wording supported it.
+    check('ageLimits read', age.status in (Status.FOUND, Status.NEEDS_REVIEW) if age else False, True)
+    if age and age.usable:
+        # The semantic reader returns the band plus the crucial date it is reckoned on.
         check('age band read correctly',
               (age.value['minAge'], age.value['maxAge'], age.value['asOn']),
               (18, 32, '2026-08-01'))
         check('age cites the document it came from', bool(age.citation.url), True)
 
     fee = rec.fields.get('fee')
-    check('fee found', fee.status if fee else None, Status.FOUND)
-    if fee and fee.ok:
+    check('fee read', fee.status in (Status.FOUND, Status.NEEDS_REVIEW) if fee else False, True)
+    if fee and fee.usable:
         check('fee amount read', fee.value['amounts'][:1], ['100'])
 
     # --- sourced from the exam page's table
