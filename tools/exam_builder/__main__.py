@@ -2,6 +2,8 @@
 
     python -m tools.exam_builder "SSC CGL 2026"
     python -m tools.exam_builder "UPSC Civil Services Preliminary 2026" --json out.json
+    python -m tools.exam_builder "SSC CGL 2026" --capture          # freeze what was found
+    python -m tools.exam_builder --replay .exam_manifests/<id>.v1.json
 
 No authority is configured anywhere. The resolver discovers it, discovery finds that
 authority's documents *for this exam*, the contract says what GovOS wants to know, and the
@@ -23,26 +25,50 @@ import sys
 from ..exam_authoring.record import Status
 from ..exam_authoring.verify import IsolationError, run_all
 from .build import build
+from .manifest import latest_for, load as load_manifest, save as save_manifest
 from .contract import GROUPS
 from .resolve import SearchUnavailable
 
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog='exam_builder', description=__doc__)
-    ap.add_argument('exam', help='the exam name, e.g. "SSC CGL 2026"')
+    ap.add_argument('exam', nargs='?', default='',
+                    help='the exam name, e.g. "SSC CGL 2026"')
     ap.add_argument('--year', default='', help='override the year if the name has none')
     ap.add_argument('--siblings', default='',
                     help='comma-separated names of other exams on the same site, so their '
                          'documents are actively rejected rather than merely unmatched')
     ap.add_argument('--json', dest='json_out', help='write the full record here')
+    ap.add_argument('--capture', action='store_true',
+                    help='save the discovery snapshot so this build can be reproduced')
+    ap.add_argument('--replay', nargs='?', const='LATEST', default='',
+                    help='build from a saved snapshot instead of searching; with no path, '
+                         'the newest snapshot for this exam')
     args = ap.parse_args(argv)
+
+    if not args.exam and not args.replay:
+        ap.error('name an exam, or give --replay a manifest to build from')
 
     try:
         siblings: list[str] = []
         for name in filter(None, (s.strip() for s in args.siblings.split(','))):
             from .discover import exam_aliases
             siblings.extend(exam_aliases(name, name))
-        result = build(args.exam, year=args.year, sibling_exam_words=siblings)
+        replay = None
+        if args.replay:
+            path = args.replay
+            if path == 'LATEST':
+                from .resolve import resolve, stable_exam_id
+                path = latest_for(stable_exam_id(resolve(args.exam, year=args.year)))
+                if not path:
+                    print(f'No snapshot has been captured for "{args.exam}" yet.')
+                    return 5
+            replay = load_manifest(path)
+            print(f'replaying discovery captured {replay.discovered_at} from {path}')
+            print('  every document is re-fetched and re-validated; the snapshot fixes '
+                  'which documents are used, nothing about what they say')
+        result = build(args.exam, year=args.year, sibling_exam_words=siblings,
+                       replay=replay)
     except SearchUnavailable as exc:
         print(f'Cannot resolve an authority without search.\n  {exc}')
         return 2
@@ -87,6 +113,18 @@ def main(argv: list[str] | None = None) -> int:
                     Status.NOT_PUBLISHED: 'NOT PUBLISHED', Status.NOT_EXTRACTED: 'NOT EXTRACTED'}[f.status]
             where = f' [p.{f.citation.page}]' if (f.citation and f.status is Status.FOUND) else ''
             print(f'     {name:20} {mark}{where}')
+
+    if result.changed_sources:
+        print('\nCHANGED SINCE CAPTURE')
+        for url in result.changed_sources:
+            print(f'   {url}')
+        print('   The authority may have revised these. The facts above were read from the '
+              'current text, not from the snapshot.')
+
+    if args.capture and result.manifest is not None:
+        where = save_manifest(result.manifest)
+        print(f'\ndiscovery snapshot -> {where}  ({len(result.manifest.urls)} source(s), '
+              f'digest {result.manifest.digest()})')
 
     print(f'\ncoverage: {rpt["coverage"]}')
     if rpt['lowCoverage']:

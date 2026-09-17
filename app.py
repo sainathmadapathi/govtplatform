@@ -1091,7 +1091,10 @@ def _classify_trust(url):
     host = (urlparse(url).hostname or '').lower()
     if host.startswith('www.') and host[4:] in OFFICIAL_HOSTS:
         return 'OFFICIAL'
-    if host in OFFICIAL_HOSTS or host.endswith('.gov.in') or host.endswith('.nic.in') or host.endswith('.gov'):
+    # `.gov` without `.in` is the United States, not India. It used to be accepted here
+    # and in tools/exam_builder/search.py, which let a search for an Indian exam return
+    # US federal and state agencies badged OFFICIAL.
+    if host in OFFICIAL_HOSTS or host.endswith('.gov.in') or host.endswith('.nic.in'):
         return 'OFFICIAL'
     if host in TRUSTED_PUBLIC_HOSTS or host.endswith(TRUSTED_PUBLIC_SUFFIXES):
         return 'TRUSTED_PUBLIC'

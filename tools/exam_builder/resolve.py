@@ -235,17 +235,34 @@ def resolve(exam_query: str, *, year: str = '', min_confidence: float = 0.34) ->
             raise
 
     corroboration: dict[str, str] = {}
+    forced_host = ''
     if not hits:
-        # The authority may simply not use a government domain (IBPS, LIC, SBI). Accept one
-        # only if an official page vouches for it.
-        corroboration = _corroborated_hosts(exam_query, set())
-        if corroboration:
-            try:
-                wide = search(f'{exam_query} official notification apply', max_results=20,
-                              official_only=False)
-            except SearchUnavailable:
-                wide = []
-            hits = [h for h in wide if h.host in corroboration]
+        # No government page is about this exam. That is routine: IBPS, LIC and SBI do not
+        # use government domains, and a search for their exams returns coaching articles
+        # whose *text* names the real site even though the site itself is never ranked.
+        try:
+            wide = search(f'{exam_query} official notification apply online',
+                          max_results=20, official_only=False)
+        except SearchUnavailable:
+            raise
+        if wide:
+            # An official page that names the site is the strongest corroboration; failing
+            # that, the site is made to identify itself before being believed.
+            corroboration = _corroborated_hosts(exam_query, set())
+            vouched = [h for h in wide if h.host in corroboration]
+            if vouched:
+                hits = vouched
+            else:
+                from .officiality import best_official_domain
+                best, _tried = best_official_domain(
+                    wide, exam_aliases=exam_aliases(exam_query, ''),
+                    authority_hint=exam_query)
+                if best is not None:
+                    forced_host = best.domain.replace('www.', '')
+                    corroboration[forced_host] = (
+                        best.evidence[0].source_url if best.evidence
+                        else f'https://{best.domain}')
+                    hits = [h for h in wide if h.host == forced_host] or wide
     if not hits:
         raise LookupError(
             f'No official page mentions "{exam_query}", and no government page vouches for a '
@@ -270,6 +287,26 @@ def resolve(exam_query: str, *, year: str = '', min_confidence: float = 0.34) ->
         per_host[host].append(h)
 
     if not scores:
+        # Nothing on a government domain is about this exam. The authority may simply not
+        # use one -- IBPS, LIC and SBI do not -- and for those a search returns coaching
+        # articles only, with the real domain absent from the results but named inside
+        # them. Recover it from the text, then make the site identify itself.
+        from .officiality import best_official_domain
+        try:
+            wide = search(f'{exam_query} official notification apply online',
+                          max_results=20, official_only=False)
+        except SearchUnavailable:
+            wide = []
+        if wide:
+            best, tried = best_official_domain(
+                wide, exam_aliases=exam_aliases(exam_query, ''),
+                authority_hint=exam_query)
+            if best is not None:
+                host = best.domain.replace('www.', '')
+                per_host[host] = [h for h in wide if h.host == host] or wide[:1]
+                scores[host] = 1.0
+                corroboration[host] = (best.evidence[0].source_url if best.evidence
+                                       else f'https://{best.domain}')
         # Official pages exist but none is about this exam — the authority likely publishes
         # on its own non-government domain (IBPS, LIC, SBI). Try corroboration before giving
         # up, rather than refusing an exam the requirement explicitly names.
@@ -291,6 +328,12 @@ def resolve(exam_query: str, *, year: str = '', min_confidence: float = 0.34) ->
                           f'carry its distinctive words, and no government page vouches for a '
                           f'non-government site that does; cannot name an authority.')
 
+    if forced_host:
+        # The vote is over pages *about* the exam, and here those pages are coaching
+        # articles. The authority was established by reading its own site, so it is not put
+        # to a popularity contest against the articles that pointed at it.
+        scores = defaultdict(float, {forced_host: 1.0})
+        per_host.setdefault(forced_host, [])
     ranked = sorted(scores.items(), key=lambda kv: -kv[1])
     top_host, top_score = ranked[0]
     total = sum(scores.values()) or 1.0

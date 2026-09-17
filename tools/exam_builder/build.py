@@ -22,8 +22,9 @@ from .contract import CONTRACT, Coverage, coverage_from
 from .gate import BuildState
 from .identity import ExamIdentity, IdentityCheck, IdentityVerdict, field_is_attributable
 from .identity import verify as verify_identity
+from .manifest import SourceManifest, content_hash, from_source_set, to_source_set
 from .discover import DiscoveredDoc, DocKind, SourceSet, discover, exam_aliases
-from .resolve import ResolvedExam, resolve, stable_exam_id
+from .resolve import Authority, ResolvedExam, resolve, stable_exam_id
 
 
 def _today() -> str:
@@ -41,6 +42,10 @@ class BuildResult:
     build_state: BuildState = BuildState.COMPLETE
     #: url -> what the document's own text says it is about.
     identity: dict[str, IdentityCheck] = dc_field(default_factory=dict)
+    #: The discovery snapshot for this build, capturable for a deterministic rebuild.
+    manifest: SourceManifest | None = None
+    #: Sources whose bytes differ from the manifest that named them.
+    changed_sources: list[str] = dc_field(default_factory=list)
 
 
 def _load(doc: DiscoveredDoc):
@@ -114,14 +119,33 @@ def _page_of(document, span: str) -> int:
     return 1
 
 
-def build(exam_query: str, *, year: str = '', sibling_exam_words: list[str] | None = None,
-          max_docs: int = 8) -> BuildResult:
-    resolved = resolve(exam_query, year=year)
-    exam_id = stable_exam_id(resolved)
+def build(exam_query: str = '', *, year: str = '',
+          sibling_exam_words: list[str] | None = None, max_docs: int = 8,
+          replay: SourceManifest | None = None) -> BuildResult:
+    """Build one exam, either from fresh discovery or from a captured manifest.
 
-    own = exam_aliases(resolved.query, resolved.official_name)
-    siblings = [w for w in (sibling_exam_words or []) if w not in own]
-    sources = discover(resolved, exam_id=exam_id, sibling_exam_words=siblings)
+    `replay` freezes which documents are used and nothing else: they are re-fetched and
+    re-validated exactly as on a fresh build.
+    """
+    if replay is not None:
+        # The authority still comes from the manifest's own record of it rather than from a
+        # new search, because re-resolving could pick a different authority and the point of
+        # a replay is that the inputs do not move.
+        resolved = ResolvedExam(
+            query=replay.query,
+            official_name=replay.query,
+            year=year or '',
+            authority=Authority(name=replay.authority_name,
+                                domain=replay.authority_domain, confidence=1.0),
+            seed_urls=list(replay.urls))
+        exam_id = replay.exam_id
+        sources = to_source_set(replay)
+    else:
+        resolved = resolve(exam_query, year=year)
+        exam_id = stable_exam_id(resolved)
+        own = exam_aliases(resolved.query, resolved.official_name)
+        siblings = [w for w in (sibling_exam_words or []) if w not in own]
+        sources = discover(resolved, exam_id=exam_id, sibling_exam_words=siblings)
 
     available = {d.kind for d in sources.docs}
     coverage = coverage_from(available)
@@ -144,11 +168,27 @@ def build(exam_query: str, *, year: str = '', sibling_exam_words: list[str] | No
 
     # Read each document once, then let every contract field that names its kind try it.
     loaded: dict[str, object] = {}
+    hashes: dict[str, str] = {}
+    changed: list[str] = []
+    prior = {s.url: s.content_hash for s in (replay.sources if replay else [])}
     for doc in sources.docs[:max_docs]:
         try:
-            loaded[doc.url] = _load(doc)
+            document = _load(doc)
         except FetchError as exc:
-            rec.note(f'could not read {doc.url}: {exc}')
+            # A document we could not fetch is one we did not look at. Saying so keeps a
+            # replay from reporting an authority as silent because of our own outage.
+            sources.infrastructure_failed = True
+            sources.infrastructure_note = f'could not read {doc.url}: {exc}'
+            rec.note(sources.infrastructure_note)
+            continue
+        loaded[doc.url] = document
+        raw = getattr(document, 'raw', b'') or (document.all_text() or '').encode('utf-8')
+        hashes[doc.url] = content_hash(raw)
+        if prior.get(doc.url) and prior[doc.url] != hashes[doc.url]:
+            # Not an error: the authority may have revised the document. It is surfaced so
+            # the change is visible, and the facts are re-read from the new text anyway.
+            changed.append(doc.url)
+            rec.note(f'source changed since the manifest was captured: {doc.url}')
 
     # ---- content identity: does each document's own text belong to this exam?
     target = ExamIdentity(exam_id=exam_id, query=resolved.query,
@@ -257,5 +297,9 @@ def build(exam_query: str, *, year: str = '', sibling_exam_words: list[str] | No
 
     state = (BuildState.PAUSED_INFRASTRUCTURE if sources.infrastructure_failed
              else BuildState.COMPLETE)
+    snapshot = from_source_set(
+        sources, query=resolved.query, authority_name=resolved.authority.name,
+        identity={u: c.verdict.value for u, c in identity.items()}, hashes=hashes)
     return BuildResult(resolved=resolved, sources=sources, coverage=coverage, record=rec,
-                       build_state=state, identity=identity)
+                       build_state=state, identity=identity, manifest=snapshot,
+                       changed_sources=changed)

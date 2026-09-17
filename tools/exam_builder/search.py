@@ -25,7 +25,12 @@ TAVILY_URL = os.environ.get('TAVILY_BASE_URL', 'https://api.tavily.com') + '/sea
 
 #: Same rule as app.py's _classify_trust. Kept in one expression so the two cannot drift
 #: apart silently; if app.py's list grows, mirror it here.
-_OFFICIAL_SUFFIXES = ('.gov.in', '.nic.in', '.gov')
+#:
+#: A bare `.gov` is the **United States**; India's government uses `.gov.in` and `.nic.in`.
+#: Accepting it meant a search for "LIC AAO" resolved the authority to epa.gov and then to
+#: insurance.ca.gov -- the US Environmental Protection Agency and the California Department
+#: of Insurance, offered as the conductors of an Indian recruitment examination.
+_OFFICIAL_SUFFIXES = ('.gov.in', '.nic.in')
 _TRUSTED_SUFFIXES = ('.ac.in', '.edu', '.edu.in', '.res.in')
 
 
