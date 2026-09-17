@@ -281,9 +281,24 @@ def resolve(exam_query: str, *, year: str = '', min_confidence: float = 0.34) ->
                 0 if (year and year in t) else 1,
                 len(t))
 
-    titles = [re.sub(r'\s*[|]\s*[^|]*$', '', h.title).strip()
-              for h in top_hits if h.title and not h.title.lower().startswith('http')]
-    titles = [t for t in titles if len(t) > 5]
+    def looks_like_a_name(t: str) -> bool:
+        # A title is a name, not a sentence. The first live run picked
+        # "i.e. https://ssc.gov.in on 21-05-2026) (Website of the ..." because it merely
+        # scored least badly among fragments.
+        if not t or len(t) < 8 or len(t) > 120:
+            return False
+        if not t[0].isupper():
+            return False
+        if re.search(r'https?://|www\.|@', t):
+            return False
+        if re.match(r'^(i\.e|e\.g|note|click|read|download)\b', t, re.I):
+            return False
+        return bool(re.search(r'[A-Za-z]{3}', t))
+
+    titles = [re.sub(r'\s*[|]\s*[^|]*$', '', h.title).strip() for h in top_hits if h.title]
+    titles = [t for t in titles if looks_like_a_name(t)]
+    # The query is the fallback: the user named the exam, and a bad scrape must not
+    # overwrite that with a fragment.
     official_name = min(titles, key=title_score) if titles else exam_query
 
     authority = Authority(

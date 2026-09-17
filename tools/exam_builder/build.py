@@ -13,12 +13,18 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field as dc_field
 
+import time
+
 from ..exam_authoring import extract as X
-from ..exam_authoring.record import ExamRecord, Field
+from ..exam_authoring.record import Citation, ExamRecord, Field
 from ..exam_authoring.sources import FetchError, load_html, load_pdf
 from .contract import CONTRACT, Coverage, coverage_from
 from .discover import DiscoveredDoc, DocKind, SourceSet, discover, exam_aliases
 from .resolve import ResolvedExam, resolve, stable_exam_id
+
+
+def _today() -> str:
+    return time.strftime('%Y-%m-%d')
 
 
 @dataclass
@@ -73,7 +79,22 @@ def build(exam_query: str, *, year: str = '', sibling_exam_words: list[str] | No
         except FetchError as exc:
             rec.note(f'could not read {doc.url}: {exc}')
 
+    # What the pipeline already established is not a gap. The resolver settled the exam's
+    # name and its authority; routing them to an extractor reported NOT_EXTRACTED for two
+    # facts sitting in the record.
+    identity_cite = Citation(
+        document_title=f'{resolved.authority.name} — official web presence',
+        url=resolved.authority.domain, page=1, clause='Authority resolution',
+        excerpt=f'Resolved from official sources with confidence '
+                f'{resolved.authority.confidence}; evidence: '
+                f'{", ".join(resolved.authority.evidence[:3])}',
+        verified_date=_today())
+    rec.set(Field.found('officialName', rec.title, identity_cite))
+    rec.set(Field.found('authority', resolved.authority.name, identity_cite))
+
     for cf in CONTRACT:
+        if cf.name in ('officialName', 'authority'):
+            continue
         status = coverage.supplied.get(cf.name, 'NO_SOURCE')
         if status == 'INTRINSIC':
             continue
@@ -106,9 +127,14 @@ def build(exam_query: str, *, year: str = '', sibling_exam_words: list[str] | No
                 try:
                     if cf.extractor == 'dates_from_rows':
                         from ..exam_authoring.sources import html_rows
-                        if getattr(document, 'kind', '') != 'HTML':
-                            continue
-                        got = fn(document, html_rows(document), title)
+                        if getattr(document, 'kind', '') == 'HTML':
+                            got = fn(document, html_rows(document), title)
+                        else:
+                            # Not every authority gives an exam its own page with a
+                            # label/value table. SSC does not; its dates are in the notice's
+                            # prose, and the contract already allows the notice as a source,
+                            # so read it there rather than reporting the dates missing.
+                            got = X.dates_from_notice(document, title)
                     else:
                         got = fn(document, title)
                 except Exception as exc:                        # noqa: BLE001
