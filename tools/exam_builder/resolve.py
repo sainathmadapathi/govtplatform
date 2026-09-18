@@ -69,6 +69,10 @@ class Authority:
     #: For a non-government domain, the official page that vouched for it. Empty for a
     #: .gov.in/.nic.in host, which needs no vouching.
     corroborated_by: str = ''
+    #: How the name was established: printed by the authority, or assembled by us.
+    name_status: str = 'CANONICAL_NAME_INFERRED'
+    #: The page the name was read from, when one printed it.
+    name_source: str = ''
     #: What the decision was made from, so a wrong guess is visible rather than mysterious.
     evidence: list[str] = field(default_factory=list)
     rivals: list[tuple[str, float]] = field(default_factory=list)
@@ -142,70 +146,9 @@ def _year_in(text: str) -> str:
 
 
 def _authority_name_from(host: str, hits: list[Hit]) -> str:
-    """Prefer a name the authority prints about itself over one built from its domain.
-
-    Every candidate is collected and the longest plausible one wins, because the first
-    match was "SSC Notice Board" -- a page's name, not the body's. Anything whose words
-    describe a page rather than an institution is discarded outright.
-    """
-    names: list[str] = []
-    # Indian bodies come in two shapes and both must be matched: suffix-form ("Staff
-    # Selection Commission") and prefix-form ("Institute of Banking Personnel Selection",
-    # "Board of Secondary Education"). Matching only the first left IBPS unnamed.
-    prefix_rx = re.compile(
-        r'\b((?:Institute|Board|Bank|Council|Corporation|Commission|Department|Ministry|Authority)'
-        r'\s+of\s+(?:[A-Z][\w&-]*\s*){1,6})')
-    for h in hits:
-        for m in prefix_rx.finditer(f'{h.title}. {h.content}'):
-            cand = ' '.join(m.group(1).split()).rstrip('.,;')
-            if not _NOT_AN_AUTHORITY.search(cand) and 3 <= len(cand.split()) <= 8:
-                names.append(cand)
-        for m in re.finditer(
-                # No '.' in the word class: with one, a match ran straight through a
-                # sentence boundary and produced "…Commission. Union Public Service Commission".
-                r'\b((?:[A-Z][\w&-]*\s+){1,7}'
-                r'(?:Commission|Corporation|Authority|Institute|Council|Bank|Ministry|Department|Board)'
-                # "Life Insurance Corporation of India" is one name, not "Life Insurance
-                # Corporation" plus "Corporation of India"; the tail has to be part of the match.
-                r'(?:\s+of\s+(?:[A-Z][\w&-]*\s*){1,4})?)',
-                f'{h.title}. {h.content}'):
-            cand = ' '.join(m.group(1).split())
-            if _NOT_AN_AUTHORITY.search(cand):
-                continue
-            if 2 <= len(cand.split()) <= 8:
-                names.append(cand)
-    if names:
-        # The most frequently repeated name, then the longest, is the institution.
-        by_count: dict[str, int] = {}
-        for c in names:
-            by_count[c] = by_count.get(c, 0) + 1
-        # A candidate wholly contained in another is a fragment of it, not a rival name:
-        # "Corporation of India" inside "Life Insurance Corporation of India". Drop the
-        # fragments first, then prefer the most frequent and — among those — the shortest,
-        # which is what keeps a concatenated navigation menu from winning.
-        full = [c for c in by_count
-                if not any(c != other and c in other for other in by_count)]
-        if full:
-            by_count = {c: by_count[c] for c in full}
-
-        # The decisive signal: an authority's domain is nearly always its own acronym.
-        # ssc.gov.in -> "Staff Selection Commission", upsc.gov.in -> "Union Public Service
-        # Commission". Without this the winner was "Department of Personnel" for both,
-        # because the notices cite DoPT as the rule-making ministry far more often than
-        # they name the commission that is actually conducting the exam.
-        root = host.split('.')[0].lower()
-
-        def acronym_of(name: str) -> str:
-            return ''.join(w[0] for w in re.findall(r'\b[A-Za-z]+\b', name)
-                           if w.lower() not in ('of', 'and', 'the', 'for')).lower()
-
-        def rank(item: tuple[str, int]) -> tuple:
-            name, count = item
-            return (0 if acronym_of(name) == root else 1, -count, len(name))
-
-        return sorted(by_count.items(), key=rank)[0][0]
-    root = host.split('.')[0]
-    return root.upper() if len(root) <= 6 else root.replace('-', ' ').title()
+    """The name as a bare string. Prefer `resolve_name`, which keeps its provenance."""
+    from .names import resolve_name
+    return resolve_name(host, hits).value
 
 
 def _corroborated_hosts(exam_query: str, official_hosts: set[str]) -> dict[str, str]:
@@ -370,11 +313,23 @@ def resolve(exam_query: str, *, year: str = '', min_confidence: float = 0.34) ->
     # Hand the ranking to the ambiguity layer rather than taking its first row. A body's
     # own regional sites are merged onto it there, so a rival is a rival and not a branch
     # office, and two genuine rivals are never separated by their scores.
+    from .names import resolve_name
+    from .sources_compat import safe_load_html
+
+    # `fetch` is the second step inside resolve_name and runs only when the search snippets
+    # did not already yield a name the body printed. That is what makes the name stable:
+    # which snippets come back varies run to run, and a home page does not. A candidate
+    # whose site will not load simply keeps an inferred name, which is honest.
+    named = {host: resolve_name(host, per_host[host], fetch=safe_load_html)
+             for host, _ in ranked}
     verdict = decide(exam_query, [
         AuthorityCandidate(
             domain=host,
-            name=_authority_name_from(host, per_host[host]),
+            name=named[host].value,
             score=score,
+            # A name we assembled from an address or from somebody else's page is shown,
+            # but may not decide who this authority is.
+            name_is_evidence=named[host].is_identity_evidence,
             evidence=[h.url for h in per_host[host][:4]])
         for host, score in ranked])
 
@@ -438,8 +393,11 @@ def resolve(exam_query: str, *, year: str = '', min_confidence: float = 0.34) ->
     # overwrite that with a fragment.
     official_name = min(titles, key=title_score) if titles else exam_query
 
+    chosen_name = named[top_host]
     authority = Authority(
-        name=_authority_name_from(top_host, top_hits),
+        name=chosen_name.value,
+        name_status=chosen_name.status.value,
+        name_source=chosen_name.source_url,
         domain=f'https://{top_host}',
         confidence=round(confidence, 3),
         corroborated_by=corroboration.get(top_host, ''),

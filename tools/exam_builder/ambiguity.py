@@ -59,6 +59,10 @@ class AuthorityCandidate:
     domain: str
     name: str
     score: float
+    #: How the name was arrived at. Only a name the authority printed about itself may be
+    #: used to decide identity; see `names.AuthorityName`. Defaults to treating the name as
+    #: evidence so that callers passing a plain verified string are not silently weakened.
+    name_is_evidence: bool = True
     evidence: list[str] = field(default_factory=list)
     #: Domains merged into this one as the same body (a regional arm, an apply portal).
     absorbed: list[str] = field(default_factory=list)
@@ -110,6 +114,18 @@ def name_tokens(name: str) -> set[str]:
             if len(w) > 2 and w not in _SHARED_BODY_WORDS}
 
 
+def identity_tokens(candidate: 'AuthorityCandidate') -> set[str]:
+    """The words of a name that may be *reasoned* from, which is not every name.
+
+    A name we assembled -- off a third party's page, or out of the address -- describes the
+    body without being the body's account of itself. Reasoning from it produced the defect
+    this exists to stop: "portal-psc.ap.gov.in" became "Portal PSC", and "psc" was then read
+    as a word distinguishing one commission from another when it is what they have in
+    common.
+    """
+    return name_tokens(candidate.name) if candidate.name_is_evidence else set()
+
+
 def _label(domain: str) -> str:
     host = re.sub(r'^https?://', '', domain or '').split('/')[0]
     return host.replace('www.', '').split('.')[0].lower()
@@ -128,7 +144,7 @@ def same_body(a: AuthorityCandidate, b: AuthorityCandidate) -> bool:
       * one address is the other's with something appended -- ssc / sscsr, upsc /
         upsconline. A body's own sites grow out of its own short form.
     """
-    ta, tb = name_tokens(a.name), name_tokens(b.name)
+    ta, tb = identity_tokens(a), identity_tokens(b)
     smaller = min(ta, tb, key=len) if (ta and tb) else set()
     # Two or more shared words, not one. Many bodies reduce to a single distinctive word
     # once the words every body shares are removed, and a one-word subset would then merge
@@ -163,11 +179,11 @@ def _merge(candidates: list[AuthorityCandidate]) -> list[AuthorityCandidate]:
 def _set_distinguishing(bodies: list[AuthorityCandidate]) -> None:
     """What each body's name has that none of the others does."""
     for b in bodies:
-        mine = name_tokens(b.name)
+        mine = identity_tokens(b)
         others: set[str] = set()
         for other in bodies:
             if other is not b:
-                others |= name_tokens(other.name)
+                others |= identity_tokens(other)
         b.distinguishing = sorted(mine - others)
 
 
