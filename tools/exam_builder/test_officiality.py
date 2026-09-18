@@ -94,8 +94,46 @@ def test_a_coaching_site_about_the_same_exam_is_rejected() -> None:
                       authority_hint='Institute of Banking Personnel Selection',
                       fetch=fake_fetch({'testbook.com': COACHING_HOME}))
     check('a coaching site is not the authority', v.is_official, False)
-    check('and the refusal is explained',
-          any('conducting authority' in r for r in v.reasons), True)
+    check('and the selling posture is named',
+          any('sells preparation' in r for r in v.reasons), True)
+    check('as is the thing it cannot fake — the authority’s own name and address',
+          any('short form as its address' in r for r in v.reasons), True)
+
+
+def test_a_news_site_reporting_the_exam_is_rejected() -> None:
+    """Found live: a news site scored 0.8 and was accepted.
+
+    It sells nothing, so the posture cues never fire. What it lacks is the thing only the
+    authority has — its own name printed on its own address.
+    """
+    news = """
+    Markets. IBPS PO 2026 notification released for 6715 vacancies in public sector banks.
+    Registration begins this week. Candidates are advised to check eligibility before
+    applying. Nifty ends 120 bps higher. Recruitment news, examination updates.
+    """
+    v = verify_domain('moneycontrol.com', exam_aliases=IBPS_ALIASES,
+                      authority_hint='Institute of Banking Personnel Selection',
+                      fetch=fake_fetch({'moneycontrol.com': news}))
+    check('a report about the exam is not the authority', v.is_official, False)
+    check('and "bps" inside a basis-point quote is not the exam',
+          any('short form as its address' in r for r in v.reasons), True)
+
+
+def test_a_different_real_authority_is_rejected() -> None:
+    """Found live: upsc.gov.in was accepted at 1.00 for an IBPS exam.
+
+    A genuine government authority, whose pages happen to contain "institute" and
+    "personnel". Sharing ordinary nouns with another body's name is not being that body.
+    """
+    upsc = """
+    Union Public Service Commission. Examinations, recruitment and advertisements.
+    The Commission advises the Government on personnel matters and on the institute of
+    all-India services. Apply online. Admit card. Selection.
+    """
+    v = verify_domain('upsc.gov.in', exam_aliases=IBPS_ALIASES,
+                      authority_hint='Institute of Banking Personnel Selection',
+                      fetch=fake_fetch({'upsc.gov.in': upsc}))
+    check('one authority is not mistaken for another', v.is_official, False)
 
 
 def test_an_unreachable_domain_is_not_declared_unofficial() -> None:
@@ -161,6 +199,8 @@ def main() -> int:
     test_the_authority_is_recovered_from_result_text()
     test_a_non_government_authority_is_accepted_on_its_own_content()
     test_a_coaching_site_about_the_same_exam_is_rejected()
+    test_a_news_site_reporting_the_exam_is_rejected()
+    test_a_different_real_authority_is_rejected()
     test_an_unreachable_domain_is_not_declared_unofficial()
     test_shortlisting_walks_past_the_failures_to_the_authority()
     test_resolution_is_deterministic_over_result_order()

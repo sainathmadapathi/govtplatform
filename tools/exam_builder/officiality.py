@@ -105,6 +105,27 @@ def _name_tokens(authority_hint: str) -> set[str]:
     return {w for w in re.split(r'[^a-z]+', (authority_hint or '').lower()) if len(w) > 2}
 
 
+def _says(text: str, phrase: str) -> bool:
+    """Whole words only. "bps" lives inside "ibps", and is also how a news site writes
+    basis points. Either match would be an accident, not an identification.
+    """
+    if not phrase:
+        return False
+    pattern = r'\b' + r'[\s\-]*'.join(re.escape(w) for w in phrase.split()) + r'\b'
+    return re.search(pattern, text, re.I) is not None
+
+
+def _full_name_of(authority_hint: str) -> str:
+    """The authority's printed name, when the caller gave one rather than a bare query.
+
+    Two or more substantial words is a name ("Institute of Banking Personnel
+    Selection"); one word is an acronym or a search string, and identifies nobody by
+    itself.
+    """
+    words = [w for w in re.split(r'[^A-Za-z]+', authority_hint or '') if len(w) > 2]
+    return ' '.join(words) if len(words) >= 2 else ''
+
+
 def verify_domain(domain: str, *, exam_aliases: list[str], authority_hint: str = '',
                   fetch=safe_load_html) -> OfficialityCheck:
     """Ask the site itself whether it is the authority.
@@ -134,7 +155,9 @@ def verify_domain(domain: str, *, exam_aliases: list[str], authority_hint: str =
         score += 0.4
         reasons.append('the site describes recruitment or examinations')
 
-    alias_hits = [a for a in exam_aliases if a in low]
+    # Word boundaries, not substrings: "bps" lives inside "ibps" and is also how a news
+    # site writes basis points.
+    alias_hits = [a for a in exam_aliases if _says(low, a)]
     if alias_hits:
         score += 0.4
         reasons.append(f'the site names this exam ({", ".join(alias_hits[:3])})')
@@ -152,11 +175,20 @@ def verify_domain(domain: str, *, exam_aliases: list[str], authority_hint: str =
         score += 0.3
         reasons.append('the site names the authority the search pointed at')
 
-    # The domain's own label echoing the exam's acronym is weak on its own but real.
+    # The domain's own label echoing the exam's short form. A site does not get to choose
+    # what a reporter calls it, but it does choose its own address, so this is the one
+    # signal a third party cannot borrow by writing about the exam.
     root = domain.split('.')[0].lower()
-    if any(a == root or (len(a) >= 3 and a in root) for a in exam_aliases):
+    label_echo = any(a == root or (len(a) >= 3 and a in root) for a in exam_aliases)
+    if label_echo:
         score += 0.2
         reasons.append(f'the domain label "{root}" echoes this exam’s name')
+
+    full_name = _full_name_of(authority_hint)
+    names_itself = bool(full_name) and _says(low, full_name)
+    if names_itself:
+        score += 0.3
+        reasons.append(f'the site prints the authority’s full name ("{full_name}")')
 
     # A third party writing about the exam matches every positive signal above, because
     # describing the exam is its product. Each distinct posture cue is evidence that this
@@ -172,10 +204,21 @@ def verify_domain(domain: str, *, exam_aliases: list[str], authority_hint: str =
             f'({len(posture)} such cue(s)), so it reads as a third party writing about '
             f'this exam, not as the body that runs it')
 
-    is_official = score >= 0.7 and bool(alias_hits or hint_tokens)
+    # Scoring alone is not enough, because a news report and a rival authority can both
+    # accumulate score by sharing ordinary words with the authority's name. One of the two
+    # signals that a third party cannot produce must be present: the authority's full
+    # printed name, or an address that is the authority's own short form.
+    identifies_itself = names_itself or label_echo
+    is_official = score >= 0.7 and bool(alias_hits) and identifies_itself
     if not is_official:
-        reasons.append('not enough of the site’s own content identifies it as the '
-                       'conducting authority')
+        if not identifies_itself:
+            reasons.append('the site neither prints the authority’s full name nor uses its '
+                           'short form as its address, so sharing words with the exam’s '
+                           'name is all it does — that is what a report about the exam '
+                           'looks like, not the body that runs it')
+        else:
+            reasons.append('not enough of the site’s own content identifies it as the '
+                           'conducting authority')
     return OfficialityCheck(domain=domain, is_official=is_official,
                             confidence=round(min(1.0, score), 3),
                             evidence=evidence, reasons=reasons)

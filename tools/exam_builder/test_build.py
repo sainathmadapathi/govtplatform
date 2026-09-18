@@ -141,8 +141,45 @@ def test_routing() -> None:
           syl.status if syl else None, Status.NOT_EXTRACTED)
 
 
+def test_two_exams_never_share_an_id() -> None:
+    """The id is what every isolation guarantee keys on, so a shared id is a shared record.
+
+    `distinctive_words` drops tokens of two characters or fewer, which is correct for
+    matching prose and wrong for naming an exam: "PO" and "SO" are the whole difference
+    between two IBPS exams, and "I" and "II" between two APPSC ones. Under that rule
+    IBPS PO and IBPS SO were literally the same id, and this repo already says Group-I and
+    Group-II must never be pointed at each other.
+    """
+    from .resolve import stable_exam_id
+
+    names = ['IBPS PO 2026', 'IBPS SO 2026', 'IBPS Clerk 2026',
+             'SBI PO 2026', 'SBI SO 2026',
+             'SSC CGL 2026', 'SSC CHSL 2026', 'SSC MTS 2026',
+             'APPSC Group I 2026', 'APPSC Group II 2026', 'TSPSC Group I 2026',
+             'UPSC CDS I 2026', 'UPSC CDS II 2026',
+             'RRB Group C 2026', 'RRB Group D 2026', 'LIC AAO 2027']
+
+    ids: dict[str, str] = {}
+    for name in names:
+        resolved = ResolvedExam(
+            query=name, official_name=name, year='2026',
+            authority=Authority(name='X', domain='https://example.in', confidence=1.0))
+        ids[name] = stable_exam_id(resolved)
+
+    collisions = {}
+    for name, eid in ids.items():
+        collisions.setdefault(eid, []).append(name)
+    shared = {k: v for k, v in collisions.items() if len(v) > 1}
+    check('no two exams share an id', shared, {})
+
+    check('the post code survives into the id', 'po' in ids['IBPS PO 2026'].split('-'), True)
+    check('and the group numeral does',
+          ids['APPSC Group I 2026'] != ids['APPSC Group II 2026'], True)
+
+
 def main() -> int:
     test_routing()
+    test_two_exams_never_share_an_id()
     if _FAILURES:
         print(f'{len(_FAILURES)} FAILURE(S):')
         for f in _FAILURES:

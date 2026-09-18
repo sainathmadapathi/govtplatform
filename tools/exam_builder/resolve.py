@@ -74,6 +74,21 @@ def distinctive_words(name: str) -> list[str]:
     return [w for w in re.split(r'[^a-z0-9]+', name.lower())
             if len(w) > 2 and w not in _GENERIC and not w.isdigit()]
 
+def id_words(name: str) -> list[str]:
+    """The tokens that distinguish one exam from another, for naming it.
+
+    Looser than `distinctive_words` in exactly one way: length is not a filter. "PO" and
+    "SO" are what separate two IBPS exams, "I" from "II" separates two APPSC ones and "D"
+    from "C" separates two RRB ones; dropping them merges records that must never be
+    merged. Filler words are excluded by name, as they already were.
+
+    This is safe here and not safe in matching, because an id is *constructed* from a name
+    the caller supplied, whereas an alias is *searched for* inside a document, where a
+    one-letter token would match everywhere.
+    """
+    return [w for w in re.split(r'[^a-z0-9]+', name.lower())
+            if w and w not in _GENERIC and not w.isdigit()]
+
 
 def exam_aliases(query: str, official_name: str = '') -> list[str]:
     """Every token that legitimately names this exam, expansion and acronym alike.
@@ -416,7 +431,9 @@ def stable_exam_id(resolved: ResolvedExam) -> str:
     org = host_root.replace('www.', '').split('.')[0]
     # The query is what the user actually named; the scraped title is a fallback only,
     # because a title can be a navigation crumb or a URL.
-    words = distinctive_words(resolved.query) or distinctive_words(resolved.official_name)
+    # id_words, not distinctive_words: "IBPS PO" and "IBPS SO" are one id under the
+    # latter, and they are two exams.
+    words = id_words(resolved.query) or id_words(resolved.official_name)
     slug = '-'.join(dict.fromkeys(words))[:60].strip('-')
     year = resolved.year or ''
     return f"exam-{org}-{slug}" + (f'-{year}' if year else '')
