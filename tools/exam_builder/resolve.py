@@ -47,6 +47,20 @@ _AGGREGATORS = {
 }
 
 
+class AmbiguousAuthority(RuntimeError):
+    """Two or more real authorities answer to this exam's name.
+
+    Carries the full `AuthorityVerdict` -- every candidate, its evidence and what would
+    have told them apart -- so a caller can report the ambiguity or ask, rather than
+    receiving a winner picked by a score gap. Deliberately not a LookupError: this is a
+    finding, not a failure to find.
+    """
+
+    def __init__(self, verdict):
+        super().__init__(verdict.reason)
+        self.verdict = verdict
+
+
 @dataclass
 class Authority:
     name: str
@@ -343,6 +357,8 @@ def resolve(exam_query: str, *, year: str = '', min_confidence: float = 0.34) ->
                           f'carry its distinctive words, and no government page vouches for a '
                           f'non-government site that does; cannot name an authority.')
 
+    from .ambiguity import AuthorityCandidate, Decision, decide
+
     if forced_host:
         # The vote is over pages *about* the exam, and here those pages are coaching
         # articles. The authority was established by reading its own site, so it is not put
@@ -350,14 +366,28 @@ def resolve(exam_query: str, *, year: str = '', min_confidence: float = 0.34) ->
         scores = defaultdict(float, {forced_host: 1.0})
         per_host.setdefault(forced_host, [])
     ranked = sorted(scores.items(), key=lambda kv: -kv[1])
-    top_host, top_score = ranked[0]
-    total = sum(scores.values()) or 1.0
-    confidence = top_score / total
 
-    if confidence < min_confidence and len(ranked) > 1:
+    # Hand the ranking to the ambiguity layer rather than taking its first row. A body's
+    # own regional sites are merged onto it there, so a rival is a rival and not a branch
+    # office, and two genuine rivals are never separated by their scores.
+    verdict = decide(exam_query, [
+        AuthorityCandidate(
+            domain=host,
+            name=_authority_name_from(host, per_host[host]),
+            score=score,
+            evidence=[h.url for h in per_host[host][:4]])
+        for host, score in ranked])
+
+    if verdict.decision is Decision.AMBIGUOUS_AUTHORITY:
+        raise AmbiguousAuthority(verdict)
+
+    top_host = verdict.chosen.domain
+    confidence = verdict.chosen.share
+
+    if confidence < min_confidence and len(verdict.candidates) > 1:
         raise LookupError(
             f'"{exam_query}" does not point clearly at one authority — '
-            f'{", ".join(f"{h} ({s:.2f})" for h, s in ranked[:4])}. '
+            f'{", ".join(f"{c.domain} ({c.score:.2f})" for c in verdict.candidates[:4])}. '
             f'Name the exam more precisely (include the authority or the year) rather than '
             f'letting the builder pick.')
 
@@ -414,7 +444,11 @@ def resolve(exam_query: str, *, year: str = '', min_confidence: float = 0.34) ->
         confidence=round(confidence, 3),
         corroborated_by=corroboration.get(top_host, ''),
         evidence=[h.url for h in top_hits[:5]],
-        rivals=[(h, round(s / total, 3)) for h, s in ranked[1:4]],
+        # Rivals come from the merged bodies, not the raw host ranking: a body's own
+        # regional site is not a rival to it, and listing it as one invites the reader to
+        # worry about a disagreement that does not exist.
+        rivals=[(c.domain, round(c.share, 3))
+                for c in verdict.candidates if c.domain != top_host][:3],
     )
     return ResolvedExam(
         query=exam_query,
@@ -423,6 +457,48 @@ def resolve(exam_query: str, *, year: str = '', min_confidence: float = 0.34) ->
         authority=authority,
         seed_urls=[h.url for h in top_hits],
     )
+
+
+def resolve_authority(exam_query: str, *, year: str = '', **kw):
+    """Resolve, returning the outcome rather than raising it.
+
+    Four outcomes, and the point of the function is that they stay four:
+
+        RESOLVED                one authority, with the exam attached
+        AMBIGUOUS_AUTHORITY     several real authorities; the name does not choose
+        INFRASTRUCTURE_FAILURE  we could not look; says nothing about any authority
+        UNRESOLVED              we looked, and nothing published by an authority matched
+
+    Collapsing the middle two into the last would be the same mistake the field states
+    already guard against: reporting our own outage, or our own uncertainty, as a fact
+    about the world.
+    """
+    from .ambiguity import AuthorityVerdict, Decision
+
+    try:
+        resolved = resolve(exam_query, year=year, **kw)
+    except AmbiguousAuthority as exc:
+        return exc.verdict
+    except SearchUnavailable as exc:
+        return AuthorityVerdict(
+            Decision.INFRASTRUCTURE_FAILURE, chosen=None, candidates=[],
+            reason='could not search, so no authority was assessed either way',
+            infrastructure_note=str(exc))
+    except LookupError as exc:
+        return AuthorityVerdict(Decision.UNRESOLVED, chosen=None, candidates=[],
+                                reason=str(exc))
+
+    from .ambiguity import AuthorityCandidate
+    chosen = AuthorityCandidate(
+        domain=resolved.authority.domain,
+        name=resolved.authority.name,
+        score=resolved.authority.confidence,
+        evidence=list(resolved.authority.evidence))
+    chosen._share = resolved.authority.confidence
+    verdict = AuthorityVerdict(Decision.RESOLVED, chosen=chosen, candidates=[chosen],
+                               reason='one authority')
+    verdict.resolved = resolved
+    return verdict
 
 
 def stable_exam_id(resolved: ResolvedExam) -> str:

@@ -27,7 +27,7 @@ from ..exam_authoring.verify import IsolationError, run_all
 from .build import build
 from .manifest import latest_for, load as load_manifest, save as save_manifest
 from .contract import GROUPS
-from .resolve import SearchUnavailable
+from .resolve import AmbiguousAuthority, SearchUnavailable
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -69,8 +69,17 @@ def main(argv: list[str] | None = None) -> int:
                   'which documents are used, nothing about what they say')
         result = build(args.exam, year=args.year, sibling_exam_words=siblings,
                        replay=replay)
+    except AmbiguousAuthority as exc:
+        # Not an error. Two real authorities answer to this name, and the builder will not
+        # pick one of them on a score gap.
+        print('\nAMBIGUOUS_AUTHORITY — this exam name matches more than one authority.\n')
+        print(exc.verdict.summary())
+        print('\nNothing was built. Name the authority in the exam and run it again.')
+        return 6
     except SearchUnavailable as exc:
-        print(f'Cannot resolve an authority without search.\n  {exc}')
+        print(f'INFRASTRUCTURE_FAILURE — cannot resolve an authority without search.')
+        print(f'  {exc}')
+        print('  This says nothing about whether the authority exists or publishes.')
         return 2
     except LookupError as exc:
         print(f'Could not identify the authority for "{args.exam}".\n  {exc}')
