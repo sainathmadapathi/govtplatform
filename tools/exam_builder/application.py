@@ -94,6 +94,14 @@ _CATEGORY = re.compile(
 
 _AMOUNT = re.compile(r'(?:rs\.?|inr|₹)\s*([\d,]+(?:\.\d{1,2})?)', re.I)
 
+#: Money the post pays, rather than money the candidate pays. "Pay" is a noun here, and
+#: matching it as a verb recorded four pay scales as application fees. No authority, exam or
+#: figure is named -- this is the vocabulary of remuneration.
+_REMUNERATION = re.compile(
+    r'\bpay\s*(?:level|scale|band|matrix)\b|\bgrade\s*pay\b|\bsalar\w+\b|'
+    r'\bemolument\w*\b|\bremunerat\w*\b|\bper\s*(?:month|annum|mensem)\b|'
+    r'\bbasic\s*pay\b|\bpay\s*in\s*the\b', re.I)
+
 _PAY_MODE = re.compile(
     r'\b(net ?banking|credit card|debit card|upi|bhim|challan|demand draft|cash|'
     r'wallet|internet banking|payment gateway)\b', re.I)
@@ -210,13 +218,24 @@ def extract_stages(doc: SourceDocument, text: str) -> list[ApplicationStage]:
                        section='application procedure')
         if ev is None:
             continue
+        # Structures where the authority titled the step, against those where it did not
+        # and the title is our truncation of a sentence.
+        labelled = candidate.structure in (Structure.EXPLICIT_MARKER,
+                                           Structure.TABLE_ROW,
+                                           Structure.HEADING)
         stage = ApplicationStage(
             id=f'stage-{candidate.order}-{_slug(candidate.title)}',
             title=candidate.title,
             order=candidate.order,
             description=normalise_ws(candidate.body)[:900],
             evidence=[ev],
-            status=Status.VERIFIED)
+            status=Status.VERIFIED if labelled else Status.NEEDS_REVIEW)
+        if not labelled:
+            stage.note = (
+                f'the authority did not give this step a title; it is written as a '
+                f'{candidate.structure.value.lower().replace("_", " ")} and the name shown '
+                f'is the opening of its own text, cut to length. The step is evidenced; '
+                f'what a person should check is whether this is one step or part of another.')
         stage.fields = extract_fields(doc, text, candidate.body, stage.id)
         stage.documents = extract_documents(doc, text, candidate.body, stage.id)
         stage.instructions = extract_instructions(doc, text, candidate.body)
@@ -338,7 +357,16 @@ def extract_fees(doc: SourceDocument, text: str) -> list[FeeRule]:
     """
     rules: list[FeeRule] = []
     for sentence in _sentences(text):
-        if not re.search(r'\bfee\b|\bfees\b', sentence, re.I):
+        mentions_fee = re.search(r'\bfees?\b|\bcharges?\b', sentence, re.I)
+        # "pay Rs. 111/-" states a fee without using the word. The amount is what makes
+        # this safe: an instruction to pay with no sum in it carries nothing.
+        tells_you_to_pay = (re.search(r'\bpay\w*\b|\bremit\w*\b|\bdeposit\w*\b',
+                                      sentence, re.I)
+                            and _AMOUNT.search(sentence))
+        if not mentions_fee and not tells_you_to_pay:
+            continue
+        if _REMUNERATION.search(sentence) and not mentions_fee:
+            # A pay scale is money the post offers, not money the application costs.
             continue
 
         if _NO_FEE.search(sentence):
@@ -351,7 +379,9 @@ def extract_fees(doc: SourceDocument, text: str) -> list[FeeRule]:
                     note='absence is stated by the authority, not inferred from silence'))
             continue
 
-        amounts = _AMOUNT.findall(sentence)
+        # A digit is required: the amount pattern's character class accepts separators, so
+        # "Rs. ," matches and yields nothing to convert.
+        amounts = [a for a in _AMOUNT.findall(sentence) if any(c.isdigit() for c in a)]
         exempting = re.search(r'\b(exempt\w*|remission|not required to pay)\b', sentence, re.I)
         categories = [c.lower() for c in _CATEGORY.findall(sentence)]
 
@@ -545,6 +575,24 @@ def extract_application_process(
             'not evidence that the authority publishes none')
 
     outcome.process.fees = _dedupe_fees(fees)
+
+    # Several amounts stated for everybody cannot all be the application fee: a notice
+    # prices more than one thing. Which is which is a reading, not a shape, so they are held
+    # for review with their evidence rather than one being picked.
+    unscoped = [f for f in outcome.process.fees
+                if f.scope.is_global and f.amount.status is Status.VERIFIED
+                and f.amount.has_value]
+    if len(unscoped) > 1:
+        listed = ', '.join(str(f.amount.value) for f in unscoped)
+        for rule in unscoped:
+            rule.amount.status = Status.NEEDS_REVIEW
+            rule.amount.note = (
+                f'{len(unscoped)} amounts are stated without saying who each is for '
+                f'({listed}). A notice prices more than one thing, and which of these is '
+                f'the application fee is a reading of the document rather than something '
+                f'its structure settles. Each keeps its own evidence.')
+        outcome.conflicts.append('fee amount')
+
     return outcome
 
 

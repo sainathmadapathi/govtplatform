@@ -701,6 +701,8 @@ class ApplicationStage:
     is_one_time: Optional[bool] = None
     evidence: list[SourceEvidence] = dc_field(default_factory=list)
     status: Status = Status.NOT_EXTRACTED
+    #: Why this stage is NEEDS_REVIEW, in words a person can act on.
+    note: str = ''
 
 
 @dataclass

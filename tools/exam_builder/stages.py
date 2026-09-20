@@ -263,6 +263,8 @@ def _is_heading(line: str) -> bool:
         return False
     if _is_furniture(stripped) or not _has_words(stripped):
         return False
+    if _reads_as_a_clause(stripped):
+        return False
     # A fragment of a wrapped sentence, not a title: unbalanced brackets, or a line that
     # picks up where the previous one left off.
     if stripped.count(')') != stripped.count('(') or stripped.count(']') != stripped.count('['):
@@ -375,11 +377,32 @@ def _by_table(region: str) -> list[StageCandidate]:
     return out if len(out) >= 2 else []
 
 
+#: Words that join a clause to something else. A label never needs one, because a label
+#: names a thing rather than asserting something about it. Closed, small and grammatical --
+#: it describes English, not any authority's habits.
+_CLAUSE_MARKER = re.compile(
+    r'\b(which|who|whom|whose|that|because|although|though|whereas|while|unless|'
+    r'wherever|whenever|thereby|hence|therefore|so that|in order to|strives?|seeks?)\b',
+    re.I)
+
+
+def _reads_as_a_clause(title: str) -> bool:
+    """Is this a statement rather than a name?
+
+    A step is called "Registration" or "Uploading of Signature". A policy banner reads
+    "Government strives to have a workforce which reflects ..." -- same length, same
+    capitalisation, and not the name of anything a candidate does.
+    """
+    return bool(_CLAUSE_MARKER.search(title))
+
+
 def _valid_title(title: str) -> bool:
     """A title, not a fragment of the sentence it was cut out of."""
     if not title or _is_furniture(title) or not _has_words(title):
         return False
     if title[0].islower() or title[0] in ')]},.;':
+        return False
+    if _reads_as_a_clause(title):
         return False
     return title.count('(') == title.count(')') and title.count('[') == title.count(']')
 
