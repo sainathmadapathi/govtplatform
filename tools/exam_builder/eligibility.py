@@ -28,6 +28,7 @@ import re
 from dataclasses import dataclass
 
 from .evidence import Evidence, EvidenceStatus, normalise_ws
+from .tables import ColumnKind, reconstruct, reconstruct_lists
 from .schema import (AgeRelaxation, AgeRule, Eligibility, Fact, Post, QualificationRule,
                      Requirement, Scope, ScopeKind, ScopeRef, SourceDocument, SourceEvidence,
                      Status, VacancyCount)
@@ -121,10 +122,15 @@ def _slug(text: str) -> str:
 # ========================================================================= age
 _AGE_BAND = re.compile(
     r'\b(?:not\s+(?:be\s+)?(?:less|below|under)\s+than|minimum\s+(?:age\s+)?(?:of\s+)?|'
-    r'at\s+least)\s*(\d{1,2})\s*(?:years?|yrs?)?', re.I)
+    # "must have attained the age of 21 years", but never "must *not* have attained".
+    r'at\s+least|(?<!not\s)(?<!not\s\s)have\s+attained\s+the\s+age\s+of)'
+    r'\s*(\d{1,2})\s*(?:years?|yrs?)?', re.I)
 _AGE_MAX = re.compile(
     r'\b(?:not\s+(?:be\s+)?(?:more|above|over|exceed(?:ing)?)\s+than|maximum\s+(?:age\s+)?'
-    r'(?:of\s+)?|upper\s+age\s+limit\s*(?:is|of|:)?)\s*(\d{1,2})\s*(?:years?|yrs?)?', re.I)
+    r'(?:of\s+)?|upper\s+age\s+limit\s*(?:is|of|:)?|'
+    # "must not have attained the age of 32 years" -- the formal phrasing, and the negative
+    # is matched here so that the minimum pattern below cannot claim it.
+    r'not\s+(?:have\s+)?attained\s+the\s+age\s+of)\s*(\d{1,2})\s*(?:years?|yrs?)?', re.I)
 # The second form is a table cell: "18-30 years", with none of the sentence wording.
 _AGE_RANGE = re.compile(
     r'\b(?:between|from)\s*(\d{1,2})\s*(?:years?|yrs?)?\s*(?:and|to|-|–)\s*(\d{1,2})\s*'
@@ -596,46 +602,100 @@ _PAY_LEVEL = re.compile(r'\b(?:pay\s+level|level)\s*[-–—:]?\s*(\d{1,2})\b', 
 
 
 def extract_posts(doc: SourceDocument, text: str, *, exam_id: str) -> list[Post]:
-    """Posts named in a table whose other cells describe a post.
+    """Posts, from tables reconstructed out of the flattened document.
 
-    Deliberately narrow: a table row whose neighbours carry a pay level, a department or a
-    post code is a post; a sentence that happens to contain the word "post" is not. A wrong
-    post is worse than a missing one, because a candidate may apply for it.
+    Every field comes from the row's own cells, so a post's age is the age its row printed
+    rather than the nearest age in the document. A row the reconstruction refused produces
+    no post at all -- a post that does not exist is one a candidate may apply for.
     """
     out: list[Post] = []
     seen: set[str] = set()
-    rows = [m.group('cells') for m in _POST_ROW.finditer(text)]
-    if len(rows) < 2:
-        return []
 
-    for row in rows:
-        cells = [c.strip() for c in row.split('|') if c.strip()]
-        if len(cells) < 2:
-            continue
-        if not _POST_CUE.search(row):
-            continue
-        # The name is the first cell that is words rather than an ordinal or a number.
-        name = next((c for c in cells
-                     if re.search(r'[A-Za-z]{4}', c)
-                     and not re.fullmatch(r'[\divxIVX.\s-]+', c)
-                     and not _POST_CUE.fullmatch(c or '')), '')
-        name = normalise_ws(name)
-        if not name or len(name) < 4 or name.lower() in seen:
-            continue
-        if _POST_CUE.search(name) and len(name.split()) <= 3:
-            continue                      # the header row
-        ev = _evidence(row.strip(), doc, text, reading=f'post: {name}')
-        if ev is None:
-            continue
-        seen.add(name.lower())
+    # Grids first, then lists: an authority that publishes a grid has said more
+    # about each post, so its rows are the better reading where both exist.
+    for table in reconstruct(text) + reconstruct_lists(text):
+        for row in table.rows:
+            if not row.reconstructed:
+                continue
+            name = normalise_ws(row.cells.get(ColumnKind.NAME, ''))
+            if not name:
+                # Some tables name the post in the column an authority headed
+                # "Service" or "Cadre"; that is still the thing being recruited to.
+                name = normalise_ws(row.cells.get(ColumnKind.DEPARTMENT, ''))
+            if len(name) < 4 or name.lower() in seen:
+                continue
+            ev = _evidence(row.span, doc, text, reading=f'post: {name[:60]}')
+            if ev is None:
+                continue
+            seen.add(name.lower())
 
-        post = Post(id=f'post-{exam_id}-{_slug(name)}', name=name,
-                    evidence=[ev], status=Status.VERIFIED)
-        level = _PAY_LEVEL.search(row)
-        if level:
-            post.pay = Fact.verified(f'Level {level.group(1)}', ev)
-        out.append(post)
-    return out[:60]
+            post = Post(id=f'post-{exam_id}-{_slug(name)}', name=name, evidence=[ev],
+                        status=Status.NEEDS_REVIEW if row.note else Status.VERIFIED,
+                        note=row.note)
+
+            department = normalise_ws(row.cells.get(ColumnKind.DEPARTMENT, ''))
+            if department and department != name:
+                post.department = Fact.verified(department, ev)
+            classification = normalise_ws(row.cells.get(ColumnKind.CLASSIFICATION, ''))
+            if classification:
+                post.classification = Fact.verified(classification, ev)
+
+            # A pay level the rows do not repeat may be stated in the heading above them,
+            # where it governs every row of that section.
+            pay = normalise_ws(row.cells.get(ColumnKind.PAY, '')) or normalise_ws(
+                str(table.heading_values.get(ColumnKind.PAY, '')))
+            if pay:
+                post.pay = Fact.verified(pay, ev)
+
+            vacancy = normalise_ws(row.cells.get(ColumnKind.VACANCY, ''))
+            if vacancy.isdigit():
+                post.vacancies.append(VacancyCount(count=Fact.verified(int(vacancy), ev)))
+
+            qualification = normalise_ws(row.cells.get(ColumnKind.QUALIFICATION, ''))
+            if qualification:
+                post.qualification.append(QualificationRule(
+                    scope=Scope([ScopeRef(ScopeKind.POST, post.id, post.name)]),
+                    requirement=Fact.verified(qualification[:400], ev)))
+
+            out.append(post)
+    return out[:80]
+
+
+def post_age_rules(doc: SourceDocument, text: str, posts: list[Post]) -> list[AgeRule]:
+    """The age each post's own row printed, scoped to that post.
+
+    This is where the forty-six unscoped bands go. They were never exam-wide rules: they
+    are the Age Limit column of the post table, one per post, and reading them as one
+    exam-wide band would have been wrong in both directions.
+    """
+    rules: list[AgeRule] = []
+    for table in reconstruct(text):
+        for row in table.rows:
+            if not row.reconstructed:
+                continue
+            band = normalise_ws(row.cells.get(ColumnKind.AGE, ''))
+            if not band:
+                continue
+            name = normalise_ws(row.cells.get(ColumnKind.NAME, '')) or normalise_ws(
+                row.cells.get(ColumnKind.DEPARTMENT, ''))
+            post = next((p for p in posts if p.name.lower() == name.lower()), None)
+            if post is None:
+                continue
+            parsed = _AGE_RANGE.search(band)
+            if not parsed:
+                continue
+            pair = ((parsed.group(1), parsed.group(2)) if parsed.group(1)
+                    else (parsed.group(3), parsed.group(4)))
+            ev = _evidence(row.span, doc, text, reading=f'age for {post.name[:50]}')
+            if ev is None:
+                continue
+            rules.append(AgeRule(
+                id=f'age-{post.id}',
+                scope=Scope([ScopeRef(ScopeKind.POST, post.id, post.name)]),
+                minimum_age=Fact.verified(float(pair[0]), ev),
+                maximum_age=Fact.verified(float(pair[1]), ev),
+                note=post.note))
+    return rules
 
 
 # ========================================================================= entry
@@ -651,7 +711,9 @@ def extract_eligibility(doc: SourceDocument, text: str, *,
                         exam_id: str) -> EligibilityOutcome:
     """Everything this document says about who may apply, and for what."""
     posts = extract_posts(doc, text, exam_id=exam_id)
-    age_rules = extract_age_rules(doc, text, posts=posts)
+    # Post-scoped bands first: an age printed in a post's own row belongs to that post, and
+    # the sentence reader would otherwise record each of them as an exam-wide rule.
+    age_rules = post_age_rules(doc, text, posts) + extract_age_rules(doc, text, posts=posts)
     relaxations = extract_relaxations(doc, text, posts=posts)
 
     # A relaxation belongs to the rule it relaxes. With no post scope it modifies whichever

@@ -49,7 +49,18 @@ export interface PostRequirement {
   payLevel: string;
   payScale: string;
   gradePay?: number;
-  classification: 'Group A (Gazetted)' | 'Group B (Gazetted)' | 'Group B (Non-Gazetted)' | 'Group C';
+  /**
+   * The classification the authority printed, in its own words — "Group 'A'",
+   * "Group B (Non-Gazetted)", or empty where the notice does not state one.
+   *
+   * This was a required union of four values, which left no way to record a post whose
+   * Group its notice does not print — the type forced a choice between omitting the post
+   * and asserting a classification the document never stated. One record takes the second
+   * option today, assigning Group A to three services their notice leaves unclassified
+   * (see `upscGroupA`), on provenance marked UNDER_VERIFICATION. Widening the type removes
+   * the need to choose: an unstated classification is now simply empty.
+   */
+  classification: string;
   minAge: number;
   maxAge: number;
   specialQualification?: string;
