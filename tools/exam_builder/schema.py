@@ -736,13 +736,47 @@ class FeeRule:
 
 
 # ================================================================== milestones
+class DatePrecision(str, Enum):
+    """How exactly the authority stated it. Never more exact than what was printed.
+
+    An authority that says "in June 2026" has said a month, and recording a day would be
+    inventing one. MONTH and YEAR exist so that imprecision can be carried honestly rather
+    than rounded into a false certainty or dropped.
+    """
+
+    DAY = 'DAY'
+    MONTH = 'MONTH'
+    YEAR = 'YEAR'
+    #: A date the authority described without giving one -- "a date to be notified later".
+    UNSPECIFIED = 'UNSPECIFIED'
+
+
+class MilestoneState(str, Enum):
+    """What has happened to this event, as distinct from how well we know it.
+
+    `Status` says how confident we are in the reading. This says what the authority did:
+    announced it, moved it, or called it off. A postponed exam with no new date is a real
+    thing to show a candidate, and the old shape could not show it.
+    """
+
+    ANNOUNCED = 'ANNOUNCED'
+    POSTPONED = 'POSTPONED'
+    RESCHEDULED = 'RESCHEDULED'
+    CANCELLED = 'CANCELLED'
+    #: Stated as existing but with no date yet -- "will be announced in due course".
+    AWAITED = 'AWAITED'
+
+
 @dataclass
 class Milestone:
     """A dated event, scoped to whatever it concerns.
 
     `kind` is the authority's own label. There is no closed set, because the old one
     contained EXAM_TIER1 and EXAM_TIER2 and could not express a third written stage. The
-    scope is what lets a paper-specific date exist at all.
+    scope is what lets a paper-specific or stage-specific date exist at all.
+
+    A range is one milestone with both ends, not two rows: an application window is a single
+    event in a candidate's head and splitting it loses the relationship between its ends.
     """
 
     id: str
@@ -751,17 +785,60 @@ class Milestone:
     #: A coarse, open classification for grouping in a UI. Free text by design.
     kind: str = ''
     scope: Scope = dc_field(default_factory=Scope)
+    #: The cycle this belongs to, as the authority labels it. A document may describe more
+    #: than one, and a date from the wrong cycle is as wrong as one from the wrong exam.
+    cycle: str = ''
     starts_at: Fact[str] = dc_field(default_factory=Fact)
     ends_at: Fact[str] = dc_field(default_factory=Fact)
+    precision: DatePrecision = DatePrecision.DAY
+    state: MilestoneState = MilestoneState.ANNOUNCED
     is_tentative: Optional[bool] = None
-    #: Set when a corrigendum replaced this milestone; the old one is kept, not deleted.
+    #: Dates the authority offered as alternatives to this one, each evidenced. Not
+    #: candidates we are choosing between -- alternatives the authority itself published.
+    alternatives: list[Fact] = dc_field(default_factory=list)
+    #: Set when a later document replaced this milestone; the old one is kept, not deleted.
     superseded_by: str = ''
+    #: The milestone this one replaces, so the chain reads in both directions.
+    supersedes: str = ''
+    #: The document that made the change, for a revision.
+    revision_source_id: str = ''
     status: Status = Status.NOT_EXTRACTED
     note: str = ''
 
     @property
     def is_superseded(self) -> bool:
         return bool(self.superseded_by)
+
+    @property
+    def is_range(self) -> bool:
+        return self.starts_at.has_value and self.ends_at.has_value
+
+    @property
+    def effective_date(self) -> Optional[str]:
+        """The moment this milestone currently points at, or None.
+
+        The end of a window is what a candidate needs -- a deadline, not an opening -- so a
+        range reports its end. A superseded or cancelled milestone reports nothing, because
+        it no longer points anywhere a candidate should act on.
+        """
+        if self.is_superseded or self.state is MilestoneState.CANCELLED:
+            return None
+        if self.ends_at.has_value:
+            return self.ends_at.value
+        return self.starts_at.value if self.starts_at.has_value else None
+
+    @property
+    def is_actionable(self) -> bool:
+        """May this drive a reminder?
+
+        Only a verified, effective date. A reading we are unsure of, an event the authority
+        has not dated, and a date that has been replaced must never become a notification --
+        a candidate acting on one of those is worse off than a candidate with no reminder.
+        """
+        return (self.status is Status.VERIFIED
+                and self.effective_date is not None
+                and self.state in (MilestoneState.ANNOUNCED, MilestoneState.RESCHEDULED)
+                and self.precision is DatePrecision.DAY)
 
 
 # ======================================================================= posts

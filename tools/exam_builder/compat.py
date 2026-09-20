@@ -23,6 +23,7 @@ never badged as officially verified.
 """
 from __future__ import annotations
 
+import re
 from typing import Any, Optional
 
 from ..exam_authoring.record import Citation, Field as LegacyField, Status as LegacyStatus
@@ -267,3 +268,102 @@ def application_simulator_spec(process, *, exam_id: str, portal_name: str = '',
             portal if portal else Fact.not_extracted(),
             prov_id=f'prov-app-{exam_id}') or {},
     }
+
+
+# ------------------------------------------- Milestone -> the existing timeline
+#: The frontend's `ImportantDate.type` is a closed union written around one authority's
+#: vocabulary. The universal `kind` is open, so the projection maps what it can and falls
+#: back rather than dropping a milestone the UI has no word for -- a date the candidate needs
+#: must not disappear because a type name is missing.
+_KIND_TO_LEGACY_TYPE = {
+    'NOTIFICATION': 'NOTIFICATION',
+    'APPLICATION_WINDOW': 'APPLICATION_CLOSE',
+    'APPLICATION_START': 'APPLICATION_OPEN',
+    'APPLICATION_END': 'APPLICATION_CLOSE',
+    'FEE_PAYMENT_END': 'APPLICATION_CLOSE',
+    'CORRECTION_WINDOW': 'CORRECTION_WINDOW',
+    'ADMIT_CARD': 'ADMIT_CARD',
+    'CITY_INTIMATION': 'ADMIT_CARD',
+    'ANSWER_KEY': 'ANSWER_KEY',
+    'RESULT': 'RESULT',
+    'INTERVIEW': 'INTERVIEW',
+    'SKILL_TEST': 'INTERVIEW',
+    'PHYSICAL_TEST': 'INTERVIEW',
+    'DOCUMENT_VERIFICATION': 'INTERVIEW',
+    'EXAM': 'EXAM_TIER1',
+}
+
+
+def legacy_date_type(kind: str, *, stage_label: str = '') -> str:
+    """The nearest type the existing union has for this event.
+
+    Lossy by construction, and the loss is recorded rather than hidden: the milestone's own
+    `kind` and label carry the authority's meaning, and the label is what the timeline
+    actually shows. A stage-scoped examination maps onto the second tier where the authority
+    numbered it beyond the first, which is the most the closed union can express.
+    """
+    mapped = _KIND_TO_LEGACY_TYPE.get(kind, 'NOTIFICATION')
+    if kind == 'EXAM' and stage_label:
+        if re.search(r'\b(?:2|ii|b)\b', stage_label, re.I):
+            return 'EXAM_TIER2'
+    return mapped
+
+
+def important_dates(milestones, *, exam_id: str, timezone: str = 'IST') -> list[dict]:
+    """Project milestones into the `ImportantDate[]` the Dates & Timeline section renders.
+
+    Three rules, all of them about not overstating what was read:
+
+      * a milestone with no effective date is left out. The UI has no way to render "the
+        authority has not said", and a row with an empty date reads as a bug.
+      * `SUPERSEDED` is used for a milestone that a later document replaced, which is
+        exactly what the UI already does with it -- shown struck through, never announced
+        as next.
+      * a reading we are unsure of is marked tentative and its provenance is not badged
+        official, so nothing uncertain is presented as the authority's final word.
+    """
+    from .schema import DatePrecision, MilestoneState, Status as _Status
+
+    rows: list[dict] = []
+    for index, milestone in enumerate(milestones):
+        effective = milestone.effective_date
+        superseded = milestone.is_superseded
+        if effective is None and not superseded:
+            continue
+        shown = effective or (milestone.ends_at.value or milestone.starts_at.value)
+        if not shown:
+            continue
+
+        fact = milestone.ends_at if milestone.ends_at.has_value else milestone.starts_at
+        provenance = to_legacy_provenance(
+            fact, prov_id=f'prov-{milestone.id}', superseded=superseded)
+        if provenance is None:
+            continue
+
+        from .schema import ScopeKind
+        stage_scopes = milestone.scope.of(ScopeKind.STAGE)
+        stage_refs = stage_scopes[0].label if stage_scopes else ''
+        rows.append({
+            'id': milestone.id or f'date-{exam_id}-{index}',
+            'type': legacy_date_type(milestone.kind, stage_label=stage_refs),
+            'label': milestone.label,
+            'dateTimeStr': f'{shown} 00:00:00',
+            'timezone': timezone,
+            'isTentative': bool(milestone.is_tentative
+                                or milestone.precision is not DatePrecision.DAY
+                                or milestone.status is _Status.NEEDS_REVIEW),
+            'status': 'SUPERSEDED' if superseded else 'AVAILABLE',
+            'provenance': provenance,
+        })
+    return rows
+
+
+def notification_candidates(milestones) -> list:
+    """The milestones that may drive a reminder.
+
+    Deliberately strict, and the strictness is the point: a candidate who acts on an
+    uncertain date is worse off than one who got no reminder. Only a verified, effective,
+    day-precision milestone qualifies -- never NEEDS_REVIEW, never NOT_PUBLISHED, never a
+    date that has been superseded or cancelled.
+    """
+    return [m for m in milestones if m.is_actionable]
