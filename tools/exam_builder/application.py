@@ -30,30 +30,9 @@ from .evidence import Evidence, EvidenceStatus, normalise_ws
 from .schema import (ApplicationField, ApplicationProcess, ApplicationStage, Fact, FeeRule,
                      RequiredDocument, Scope, ScopeKind, ScopeRef, SourceDocument,
                      SourceEvidence, Status)
-from .semantic import CueSet
+from .stages import Structure, discover_stages, procedure_regions
 
 # ============================================================== what to look for
-#: A region that describes *how to apply*, as opposed to mentioning that one must.
-_PROCEDURE = CueSet(
-    anchors=(r'how to apply', r'application procedure', r'procedure for (?:applying|'
-             r'submission|filling)', r'instructions? for (?:filling|submission|applying)',
-             r'process of (?:applying|registration)', r'steps? (?:to|for) apply',
-             r'mode of (?:application|submission)', r'applications? (?:are|is|must|should) '
-             r'(?:to )?be (?:submitted|filled|made)'),
-    supporting=(r'\bonline\b', r'\bwebsite\b', r'\bportal\b', r'\bregistration\b',
-                r'\bcandidates?\b', r'\bform\b', r'\bsubmit\b'),
-    against=(r'\bsyllabus\b', r'\bexamination centre\b.{0,40}\blist\b'))
-
-#: Enumeration the authority used to number its own steps. Ordered most explicit first: a
-#: document that says "Step 1" is telling us where its steps begin far more reliably than
-#: one that merely has a numbered paragraph.
-_STEP_PATTERNS = (
-    re.compile(r'(?:^|\s)(?P<marker>(?:step|stage|part|phase)\s*[-–—:]?\s*'
-               r'(?P<num>\d+|[ivxIVX]+))\s*[-–—:.)]\s*(?P<title>[^.;:]{3,80})', re.I),
-    re.compile(r'(?:^|\s)(?P<marker>\((?P<num>[ivx]+)\))\s*(?P<title>[A-Z][^.;:]{3,80})'),
-    re.compile(r'(?:^|\s)(?P<marker>(?P<num>\d{1,2})\.)\s+(?P<title>[A-Z][^.;:]{3,80})'),
-)
-
 #: A sentence that asks the candidate to supply something. The verb is the cue; the label is
 #: whatever the document calls the thing.
 _FIELD_CUE = re.compile(
@@ -216,78 +195,36 @@ def _clean_label(label: str) -> str:
     return out
 
 
-# ============================================================ procedure region
-def procedure_regions(text: str) -> list[tuple[int, str]]:
-    """Passages of a document that are about how to apply, best first.
-
-    Located by cue rather than by heading, because authorities head this section a dozen
-    different ways and some never head it at all.
-    """
-    flat = normalise_ws(text)
-    if not flat:
-        return []
-    found: list[tuple[float, int, str]] = []
-    window, stride = 2600, 1300
-    for start in range(0, max(1, len(flat)), stride):
-        chunk = flat[start:start + window]
-        if not chunk.strip():
-            continue
-        score, _cues = _PROCEDURE.score(chunk)
-        if score > 0:
-            found.append((score, start, chunk))
-    found.sort(key=lambda t: (-t[0], t[1]))
-    return [(start, chunk) for _s, start, chunk in found]
-
-
 # ===================================================================== stages
-def _segment_steps(region: str) -> list[tuple[str, str]]:
-    """Split a procedure region on the enumeration the authority used.
-
-    Returns (title, body). The title is the authority's own wording, untouched — this is
-    where a normaliser would quietly rewrite one body's vocabulary into another's.
-    """
-    for pattern in _STEP_PATTERNS:
-        marks = list(pattern.finditer(region))
-        if len(marks) < 2:            # one marker is a coincidence, not an enumeration
-            continue
-        out: list[tuple[str, str]] = []
-        for i, m in enumerate(marks):
-            end = marks[i + 1].start() if i + 1 < len(marks) else len(region)
-            title = _clean_label(m.group('title'))
-            body = normalise_ws(region[m.start():end])
-            if title:
-                out.append((title, body))
-        if len(out) >= 2:
-            return out
-    return []
-
-
 def extract_stages(doc: SourceDocument, text: str) -> list[ApplicationStage]:
-    """The steps this document describes, in the order it describes them."""
-    stages: list[ApplicationStage] = []
-    for _offset, region in procedure_regions(text):
-        segments = _segment_steps(region)
-        if not segments:
+    """The steps this document describes, in the order it describes them.
+
+    Discovery is `stages.discover_stages`, which reads whichever structure the authority
+    used. Everything here is the same afterwards: each candidate must still produce a span
+    that verifies verbatim, and one that cannot is dropped rather than kept unevidenced.
+    """
+    out: list[ApplicationStage] = []
+    for candidate in discover_stages(text):
+        ev = _evidence(candidate.body[:900], doc, text,
+                       reading=f'{candidate.structure.value.lower()}: {candidate.title}',
+                       section='application procedure')
+        if ev is None:
             continue
-        for order, (title, body) in enumerate(segments, start=1):
-            ev = _evidence(body[:600], doc, text, reading=f'step: {title}',
-                           section='application procedure')
-            if ev is None:
-                continue
-            stage = ApplicationStage(
-                id=f'stage-{order}-{_slug(title)}',
-                title=title,
-                order=order,
-                description=normalise_ws(body)[:600],
-                evidence=[ev],
-                status=Status.VERIFIED)
-            stage.fields = extract_fields(doc, text, body, stage.id)
-            stage.documents = extract_documents(doc, text, body, stage.id)
-            stage.instructions = extract_instructions(doc, text, body)
-            stages.append(stage)
-        if stages:
-            break                      # the best-scoring region that actually enumerated
-    return stages
+        stage = ApplicationStage(
+            id=f'stage-{candidate.order}-{_slug(candidate.title)}',
+            title=candidate.title,
+            order=candidate.order,
+            description=normalise_ws(candidate.body)[:900],
+            evidence=[ev],
+            status=Status.VERIFIED)
+        stage.fields = extract_fields(doc, text, candidate.body, stage.id)
+        stage.documents = extract_documents(doc, text, candidate.body, stage.id)
+        stage.instructions = extract_instructions(doc, text, candidate.body)
+        out.append(stage)
+    # Re-number after any drop, so the order a reader sees has no gaps in it.
+    for order, stage in enumerate(out, start=1):
+        stage.order = order
+    return out
 
 
 # ===================================================================== fields
