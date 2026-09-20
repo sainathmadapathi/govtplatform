@@ -36,7 +36,8 @@ import {
   ChatChannel,
   ChatContext,
   ConversationTurn,
-  MultiTierResultEntry
+  MultiTierResultEntry,
+  AgeRelaxationEntry
 } from './types';
 
 // ==========================================================================
@@ -117,18 +118,63 @@ export function calculateDetailedAge(dateOfBirth: string, referenceDate: string 
 /**
  * Returns Category Age Relaxation in years as per official SSC CGL rules.
  */
-export function getCategoryAgeRelaxation(category: string): number {
-  switch (category) {
-    case 'OBC':
-      return 3;
-    case 'SC':
-    case 'ST':
-      return 5;
-    case 'PwBD':
-      return 10;
-    default:
-      return 0;
-  }
+/**
+ * The words authorities use for the categories a candidate can pick in their profile.
+ *
+ * This table supplies **no values**. It exists only so that the code a candidate selected
+ * can be matched against the wording their authority printed — "SC" against "Scheduled
+ * Castes". Every number comes from the exam's own published relaxation, or there is none.
+ */
+const CATEGORY_WORDINGS: Record<string, string[]> = {
+  OBC: ['obc', 'other backward class', 'other backward classes', 'non-creamy layer'],
+  SC: ['sc', 'sc/st', 'scheduled caste', 'scheduled castes'],
+  ST: ['st', 'sc/st', 'scheduled tribe', 'scheduled tribes'],
+  PwBD: ['pwbd', 'pwd', 'person with benchmark disability', 'persons with benchmark disabilities'],
+  EWS: ['ews', 'economically weaker section', 'economically weaker sections'],
+  GENERAL: ['general', 'unreserved', 'ur']
+};
+
+/**
+ * The relaxation this exam published for this category, or null.
+ *
+ * Null means the exam's record holds no such rule, and a caller must say so rather than
+ * substituting a figure. This replaced a function that returned OBC +3 / SC,ST +5 /
+ * PwBD +10 for every exam in the country with no source at all.
+ */
+export function findAgeRelaxation(
+  exam: Exam | null | undefined,
+  category: string,
+  postId?: string
+): AgeRelaxationEntry | null {
+  const published = exam?.ageRelaxations;
+  if (!published || published.length === 0) return null;
+  const wordings = CATEGORY_WORDINGS[category] || [category.toLowerCase()];
+  const matches = published.filter(entry => {
+    const label = entry.category.toLowerCase();
+    if (!wordings.some(w => label === w || label.includes(w))) return false;
+    if (entry.appliesToPostId && postId && entry.appliesToPostId !== postId) return false;
+    return true;
+  });
+  // A post-specific rule is the more precise statement where the authority made one.
+  return matches.find(m => m.appliesToPostId && m.appliesToPostId === postId)
+    || matches.find(m => !m.appliesToPostId)
+    || matches[0]
+    || null;
+}
+
+/**
+ * Years to add to this exam's upper age limit for this candidate, from the exam's own
+ * notice. Zero when the authority published nothing — callers must not describe that as a
+ * relaxation of zero, only as an absence, which is what the reasons below do.
+ */
+export function getCategoryAgeRelaxation(
+  exam: Exam | null | undefined,
+  category: string,
+  postId?: string
+): number {
+  const entry = findAgeRelaxation(exam, category, postId);
+  if (!entry || entry.status === 'NOT_PUBLISHED') return 0;
+  return entry.years ?? 0;
 }
 
 
@@ -158,10 +204,13 @@ export function normalizeDegree(value: string): string {
 export function evaluatePostEligibility(
   post: PostRequirement,
   profile: UserProfile,
-  crucialDate: string = '2026-08-01'
+  crucialDate: string = '2026-08-01',
+  /** The exam whose published rules govern this verdict. Without it there is no relaxation. */
+  exam?: Exam | null
 ): PostVerdict {
   const age = calculateAge(profile.dateOfBirth, crucialDate);
-  const relaxation = getCategoryAgeRelaxation(profile.category);
+  const relaxationEntry = findAgeRelaxation(exam, profile.category, post.id);
+  const relaxation = getCategoryAgeRelaxation(exam, profile.category, post.id);
   const maxPermissibleAge = post.maxAge + relaxation;
   const userDegreeNorm = normalizeDegree(profile.degree);
   const isBachelor = userDegreeNorm.includes('bachelor') || userDegreeNorm.includes('degree');
@@ -178,7 +227,10 @@ export function evaluatePostEligibility(
   } else if (age > maxPermissibleAge) {
     ageStatus = 'EXCEEDED';
     reasons.push(
-      `Age Exceeded: ${age} yrs exceeds permissible limit of ${maxPermissibleAge} yrs (${post.maxAge} base + ${relaxation} yrs ${profile.category} relaxation)`
+      `Age Exceeded: ${age} yrs exceeds permissible limit of ${maxPermissibleAge} yrs ` +
+      (relaxationEntry
+        ? `(${post.maxAge} base + ${relaxation} yrs ${profile.category} relaxation, as published in ${relaxationEntry.provenance.documentTitle})`
+        : `(${post.maxAge} as published; this exam's record carries no age relaxation for ${profile.category}, so none was applied)`)
     );
   } else {
     reasons.push(
@@ -247,17 +299,25 @@ export function evaluatePostEligibility(
 export function evaluateEligibility(exam: Exam, profile: UserProfile): EligibilityDiagnostic {
   const crucialDate = exam.crucialEligibilityDate || '2026-08-01';
   const detailedAge = calculateDetailedAge(profile.dateOfBirth, crucialDate);
-  const relaxation = getCategoryAgeRelaxation(profile.category);
+  const relaxationEntry = findAgeRelaxation(exam, profile.category);
+  const relaxation = getCategoryAgeRelaxation(exam, profile.category);
   const userAge = detailedAge.years;
 
+  // The clauses cited must be this exam's. They used to name SSC's notification sections
+  // for every exam in the register, so a candidate looking at a state commission's exam was
+  // shown an SSC clause number as the basis of their own verdict.
   const legalClauses: string[] = [
-    'SSC CGL Notification Section 3.1: Crucial date for age limit calculation is 01-08-2026',
-    `Section 3.2: Permissible upper age relaxation for ${profile.category} candidates is +${relaxation} years`,
-    'Section 8.1: Essential Educational Qualification: Bachelor’s Degree from a recognized University or equivalent (as on 01-08-2026)'
+    `${exam.title}: age is reckoned as on ${crucialDate}`,
+    relaxationEntry
+      ? `Age relaxation for ${profile.category}: ${relaxationEntry.years !== undefined ? `+${relaxationEntry.years} years` : relaxationEntry.maximumAge !== undefined ? `upper limit ${relaxationEntry.maximumAge} years` : 'stated without a figure'} — ${relaxationEntry.provenance.documentTitle}`
+      : `No age relaxation for ${profile.category} is recorded from ${exam.authorityName}'s own documents, so none has been applied.`,
+    ...(exam.eligibilityHighlights || [])
+      .filter(card => /qualification|degree|education/i.test(card.title))
+      .map(card => `${card.title}: ${card.body}`)
   ];
 
   const postVerdicts: PostVerdict[] = exam.posts.map(post =>
-    evaluatePostEligibility(post, profile, crucialDate)
+    evaluatePostEligibility(post, profile, crucialDate, exam)
   );
 
   const eligibleCount = postVerdicts.filter(p => p.eligible).length;

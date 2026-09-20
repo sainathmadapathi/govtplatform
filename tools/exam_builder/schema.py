@@ -886,6 +886,24 @@ class QualificationRule:
 
 
 @dataclass
+class Requirement:
+    """A condition on who may apply, beyond age and qualification.
+
+    `kind` is open on purpose. Experience, domicile, medical standards, a driving licence, a
+    language, a physical standard -- the old contract had a slot for none of these and a
+    closed enum for the ones it did have, so an authority with an unusual condition could
+    not be recorded at all. The authority's own wording is kept in `statement`.
+    """
+
+    kind: str
+    statement: Fact[str] = dc_field(default_factory=Fact)
+    scope: Scope = dc_field(default_factory=Scope)
+    #: True where the authority marks it essential, False where desirable, None unstated.
+    is_essential: Optional[bool] = None
+    note: str = ''
+
+
+@dataclass
 class Eligibility:
     """Every rule about who may apply, each carrying its own scope and source."""
 
@@ -893,7 +911,32 @@ class Eligibility:
     qualifications: list[QualificationRule] = dc_field(default_factory=list)
     nationality: list[Fact] = dc_field(default_factory=list)
     attempts: list['AttemptRule'] = dc_field(default_factory=list)
+    #: Experience, domicile, medical, physical, licence, language -- whatever was published.
+    requirements: list[Requirement] = dc_field(default_factory=list)
     other_rules: list[Fact] = dc_field(default_factory=list)
+
+    def relaxations_for(self, category_label: str, *, post_id: str = ''):
+        """Every relaxation an authority published for this category, with its evidence.
+
+        Returns nothing where the authority published nothing. That is the whole point:
+        the value this replaces was a constant applied to every exam in the country.
+        """
+        want = (category_label or '').strip().lower()
+        out = []
+        for rule in self.age_rules:
+            if post_id and rule.scope.refs:
+                posts = [r.ref for r in rule.scope.of(ScopeKind.POST)]
+                if posts and post_id not in posts:
+                    continue
+            for relaxation in rule.relaxations:
+                if relaxation.category_label.strip().lower() != want:
+                    continue
+                if post_id:
+                    posts = [r.ref for r in relaxation.scope.of(ScopeKind.POST)]
+                    if posts and post_id not in posts:
+                        continue
+                out.append(relaxation)
+        return out
 
     def age_rules_for(self, scope: Scope) -> list[AgeRule]:
         """Rules that govern the given scope, most general first."""

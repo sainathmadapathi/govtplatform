@@ -70,6 +70,29 @@ export interface EligibilityRule {
   provenance: DataProvenance;
 }
 
+/**
+ * One age relaxation exactly as an authority published it.
+ *
+ * Both printed forms are kept because authorities use both and converting between them
+ * needs the base limit plus arithmetic nobody published: `years` is an increment on the
+ * upper limit ("relaxable by 5 years"), `maximumAge` is the limit itself ("the upper age
+ * limit for X is 40 years").
+ *
+ * `category` is the authority's own wording, not a code. `NOT_PUBLISHED` is used where a
+ * notice states that a group receives no relaxation, which is a fact about the authority
+ * and different from the platform simply not having one.
+ */
+export interface AgeRelaxationEntry {
+  category: string;
+  years?: number;
+  maximumAge?: number;
+  condition?: string;
+  /** Present only where the authority scoped the relaxation to one post. */
+  appliesToPostId?: string;
+  status: 'VERIFIED' | 'NEEDS_REVIEW' | 'NOT_PUBLISHED';
+  provenance: DataProvenance;
+}
+
 export interface RuleGroup {
   id: string;
   operator: 'AND' | 'OR';
@@ -706,6 +729,12 @@ export interface Exam {
   officialLinks?: { title: string; url: string; note: string }[];
   /** One line naming the document and section the syllabus was read from. */
   syllabusSourceNote?: string;
+  /**
+   * Age relaxations this authority published, each cited. Absent where the exam's notice
+   * has not been read for them — which is not the same as the authority granting none, and
+   * the UI must not present it as such.
+   */
+  ageRelaxations?: AgeRelaxationEntry[];
 }
 
 export interface UserProfile {

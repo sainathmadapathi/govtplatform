@@ -176,6 +176,7 @@ import {
   evaluateCandidateEligibility,
   evaluateEligibility,
   getCategoryAgeRelaxation,
+  findAgeRelaxation,
   MockAttemptRecord,
   storageService,
   INTERACTION_WEIGHTS,
@@ -2164,7 +2165,10 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
   const hasPhysicalPosts = selectedExam.posts.some(p => p.physicalRequired);
   const diagnostic: EligibilityDiagnostic = evaluateEligibility(selectedExam, profile);
   const detailedAge = calculateDetailedAge(profile.dateOfBirth, selectedExam.crucialEligibilityDate || '2026-08-01');
-  const relaxation = getCategoryAgeRelaxation(profile.category);
+  // The exam's own published relaxation, or none. This used to be a national default
+  // applied to whichever exam the candidate happened to be looking at.
+  const relaxationEntry = findAgeRelaxation(selectedExam, profile.category);
+  const relaxation = getCategoryAgeRelaxation(selectedExam, profile.category);
 
   const filteredPosts = diagnostic.postVerdicts.filter(post => {
     if (postFilter === 'ELIGIBLE') return post.eligible;
@@ -2280,7 +2284,9 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
                 </div>
               </div>
               <span className="badge badge-verified" style={{ fontSize: '0.75rem' }}>
-                {profile.category} (+{relaxation} Yrs)
+                {profile.category}{relaxationEntry
+                  ? ` (+${relaxation} Yrs)`
+                  : ' (no relaxation on record)'}
               </span>
             </div>
 
@@ -2506,7 +2512,9 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--surface-2)', paddingTop: '8px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                    <span>Age Rule: {pReq?.minAge}–{post.maxPermissibleAge} Yrs (with +{relaxation} yrs {profile.category})</span>
+                    <span>Age Rule: {pReq?.minAge}–{post.maxPermissibleAge} Yrs {relaxationEntry
+                      ? `(with +${relaxation} yrs ${profile.category}, per ${relaxationEntry.provenance.documentTitle})`
+                      : `(no ${profile.category} relaxation is recorded for this exam, so none is applied)`}</span>
                     {pReq?.provenance && (
                       <button 
                         onClick={() => onOpenProvenanceModal(pReq.provenance)}
@@ -3995,16 +4003,32 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
     const maxAge = Math.max(...exam.posts.map(p => p.maxAge));
     const post = exam.posts[0];
     const ageCard = (exam.eligibilityHighlights || []).find(c => /age/i.test(c.title));
-    // Relaxation by category, read from the exam's own eligibility card when it has one.
-    const relaxOf = (cat: string, fallback: number): number => {
+    // Relaxation by category, from this exam's published rules, then its eligibility card.
+    // There is deliberately no fallback: this used to return 3 for OBC, 5 for SC/ST and 10
+    // for PwBD whenever the exam's own documents did not say, which is a national default
+    // presented as that authority's rule.
+    const relaxOf = (cat: string): number | null => {
+      const published = (exam.ageRelaxations || []).find(entry =>
+        new RegExp(cat, 'i').test(entry.category));
+      if (published && published.status === 'NOT_PUBLISHED') return 0;
+      if (published && typeof published.years === 'number') return published.years;
       const m = ageCard && new RegExp(`${cat}[^.;]*?(\\d+) years`, 'i').exec(ageCard.body);
-      return m ? Number(m[1]) : fallback;
+      return m ? Number(m[1]) : null;
     };
-    const relax: [string, number][] = [['OBC', relaxOf('OBC', 3)], ['SC/ST', relaxOf('SC/ST', 5)], ['PwBD', relaxOf('Benchmark Disability|PwBD', 10)]];
+    const relax: [string, number | null][] = [['OBC', relaxOf('OBC|Other Backward')], ['SC/ST', relaxOf('SC/ST|Scheduled Caste|Scheduled Tribe')], ['PwBD', relaxOf('Benchmark Disabilit|PwBD')]];
     const asked = /\bobc\b/.test(q) ? 'OBC' : /\b(sc|st|sc st|sc\/st)\b/.test(q) ? 'SC/ST' : /\bpwbd|disab/.test(q) ? 'PwBD' : /\bews\b/.test(q) ? 'EWS' : /\b(ur|general|unreserved)\b/.test(q) ? 'General' : '';
     const examName = exam.code.replace(/_/g, ' ');
     if (asked) {
       const years = asked === 'EWS' || asked === 'General' ? 0 : relax.find(r => r[0] === asked)![1];
+      if (years === null) {
+        return {
+          verified: false,
+          subject: FACT_SUBJECTS.age,
+          text: `The age limit for ${examName} is ${minAge} to ${maxAge} years on the crucial date, ${exam.crucialEligibilityDate}.\n\nGovOS has not read a relaxation for ${asked} candidates out of ${exam.authorityName}'s own documents for this exam, so it will not quote one. Relaxations differ between authorities and between posts; check the notice in section 03, or ask GovOS to research it live.`,
+          citation: citeFrom(ageCard ? ageCard.provenance : post.provenance, `${exam.title} Official Notice`),
+          action: { label: 'Open Eligibility & Posts', tab: 'EXAM_DETAIL', section: 3 }
+        };
+      }
       return {
         verified: true,
         subject: FACT_SUBJECTS.age,

@@ -164,6 +164,116 @@ export const SSC_CGL_EXAM: Exam = {
   vacanciesTotal: '17,727 (Tentative Pan-India Vacancies)',
 
   // Exhaustive Post Breakdown across Pay Level 4 to Pay Level 8
+  ageRelaxations: [
+    {
+      category: 'SC/ST',
+      years: 5,
+      status: 'VERIFIED',
+      provenance: {
+        id: 'prov-ssc-age-relax-1',
+        documentTitle: 'Notice of Examination — Combined Graduate Level Examination, 2026',
+        officialUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
+        pageNumber: 7,
+        clauseNumber: 'Para 5.2 — Permissible relaxation in upper age limit',
+        publishedDate: '2026-05-21',
+        verifiedDate: '2026-09-20',
+        verifiedBy: 'GovOS exam builder — read from the Commission’s own relaxation table and verified verbatim',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: '01 SC/ST 5 years'
+      }
+    },
+    {
+      category: 'OBC',
+      years: 3,
+      status: 'VERIFIED',
+      provenance: {
+        id: 'prov-ssc-age-relax-2',
+        documentTitle: 'Notice of Examination — Combined Graduate Level Examination, 2026',
+        officialUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
+        pageNumber: 7,
+        clauseNumber: 'Para 5.2 — Permissible relaxation in upper age limit',
+        publishedDate: '2026-05-21',
+        verifiedDate: '2026-09-20',
+        verifiedBy: 'GovOS exam builder — read from the Commission’s own relaxation table and verified verbatim',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: '02 OBC 3 years'
+      }
+    },
+    {
+      category: 'PwBD',
+      years: 10,
+      status: 'VERIFIED',
+      provenance: {
+        id: 'prov-ssc-age-relax-3',
+        documentTitle: 'Notice of Examination — Combined Graduate Level Examination, 2026',
+        officialUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
+        pageNumber: 7,
+        clauseNumber: 'Para 5.2 — Permissible relaxation in upper age limit',
+        publishedDate: '2026-05-21',
+        verifiedDate: '2026-09-20',
+        verifiedBy: 'GovOS exam builder — read from the Commission’s own relaxation table and verified verbatim',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: '03 PwBD 10 years'
+      }
+    },
+    {
+      category: 'PwBD (OBC)',
+      years: 13,
+      status: 'VERIFIED',
+      provenance: {
+        id: 'prov-ssc-age-relax-4',
+        documentTitle: 'Notice of Examination — Combined Graduate Level Examination, 2026',
+        officialUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
+        pageNumber: 7,
+        clauseNumber: 'Para 5.2 — Permissible relaxation in upper age limit',
+        publishedDate: '2026-05-21',
+        verifiedDate: '2026-09-20',
+        verifiedBy: 'GovOS exam builder — read from the Commission’s own relaxation table and verified verbatim',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: '04 PwBD (OBC) 13 years'
+      }
+    },
+    {
+      category: 'PwBD (SC/ST)',
+      years: 15,
+      status: 'VERIFIED',
+      provenance: {
+        id: 'prov-ssc-age-relax-5',
+        documentTitle: 'Notice of Examination — Combined Graduate Level Examination, 2026',
+        officialUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
+        pageNumber: 7,
+        clauseNumber: 'Para 5.2 — Permissible relaxation in upper age limit',
+        publishedDate: '2026-05-21',
+        verifiedDate: '2026-09-20',
+        verifiedBy: 'GovOS exam builder — read from the Commission’s own relaxation table and verified verbatim',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: '05 PwBD (SC/ST) 15 years'
+      }
+    },
+    {
+      category: 'Ex-Servicemen (ESM)',
+      years: 3,
+      status: 'VERIFIED',
+      provenance: {
+        id: 'prov-ssc-age-relax-6',
+        documentTitle: 'Notice of Examination — Combined Graduate Level Examination, 2026',
+        officialUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
+        pageNumber: 7,
+        clauseNumber: 'Para 5.2 — Permissible relaxation in upper age limit',
+        publishedDate: '2026-05-21',
+        verifiedDate: '2026-09-20',
+        verifiedBy: 'GovOS exam builder — read from the Commission’s own relaxation table and verified verbatim',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: '06 Ex-Servicemen (ESM) 3 years'
+      }
+    }
+  ],
   posts: [
     {
       id: 'post-aso-css',
