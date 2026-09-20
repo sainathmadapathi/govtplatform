@@ -367,3 +367,84 @@ def notification_candidates(milestones) -> list:
     date that has been superseded or cancelled.
     """
     return [m for m in milestones if m.is_actionable]
+
+
+# ------------------------------------------- the existing record -> Milestone
+#: The inverse of `_KIND_TO_LEGACY_TYPE`. Lossy in the other direction: the closed union has
+#: one word where the universal side has several, so a record's ADMIT_CARD could have been a
+#: city intimation and an INTERVIEW could have been a skill test. The mapping is to the
+#: commonest reading, and the milestone keeps the record's own label, which is what a reader
+#: actually sees.
+_LEGACY_TYPE_TO_KIND = {
+    'NOTIFICATION': 'NOTIFICATION',
+    # Kept apart: an opening and a closing are two moments, and merging them onto one
+    # kind made a window's closing date conflict with the record's opening date.
+    'APPLICATION_OPEN': 'APPLICATION_START',
+    'APPLICATION_CLOSE': 'APPLICATION_END',
+    'CORRECTION_WINDOW': 'CORRECTION_WINDOW',
+    'ADMIT_CARD': 'ADMIT_CARD',
+    'EXAM_TIER1': 'EXAM',
+    'EXAM_TIER2': 'EXAM',
+    'ANSWER_KEY': 'ANSWER_KEY',
+    'RESULT': 'RESULT',
+    'INTERVIEW': 'INTERVIEW',
+}
+
+
+def milestone_from_important_date(row: dict, *, exam_id: str, source_id: str = 'record'):
+    """Read one row of an existing record back as a Milestone, so it can be matched.
+
+    An authored row is not treated as weaker than an extracted one. A person read a document
+    to write it, which is at least as good as our reading, and the merge engine has no
+    business preferring whichever came last.
+
+    `APPLICATION_OPEN` and `APPLICATION_CLOSE` both map to the application window, and the
+    open/close distinction is carried by which end of the milestone the date sits on -- that
+    is what lets an extracted range match an authored pair.
+    """
+    from .schema import (DatePrecision, Fact, Milestone, MilestoneState, Scope, ScopeKind,
+                         ScopeRef, SourceEvidence, Status)
+    from .evidence import EvidenceStatus
+
+    provenance = row.get('provenance') or {}
+    evidence = SourceEvidence(
+        source_id=source_id,
+        url=provenance.get('officialUrl', ''),
+        document_title=provenance.get('documentTitle', ''),
+        page=provenance.get('pageNumber'),
+        section=provenance.get('clauseNumber', ''),
+        span=provenance.get('excerptText', ''),
+        accessed_at=provenance.get('verifiedDate', ''),
+        published_at=provenance.get('publishedDate', ''),
+        # Not re-verified here: the record's excerpt was checked by whoever wrote it, and
+        # claiming our own verification for somebody else's reading would be false.
+        span_status=EvidenceStatus.UNCHECKED,
+        reading='carried from the existing exam record')
+
+    legacy_type = row.get('type', '')
+    when = (row.get('dateTimeStr') or '')[:10]
+    fact = Fact(value=when, status=Status.VERIFIED, evidence=[evidence]) if when else Fact()
+
+    scope = Scope()
+    stage_hint = 'II' if legacy_type == 'EXAM_TIER2' else ''
+    if stage_hint:
+        scope = Scope([ScopeRef(ScopeKind.STAGE, f'tier-{stage_hint.lower()}',
+                                f'Tier {stage_hint}')])
+
+    superseded = row.get('status') == 'SUPERSEDED'
+    return Milestone(
+        id=row.get('id') or f'date-{exam_id}',
+        label=row.get('label', ''),
+        kind=_LEGACY_TYPE_TO_KIND.get(legacy_type, legacy_type or 'OTHER'),
+        scope=scope,
+        cycle=when[:4],
+        # The date sits on the end it describes, so `effective_date` answers correctly
+        # for both: an opening's moment is its start, a closing's is its end.
+        starts_at=fact if legacy_type == 'APPLICATION_OPEN' else Fact(),
+        ends_at=fact if legacy_type != 'APPLICATION_OPEN' else Fact(),
+        precision=DatePrecision.DAY,
+        state=MilestoneState.ANNOUNCED,
+        is_tentative=row.get('isTentative') or None,
+        superseded_by='(recorded in this exam record)' if superseded else '',
+        status=Status.VERIFIED,
+        note='')

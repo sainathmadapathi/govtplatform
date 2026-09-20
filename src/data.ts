@@ -535,7 +535,29 @@ export const SSC_CGL_EXAM: Exam = {
       isTentative: true,
       status: 'AVAILABLE',
       provenance: sscProvenanceOverview
-    }
+    },
+    {
+      id: 'date-ssc-fee-payment-close',
+      type: 'APPLICATION_CLOSE',
+      label: 'Last date and time for making online fee payment',
+      dateTimeStr: '2026-06-23 23:00:00',
+      timezone: 'IST',
+      isTentative: false,
+      status: 'AVAILABLE',
+      provenance: {
+        id: 'prov-ssc-fee-payment-last-date',
+        documentTitle: 'Notice of Examination — Combined Graduate Level Examination, 2026',
+        officialUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
+        pageNumber: 1,
+        clauseNumber: 'Important Dates',
+        publishedDate: '2026-05-21',
+        verifiedDate: '2026-09-20',
+        verifiedBy: 'GovOS exam builder — extracted from the Commission’s own notice and verified verbatim',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'Last date and time for making online fee payment 23.06.2026 (23:00 hours)'
+      }
+    },
   ],
 
   globalRuleGroup: {
