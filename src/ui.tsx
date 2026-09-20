@@ -163,7 +163,8 @@ import {
   TOPIC_CATALOG,
   TOPIC_DRILL_TESTS,
   fuzzyWordEq,
-  topicHasSupply
+  topicHasSupply,
+  CLASSIFICATION_CONFIRMED
 } from './data';
 import {
   buildChatContext,
@@ -3676,6 +3677,16 @@ const FACT_INTENTS: { id: string; keys: string[] }[] = [
 ];
 const asksLocation = (q: string) => /\b(where|which (tab|section|page|part)|how do i|how can i|how should i|how to|what should i|navigate|find|locate|go to|open|show me|take me|check .* (in|on) (this|the) (platform|app|site|website)|in this platform)\b/.test(q);
 
+/**
+ * Whether an official document is on record as printing this post's classification.
+ *
+ * Absence is not a claim that the classification is wrong — the document is silent, not
+ * opposed. It means GovOS has no published source for it, so it is shown as the record's
+ * reading rather than as the authority's own word.
+ */
+const classificationIsConfirmed = (post: { id: string }): boolean =>
+  Object.prototype.hasOwnProperty.call(CLASSIFICATION_CONFIRMED, post.id);
+
 /** Non-superseded date of a given type for the exam in hand, if the register has one. */
 const dateOfType = (type: string, exam: Exam = SSC_CGL_EXAM) =>
   exam.dates.find(d => d.type === type && d.status !== 'SUPERSEDED') ||
@@ -4098,7 +4109,7 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
       verified: true,
       sourceKind: 'OFFICIAL',
       subject: `your target post, ${post.postName}`,
-      text: `Your target post is **${post.postName}** — ${post.department}${post.ministry ? `, ${post.ministry}` : ''}.\n\n• Pay: ${post.payScale} (${post.payLevel})\n• Classification: ${post.classification}\n• Age: ${post.minAge}–${post.maxAge} years before category relaxation${post.specialQualification ? `\n• Extra requirement: ${post.specialQualification}` : ''}${post.physicalRequired ? '\n• Physical standards apply to this post' : ''}\n\n${post.natureOfWork ? `What the job is: ${post.natureOfWork}` : 'Section 01 has the full job profile.'}`,
+      text: `Your target post is **${post.postName}** — ${post.department}${post.ministry ? `, ${post.ministry}` : ''}.\n\n• Pay: ${post.payScale} (${post.payLevel})\n• Classification: ${post.classification}${classificationIsConfirmed(post) ? '' : ' — GovOS has not found an official document stating this for this post, so treat it as the record’s reading rather than the authority’s published word'}\n• Age: ${post.minAge}–${post.maxAge} years before category relaxation${post.specialQualification ? `\n• Extra requirement: ${post.specialQualification}` : ''}${post.physicalRequired ? '\n• Physical standards apply to this post' : ''}\n\n${post.natureOfWork ? `What the job is: ${post.natureOfWork}` : 'Section 01 has the full job profile.'}`,
       citation: citeFrom(post.provenance, `${exam.title} Official Notice`),
       action: { label: 'Open Overview & Posts', tab: 'EXAM_DETAIL', section: 1 }
     };
@@ -17666,7 +17677,15 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                     <span className="glass-pill" style={{ color: '#137638', borderColor: 'rgba(16,185,129,0.3)', fontSize: '0.75rem' }}>{p.payScale}</span>
                     <span className="glass-pill" style={{ fontSize: '0.75rem' }}>Age: {p.minAge}–{p.maxAge} Yrs</span>
-                    <span className="glass-pill" style={{ fontSize: '0.75rem' }}>{p.classification}</span>
+                    <span
+                      className="glass-pill"
+                      style={{ fontSize: '0.75rem' }}
+                      title={classificationIsConfirmed(p)
+                        ? `Classification printed in ${CLASSIFICATION_CONFIRMED[p.id].documentTitle}`
+                        : 'GovOS has not found an official document stating this classification for this post. It is shown as the record’s reading, not as the authority’s published word.'}
+                    >
+                      {p.classification}{classificationIsConfirmed(p) ? '' : ' *'}
+                    </span>
                   </div>
 
                   {p.natureOfWork && (

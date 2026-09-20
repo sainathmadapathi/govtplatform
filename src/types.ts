@@ -61,6 +61,11 @@ export interface PostRequirement {
    * the need to choose: an unstated classification is now simply empty.
    */
   classification: string;
+  /**
+   * Whether an official document states this classification is not held here but in
+   * `CLASSIFICATION_CONFIRMED` (data.ts), keyed by post id: a post's own `provenance`
+   * usually covers several fields at once, so it cannot answer for this one alone.
+   */
   minAge: number;
   maxAge: number;
   specialQualification?: string;

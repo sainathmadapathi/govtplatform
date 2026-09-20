@@ -22,7 +22,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field as dc_field
 from enum import Enum
 
-from .schema import Milestone, MilestoneState, SourceDocument, SourceKind, Status
+import re
+
+from .schema import (Milestone, MilestoneState, ScopeKind, SourceDocument,
+                     SourceKind, Status)
 
 
 class MergeAction(str, Enum):
@@ -258,4 +261,231 @@ def merge_milestones(existing: list[Milestone], incoming: list[Milestone], *,
             reason='the record held nothing about this event'))
 
     report.milestones.sort(key=lambda m: (m.effective_date or '9999', m.kind))
+    return report
+
+
+# =================================================================== posts
+#: Words appearing in so many post names that sharing one proves nothing. Structural: no
+#: authority, exam or post is named.
+_COMMON_POST_WORDS = frozenset({
+    'officer', 'assistant', 'grade', 'service', 'services', 'post', 'posts', 'of', 'the',
+    'and', 'in', 'for', 'to', 'central', 'state', 'government', 'india', 'indian',
+    'senior', 'junior', 'deputy', 'sub', 'department', 'ministry', 'office', 'cadre',
+    'general', 'other', 'various',
+})
+
+#: A bracketed abbreviation a record adds for readability -- "(IAS)", "(ASO)". The
+#: expansion beside it is already in the name, so it adds nothing to matching.
+_ABBREVIATION = re.compile(r'\(\s*[A-Z][A-Z&./-]{1,7}\s*\)')
+
+
+class FieldOutcome(str, Enum):
+    KEPT = 'KEPT'                  #: the record has it; the document says nothing
+    CONFIRMED = 'CONFIRMED'        #: both say the same thing
+    ADDED = 'ADDED'                #: the document supplies what the record lacked
+    UNDER_REVIEW = 'UNDER_REVIEW'  #: they disagree, or the record asserts the unstated
+
+
+@dataclass
+class FieldDecision:
+    field: str
+    outcome: FieldOutcome
+    existing: object = None
+    incoming: object = None
+    reason: str = ''
+
+
+@dataclass
+class PostDecision:
+    action: MergeAction
+    name: str
+    post_id: str = ''
+    fields: list = dc_field(default_factory=list)
+    reason: str = ''
+    #: How sure we are the two posts are the same, where a match was attempted.
+    identity: float = 0.0
+
+    def field(self, name: str):
+        return next((f for f in self.fields if f.field == name), None)
+
+
+@dataclass
+class PostMergeReport:
+    decisions: list = dc_field(default_factory=list)
+
+    def of(self, action: MergeAction) -> list:
+        return [d for d in self.decisions if d.action is action]
+
+    def summary(self) -> dict:
+        out: dict = {}
+        for d in self.decisions:
+            out[d.action.value] = out.get(d.action.value, 0) + 1
+        return out
+
+    def fields_of(self, outcome: FieldOutcome) -> list:
+        return [(d, f) for d in self.decisions for f in d.fields if f.outcome is outcome]
+
+
+def _name_tokens(name: str) -> set:
+    cleaned = _ABBREVIATION.sub(' ', name or '')
+    words = re.split(r'[^a-z0-9]+', cleaned.lower())
+    return {w for w in words if len(w) > 1 and w not in _COMMON_POST_WORDS}
+
+
+def post_identity(existing_name: str, incoming_name: str) -> float:
+    """How sure we are that two names are the same post.
+
+    One name's distinctive words being a subset of the other's identifies the post a record
+    abbreviates and a notice spells out. Sharing a word or two is not enough: post names are
+    built from a small shared vocabulary, and "Assistant Section Officer" describes a dozen
+    different posts in one notice.
+    """
+    left, right = _name_tokens(existing_name), _name_tokens(incoming_name)
+    if not left or not right:
+        return 0.0
+    if left == right:
+        return 1.0
+    shared = left & right
+    if not shared:
+        return 0.0
+    if left <= right or right <= left:
+        return 0.9 if len(shared) >= 2 else 0.5
+    # Each carries something the other lacks: either two different posts sharing
+    # vocabulary, or one post described two ways. Not decidable from the names.
+    return 0.4 * len(shared) / max(len(left), len(right))
+
+
+#: Below this, two posts are not established to be the same, and are not merged.
+IDENTITY_THRESHOLD = 0.85
+
+
+def _classification_letter(text: str) -> str:
+    m = re.search(r"\bgroup\s*[-\u2013\u2014]?\s*['\"\u2018\u2019\u201c\u201d]?([a-d])\b",
+                  text or '', re.I)
+    return m.group(1).lower() if m else ''
+
+
+def _same_classification(left: str, right: str) -> bool:
+    """"Group B (Non-Gazetted)" and "Group B Gazetted (Non-Ministerial)" both say B."""
+    a, b = _classification_letter(left), _classification_letter(right)
+    return bool(a) and a == b
+
+
+def _classification_decision(existing, incoming) -> FieldDecision:
+    """The field that prompted this work.
+
+    A record asserting a classification its authority does not print is not *contradicted*
+    by that authority — silence is not denial. But the assertion is unsupported by the
+    document, and saying so is the whole value of having read it.
+    """
+    stated = bool(incoming is not None and getattr(incoming, 'has_value', False))
+    existing = existing or ''
+    if not existing and not stated:
+        return FieldDecision('classification', FieldOutcome.KEPT,
+                             reason='neither the record nor the document states one')
+    if not existing and stated:
+        return FieldDecision('classification', FieldOutcome.ADDED, None, incoming.value,
+                             'the document states a classification the record lacked')
+    if existing and not stated:
+        return FieldDecision(
+            'classification', FieldOutcome.UNDER_REVIEW, existing, None,
+            'the record asserts a classification that this official document does not '
+            'print for this post. The document is silent rather than opposed, so the '
+            'assertion is not contradicted — but it is unsupported, and must not be shown '
+            'as the authority’s own.')
+    if _same_classification(existing, incoming.value):
+        return FieldDecision('classification', FieldOutcome.CONFIRMED, existing,
+                             incoming.value, 'the document states the same classification')
+    return FieldDecision('classification', FieldOutcome.UNDER_REVIEW, existing,
+                         incoming.value,
+                         'the record and the document state different classifications')
+
+
+def _age_decision(existing_min, existing_max, rule) -> FieldDecision:
+    if rule is None:
+        return FieldDecision('age', FieldOutcome.KEPT, (existing_min, existing_max),
+                             reason='the document states no age for this post')
+    low, high = rule.minimum_age.value, rule.maximum_age.value
+    if low is None or high is None:
+        return FieldDecision('age', FieldOutcome.KEPT, (existing_min, existing_max),
+                             reason='the document states only part of the band')
+    if existing_min is None or existing_max is None:
+        return FieldDecision('age', FieldOutcome.ADDED, None, (low, high),
+                             'the document states a band the record lacked')
+    if (float(existing_min), float(existing_max)) == (float(low), float(high)):
+        return FieldDecision('age', FieldOutcome.CONFIRMED, (existing_min, existing_max),
+                             (low, high), 'the document states the same band')
+    return FieldDecision('age', FieldOutcome.UNDER_REVIEW, (existing_min, existing_max),
+                         (low, high),
+                         'the record and the document state different age bands for this '
+                         'post; neither is published until a person resolves it')
+
+
+def merge_posts(existing: list, incoming: list, *, age_rules=None) -> PostMergeReport:
+    """Fold extracted posts into a record's authored ones, field by field.
+
+    Whole-post rejection would discard a correct name, department and pay scale because one
+    field disagreed. So identity is settled for the post and then each field is settled on
+    its own: what the record has and the document does not is kept, what both state is
+    confirmed, and what they disagree about — or what the record asserts and the document
+    does not print — is held for review without being deleted.
+    """
+    report = PostMergeReport()
+    rules_by_post = {}
+    for rule in (age_rules or []):
+        for ref in rule.scope.of(ScopeKind.POST):
+            rules_by_post[ref.ref] = rule
+
+    used: set = set()
+    for row in existing:
+        name = row.get('postName', '')
+        scored = sorted(((post_identity(name, p.name), p) for p in incoming),
+                        key=lambda t: -t[0])
+        best_score, match = scored[0] if scored else (0.0, None)
+        runner_up = scored[1][0] if len(scored) > 1 else 0.0
+
+        if best_score < IDENTITY_THRESHOLD:
+            report.decisions.append(PostDecision(
+                MergeAction.UNCHANGED, name, row.get('id', ''), identity=best_score,
+                reason='no extracted post is established to be this one; the record is '
+                       'left exactly as it is'))
+            continue
+        if runner_up >= IDENTITY_THRESHOLD:
+            equal = sum(1 for s, _ in scored if s >= IDENTITY_THRESHOLD)
+            report.decisions.append(PostDecision(
+                MergeAction.CONFLICTED, name, row.get('id', ''), identity=best_score,
+                reason=f'{equal} extracted posts match this one equally well, so which is '
+                       f'which is not established; nothing is merged rather than merging '
+                       f'the wrong pair'))
+            continue
+
+        used.add(id(match))
+        fields = [
+            FieldDecision('name', FieldOutcome.KEPT, name, match.name,
+                          'the record’s wording is kept; the document’s is evidence that '
+                          'the post exists'),
+            _classification_decision(row.get('classification'), match.classification),
+            _age_decision(row.get('minAge'), row.get('maxAge'),
+                          rules_by_post.get(match.id)),
+        ]
+        for field_name in ('department', 'payLevel', 'payScale'):
+            if row.get(field_name):
+                fields.append(FieldDecision(
+                    field_name, FieldOutcome.KEPT, row.get(field_name),
+                    reason='the record has it and the document does not improve on it'))
+
+        contested = [f for f in fields if f.outcome is FieldOutcome.UNDER_REVIEW]
+        report.decisions.append(PostDecision(
+            MergeAction.CONFIRMED if not contested else MergeAction.CONFLICTED,
+            name, row.get('id', ''), fields=fields, identity=best_score,
+            reason=('the document confirms this post exists' if not contested else
+                    f'{len(contested)} field(s) held for review: '
+                    f'{", ".join(f.field for f in contested)}')))
+
+    for post in incoming:
+        if id(post) in used:
+            continue
+        report.decisions.append(PostDecision(
+            MergeAction.ADDED, post.name, post.id, identity=1.0,
+            reason='the document names this post and the record does not hold it'))
     return report

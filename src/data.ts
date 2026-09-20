@@ -3141,6 +3141,243 @@ const UPSC_APPLICATION_SIMULATOR: ApplicationSimulatorSpec = {
   ]
 };
 
+
+
+
+
+/**
+ * Classifications an official document actually prints, by post id.
+ *
+ * Produced by the exam builder's post merge: it matched each authored post against the
+ * posts its authority's own documents list, and kept only those whose Group the document
+ * states. A post absent from this map is not wrong -- the document is simply silent about
+ * it -- but its classification is not the authority's published word, and the UI does not
+ * present it as such.
+ */
+export const CLASSIFICATION_CONFIRMED: Record<string, DataProvenance> = {
+  'post-aso-railways': {
+    id: 'prov-class-1',
+    documentTitle: 'Staff Selection Commission — Notice_of_adv_cgl_2026.pdf',
+    officialUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
+    pageNumber: 1,
+    clauseNumber: 'Posts and services listed in the notice',
+    publishedDate: '',
+    verifiedDate: '2026-09-20',
+    verifiedBy: 'GovOS exam builder — this Group is printed against this post in the authority’s own list',
+    taxonomyType: 'FACT',
+    verificationLevel: 'OFFICIALLY_VERIFIED',
+    excerptText: '1 Assistant Section Officer Central Secretariat Service Group “B” 20-30 years'
+  },
+  'post-iti': {
+    id: 'prov-class-2',
+    documentTitle: 'Staff Selection Commission — Notice_of_adv_cgl_2026.pdf',
+    officialUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
+    pageNumber: 1,
+    clauseNumber: 'Posts and services listed in the notice',
+    publishedDate: '',
+    verifiedDate: '2026-09-20',
+    verifiedBy: 'GovOS exam builder — this Group is printed against this post in the authority’s own list',
+    taxonomyType: 'FACT',
+    verificationLevel: 'OFFICIALLY_VERIFIED',
+    excerptText: '8 Inspector of Income Tax Central Board of Direct Taxes (CBDT) Group “B” 18-30 years'
+  },
+  'post-preventive-officer': {
+    id: 'prov-class-3',
+    documentTitle: 'Staff Selection Commission — Notice_of_adv_cgl_2026.pdf',
+    officialUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
+    pageNumber: 1,
+    clauseNumber: 'Posts and services listed in the notice',
+    publishedDate: '',
+    verifiedDate: '2026-09-20',
+    verifiedBy: 'GovOS exam builder — this Group is printed against this post in the authority’s own list',
+    taxonomyType: 'FACT',
+    verificationLevel: 'OFFICIALLY_VERIFIED',
+    excerptText: '10 Inspector (Preventive Officer) 11 Inspector (Examiner) 12 Assistant Enforcement Officer Directorate of Enforcement (ED), Department of Revenue Group “B” 18-30 years 13'
+  },
+  'post-upsc-iaas': {
+    id: 'prov-class-4',
+    documentTitle: 'Union Public Service Commission — [PDF] Notif-CSP-2026-Engl-060226Rev.pdf - UPSC',
+    officialUrl: 'https://www.upsc.gov.in/sites/default/files/Notif-CSP-2026-Engl-060226Rev.pdf',
+    pageNumber: 1,
+    clauseNumber: 'Posts and services listed in the notice',
+    publishedDate: '',
+    verifiedDate: '2026-09-20',
+    verifiedBy: 'GovOS exam builder — this Group is printed against this post in the authority’s own list',
+    taxonomyType: 'FACT',
+    verificationLevel: 'OFFICIALLY_VERIFIED',
+    excerptText: '(iv) Indian Audit and Accounts Service, Group ‘A’'
+  },
+  'post-upsc-icas': {
+    id: 'prov-class-5',
+    documentTitle: 'Union Public Service Commission — [PDF] Notif-CSP-2026-Engl-060226Rev.pdf - UPSC',
+    officialUrl: 'https://www.upsc.gov.in/sites/default/files/Notif-CSP-2026-Engl-060226Rev.pdf',
+    pageNumber: 1,
+    clauseNumber: 'Posts and services listed in the notice',
+    publishedDate: '',
+    verifiedDate: '2026-09-20',
+    verifiedBy: 'GovOS exam builder — this Group is printed against this post in the authority’s own list',
+    taxonomyType: 'FACT',
+    verificationLevel: 'OFFICIALLY_VERIFIED',
+    excerptText: '(v) Indian Civil Accounts Service, Group ‘A’'
+  },
+  'post-upsc-icls': {
+    id: 'prov-class-6',
+    documentTitle: 'Union Public Service Commission — [PDF] Notif-CSP-2026-Engl-060226Rev.pdf - UPSC',
+    officialUrl: 'https://www.upsc.gov.in/sites/default/files/Notif-CSP-2026-Engl-060226Rev.pdf',
+    pageNumber: 1,
+    clauseNumber: 'Posts and services listed in the notice',
+    publishedDate: '',
+    verifiedDate: '2026-09-20',
+    verifiedBy: 'GovOS exam builder — this Group is printed against this post in the authority’s own list',
+    taxonomyType: 'FACT',
+    verificationLevel: 'OFFICIALLY_VERIFIED',
+    excerptText: '(vi) Indian Corporate Law Service, Group ‘A’'
+  },
+  'post-upsc-idas': {
+    id: 'prov-class-7',
+    documentTitle: 'Union Public Service Commission — [PDF] Notif-CSP-2026-Engl-060226Rev.pdf - UPSC',
+    officialUrl: 'https://www.upsc.gov.in/sites/default/files/Notif-CSP-2026-Engl-060226Rev.pdf',
+    pageNumber: 1,
+    clauseNumber: 'Posts and services listed in the notice',
+    publishedDate: '',
+    verifiedDate: '2026-09-20',
+    verifiedBy: 'GovOS exam builder — this Group is printed against this post in the authority’s own list',
+    taxonomyType: 'FACT',
+    verificationLevel: 'OFFICIALLY_VERIFIED',
+    excerptText: '(vii) Indian Defence Accounts Service, Group ‘A’'
+  },
+  'post-upsc-ides': {
+    id: 'prov-class-8',
+    documentTitle: 'Union Public Service Commission — [PDF] Notif-CSP-2026-Engl-060226Rev.pdf - UPSC',
+    officialUrl: 'https://www.upsc.gov.in/sites/default/files/Notif-CSP-2026-Engl-060226Rev.pdf',
+    pageNumber: 1,
+    clauseNumber: 'Posts and services listed in the notice',
+    publishedDate: '',
+    verifiedDate: '2026-09-20',
+    verifiedBy: 'GovOS exam builder — this Group is printed against this post in the authority’s own list',
+    taxonomyType: 'FACT',
+    verificationLevel: 'OFFICIALLY_VERIFIED',
+    excerptText: '(vii) Indian Defence Accounts Service, Group ‘A’'
+  },
+  'post-upsc-iis': {
+    id: 'prov-class-9',
+    documentTitle: 'Union Public Service Commission — [PDF] Notif-CSP-2026-Engl-060226Rev.pdf - UPSC',
+    officialUrl: 'https://www.upsc.gov.in/sites/default/files/Notif-CSP-2026-Engl-060226Rev.pdf',
+    pageNumber: 1,
+    clauseNumber: 'Posts and services listed in the notice',
+    publishedDate: '',
+    verifiedDate: '2026-09-20',
+    verifiedBy: 'GovOS exam builder — this Group is printed against this post in the authority’s own list',
+    taxonomyType: 'FACT',
+    verificationLevel: 'OFFICIALLY_VERIFIED',
+    excerptText: '(ix) Indian Information Service, Group ‘A’'
+  },
+  'post-upsc-iptafs': {
+    id: 'prov-class-10',
+    documentTitle: 'Union Public Service Commission — [PDF] Notif-CSP-2026-Engl-060226Rev.pdf - UPSC',
+    officialUrl: 'https://www.upsc.gov.in/sites/default/files/Notif-CSP-2026-Engl-060226Rev.pdf',
+    pageNumber: 1,
+    clauseNumber: 'Posts and services listed in the notice',
+    publishedDate: '',
+    verifiedDate: '2026-09-20',
+    verifiedBy: 'GovOS exam builder — this Group is printed against this post in the authority’s own list',
+    taxonomyType: 'FACT',
+    verificationLevel: 'OFFICIALLY_VERIFIED',
+    excerptText: '(xi) Indian Post & Telecommunication Accounts and Finance Service, Group ‘A’'
+  },
+  'post-upsc-irms-traffic': {
+    id: 'prov-class-11',
+    documentTitle: 'Union Public Service Commission — [PDF] Notif-CSP-2026-Engl-060226Rev.pdf - UPSC',
+    officialUrl: 'https://www.upsc.gov.in/sites/default/files/Notif-CSP-2026-Engl-060226Rev.pdf',
+    pageNumber: 1,
+    clauseNumber: 'Posts and services listed in the notice',
+    publishedDate: '',
+    verifiedDate: '2026-09-20',
+    verifiedBy: 'GovOS exam builder — this Group is printed against this post in the authority’s own list',
+    taxonomyType: 'FACT',
+    verificationLevel: 'OFFICIALLY_VERIFIED',
+    excerptText: '(xii) Indian Railway Management Service (Traffic), Group ‘A’'
+  },
+  'post-upsc-irms-personnel': {
+    id: 'prov-class-12',
+    documentTitle: 'Union Public Service Commission — [PDF] Notif-CSP-2026-Engl-060226Rev.pdf - UPSC',
+    officialUrl: 'https://www.upsc.gov.in/sites/default/files/Notif-CSP-2026-Engl-060226Rev.pdf',
+    pageNumber: 1,
+    clauseNumber: 'Posts and services listed in the notice',
+    publishedDate: '',
+    verifiedDate: '2026-09-20',
+    verifiedBy: 'GovOS exam builder — this Group is printed against this post in the authority’s own list',
+    taxonomyType: 'FACT',
+    verificationLevel: 'OFFICIALLY_VERIFIED',
+    excerptText: '(xii) Indian Railway Management Service (Traffic), Group ‘A’'
+  },
+  'post-upsc-irms-accounts': {
+    id: 'prov-class-13',
+    documentTitle: 'Union Public Service Commission — [PDF] Notif-CSP-2026-Engl-060226Rev.pdf - UPSC',
+    officialUrl: 'https://www.upsc.gov.in/sites/default/files/Notif-CSP-2026-Engl-060226Rev.pdf',
+    pageNumber: 1,
+    clauseNumber: 'Posts and services listed in the notice',
+    publishedDate: '',
+    verifiedDate: '2026-09-20',
+    verifiedBy: 'GovOS exam builder — this Group is printed against this post in the authority’s own list',
+    taxonomyType: 'FACT',
+    verificationLevel: 'OFFICIALLY_VERIFIED',
+    excerptText: '(xii) Indian Railway Management Service (Traffic), Group ‘A’'
+  },
+  'post-upsc-irpfs': {
+    id: 'prov-class-14',
+    documentTitle: 'Union Public Service Commission — [PDF] Notif-CSP-2026-Engl-060226Rev.pdf - UPSC',
+    officialUrl: 'https://www.upsc.gov.in/sites/default/files/Notif-CSP-2026-Engl-060226Rev.pdf',
+    pageNumber: 1,
+    clauseNumber: 'Posts and services listed in the notice',
+    publishedDate: '',
+    verifiedDate: '2026-09-20',
+    verifiedBy: 'GovOS exam builder — this Group is printed against this post in the authority’s own list',
+    taxonomyType: 'FACT',
+    verificationLevel: 'OFFICIALLY_VERIFIED',
+    excerptText: '(xii) Indian Railway Management Service (Traffic), Group ‘A’'
+  },
+  'post-upsc-irs-cit': {
+    id: 'prov-class-15',
+    documentTitle: 'Union Public Service Commission — [PDF] Notif-CSP-2026-Engl-060226Rev.pdf - UPSC',
+    officialUrl: 'https://www.upsc.gov.in/sites/default/files/Notif-CSP-2026-Engl-060226Rev.pdf',
+    pageNumber: 1,
+    clauseNumber: 'Posts and services listed in the notice',
+    publishedDate: '',
+    verifiedDate: '2026-09-20',
+    verifiedBy: 'GovOS exam builder — this Group is printed against this post in the authority’s own list',
+    taxonomyType: 'FACT',
+    verificationLevel: 'OFFICIALLY_VERIFIED',
+    excerptText: '(xvi) Indian Revenue Service (Customs & Indirect Taxes) Group ‘A’'
+  },
+  'post-upsc-irs-it': {
+    id: 'prov-class-16',
+    documentTitle: 'Union Public Service Commission — [PDF] Notif-CSP-2026-Engl-060226Rev.pdf - UPSC',
+    officialUrl: 'https://www.upsc.gov.in/sites/default/files/Notif-CSP-2026-Engl-060226Rev.pdf',
+    pageNumber: 1,
+    clauseNumber: 'Posts and services listed in the notice',
+    publishedDate: '',
+    verifiedDate: '2026-09-20',
+    verifiedBy: 'GovOS exam builder — this Group is printed against this post in the authority’s own list',
+    taxonomyType: 'FACT',
+    verificationLevel: 'OFFICIALLY_VERIFIED',
+    excerptText: '(xvi) Indian Revenue Service (Customs & Indirect Taxes) Group ‘A’'
+  },
+  'post-upsc-afhqcs': {
+    id: 'prov-class-17',
+    documentTitle: 'Union Public Service Commission — [PDF] Notif-CSP-2026-Engl-060226Rev.pdf - UPSC',
+    officialUrl: 'https://www.upsc.gov.in/sites/default/files/Notif-CSP-2026-Engl-060226Rev.pdf',
+    pageNumber: 1,
+    clauseNumber: 'Posts and services listed in the notice',
+    publishedDate: '',
+    verifiedDate: '2026-09-20',
+    verifiedBy: 'GovOS exam builder — this Group is printed against this post in the authority’s own list',
+    taxonomyType: 'FACT',
+    verificationLevel: 'OFFICIALLY_VERIFIED',
+    excerptText: '(xix) Armed Forces Headquarters Civil Service, Group ‘B’ (Section Officer’s Grade)'
+  }
+};
+
 export const UPSC_CSE_EXAM: Exam = {
   id: 'exam-upsc-cse-2026',
   code: 'UPSC_CSE_2026',

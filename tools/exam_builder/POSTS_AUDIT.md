@@ -104,3 +104,35 @@ post, pay answers and the eligibility verdicts; `services.ts` maps `exam.posts` 
 `evaluateEligibility`. All of them tolerate an empty array, and all five records populate it,
 so the section renders for every exam today. What none of them can show is a post the
 *builder* found, because until now it found none.
+
+## 7. What the merge decided, on the real records
+
+Extraction is only half the job: the records already hold hand-authored posts worth more
+than a re-extraction of them. So the merge settles identity once per post and then decides
+each field on its own, because rejecting a whole post over one contested field would throw
+away a correct name, department and pay scale.
+
+| exam | authored | extracted | confirmed | unchanged | contested | added |
+|---|---|---|---|---|---|---|
+| SSC CGL | 18 | 16 | 4 | 14 | 0 | 13 |
+| UPSC CSE | 23 | 20 | 14 | 4 | 5 | 2 |
+| IBPS PO | 1 | 0 | 0 | 1 | 0 | 0 |
+
+The five contested UPSC posts are the interesting result, and they are all the same field:
+the record says `Group A (Gazetted)` and the notice does not print a Group for those
+services. That is **not** the notice contradicting the record — the services almost
+certainly are Group A — it is the record asserting something no document in hand supports.
+The merge therefore holds the field (`UNDER_REVIEW`), keeps the value, keeps every other
+field, and refuses to delete anything.
+
+Nothing is written into an exam's record by this pass. What ships is
+`CLASSIFICATION_CONFIRMED` in `data.ts`: **17 posts whose Group an official document
+actually prints**, each citing the document and quoting the row it was read from. The UI
+marks a post outside that map with an asterisk explaining that GovOS has no published source
+for its classification. One SSC post the merge confirmed is deliberately absent — its span
+could not be traced back to a page, and a citation nobody can check is worth less than the
+caveat.
+
+Two refusals are load-bearing and tested: a post no extracted post matches is left exactly
+as it is, and a post two extractions match equally well merges nothing at all rather than
+risk merging the wrong pair.

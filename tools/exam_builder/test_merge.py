@@ -13,7 +13,7 @@ Run: python -m tools.exam_builder.test_merge
 from __future__ import annotations
 
 from .merge import MergeAction, comparable_values, matches, merge_milestones
-from .schema import (Fact, Milestone, MilestoneState, Scope, ScopeKind, ScopeRef,
+from .schema import (Fact, Milestone, Post, MilestoneState, Scope, ScopeKind, ScopeRef,
                      SourceDocument, SourceEvidence, SourceKind, Status)
 
 _FAILURES: list[str] = []
@@ -203,6 +203,140 @@ def test_the_engine_names_no_exam() -> None:
               re.findall(rf'\b{forbidden}\b', source, re.I), [])
 
 
+# ===================================================================== 5. POSTS
+def post(name, *, classification='', pid=''):
+    p = Post(id=pid or 'p-' + name.lower().replace(' ', '-'), name=name)
+    if classification:
+        p.classification = Fact.verified(classification, ev('doc'))
+    return p
+
+
+def authored(name, *, classification='', pid='', low=21, high=32, department='X'):
+    """A record's post, in the shape data.ts stores it."""
+    return {'id': pid or 'a-' + name.lower().replace(' ', '-'), 'postName': name,
+            'classification': classification, 'minAge': low, 'maxAge': high,
+            'department': department, 'payLevel': 'Level 10', 'payScale': 'Rs 56,100'}
+
+
+def test_a_post_the_record_abbreviates_is_still_the_same_post() -> None:
+    from .merge import post_identity
+    check('an abbreviation does not hide a post',
+          post_identity('Indian Administrative Service (IAS)',
+                        'Indian Administrative Service') >= 0.85, True)
+    check('two different services are not one post',
+          post_identity('Indian Foreign Service', 'Indian Police Service'), 0.0)
+    check('and sharing the common vocabulary proves nothing',
+          post_identity('Assistant Section Officer', 'Assistant Audit Officer') < 0.85, True)
+
+
+def test_a_matched_post_keeps_what_the_record_already_has() -> None:
+    from .merge import FieldOutcome, merge_posts
+    report = merge_posts([authored('Alpha Service (AS)', classification='Group B')],
+                         [post('Alpha Service', classification='Group B')])
+    decision = report.decisions[0]
+    check('the post is confirmed', decision.action, MergeAction.CONFIRMED)
+    check('its name is the record’s', decision.field('name').outcome, FieldOutcome.KEPT)
+    check('so are its department and pay',
+          [decision.field(f).outcome for f in ('department', 'payLevel', 'payScale')],
+          [FieldOutcome.KEPT] * 3)
+    check('and the classification is confirmed rather than replaced',
+          decision.field('classification').outcome, FieldOutcome.CONFIRMED)
+
+
+def test_the_record_asserting_what_the_document_omits_is_held() -> None:
+    """The case this layer exists for: silence is not denial, nor is it support."""
+    from .merge import FieldOutcome, merge_posts
+    report = merge_posts(
+        [authored('Alpha Service (AS)', classification='Group A (Gazetted)')],
+        [post('Alpha Service')])
+    decision = report.decisions[0]
+    field = decision.field('classification')
+    check('the post is contested', decision.action, MergeAction.CONFLICTED)
+    check('the classification is held for review', field.outcome, FieldOutcome.UNDER_REVIEW)
+    check('the record’s value is kept, not deleted', field.existing, 'Group A (Gazetted)')
+    check('and the reason says the document is silent, not opposed',
+          'silent rather than opposed' in field.reason, True)
+    check('everything else about the post survives',
+          [decision.field(f).outcome for f in ('name', 'department', 'payScale')],
+          [FieldOutcome.KEPT] * 3)
+
+
+def test_one_contested_field_does_not_reject_the_whole_post() -> None:
+    from .merge import FieldOutcome, merge_posts
+    report = merge_posts(
+        [authored('Alpha Service (AS)', classification='Group A (Gazetted)')],
+        [post('Alpha Service')])
+    kept = {f.field for f in report.decisions[0].fields if f.outcome is FieldOutcome.KEPT}
+    check('the useful fields are still kept',
+          {'name', 'department', 'payLevel', 'payScale'} <= kept, True)
+
+
+def test_classifications_written_differently_still_agree() -> None:
+    from .merge import FieldOutcome, merge_posts
+    report = merge_posts(
+        [authored('Alpha Service (AS)', classification='Group B (Non-Gazetted)')],
+        [post('Alpha Service',
+              classification='Group ‘B’ Gazetted (Non-Ministerial)')])
+    check('both say B, so both agree',
+          report.decisions[0].field('classification').outcome, FieldOutcome.CONFIRMED)
+
+
+def test_an_unmatched_record_post_is_left_exactly_as_it_is() -> None:
+    from .merge import merge_posts
+    report = merge_posts([authored('Zeta Service')], [post('Alpha Service')])
+    unchanged = report.of(MergeAction.UNCHANGED)
+    check('a post the document does not name is untouched', len(unchanged), 1)
+    check('and nothing is claimed about it', unchanged[0].fields, [])
+
+
+def test_two_equally_good_matches_are_refused() -> None:
+    from .merge import merge_posts
+    report = merge_posts([authored('Alpha Service')],
+                         [post('Alpha Service', pid='p1'), post('Alpha Service', pid='p2')])
+    contested = report.of(MergeAction.CONFLICTED)
+    check('an ambiguous match merges nothing', len(contested), 1)
+    check('and says why', 'equally well' in contested[0].reason, True)
+    check('no field is touched', contested[0].fields, [])
+
+
+def test_a_post_only_the_document_names_is_added() -> None:
+    from .merge import merge_posts
+    report = merge_posts([authored('Alpha Service')], [post('Gamma Service')])
+    check('the new post is ADDED',
+          [d.name for d in report.of(MergeAction.ADDED)], ['Gamma Service'])
+
+
+def test_ages_are_confirmed_against_the_post_that_states_them() -> None:
+    from .merge import FieldOutcome, merge_posts
+    from .schema import AgeRule
+    target = post('Alpha Service', pid='p-alpha')
+    rule = AgeRule(id='r1', scope=Scope([ScopeRef(ScopeKind.POST, 'p-alpha', 'Alpha')]),
+                   minimum_age=Fact.verified(21.0, ev('doc')),
+                   maximum_age=Fact.verified(32.0, ev('doc')))
+    agreed = merge_posts([authored('Alpha Service (AS)', low=21, high=32)], [target],
+                         age_rules=[rule])
+    check('a matching band is confirmed',
+          agreed.decisions[0].field('age').outcome, FieldOutcome.CONFIRMED)
+
+    differing = merge_posts([authored('Alpha Service (AS)', low=18, high=30)], [target],
+                            age_rules=[rule])
+    field = differing.decisions[0].field('age')
+    check('a differing band is held for review', field.outcome, FieldOutcome.UNDER_REVIEW)
+    check('with both readings kept', (field.existing, field.incoming),
+          ((18, 30), (21.0, 32.0)))
+
+
+def test_only_the_posts_it_was_handed_are_decided() -> None:
+    """Isolation is the caller's: the engine is given one record and one exam's
+    extractions, and must invent no third post between them."""
+    from .merge import merge_posts
+    report = merge_posts([authored('Alpha Service')], [post('Beta Service')])
+    check('every decision names a post one side actually holds',
+          sorted(d.name for d in report.decisions), ['Alpha Service', 'Beta Service'])
+    check('and the record post is untouched by the stranger',
+          report.of(MergeAction.UNCHANGED)[0].name, 'Alpha Service')
+
+
 def main() -> int:
     for fn in (test_match_needs_the_same_subject,
                test_two_papers_are_two_events_not_a_contradiction,
@@ -216,14 +350,24 @@ def main() -> int:
                test_new_information_is_added,
                test_nothing_is_ever_removed,
                test_an_empty_extraction_leaves_the_record_alone,
-               test_the_engine_names_no_exam):
+               test_the_engine_names_no_exam,
+               test_a_post_the_record_abbreviates_is_still_the_same_post,
+               test_a_matched_post_keeps_what_the_record_already_has,
+               test_the_record_asserting_what_the_document_omits_is_held,
+               test_one_contested_field_does_not_reject_the_whole_post,
+               test_classifications_written_differently_still_agree,
+               test_an_unmatched_record_post_is_left_exactly_as_it_is,
+               test_two_equally_good_matches_are_refused,
+               test_a_post_only_the_document_names_is_added,
+               test_ages_are_confirmed_against_the_post_that_states_them,
+               test_only_the_posts_it_was_handed_are_decided):
         fn()
     if _FAILURES:
         print(f'{len(_FAILURES)} FAILURE(S):')
         for f in _FAILURES:
             print('  -', f)
         return 1
-    print('merge: confirms, supersedes, and refuses to choose')
+    print('merge: confirms, supersedes, refuses to choose — milestone and field')
     return 0
 
 
