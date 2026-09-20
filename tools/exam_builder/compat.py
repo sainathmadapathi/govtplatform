@@ -197,3 +197,73 @@ def describe_field_states() -> dict[str, str]:
         Status.NOT_PUBLISHED.value: 'the authority publishes no such thing — about them',
         Status.NOT_EXTRACTED.value: 'we could not read it — about us, never about them',
     }
+
+
+# ------------------------------------- ApplicationProcess -> the existing simulator
+def application_simulator_spec(process, *, exam_id: str, portal_name: str = '',
+                               modelled_on: str = '') -> Optional[dict]:
+    """Project an extracted process into the `ApplicationSimulatorSpec` the UI renders.
+
+    Deliberately partial, and the missing part is the point. Modules and fields are
+    structural, so they project: a stage becomes a module and its fields become inputs,
+    keeping the authority's own wording for both.
+
+    **Traps do not project.** A trap asserts that one specific mistake is fatal, which is a
+    reading of a clause rather than a shape in it, and manufacturing those from extracted
+    sentences would be exactly the invention this phase forbids. So a projected spec carries
+    an empty trap list and says so in `modelledOnNote`, and the two hand-authored specs stay
+    the richer ones until rules are extracted with the same rigour a person applied.
+
+    Returns None when there is not enough source-backed material to render honestly — an
+    empty form is worse than no form, because it implies the authority published nothing.
+    """
+    usable = [s for s in getattr(process, 'stages', [])
+              if s.status in (Status.VERIFIED, Status.NEEDS_REVIEW)]
+    if not usable:
+        return None
+
+    portal = getattr(process, 'portal', None)
+    portal_url = portal.value if (portal and portal.has_value) else ''
+    primary = portal.primary_source if (portal and portal.evidence) else None
+
+    modules = []
+    for index, stage in enumerate(usable, start=1):
+        ev = stage.evidence[0] if stage.evidence else None
+        modules.append({
+            'moduleNumber': index,
+            # The authority's own word for the step, never normalised onto another's.
+            'cardName': stage.title,
+            'title': stage.title,
+            'introduction': stage.description,
+            'noticeReference': ev.locator() if ev else '',
+            'fields': [{
+                'id': f.id,
+                'label': f.label,
+                # The UI's kinds are a closed set; anything the document did not state
+                # falls back to free text rather than being guessed into a control.
+                'kind': {'SELECT': 'SELECT', 'DATE': 'DATE'}.get(f.input_kind, 'TEXT'),
+                'defaultValue': '',
+                'noteFromNotice': f.help_text,
+            } for f in stage.fields],
+        })
+
+    note = (modelled_on or
+            'Built from the authority’s own application instructions. The steps and fields '
+            'below are the ones that document names. It carries no mistake-traps: those '
+            'assert that a particular error is fatal, which is a reading of a clause and is '
+            'authored by a person, not extracted.')
+
+    return {
+        'examId': exam_id,
+        'portalName': portal_name or (primary.document_title if primary else ''),
+        'portalUrl': portal_url,
+        'sourceDocumentTitle': primary.document_title if primary else '',
+        'sourceDocumentUrl': primary.url if primary else '',
+        'modelledOnNote': note,
+        'modules': modules,
+        'traps': [],
+        'cleanSubmissionNote': 'No mistake-traps are authored for this exam yet.',
+        'provenance': to_legacy_provenance(
+            portal if portal else Fact.not_extracted(),
+            prov_id=f'prov-app-{exam_id}') or {},
+    }
