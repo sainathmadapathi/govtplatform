@@ -128,6 +128,36 @@ export type SyllabusSubject =
   | 'CSAT (Aptitude & Reasoning)' | 'Ethics, Integrity & Aptitude' | 'Essay & Answer Writing'
   | 'International Relations & Security' | 'Optional Subject' | 'Indian Language & English (Qualifying)';
 
+/**
+ * One node of a syllabus as its authority published it, at whatever depth that is.
+ *
+ * Part → Paper → Topic, Tier → Part → Section → Topic, or a single list of subjects: all
+ * of them are this shape at different depths, so no exam's syllabus has to be flattened
+ * into another's. `levelLabel` is the authority's own word for the level.
+ *
+ * Children are absent where the authority named something and did not publish what is in
+ * it. That is a fact about the document, and it is never filled in: a subject with no
+ * published topics renders as a subject with no topics.
+ *
+ * Produced by the exam builder from that exam's own documents (`tools/exam_builder`), and
+ * never shared between exams.
+ */
+export interface ExamSyllabusNode {
+  id: string;
+  title: string;
+  /** "Paper", "Part", "Section", "Unit", "Subject", "Topic" — whatever the source used. */
+  levelLabel?: string;
+  order?: number;
+  /** VERIFIED | NEEDS_REVIEW | NOT_PUBLISHED | NOT_EXTRACTED. */
+  status?: string;
+  /** The description the authority wrote after the entry's own name. */
+  note?: string;
+  /** What this entry belongs to, where the source says: a paper, a stage, a section. */
+  scope?: { kind: string; label: string }[];
+  provenance?: DataProvenance;
+  children?: ExamSyllabusNode[];
+}
+
 export interface SyllabusTopic {
   id: string;
   subject: SyllabusSubject;
@@ -789,6 +819,12 @@ export interface Exam {
    */
   patternTree?: ExamPatternNode[];
   syllabus: SyllabusTopic[];
+  /**
+   * The syllabus as its authority published it, read by the exam builder from that
+   * authority's own documents. Absent where no official syllabus has been read — which for
+   * some exams is because the authority publishes none, and the section says which.
+   */
+  syllabusTree?: ExamSyllabusNode[];
   practiceQuestions: PracticeQuestion[];
   corrigendums: CorrigendumNotice[];
   cutoffsHistory: CutoffEntry[];

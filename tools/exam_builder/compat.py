@@ -547,3 +547,54 @@ def pattern_tree(pattern, *, exam_id: str) -> list:
         return []
     return [project(stage, f'{exam_id}-stage-{i}')
             for i, stage in enumerate(pattern.stages, start=1)]
+
+
+# ==================================================================== syllabus
+def syllabus_tree(syllabus, *, exam_id: str, max_nodes: int = 4000) -> list:
+    """Project a `Syllabus` into the recursive shape the Syllabus section renders.
+
+    The same three rules as the pattern projection. A node the authority did not publish is
+    not here at all; a node whose span could not be verified carries its state rather than
+    being shown as read; and every node cites the document and page it came from, because a
+    topic read from a clause and a heading read from a table are not the same source.
+
+    `exam_id` is checked by the caller, not here: this function is handed one exam's
+    syllabus and returns it. The gate that decides whether a document may answer for an
+    exam at all is `syllabus.may_supply_syllabus`.
+    """
+    from .schema import Fact, Status as _Status
+
+    counter = [0]
+
+    def project(node) -> dict:
+        counter[0] += 1
+        out: dict = {
+            'id': node.id,
+            'title': node.title,
+            'levelLabel': node.level_label or '',
+            'order': node.order,
+            'status': node.status.value,
+        }
+        if node.note:
+            out['note'] = node.note
+        scope = [{'kind': ref.kind.value, 'label': ref.label} for ref in node.scope.refs]
+        if scope:
+            out['scope'] = scope
+        if node.evidence:
+            carrier = Fact(value=node.title,
+                           status=node.status if node.status.carries_value
+                           else _Status.NEEDS_REVIEW,
+                           evidence=list(node.evidence))
+            provenance = to_legacy_provenance(carrier, prov_id=f'prov-{node.id}')
+            if provenance is not None:
+                out['provenance'] = provenance
+        children = []
+        for child in node.children:
+            if counter[0] >= max_nodes:
+                break
+            children.append(project(child))
+        if children:
+            out['children'] = children
+        return out
+
+    return [project(root) for root in syllabus.roots]

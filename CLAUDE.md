@@ -367,6 +367,48 @@ section 05 renders at whatever depth it has. The section's heading no longer say
 and `stageBadge()` shows the authority's own label ("Tier-I", "Phase I") or the stage's
 position, never the internal `TIER_1`.
 
+### The syllabus is read from the authority's own document
+
+`tools/exam_builder/syllabus.py` reads a syllabus out of whatever its authority published,
+at whatever depth that is; `SYLLABUS_AUDIT.md` records what the four captured notices
+actually contain. The model is `SyllabusNode` — recursive, with `level_label` carrying the
+authority's own word for each level and `scope` binding a node to the paper, stage or
+section the document places it under. There is no closed subject union and no fixed depth.
+
+Two of the four notices publish a syllabus, in two different layouts, and both are read:
+
+- **A numbered clause hierarchy.** `13.10 Indicative Syllabus (Tier-I):` → `13.10.1 General
+  Intelligence & Reasoning:` → prose; `13.11.1 Part A of Section-I of Paper-I (Mathematical
+  Abilities):` → `13.11.1.1 Number Systems: …`. The clause number *is* the hierarchy and
+  its depth is its own part count. **A clause is read whole, not line by line** — a flattened
+  PDF breaks a title wherever the column ran out, so the colon that ends it is regularly on
+  the next line.
+- **Headings and bullets.** `SECTION III: SYLLABI FOR THE EXAMINATION` → `Part A—Preliminary
+  Examination` → `Paper I - (200 marks)` → bullets, each one entry of that paper's syllabus.
+  The bullet glyph is **U+F0B7**, the Symbol-font bullet a Word-authored PDF carries through
+  extraction; without that one character in the class, that authority's whole syllabus read
+  as nothing.
+
+Rules that cost real defects to learn: a syllabus's own "Part A" heading does not end the
+syllabus (only another section of the notice, an annexure, or a sibling syllabus clause
+does); a heading must be numbered or marked, or the wrapped tail of a bullet becomes a
+heading; and two sibling syllabuses at the same clause depth are two roots, not one nested
+in the other.
+
+`may_supply_syllabus()` is the gate and it is the pattern gate: a document belonging to
+another exam — or to another *cycle*, since identity checks the year — supplies nothing, and
+one that merely mentions this exam supplies nothing unless its own title block names it.
+`syllabus_merge.py` folds the result into the record's authored topics without overwriting
+any of them, and **a revision must say it revises the syllabus**: a notice whose file name
+ends "Rev" is not a corrigendum, and treating it as one nearly superseded two topics.
+`compat.syllabus_tree()` projects it into `Exam.syllabusTree`, which section 06's Official
+Syllabus view renders above the flat topic list — the list stays, because the checkboxes,
+the weightage, the tree map and the verifier's revisions are all built on it.
+
+**An exam whose authority publishes no syllabus gets no tree and says so.** Two of the four
+publish none; the section states that in words and points at the Exam Pattern section, which
+has those papers and their sections from the same notice.
+
 ### The syllabus, also as a map
 `SyllabusTreeMap` is section 06's **third view** — the switcher reads Post Study Plan ·
 Official Gazette Syllabus · Tree Map — not a card stacked under the others. It reads

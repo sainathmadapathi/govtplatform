@@ -147,6 +147,17 @@ const sscProvenanceWeightage: DataProvenance = {
   excerptText: 'Topic weightage percentages aggregated across 120+ official TCS shift question papers from SSC CGL 2021 to 2025.'
 };
 
+const sscSyllabusSource: Omit<DataProvenance, 'id' | 'clauseNumber' | 'excerptText'> = {
+  documentTitle: 'Staff Selection Commission — Notice_of_adv_cgl_2026.pdf',
+  officialUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
+  pageNumber: 1,
+  publishedDate: '',
+  verifiedDate: '2026-09-22',
+  verifiedBy: 'GovOS exam builder — read from the authority’s own document, hierarchy as it printed it',
+  taxonomyType: 'FACT',
+  verificationLevel: 'OFFICIALLY_VERIFIED'
+};
+
 export const SSC_CGL_EXAM: Exam = {
   id: 'exam-ssc-cgl-2026',
   code: 'SSC_CGL_2026',
@@ -1206,6 +1217,817 @@ export const SSC_CGL_EXAM: Exam = {
   ],
 
   // Comprehensive Syllabus with Micro-Topic PYQ Frequency Weightages
+  syllabusTree: [
+{
+      id: 'syl-13-10-indicative-syllabus--root',
+      title: 'Indicative Syllabus (Tier-I)',
+      levelLabel: 'Syllabus',
+      scope: [{ kind: 'STAGE', label: 'Tier-I' }],
+      provenance: { ...sscSyllabusSource, id: 'prov-syl-13-10-indicative-syllabus--root', clauseNumber: 'pattern', excerptText: '13.10 Indicative Syllabus (Tier-I):' },
+      children: [
+{
+          id: 'syl-13-10-indicative-syllabus--13-10-1',
+          title: 'General Intelligence & Reasoning',
+          levelLabel: 'Subject',
+          note: 'It would include questions of both verbal and non-verbal type. This component may include questions on analogies, similarities and differences, space visualization, spatial orientation, problem solving, analysis, judgment, decision making, visual memory, discrimination, observation, relationship concepts, arithmetical reasoning and figural classification, arithmetic number series, non-verbal serie',
+          scope: [{ kind: 'STAGE', label: 'Tier-I' }],
+          provenance: { ...sscSyllabusSource, id: 'prov-syl-13-10-indicative-syllabus--13-10-1', clauseNumber: 'pattern', excerptText: '13.10.1 General Intelligence & Reasoning: It would include' }
+        },
+{
+          id: 'syl-13-10-indicative-syllabus--13-10-2',
+          title: 'General Awareness',
+          levelLabel: 'Subject',
+          note: 'Questions in this component will be aimed at testing the candidates‟ general awareness of the environment around him and its application to society. Questions will also be designed to test knowledge of current events and of such matters of every day observations and experience in their scientific aspect as may be expected of any educated person. The test will also include questions relating to Ind',
+          scope: [{ kind: 'STAGE', label: 'Tier-I' }],
+          provenance: { ...sscSyllabusSource, id: 'prov-syl-13-10-indicative-syllabus--13-10-2', clauseNumber: 'pattern', excerptText: '13.10.2 General Awareness: Questions in this component will be' }
+        },
+{
+          id: 'syl-13-10-indicative-syllabus--13-10-3',
+          title: 'Quantitative Aptitude',
+          levelLabel: 'Subject',
+          note: 'The questions will be designed to test the ability of appropriate use of numbers and number sense of the candidate. The scope of the test will be computation of whole numbers, decimals, fractions and relationships between numbers, Percentage. Ratio & Proportion, Square roots, Averages, Interest, Profit and Loss, Discount, Partnership Business, Mixture and Alligation, Time and distance, Time & Work',
+          scope: [{ kind: 'STAGE', label: 'Tier-I' }],
+          provenance: { ...sscSyllabusSource, id: 'prov-syl-13-10-indicative-syllabus--13-10-3', clauseNumber: 'pattern', excerptText: '13.10.3 Quantitative Aptitude: The questions will be designed to test' }
+        },
+{
+          id: 'syl-13-10-indicative-syllabus--13-10-4',
+          title: 'English Comprehension',
+          levelLabel: 'Subject',
+          note: 'Candidates‟ ability to understand correct English, his basic comprehension and writing ability, etc. would be tested. The questions in Parts A, B, & D will be of a level commensurate with the essential qualification viz. Graduation and questions in Part-C will be of 10th standard level.',
+          scope: [{ kind: 'STAGE', label: 'Tier-I' }],
+          provenance: { ...sscSyllabusSource, id: 'prov-syl-13-10-indicative-syllabus--13-10-4', clauseNumber: 'pattern', excerptText: '13.10.4 English Comprehension: Candidates‟ ability to understand' }
+        }
+      ]
+    },
+{
+      id: 'syl-13-11-indicative-syllabus--root',
+      title: 'Indicative Syllabus (Tier-II)',
+      levelLabel: 'Syllabus',
+      scope: [{ kind: 'STAGE', label: 'Tier-II' }],
+      provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--root', clauseNumber: 'pattern', excerptText: '13.11 Indicative Syllabus (Tier-II):' },
+      children: [
+{
+          id: 'syl-13-11-indicative-syllabus--13-11-1',
+          title: 'Part A of Section-I of Paper-I (Mathematical Abilities)',
+          levelLabel: 'Part',
+          scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-I' }, { kind: 'SECTION', label: 'Part-A' }, { kind: 'SECTION', label: 'Section-I' }],
+          provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-1', clauseNumber: 'pattern', excerptText: '13.11.1 Part A of Section-I of Paper-I (Mathematical Abilities):' },
+          children: [
+{
+              id: 'syl-13-11-indicative-syllabus--13-11-1-1',
+              title: 'Number Systems',
+              levelLabel: 'Topic',
+              note: 'Computation of Whole Number, Decimal and Fractions, Relationship between numbers.',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-I' }, { kind: 'SECTION', label: 'Part-A' }, { kind: 'SECTION', label: 'Section-I' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-1-1', clauseNumber: 'pattern', excerptText: '13.11.1.1 Number Systems: Computation of Whole Number,' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--13-11-1-2',
+              title: 'Fundamental arithmetical operations',
+              levelLabel: 'Topic',
+              note: 'Percentages, Ratio and Proportion, Square roots, Averages, Interest (Simple and Compound), Profit and Loss, Discount, Partnership Business, Mixture and Alligation, Time and distance, Time and work.',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-I' }, { kind: 'SECTION', label: 'Part-A' }, { kind: 'SECTION', label: 'Section-I' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-1-2', clauseNumber: 'pattern', excerptText: '13.11.1.2 Fundamental arithmetical operations: Percentages,' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--13-11-1-3',
+              title: 'Algebra',
+              levelLabel: 'Topic',
+              note: 'Basic algebraic identities of School Algebra and Elementary surds (simple problems) and Graphs of Linear Equations.',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-I' }, { kind: 'SECTION', label: 'Part-A' }, { kind: 'SECTION', label: 'Section-I' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-1-3', clauseNumber: 'pattern', excerptText: '13.11.1.3 Algebra: Basic algebraic identities of School Algebra and' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--13-11-1-4',
+              title: 'Geometry',
+              levelLabel: 'Topic',
+              note: 'Familiarity with elementary geometric figures and facts: Triangle and its various kinds of centres, Congruence and similarity of triangles, Circle and its chords, tangents, angles subtended by chords of a circle, common tangents to two or more circles.',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-I' }, { kind: 'SECTION', label: 'Part-A' }, { kind: 'SECTION', label: 'Section-I' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-1-4', clauseNumber: 'pattern', excerptText: '13.11.1.4 Geometry: Familiarity with elementary geometric figures' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--13-11-1-5',
+              title: 'Mensuration',
+              levelLabel: 'Topic',
+              note: 'Triangle, Quadrilaterals, Regular Polygons, Circle, Right Prism, Right Circular Cone, Right Circular Cylinder, Sphere, Hemispheres, Rectangular Parallelepiped, Regular Right Pyramid with triangular or square Base.',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-I' }, { kind: 'SECTION', label: 'Part-A' }, { kind: 'SECTION', label: 'Section-I' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-1-5', clauseNumber: 'pattern', excerptText: '13.11.1.5 Mensuration: Triangle, Quadrilaterals, Regular' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--13-11-1-6',
+              title: 'Trigonometry',
+              levelLabel: 'Topic',
+              note: 'Trigonometry, Trigonometric ratios, Complementary angles, Height and distances (simple problems only) Standard Identities like sin2𝜃 + cos2𝜃=1 etc.',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-I' }, { kind: 'SECTION', label: 'Part-A' }, { kind: 'SECTION', label: 'Section-I' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-1-6', clauseNumber: 'pattern', excerptText: '13.11.1.6 Trigonometry: Trigonometry, Trigonometric ratios,' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--13-11-1-7',
+              title: 'Statistics and probability',
+              levelLabel: 'Topic',
+              note: 'Use of Tables and Graphs: Histogram, Frequency polygon, Bar-diagram, Pie-chart; Measures of central tendency: mean, median, mode, standard deviation; calculation of simple probabilities.',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-I' }, { kind: 'SECTION', label: 'Part-A' }, { kind: 'SECTION', label: 'Section-I' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-1-7', clauseNumber: 'pattern', excerptText: '13.11.1.7 Statistics and probability: Use of Tables and Graphs:' }
+            }
+          ]
+        },
+{
+          id: 'syl-13-11-indicative-syllabus--13-11-2',
+          title: 'Part B of Section-I of Paper-I (Reasoning and General Intelligence)',
+          levelLabel: 'Part',
+          note: 'Questions of both verbal and non-verbal type. These will include questions on Semantic Analogy, Symbolic operations, Symbolic/ Number Analogy, Trends, Figural Analogy, Space Orientation, Semantic Classification, Venn Diagrams, Symbolic/ Number Classification, Drawing inferences, Figural Classification, Punched hole/ pattern-folding & unfolding, Semantic Series, Figural Pattern-folding and completi',
+          scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-I' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-I' }],
+          provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-2', clauseNumber: 'pattern', excerptText: '13.11.2 Part B of Section-I of Paper-I (Reasoning and General' }
+        },
+{
+          id: 'syl-13-11-indicative-syllabus--13-11-3',
+          title: 'Part A of Section-II of Paper-I (English Language and Comprehension)',
+          levelLabel: 'Part',
+          note: 'Vocabulary, grammar, sentence structure, synonyms, antonyms and their correct usage; Spot the Error, Fill in the Blanks, Synonyms/ Homonyms, Antonyms, Spellings/ Detecting mis-spelt words, Idioms & Phrases, One word substitution, Improvement of Sentences, Active/ Passive Voice of Verbs, Conversion into Direct/ Indirect narration, Shuffling of Sentence parts, Shuffling of Sentences in a passage, Cl',
+          scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-I' }, { kind: 'SECTION', label: 'Part-A' }, { kind: 'SECTION', label: 'Section-II' }],
+          provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-3', clauseNumber: 'pattern', excerptText: '13.11.3 Part A of Section-II of Paper-I (English Language and' }
+        },
+{
+          id: 'syl-13-11-indicative-syllabus--13-11-4',
+          title: 'Part B of Section-II of Paper-I (General Awareness)',
+          levelLabel: 'Part',
+          note: 'Questions are designed to test the candidates‟ general awareness of the environment around them and its application to society. Questions are also designed to test knowledge of current events and of such matters of everyday observation and experience in their scientific aspect as may be expected of an educated person. The test will also include questions relating to India and its neighboring count',
+          scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-I' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-II' }],
+          provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-4', clauseNumber: 'pattern', excerptText: '13.11.4 Part B of Section-II of Paper-I (General Awareness):' }
+        },
+{
+          id: 'syl-13-11-indicative-syllabus--13-11-5',
+          title: 'Section-III of Paper-I (Computer Knowledge/ Proficiency)',
+          levelLabel: 'Section',
+          scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-I' }, { kind: 'SECTION', label: 'Section-III' }],
+          provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-5', clauseNumber: 'pattern', excerptText: '13.11.5 Section-III of Paper-I (Computer Knowledge/' },
+          children: [
+{
+              id: 'syl-13-11-indicative-syllabus--13-11-5-1',
+              title: 'Computer Basics',
+              levelLabel: 'Topic',
+              note: 'Organization of a computer, Central Processing Unit (CPU), input/ output devices, computer memory, memory organization, back up devices, PORTs, Windows Explorer. Keyboard shortcuts.',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-I' }, { kind: 'SECTION', label: 'Section-III' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-5-1', clauseNumber: 'pattern', excerptText: '13.11.5.1 Computer Basics: Organization of a computer, Central' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--13-11-5-2',
+              title: 'Software',
+              levelLabel: 'Topic',
+              note: 'Windows Operating system including basics of Microsoft Office like MS word, MS Excel and Power Point etc.',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-I' }, { kind: 'SECTION', label: 'Section-III' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-5-2', clauseNumber: 'pattern', excerptText: '13.11.5.2 Software: Windows Operating system including basics of' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--13-11-5-3',
+              title: 'Working with Internet and e-mails',
+              levelLabel: 'Topic',
+              note: 'Web Browsing & Searching, Downloading & Uploading, Managing an E-mail Account, e-Banking.',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-I' }, { kind: 'SECTION', label: 'Section-III' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-5-3', clauseNumber: 'pattern', excerptText: '13.11.5.3 Working with Internet and e-mails: Web Browsing &' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--13-11-5-4',
+              title: 'Basics of networking and cyber security',
+              levelLabel: 'Topic',
+              note: 'Networking devices and protocols, Network and information security threats (like hacking, virus, worms, Trojan etc.) and preventive measures.',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-I' }, { kind: 'SECTION', label: 'Section-III' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-5-4', clauseNumber: 'pattern', excerptText: '13.11.5.4 Basics of networking and cyber security: Networking' }
+            }
+          ]
+        },
+{
+          id: 'syl-13-11-indicative-syllabus--13-11-6',
+          title: 'Paper-II (Statistics)',
+          levelLabel: 'Paper',
+          scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-II' }],
+          provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-6', clauseNumber: 'pattern', excerptText: '13.11.6 Paper-II (Statistics):' },
+          children: [
+{
+              id: 'syl-13-11-indicative-syllabus--13-11-6-1',
+              title: 'Collection, Classification and Presentation of Statistical Data',
+              levelLabel: 'Topic',
+              note: 'Primary and Secondary data, Methods of data collection; Tabulation of data; Graphs and charts; Frequency distributions; Diagrammatic presentation of frequency distributions.',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-6-1', clauseNumber: 'pattern', excerptText: '13.11.6.1 Collection, Classification and Presentation of' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--13-11-6-2',
+              title: 'Measures of Central Tendency',
+              levelLabel: 'Topic',
+              note: 'Common measures of central tendency – mean median and mode; Partition values- quartiles, deciles, percentiles.',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-6-2', clauseNumber: 'pattern', excerptText: '13.11.6.2 Measures of Central Tendency- Common' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--13-11-6-3',
+              title: 'Measures of Dispersion',
+              levelLabel: 'Topic',
+              note: 'Common measures dispersion – range, quartile deviations, mean deviation and standard deviation; Measures of relative dispersion.',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-6-3', clauseNumber: 'pattern', excerptText: '13.11.6.3 Measures of Dispersion- Common measures' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--13-11-6-4',
+              title: 'Moments, Skewness and Kurtosis',
+              levelLabel: 'Topic',
+              note: 'Different types of moments and their relationship; meaning of skewness and kurtosis; different measures of skewness and kurtosis.',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-6-4', clauseNumber: 'pattern', excerptText: '13.11.6.4 Moments, Skewness and Kurtosis – Different' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--13-11-6-5',
+              title: 'Correlation and Regression',
+              levelLabel: 'Topic',
+              note: 'Scatter diagram; simple correlation coefficient; simple regression lines; Spearman‟s rank correlation; Measures of association of attributes; Multiple regression; Multiple and partial correlation (For three variables only).',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-6-5', clauseNumber: 'pattern', excerptText: '13.11.6.5 Correlation and Regression – Scatter diagram;' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--13-11-6-6',
+              title: 'Probability Theory',
+              levelLabel: 'Topic',
+              note: 'Meaning of probability; Different definitions of probability; Conditional probability; Compound probability; Independent events; Bayes‟ theorem.',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-6-6', clauseNumber: 'pattern', excerptText: '13.11.6.6 Probability Theory – Meaning of probability;' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--13-11-6-7',
+              title: 'Random Variable and Probability Distributions',
+              levelLabel: 'Topic',
+              note: 'Random variable; Probability functions; Expectation and Variance of a random variable; Higher moments of a random variable; Binomial, Poisson, Normal and Exponential distributions; Joint distribution of two random variable (discrete).',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-6-7', clauseNumber: 'pattern', excerptText: '13.11.6.7 Random Variable and Probability Distributions' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--13-11-6-8',
+              title: 'Sampling Theory',
+              levelLabel: 'Topic',
+              note: 'Concept of population and sample; Parameter and statistic, Sampling and non-sampling errors; Probability and non-probability sampling techniques (simple random sampling, stratified sampling, multistage sampling, multiphase sampling, cluster sampling, systematic sampling, purposive sampling, convenience sampling and quota sampling); Sampling distribution (statement only); Sample size decisions.',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-6-8', clauseNumber: 'pattern', excerptText: '13.11.6.8 Sampling Theory – Concept of population and' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--13-11-6-9',
+              title: 'Statistical Inference',
+              levelLabel: 'Topic',
+              note: 'Point estimation and interval estimation, Properties of a good estimator, Methods of estimation (Moments method, Maximum likelihood method, Least squares method), Testing of hypothesis, Basic concept of testing, Small sample and large sample tests, Tests based on Z, t, Chi-square and F statistic, Confidence intervals.',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-6-9', clauseNumber: 'pattern', excerptText: '13.11.6.9 Statistical Inference - Point estimation and interval' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--13-11-6-10',
+              title: 'Analysis of Variance',
+              levelLabel: 'Topic',
+              note: 'Analysis of one-way classified data and two-way classified data.',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-6-10', clauseNumber: 'pattern', excerptText: '13.11.6.10 Analysis of Variance - Analysis of one-way' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--13-11-6-11',
+              title: 'Time Series Analysis',
+              levelLabel: 'Topic',
+              note: 'Components of time series, Determinations of trend component by different methods, Measurement of seasonal variation by different methods.',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-6-11', clauseNumber: 'pattern', excerptText: '13.11.6.11 Time Series Analysis - Components of time series,' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--13-11-6-12',
+              title: 'Index Numbers',
+              levelLabel: 'Topic',
+              note: 'Meaning of Index Numbers, Problems in the construction of index numbers, Types of index number, Different formulae, Base shifting and splicing of index numbers, Cost of living Index Numbers, Uses of Index Numbers.',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-6-12', clauseNumber: 'pattern', excerptText: '13.11.6.12 Index Numbers - Meaning of Index Numbers,' }
+            }
+          ]
+        },
+{
+          id: 'syl-13-11-indicative-syllabus--13-11-7',
+          title: 'Paper-III (General Studies-Finance and Economics)',
+          levelLabel: 'Paper',
+          scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }],
+          provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7', clauseNumber: 'pattern', excerptText: '13.11.7 Paper-III (General Studies-Finance and Economics):' },
+          children: [
+{
+              id: 'syl-13-11-indicative-syllabus--13-11-7-1',
+              title: 'Part A',
+              levelLabel: 'Part',
+              note: 'Finance and Accounts-(80 marks):',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-A' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-1', clauseNumber: 'pattern', excerptText: '13.11.7.1 Part A: Finance and Accounts-(80 marks):' },
+              children: [
+{
+                  id: 'syl-13-11-indicative-syllabus--13-11-7-1-1',
+                  title: 'Fundamental principles and basic concept of Accounting',
+                  levelLabel: 'Subtopic',
+                  scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-A' }],
+                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-1-1', clauseNumber: 'pattern', excerptText: '13.11.7.1.1 Fundamental principles and basic' },
+                  children: [
+{
+                      id: 'syl-13-11-indicative-syllabus--13-11-7-1-1-1',
+                      title: 'Financial Accounting',
+                      levelLabel: 'Detail',
+                      note: 'Nature and scope, Limitations of Financial Accounting, Basic concepts and Conventions, Generally Accepted Accounting Principles.',
+                      scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-A' }],
+                      provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-1-1-1', clauseNumber: 'pattern', excerptText: '13.11.7.1.1.1 Financial Accounting: Nature and scope,' }
+                    },
+{
+                      id: 'syl-13-11-indicative-syllabus--13-11-7-1-1-2',
+                      title: 'Basic concepts of accounting',
+                      levelLabel: 'Detail',
+                      note: 'Single and double entry, Books of original Entry, Bank Reconciliation, Journal, ledgers, Trial Balance, Rectification of Errors, Manufacturing, Trading, Profit & loss Appropriation Accounts, Balance Sheet Distinction between Capital and Revenue Expenditure, Depreciation Accounting, Valuation of Inventories, Non-profit organisations Accounts, Receipts and Payments and Income &Expenditure Accounts, ',
+                      scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-A' }],
+                      provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-1-1-2', clauseNumber: 'pattern', excerptText: '13.11.7.1.1.2 Basic concepts of accounting: Single and' }
+                    }
+                  ]
+                }
+              ]
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--13-11-7-2',
+              title: 'Part B',
+              levelLabel: 'Part',
+              note: 'Economics and Governance-(120 marks):',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-B' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2', clauseNumber: 'pattern', excerptText: '13.11.7.2 Part B: Economics and Governance-(120 marks):' },
+              children: [
+{
+                  id: 'syl-13-11-indicative-syllabus--13-11-7-2-1',
+                  title: 'Comptroller & Auditor General of India￾Constitutional provisions, Role and responsibility',
+                  levelLabel: 'Subtopic',
+                  scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-B' }],
+                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-1', clauseNumber: 'pattern', excerptText: '13.11.7.2.1 Comptroller & Auditor General of India￾Constitutional provisions, Role and responsibility.' }
+                },
+{
+                  id: 'syl-13-11-indicative-syllabus--13-11-7-2-2',
+                  title: 'Finance Commission',
+                  levelLabel: 'Subtopic',
+                  note: 'Role and functions.',
+                  scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-B' }],
+                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-2', clauseNumber: 'pattern', excerptText: '13.11.7.2.2 Finance Commission- Role and functions.' }
+                },
+{
+                  id: 'syl-13-11-indicative-syllabus--13-11-7-2-3',
+                  title: 'Basic Concept of Economics and introduction to Micro Economics',
+                  levelLabel: 'Subtopic',
+                  note: 'Definition, scope and nature of Economics, Methods of economic study and Central problems of an economy and Production possibilities curve.',
+                  scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-B' }],
+                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-3', clauseNumber: 'pattern', excerptText: '13.11.7.2.3 Basic Concept of Economics and introduction' }
+                },
+{
+                  id: 'syl-13-11-indicative-syllabus--13-11-7-2-4',
+                  title: 'Theory of Demand and Supply',
+                  levelLabel: 'Subtopic',
+                  note: 'Meaning and determinants of demand, Law of demand and Elasticity of demand, Price, income and cross elasticity; Theory of consumer‟s behaviour- Marshallian approach and Indifference curve approach, Meaning and determinants of supply, Law of supply and Elasticity of Supply.',
+                  scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-B' }],
+                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-4', clauseNumber: 'pattern', excerptText: '13.11.7.2.4 Theory of Demand and Supply: Meaning and' }
+                },
+{
+                  id: 'syl-13-11-indicative-syllabus--13-11-7-2-5',
+                  title: 'Theory of Production and cost',
+                  levelLabel: 'Subtopic',
+                  note: 'Meaning and Factors of production; Laws of production- Law of variable proportions and Laws of returns to scale.',
+                  scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-B' }],
+                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-5', clauseNumber: 'pattern', excerptText: '13.11.7.2.5 Theory of Production and cost: Meaning and' }
+                },
+{
+                  id: 'syl-13-11-indicative-syllabus--13-11-7-2-6',
+                  title: 'Forms of Market and price determination in different markets',
+                  levelLabel: 'Subtopic',
+                  note: 'Various forms of markets-Perfect Competition, Monopoly, Monopolistic Competition and Oligopoly and Price determination in these markets.',
+                  scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-B' }],
+                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-6', clauseNumber: 'pattern', excerptText: '13.11.7.2.6 Forms of Market and price determination in' }
+                },
+{
+                  id: 'syl-13-11-indicative-syllabus--13-11-7-2-7',
+                  title: 'Indian Economy',
+                  levelLabel: 'Subtopic',
+                  scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-B' }],
+                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-7', clauseNumber: 'pattern', excerptText: '13.11.7.2.7 Indian Economy:' },
+                  children: [
+{
+                      id: 'syl-13-11-indicative-syllabus--13-11-7-2-7-1',
+                      title: 'Nature of the Indian Economy Role of different sectors',
+                      levelLabel: 'Detail',
+                      note: 'Role of Agriculture, Industry and Services-their problems and growth;',
+                      scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-B' }],
+                      provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-7-1', clauseNumber: 'pattern', excerptText: '13.11.7.2.7.1 Nature of the Indian Economy Role of' }
+                    },
+{
+                      id: 'syl-13-11-indicative-syllabus--13-11-7-2-7-2',
+                      title: 'National Income of India-Concepts of national income, Different methods of measuring national income',
+                      levelLabel: 'Detail',
+                      scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-B' }],
+                      provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-7-2', clauseNumber: 'pattern', excerptText: '13.11.7.2.7.2 National Income of India-Concepts of' }
+                    },
+{
+                      id: 'syl-13-11-indicative-syllabus--13-11-7-2-7-3',
+                      title: 'Population-Its size, rate of growth and its implication on economic growth',
+                      levelLabel: 'Detail',
+                      scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-B' }],
+                      provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-7-3', clauseNumber: 'pattern', excerptText: '13.11.7.2.7.3 Population-Its size, rate of growth and its' }
+                    },
+{
+                      id: 'syl-13-11-indicative-syllabus--13-11-7-2-7-4',
+                      title: 'Poverty and unemployment',
+                      levelLabel: 'Detail',
+                      note: 'Absolute and relative poverty, types, causes and incidence of unemployment.',
+                      scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-B' }],
+                      provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-7-4', clauseNumber: 'pattern', excerptText: '13.11.7.2.7.4 Poverty and unemployment- Absolute and' }
+                    },
+{
+                      id: 'syl-13-11-indicative-syllabus--13-11-7-2-7-5',
+                      title: 'Infrastructure-Energy, Transportation, Communication',
+                      levelLabel: 'Detail',
+                      scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-B' }],
+                      provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-7-5', clauseNumber: 'pattern', excerptText: '13.11.7.2.7.5 Infrastructure-Energy, Transportation,' }
+                    }
+                  ]
+                },
+{
+                  id: 'syl-13-11-indicative-syllabus--13-11-7-2-8',
+                  title: 'Economic Reforms in India',
+                  levelLabel: 'Subtopic',
+                  note: 'Economic reforms since 1991; Liberalisation, Privatisation, Globalisation and Disinvestment.',
+                  scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-B' }],
+                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-8', clauseNumber: 'pattern', excerptText: '13.11.7.2.8 Economic Reforms in India: Economic reforms' }
+                },
+{
+                  id: 'syl-13-11-indicative-syllabus--13-11-7-2-9',
+                  title: 'Money and Banking',
+                  levelLabel: 'Subtopic',
+                  scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-B' }],
+                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-9', clauseNumber: 'pattern', excerptText: '13.11.7.2.9 Money and Banking:' },
+                  children: [
+{
+                      id: 'syl-13-11-indicative-syllabus--13-11-7-2-9-1',
+                      title: 'Monetary/ Fiscal policy',
+                      levelLabel: 'Detail',
+                      note: 'Role and functions of Reserve Bank of India; functions of commercial Banks/RRB/Payment Banks.',
+                      scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-B' }],
+                      provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-9-1', clauseNumber: 'pattern', excerptText: '13.11.7.2.9.1 Monetary/ Fiscal policy- Role and' }
+                    },
+{
+                      id: 'syl-13-11-indicative-syllabus--13-11-7-2-9-2',
+                      title: 'Budget and Fiscal deficits and Balance of payments',
+                      levelLabel: 'Detail',
+                      scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-B' }],
+                      provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-9-2', clauseNumber: 'pattern', excerptText: '13.11.7.2.9.2 Budget and Fiscal deficits and Balance of' }
+                    },
+{
+                      id: 'syl-13-11-indicative-syllabus--13-11-7-2-9-3',
+                      title: 'Fiscal Responsibility and Budget Management Act, 2003',
+                      levelLabel: 'Detail',
+                      scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-B' }],
+                      provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-9-3', clauseNumber: 'pattern', excerptText: '13.11.7.2.9.3 Fiscal Responsibility and Budget' }
+                    }
+                  ]
+                },
+{
+                  id: 'syl-13-11-indicative-syllabus--13-11-7-2-10',
+                  title: 'Role of Information Technology in Governance',
+                  levelLabel: 'Subtopic',
+                  scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-B' }],
+                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-10', clauseNumber: 'pattern', excerptText: '13.11.7.2.10 Role of Information Technology in' }
+                }
+              ]
+            }
+          ]
+        },
+{
+          id: 'syl-13-11-indicative-syllabus--13-11-8',
+          title: 'Questions in Part A of Section',
+          levelLabel: 'Subject',
+          note: 'I of Paper-I (Mathematical Abilities) will be of Matriculation Level, in Part A of Section- II of Paper-I (English Language and Comprehension) of 10+2 Level and in Paper-II and Paper-III of Graduation Level.',
+          scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'SECTION', label: 'Part-A' }],
+          provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-8', clauseNumber: 'pattern', excerptText: '13.11.8 Questions in Part A of Section- I of Paper-I (Mathematical' }
+        },
+{
+          id: 'syl-13-11-indicative-syllabus--14',
+          title: 'Admission to the Examination',
+          levelLabel: 'Subject',
+          note: 'All candidates who register themselves in response to this advertisement by the closing date and time and whose applications are found to be in order and are provisionally accepted by the Commission as per the terms and conditions of this Notice of Examination will be assigned Roll numbers and issued Admission Certificates (AC) for appearing in the Computer Based Examination. Subsequently, qualifi',
+          scope: [{ kind: 'STAGE', label: 'Tier-II' }],
+          provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--14', clauseNumber: 'pattern', excerptText: '14. Admission to the Examination:' },
+          children: [
+{
+              id: 'syl-13-11-indicative-syllabus--14-7-1',
+              title: 'Aadhaar Card/ Printout of E-Aadhaar',
+              levelLabel: 'Subject',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--14-7-1', clauseNumber: 'pattern', excerptText: '14.7.1 Aadhaar Card/ Printout of E-Aadhaar,' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--14-7-2',
+              title: 'Voter‟s ID Card',
+              levelLabel: 'Subject',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--14-7-2', clauseNumber: 'pattern', excerptText: '14.7.2 Voter‟s ID Card,' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--14-7-3',
+              title: 'Driving License',
+              levelLabel: 'Subject',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--14-7-3', clauseNumber: 'pattern', excerptText: '14.7.3 Driving License,' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--14-7-4',
+              title: 'PAN Card',
+              levelLabel: 'Subject',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--14-7-4', clauseNumber: 'pattern', excerptText: '14.7.4 PAN Card,' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--14-7-5',
+              title: 'Passport',
+              levelLabel: 'Subject',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--14-7-5', clauseNumber: 'pattern', excerptText: '14.7.5 Passport,' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--14-7-6',
+              title: 'ID Card issued by University/ College/ School',
+              levelLabel: 'Subject',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--14-7-6', clauseNumber: 'pattern', excerptText: '14.7.6 ID Card issued by University/ College/ School,' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--14-7-7',
+              title: 'Employer ID Card (Govt./ PSU)',
+              levelLabel: 'Subject',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--14-7-7', clauseNumber: 'pattern', excerptText: '14.7.7 Employer ID Card (Govt./ PSU),' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--14-7-8',
+              title: 'Ex-Serviceman Discharge Book issued by Ministry of Defence',
+              levelLabel: 'Subject',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--14-7-8', clauseNumber: 'pattern', excerptText: '14.7.8 Ex-Serviceman Discharge Book issued by Ministry of' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--14-7-9',
+              title: 'Any other photo bearing ID Card issued by the Central/ State Government',
+              levelLabel: 'Subject',
+              note: 'If Photo Identity Card does not have the date of birth printed on it then the candidate must carry an additional original document (e.g. Matriculation Certificate, Marks Sheet issued only by CBSE/ ICSE/ State Boards; Birth Certificate, Category Certificate, Passport etc.) in proof of their date of birth. In case of mismatch in the date of birth mentioned in the Admission Certificate and photo ID/ ',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--14-7-9', clauseNumber: 'pattern', excerptText: '14.7.9 Any other photo bearing ID Card issued by the Central/' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--14-9',
+              title: 'PwBD/ PwD candidates availing the facility of scribes as per Para 7.1',
+              levelLabel: 'Subject',
+              note: 'and 7.3 shall also be required to carry requisite Medical Certificate/ Undertaking/ Photocopy of the Scribe‟s Photo ID Proof, as specified therein. Candidates without above noted documents will not be allowed to appear in the examination. Any other document mentioned in the Admission Certificate shall also be carried by the candidates while appearing in the Examination. Applications with blurred p',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--14-9', clauseNumber: 'pattern', excerptText: '14.9 PwBD/ PwD candidates availing the facility of scribes as per Para 7.1,' }
+            }
+          ]
+        },
+{
+          id: 'syl-13-11-indicative-syllabus--15',
+          title: 'Document Verification (DV)',
+          levelLabel: 'Subject',
+          note: 'Document Verification (DV) will be conducted by the User Departments/Organizations after declaration of the final result. Staff Selection Commission make recruitments as per the vacancies reported by the User Ministries/Departments/Organizations. The Commission has no role in determination of total vacancies (Vertical & Horizontal) arising in a User Ministry/Department/Organization, backlog vacanc',
+          scope: [{ kind: 'STAGE', label: 'Tier-II' }],
+          provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15', clauseNumber: 'pattern', excerptText: '15. Document Verification (DV):' },
+          children: [
+{
+              id: 'syl-13-11-indicative-syllabus--15-7-1',
+              title: 'Inspector (Central Excise)-CBIC',
+              levelLabel: 'Subject',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-7-1', clauseNumber: 'pattern', excerptText: '15.7.1 Inspector (Central Excise)-CBIC' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--15-7-2',
+              title: 'Inspector (Examiner)-CBIC',
+              levelLabel: 'Subject',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-7-2', clauseNumber: 'pattern', excerptText: '15.7.2 Inspector (Examiner)-CBIC' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--15-7-3',
+              title: 'Inspector (Preventive Officer)-CBIC',
+              levelLabel: 'Subject',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-7-3', clauseNumber: 'pattern', excerptText: '15.7.3 Inspector (Preventive Officer)-CBIC' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--15-7-4',
+              title: 'Inspector-CBN',
+              levelLabel: 'Subject',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-7-4', clauseNumber: 'pattern', excerptText: '15.7.4 Inspector-CBN' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--15-7-5',
+              title: 'Sub-Inspector-CBN, Ministry of Finance',
+              levelLabel: 'Subject',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-7-5', clauseNumber: 'pattern', excerptText: '15.7.5 Sub-Inspector-CBN, Ministry of Finance' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--15-7-6',
+              title: 'Sub-Inspector/ Junior Intelligence Officer in NCB, MHA',
+              levelLabel: 'Subject',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-7-6', clauseNumber: 'pattern', excerptText: '15.7.6 Sub-Inspector/ Junior Intelligence Officer in NCB, MHA' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--15-7-7',
+              title: 'Sub-Inspector-CBI',
+              levelLabel: 'Subject',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-7-7', clauseNumber: 'pattern', excerptText: '15.7.7 Sub-Inspector-CBI' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--15-7-8',
+              title: 'Sub-Inspector-NIA',
+              levelLabel: 'Subject',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-7-8', clauseNumber: 'pattern', excerptText: '15.7.8 Sub-Inspector-NIA' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--15-7-9',
+              title: 'Post(s) in BRO',
+              levelLabel: 'Subject',
+              note: 'Detailed information about the Physical Standard, Physical Tests about the posts at Para 15.7.1 to 15.7.9 is given at Annexure-XV & Annexure-XVI. Candidates must ensure that they fulfil all the requirements of Physical Standards, Physical Tests and Medical Standards before giving their preferences/ options. Measurement of Physical Standards, Physical Tests and Medical Tests will be conducted by th',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-7-9', clauseNumber: 'pattern', excerptText: '15.7.9 Post(s) in BRO' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--15-11-1',
+              title: 'Matriculation/ Secondary Certificate',
+              levelLabel: 'Subject',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-11-1', clauseNumber: 'pattern', excerptText: '15.11.1 Matriculation/ Secondary Certificate.' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--15-11-2',
+              title: 'Educational Qualification Certificate',
+              levelLabel: 'Subject',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-11-2', clauseNumber: 'pattern', excerptText: '15.11.2 Educational Qualification Certificate.' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--15-11-3',
+              title: 'Caste/ Category Certificate, if belongs to reserved categories',
+              levelLabel: 'Subject',
+              note: 'Persons with Benchmark Disabilities Certificate in the required format, if applicable.',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-11-3', clauseNumber: 'pattern', excerptText: '15.11.3 Caste/ Category Certificate, if belongs to reserved' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--15-11-5',
+              title: 'For Ex-Servicemen (ESM)',
+              levelLabel: 'Subject',
+              note: 'Serving Defence Personnel Certificate as per Annexure-VII, if applicable.',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-11-5', clauseNumber: 'pattern', excerptText: '15.11.5 For Ex-Servicemen (ESM):' },
+              children: [
+{
+                  id: 'syl-13-11-indicative-syllabus--15-11-5-2',
+                  title: 'Undertaking as per Annexure-VIII',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'STAGE', label: 'Tier-II' }],
+                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-11-5-2', clauseNumber: 'pattern', excerptText: '15.11.5.2 Undertaking as per Annexure-VIII.' }
+                },
+{
+                  id: 'syl-13-11-indicative-syllabus--15-11-5-3',
+                  title: 'Discharge Certificate, if discharged from the Armed Forces',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'STAGE', label: 'Tier-II' }],
+                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-11-5-3', clauseNumber: 'pattern', excerptText: '15.11.5.3 Discharge Certificate, if discharged from the' }
+                }
+              ]
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--15-11-6',
+              title: 'Relevant Certificate if seeking any age relaxation',
+              levelLabel: 'Subject',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-11-6', clauseNumber: 'pattern', excerptText: '15.11.6 Relevant Certificate if seeking any age relaxation.' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--15-11-7',
+              title: 'Certificate as per Annexure-VI by the Central Government Civilian Employees',
+              levelLabel: 'Subject',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-11-7', clauseNumber: 'pattern', excerptText: '15.11.7 Certificate as per Annexure-VI by the Central Government' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--15-11-8',
+              title: 'No Objection Certificate, in case already employed in Government/ Government undertakings',
+              levelLabel: 'Subject',
+              note: 'A candidate who claims change in name after matriculation on marriage or remarriage or divorce, etc. the following documents shall be submitted:',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-11-8', clauseNumber: 'pattern', excerptText: '15.11.8 No Objection Certificate, in case already employed in' },
+              children: [
+{
+                  id: 'syl-13-11-indicative-syllabus--15-11-9-1',
+                  title: 'In case of marriage of women',
+                  levelLabel: 'Topic',
+                  note: 'Photocopy of Husband‟s passport showing names of spouses or an attested copy of marriage certificate issued by the Registrar of Marriage or an Affidavit from husband and wife along with a joint photograph duly sworn before the Oath Commissioner;',
+                  scope: [{ kind: 'STAGE', label: 'Tier-II' }],
+                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-11-9-1', clauseNumber: 'pattern', excerptText: '15.11.9.1 In case of marriage of women: Photocopy of' }
+                },
+{
+                  id: 'syl-13-11-indicative-syllabus--15-11-9-2',
+                  title: 'In case of re-marriage of women',
+                  levelLabel: 'Topic',
+                  note: 'Divorce Deed/ Death Certificate as the case may be in respect of first spouse; and photocopy of present husband‟s passport showing names of spouse or an attested copy of marriage certificate issued by the Registrar of Marriage or an Affidavit from the husband and wife along with joint photograph duly sworn before the Oath Commissioner.',
+                  scope: [{ kind: 'STAGE', label: 'Tier-II' }],
+                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-11-9-2', clauseNumber: 'pattern', excerptText: '15.11.9.2 In case of re-marriage of women: Divorce Deed/' }
+                },
+{
+                  id: 'syl-13-11-indicative-syllabus--15-11-9-3',
+                  title: 'In case of divorce of women',
+                  levelLabel: 'Topic',
+                  note: 'Certified copy of Divorce Decree and Deed Poll/ Affidavit duly sworn before the Oath Commissioner.',
+                  scope: [{ kind: 'STAGE', label: 'Tier-II' }],
+                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-11-9-3', clauseNumber: 'pattern', excerptText: '15.11.9.3 In case of divorce of women: Certified copy of' }
+                },
+{
+                  id: 'syl-13-11-indicative-syllabus--15-11-9-4',
+                  title: 'In other circumstances for change of name for both male and female',
+                  levelLabel: 'Topic',
+                  note: 'Deed Poll/ Affidavit duly sworn before the Oath Commissioner and paper cuttings of two leading daily newspaper in original (One daily newspaper should be of the area of applicant‟s permanent and present address or nearby area) and Gazette Notification.',
+                  scope: [{ kind: 'STAGE', label: 'Tier-II' }],
+                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-11-9-4', clauseNumber: 'pattern', excerptText: '15.11.9.4 In other circumstances for change of name for both' }
+                }
+              ]
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--15-12',
+              title: 'Any other document specified in the Admission Certificate for DV',
+              levelLabel: 'Subject',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-12', clauseNumber: 'pattern', excerptText: '15.12 Any other document specified in the Admission Certificate for DV.' }
+            }
+          ]
+        },
+{
+          id: 'syl-13-11-indicative-syllabus--16',
+          title: 'Mode of Selection',
+          levelLabel: 'Subject',
+          note: 'Minimum qualifying marks in Tier-I; Section-I, Section-II & Section￾III of Paper-I of Tier-II, Paper-II & Paper-III of Tier-II Examination are as follows:',
+          scope: [{ kind: 'STAGE', label: 'Tier-II' }],
+          provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--16', clauseNumber: 'pattern', excerptText: '16. Mode of Selection:' },
+          children: [
+{
+              id: 'syl-13-11-indicative-syllabus--16-1-1',
+              title: 'UR',
+              levelLabel: 'Subject',
+              note: '30%',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--16-1-1', clauseNumber: 'pattern', excerptText: '16.1.1 UR : 30%' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--16-1-2',
+              title: 'OBC/ EWS',
+              levelLabel: 'Subject',
+              note: '25%',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--16-1-2', clauseNumber: 'pattern', excerptText: '16.1.2 OBC/ EWS : 25%' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--16-1-3',
+              title: 'All other categories',
+              levelLabel: 'Subject',
+              note: '20% Maximum percentage of errors allowed (i.e. minimum qualifying standards) in Section-IV of Paper-I of Tier-II Examination i.e. DEST are as follows:',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--16-1-3', clauseNumber: 'pattern', excerptText: '16.1.3 All other categories : 20%' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--16-2-1',
+              title: 'UR',
+              levelLabel: 'Subject',
+              note: '20%',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--16-2-1', clauseNumber: 'pattern', excerptText: '16.2.1 UR : 20%' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--16-2-2',
+              title: 'OBC/ EWS',
+              levelLabel: 'Subject',
+              note: '25%',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--16-2-2', clauseNumber: 'pattern', excerptText: '16.2.2 OBC/ EWS : 25%' }
+            },
+{
+              id: 'syl-13-11-indicative-syllabus--16-2-3',
+              title: 'All other categories',
+              levelLabel: 'Subject',
+              note: '30% Based on the marks scored in Tier-I i.e. Computer Based Examination, candidates will be shortlisted, category-wise, to appear in Tier-II Examination. Separate cut-offs will be fixed for the post of Junior Statistical Officer and Statistical Investigator Grade-II for appearing in Paper-I & Paper-II of Tier-II, for the posts of Assistant Audit Officer and Assistant Accounts Officer for appearing',
+              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--16-2-3', clauseNumber: 'pattern', excerptText: '16.2.3 All other categories : 30%' }
+            }
+          ]
+        }
+      ]
+    }
+  ],
   syllabus: [
     // --- Quantitative Aptitude ---
     {
@@ -3761,6 +4583,17 @@ export const CLASSIFICATION_CONFIRMED: Record<string, DataProvenance> = {
   }
 };
 
+const upscSyllabusSource: Omit<DataProvenance, 'id' | 'clauseNumber' | 'excerptText'> = {
+  documentTitle: 'Union Public Service Commission — Notif-CSP-2026-Engl-060226Rev.pdf',
+  officialUrl: 'https://www.upsc.gov.in/sites/default/files/Notif-CSP-2026-Engl-060226Rev.pdf',
+  pageNumber: 1,
+  publishedDate: '',
+  verifiedDate: '2026-09-22',
+  verifiedBy: 'GovOS exam builder — read from the authority’s own document, hierarchy as it printed it',
+  taxonomyType: 'FACT',
+  verificationLevel: 'OFFICIALLY_VERIFIED'
+};
+
 export const UPSC_CSE_EXAM: Exam = {
   id: 'exam-upsc-cse-2026',
   code: 'UPSC_CSE_2026',
@@ -4268,6 +5101,7527 @@ export const UPSC_CSE_EXAM: Exam = {
     }
   ],
 
+  syllabusTree: [
+{
+      id: 'syl-section-iii-syllabi-for-th-root',
+      title: 'SECTION III: SYLLABI FOR THE EXAMINATION',
+      levelLabel: 'Syllabus',
+      scope: [{ kind: 'SECTION', label: 'Section-III' }],
+      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-root', clauseNumber: 'pattern', excerptText: 'SECTION III: SYLLABI FOR THE EXAMINATION' },
+      children: [
+{
+          id: 'syl-section-iii-syllabi-for-th-part-a-preliminary-examination',
+          title: 'Part A — Preliminary Examination',
+          levelLabel: 'Part',
+          scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-A' }],
+          provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-a-preliminary-examination', clauseNumber: 'pattern', excerptText: 'Part A—Preliminary Examination' },
+          children: [
+{
+              id: 'syl-section-iii-syllabi-for-th-paper-i-200-marks-duration-two-hours',
+              title: 'Paper I — (200 marks) Duration: Two hours',
+              levelLabel: 'Paper',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-A' }, { kind: 'PAPER', label: 'Paper-I' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-200-marks-duration-two-hours', clauseNumber: 'pattern', excerptText: 'Paper I - (200 marks) Duration: Two hours' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-200-marks--1',
+                  title: 'Current events of national and international importance',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-A' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-200-marks--1', clauseNumber: 'pattern', excerptText: ' Current events of national and international importance.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-200-marks--2',
+                  title: 'History of India and Indian National Movement',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-A' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-200-marks--2', clauseNumber: 'pattern', excerptText: ' History of India and Indian National Movement.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-200-marks--3',
+                  title: 'Indian and World Geography-Physical, Social, Economic Geography of India and the World',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-A' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-200-marks--3', clauseNumber: 'pattern', excerptText: ' Indian and World Geography-Physical, Social, Economic Geography of India and the World.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-200-marks--4',
+                  title: 'Indian Polity and Governance-Constitution, Political System, Panchayati Raj, Public Policy, Rights Issues, etc',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-A' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-200-marks--4', clauseNumber: 'pattern', excerptText: 'Issues, etc.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-200-marks--5',
+                  title: 'Economic and Social Development-Sustainable Development, Poverty, Inclusion, Demographics, Social Sector Initiatives, etc',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-A' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-200-marks--5', clauseNumber: 'pattern', excerptText: 'Sector Initiatives, etc.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-200-marks--6',
+                  title: 'General issues on Environmental ecology, Bio-diversity and Climate Change - that do not require subject specialization',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-A' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-200-marks--6', clauseNumber: 'pattern', excerptText: 'subject specialization.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-200-marks--7',
+                  title: 'General Science',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-A' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-200-marks--7', clauseNumber: 'pattern', excerptText: ' General Science.' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-paper-ii-200-marks-duration-two-hours',
+              title: 'Paper II — (200 marks) Duration: Two hours',
+              levelLabel: 'Paper',
+              note: 'Note 1: Paper-II of the Civil Services (Preliminary) Examination will be a qualifying paper with Note 2: The questions will be of multiple choice, objective type. Note 3: It is mandatory for the candidate to appear in both the Papers of Civil Services (Preliminary)',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-A' }, { kind: 'PAPER', label: 'Paper-II' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-200-marks-duration-two-hours', clauseNumber: 'pattern', excerptText: 'Paper II-(200 marks) Duration: Two hours' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-200-marks-1',
+                  title: 'Comprehension',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-A' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-200-marks-1', clauseNumber: 'pattern', excerptText: ' Comprehension;' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-200-marks-2',
+                  title: 'Interpersonal skills including communication skills',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-A' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-200-marks-2', clauseNumber: 'pattern', excerptText: ' Interpersonal skills including communication skills;' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-200-marks-3',
+                  title: 'Logical reasoning and analytical ability',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-A' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-200-marks-3', clauseNumber: 'pattern', excerptText: ' Logical reasoning and analytical ability;' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-200-marks-4',
+                  title: 'Decision making and problem solving',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-A' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-200-marks-4', clauseNumber: 'pattern', excerptText: ' Decision making and problem solving;' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-200-marks-5',
+                  title: 'General mental ability',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-A' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-200-marks-5', clauseNumber: 'pattern', excerptText: ' General mental ability;' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-200-marks-6',
+                  title: 'Basic numeracy (numbers and their relations, orders of magnitude, etc.) (Class X level), Data interpretation (charts, graphs, tables, data sufficiency etc. — Cl',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-A' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-200-marks-6', clauseNumber: 'pattern', excerptText: 'not appear in both the papers of Civil Services (Preliminary) Examination.' }
+                }
+              ]
+            }
+          ]
+        },
+{
+          id: 'syl-section-iii-syllabi-for-th-part-b-main-examination',
+          title: 'Part B — Main Examination',
+          levelLabel: 'Part',
+          note: 'Note 1:The papers on Indian Languages and English will be of Matriculation or equivalent standard and Note 2:The candidates will have to answer the English and Indian Languages papers in English and the',
+          scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }],
+          provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-b-main-examination', clauseNumber: 'pattern', excerptText: 'Part B—Main Examination' },
+          children: [
+{
+              id: 'syl-section-iii-syllabi-for-th-part-b-main-examin-1',
+              title: 'Comprehension of given passages',
+              levelLabel: 'Topic',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-b-main-examin-1', clauseNumber: 'pattern', excerptText: '(i) Comprehension of given passages.' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-part-b-main-examin-2',
+              title: 'Precis Writing',
+              levelLabel: 'Topic',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-b-main-examin-2', clauseNumber: 'pattern', excerptText: '(ii) Precis Writing.' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-part-b-main-examin-3',
+              title: 'Usage and Vocabulary',
+              levelLabel: 'Topic',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-b-main-examin-3', clauseNumber: 'pattern', excerptText: '(iii) Usage and Vocabulary.' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-part-b-main-examin-4',
+              title: 'Short Essays. Indian Languages',
+              levelLabel: 'Topic',
+              note: '—',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-b-main-examin-4', clauseNumber: 'pattern', excerptText: 'Indian Languages:—' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-part-b-main-examin-5',
+              title: 'comprehension of given passages',
+              levelLabel: 'Topic',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-b-main-examin-5', clauseNumber: 'pattern', excerptText: '(i) comprehension of given passages.' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-part-b-main-examin-6',
+              title: 'Precis Writing',
+              levelLabel: 'Topic',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-b-main-examin-6', clauseNumber: 'pattern', excerptText: '(ii) Precis Writing.' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-part-b-main-examin-7',
+              title: 'Usage and Vocabulary',
+              levelLabel: 'Topic',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-b-main-examin-7', clauseNumber: 'pattern', excerptText: '(iii) Usage and Vocabulary.' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-part-b-main-examin-8',
+              title: 'Short Essays',
+              levelLabel: 'Topic',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-b-main-examin-8', clauseNumber: 'pattern', excerptText: '(iv) Short Essays.' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-part-b-main-examin-9',
+              title: 'Translation from English to the Indian Language and vice-versa. will be of qualifying nature only. The marks obtained in these papers will not be counted for ra',
+              levelLabel: 'Topic',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-b-main-examin-9', clauseNumber: 'pattern', excerptText: 'respective Indian language (except where translation is involved).' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-paper-i',
+              title: 'Paper I',
+              levelLabel: 'Paper',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER-I' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-paper-ii',
+              title: 'Paper II',
+              levelLabel: 'Paper',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER-II' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-1',
+                  title: 'Indian culture will cover the salient aspects of Art Forms, literature and Architecture from ancient to modern times',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-1', clauseNumber: 'pattern', excerptText: 'modern times.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-2',
+                  title: 'Modern Indian history from about the middle of the eighteenth century until the present- significant events, personalities, issues',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-2', clauseNumber: 'pattern', excerptText: 'events, personalities, issues.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-3',
+                  title: 'The Freedom Struggle',
+                  levelLabel: 'Topic',
+                  note: 'its various stages and important contributors/contributions from different 34 parts of the country.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-3', clauseNumber: 'pattern', excerptText: 'parts of the country.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-4',
+                  title: 'Post-independence consolidation and reorganization within the country',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-4', clauseNumber: 'pattern', excerptText: ' Post-independence consolidation and reorganization within the country.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-5',
+                  title: 'History of the world will include events from 18th century such as industrial revolution, world wars, redrawal of national boundaries, colonization, decolonizat',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-5', clauseNumber: 'pattern', excerptText: 'capitalism, socialism etc.— their forms and effect on the society.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-6',
+                  title: 'Salient features of Indian Society, Diversity of India',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-6', clauseNumber: 'pattern', excerptText: ' Salient features of Indian Society, Diversity of India.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-7',
+                  title: 'Role of women and women’s organization, population and associated issues, poverty and developmental issues, urbanization, their problems and their remedies',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-7', clauseNumber: 'pattern', excerptText: 'developmental issues, urbanization, their problems and their remedies.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-8',
+                  title: 'Effects of globalization on Indian society',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-8', clauseNumber: 'pattern', excerptText: ' Effects of globalization on Indian society.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-9',
+                  title: 'Social empowerment, communalism, regionalism & secularism',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-9', clauseNumber: 'pattern', excerptText: ' Social empowerment, communalism, regionalism & secularism.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-10',
+                  title: 'Salient features of world’s physical geography',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-10', clauseNumber: 'pattern', excerptText: ' Salient features of world’s physical geography.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-11',
+                  title: 'Distribution of key natural resources across the world (including South Asia and the Indian sub￾continent); factors responsible for the location of primary, sec',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-11', clauseNumber: 'pattern', excerptText: 'various parts of the world (including India).' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-12',
+                  title: 'Important Geophysical phenomena such as earthquakes, Tsunami, Volcanic activity, cyclone etc., geographical features and their location-changes in critical geog',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-12', clauseNumber: 'pattern', excerptText: 'and ice-caps) and in flora and fauna and the effects of such changes.' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-paper-iii',
+              title: 'Paper III',
+              levelLabel: 'Paper',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-III' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-iii', clauseNumber: 'pattern', excerptText: 'PAPER-III' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-iii-1',
+                  title: 'Indian Constitution—historical underpinnings, evolution, features, amendments, significant provisions and basic structure',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-III' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-iii-1', clauseNumber: 'pattern', excerptText: 'and basic structure.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-iii-2',
+                  title: 'Functions and responsibilities of the Union and the States, issues and challenges pertaining to the federal structure, devolution of powers and finances up to l',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-III' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-iii-2', clauseNumber: 'pattern', excerptText: 'federal structure, devolution of powers and finances up to local levels and challenges therein.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-iii-3',
+                  title: 'Separation of powers between various organs dispute redressal mechanisms and institutions',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-III' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-iii-3', clauseNumber: 'pattern', excerptText: ' Separation of powers between various organs dispute redressal mechanisms and institutions.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-iii-4',
+                  title: 'Comparison of the Indian constitutional scheme with that of other countries',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-III' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-iii-4', clauseNumber: 'pattern', excerptText: ' Comparison of the Indian constitutional scheme with that of other countries.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-iii-5',
+                  title: 'Parliament and State legislatures—structure, functioning, conduct of business, powers & privileges and issues arising out of these',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-III' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-iii-5', clauseNumber: 'pattern', excerptText: 'and issues arising out of these.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-iii-6',
+                  title: 'Structure, organization and functioning of the Executive and the Judiciary—Ministries and Departments of the Government; pressure groups and formal/informal ass',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-III' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-iii-6', clauseNumber: 'pattern', excerptText: 'Polity.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-iii-7',
+                  title: 'Salient features of the Representation of People’s Act',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-III' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-iii-7', clauseNumber: 'pattern', excerptText: ' Salient features of the Representation of People’s Act.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-iii-8',
+                  title: 'Appointment to various Constitutional posts, powers, functions and responsibilities of various Constitutional Bodies',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-III' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-iii-8', clauseNumber: 'pattern', excerptText: 'Constitutional Bodies.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-iii-9',
+                  title: 'Statutory, regulatory and various quasi-judicial bodies',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-III' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-iii-9', clauseNumber: 'pattern', excerptText: ' Statutory, regulatory and various quasi-judicial bodies.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-iii-10',
+                  title: 'Government policies and interventions for development in various sectors and issues arising out of their design and implementation',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-III' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-iii-10', clauseNumber: 'pattern', excerptText: 'their design and implementation.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-iii-11',
+                  title: 'Development processes and the development industry —the role of NGOs, SHGs, various groups and 35 associations, donors, charities, institutional and other stake',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-III' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-iii-11', clauseNumber: 'pattern', excerptText: 'associations, donors, charities, institutional and other stakeholders.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-iii-12',
+                  title: 'Welfare schemes for vulnerable sections of the population by the Centre and States and the performance of these schemes; mechanisms, laws, institutions and Bodi',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-III' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-iii-12', clauseNumber: 'pattern', excerptText: 'and betterment of these vulnerable sections.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-iii-13',
+                  title: 'Issues relating to development and management of Social Sector/Services relating to Health, Education, Human Resources',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-III' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-iii-13', clauseNumber: 'pattern', excerptText: 'Education, Human Resources.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-iii-14',
+                  title: 'Issues relating to poverty and hunger',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-III' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-iii-14', clauseNumber: 'pattern', excerptText: ' Issues relating to poverty and hunger.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-iii-15',
+                  title: 'Important aspects of governance, transparency and accountability, e-governance- applications, models, successes, limitations, and potential; citizens charters, ',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-III' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-iii-15', clauseNumber: 'pattern', excerptText: 'and other measures.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-iii-16',
+                  title: 'Role of civil services in a democracy',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-III' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-iii-16', clauseNumber: 'pattern', excerptText: ' Role of civil services in a democracy.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-iii-17',
+                  title: 'India and its neighborhood',
+                  levelLabel: 'Topic',
+                  note: 'relations.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-III' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-iii-17', clauseNumber: 'pattern', excerptText: ' India and its neighborhood- relations.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-iii-18',
+                  title: 'Bilateral, regional and global groupings and agreements involving India and/or affecting India’s interests',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-III' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-iii-18', clauseNumber: 'pattern', excerptText: 'interests.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-iii-19',
+                  title: 'Effect of policies and politics of developed and developing countries on India’s interests, Indian diaspora',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-III' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-iii-19', clauseNumber: 'pattern', excerptText: 'diaspora.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-iii-20',
+                  title: 'Important International institutions, agencies and fora',
+                  levelLabel: 'Topic',
+                  note: 'their structure, mandate.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-III' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-iii-20', clauseNumber: 'pattern', excerptText: ' Important International institutions, agencies and fora- their structure, mandate.' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-paper-iv',
+              title: 'Paper IV',
+              levelLabel: 'Paper',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-IV' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-iv', clauseNumber: 'pattern', excerptText: 'PAPER-IV' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-iv-1',
+                  title: 'Indian Economy and issues relating to planning, mobilization, of resources, growth, development and employment',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-IV' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-iv-1', clauseNumber: 'pattern', excerptText: 'employment.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-iv-2',
+                  title: 'Inclusive growth and issues arising from it',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-IV' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-iv-2', clauseNumber: 'pattern', excerptText: ' Inclusive growth and issues arising from it.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-iv-3',
+                  title: 'Government Budgeting',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-IV' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-iv-3', clauseNumber: 'pattern', excerptText: ' Government Budgeting.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-iv-4',
+                  title: 'Major crops-cropping patterns in various parts of the country, - different types of irrigation and irrigation systems storage, transport and marketing of agricu',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-IV' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-iv-4', clauseNumber: 'pattern', excerptText: 'constraints; e-technology in the aid of farmers.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-iv-5',
+                  title: 'Issues related to direct and indirect farm subsidies and minimum support prices; Public Distribution System- objectives, functioning, limitations, revamping; is',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-IV' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-iv-5', clauseNumber: 'pattern', excerptText: 'Technology missions; economics of animal-rearing.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-iv-6',
+                  title: 'Food processing and related industries in India',
+                  levelLabel: 'Topic',
+                  note: 'scope’ and significance, location, upstream and downstream requirements, supply chain management.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-IV' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-iv-6', clauseNumber: 'pattern', excerptText: 'downstream requirements, supply chain management.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-iv-7',
+                  title: 'Land reforms in India',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-IV' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-iv-7', clauseNumber: 'pattern', excerptText: ' Land reforms in India.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-iv-8',
+                  title: 'Effects of liberalization on the economy, changes in industrial policy and their effects on industrial growth',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-IV' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-iv-8', clauseNumber: 'pattern', excerptText: 'growth.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-iv-9',
+                  title: 'Infrastructure',
+                  levelLabel: 'Topic',
+                  note: 'Energy, Ports, Roads, Airports, Railways etc.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-IV' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-iv-9', clauseNumber: 'pattern', excerptText: ' Infrastructure: Energy, Ports, Roads, Airports, Railways etc.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-iv-10',
+                  title: 'Investment models. 36',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-IV' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-iv-10', clauseNumber: 'pattern', excerptText: '36' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-iv-11',
+                  title: 'Science and Technology',
+                  levelLabel: 'Topic',
+                  note: 'developments and their applications and effects in everyday life.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-IV' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-iv-11', clauseNumber: 'pattern', excerptText: ' Science and Technology- developments and their applications and effects in everyday life.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-iv-12',
+                  title: 'Achievements of Indians in science & technology; indigenization of technology and developing new technology',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-IV' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-iv-12', clauseNumber: 'pattern', excerptText: 'technology.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-iv-13',
+                  title: 'Awareness in the fields of IT, Space, Computers, robotics, nano-technology, bio-technology and issues relating to intellectual property rights',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-IV' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-iv-13', clauseNumber: 'pattern', excerptText: 'relating to intellectual property rights.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-iv-14',
+                  title: 'Conservation, environmental pollution and degradation, environmental impact assessment',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-IV' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-iv-14', clauseNumber: 'pattern', excerptText: ' Conservation, environmental pollution and degradation, environmental impact assessment.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-iv-15',
+                  title: 'Disaster and disaster management',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-IV' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-iv-15', clauseNumber: 'pattern', excerptText: ' Disaster and disaster management.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-iv-16',
+                  title: 'Linkages between development and spread of extremism',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-IV' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-iv-16', clauseNumber: 'pattern', excerptText: ' Linkages between development and spread of extremism.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-iv-17',
+                  title: 'Role of external state and non-state actors in creating challenges to internal security',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-IV' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-iv-17', clauseNumber: 'pattern', excerptText: ' Role of external state and non-state actors in creating challenges to internal security.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-iv-18',
+                  title: 'Challenges to internal security through communication networks, role of media and social networking sites in internal security challenges, basics of cyber secur',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-IV' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-iv-18', clauseNumber: 'pattern', excerptText: 'sites in internal security challenges, basics of cyber security; money-laundering and its prevention.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-iv-19',
+                  title: 'Security challenges and their management in border areas',
+                  levelLabel: 'Topic',
+                  note: 'linkages of organized crime with terrorism.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-IV' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-iv-19', clauseNumber: 'pattern', excerptText: ' Security challenges and their management in border areas - linkages of organized crime with terrorism.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-iv-20',
+                  title: 'Various Security forces and agencies and their mandate',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-IV' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-iv-20', clauseNumber: 'pattern', excerptText: ' Various Security forces and agencies and their mandate.' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-paper-v',
+              title: 'Paper V',
+              levelLabel: 'Paper',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-V' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-v', clauseNumber: 'pattern', excerptText: 'PAPER-V' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-v-1',
+                  title: 'This paper will include questions to test the candidates’ attitude and approach to issues relating to integrity, probity in public life and his problem solving ',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-V' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-v-1', clauseNumber: 'pattern', excerptText: 'The following broad areas will be covered:' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-v-2',
+                  title: 'Ethics and Human Interface',
+                  levelLabel: 'Topic',
+                  note: 'Essence, determinants and consequences of Ethics in-human actions; dimensions of ethics; ethics - in private and public relationships. Human Values - lessons from the lives and teachings of great leaders, reformers and administrators; role of family society and educational institutions in inculcating values.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-V' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-v-2', clauseNumber: 'pattern', excerptText: 'institutions in inculcating values.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-v-3',
+                  title: 'Attitude',
+                  levelLabel: 'Topic',
+                  note: 'content, structure, function; its influence and relation with thought and behaviour; moral and political attitudes; social influence and persuasion.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-V' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-v-3', clauseNumber: 'pattern', excerptText: 'political attitudes; social influence and persuasion.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-v-4',
+                  title: 'Aptitude and foundational values for Civil Service, integrity, impartiality and non-partisanship, objectivity, dedication to public service, empathy, tolerance ',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-V' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-v-4', clauseNumber: 'pattern', excerptText: 'objectivity, dedication to public service, empathy, tolerance and compassion towards the weaker-sections.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-v-5',
+                  title: 'Emotional intelligence-concepts, and their utilities and application in administration and governance',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-V' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-v-5', clauseNumber: 'pattern', excerptText: ' Emotional intelligence-concepts, and their utilities and application in administration and governance.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-v-6',
+                  title: 'Contributions of moral thinkers and philosophers from India and world',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-V' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-v-6', clauseNumber: 'pattern', excerptText: ' Contributions of moral thinkers and philosophers from India and world.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-v-7',
+                  title: 'Public/Civil service values and Ethics in Public administration',
+                  levelLabel: 'Topic',
+                  note: 'Status and problems; ethical concerns and dilemmas in government and private institutions; laws, rules, regulations and conscience as sources of ethical guidance; accountability and ethical governance; strengthening of ethical and moral values in governance; ethical issues in international relations and funding; corporate governance.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-V' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-v-7', clauseNumber: 'pattern', excerptText: 'governance; ethical issues in international relations and funding; corporate governance.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-v-8',
+                  title: 'Probity in Governance',
+                  levelLabel: 'Topic',
+                  note: 'Concept of public service; Philosophical basis of governance and probity; Information sharing and transparency in government, Right to Information, Codes of Ethics, Codes of Conduct, Citizen’s Charters, Work culture, Quality of service delivery, Utilization of public funds, challenges of corruption.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-V' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-v-8', clauseNumber: 'pattern', excerptText: 'challenges of corruption.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-v-9',
+                  title: 'Case Studies on above issues. 37',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-V' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-v-9', clauseNumber: 'pattern', excerptText: '37' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-paper-vi-paper-vii',
+              title: 'Paper VI — & PAPER VII',
+              levelLabel: 'Paper',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-VI' }, { kind: 'PAPER', label: 'Paper-VII' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-vi-paper-vii', clauseNumber: 'pattern', excerptText: 'PAPER-VI & PAPER VII' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-paper-i',
+              title: 'Paper I',
+              levelLabel: 'Paper',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER-I' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-paper-ii',
+              title: 'Paper II',
+              levelLabel: 'Paper',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER-II' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-paper-i',
+              title: 'Paper I',
+              levelLabel: 'Paper',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER-I' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-paper-ii',
+              title: 'Paper II',
+              levelLabel: 'Paper',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER-II' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-paper-i',
+              title: 'Paper I',
+              levelLabel: 'Paper',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER-I' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-1',
+                  title: 'Social-cultural Anthropology',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-1', clauseNumber: 'pattern', excerptText: '(a) Social-cultural Anthropology.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-2',
+                  title: 'biological Anthropology',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-2', clauseNumber: 'pattern', excerptText: '(b) biological Anthropology.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-3',
+                  title: 'Archaeological Anthropology',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-3', clauseNumber: 'pattern', excerptText: '(c) Archaeological Anthropology.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-4',
+                  title: 'Linguistic Anthropology. 1.4 Human Evolution and emergence of Man',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-4', clauseNumber: 'pattern', excerptText: '1.4 Human Evolution and emergence of Man :' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-5',
+                  title: 'Biological and Cultural factors in human evolution',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-5', clauseNumber: 'pattern', excerptText: '(a) Biological and Cultural factors in human evolution.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-6',
+                  title: 'Theories of Organic Evolution (Pre-Darwinian, Darwinian and Post-Darwinian)',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-6', clauseNumber: 'pattern', excerptText: '(b) Theories of Organic Evolution (Pre-Darwinian, Darwinian and Post-Darwinian).' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-7',
+                  title: 'Synthetic theory of evolution; Brief outline of terms and concepts of evolutionary biology (Doll’s rule, Cope’s rule, Gause’s rule, parallelism, convergence, ad',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-7', clauseNumber: 'pattern', excerptText: '1.6 Phylogenetic status, characteristics and geographical distribution of the following :' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-8',
+                  title: 'Plio-pleistocene hominids in South and East Africa—Australopithecines',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-8', clauseNumber: 'pattern', excerptText: '(a) Plio-pleistocene hominids in South and East Africa—Australopithecines.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-9',
+                  title: 'Homo erectus',
+                  levelLabel: 'Topic',
+                  note: 'Africa (Paranthropus), Europe (Homo erectus (heidelbergensis), Asia (Homo erectus javanicus, Homo erectus pekinensis.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-9', clauseNumber: 'pattern', excerptText: 'erectus javanicus, Homo erectus pekinensis.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-10',
+                  title: 'Neanderthal man—La-chapelle-aux-saints (Classical type), Mt. Carmel (Progressive type)',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-10', clauseNumber: 'pattern', excerptText: '(c) Neanderthal man—La-chapelle-aux-saints (Classical type), Mt. Carmel (Progressive type).' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-11',
+                  title: 'Rhodesian man',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-11', clauseNumber: 'pattern', excerptText: '(d) Rhodesian man.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-12',
+                  title: 'Homo sapiens—Cromagnon, Grimaldi and Chancelede. 1.7 The biological basis of Life',
+                  levelLabel: 'Topic',
+                  note: 'The Cell, DNA structure and replication, Protein Synthesis, Gene, Mutation, Chromosomes, and Cell Division. 1.8 (a)Principles of Prehistoric Archaeology. Chronology : Relative and Absolute Dating methods. (b)Cultural Evolution—Broad Outlines of Prehistoric cultures :',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-12', clauseNumber: 'pattern', excerptText: '(b)Cultural Evolution—Broad Outlines of Prehistoric cultures :' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-13',
+                  title: 'Paleolithic',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-13', clauseNumber: 'pattern', excerptText: '(i) Paleolithic' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-14',
+                  title: 'Mesolithic',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-14', clauseNumber: 'pattern', excerptText: '(ii) Mesolithic' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-15',
+                  title: 'Neolithic',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-15', clauseNumber: 'pattern', excerptText: '(iii) Neolithic' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-16',
+                  title: 'Chalcolithic',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-16', clauseNumber: 'pattern', excerptText: '(iv) Chalcolithic' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-17',
+                  title: 'Copper-Bronze age',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-17', clauseNumber: 'pattern', excerptText: '(v) Copper-Bronze age' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-18',
+                  title: 'Iron Age 2.1 The Nature of Culture',
+                  levelLabel: 'Topic',
+                  note: 'The concept and Characteristics of culture and civilization; Ethnocentrism vis-a-vis cultural Relativism. 2.2 The Nature of Society : Concept of Society; Society and Culture; Social Institution; Social groups; 45 and Social stratification. 2.3 Marriage : Definition and universality; Laws of marriage (endogamy, exogamy, hypergamy, hypogamy, incest taboo); Type of marriage (monogamy, polygamy, polya',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-18', clauseNumber: 'pattern', excerptText: '46' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-19',
+                  title: 'Fieldwork tradition in anthropology',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-19', clauseNumber: 'pattern', excerptText: '(a) Fieldwork tradition in anthropology' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-20',
+                  title: 'Distinction between technique, method and methodology (c)Tools of data collection',
+                  levelLabel: 'Topic',
+                  note: 'observation, interview, schedules, questionnaire, case study, genealogy, life-history, oral history, secondary sources of information, participatory methods.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-20', clauseNumber: 'pattern', excerptText: 'life-history, oral history, secondary sources of information, participatory methods.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-21',
+                  title: 'Analysis, interpretation and presentation of data. 9.1 Human Genetics',
+                  levelLabel: 'Topic',
+                  note: 'Methods and Application : Methods for study of genetic principles in man-family study (pedigree analysis, twin study, foster child, co-twin method, cytogenetic method, chromosomal and karyo-type analysis), biochemical methods, immunological methods, D.N.A. technology and recombinant technologies. 9.2 Mendelian genetics in man-family study, single factor, multifactor, lethal, sub-lethal and polygen',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-21', clauseNumber: 'pattern', excerptText: '9.4 Chromosomes and chromosomal aberrations in man, methodology.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-22',
+                  title: 'Numerical and structural aberrations (disorders). (b)Sex chromosomal aberration- Klinefelter (XXY), Turner (XO), Super female (XXX), intersex and other syndromi',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-22', clauseNumber: 'pattern', excerptText: 'other syndromic disorders.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-23',
+                  title: 'Autosomal aberrations',
+                  levelLabel: 'Topic',
+                  note: 'Down syndrome, Patau, Edward and Cri-du-chat syndromes.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-23', clauseNumber: 'pattern', excerptText: '(c) Autosomal aberrations- Down syndrome, Patau, Edward and Cri-du-chat syndromes.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-24',
+                  title: 'Genetic imprints in human disease, genetic screening, genetic counseling, human DNA profiling, gene mapping and genome study. 9.5 Race and racism, biological ba',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-24', clauseNumber: 'pattern', excerptText: 'in reproductive biology.' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-paper-ii',
+              title: 'Paper II',
+              levelLabel: 'Paper',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER-II' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-paper-i',
+              title: 'Paper I',
+              levelLabel: 'Paper',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER-I' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-paper-ii',
+              title: 'Paper II',
+              levelLabel: 'Paper',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER-II' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-paper-i',
+              title: 'Paper I',
+              levelLabel: 'Paper',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER-I' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-1',
+                  title: 'Bonding in transition of metal complexes. Valence bond theory, crystal field theory and its modifications; applications of theories in the explanation of magnet',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-1', clauseNumber: 'pattern', excerptText: 'metal complexes.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-2',
+                  title: 'Isomerism in coordination compounds; IUPAC nomenclature of coordination compounds; stereochemistry of complexes with 4 and 6 coordination numbers; chelate effec',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-2', clauseNumber: 'pattern', excerptText: 'complexes; thermodynamic and kinetic stability of complexes.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-3',
+                  title: 'EAN rule, Synthesis structure and reactivity of metal carbonyls; carboxylate anions, carbonyl hydrides and metal nitrosyl compounds',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-3', clauseNumber: 'pattern', excerptText: 'hydrides and metal nitrosyl compounds.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-4',
+                  title: 'Complexes with aromatic systems, synthesis, structure and bonding in metal olefin complexes, alkyne complexes and cyclopentadienyl complexes; coordinative unsat',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-4', clauseNumber: 'pattern', excerptText: 'lanthanide contraction.' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-paper-ii',
+              title: 'Paper II',
+              levelLabel: 'Paper',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER-II' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-1',
+                  title: 'Reactive intermediates',
+                  levelLabel: 'Topic',
+                  note: 'Generation, geometry, stability and reactions of carboniumions and carbanions, free radicals, carbenes, benzynes and nitrenes.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-1', clauseNumber: 'pattern', excerptText: 'and carbanions, free radicals, carbenes, benzynes and nitrenes.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-2',
+                  title: 'Substitution reactions',
+                  levelLabel: 'Topic',
+                  note: '—SN 1, SN 2, and SN i, mechanisms ; neighbouring group participation; electrophilic and nucleophilic reactions of aromatic compounds including heterocyclic compounds—pyrrole, furan, thiophene and indole.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-2', clauseNumber: 'pattern', excerptText: 'compounds—pyrrole, furan, thiophene and indole.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-3',
+                  title: 'Elimination reactions',
+                  levelLabel: 'Topic',
+                  note: '—E1, E2 and E1cb mechanisms; orientation in E2 reactions— Saytzeff and Hoffmann; pyrolytic syn elimination—acetate pyrolysis, Chugaev and Cope eliminations.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-3', clauseNumber: 'pattern', excerptText: 'eliminations.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-4',
+                  title: 'Addition reactions',
+                  levelLabel: 'Topic',
+                  note: '—Electrophilic addition to C=C and CC; nucleophilic addition to C=O, CN, conjugated olefins and carbonyls.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-4', clauseNumber: 'pattern', excerptText: 'CN, conjugated olefins and carbonyls.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-5',
+                  title: 'Reactions and Rearrangements',
+                  levelLabel: 'Topic',
+                  note: '—(a) Pinacol-pinacolone, Hoffmann, Beckmann, Baeyer￾Villiger, Favorskii, Fries, Claisen, Cope, Stevens and Wagner—Meerwein rearrangements. 53',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-5', clauseNumber: 'pattern', excerptText: '53' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-6',
+                  title: 'Aldol condensation, Claisen condensation, Dieckmann, Perkin, Knoevenagel, Witting, Clemmensen, Wolff-Kishner, Cannizzaro and von Richter reactions; Stobbe, benz',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-6', clauseNumber: 'pattern', excerptText: 'polyvinyl chloride, teflon, nylon, terylene, synthetic and natural rubber.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-7',
+                  title: 'Biopolymers',
+                  levelLabel: 'Topic',
+                  note: 'Structure of proteins, DNA and RNA. 5. Synthetic Uses of Reagents: OsO4, HlO4, CrO3, Pb(OAc)4, SeO2, NBS, B2H6, Na-Liquid NH3, LiAIH4, NaBH4, n-BuLi, MCPBA. 6. Photochemistry :—Photochemical reactions of simple organic compounds, excited and ground states, singlet and triplet states, Norrish-Type I and Type II reactions. 7. Spectroscopy: Principle and applications in structure elucidation :',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-7', clauseNumber: 'pattern', excerptText: 'Principle and applications in structure elucidation :' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-8',
+                  title: 'Rotational—Diatomic molecules; isotopic substitution and rotational constants',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-8', clauseNumber: 'pattern', excerptText: '(i) Rotational—Diatomic molecules; isotopic substitution and rotational constants.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-9',
+                  title: 'Vibrational—Diatomic molecules, linear triatomic molecules, specific frequencies of functional groups in polyatomic molecules',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-9', clauseNumber: 'pattern', excerptText: 'functional groups in polyatomic molecules.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-10',
+                  title: 'Electronic—Singlet and triplet states.n and transitions; application to conjugated double bonds and conjugated carbonyls Woodward-Fieser rules; Charge tr',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-10', clauseNumber: 'pattern', excerptText: 'double bonds and conjugated carbonyls Woodward-Fieser rules; Charge transfer spectra.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-11',
+                  title: 'Nuclear Magnetic Resonance (1HNMR)',
+                  levelLabel: 'Topic',
+                  note: 'Basic principle; chemical shift and spin-spin interaction and coupling constants.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-11', clauseNumber: 'pattern', excerptText: 'interaction and coupling constants.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-12',
+                  title: 'Mass Spectrometry',
+                  levelLabel: 'Topic',
+                  note: '—Parent peak, base peak, metastable peak, McLafferty rearrangement. CIVIL ENGINEERING',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-12', clauseNumber: 'pattern', excerptText: 'CIVIL ENGINEERING' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-paper-i',
+              title: 'Paper I',
+              levelLabel: 'Paper',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER-I' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-paper-ii',
+              title: 'Paper II',
+              levelLabel: 'Paper',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER—II' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-1',
+                  title: 'Water requirements of crops',
+                  levelLabel: 'Topic',
+                  note: 'consumptive use, duty and delta, irrigation methods and their efficiencies.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-1', clauseNumber: 'pattern', excerptText: 'efficiencies.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-2',
+                  title: 'Canals',
+                  levelLabel: 'Topic',
+                  note: 'Distribution systems for canal irrigation, canal capacity, canal losses, alignment of main and distributary canals, most efficient section, lined canals, their design, regime theory, critical shear stress, bed load.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-2', clauseNumber: 'pattern', excerptText: 'shear stress, bed load.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-3',
+                  title: 'Water logging',
+                  levelLabel: 'Topic',
+                  note: 'causes and control, salinity.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-3', clauseNumber: 'pattern', excerptText: '(iii) Water logging : causes and control, salinity.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-4',
+                  title: 'Canal structures',
+                  levelLabel: 'Topic',
+                  note: 'Design of head regulators, canal falls, aqueducts, metering flumes and canal outlets.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-4', clauseNumber: 'pattern', excerptText: 'canal outlets.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-5',
+                  title: 'Diversion head work',
+                  levelLabel: 'Topic',
+                  note: 'Principles and design of weirs on permeable and impermeable foundation, Khosla’s theory, energy dissipation.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-5', clauseNumber: 'pattern', excerptText: 'foundation, Khosla’s theory, energy dissipation.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-6',
+                  title: 'Storage works',
+                  levelLabel: 'Topic',
+                  note: 'Types of dams, design, principles of rigid gravity stability analysis.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-6', clauseNumber: 'pattern', excerptText: '(vi) Storage works : Types of dams, design, principles of rigid gravity stability analysis.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-7',
+                  title: 'Spillways',
+                  levelLabel: 'Topic',
+                  note: 'Spillway types, energy dissipation.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-7', clauseNumber: 'pattern', excerptText: '(vii) Spillways : Spillway types, energy dissipation.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-8',
+                  title: 'River training',
+                  levelLabel: 'Topic',
+                  note: 'Objectives of river training, methods of river training. 4. Environmental Engineering 4.1 Water Supply : 58 Predicting demand for water, impurities of water and their significance, physical, chemical and bacteriological analysis, waterborne diseases, standards for potable water. 4.2 Intake of Water : Water treatment: principles of coagulation, flocculation and sedimentation; slow-, rapid-, pressur',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-8', clauseNumber: 'pattern', excerptText: 'COMMERCE AND ACCOUNTANCY' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-paper-i',
+              title: 'Paper I',
+              levelLabel: 'Paper',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER-I' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-paper-ii',
+              title: 'Paper II',
+              levelLabel: 'Paper',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER-II' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-paper-i',
+              title: 'Paper I',
+              levelLabel: 'Paper',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER—I' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-1',
+                  title: 'Marshallian and Walrasian Approaches to Price determination',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-1', clauseNumber: 'pattern', excerptText: '(a) Marshallian and Walrasian Approaches to Price determination.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-2',
+                  title: 'Alternative Distribution Theories',
+                  levelLabel: 'Topic',
+                  note: 'Ricardo, Kaldor, Kalecki.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-2', clauseNumber: 'pattern', excerptText: '(b) Alternative Distribution Theories : Ricardo, Kaldor, Kalecki.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-3',
+                  title: 'Markets Structure',
+                  levelLabel: 'Topic',
+                  note: 'Monopolistic Competition, Duopoly, Oligopoly.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-3', clauseNumber: 'pattern', excerptText: '(c) Markets Structure : Monopolistic Competition, Duopoly, Oligopoly.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-4',
+                  title: 'Modern Welfare Criteria',
+                  levelLabel: 'Topic',
+                  note: 'Pareto Hicks and Scitovsky, Arrow’s Impossibility Theorem, A. K. Sen’s Social Welfare Function. 2. Advance Macro Economics : Approaches to Employment Income and Interest Rate determination : Classical, Keynes (IS-LM) curve, Neo-classical synthesis and New classical, Theories of Interest Rate determination and Interest Rate Structure. 3. Money-Banking and Finance :',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-4', clauseNumber: 'pattern', excerptText: '3. Money-Banking and Finance :' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-5',
+                  title: 'Demand for and Supply of Money',
+                  levelLabel: 'Topic',
+                  note: 'Money Multiplier Quantity Theory of Money (Fisher, Pigou and Friedman) and Keynes’ Theory on Demand for Money, Goals and Instruments of Monetary Management in Closed and Open Economies. Relation between the Central Bank and the Treasury. Proposal for ceiling on growth rate of money.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-5', clauseNumber: 'pattern', excerptText: 'Proposal for ceiling on growth rate of money.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-6',
+                  title: 'Public Finance and its Role in market economy',
+                  levelLabel: 'Topic',
+                  note: 'in stabilization of supply, allocation of resources and in distribution and development. Sources of Government revenue, forms of Taxes and Subsidies, their incidence and effects. Limits to taxation, loans, crowding-out effects and limits to borrowings. Public expenditure and its effects. 4. International Economics :',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-6', clauseNumber: 'pattern', excerptText: '4. International Economics :' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-7',
+                  title: 'Old and New theories of International Trade',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-7', clauseNumber: 'pattern', excerptText: '(a) Old and New theories of International Trade.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-8',
+                  title: 'Comparative advantage, (ii)Terms of Trade and offer curve. (iii)Product cycle and Strategic trade theories. (iv)Trade as an engine of growth and theories of und',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-8', clauseNumber: 'pattern', excerptText: '62' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-9',
+                  title: 'Forms of protection',
+                  levelLabel: 'Topic',
+                  note: 'Tariff and quota.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-9', clauseNumber: 'pattern', excerptText: '(b) Forms of protection : Tariff and quota.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-10',
+                  title: 'Balance of Payments Adjustments',
+                  levelLabel: 'Topic',
+                  note: 'Alternative Approaches. (i)Price versus income, income adjustments under fixed exchange rates. (ii)Theories of Policy mix. (iii)Exchange rate adjustments under capital mobility. (iv)Floating Rates and their implications for developing Countries: Currency Boards. (v)Trade Policy and Developing Countries. (vi)BOP, adjustments and Policy Coordination in open economy macro-model. (vii)Speculative atta',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-10', clauseNumber: 'pattern', excerptText: '(viii)Trade Blocks and Monetary Unions.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-11',
+                  title: 'WTO',
+                  levelLabel: 'Topic',
+                  note: 'Trims, TRIPS, Domestic Measures, Different Rounds of WTO talks. 5. Growth and Development:',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-11', clauseNumber: 'pattern', excerptText: '5. Growth and Development:' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-12',
+                  title: '(i)Theories of growth',
+                  levelLabel: 'Topic',
+                  note: 'Harrod’s model; (ii)Lewis model of development with surplus labour. (iii)Balanced Unbalanced Growth. (iv)human capitals and Economic Growth. (v)Research and Development and Economic Growth.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-12', clauseNumber: 'pattern', excerptText: '(v)Research and Development and Economic Growth.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-13',
+                  title: 'Process of Economic Development of less developed countries',
+                  levelLabel: 'Topic',
+                  note: 'Myrdal and Kuznets on economic development and structural change: Role of Agriculture in Economic Development of less developed countries.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-13', clauseNumber: 'pattern', excerptText: 'countries.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-14',
+                  title: 'Economic Development and International Trade and Investment, Role of Multinationals',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-14', clauseNumber: 'pattern', excerptText: '(c) Economic Development and International Trade and Investment, Role of Multinationals.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-15',
+                  title: 'Planning and economic Development',
+                  levelLabel: 'Topic',
+                  note: 'changing role of Markets and Planning, Private-Public Partnership.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-15', clauseNumber: 'pattern', excerptText: 'Partnership.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-16',
+                  title: 'Welfare indicators and measures of growth—Human development indices. The basic needs approach',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-16', clauseNumber: 'pattern', excerptText: 'approach.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-17',
+                  title: 'Development and Environmental Sustainability—Renewable and Non Renewable Resources, Environmental Degradation, Intergenerational equity development',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-17', clauseNumber: 'pattern', excerptText: 'Environmental Degradation, Intergenerational equity development.' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-paper-ii',
+              title: 'Paper II',
+              levelLabel: 'Paper',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER-II' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-1',
+                  title: 'Contribution of Vakil, Gadgil and V.K.R.V. Rao. (ii)Agriculture',
+                  levelLabel: 'Topic',
+                  note: 'Land Reforms and land tenure system, Green Revolution and capital formation in agriculture. 63 (iii)Industry Trends in composition and growth, Role of public and private sector, Small scale and cottage industries. (iv)National and Per capita income : patterns, trends, aggregate and Sectoral composition and changes therein.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-1', clauseNumber: 'pattern', excerptText: 'changes therein.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-2',
+                  title: 'Broad factors determining National Income and distribution, Measures of poverty, Trends in poverty and inequality. B. The Post Liberalization Era : (i)New Econo',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-2', clauseNumber: 'pattern', excerptText: 'ELECTRICAL ENGINEERING' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-paper-i',
+              title: 'Paper I',
+              levelLabel: 'Paper',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER-I' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-paper-ii',
+              title: 'Paper II',
+              levelLabel: 'Paper',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER II' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-paper-i',
+              title: 'Paper I',
+              levelLabel: 'Paper',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER I' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-paper-ii',
+              title: 'Paper II',
+              levelLabel: 'Paper',
+              note: 'NOTE : Candidates will be required to answer one compulsory map question pertinent to subjects',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER II' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-paper-i',
+              title: 'Paper I',
+              levelLabel: 'Paper',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER I' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-paper-ii',
+              title: 'Paper II',
+              levelLabel: 'Paper',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER II' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-paper-i',
+              title: 'Paper I',
+              levelLabel: 'Paper',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER I' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-1',
+                  title: 'Polity',
+                  levelLabel: 'Topic',
+                  note: 'Major political developments in Northern India and the peninsula, origin and the rise of Rajputs.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-1', clauseNumber: 'pattern', excerptText: '— Polity: Major political developments in Northern India and the peninsula, origin and the rise of Rajputs.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-2',
+                  title: 'The Cholas',
+                  levelLabel: 'Topic',
+                  note: 'administration, village economy and society “Indian Feudalism”.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-2', clauseNumber: 'pattern', excerptText: '— The Cholas: administration, village economy and society “Indian Feudalism”.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-3',
+                  title: 'Agrarian economy and urban settlements',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-3', clauseNumber: 'pattern', excerptText: '— Agrarian economy and urban settlements.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-4',
+                  title: 'Trade and commerce',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-4', clauseNumber: 'pattern', excerptText: '— Trade and commerce.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-5',
+                  title: 'Society',
+                  levelLabel: 'Topic',
+                  note: 'the status of the Brahman and the new social order.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-5', clauseNumber: 'pattern', excerptText: '— Society: the status of the Brahman and the new social order.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-6',
+                  title: 'Condition of women',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-6', clauseNumber: 'pattern', excerptText: '— Condition of women.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-7',
+                  title: 'Indian science and technology. 14. Cultural Traditions in India, 750-1200',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-7', clauseNumber: 'pattern', excerptText: '14. Cultural Traditions in India, 750-1200:' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-8',
+                  title: 'Philosophy',
+                  levelLabel: 'Topic',
+                  note: 'Shankaracharya and Vedanta, Ramanuja and Vishishtadvaita, Madhva and Brahma￾Mimansa.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-8', clauseNumber: 'pattern', excerptText: '— Philosophy: Shankaracharya and Vedanta, Ramanuja and Vishishtadvaita, Madhva and Brahma￾Mimansa.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-9',
+                  title: 'Religion',
+                  levelLabel: 'Topic',
+                  note: 'Forms and features of religion, Tamil devotional cult, growth of Bhakti, Islam and its arrival in India, Sufism.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-9', clauseNumber: 'pattern', excerptText: 'in India, Sufism.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-10',
+                  title: 'Literature',
+                  levelLabel: 'Topic',
+                  note: 'Literature in Sanskrit, growth of Tamil literature, literature in the newly developing languages, Kalhan\'s Rajtarangini, Alberuni\'s India.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-10', clauseNumber: 'pattern', excerptText: 'languages, Kalhan\'s Rajtarangini, Alberuni\'s India.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-11',
+                  title: 'Art and Architecture',
+                  levelLabel: 'Topic',
+                  note: 'Temple architecture, sculpture, painting. 15. The Thirteenth Century:',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-11', clauseNumber: 'pattern', excerptText: '15. The Thirteenth Century:' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-12',
+                  title: 'Establishment of the Delhi Sultanate',
+                  levelLabel: 'Topic',
+                  note: 'The Ghurian invasions - factors behind Ghurian success.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-12', clauseNumber: 'pattern', excerptText: '— Establishment of the Delhi Sultanate: The Ghurian invasions - factors behind Ghurian success.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-13',
+                  title: 'Economic, Social and cultural consequences',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-13', clauseNumber: 'pattern', excerptText: '— Economic, Social and cultural consequences.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-14',
+                  title: 'Foundation of Delhi Sultanate and early Turkish Sultans',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-14', clauseNumber: 'pattern', excerptText: '— Foundation of Delhi Sultanate and early Turkish Sultans.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-15',
+                  title: 'Consolidation',
+                  levelLabel: 'Topic',
+                  note: 'The rule of Iltutmish and Balban. 16. The Fourteenth Century:',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-15', clauseNumber: 'pattern', excerptText: '16. The Fourteenth Century:' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-16',
+                  title: '“The Khalji Revolution”',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-16', clauseNumber: 'pattern', excerptText: '— “The Khalji Revolution”.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-17',
+                  title: 'Alauddin Khalji',
+                  levelLabel: 'Topic',
+                  note: 'Conquests and territorial expansion, agrarian and economic measure.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-17', clauseNumber: 'pattern', excerptText: '— Alauddin Khalji: Conquests and territorial expansion, agrarian and economic measure.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-18',
+                  title: 'Muhammad Tughluq',
+                  levelLabel: 'Topic',
+                  note: 'Major projects, agrarian measures, bureaucracy of Muhammad Tughluq.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-18', clauseNumber: 'pattern', excerptText: '— Muhammad Tughluq: Major projects, agrarian measures, bureaucracy of Muhammad Tughluq.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-19',
+                  title: 'Firuz Tugluq',
+                  levelLabel: 'Topic',
+                  note: 'Agrarian measures, achievements in civil engineering and public works, decline of the 72 Sultanate, foreign contacts and Ibn Battuta\'s account. 17. Society, Culture and Economy in the Thirteenth and Fourteenth Centuries:',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-19', clauseNumber: 'pattern', excerptText: '17. Society, Culture and Economy in the Thirteenth and Fourteenth Centuries:' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-20',
+                  title: 'Society',
+                  levelLabel: 'Topic',
+                  note: 'composition of rural society, ruling classes, town dwellers, women, religious classes, caste and slavery under the Sultanate, Bhakti movement, Sufi movement.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-20', clauseNumber: 'pattern', excerptText: 'slavery under the Sultanate, Bhakti movement, Sufi movement.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-21',
+                  title: 'Culture',
+                  levelLabel: 'Topic',
+                  note: 'Persian literature, literature in the regional languages of North India, literature in the languages of South India, Sultanate architecture and new structural forms, painting, evolution of a composite culture.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-21', clauseNumber: 'pattern', excerptText: 'composite culture.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-22',
+                  title: 'Economy',
+                  levelLabel: 'Topic',
+                  note: 'Agricultural Production, rise of urban economy and non-agricultural production, trade and commerce. 18. The Fifteenth and Early Sixteenth Century-Political Developments and Economy:',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-22', clauseNumber: 'pattern', excerptText: '18. The Fifteenth and Early Sixteenth Century-Political Developments and Economy:' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-23',
+                  title: 'Rise of Provincial Dynasties',
+                  levelLabel: 'Topic',
+                  note: 'Bengal, Kashmir (Zainul Abedin), Gujarat.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-23', clauseNumber: 'pattern', excerptText: '— Rise of Provincial Dynasties : Bengal, Kashmir (Zainul Abedin), Gujarat.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-24',
+                  title: 'Malwa, Bahmanids',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-24', clauseNumber: 'pattern', excerptText: '— Malwa, Bahmanids.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-25',
+                  title: 'The Vijayanagara Empire',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-25', clauseNumber: 'pattern', excerptText: '— The Vijayanagara Empire.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-26',
+                  title: 'Lodis',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-26', clauseNumber: 'pattern', excerptText: '— Lodis.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-27',
+                  title: 'Mughal Empire, first phase',
+                  levelLabel: 'Topic',
+                  note: 'Babur, Humayun.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-27', clauseNumber: 'pattern', excerptText: '— Mughal Empire, first phase : Babur, Humayun.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-28',
+                  title: 'The Sur Empire',
+                  levelLabel: 'Topic',
+                  note: 'Sher Shah’s administration.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-28', clauseNumber: 'pattern', excerptText: '— The Sur Empire : Sher Shah’s administration.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-29',
+                  title: 'Portuguese colonial enterprise, Bhakti and Sufi Movements. 19. The Fifteenth and Early Sixteenth Century- Society and culture',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-29', clauseNumber: 'pattern', excerptText: '19. The Fifteenth and Early Sixteenth Century- Society and culture:' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-30',
+                  title: 'Regional cultures specificities',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-30', clauseNumber: 'pattern', excerptText: '— Regional cultures specificities.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-31',
+                  title: 'Literary traditions',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-31', clauseNumber: 'pattern', excerptText: '— Literary traditions.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-32',
+                  title: 'Provincial architectural',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-32', clauseNumber: 'pattern', excerptText: '— Provincial architectural.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-33',
+                  title: 'Society, culture, literature and the arts in Vijayanagara Empire. 20. Akbar',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-33', clauseNumber: 'pattern', excerptText: '20. Akbar:' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-34',
+                  title: 'Conquests and consolidation of empire',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-34', clauseNumber: 'pattern', excerptText: '— Conquests and consolidation of empire.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-35',
+                  title: 'Establishment of jagir and mansab systems',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-35', clauseNumber: 'pattern', excerptText: '— Establishment of jagir and mansab systems.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-36',
+                  title: 'Rajput policy',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-36', clauseNumber: 'pattern', excerptText: '— Rajput policy.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-37',
+                  title: 'Evolution of religious and social outlook. Theory of Sulh-i-kul and religious policy',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-37', clauseNumber: 'pattern', excerptText: '— Evolution of religious and social outlook. Theory of Sulh-i-kul and religious policy.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-38',
+                  title: 'Court patronage of art and technology. 21. Mughal Empire in the Seventeenth Century',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-38', clauseNumber: 'pattern', excerptText: '21. Mughal Empire in the Seventeenth Century:' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-39',
+                  title: 'Major administrative policies of Jahangir, Shahjahan and Aurangzeb',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-39', clauseNumber: 'pattern', excerptText: '— Major administrative policies of Jahangir, Shahjahan and Aurangzeb.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-40',
+                  title: 'The Empire and the Zamindars',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-40', clauseNumber: 'pattern', excerptText: '— The Empire and the Zamindars.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-41',
+                  title: 'Religious policies of Jahangir, Shahjahan and Aurangzeb',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-41', clauseNumber: 'pattern', excerptText: '— Religious policies of Jahangir, Shahjahan and Aurangzeb.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-42',
+                  title: 'Nature of the Mughal State',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-42', clauseNumber: 'pattern', excerptText: '— Nature of the Mughal State.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-43',
+                  title: 'Late Seventeenth Century crisis and the revolts',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-43', clauseNumber: 'pattern', excerptText: '— Late Seventeenth Century crisis and the revolts.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-44',
+                  title: 'The Ahom kingdom',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-44', clauseNumber: 'pattern', excerptText: '— The Ahom kingdom.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-45',
+                  title: 'Shivaji and the early Maratha Kingdom. 73 22. Economy and society, in the 16th and 17th Centuries',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-45', clauseNumber: 'pattern', excerptText: '22. Economy and society, in the 16th and 17th Centuries:' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-46',
+                  title: 'Population Agricultural and craft production',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-46', clauseNumber: 'pattern', excerptText: '— Population Agricultural and craft production.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-47',
+                  title: 'Towns, commerce with Europe through Dutch, English and French companies',
+                  levelLabel: 'Topic',
+                  note: 'a trade revolution.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-47', clauseNumber: 'pattern', excerptText: '— Towns, commerce with Europe through Dutch, English and French companies : a trade revolution.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-48',
+                  title: 'Indian mercantile classes. Banking, insurance and credit systems',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-48', clauseNumber: 'pattern', excerptText: '— Indian mercantile classes. Banking, insurance and credit systems.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-49',
+                  title: 'Conditions of peasants, Condition of Women',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-49', clauseNumber: 'pattern', excerptText: '— Conditions of peasants, Condition of Women.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-50',
+                  title: 'Evolution of the Sikh community and the Khalsa Panth. 23. Culture during Mughal Empire',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-50', clauseNumber: 'pattern', excerptText: '23. Culture during Mughal Empire:' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-51',
+                  title: 'Persian histories and other literature',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-51', clauseNumber: 'pattern', excerptText: '— Persian histories and other literature.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-52',
+                  title: 'Hindi and religious literatures',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-52', clauseNumber: 'pattern', excerptText: '— Hindi and religious literatures.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-53',
+                  title: 'Mughal architecture',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-53', clauseNumber: 'pattern', excerptText: '— Mughal architecture.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-54',
+                  title: 'Mughal painting',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-54', clauseNumber: 'pattern', excerptText: '— Mughal painting.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-55',
+                  title: 'Provincial architecture and painting',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-55', clauseNumber: 'pattern', excerptText: '— Provincial architecture and painting.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-56',
+                  title: 'Classical music',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-56', clauseNumber: 'pattern', excerptText: '— Classical music.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-57',
+                  title: 'Science and technology. 24. The Eighteenth Century',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-57', clauseNumber: 'pattern', excerptText: '24. The Eighteenth Century:' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-58',
+                  title: 'Factors for the decline of the Mughal Empire',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-58', clauseNumber: 'pattern', excerptText: '— Factors for the decline of the Mughal Empire.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-59',
+                  title: 'The regional principalities',
+                  levelLabel: 'Topic',
+                  note: 'Nizam’s Deccan, Bengal, Awadh.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-59', clauseNumber: 'pattern', excerptText: '— The regional principalities: Nizam’s Deccan, Bengal, Awadh.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-60',
+                  title: 'Maratha ascendancy under the Peshwas',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-60', clauseNumber: 'pattern', excerptText: '— Maratha ascendancy under the Peshwas.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-61',
+                  title: 'The Maratha fiscal and financial system',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-61', clauseNumber: 'pattern', excerptText: '— The Maratha fiscal and financial system.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-62',
+                  title: 'Emergence of Afghan power Battle of Panipat, 1761',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-62', clauseNumber: 'pattern', excerptText: '— Emergence of Afghan power Battle of Panipat, 1761.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-63',
+                  title: 'State of, political, cultural and economic, on eve of the British conquest',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-63', clauseNumber: 'pattern', excerptText: '— State of, political, cultural and economic, on eve of the British conquest.' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-paper-ii',
+              title: 'Paper II',
+              levelLabel: 'Paper',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER-II' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-1',
+                  title: 'Land revenue settlements in British India; The Permanent Settlement; Ryotwari Settlement; Mahalwari Settlement; Economic impact of the revenue arrangements; Com',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-1', clauseNumber: 'pattern', excerptText: 'landless agrarian labourers; Impoverishment of the rural society.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-2',
+                  title: 'Dislocation of traditional trade and commerce; De-industrialisation; Decline of traditional crafts; Drain of wealth; Economic transformation of India; Railroad ',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-2', clauseNumber: 'pattern', excerptText: '16. Enlightenment and Modern ideas:' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-3',
+                  title: 'Major Ideas of Enlightenment',
+                  levelLabel: 'Topic',
+                  note: 'Kant, Rousseau.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-3', clauseNumber: 'pattern', excerptText: '(i) Major Ideas of Enlightenment : Kant, Rousseau.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-4',
+                  title: 'Spread of Enlightenment in the colonies',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-4', clauseNumber: 'pattern', excerptText: '(ii) Spread of Enlightenment in the colonies.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-5',
+                  title: 'Rise of socialist ideas (up to Marx); spread of Marxian Socialism. 17. Origins of Modern Politics',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-5', clauseNumber: 'pattern', excerptText: '17. Origins of Modern Politics :' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-6',
+                  title: 'European States System',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-6', clauseNumber: 'pattern', excerptText: '(i) European States System.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-7',
+                  title: 'American Revolution and the Constitution',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-7', clauseNumber: 'pattern', excerptText: '(ii) American Revolution and the Constitution.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-8',
+                  title: 'French Revolution and Aftermath, 1789-1815',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-8', clauseNumber: 'pattern', excerptText: '(iii) French Revolution and Aftermath, 1789-1815.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-9',
+                  title: 'American Civil War with reference to Abraham Lincoln and the abolition of slavery',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-9', clauseNumber: 'pattern', excerptText: '(iv) American Civil War with reference to Abraham Lincoln and the abolition of slavery.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-10',
+                  title: 'British Democratic politics, 1815-1850',
+                  levelLabel: 'Topic',
+                  note: 'Parliamentary Reformers, Free Traders, Chartists. 18. Industrialization :',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-10', clauseNumber: 'pattern', excerptText: '18. Industrialization :' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-11',
+                  title: 'English Industrial Revolution',
+                  levelLabel: 'Topic',
+                  note: 'Causes and Impact on Society.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-11', clauseNumber: 'pattern', excerptText: '(i) English Industrial Revolution : Causes and Impact on Society.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-12',
+                  title: 'Industrialization in other countries',
+                  levelLabel: 'Topic',
+                  note: 'USA, Germany, Russia, Japan.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-12', clauseNumber: 'pattern', excerptText: '(ii) Industrialization in other countries : USA, Germany, Russia, Japan.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-13',
+                  title: 'Industrialization and Globalization. 19. Nation-State System',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-13', clauseNumber: 'pattern', excerptText: '19. Nation-State System :' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-14',
+                  title: 'Rise of Nationalism in 19th century',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-14', clauseNumber: 'pattern', excerptText: '(i) Rise of Nationalism in 19th century.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-15',
+                  title: 'Nationalism',
+                  levelLabel: 'Topic',
+                  note: 'State-building in Germany and Italy.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-15', clauseNumber: 'pattern', excerptText: '(ii) Nationalism : State-building in Germany and Italy.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-16',
+                  title: 'Disintegration of Empires in the face of the emergence of nationalities across the World. 20. Imperialism and Colonialism',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-16', clauseNumber: 'pattern', excerptText: '20. Imperialism and Colonialism :' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-17',
+                  title: 'South and South-East Asia',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-17', clauseNumber: 'pattern', excerptText: '(i) South and South-East Asia.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-18',
+                  title: 'Latin America and South Africa',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-18', clauseNumber: 'pattern', excerptText: '(ii) Latin America and South Africa.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-19',
+                  title: 'Australia',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-19', clauseNumber: 'pattern', excerptText: '(iii) Australia.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-20',
+                  title: 'Imperialism and free trade',
+                  levelLabel: 'Topic',
+                  note: 'Rise of neo-imperialism. 21. Revolution and Counter-Revolution :',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-20', clauseNumber: 'pattern', excerptText: '21. Revolution and Counter-Revolution :' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-21',
+                  title: '19th Century European revolutions',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-21', clauseNumber: 'pattern', excerptText: '(i) 19th Century European revolutions.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-22',
+                  title: 'The Russian Revolution of 1917-1921',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-22', clauseNumber: 'pattern', excerptText: '(ii) The Russian Revolution of 1917-1921.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-23',
+                  title: 'Fascist Counter-Revolution, Italy and Germany',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-23', clauseNumber: 'pattern', excerptText: '(iii) Fascist Counter-Revolution, Italy and Germany.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-24',
+                  title: 'The Chinese Revolution of 1949. 22. World Wars',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-24', clauseNumber: 'pattern', excerptText: '22. World Wars :' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-25',
+                  title: '1st and 2nd World Wars as Total Wars',
+                  levelLabel: 'Topic',
+                  note: 'Societal implications.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-25', clauseNumber: 'pattern', excerptText: '(i) 1st and 2nd World Wars as Total Wars : Societal implications.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-26',
+                  title: 'World War I',
+                  levelLabel: 'Topic',
+                  note: 'Causes and Consequences.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-26', clauseNumber: 'pattern', excerptText: '(ii) World War I : Causes and Consequences.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-27',
+                  title: 'World War II',
+                  levelLabel: 'Topic',
+                  note: 'Causes and Consequences. 23. The World after World War II: 76',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-27', clauseNumber: 'pattern', excerptText: '76' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-28',
+                  title: 'Emergence of Two power blocs',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-28', clauseNumber: 'pattern', excerptText: '(i) Emergence of Two power blocs.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-29',
+                  title: 'Emergence of Third World and non-alignment',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-29', clauseNumber: 'pattern', excerptText: '(ii) Emergence of Third World and non-alignment.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-30',
+                  title: 'UNO and the global disputes. 24. Liberation from Colonial Rule',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-30', clauseNumber: 'pattern', excerptText: '24. Liberation from Colonial Rule :' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-31',
+                  title: 'Latin America-Bolivar',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-31', clauseNumber: 'pattern', excerptText: '(i) Latin America-Bolivar.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-32',
+                  title: 'Arab World-Egypt',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-32', clauseNumber: 'pattern', excerptText: '(ii) Arab World-Egypt.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-33',
+                  title: 'Africa-Apartheid to Democracy',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-33', clauseNumber: 'pattern', excerptText: '(iii) Africa-Apartheid to Democracy.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-34',
+                  title: 'South-East Asia-Vietnam. 25. Decolonization and Underdevelopment',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-34', clauseNumber: 'pattern', excerptText: '25. Decolonization and Underdevelopment :' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-35',
+                  title: 'Factors constraining Development ; Latin America, Africa. 26. Unification of Europe',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-35', clauseNumber: 'pattern', excerptText: '26. Unification of Europe :' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-36',
+                  title: 'Post War Foundations ; NATO and European Community',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-36', clauseNumber: 'pattern', excerptText: '(i) Post War Foundations ; NATO and European Community.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-37',
+                  title: 'Consolidation and Expansion of European Community',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-37', clauseNumber: 'pattern', excerptText: '(ii) Consolidation and Expansion of European Community' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-38',
+                  title: 'European Union. 27. Disintegration of Soviet Union and the Rise of the Unipolar World',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-38', clauseNumber: 'pattern', excerptText: '27. Disintegration of Soviet Union and the Rise of the Unipolar World :' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-39',
+                  title: 'Factors leading to the collapse of Soviet Communism and Soviet Union, 1985-1991',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-39', clauseNumber: 'pattern', excerptText: '(i) Factors leading to the collapse of Soviet Communism and Soviet Union, 1985-1991.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-40',
+                  title: 'Political Changes in East Europe 1989-2001',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-40', clauseNumber: 'pattern', excerptText: '(ii) Political Changes in East Europe 1989-2001.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii-41',
+                  title: 'End of the Cold War and US Ascendancy in the World as the lone superpower. LAW',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-41', clauseNumber: 'pattern', excerptText: 'LAW' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-paper-i',
+              title: 'Paper I',
+              levelLabel: 'Paper',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER-I' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-1',
+                  title: 'Appointments and transfer',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-1', clauseNumber: 'pattern', excerptText: '(a) Appointments and transfer.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-2',
+                  title: 'Powers, functions and jurisdiction. 7. Centre, States and local bodies',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-2', clauseNumber: 'pattern', excerptText: '7. Centre, States and local bodies:' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i-3',
+                  title: 'Distribution of legislative powers between the Union and the States. (b)Local Bodies. (c)Administrative relationship among Union, State and Local Bodies. (d)Emi',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-3', clauseNumber: 'pattern', excerptText: '15. Protection and Improvement of the Human Environment : International Efforts.' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-paper-ii',
+              title: 'Paper II',
+              levelLabel: 'Paper',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER II' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-paper-i',
+              title: 'Paper I',
+              levelLabel: 'Paper',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER I' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a',
+              title: 'Section A',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a', clauseNumber: 'pattern', excerptText: 'Section A' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-1',
+                  title: 'History of the origin and development of the Assamese Language —its position amongthe Indo-Aryan language—periods in its history',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-1', clauseNumber: 'pattern', excerptText: 'language—periods in its history.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-2',
+                  title: 'Development of Assamese prose',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-2', clauseNumber: 'pattern', excerptText: '(b) Development of Assamese prose.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-3',
+                  title: 'Vowels and consonants of the Assamese Language—Rules of phonetic changes with stress on Assamese coming down from Old Indo-Aryan',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-3', clauseNumber: 'pattern', excerptText: 'Assamese coming down from Old Indo-Aryan.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-4',
+                  title: 'Assamese vocabulary—and its sources',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-4', clauseNumber: 'pattern', excerptText: '(d) Assamese vocabulary—and its sources.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-5',
+                  title: 'Morphology of the language—conjugation—enclitic definitives and pleonastic suffixes. 80',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-5', clauseNumber: 'pattern', excerptText: '80' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-6',
+                  title: 'Dilectical divergences—the Standard colloquial and the Kamrupi dialect in particular',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-6', clauseNumber: 'pattern', excerptText: '(f) Dilectical divergences—the Standard colloquial and the Kamrupi dialect in particular.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-7',
+                  title: 'Assamese script—its evolution through the ages till 19th century A.D',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-7', clauseNumber: 'pattern', excerptText: '(g) Assamese script—its evolution through the ages till 19th century A.D.' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b',
+              title: 'Section B',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b', clauseNumber: 'pattern', excerptText: 'Section B' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-1',
+                  title: 'Principles of literary criticism up to New criticism',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-1', clauseNumber: 'pattern', excerptText: '(a) Principles of literary criticism up to New criticism.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-2',
+                  title: 'Different literary genres',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-2', clauseNumber: 'pattern', excerptText: '(b) Different literary genres.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-3',
+                  title: 'Development of literary forms in Assamese',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-3', clauseNumber: 'pattern', excerptText: '(c) Development of literary forms in Assamese.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-4',
+                  title: 'Development of literary criticism in Assamese',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-4', clauseNumber: 'pattern', excerptText: '(d) Development of literary criticism in Assamese.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-5',
+                  title: 'Periods of the literary history of Assam from the earliest beginnings, i.e. from the period of the charyyageeta with their socio-cultural background : the proto',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-5', clauseNumber: 'pattern', excerptText: 'post-independence periods.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii',
+                  title: 'Paper II',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER II' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a',
+              title: 'Section A',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a', clauseNumber: 'pattern', excerptText: 'Section A' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b',
+              title: 'Section B',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b', clauseNumber: 'pattern', excerptText: 'SECTION B' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-1',
+                  title: 'Paper 1',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-1' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-1', clauseNumber: 'pattern', excerptText: 'PAPER 1' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a-topics-from-the-history-of-bangla-',
+              title: 'Section A — Topics from the History of Bangla language',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-topics-from-the-history-of-bangla-', clauseNumber: 'pattern', excerptText: 'Section A : Topics from the History of Bangla language' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b-topics-from-the-history-of-bangla-',
+              title: 'Section B — Topics from the History of Bangla Literature.',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-topics-from-the-history-of-bangla-', clauseNumber: 'pattern', excerptText: 'Section B : Topics from the History of Bangla Literature.' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii',
+                  title: 'Paper II',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER II' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a',
+              title: 'Section A',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a', clauseNumber: 'pattern', excerptText: 'Section A' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b',
+              title: 'Section B',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b', clauseNumber: 'pattern', excerptText: 'Section B' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i',
+                  title: 'Paper I',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER I' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a',
+              title: 'Section A',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a', clauseNumber: 'pattern', excerptText: 'Section A' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-1',
+                  title: 'Tones. 3. Morphology',
+                  levelLabel: 'Topic',
+                  note: 'Gender, Case and Case endings, Plural suffix, Definitives, Verbal suffix. 4. Vocabulary and its sources. 5. Syntax : Types of sentences, Word Order. 6. History of scripts used in writing Bodo Language since inception.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-1', clauseNumber: 'pattern', excerptText: '6. History of scripts used in writing Bodo Language since inception.' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b',
+              title: 'Section B',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b', clauseNumber: 'pattern', excerptText: 'Section B' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii',
+                  title: 'Paper II',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'Paper II' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a',
+              title: 'Section A',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a', clauseNumber: 'pattern', excerptText: 'Section A' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-1',
+                  title: 'Khonthai-Methai (Edited by Madaram Brahma & Rupnath Brahma)',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-1', clauseNumber: 'pattern', excerptText: '(Edited by Madaram Brahma & Rupnath Brahma)' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-2',
+                  title: 'Hathorkhi-Hala (Edited by Pramod Chandra Brahma)',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-2', clauseNumber: 'pattern', excerptText: '(Edited by Pramod Chandra Brahma)' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-3',
+                  title: 'Boroni Gudi Sibsa Arw Aroz',
+                  levelLabel: 'Topic',
+                  note: 'Madaram Brahma',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-3', clauseNumber: 'pattern', excerptText: '(c) Boroni Gudi Sibsa Arw Aroz : Madaram Brahma' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-4',
+                  title: 'Raja Nilambar',
+                  levelLabel: 'Topic',
+                  note: 'Dwarendra Nath Basumatary',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-4', clauseNumber: 'pattern', excerptText: '(d) Raja Nilambar : Dwarendra Nath Basumatary' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-5',
+                  title: 'Bibar (prose section) (Edited by Satish Chandra Basumatary)',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-5', clauseNumber: 'pattern', excerptText: '(Edited by Satish Chandra Basumatary).' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b',
+              title: 'Section B',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b', clauseNumber: 'pattern', excerptText: 'Section B' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-1',
+                  title: 'Bibi Bithai (Aida Nwi)',
+                  levelLabel: 'Topic',
+                  note: 'Bihuram Boro',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-1', clauseNumber: 'pattern', excerptText: '(a) Bibi Bithai (Aida Nwi) : Bihuram Boro' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-2',
+                  title: 'Radab',
+                  levelLabel: 'Topic',
+                  note: 'Samar Brahma Chaudhury',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-2', clauseNumber: 'pattern', excerptText: '(b) Radab : Samar Brahma Chaudhury' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-3',
+                  title: 'Okhrang Gongse Nangou',
+                  levelLabel: 'Topic',
+                  note: 'Brajendra Kumar Brahma',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-3', clauseNumber: 'pattern', excerptText: '(c) Okhrang Gongse Nangou : Brajendra Kumar Brahma' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-4',
+                  title: 'Baisagu Arw Harimu',
+                  levelLabel: 'Topic',
+                  note: 'Laksheswar Brahma',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-4', clauseNumber: 'pattern', excerptText: '(d) Baisagu Arw Harimu : Laksheswar Brahma' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-5',
+                  title: 'Gwdan Boro',
+                  levelLabel: 'Topic',
+                  note: 'Manoranjan Lahary',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-5', clauseNumber: 'pattern', excerptText: '(e) Gwdan Boro : Manoranjan Lahary' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-6',
+                  title: 'Jujaini Or',
+                  levelLabel: 'Topic',
+                  note: 'Chittaranjan Muchahary',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-6', clauseNumber: 'pattern', excerptText: '(f) Jujaini Or : Chittaranjan Muchahary' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-7',
+                  title: 'Mwihoor',
+                  levelLabel: 'Topic',
+                  note: 'Dharanidhar Wary 84',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-7', clauseNumber: 'pattern', excerptText: '84' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-8',
+                  title: 'Hor Badi Khwmsi',
+                  levelLabel: 'Topic',
+                  note: 'Kamal Kumar Brahma',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-8', clauseNumber: 'pattern', excerptText: '(h) Hor Badi Khwmsi : Kamal Kumar Brahma' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-9',
+                  title: 'Jaolia Dewan',
+                  levelLabel: 'Topic',
+                  note: 'Mangal Singh Hozowary',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-9', clauseNumber: 'pattern', excerptText: '(i) Jaolia Dewan : Mangal Singh Hozowary' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-10',
+                  title: 'Hagra Guduni Mwi',
+                  levelLabel: 'Topic',
+                  note: 'Nilkamal Brahma DOGRI',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-10', clauseNumber: 'pattern', excerptText: 'DOGRI' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i',
+                  title: 'Paper I',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER I' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a',
+              title: 'Section A',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a', clauseNumber: 'pattern', excerptText: 'Section A' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-1',
+                  title: 'Sound Structure',
+                  levelLabel: 'Topic',
+                  note: 'Segmental : Vowels and Consonants Non-segmental : Length, Stress, Nasalization, Tone and Junture.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-1', clauseNumber: 'pattern', excerptText: 'Non-segmental : Length, Stress, Nasalization, Tone and Junture.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-2',
+                  title: 'Morphology of Dogri',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-2', clauseNumber: 'pattern', excerptText: '(b) Morphology of Dogri:' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-3',
+                  title: 'Inflection Categories',
+                  levelLabel: 'Topic',
+                  note: 'Gender, Number, Case, Person, Tense and Voice.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-3', clauseNumber: 'pattern', excerptText: '(i) Inflection Categories: Gender, Number, Case, Person, Tense and Voice.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-4',
+                  title: 'Word Formation; use of prefixes, infixes and suffixes',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-4', clauseNumber: 'pattern', excerptText: '(ii) Word Formation; use of prefixes, infixes and suffixes.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-5',
+                  title: 'Vocabulary',
+                  levelLabel: 'Topic',
+                  note: 'tatsam, tadbhav, foreign and regional.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-5', clauseNumber: 'pattern', excerptText: '(iii) Vocabulary: tatsam, tadbhav, foreign and regional.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-6',
+                  title: 'Sentence Structure; Major Sentence-types and their constituents, agreement and concord in Dogri syntax. 5. Dogri Language and Scripts: Dogre/Dogra Akkhar, Devan',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-6', clauseNumber: 'pattern', excerptText: '5. Dogri Language and Scripts: Dogre/Dogra Akkhar, Devanagari and Persia.' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b',
+              title: 'Section B',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b', clauseNumber: 'pattern', excerptText: 'Section B' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii',
+                  title: 'Paper II',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER -II' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a',
+              title: 'Section A',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a', clauseNumber: 'pattern', excerptText: 'Section A' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b',
+              title: 'Section B',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b', clauseNumber: 'pattern', excerptText: 'Section B' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i',
+                  title: 'Paper I',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER I' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a',
+              title: 'Section A',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a', clauseNumber: 'pattern', excerptText: 'Section A' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-1',
+                  title: 'Ode on Intimations of Immortality',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-1', clauseNumber: 'pattern', excerptText: '– Ode on Intimations of Immortality.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-2',
+                  title: 'Tintern Abbey',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-2', clauseNumber: 'pattern', excerptText: '– Tintern Abbey.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-3',
+                  title: 'Three years she grew',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-3', clauseNumber: 'pattern', excerptText: '– Three years she grew.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-4',
+                  title: 'She dwelt among untrodden ways',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-4', clauseNumber: 'pattern', excerptText: '– She dwelt among untrodden ways.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-5',
+                  title: 'Michael',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-5', clauseNumber: 'pattern', excerptText: '– Michael.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-6',
+                  title: 'Resolution and Independence',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-6', clauseNumber: 'pattern', excerptText: '– Resolution and Independence.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-7',
+                  title: 'The World is too much with us',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-7', clauseNumber: 'pattern', excerptText: '– The World is too much with us.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-8',
+                  title: 'Milton, thou shouldst be living at this hour',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-8', clauseNumber: 'pattern', excerptText: '– Milton, thou shouldst be living at this hour.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-9',
+                  title: 'Upon Westminster Bridge. 6. Alfred Tennyson',
+                  levelLabel: 'Topic',
+                  note: 'In Memoriam. 7. Henrik Ibsen : A Doll’s House. 87',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-9', clauseNumber: 'pattern', excerptText: '87' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b',
+              title: 'Section B',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b', clauseNumber: 'pattern', excerptText: 'Section B' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii',
+                  title: 'Paper II',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER II' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a',
+              title: 'Section A',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a', clauseNumber: 'pattern', excerptText: 'Section A' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-1',
+                  title: 'Easter 1916',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-1', clauseNumber: 'pattern', excerptText: '– Easter 1916.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-2',
+                  title: 'The Second Coming',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-2', clauseNumber: 'pattern', excerptText: '– The Second Coming.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-3',
+                  title: 'A Prayer for my daughter',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-3', clauseNumber: 'pattern', excerptText: '– A Prayer for my daughter.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-4',
+                  title: 'Sailing to Byzantium',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-4', clauseNumber: 'pattern', excerptText: '– Sailing to Byzantium.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-5',
+                  title: 'The Tower',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-5', clauseNumber: 'pattern', excerptText: '– The Tower.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-6',
+                  title: 'Among School Children',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-6', clauseNumber: 'pattern', excerptText: '– Among School Children.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-7',
+                  title: 'Leda and the Swan',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-7', clauseNumber: 'pattern', excerptText: '– Leda and the Swan.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-8',
+                  title: 'Meru',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-8', clauseNumber: 'pattern', excerptText: '– Meru.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-9',
+                  title: 'Lapis Lazuli',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-9', clauseNumber: 'pattern', excerptText: '– Lapis Lazuli.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-10',
+                  title: 'The Second Coming',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-10', clauseNumber: 'pattern', excerptText: '– The Second Coming.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-11',
+                  title: 'Byzantium. 2. T.S. Eliot. The following poems',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-11', clauseNumber: 'pattern', excerptText: '2. T.S. Eliot. The following poems :' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-12',
+                  title: 'The Love Song of J. Alfred Prufrock',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-12', clauseNumber: 'pattern', excerptText: '– The Love Song of J. Alfred Prufrock.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-13',
+                  title: 'Journey of the Magi',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-13', clauseNumber: 'pattern', excerptText: '– Journey of the Magi.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-14',
+                  title: 'Burnt Norton. 3. W.H. Auden. The following poems',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-14', clauseNumber: 'pattern', excerptText: '3. W.H. Auden. The following poems :' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-15',
+                  title: 'Partition',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-15', clauseNumber: 'pattern', excerptText: '– Partition' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-16',
+                  title: 'Musee des Beaux Arts 88',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-16', clauseNumber: 'pattern', excerptText: '88' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-17',
+                  title: 'In Memory of W.B. Yeats',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-17', clauseNumber: 'pattern', excerptText: '– In Memory of W.B. Yeats' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-18',
+                  title: 'Lay your sleeping head, my love',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-18', clauseNumber: 'pattern', excerptText: '– Lay your sleeping head, my love' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-19',
+                  title: 'The Unknown Citizen',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-19', clauseNumber: 'pattern', excerptText: '– The Unknown Citizen' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-20',
+                  title: 'Consider',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-20', clauseNumber: 'pattern', excerptText: '– Consider' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-21',
+                  title: 'Mundus Et Infans',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-21', clauseNumber: 'pattern', excerptText: '– Mundus Et Infans' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-22',
+                  title: 'The Shield of Achilles',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-22', clauseNumber: 'pattern', excerptText: '– The Shield of Achilles' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-23',
+                  title: 'September 1, 1939',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-23', clauseNumber: 'pattern', excerptText: '– September 1, 1939' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-24',
+                  title: 'Petition 4. John Osborne',
+                  levelLabel: 'Topic',
+                  note: 'Look Back in Anger. 5. Samuel Beckett. Waiting for Godot. 6. Philip Larkin. The following poems :',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-24', clauseNumber: 'pattern', excerptText: '6. Philip Larkin. The following poems :' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-25',
+                  title: 'Next',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-25', clauseNumber: 'pattern', excerptText: '– Next' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-26',
+                  title: 'Please',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-26', clauseNumber: 'pattern', excerptText: '– Please' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-27',
+                  title: 'Deceptions',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-27', clauseNumber: 'pattern', excerptText: '– Deceptions' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-28',
+                  title: 'Afternoons',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-28', clauseNumber: 'pattern', excerptText: '– Afternoons' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-29',
+                  title: 'Days',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-29', clauseNumber: 'pattern', excerptText: '– Days' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-30',
+                  title: 'Mr. Bleaney 7. A.K. Ramanujan. The following poems',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-30', clauseNumber: 'pattern', excerptText: '7. A.K. Ramanujan. The following poems :' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-31',
+                  title: 'Looking for a Cousin on a Swing',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-31', clauseNumber: 'pattern', excerptText: '– Looking for a Cousin on a Swing' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-32',
+                  title: 'A River',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-32', clauseNumber: 'pattern', excerptText: '– A River' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-33',
+                  title: 'Of Mothers, among other Things',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-33', clauseNumber: 'pattern', excerptText: '– Of Mothers, among other Things' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-34',
+                  title: 'Love Poem for a Wife 1',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-34', clauseNumber: 'pattern', excerptText: '– Love Poem for a Wife 1' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-35',
+                  title: 'Small-Scale Reflections on a Great House',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-35', clauseNumber: 'pattern', excerptText: '– Small-Scale Reflections on a Great House' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-36',
+                  title: 'Obituary (All these poems are available in the anthology Ten Twentieth Century Indian Poets, edited by R. Parthasarthy, published by Oxford University Press, Ne',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-36', clauseNumber: 'pattern', excerptText: 'R. Parthasarthy, published by Oxford University Press, New Delhi).' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b',
+              title: 'Section B',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b', clauseNumber: 'pattern', excerptText: 'Section B' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i',
+                  title: 'Paper I',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER I' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a',
+              title: 'Section A',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a', clauseNumber: 'pattern', excerptText: 'Section A' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b',
+              title: 'Section B',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b', clauseNumber: 'pattern', excerptText: 'Section B' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-1',
+                  title: 'Medieval 1. Narratives',
+                  levelLabel: 'Topic',
+                  note: 'Rasa, Akhyan and Padyavarta 2. Lyrical: Pada',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-1', clauseNumber: 'pattern', excerptText: '2. Lyrical: Pada' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-2',
+                  title: 'Folk 3. Bhavai',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-2', clauseNumber: 'pattern', excerptText: '3. Bhavai' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-3',
+                  title: 'Modern 4. Fiction',
+                  levelLabel: 'Topic',
+                  note: 'Novel and Short Story 5. Drama 6. Literary Essay 7. Lyrical Poetry',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-3', clauseNumber: 'pattern', excerptText: '7. Lyrical Poetry' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-4',
+                  title: 'Criticism 8. History of theoretical Gujarati criticism 9. Recent research in folk tradition. 90',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-4', clauseNumber: 'pattern', excerptText: '90' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii',
+                  title: 'Paper II',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER II' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a',
+              title: 'Section A',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a', clauseNumber: 'pattern', excerptText: 'Section A' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-1',
+                  title: 'Vasantvilas phagu—AJNATKRUT',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-1', clauseNumber: 'pattern', excerptText: '(i) Vasantvilas phagu—AJNATKRUT' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-2',
+                  title: 'Kadambari—BHALAN',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-2', clauseNumber: 'pattern', excerptText: '(ii) Kadambari—BHALAN' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-3',
+                  title: 'Sudamacharitra—PREMANAND',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-3', clauseNumber: 'pattern', excerptText: '(iii) Sudamacharitra—PREMANAND' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-4',
+                  title: 'Chandrachandravatini varta—SHAMAL',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-4', clauseNumber: 'pattern', excerptText: '(iv) Chandrachandravatini varta—SHAMAL' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-5',
+                  title: 'Akhegeeta—AKHO 2. Sudharakyug & Pandityug',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-5', clauseNumber: 'pattern', excerptText: '2. Sudharakyug & Pandityug' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-6',
+                  title: 'Mari Hakikat—NARMADASHA',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-6', clauseNumber: 'pattern', excerptText: '(vi) Mari Hakikat—NARMADASHA' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-7',
+                  title: 'Farbasveerah—DALPATRAM',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-7', clauseNumber: 'pattern', excerptText: '(vii) Farbasveerah—DALPATRAM' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-8',
+                  title: 'Saraswatichandra-Part 1—GOVARDHANRAM TRIPATHI',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-8', clauseNumber: 'pattern', excerptText: '(viii) Saraswatichandra-Part 1—GOVARDHANRAM TRIPATHI' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-9',
+                  title: 'Purvalap—‘KANT’ (MANISHANKAR RATNAJI BHATT)',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-9', clauseNumber: 'pattern', excerptText: '(ix) Purvalap—‘KANT’ (MANISHANKAR RATNAJI BHATT)' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-10',
+                  title: 'Raino Parvat—RAMANBHAI NEELKANTH',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-10', clauseNumber: 'pattern', excerptText: '(x) Raino Parvat—RAMANBHAI NEELKANTH' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b',
+              title: 'Section B',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b', clauseNumber: 'pattern', excerptText: 'Section B' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-1',
+                  title: 'Hind Swaraj—MOHANDAS KARAMCHAND GANDHI',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-1', clauseNumber: 'pattern', excerptText: '(i) Hind Swaraj—MOHANDAS KARAMCHAND GANDHI' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-2',
+                  title: 'Patanni Prabhuta—KANHAIYALAL MUNSHI',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-2', clauseNumber: 'pattern', excerptText: '(ii) Patanni Prabhuta—KANHAIYALAL MUNSHI' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-3',
+                  title: 'Kavyani Shakti—RAMNARAYAN VISHWANATH PATHAK',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-3', clauseNumber: 'pattern', excerptText: '(iii) Kavyani Shakti—RAMNARAYAN VISHWANATH PATHAK' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-4',
+                  title: 'Saurashtrani Rasdhar-Part 1—ZAVERCHAND MEGHANI',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-4', clauseNumber: 'pattern', excerptText: '(iv) Saurashtrani Rasdhar-Part 1—ZAVERCHAND MEGHANI' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-5',
+                  title: 'Manvini Bhavai—PANNALAL PATEL',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-5', clauseNumber: 'pattern', excerptText: '(v) Manvini Bhavai—PANNALAL PATEL' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-6',
+                  title: 'Dhvani—RAJENDRA SHAH 2. Adhunik yug',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-6', clauseNumber: 'pattern', excerptText: '2. Adhunik yug' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-7',
+                  title: 'Saptapadi—UMASHANKAR JOSHI',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-7', clauseNumber: 'pattern', excerptText: '(vii) Saptapadi—UMASHANKAR JOSHI' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-8',
+                  title: 'Janantike—SURESH JOSHI',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-8', clauseNumber: 'pattern', excerptText: '(viii) Janantike—SURESH JOSHI' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-9',
+                  title: 'Ashwatthama—SITANSHU YASHASCHANDRA. HINDI',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-9', clauseNumber: 'pattern', excerptText: 'HINDI' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i',
+                  title: 'Paper I',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER I' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a',
+              title: 'Section A',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a', clauseNumber: 'pattern', excerptText: 'Section A' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b',
+              title: 'Section B',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b', clauseNumber: 'pattern', excerptText: 'Section B' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii',
+                  title: 'Paper II',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER II' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a',
+              title: 'Section A',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a', clauseNumber: 'pattern', excerptText: 'Section A' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b',
+              title: 'Section B',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b', clauseNumber: 'pattern', excerptText: 'Section B' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i',
+                  title: 'Paper I',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER-I' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a',
+              title: 'Section A',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a', clauseNumber: 'pattern', excerptText: 'Section A' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b',
+              title: 'Section B',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b', clauseNumber: 'pattern', excerptText: 'Section B' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii',
+                  title: 'Paper II',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER-II' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a',
+              title: 'Section A',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a', clauseNumber: 'pattern', excerptText: 'Section A' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b',
+              title: 'Section B',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b', clauseNumber: 'pattern', excerptText: 'Section B' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i',
+                  title: 'Paper I',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER-I' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a',
+              title: 'Section A',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a', clauseNumber: 'pattern', excerptText: 'Section A' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b',
+              title: 'Section B',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b', clauseNumber: 'pattern', excerptText: 'Section B' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii',
+                  title: 'Paper II',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER-II' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a',
+              title: 'Section A',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a', clauseNumber: 'pattern', excerptText: 'Section A' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-1',
+                  title: 'Lal Dyad, (ii)Sheikhul Aalam (iii)Habba Khatoon 2. Kashmiri poetry',
+                  levelLabel: 'Topic',
+                  note: '19th Century (i)Mahmood Gami (Vatsans) (ii)Maqbool shah (Gulrez) (iii)Rasool Mir (Ghazals) (iv)Abdul Ahad Nadim (N’at) (v)Krishanjoo Razdan (Shiv Lagun) (vi)Sufi Poets (Test in Sanglaab, published by the Deptt. of Kashmiri, University of Kashmir) 3. Twentieth Century Kashmiri poetry (text in Azich Kashir Shairi, published by the Deptt. of Kashmiri, University of Kashmir). 4. Literary criticism and',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-1', clauseNumber: 'pattern', excerptText: '4. Literary criticism and research work : development and various trends.' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b',
+              title: 'Section B',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b', clauseNumber: 'pattern', excerptText: 'Section B' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-1',
+                  title: 'Afsana Majmu’a, published by the Deptt. of Kashmiri, University of Kashmir. (ii)Kashur Afsana Az, published by the Sahitya Akademi. (iii)Hamasar Kashur Afsana, ',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-1', clauseNumber: 'pattern', excerptText: 'KONKANI' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i',
+                  title: 'Paper I',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER -I' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a',
+              title: 'Section A',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a', clauseNumber: 'pattern', excerptText: 'Section A' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-1',
+                  title: 'Origin and development of the language and influences on it. (ii)Major variants of Konkani and their linguistic features. (iii)Grammatical and lexicographic wor',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-1', clauseNumber: 'pattern', excerptText: '(iv)Old Standard Konkani, New Standard and Standardisation problems.' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b',
+              title: 'Section B',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b', clauseNumber: 'pattern', excerptText: 'Section B' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-1',
+                  title: 'History of Konkani literature from its probable source to the present times, with emphasis on its major works, writers and movements. (ii)Social and cultural ba',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-1', clauseNumber: 'pattern', excerptText: '(iv)Modern literary trends in the various genres and regions including a study of Konkani folklore.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii',
+                  title: 'Paper II',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER-II' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a-prose',
+              title: 'Section A — Prose',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-prose', clauseNumber: 'pattern', excerptText: 'Section A : Prose' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-prose-1',
+                  title: 'Old Konkani language and literature—the Portuguese Role 2. (a) Otmo Denvcharak—a novel by A. V. da Cruz',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-prose-1', clauseNumber: 'pattern', excerptText: '2. (a) Otmo Denvcharak—a novel by A. V. da Cruz.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-prose-2',
+                  title: 'Vadoll ani Varem—a novel by Antonio Pereira',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-prose-2', clauseNumber: 'pattern', excerptText: '(b) Vadoll ani Varem—a novel by Antonio Pereira.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-prose-3',
+                  title: 'Devache Kurpen—a novel by V.J.P. Saldanha. 3. (a) Vajralikhani—Shenoy goem-bab-An anthology-ed. by Shantaram Varde Valavalikar',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-prose-3', clauseNumber: 'pattern', excerptText: '3. (a) Vajralikhani—Shenoy goem-bab-An anthology-ed. by Shantaram Varde Valavalikar.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-prose-4',
+                  title: 'Konkani Lalit Niband—Essays-ed. by Shyam Verenkar',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-prose-4', clauseNumber: 'pattern', excerptText: '(b) Konkani Lalit Niband—Essays-ed. by Shyam Verenkar.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-prose-5',
+                  title: 'Teen Dasakam—An anthology—ed. by Chandrakant Keni. 4. (a) Demand—Drama-by Pundalik Naik',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-prose-5', clauseNumber: 'pattern', excerptText: '4. (a) Demand—Drama-by Pundalik Naik.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-prose-6',
+                  title: 'Kadambini',
+                  levelLabel: 'Topic',
+                  note: 'A Miscellany of Modern Prose—ed. by Prof. O.J.F. Gomes and Smt. P.S. Tadkodkar.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-prose-6', clauseNumber: 'pattern', excerptText: '(b) Kadambini: A Miscellany of Modern Prose—ed. by Prof. O.J.F. Gomes and Smt. P.S. Tadkodkar.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-prose-7',
+                  title: 'Ratha Tujeo Ghudieo—by Smt. Jayanti Naik',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-prose-7', clauseNumber: 'pattern', excerptText: '(c) Ratha Tujeo Ghudieo—by Smt. Jayanti Naik.' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b-poetry',
+              title: 'Section B — Poetry',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-poetry', clauseNumber: 'pattern', excerptText: 'Section B : Poetry' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-poetry-1',
+                  title: 'Abravanchem Yadnyadan—by Luis Mascarenhas. 2. (a) Godde Ramayan—ed. by R.K. Rao',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-poetry-1', clauseNumber: 'pattern', excerptText: '2. (a) Godde Ramayan—ed. by R.K. Rao.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-poetry-2',
+                  title: 'Ratnahar I and II—collection of poems—ed. R. V. Pandit. 3. (a) Zayo Zuyo—poems- Manohar L. Sardessai',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-poetry-2', clauseNumber: 'pattern', excerptText: '3. (a) Zayo Zuyo—poems- Manohar L. Sardessai.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-poetry-3',
+                  title: 'Kanadi Mati Konkani Kavi—Anthology ofPoems—ed. Pratap Naik. 4. (a) Adrushatache Kalle—Poems by Pandurang Bhangui',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-poetry-3', clauseNumber: 'pattern', excerptText: '4. (a) Adrushatache Kalle—Poems by Pandurang Bhangui.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-poetry-4',
+                  title: 'Yaman—Poems by Madhav Borkar. MAITHILI',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-poetry-4', clauseNumber: 'pattern', excerptText: 'MAITHILI' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i',
+                  title: 'Paper I',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER I' }
+                }
+              ]
+            }
+          ]
+        },
+{
+          id: 'syl-section-iii-syllabi-for-th-part-a',
+          title: 'Part A',
+          levelLabel: 'Part',
+          scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-A' }],
+          provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-a', clauseNumber: 'pattern', excerptText: 'PART A' }
+        },
+{
+          id: 'syl-section-iii-syllabi-for-th-part-b',
+          title: 'Part B',
+          levelLabel: 'Part',
+          scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }],
+          provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-b', clauseNumber: 'pattern', excerptText: 'PART B' },
+          children: [
+{
+              id: 'syl-section-iii-syllabi-for-th-part-b-1',
+              title: 'Prabandh-kavya',
+              levelLabel: 'Topic',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-b-1', clauseNumber: 'pattern', excerptText: '(a) Prabandh-kavya' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-part-b-2',
+              title: 'Muktak-kavya',
+              levelLabel: 'Topic',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-b-2', clauseNumber: 'pattern', excerptText: '(b) Muktak-kavya' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-part-b-3',
+              title: 'Novel',
+              levelLabel: 'Topic',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-b-3', clauseNumber: 'pattern', excerptText: '(c) Novel' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-part-b-4',
+              title: 'Short Story',
+              levelLabel: 'Topic',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-b-4', clauseNumber: 'pattern', excerptText: '(d) Short Story' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-part-b-5',
+              title: 'Drama',
+              levelLabel: 'Topic',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-b-5', clauseNumber: 'pattern', excerptText: '(e) Drama' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-part-b-6',
+              title: 'Essay',
+              levelLabel: 'Topic',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-b-6', clauseNumber: 'pattern', excerptText: '(f) Essay' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-part-b-7',
+              title: 'Criticism',
+              levelLabel: 'Topic',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-b-7', clauseNumber: 'pattern', excerptText: '(g) Criticism' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-part-b-8',
+              title: 'Memoirs',
+              levelLabel: 'Topic',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-b-8', clauseNumber: 'pattern', excerptText: '(h) Memoirs' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-part-b-9',
+              title: 'Translation 8. Development of Maithili Magazines and Journals',
+              levelLabel: 'Topic',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-b-9', clauseNumber: 'pattern', excerptText: '8. Development of Maithili Magazines and Journals.' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-paper-ii',
+              title: 'Paper II',
+              levelLabel: 'Paper',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER -II' }
+            }
+          ]
+        },
+{
+          id: 'syl-section-iii-syllabi-for-th-part-a',
+          title: 'Part A',
+          levelLabel: 'Part',
+          scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-A' }],
+          provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-a', clauseNumber: 'pattern', excerptText: 'PART A' }
+        },
+{
+          id: 'syl-section-iii-syllabi-for-th-part-b',
+          title: 'Part B',
+          levelLabel: 'Part',
+          scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }],
+          provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-b', clauseNumber: 'pattern', excerptText: 'PART-B' },
+          children: [
+{
+              id: 'syl-section-iii-syllabi-for-th-paper-i',
+              title: 'Paper I',
+              levelLabel: 'Paper',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER-I' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a',
+              title: 'Section A',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a', clauseNumber: 'pattern', excerptText: 'Section A' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b',
+              title: 'Section B',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b', clauseNumber: 'pattern', excerptText: 'Section B' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii',
+                  title: 'Paper II',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER-II' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a',
+              title: 'Section A',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a', clauseNumber: 'pattern', excerptText: 'Section A' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-unit-1',
+                  title: 'Unit 1',
+                  levelLabel: 'Unit',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-unit-1', clauseNumber: 'pattern', excerptText: 'Unit 1' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-unit-2',
+                  title: 'Unit 2',
+                  levelLabel: 'Unit',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-unit-2', clauseNumber: 'pattern', excerptText: 'Unit 2' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-unit-3',
+                  title: 'Unit 3',
+                  levelLabel: 'Unit',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-unit-3', clauseNumber: 'pattern', excerptText: 'Unit 3' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b',
+              title: 'Section B',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b', clauseNumber: 'pattern', excerptText: 'Section B' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-unit-4',
+                  title: 'Unit 4',
+                  levelLabel: 'Unit',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-unit-4', clauseNumber: 'pattern', excerptText: 'Unit 4' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-unit-5',
+                  title: 'Unit 5',
+                  levelLabel: 'Unit',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-unit-5', clauseNumber: 'pattern', excerptText: 'Unit 5' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-unit-6',
+                  title: 'Unit 6',
+                  levelLabel: 'Unit',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-unit-6', clauseNumber: 'pattern', excerptText: 'Unit 6' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i',
+                  title: 'Paper I',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER-I' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a',
+              title: 'Section A',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a', clauseNumber: 'pattern', excerptText: 'Section A' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-1',
+                  title: 'General characteristics of Manipuri Language and history of its development; its importance and status among the Tibeto-Burman Languages of North-East India; re',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-1', clauseNumber: 'pattern', excerptText: 'Language; evolution and study of old Manipuri script.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-2',
+                  title: 'Significant features of Manipuri Language',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-2', clauseNumber: 'pattern', excerptText: '(b) Significant features of Manipuri Language :' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-3',
+                  title: 'Phonology',
+                  levelLabel: 'Topic',
+                  note: 'Phoneme-vowels, consonants juncture, tone, consonant cluster and its occurrence, syllable-its structure, pattern and types.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-3', clauseNumber: 'pattern', excerptText: 'syllable-its structure, pattern and types.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-4',
+                  title: 'Morphology',
+                  levelLabel: 'Topic',
+                  note: 'Word-class, root and its types; affix and its types; grammatical categories-gender, number, person, case, tense and aspects, process of compounding (samas and sandhi).',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-4', clauseNumber: 'pattern', excerptText: 'number, person, case, tense and aspects, process of compounding (samas and sandhi).' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-5',
+                  title: 'Syntax',
+                  levelLabel: 'Topic',
+                  note: 'Word order; types of sentences, phrase and clause structures.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-5', clauseNumber: 'pattern', excerptText: '(iii) Syntax : Word order; types of sentences, phrase and clause structures.' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b',
+              title: 'Section B',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b', clauseNumber: 'pattern', excerptText: 'Section B' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-1',
+                  title: 'Literary History of Manipuri',
+                  levelLabel: 'Topic',
+                  note: 'Early period (up to 17th Century)–Social and cultural background; Themes, diction and style of the works. Medieval period (18th and 19th Century)-Social, religious and political background; Themes, diction and style of the works. Modern period-Growth of major literary forms; change of Themes, diction and style.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-1', clauseNumber: 'pattern', excerptText: 'Modern period-Growth of major literary forms; change of Themes, diction and style.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-2',
+                  title: 'Manipuri Folk Literature',
+                  levelLabel: 'Topic',
+                  note: 'Legend, Folktale, Folksong, Ballad, Proverb and Riddle.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-2', clauseNumber: 'pattern', excerptText: 'Legend, Folktale, Folksong, Ballad, Proverb and Riddle.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-3',
+                  title: 'Aspects of Manipuri Culture',
+                  levelLabel: 'Topic',
+                  note: 'Pre-Hindu Manipuri Faith; Advent of Hinduism and the process of syncreticism; Performing arts-Lai Haraoba, Maha Ras; Indigenous games-Sagol Kangjei, Khong Kangjei, Kang.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-3', clauseNumber: 'pattern', excerptText: 'Indigenous games-Sagol Kangjei, Khong Kangjei, Kang.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii',
+                  title: 'Paper II',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER-II' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a',
+              title: 'Section A',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a', clauseNumber: 'pattern', excerptText: 'Section A' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-1',
+                  title: 'Old Manipuri Literature',
+                  levelLabel: 'Topic',
+                  note: '1. O. Bhogeswar Singh (Ed.) : Numit Kappa 2. M. Gourachandra Singh (Ed.) : Thawanthaba Hiran 3. N. Khelchandra Singh (Ed.) : Naothingkhong Phambal Kaba 4. M. Chandra Singh (Ed.) : Panthoibi Khonggul',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-1', clauseNumber: 'pattern', excerptText: '4. M. Chandra Singh (Ed.) : Panthoibi Khonggul' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-2',
+                  title: 'Medieval Manipuri Literature',
+                  levelLabel: 'Topic',
+                  note: '1. M. Chandra Singh (Ed.) : Samsok Ngamba 2. R.K. Snahal Singh (Ed.) : Ramayana Adi Kanda 3. N. Khelchandra Singh (Ed.) : Dhananjoy Laibu Ningba 4. O. Bhogeswar Singh (Ed.) : Chandrakirti Jila Changba',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-2', clauseNumber: 'pattern', excerptText: '4. O. Bhogeswar Singh (Ed.) : Chandrakirti Jila Changba' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b',
+              title: 'Section B',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b', clauseNumber: 'pattern', excerptText: 'Section B' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-1',
+                  title: 'Poetry and Epic',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-1', clauseNumber: 'pattern', excerptText: '(a) Poetry and Epic :' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-2',
+                  title: 'Poetry',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-2', clauseNumber: 'pattern', excerptText: '(I) Poetry :' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-3',
+                  title: 'Manipuri Sheireng (Pub) Manipuri Sahitya Parishad, 1998 (Ed.) Kh. Chaoba Singh',
+                  levelLabel: 'Topic',
+                  note: 'Pi Thadoi, Lamgi CheklaAmada, Loktak Dr. L. Kamal Singh : Nirjanata, Nirab Rajani A. Minaketan Singh : Kamalda, Nonggumlalkkhoda. L. Samarendra Singh : Ingagi Nong, Mamang Leikai Thambal Satle E. Nilakanta Singh : Manipur, Lamangnaba Shri Biren : Tangkhul Hui Th. Ibopishak : Anouba Thunglaba Jiba.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-3', clauseNumber: 'pattern', excerptText: 'Th. Ibopishak : Anouba Thunglaba Jiba.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-4',
+                  title: 'Kanchi Sheireng. (Pub) Manipur University 1998 (Ed.) Dr. L. Kamal Singh',
+                  levelLabel: 'Topic',
+                  note: 'Biswa-Prem Shri Biren : Chaphadraba Laigi Yen Th. Ibopishak : Norok Patal Prithivi',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-4', clauseNumber: 'pattern', excerptText: 'Th. Ibopishak : Norok Patal Prithivi' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-5',
+                  title: 'Epic',
+                  levelLabel: 'Topic',
+                  note: '1. A. Dorendrajit Singh : Kansa Bodha 2. H. Anganghal Singh : Khamba-Thoibi Sheireng (San-Senba, Lei Langba,Shamu Khonggi Bichar)',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-5', clauseNumber: 'pattern', excerptText: '2. H. Anganghal Singh : Khamba-Thoibi Sheireng (San-Senba, Lei Langba,Shamu Khonggi Bichar)' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-6',
+                  title: 'Drama',
+                  levelLabel: 'Topic',
+                  note: '1. S. Lalit Singh : Areppa Marup 2. G.C. Tongbra : Matric Pass 3. A. Samarendra : Judge Saheb ki Imung',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-6', clauseNumber: 'pattern', excerptText: '3. A. Samarendra : Judge Saheb ki Imung' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-7',
+                  title: 'Novel, Short-story and Prose',
+                  levelLabel: 'Topic',
+                  note: '103',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-7', clauseNumber: 'pattern', excerptText: '103' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-8',
+                  title: 'Novel',
+                  levelLabel: 'Topic',
+                  note: '1. Dr. L. Kamal Singh : Madhabi 2. H. Anganghal Singh : Jahera 3. H. Guno Singh : Laman 4. Pacha Meetei : Imphal Amasung, MagiIshing, Nungsitki Phibam',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-8', clauseNumber: 'pattern', excerptText: '4. Pacha Meetei : Imphal Amasung, MagiIshing, Nungsitki Phibam' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-9',
+                  title: 'Short-story',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-9', clauseNumber: 'pattern', excerptText: '(II) Short-story :' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-10',
+                  title: 'Kanchi Warimacha (Pub) Manipur University 1997(Ed.) R.K. Shitaljit Singh',
+                  levelLabel: 'Topic',
+                  note: 'Kamala Kamala M.K. Binodini : Eigi Thahoudraba HeitupLalu Kh. Prakash : Wanom Shareng',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-10', clauseNumber: 'pattern', excerptText: 'Kh. Prakash : Wanom Shareng' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-11',
+                  title: 'Parishadki Khangatlaba Warimacha (Pub) Manipuri Sahitya Parishad 1994 (Ed.) S. Nilbir Shastri : Loukhatpa R.K. Elangba : Karinunggi',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-11', clauseNumber: 'pattern', excerptText: 'R.K. Elangba : Karinunggi' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-12',
+                  title: 'Anouba Manipuri Warimacha (Pub) The Cultural Forum Manipur 1992 (Ed.) N. Kunjamohon Singh',
+                  levelLabel: 'Topic',
+                  note: 'Ijat Tanba E. Dinamani : Nongthak Khongnang',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-12', clauseNumber: 'pattern', excerptText: 'E. Dinamani : Nongthak Khongnang' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-13',
+                  title: 'Prose',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-13', clauseNumber: 'pattern', excerptText: '(III) Prose :' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-14',
+                  title: 'Warenggi Saklon [Due Part] (Pub) The Cultural Forum Manipur 1992 (Ed.) Kh. Chaoba Singh',
+                  levelLabel: 'Topic',
+                  note: 'Khamba-Thoibigi WariAmasung Mahakavya',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-14', clauseNumber: 'pattern', excerptText: 'Kh. Chaoba Singh : Khamba-Thoibigi WariAmasung Mahakavya' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-15',
+                  title: 'Kanchi Wareng (Pub) Manipur University, 1998 (Ed.) B. Manisana Shastri',
+                  levelLabel: 'Topic',
+                  note: 'Phajaba Ch. Manihar Singh : Lai-Haraoba',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-15', clauseNumber: 'pattern', excerptText: 'Ch. Manihar Singh : Lai-Haraoba' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-16',
+                  title: 'Apunba Wareng (Pub) Manipur University, 1986 (Ed.) Ch. Pishak Singh',
+                  levelLabel: 'Topic',
+                  note: 'Samaj Amasung Sanskriti M.K. Binodini : Thoibidu Warouhouida Eric Newton : Kalagi Mahousa (translated by I.R. Babu)',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-16', clauseNumber: 'pattern', excerptText: 'Eric Newton : Kalagi Mahousa (translated by I.R. Babu)' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-17',
+                  title: 'Manipuri Wareng (Pub) The Cultural Forum Manipur 1999 (Ed.) S. Krishnamohan Singh',
+                  levelLabel: 'Topic',
+                  note: 'Lan MARATHI',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-17', clauseNumber: 'pattern', excerptText: 'MARATHI' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i',
+                  title: 'Paper I',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER-I' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a',
+              title: 'Section A',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a', clauseNumber: 'pattern', excerptText: 'Section A' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-1',
+                  title: 'Nature and Functions of Language (with reference to Marathi) 104 Language as a signifying system : Langue and Parole; Basic functions; Poetic Language; Standard',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-1', clauseNumber: 'pattern', excerptText: 'Linguistic features of Marathi in thirteenth century and seventeenth century.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-2',
+                  title: 'Dialects of Marathi Ahirani; Varhadi; Dangi',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-2', clauseNumber: 'pattern', excerptText: 'Ahirani; Varhadi; Dangi.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-3',
+                  title: 'Marathi Grammar Parts of Speech; Case-system; Prayog-vichar (Voice)',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-3', clauseNumber: 'pattern', excerptText: 'Parts of Speech; Case-system; Prayog-vichar (Voice).' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-4',
+                  title: 'Nature and kinds of Folk-lore (with special reference to Marathi) Lok-Geet, Lok Katha, Lok Natya',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-4', clauseNumber: 'pattern', excerptText: 'Lok-Geet, Lok Katha, Lok Natya.' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b',
+              title: 'Section B',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b', clauseNumber: 'pattern', excerptText: 'Section B' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-1',
+                  title: 'History of Marathi Literature 1. From beginning to 1818 AD, with special reference to the following : The Mahanubhava writers, the Varkari poets, the Pandit poe',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-1', clauseNumber: 'pattern', excerptText: 'Modernist, Dalit, Gramin, Feminist.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-2',
+                  title: 'Literary Criticism 1. Nature and function of Literature; 2. Evaluation of Literature; 3. Nature, Objectives and Methods of Criticism; 4. Literature, Culture and',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-2', clauseNumber: 'pattern', excerptText: '4. Literature, Culture and Society.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii',
+                  title: 'Paper II',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER-II' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a',
+              title: 'Section A',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a', clauseNumber: 'pattern', excerptText: 'Section A' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b',
+              title: 'Section B',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b', clauseNumber: 'pattern', excerptText: 'Section B' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i',
+                  title: 'Paper I',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER-I' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a',
+              title: 'Section A',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a', clauseNumber: 'pattern', excerptText: 'Section A' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-1',
+                  title: 'Nominal forms and categories',
+                  levelLabel: 'Topic',
+                  note: '— Gender, Number, Case, Adjectives, Pronouns, Avyayas',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-1', clauseNumber: 'pattern', excerptText: 'Gender, Number, Case, Adjectives, Pronouns, Avyayas' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-2',
+                  title: 'Verbal forms and categories',
+                  levelLabel: 'Topic',
+                  note: '— Tense, Aspects, Voice, Roots and Fixes',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-2', clauseNumber: 'pattern', excerptText: 'Tense, Aspects, Voice, Roots and Fixes' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-3',
+                  title: 'Nepali Swara and Vyanjana; 3. Major Dialects of Nepali 4. Standardisation and Modernisation of Nepali with special reference to language movements (viz. Halanta',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-3', clauseNumber: 'pattern', excerptText: '5. Teaching of Nepali language in India—Its history and development with special reference to its socio￾cultural aspects.' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b',
+              title: 'Section B',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b', clauseNumber: 'pattern', excerptText: 'Section B' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii',
+                  title: 'Paper II',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER-II' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a',
+              title: 'Section A',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a', clauseNumber: 'pattern', excerptText: 'Section A' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b',
+              title: 'Section B',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b', clauseNumber: 'pattern', excerptText: 'Section B' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i',
+                  title: 'Paper I',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER-I' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a',
+              title: 'Section A',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a', clauseNumber: 'pattern', excerptText: 'Section A' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-1',
+                  title: 'Origin and development of Odia Language—Influence of Austric, Dravidian, Perso— Arabic and English on Odia Language',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-1', clauseNumber: 'pattern', excerptText: 'English on Odia Language.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-2',
+                  title: 'Phonetics and Phonemics',
+                  levelLabel: 'Topic',
+                  note: 'Vowels, Consonants Principles of changes in Odia sounds.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-2', clauseNumber: 'pattern', excerptText: '(ii) Phonetics and Phonemics : Vowels, Consonants Principles of changes in Odia sounds.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-3',
+                  title: 'Morphology',
+                  levelLabel: 'Topic',
+                  note: 'Morphemes (free, bound compound and complex), derivational and inflectional affixes, case inflection, conjugation of verb.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-3', clauseNumber: 'pattern', excerptText: 'affixes, case inflection, conjugation of verb.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-4',
+                  title: 'Syntax',
+                  levelLabel: 'Topic',
+                  note: 'Kinds of sentences and their trans-formation, structure of sentences.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-4', clauseNumber: 'pattern', excerptText: '(iv) Syntax : Kinds of sentences and their trans-formation, structure of sentences.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-5',
+                  title: 'Semantics—Different types of change in meaning. Euphemism',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-5', clauseNumber: 'pattern', excerptText: '(v) Semantics—Different types of change in meaning. Euphemism.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-6',
+                  title: 'Common errors in spellings, grammatical uses and construction of sentences',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-6', clauseNumber: 'pattern', excerptText: '(vi) Common errors in spellings, grammatical uses and construction of sentences.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-7',
+                  title: 'Regional variations in Odia Language (Western, Southern and Northern Odia) and Dialects (Bhatri and Desia)',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-7', clauseNumber: 'pattern', excerptText: 'and Desia).' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b',
+              title: 'Section B',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b', clauseNumber: 'pattern', excerptText: 'Section B' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-1',
+                  title: 'Historical backgrounds (social, cultural and political) of Odia Literature of different periods',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-1', clauseNumber: 'pattern', excerptText: '(i) Historical backgrounds (social, cultural and political) of Odia Literature of different periods.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-2',
+                  title: 'Ancient epics, ornate kavyas and padavalis',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-2', clauseNumber: 'pattern', excerptText: '(ii) Ancient epics, ornate kavyas and padavalis.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-3',
+                  title: 'Typical structural forms of Odia Literature (Koili, Chautisa, Poi, Chaupadi, Champu)',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-3', clauseNumber: 'pattern', excerptText: '(iii) Typical structural forms of Odia Literature (Koili, Chautisa, Poi, Chaupadi, Champu).' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-4',
+                  title: 'Modern trends in poetry, drama short story, novel essay and literary criticism',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-4', clauseNumber: 'pattern', excerptText: '(iv) Modern trends in poetry, drama short story, novel essay and literary criticism.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii',
+                  title: 'Paper II',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER-II' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a',
+              title: 'Section A',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a', clauseNumber: 'pattern', excerptText: 'Section A' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b',
+              title: 'Section B',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b', clauseNumber: 'pattern', excerptText: 'Section B' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i',
+                  title: 'Paper I',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER-I' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a',
+              title: 'Section A',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a', clauseNumber: 'pattern', excerptText: 'Section A' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-1',
+                  title: 'Origin of Punjabi Language; different stages of development and recent development in Punjabi Language; characteristics of Punjabi phonology and the study of it',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-1', clauseNumber: 'pattern', excerptText: 'consonants.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-2',
+                  title: 'Punjabi morphology; the number-gender system (animate and inanimate), prefixes, affixes and different categories of Post positions; Punjabi word formation; Tats',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-2', clauseNumber: 'pattern', excerptText: 'structure, the notion of subject and object in Punjabi; Noun and verb phrases.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-3',
+                  title: 'Language and dialect',
+                  levelLabel: 'Topic',
+                  note: 'the notions of dialect and idiolect: major dialects of Punjabi : Pothohari, Majhi, 109 Doabi, Malwai, Paudhi; the validity of speech variation on the basis of social stratification, the distinctive features of various dialects with special reference to tones Language and script; origin and development of Gurumukhi; Suitability of Gurumukhi for Punjabi.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-3', clauseNumber: 'pattern', excerptText: 'Gurumukhi; Suitability of Gurumukhi for Punjabi.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-4',
+                  title: 'Classical background',
+                  levelLabel: 'Topic',
+                  note: 'Nath Jogi Sahit. Medieval Literature : Gurmat, Suti, Kissa and Var : janamsakhis.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-4', clauseNumber: 'pattern', excerptText: 'Medieval Literature : Gurmat, Suti, Kissa and Var : janamsakhis.' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b',
+              title: 'Section B',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b', clauseNumber: 'pattern', excerptText: 'Section B' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-1',
+                  title: 'Modern trends Mystic, romantic, progressive and neomystic (Vir Singh, Puran Singh, Mohan Singh, Amrita Pritam, Bawa Balwant, Pritam Singh Safeer, J. S. Neki). E',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-1', clauseNumber: 'pattern', excerptText: 'Aesthetes (Harbhajan Singh, Tara Singh). Neo-progressive (Pash, Jagtar, Patar).' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-2',
+                  title: 'Folk Literature Folk songs, Folk tales, Riddles, Proverbs. Epic (Vir Singh, Avtar Singh Azad, Mohan Singh). Lyric (Gurus, Sufis and Modern Lyricists-Mohan Singh',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-2', clauseNumber: 'pattern', excerptText: 'Harbhajan Singh).' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-3',
+                  title: 'Drama (I.C. Nanda, Harcharan Singh, Balwant Gargi, S.S. Sekhon, Charan Das Sidhu). Novel (Vir Singh, Nanak Singh, Jaswant Singh Kanwal, K.S. Duggal, Sukhbir, Gu',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-3', clauseNumber: 'pattern', excerptText: 'Short Story (Sujan Singh, K. S. Virk, Prem Parkash, Waryam Sandhu).' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-4',
+                  title: 'Socio-cultural Sanskrit, Persian and Western. Literary influences; Essay (Puran Singh, Teja Singh, Gurbaksh Singh). Literary Criticism (S.S. Sekhon, Attar Singh',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-4', clauseNumber: 'pattern', excerptText: 'Literary Criticism (S.S. Sekhon, Attar Singh, Kishan Singh, Harbhajan Singh, Najam Hussain Sayyad).' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii',
+                  title: 'Paper II',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER-II' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a',
+              title: 'Section A',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a', clauseNumber: 'pattern', excerptText: 'Section A' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-1',
+                  title: 'Sheikh Farid The complete Bani as includedin the Adi Granth',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-1', clauseNumber: 'pattern', excerptText: '(a) Sheikh Farid The complete Bani as includedin the Adi Granth.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-2',
+                  title: 'Guru Nanak Japu Ji. Baramah. Asa di Var',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-2', clauseNumber: 'pattern', excerptText: '(b) Guru Nanak Japu Ji. Baramah. Asa di Var.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-3',
+                  title: 'Bulleh Shah Kafian',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-3', clauseNumber: 'pattern', excerptText: '(c) Bulleh Shah Kafian' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-4',
+                  title: 'Waris Shah Heer',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-4', clauseNumber: 'pattern', excerptText: '(d) Waris Shah Heer' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b',
+              title: 'Section B',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b', clauseNumber: 'pattern', excerptText: 'Section B' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-1',
+                  title: 'Shah Mohammad Jangnama (Jang Singhante Firangian) Dhani Ram Chatrik Chandan Vari 110 (Poet) Sufi Khana Nawan Jahan',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-1', clauseNumber: 'pattern', excerptText: 'Nawan Jahan' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-2',
+                  title: 'Nanak Singh Chitta Lahu (Novelist) Pavittar Papi Ek Mian Do Talwaran',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-2', clauseNumber: 'pattern', excerptText: 'Ek Mian Do Talwaran' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-3',
+                  title: 'Gurbaksh Singh Zindagi-di-Ras (Essayist) Nawan Shivala Merian Abhul Yadaan. Balraj Sahni Mera Roosi Safarnama (Travelogue) Mera Pakistani Safarnama',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-3', clauseNumber: 'pattern', excerptText: '(Travelogue) Mera Pakistani Safarnama' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-4',
+                  title: 'Balwant Gargi Loha Kutt (Dramatist) Dhuni-di-Agg Sultan Razia Sant Singh Sekhon Sahityarth (Critic) Parsidh Punjabi Kavi Punjabi Kav Shiromani. SANSKRIT',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-4', clauseNumber: 'pattern', excerptText: 'SANSKRIT' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i',
+                  title: 'Paper I',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER-I' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a',
+              title: 'Section A',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a', clauseNumber: 'pattern', excerptText: 'Section A' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-1',
+                  title: 'Prominent feature of classical Sanskrit language',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-1', clauseNumber: 'pattern', excerptText: '(b) Prominent feature of classical Sanskrit language' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-2',
+                  title: 'Contribution of Sanskrit to linguistic studies 3. General Knowledge of',
+                  levelLabel: 'Topic',
+                  note: '—',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-2', clauseNumber: 'pattern', excerptText: '3. General Knowledge of :—' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-3',
+                  title: 'Literary history of Sanskrit',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-3', clauseNumber: 'pattern', excerptText: '(a) Literary history of Sanskrit' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-4',
+                  title: 'Principal trends of literary criticism',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-4', clauseNumber: 'pattern', excerptText: '(b) Principal trends of literary criticism' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-5',
+                  title: 'Ramayana',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-5', clauseNumber: 'pattern', excerptText: '(c) Ramayana' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-6',
+                  title: 'Mahabharata',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-6', clauseNumber: 'pattern', excerptText: '(d) Mahabharata' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-7',
+                  title: 'The origin and development of literary geners of',
+                  levelLabel: 'Topic',
+                  note: 'Mahakavya Rupaka (drama) 111 Katha Akhyayika Campu Khandakavya Muktaka Kavya.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-7', clauseNumber: 'pattern', excerptText: 'Muktaka Kavya.' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b',
+              title: 'Section B',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b', clauseNumber: 'pattern', excerptText: 'Section B' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-1',
+                  title: 'Purusãrthas',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-1', clauseNumber: 'pattern', excerptText: '(a) Purusãrthas' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-2',
+                  title: 'Samskãras',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-2', clauseNumber: 'pattern', excerptText: '(b) Samskãras' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-3',
+                  title: 'Varnãsramavyavasthã',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-3', clauseNumber: 'pattern', excerptText: '(c) Varnãsramavyavasthã' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-4',
+                  title: 'Arts and fine arts',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-4', clauseNumber: 'pattern', excerptText: '(d) Arts and fine arts' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-5',
+                  title: 'Technical Sciences. 5. Trends of Indian Philosophy',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-5', clauseNumber: 'pattern', excerptText: '5. Trends of Indian Philosophy' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-6',
+                  title: 'Mïmansã',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-6', clauseNumber: 'pattern', excerptText: '(a) Mïmansã' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-7',
+                  title: 'Vedãnta',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-7', clauseNumber: 'pattern', excerptText: '(b) Vedãnta' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-8',
+                  title: 'Nyaya',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-8', clauseNumber: 'pattern', excerptText: '(c) Nyaya' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-9',
+                  title: 'Vaisesika',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-9', clauseNumber: 'pattern', excerptText: '(d) Vaisesika' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-10',
+                  title: 'Sãnkhya',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-10', clauseNumber: 'pattern', excerptText: '(e) Sãnkhya' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-11',
+                  title: 'Yoga',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-11', clauseNumber: 'pattern', excerptText: '(f) Yoga' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-12',
+                  title: 'Bauddha',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-12', clauseNumber: 'pattern', excerptText: '(g) Bauddha' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-13',
+                  title: 'Jaina',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-13', clauseNumber: 'pattern', excerptText: '(h) Jaina' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-14',
+                  title: 'Carvãka 6. Short Essay (in Sanskrit) 7. Unseen passage with the questions (to be answered in Sanskrit)',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-14', clauseNumber: 'pattern', excerptText: '7. Unseen passage with the questions (to be answered in Sanskrit).' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii',
+                  title: 'Paper II',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER-II' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a',
+              title: 'Section A',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a', clauseNumber: 'pattern', excerptText: 'Section A' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-group-1-a-raghuvamsam-kalidasa',
+                  title: 'Group 1 — (a) Raghuvamsam—Kalidasa',
+                  levelLabel: 'Group',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-group-1-a-raghuvamsam-kalidasa', clauseNumber: 'pattern', excerptText: 'Group 1 (a) Raghuvamsam—Kalidasa' },
+                  children: [
+{
+                      id: 'syl-section-iii-syllabi-for-th-group-1-a-raghuvam-1',
+                      title: 'Kumarasambhavam—Kalidasa',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-group-1-a-raghuvam-1', clauseNumber: 'pattern', excerptText: '(b) Kumarasambhavam—Kalidasa' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-group-1-a-raghuvam-2',
+                      title: 'Kiratarjuniyam—Bharavi',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-group-1-a-raghuvam-2', clauseNumber: 'pattern', excerptText: '(c) Kiratarjuniyam—Bharavi' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-group-1-a-raghuvam-3',
+                      title: 'Sisupalavadham—Magha',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-group-1-a-raghuvam-3', clauseNumber: 'pattern', excerptText: '(d) Sisupalavadham—Magha' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-group-1-a-raghuvam-4',
+                      title: 'Naisadhiyacaritam—Sriharsa',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-group-1-a-raghuvam-4', clauseNumber: 'pattern', excerptText: '(e) Naisadhiyacaritam—Sriharsa' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-group-1-a-raghuvam-5',
+                      title: 'Kadambari—Banabhatta',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-group-1-a-raghuvam-5', clauseNumber: 'pattern', excerptText: '(f) Kadambari—Banabhatta' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-group-1-a-raghuvam-6',
+                      title: 'Dasakumaracaritam—Dandin',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-group-1-a-raghuvam-6', clauseNumber: 'pattern', excerptText: '(g) Dasakumaracaritam—Dandin' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-group-1-a-raghuvam-7',
+                      title: 'Sivarajyodayam—S.B. Varnekar 112',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-group-1-a-raghuvam-7', clauseNumber: 'pattern', excerptText: '112' }
+                    }
+                  ]
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-group-2-a-is-v-syopanisad',
+                  title: 'Group 2 — (a) Isãvãsyopanisad',
+                  levelLabel: 'Group',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-group-2-a-is-v-syopanisad', clauseNumber: 'pattern', excerptText: 'Group 2 (a) Isãvãsyopanisad' },
+                  children: [
+{
+                      id: 'syl-section-iii-syllabi-for-th-group-2-a-is-v-syo-1',
+                      title: 'Bhagavadgitã',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-group-2-a-is-v-syo-1', clauseNumber: 'pattern', excerptText: '(b) Bhagavadgitã' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-group-2-a-is-v-syo-2',
+                      title: 'Sundarakanda of Valmiki’s Ramayana',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-group-2-a-is-v-syo-2', clauseNumber: 'pattern', excerptText: 'Ramayana' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-group-2-a-is-v-syo-3',
+                      title: 'Arthasastra of Kautilya',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-group-2-a-is-v-syo-3', clauseNumber: 'pattern', excerptText: '(d) Arthasastra of Kautilya' }
+                    }
+                  ]
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-group-3-a-svapanavasavadattam-bhasa',
+                  title: 'Group 3 — (a) Svapanavasavadattam—Bhasa',
+                  levelLabel: 'Group',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-group-3-a-svapanavasavadattam-bhasa', clauseNumber: 'pattern', excerptText: 'Group 3 (a) Svapanavasavadattam—Bhasa' },
+                  children: [
+{
+                      id: 'syl-section-iii-syllabi-for-th-group-3-a-svapanav-1',
+                      title: 'Abhijnanasakuntalam—Kalidasa',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-group-3-a-svapanav-1', clauseNumber: 'pattern', excerptText: '(b) Abhijnanasakuntalam—Kalidasa' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-group-3-a-svapanav-2',
+                      title: 'Mricchakatikam—Sudraka',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-group-3-a-svapanav-2', clauseNumber: 'pattern', excerptText: '(c) Mricchakatikam—Sudraka' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-group-3-a-svapanav-3',
+                      title: 'Mudraraksasam—Visakhadatta',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-group-3-a-svapanav-3', clauseNumber: 'pattern', excerptText: '(d) Mudraraksasam—Visakhadatta' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-group-3-a-svapanav-4',
+                      title: 'Uttararamacaritam—Bhavbhuti',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-group-3-a-svapanav-4', clauseNumber: 'pattern', excerptText: '(e) Uttararamacaritam—Bhavbhuti' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-group-3-a-svapanav-5',
+                      title: 'Ratnavali—Sriharshavardhana',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-group-3-a-svapanav-5', clauseNumber: 'pattern', excerptText: '(f) Ratnavali—Sriharshavardhana' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-group-3-a-svapanav-6',
+                      title: 'Venisamharam—Bhattanarayana',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-group-3-a-svapanav-6', clauseNumber: 'pattern', excerptText: '(g) Venisamharam—Bhattanarayana' }
+                    }
+                  ]
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-group-4-short-notes-in-sanskrit-on-the-follo',
+                  title: 'Group 4 — Short notes in Sanskrit on the following',
+                  levelLabel: 'Group',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-group-4-short-notes-in-sanskrit-on-the-follo', clauseNumber: 'pattern', excerptText: 'Group 4 Short notes in Sanskrit on the following :—' },
+                  children: [
+{
+                      id: 'syl-section-iii-syllabi-for-th-group-4-short-note-1',
+                      title: 'Meghadutam—Kalidasa',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-group-4-short-note-1', clauseNumber: 'pattern', excerptText: '(a) Meghadutam—Kalidasa' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-group-4-short-note-2',
+                      title: 'Nitisatakam—Bhartrhari',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-group-4-short-note-2', clauseNumber: 'pattern', excerptText: '(b) Nitisatakam—Bhartrhari' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-group-4-short-note-3',
+                      title: 'Pancatantra—',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-group-4-short-note-3', clauseNumber: 'pattern', excerptText: '(c) Pancatantra—' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-group-4-short-note-4',
+                      title: 'Rajatarangini—Kalhana',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-group-4-short-note-4', clauseNumber: 'pattern', excerptText: '(d) Rajatarangini—Kalhana' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-group-4-short-note-5',
+                      title: 'Harsacaritam—Banabhatta',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-group-4-short-note-5', clauseNumber: 'pattern', excerptText: '(e) Harsacaritam—Banabhatta' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-group-4-short-note-6',
+                      title: 'Amarukasatakam—Amaruka',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-group-4-short-note-6', clauseNumber: 'pattern', excerptText: '(f) Amarukasatakam—Amaruka' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-group-4-short-note-7',
+                      title: 'Gitagovindam—Jayadeva',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-group-4-short-note-7', clauseNumber: 'pattern', excerptText: '(g) Gitagovindam—Jayadeva.' }
+                    }
+                  ]
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b',
+              title: 'Section B',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b', clauseNumber: 'pattern', excerptText: 'Section B' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-group-1-a-raghuvamsam-cantoi-verses-1-to-10',
+                  title: 'Group 1 — (a) Raghuvamsam—CantoI, Verses 1 to 10',
+                  levelLabel: 'Group',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-group-1-a-raghuvamsam-cantoi-verses-1-to-10', clauseNumber: 'pattern', excerptText: 'Group 1 (a) Raghuvamsam—CantoI, Verses 1 to 10' },
+                  children: [
+{
+                      id: 'syl-section-iii-syllabi-for-th-group-1-a-raghuvam-1',
+                      title: 'Kumarasambhavam—Canto I, Verses1 to 10',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-group-1-a-raghuvam-1', clauseNumber: 'pattern', excerptText: '(b) Kumarasambhavam—Canto I, Verses1 to 10' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-group-1-a-raghuvam-2',
+                      title: 'Kiratarjuniyaue—Canto I, Verses 1 to 10',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-group-1-a-raghuvam-2', clauseNumber: 'pattern', excerptText: '(c) Kiratarjuniyaue—Canto I, Verses 1 to 10' }
+                    }
+                  ]
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-group-2-a-isavasyopanisad-verses-1-2-4-6-7-1',
+                  title: 'Group 2 — (a) Isavasyopanisad—Verses—1, 2, 4, 6, 7, 15 and 18',
+                  levelLabel: 'Group',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-group-2-a-isavasyopanisad-verses-1-2-4-6-7-1', clauseNumber: 'pattern', excerptText: 'Group 2 (a) Isavasyopanisad—Verses—1, 2, 4, 6, 7, 15 and 18' },
+                  children: [
+{
+                      id: 'syl-section-iii-syllabi-for-th-group-2-a-isavasyo-1',
+                      title: 'Bhagavatgita II Chapter Verses13 to 25',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-group-2-a-isavasyo-1', clauseNumber: 'pattern', excerptText: '(b) Bhagavatgita II Chapter Verses13 to 25' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-group-2-a-isavasyo-2',
+                      title: 'Sundarakandam of Valmiki Canto15, Verses 15 to 30 (Geeta Press Edition)',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-group-2-a-isavasyo-2', clauseNumber: 'pattern', excerptText: '(c) Sundarakandam of Valmiki Canto15, Verses 15 to 30 (Geeta Press Edition)' }
+                    }
+                  ]
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-group-3-a-meghadutam-verses-1-to-10',
+                  title: 'Group 3 — (a) Meghadutam—Verses 1 to 10',
+                  levelLabel: 'Group',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-group-3-a-meghadutam-verses-1-to-10', clauseNumber: 'pattern', excerptText: 'Group 3 (a) Meghadutam—Verses 1 to 10' },
+                  children: [
+{
+                      id: 'syl-section-iii-syllabi-for-th-group-3-a-meghadut-1',
+                      title: 'Nitisatakam—Verses 1 to 10 (Edited by D.D. Kosambi Bharatiya Vidya Bhavan Publication)',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-group-3-a-meghadut-1', clauseNumber: 'pattern', excerptText: 'Publication)' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-group-3-a-meghadut-2',
+                      title: 'Kadambari—Sukanasopadesa (only)',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-group-3-a-meghadut-2', clauseNumber: 'pattern', excerptText: '(c) Kadambari—Sukanasopadesa (only)' }
+                    }
+                  ]
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-group-4-a-svapnavasavadattam-act-vi',
+                  title: 'Group 4 — (a) Svapnavasavadattam Act VI',
+                  levelLabel: 'Group',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-group-4-a-svapnavasavadattam-act-vi', clauseNumber: 'pattern', excerptText: 'Group 4 (a) Svapnavasavadattam Act VI' },
+                  children: [
+{
+                      id: 'syl-section-iii-syllabi-for-th-group-4-a-svapnava-1',
+                      title: 'Abhijnansakuntalam Act IV Verses 15 to 30 (M.R. Kale Edition)',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-group-4-a-svapnava-1', clauseNumber: 'pattern', excerptText: '(b) Abhijnansakuntalam Act IV Verses 15 to 30 (M.R. Kale Edition)' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-group-4-a-svapnava-2',
+                      title: 'Uttararamacaritam Act I Verses 31 to 47 (M.R. Kale Edition). 113 SANTHALI',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-group-4-a-svapnava-2', clauseNumber: 'pattern', excerptText: 'SANTHALI' }
+                    }
+                  ]
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i',
+                  title: 'Paper I',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER I' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a',
+              title: 'Section A',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a', clauseNumber: 'pattern', excerptText: 'Section A' }
+            }
+          ]
+        },
+{
+          id: 'syl-section-iii-syllabi-for-th-part-i-history-of-santhali-language',
+          title: 'Part I — History of Santhali Language',
+          levelLabel: 'Part',
+          scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-I' }],
+          provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-i-history-of-santhali-language', clauseNumber: 'pattern', excerptText: 'Part I—History of Santhali Language' }
+        },
+{
+          id: 'syl-section-iii-syllabi-for-th-part-ii-history-of-santhali-literature',
+          title: 'Part II — History of Santhali Literature',
+          levelLabel: 'Part',
+          scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-II' }],
+          provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-ii-history-of-santhali-literature', clauseNumber: 'pattern', excerptText: 'Part II—History of Santhali Literature' },
+          children: [
+{
+              id: 'syl-section-iii-syllabi-for-th-part-ii-history-of-1',
+              title: 'Ancient Literature before 1854',
+              levelLabel: 'Topic',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-II' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-ii-history-of-1', clauseNumber: 'pattern', excerptText: '(a) Ancient Literature before 1854.' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-part-ii-history-of-2',
+              title: 'Missionary period Literature between 1855 to 1889 AD',
+              levelLabel: 'Topic',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-II' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-ii-history-of-2', clauseNumber: 'pattern', excerptText: '(b) Missionary period Literature between 1855 to 1889 AD.' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-part-ii-history-of-3',
+              title: 'Medieval period',
+              levelLabel: 'Topic',
+              note: 'Literature between 1890 to 1946 AD.',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-II' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-ii-history-of-3', clauseNumber: 'pattern', excerptText: '(c) Medieval period: Literature between 1890 to 1946 AD.' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-part-ii-history-of-4',
+              title: 'Modern period',
+              levelLabel: 'Topic',
+              note: 'Literature from 1947 AD to till date. 2. Writing tradition in History of Santhali literature.',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-II' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-ii-history-of-4', clauseNumber: 'pattern', excerptText: '2. Writing tradition in History of Santhali literature.' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b',
+              title: 'Section B',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-II' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b', clauseNumber: 'pattern', excerptText: 'Section-B' }
+            }
+          ]
+        },
+{
+          id: 'syl-section-iii-syllabi-for-th-part-i',
+          title: 'Part I',
+          levelLabel: 'Part',
+          scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-I' }],
+          provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-i', clauseNumber: 'pattern', excerptText: 'Part I' }
+        },
+{
+          id: 'syl-section-iii-syllabi-for-th-part-ii',
+          title: 'Part II',
+          levelLabel: 'Part',
+          scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-II' }],
+          provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-ii', clauseNumber: 'pattern', excerptText: 'Part II' },
+          children: [
+{
+              id: 'syl-section-iii-syllabi-for-th-part-ii-1',
+              title: 'Novels and prominent Novelists',
+              levelLabel: 'Topic',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-II' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-ii-1', clauseNumber: 'pattern', excerptText: '(i) Novels and prominent Novelists.' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-part-ii-2',
+              title: 'Stories and prominent story writers',
+              levelLabel: 'Topic',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-II' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-ii-2', clauseNumber: 'pattern', excerptText: '(ii) Stories and prominent story writers.' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-part-ii-3',
+              title: 'Drama and Prominent Dramatist',
+              levelLabel: 'Topic',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-II' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-ii-3', clauseNumber: 'pattern', excerptText: '(iii) Drama and Prominent Dramatist.' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-part-ii-4',
+              title: 'Criticism and prominent critics',
+              levelLabel: 'Topic',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-II' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-ii-4', clauseNumber: 'pattern', excerptText: '(iv) Criticism and prominent critics.' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-part-ii-5',
+              title: 'Essay, sketches, memoirs, travelogues and prominent writers. Santhali writers 114 Shyam Sundar Hembram, Pandit Raghunath Murmu, Barha Beshra, Sadhu Ramchand Mur',
+              levelLabel: 'Topic',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-II' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-ii-5', clauseNumber: 'pattern', excerptText: 'Shyam Charan Hembram, Damayanti Beshra, T.K. Rapaj, Boyha Biswanath Tudu.' }
+            }
+          ]
+        },
+{
+          id: 'syl-section-iii-syllabi-for-th-part-iii',
+          title: 'Part III',
+          levelLabel: 'Part',
+          scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-III' }],
+          provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-iii', clauseNumber: 'pattern', excerptText: 'Part III' },
+          children: [
+{
+              id: 'syl-section-iii-syllabi-for-th-paper-ii',
+              title: 'Paper II',
+              levelLabel: 'Paper',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-III' }, { kind: 'PAPER', label: 'Paper-II' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER II' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a',
+              title: 'Section A',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-III' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a', clauseNumber: 'pattern', excerptText: 'Section A' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-1',
+                  title: 'Kherwal Bonso Dhorom Puthi—Majhi Ramdas Tudu “Rasika”',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-III' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-1', clauseNumber: 'pattern', excerptText: '(a) Kherwal Bonso Dhorom Puthi—Majhi Ramdas Tudu “Rasika”.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-2',
+                  title: 'Mare Hapramko Reyak Katha—L.O. Scrafsrud',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-III' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-2', clauseNumber: 'pattern', excerptText: '(b) Mare Hapramko Reyak Katha—L.O. Scrafsrud.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-3',
+                  title: 'Jomsim Binti Lita—Mangal Chandra Turkulumang Soren',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-III' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-3', clauseNumber: 'pattern', excerptText: '(c) Jomsim Binti Lita—Mangal Chandra Turkulumang Soren.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-4',
+                  title: 'Marang Buru Binti—Kanailal Tudu. Poetry',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-III' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-4', clauseNumber: 'pattern', excerptText: 'Poetry' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-5',
+                  title: 'Karam Sereng—Nunku Soren',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-III' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-5', clauseNumber: 'pattern', excerptText: '(a) Karam Sereng—Nunku Soren.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-6',
+                  title: 'Devi Dasain Sereng—Manindra Hansda',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-III' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-6', clauseNumber: 'pattern', excerptText: '(b) Devi Dasain Sereng—Manindra Hansda.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-7',
+                  title: 'Horh Sereng—W.G. Archer',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-III' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-7', clauseNumber: 'pattern', excerptText: '(c) Horh Sereng—W.G. Archer.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-8',
+                  title: 'Baha Sereng—Balaram Tudu',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-III' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-8', clauseNumber: 'pattern', excerptText: '(d) Baha Sereng—Balaram Tudu.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-9',
+                  title: 'Dong Sereng—Padmashri Bhagwat Murmu ‘Thakur’',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-III' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-9', clauseNumber: 'pattern', excerptText: '(e) Dong Sereng—Padmashri Bhagwat Murmu ‘Thakur’.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-10',
+                  title: 'Hor Sereng—Raghunath Murmu',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-III' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-10', clauseNumber: 'pattern', excerptText: '(f) Hor Sereng—Raghunath Murmu.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-11',
+                  title: 'Soros Sereng—Babulal Murmu “Adivasi”',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-III' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-11', clauseNumber: 'pattern', excerptText: '(g) Soros Sereng—Babulal Murmu “Adivasi”.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-12',
+                  title: 'More Sin More Ndia—Rup Chand Hansda',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-III' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-12', clauseNumber: 'pattern', excerptText: '(h) More Sin More Ndia—Rup Chand Hansda.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-13',
+                  title: 'Judasi Madwa Latar—Tez Narayan Murmu',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-III' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-13', clauseNumber: 'pattern', excerptText: '(i) Judasi Madwa Latar—Tez Narayan Murmu.' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b',
+              title: 'Section B',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-III' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b', clauseNumber: 'pattern', excerptText: 'Section B' }
+            }
+          ]
+        },
+{
+          id: 'syl-section-iii-syllabi-for-th-part-i-poetry',
+          title: 'Part I — Poetry',
+          levelLabel: 'Part',
+          scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-I' }],
+          provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-i-poetry', clauseNumber: 'pattern', excerptText: 'Part I—Poetry' },
+          children: [
+{
+              id: 'syl-section-iii-syllabi-for-th-part-i-poetry-1',
+              title: 'Onorhen Baha Dhalwak—Paul Jujhar Soren',
+              levelLabel: 'Topic',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-I' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-i-poetry-1', clauseNumber: 'pattern', excerptText: '(a) Onorhen Baha Dhalwak—Paul Jujhar Soren.' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-part-i-poetry-2',
+              title: 'Asar Binti—Narayan Soren “Tore Sutam”',
+              levelLabel: 'Topic',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-I' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-i-poetry-2', clauseNumber: 'pattern', excerptText: '(b) Asar Binti—Narayan Soren “Tore Sutam”.' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-part-i-poetry-3',
+              title: 'Chand Mala—Gora Chand Tudu. 115',
+              levelLabel: 'Topic',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-I' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-i-poetry-3', clauseNumber: 'pattern', excerptText: '115' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-part-i-poetry-4',
+              title: 'Onto Baha Mala—Aditya Mitra “Santhali”',
+              levelLabel: 'Topic',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-I' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-i-poetry-4', clauseNumber: 'pattern', excerptText: '(d) Onto Baha Mala—Aditya Mitra “Santhali”.' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-part-i-poetry-5',
+              title: 'Tiryo Tetang—Hari Har Hansda',
+              levelLabel: 'Topic',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-I' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-i-poetry-5', clauseNumber: 'pattern', excerptText: '(e) Tiryo Tetang—Hari Har Hansda.' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-part-i-poetry-6',
+              title: 'Sisirjon Rar—Thakur Prasad Murmu',
+              levelLabel: 'Topic',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-I' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-i-poetry-6', clauseNumber: 'pattern', excerptText: '(f) Sisirjon Rar—Thakur Prasad Murmu.' }
+            }
+          ]
+        },
+{
+          id: 'syl-section-iii-syllabi-for-th-part-ii-novels',
+          title: 'Part II — Novels',
+          levelLabel: 'Part',
+          scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-II' }],
+          provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-ii-novels', clauseNumber: 'pattern', excerptText: 'Part II—Novels' },
+          children: [
+{
+              id: 'syl-section-iii-syllabi-for-th-part-ii-novels-1',
+              title: 'Harmawak Ato—R.Karstiars (Translator—R.K. Kisku Rapaz)',
+              levelLabel: 'Topic',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-II' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-ii-novels-1', clauseNumber: 'pattern', excerptText: '(a) Harmawak Ato—R.Karstiars (Translator—R.K. Kisku Rapaz).' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-part-ii-novels-2',
+              title: 'Manu Mati—Chandra Mohan Hansda',
+              levelLabel: 'Topic',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-II' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-ii-novels-2', clauseNumber: 'pattern', excerptText: '(b) Manu Mati—Chandra Mohan Hansda.' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-part-ii-novels-3',
+              title: 'Ato Orak—Doman Hansdak',
+              levelLabel: 'Topic',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-II' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-ii-novels-3', clauseNumber: 'pattern', excerptText: '(c) Ato Orak—Doman Hansdak.' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-part-ii-novels-4',
+              title: 'Ojoy Gada Dhiph re—Nathenial Murmu',
+              levelLabel: 'Topic',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-II' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-ii-novels-4', clauseNumber: 'pattern', excerptText: '(d) Ojoy Gada Dhiph re—Nathenial Murmu.' }
+            }
+          ]
+        },
+{
+          id: 'syl-section-iii-syllabi-for-th-part-iii-stories',
+          title: 'Part III — Stories',
+          levelLabel: 'Part',
+          scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-III' }],
+          provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-iii-stories', clauseNumber: 'pattern', excerptText: 'Part III—Stories' },
+          children: [
+{
+              id: 'syl-section-iii-syllabi-for-th-part-iii-stories-1',
+              title: 'Jiyon Gada—Rup Chand Hansda and Jadumani Beshra',
+              levelLabel: 'Topic',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-III' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-iii-stories-1', clauseNumber: 'pattern', excerptText: '(a) Jiyon Gada—Rup Chand Hansda and Jadumani Beshra.' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-part-iii-stories-2',
+              title: 'Mayajaal—Doman Sahu ‘Samir’ and Padmashri Bhagwat Murmu ‘Thakur’',
+              levelLabel: 'Topic',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-III' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-iii-stories-2', clauseNumber: 'pattern', excerptText: '(b) Mayajaal—Doman Sahu ‘Samir’ and Padmashri Bhagwat Murmu ‘Thakur’.' }
+            }
+          ]
+        },
+{
+          id: 'syl-section-iii-syllabi-for-th-part-iv-drama',
+          title: 'Part IV — Drama',
+          levelLabel: 'Part',
+          scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-IV' }],
+          provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-iv-drama', clauseNumber: 'pattern', excerptText: 'Part IV—Drama' },
+          children: [
+{
+              id: 'syl-section-iii-syllabi-for-th-part-iv-drama-1',
+              title: 'Kherwar Bir—Pandit Raghunath Murmu',
+              levelLabel: 'Topic',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-IV' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-iv-drama-1', clauseNumber: 'pattern', excerptText: '(a) Kherwar Bir—Pandit Raghunath Murmu.' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-part-iv-drama-2',
+              title: 'Juri Khatir—Dr. K.C. Tudu',
+              levelLabel: 'Topic',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-IV' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-iv-drama-2', clauseNumber: 'pattern', excerptText: '(b) Juri Khatir—Dr. K.C. Tudu.' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-part-iv-drama-3',
+              title: 'Birsa Bir—Ravi Lal Tudu',
+              levelLabel: 'Topic',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-IV' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-iv-drama-3', clauseNumber: 'pattern', excerptText: '(c) Birsa Bir—Ravi Lal Tudu.' }
+            }
+          ]
+        },
+{
+          id: 'syl-section-iii-syllabi-for-th-part-v-biography',
+          title: 'Part V — Biography',
+          levelLabel: 'Part',
+          scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-V' }],
+          provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-v-biography', clauseNumber: 'pattern', excerptText: 'Part V—Biography' },
+          children: [
+{
+              id: 'syl-section-iii-syllabi-for-th-paper-i',
+              title: 'Paper I',
+              levelLabel: 'Paper',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-V' }, { kind: 'PAPER', label: 'Paper-I' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER I' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a',
+              title: 'Section A',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-V' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a', clauseNumber: 'pattern', excerptText: 'Section A' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-1',
+                  title: 'Significant linguistic features of Sindhi language, including those pertaining to its phonology, morphology and syntax',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-V' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-1', clauseNumber: 'pattern', excerptText: 'morphology and syntax.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-2',
+                  title: 'Major dialects of the Sindhi language',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-V' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-2', clauseNumber: 'pattern', excerptText: '(c) Major dialects of the Sindhi language.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-3',
+                  title: 'Sindhi vocabulary—stages of its growth, including those in the pre-partition and post-partition periods',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-V' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-3', clauseNumber: 'pattern', excerptText: 'periods.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-4',
+                  title: 'Historical study of various Writing Systems (Scripts) of Sindhi',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-V' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-4', clauseNumber: 'pattern', excerptText: '(e) Historical study of various Writing Systems (Scripts) of Sindhi.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-5',
+                  title: 'Changesin the structure of Sindhi language in India, after partition, due to influence of other languages and social conditions',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-V' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-5', clauseNumber: 'pattern', excerptText: 'languages and social conditions.' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b',
+              title: 'Section B',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-V' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b', clauseNumber: 'pattern', excerptText: 'Section B' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-1',
+                  title: 'Early medieval literature upto 1350 A.D. including folk literature',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-V' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-1', clauseNumber: 'pattern', excerptText: '(a) Early medieval literature upto 1350 A.D. including folk literature.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-2',
+                  title: 'Late medieval period from 1350 A.D. to 1850 A.D',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-V' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-2', clauseNumber: 'pattern', excerptText: '(b) Late medieval period from 1350 A.D. to 1850 A.D.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-3',
+                  title: 'Renaissance period from 1850 A.D. to 1947 A.D',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-V' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-3', clauseNumber: 'pattern', excerptText: '(c) Renaissance period from 1850 A.D. to 1947 A.D.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-4',
+                  title: 'Modern period from 1947 and onwards. (Literary genres in Modern Sindhi literature andexperiments in poetry, drama, novel, short story, essay, literary criticism',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-V' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-4', clauseNumber: 'pattern', excerptText: 'essay, literary criticism, biography, autobiography, memoirs and travelogues.)' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii',
+                  title: 'Paper II',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-V' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER II' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a',
+              title: 'Section A',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-V' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a', clauseNumber: 'pattern', excerptText: 'Section A' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b',
+              title: 'Section B',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-V' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b', clauseNumber: 'pattern', excerptText: 'Section B' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i',
+                  title: 'Paper I',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-V' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER I' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a',
+              title: 'Section A',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-V' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a', clauseNumber: 'pattern', excerptText: 'Section A' }
+            }
+          ]
+        },
+{
+          id: 'syl-section-iii-syllabi-for-th-part-1-history-of-tamil-language',
+          title: 'Part 1 — History of Tamil Language',
+          levelLabel: 'Part',
+          scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-1' }],
+          provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-1-history-of-tamil-language', clauseNumber: 'pattern', excerptText: 'Part 1: History of Tamil Language' }
+        },
+{
+          id: 'syl-section-iii-syllabi-for-th-part-2-history-of-tamil-literature',
+          title: 'Part 2 — History of Tamil Literature',
+          levelLabel: 'Part',
+          scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-2' }],
+          provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-2-history-of-tamil-literature', clauseNumber: 'pattern', excerptText: 'Part 2 : History of Tamil Literature' }
+        },
+{
+          id: 'syl-section-iii-syllabi-for-th-part-3-devotional-literature-alwars-and-naya',
+          title: 'Part 3 — Devotional Literature (Alwars and Nayanamars)',
+          levelLabel: 'Part',
+          scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }],
+          provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-3-devotional-literature-alwars-and-naya', clauseNumber: 'pattern', excerptText: 'Part 3 : Devotional Literature (Alwars and Nayanamars)' },
+          children: [
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b',
+              title: 'Section B',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b', clauseNumber: 'pattern', excerptText: 'Section B' }
+            }
+          ]
+        },
+{
+          id: 'syl-section-iii-syllabi-for-th-part-1-recent-trends-in-tamil-studies',
+          title: 'Part 1 — Recent trends in Tamil Studies',
+          levelLabel: 'Part',
+          scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-1' }],
+          provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-1-recent-trends-in-tamil-studies', clauseNumber: 'pattern', excerptText: 'Part 1 : Recent trends in Tamil Studies' }
+        },
+{
+          id: 'syl-section-iii-syllabi-for-th-part-2-folk-literature-in-tamil',
+          title: 'Part 2 — Folk literature in Tamil',
+          levelLabel: 'Part',
+          scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-2' }],
+          provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-2-folk-literature-in-tamil', clauseNumber: 'pattern', excerptText: 'Part 2 : Folk literature in Tamil' }
+        },
+{
+          id: 'syl-section-iii-syllabi-for-th-part-3-cultural-heritage-of-the-tamils',
+          title: 'Part 3 — Cultural Heritage of the Tamils',
+          levelLabel: 'Part',
+          scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }],
+          provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-3-cultural-heritage-of-the-tamils', clauseNumber: 'pattern', excerptText: 'Part 3 : Cultural Heritage of the Tamils' },
+          children: [
+{
+              id: 'syl-section-iii-syllabi-for-th-paper-ii',
+              title: 'Paper II',
+              levelLabel: 'Paper',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'PAPER', label: 'Paper-II' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER II' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a',
+              title: 'Section A',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a', clauseNumber: 'pattern', excerptText: 'Section A' }
+            }
+          ]
+        },
+{
+          id: 'syl-section-iii-syllabi-for-th-part-1-ancient-literature',
+          title: 'Part 1 — Ancient Literature',
+          levelLabel: 'Part',
+          scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-1' }],
+          provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-1-ancient-literature', clauseNumber: 'pattern', excerptText: 'Part 1 : Ancient Literature' }
+        },
+{
+          id: 'syl-section-iii-syllabi-for-th-part-2-epic-literature',
+          title: 'Part 2 — Epic Literature',
+          levelLabel: 'Part',
+          scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-2' }],
+          provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-2-epic-literature', clauseNumber: 'pattern', excerptText: 'Part 2 : Epic Literature' }
+        },
+{
+          id: 'syl-section-iii-syllabi-for-th-part-3-devotional-literature',
+          title: 'Part 3 — Devotional Literature',
+          levelLabel: 'Part',
+          scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }],
+          provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-3-devotional-literature', clauseNumber: 'pattern', excerptText: 'Part 3 : Devotional Literature' },
+          children: [
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b',
+              title: 'Section B',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b', clauseNumber: 'pattern', excerptText: 'Section B' }
+            }
+          ]
+        },
+{
+          id: 'syl-section-iii-syllabi-for-th-part-1-poetry',
+          title: 'Part 1 — Poetry',
+          levelLabel: 'Part',
+          scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-1' }],
+          provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-1-poetry', clauseNumber: 'pattern', excerptText: 'Part 1 : Poetry' }
+        },
+{
+          id: 'syl-section-iii-syllabi-for-th-part-2-novel-short-story-and-drama',
+          title: 'Part 2 — Novel, Short Story and Drama',
+          levelLabel: 'Part',
+          scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-2' }],
+          provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-2-novel-short-story-and-drama', clauseNumber: 'pattern', excerptText: 'Part 2 : Novel, Short Story and Drama' }
+        },
+{
+          id: 'syl-section-iii-syllabi-for-th-part-3-folk-literature',
+          title: 'Part 3 — Folk Literature',
+          levelLabel: 'Part',
+          scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }],
+          provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-part-3-folk-literature', clauseNumber: 'pattern', excerptText: 'Part 3 : Folk Literature' },
+          children: [
+{
+              id: 'syl-section-iii-syllabi-for-th-paper-i',
+              title: 'Paper I',
+              levelLabel: 'Paper',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'PAPER', label: 'Paper-I' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER I' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a-language',
+              title: 'Section A — Language',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-language', clauseNumber: 'pattern', excerptText: 'Section A : Language' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-language-1',
+                  title: 'Linguistic and literary movements and their role in modernization of Telugu',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-language-1', clauseNumber: 'pattern', excerptText: '(a) Linguistic and literary movements and their role in modernization of Telugu.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-language-2',
+                  title: 'Role of media in modernization of Telugu (News-papers, Radio, TV etc.)',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-language-2', clauseNumber: 'pattern', excerptText: '(b) Role of media in modernization of Telugu (News-papers, Radio, TV etc.)' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-language-3',
+                  title: 'Problems of terminology and mechanisms in coining new terms in Telugu in various discourses including scientific and technical. 6. Dialects of Telugu—Regional a',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-language-3', clauseNumber: 'pattern', excerptText: 'Approaches to translation—Literary and other kinds of translation—Various uses of translation.' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b-literature',
+              title: 'Section B — Literature',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-literature', clauseNumber: 'pattern', excerptText: 'Section B : Literature' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii',
+                  title: 'Paper II',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER II' },
+                  children: [
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-1',
+                      title: 'Aesthetic approach—Rassa, Dhawani, Vakroti and Auchitya—Formal and Structural-Imagery and Symbolism',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-1', clauseNumber: 'pattern', excerptText: 'Symbolism.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-2',
+                      title: 'Sociological, Historical, Ideological, Psychological approaches',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-2', clauseNumber: 'pattern', excerptText: '(ii) Sociological, Historical, Ideological, Psychological approaches.' }
+                    }
+                  ]
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a',
+              title: 'Section A',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a', clauseNumber: 'pattern', excerptText: 'Section A' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b',
+              title: 'Section B',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b', clauseNumber: 'pattern', excerptText: 'Section B' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i',
+                  title: 'Paper I',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER I' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a',
+              title: 'Section A',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a', clauseNumber: 'pattern', excerptText: 'Section A' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-1',
+                  title: 'Development of Indo-Aryan',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-1', clauseNumber: 'pattern', excerptText: '(a) Development of Indo-Aryan' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-2',
+                  title: 'Old Indo-Aryan',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-2', clauseNumber: 'pattern', excerptText: '(i) Old Indo-Aryan' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-3',
+                  title: 'Middle Indo-Aryan',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-3', clauseNumber: 'pattern', excerptText: '(ii) Middle Indo-Aryan' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-4',
+                  title: 'New Indo-Aryan',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-4', clauseNumber: 'pattern', excerptText: '(iii) New Indo-Aryan.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-5',
+                  title: 'Western Hindi and its dialects Brij Bhasha Khadi Boli, Haryanavi, Kannauji, Bundeli—Theories about the origin of Urdu language',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-5', clauseNumber: 'pattern', excerptText: 'the origin of Urdu language.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-6',
+                  title: 'Dakhani Urdu—origin and development, its significant linguistic features',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-6', clauseNumber: 'pattern', excerptText: '(c) Dakhani Urdu—origin and development, its significant linguistic features.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-a-7',
+                  title: 'Social and Cultural roots of Urdu language',
+                  levelLabel: 'Topic',
+                  note: 'and its distinctive features. Script, Phonology, Morphology, Vocabulary.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-A' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a-7', clauseNumber: 'pattern', excerptText: 'Script, Phonology, Morphology, Vocabulary.' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b',
+              title: 'Section B',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b', clauseNumber: 'pattern', excerptText: 'Section B' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-1',
+                  title: 'Genres and their development',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-1', clauseNumber: 'pattern', excerptText: '(a) Genres and their development :' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-2',
+                  title: 'Poetry',
+                  levelLabel: 'Topic',
+                  note: 'Ghazal, Masnavi, Qasida, Marsia, Rubai Jadid Nazm.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-2', clauseNumber: 'pattern', excerptText: '(i) Poetry: Ghazal, Masnavi, Qasida, Marsia, Rubai Jadid Nazm.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-3',
+                  title: 'Prose',
+                  levelLabel: 'Topic',
+                  note: 'Novel, Short Story, Dastan, Drama, Inshaiya, Khutoot, Biography.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-3', clauseNumber: 'pattern', excerptText: '(ii) Prose : Novel, Short Story, Dastan, Drama, Inshaiya, Khutoot, Biography.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-4',
+                  title: 'Significant features of',
+                  levelLabel: 'Topic',
+                  note: '(i) Deccani, Delhi and Lucknow schools, (ii) Sir Syed movement, Romantic movement, Progressive movement, Modernism.',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-4', clauseNumber: 'pattern', excerptText: 'movement, Progressive movement, Modernism.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-5',
+                  title: 'Literary Criticism and its development with reference to Hali, Shibli, Kaleemuddin Ahmad, Ehtisham Hussain, Ale-Ahmad Suroor',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-5', clauseNumber: 'pattern', excerptText: 'Hussain, Ale-Ahmad Suroor.' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-section-b-6',
+                  title: 'Essay writing (covering literary and imaginativetopics)',
+                  levelLabel: 'Topic',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b-6', clauseNumber: 'pattern', excerptText: '(d) Essay writing (covering literary and imaginativetopics).' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii',
+                  title: 'Paper II',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER II' }
+                }
+              ]
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-a',
+              title: 'Section A',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-A' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-a', clauseNumber: 'pattern', excerptText: 'Section A' }
+            },
+{
+              id: 'syl-section-iii-syllabi-for-th-section-b',
+              title: 'Section B',
+              levelLabel: 'Section',
+              scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }],
+              provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-section-b', clauseNumber: 'pattern', excerptText: 'Section B' },
+              children: [
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i',
+                  title: 'Paper I',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER I' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii',
+                  title: 'Paper II',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER-II' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i',
+                  title: 'Paper I',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER I' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii',
+                  title: 'Paper II',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER II' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i',
+                  title: 'Paper I',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER I' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii',
+                  title: 'Paper II',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER II' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i',
+                  title: 'Paper I',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER I' },
+                  children: [
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-1',
+                      title: 'Meningococcus, Saimonella',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-1', clauseNumber: 'pattern', excerptText: '* Meningococcus, Saimonella' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-2',
+                      title: 'Shigella, Herpes, Dengue, Polio',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-2', clauseNumber: 'pattern', excerptText: '* Shigella, Herpes, Dengue, Polio' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-3',
+                      title: 'HIV/AIDS, Malaria, E. Histolytica, Giardia',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-3', clauseNumber: 'pattern', excerptText: '* HIV/AIDS, Malaria, E. Histolytica, Giardia' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-4',
+                      title: 'Candida, Cryptococcus, Aspergillus. 6. Pharmacology',
+                      levelLabel: 'Topic',
+                      note: 'Mechanism of action and side effects of the following drugs :',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-4', clauseNumber: 'pattern', excerptText: 'Mechanism of action and side effects of the following drugs :' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-5',
+                      title: 'Antipyretics and analgesics, Antibiotics',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-5', clauseNumber: 'pattern', excerptText: '* Antipyretics and analgesics, Antibiotics,' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-6',
+                      title: 'Antimalaria, Antikala-azar, Antidiabetics',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-6', clauseNumber: 'pattern', excerptText: '* Antimalaria, Antikala-azar, Antidiabetics,' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-7',
+                      title: 'Antihypertensive, Antidiuretics, General and cardiac vasodilators, Antiviral, Antiparasitic, Antifungal, Immunosuppressants',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-7', clauseNumber: 'pattern', excerptText: 'Immunosuppressants,' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-8',
+                      title: 'Anticancer. 7. Forensic Medicine and Toxicology Forensic examination of injuries and wounds; Examination of blood and seminal stains;Poisoning, sedative overdos',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-8', clauseNumber: 'pattern', excerptText: 'overdose, hanging, drowning, burns, DNA and finger print study.' }
+                    }
+                  ]
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii',
+                  title: 'Paper II',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER-II' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i',
+                  title: 'Paper I',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER-I' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii',
+                  title: 'Paper II',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER-II' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i',
+                  title: 'Paper I',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER-I' },
+                  children: [
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-1',
+                      title: 'Mechanics of Rigid Bodies',
+                      levelLabel: 'Topic',
+                      note: 'System of particles; Centre of mass, angular momentum, equations of motion; Conservation theorems for energy, momentum and angular momentum; Elastic and inelastic collisions; Rigid Body; Degrees of freedom, Euler’s theorem, angular velocity, angular momentum, moments of inertia, theorems of parallel and perpendicular axes, equation of motion for rotation; Molecular rotations (as rigid bodies); Di ',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-1', clauseNumber: 'pattern', excerptText: 'and perpendicular axes, equation of motion for rotation; Molecular rotations (as rigid bodies); Di and tri￾atomic molecules; Precessional motion; top, gyroscope.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-2',
+                      title: 'Mechanics of Continuous Media',
+                      levelLabel: 'Topic',
+                      note: 'Elasticity, Hooke’s law and elastic constants of isotropic solids and their inter-relation; Streamline (Laminar) flow, viscosity, Poiseuille’s equation, Bernoulli’s equation, Stokes’ law and applications.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-2', clauseNumber: 'pattern', excerptText: '(Laminar) flow, viscosity, Poiseuille’s equation, Bernoulli’s equation, Stokes’ law and applications.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-3',
+                      title: 'Special Relativity',
+                      levelLabel: 'Topic',
+                      note: 'Michelson-Morely experiment and its implications; Lorentz transformations length contraction, time dilation, addition of relativistic velocities, aberration and Doppler effect, mass-energy relation, simple applications to a decay process. Four dimensional momentum vector; Covariance of equations of physics. 2. Waves and Optics :',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-3', clauseNumber: 'pattern', excerptText: '2. Waves and Optics :' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-4',
+                      title: 'Waves',
+                      levelLabel: 'Topic',
+                      note: 'Simple harmonic motion, damped oscillation, forced oscillation and resonance; Beats; Stationary waves in a string; Pulses and wave packets; Phase and group velocities; Reflection and refraction from Huygens’ principle.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-4', clauseNumber: 'pattern', excerptText: 'Huygens’ principle.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-5',
+                      title: 'Geometrial Optics',
+                      levelLabel: 'Topic',
+                      note: 'Laws of reflection and refraction from Fermat’s principle; Matrix method in paraxial optic-thin lens formula, nodal planes, system of two thin lenses, chromatic and spherical aberrations.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-5', clauseNumber: 'pattern', excerptText: 'formula, nodal planes, system of two thin lenses, chromatic and spherical aberrations.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-6',
+                      title: 'Interference',
+                      levelLabel: 'Topic',
+                      note: 'Interference of light -Young’s experiment, Newton’s rings, interference by thin films, Michelson interferometer; Multiple beam interference and Fabry Perot interferometer.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-6', clauseNumber: 'pattern', excerptText: 'interferometer; Multiple beam interference and Fabry Perot interferometer.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-7',
+                      title: 'Diffraction',
+                      levelLabel: 'Topic',
+                      note: 'Fraunhofer diffraction - single slit, double slit, diffraction grating, resolving power; Diffraction by a circular aperture and the Airy pattern; Fresnel diffraction: half-period zones and zone plates, circular aperture.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-7', clauseNumber: 'pattern', excerptText: 'aperture.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-8',
+                      title: 'Polarisation and Modern Optics',
+                      levelLabel: 'Topic',
+                      note: 'Production and detection of linearly and circularly polarized light; Double refraction, quarter wave plate; Optical activity; Principles of fibre optics, attenuation; Pulse dispersion in step index and parabolic index fibres; Material dispersion, single mode fibers; Lasers-Einstein A and B coefficients. Ruby and He-Ne lasers. Characteristics of laser light-spatial and temporal coherence; Focusingo',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-8', clauseNumber: 'pattern', excerptText: '3. Electricity and Magnetism :' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-9',
+                      title: 'Electrostatics and Magnetostatics',
+                      levelLabel: 'Topic',
+                      note: 'Laplace and Poisson equations in electrostatics and their applications; Energy of a system of charges, multipole expansion of scalar potential; Method of images and its applications. Potentialand field due to a dipole, force and torqueon a dipole in an external field; Dielectrics, polarisation. Solutions to boundary￾value problems-conducting and dielectricspheres in a uniform electric field; Magne',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-9', clauseNumber: 'pattern', excerptText: 'magnetised sphere; Ferromagnetic materials, hysteresis, energy loss.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-10',
+                      title: 'Current Electricity',
+                      levelLabel: 'Topic',
+                      note: 'Kirchhoff\'s laws and their applications. Biot-Savart law, Ampere’s law, Faraday’s law, Lenz’ law. Self￾and mutual- inductances; Mean and rms values in AC circuits; DC and AC circuits with R, L and C components; Series and parallel resonance; Quality factor; Principle of transformer. 4. Electromagnetic Waves and Blackbody Radiation : Displacement current and Maxwell’s equations; Wave equations in v',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-10', clauseNumber: 'pattern', excerptText: '5. Thermal and Statistical Physics :' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-11',
+                      title: 'Thermodynamics',
+                      levelLabel: 'Topic',
+                      note: 'Laws of thermodynamics, reversible and irreversible processes, entropy; Isothermal, adiabatic, isobaric, isochoric processes and entropy changes; Otto and Diesel engines, Gibbs’ phase rule and chemical potential; Van der Waals equation of state of a real gas, critical constants; Maxwell-Boltzmann distribution of molecular velocities, transport phenomena, equipartition and virial theorems; Dulong-P',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-11', clauseNumber: 'pattern', excerptText: 'Adiabatic demagnetisation, Joule-Kelvin effect and liquefaction of gases.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-12',
+                      title: 'Statistical Physics',
+                      levelLabel: 'Topic',
+                      note: 'Macro and micro states, statistical distributions, Maxwell-Boltzmann, Bose-Einstein and Fermi-Dirac Distributions, applications to specific heat of gases and blackbody radiation; Concept of negative temperatures.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-12', clauseNumber: 'pattern', excerptText: 'temperatures.' }
+                    }
+                  ]
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii',
+                  title: 'Paper II',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER-II' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i',
+                  title: 'Paper I',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER- I' },
+                  children: [
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-1',
+                      title: 'Political Strategies of India’s Freedom Struggle',
+                      levelLabel: 'Topic',
+                      note: 'Constitutionalism to mass Satyagraha, Non￾cooperation, Civil Disobedience; Militant and Revolutionary Movements, Peasant and Workers Movements.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-1', clauseNumber: 'pattern', excerptText: '(a) Political Strategies of India’s Freedom Struggle : Constitutionalism to mass Satyagraha, Non￾cooperation, Civil Disobedience; Militant and Revolutionary Movements, Pe' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-2',
+                      title: 'Perspectives on Indian National Movement; Liberal, Socialist and Marxist; Radical Humanist and Dalit. 137 2. Making of the Indian Constitution : Legacies of the',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-2', clauseNumber: 'pattern', excerptText: 'Legislature and Supreme Court.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-3',
+                      title: 'Principal Organs of the State Government',
+                      levelLabel: 'Topic',
+                      note: 'Envisaged role and actual working of the Executive, Legislature and High Courts. 5. Grassroots Democracy : Panchayati Raj and Municipal Government; Significance of 73rd and 74th Amendments; Grassroot movements. 6. Statutory Institutions/Commissions : Election Commission, Comptroller and Auditor General, Finance Commission, Union Public Service Commission, National Commission for Scheduled Castes, ',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-3', clauseNumber: 'pattern', excerptText: 'movements.' }
+                    }
+                  ]
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii',
+                  title: 'Paper II',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER-II' },
+                  children: [
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-1',
+                      title: 'Rise of super powers; Strategic and ideological Bipolarity, arms race and cold war; Nuclear threat',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-1', clauseNumber: 'pattern', excerptText: '(a) Rise of super powers; Strategic and ideological Bipolarity, arms race and cold war; Nuclear threat;' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-2',
+                      title: 'Non-aligned Movement',
+                      levelLabel: 'Topic',
+                      note: 'Aims and achievements.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-2', clauseNumber: 'pattern', excerptText: '(b) Non-aligned Movement : Aims and achievements.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-3',
+                      title: 'Collapse of the Soviet Union; Unipolarity and American hegemony; Relevance of non-alignment in the contemporary world. 8. Evolution of the International Economi',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-3', clauseNumber: 'pattern', excerptText: '3. India and South Asia :' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-4',
+                      title: 'Regional Co-operation',
+                      levelLabel: 'Topic',
+                      note: 'SAARC-past performance and future prospects.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-4', clauseNumber: 'pattern', excerptText: '(a) Regional Co-operation : SAARC-past performance and future prospects.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-5',
+                      title: 'South Asia as a Free Trade Area',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-5', clauseNumber: 'pattern', excerptText: '(b) South Asia as a Free Trade Area.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-6',
+                      title: 'India’s “Look East” policy',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-6', clauseNumber: 'pattern', excerptText: '(c) India’s “Look East” policy.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-7',
+                      title: 'Impediments to regional co-operation',
+                      levelLabel: 'Topic',
+                      note: 'River water disputes; illegal cross border migration; Ethnic conflicts and insurgencies; Border disputes. 4. India and the Global South : Relations with Africa and Latin America; Leadership role in the demand for NIEO and WTO negotiations. 5. India and the Global Centres of Power : USA, EU, Japan, China and Russia. 6. India and the UN System: Role in UN Peace-keeping; Demand for Permanent Seat in ',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-7', clauseNumber: 'pattern', excerptText: 'PSYCHOLOGY' }
+                    }
+                  ]
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i',
+                  title: 'Paper I',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER-I' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii',
+                  title: 'Paper II',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER-II' },
+                  children: [
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-1',
+                      title: 'Military Psychology Devising psycological tests for defence personnel for use in selection, Training, counseling; training psychologists to work , with defence ',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-1', clauseNumber: 'pattern', excerptText: 'psychologists to work , with defence personnel in promoting positive health; Human engineering in defence.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-2',
+                      title: 'Sports Psychology Psychological interventions in improving performance of athletes and sports. Persons participating in Individual and Team Games',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-2', clauseNumber: 'pattern', excerptText: 'Individual and Team Games.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-3',
+                      title: 'Media influences on pro and anti-social behaviour',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-3', clauseNumber: 'pattern', excerptText: '(c) Media influences on pro and anti-social behaviour.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-4',
+                      title: 'Psychology of Terrorism. 14. Psychology of Gender',
+                      levelLabel: 'Topic',
+                      note: '142 Issues of discrimination, Management of diversity; Glass ceiling effect, Self-fulfilling prophesy, Women and Indian society. PUBLIC ADMINISTRATION',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-4', clauseNumber: 'pattern', excerptText: 'PUBLIC ADMINISTRATION' }
+                    }
+                  ]
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i',
+                  title: 'Paper I',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER-I' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii',
+                  title: 'Paper II',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER-II' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i',
+                  title: 'Paper I',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER– I' },
+                  children: [
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-1',
+                      title: 'Modernity and social changes in Europe and emergence of Sociology',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-1', clauseNumber: 'pattern', excerptText: '(a) Modernity and social changes in Europe and emergence of Sociology.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-2',
+                      title: 'Scope of the subject and comparison with other social sciences',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-2', clauseNumber: 'pattern', excerptText: '(b) Scope of the subject and comparison with other social sciences.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-3',
+                      title: 'Sociology and common sense. 2. Sociology as Science',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-3', clauseNumber: 'pattern', excerptText: '2. Sociology as Science:' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-4',
+                      title: 'Science, scientific method and critique',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-4', clauseNumber: 'pattern', excerptText: '(a) Science, scientific method and critique.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-5',
+                      title: 'Major theoretical strands of research methodology',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-5', clauseNumber: 'pattern', excerptText: '(b) Major theoretical strands of research methodology.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-6',
+                      title: 'Positivism and its critique. 145',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-6', clauseNumber: 'pattern', excerptText: '145' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-7',
+                      title: 'Fact value and objectivity. ( e) Non-positivist methodologies. 3. Research Methods and Analysis',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-7', clauseNumber: 'pattern', excerptText: '3. Research Methods and Analysis:' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-8',
+                      title: 'Qualitative and quantitative methods',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-8', clauseNumber: 'pattern', excerptText: '(a) Qualitative and quantitative methods.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-9',
+                      title: 'Techniques of data collection. (c ) Variables, sampling, hypothesis, reliability and validity. 4. Sociological Thinkers',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-9', clauseNumber: 'pattern', excerptText: '4. Sociological Thinkers:' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-10',
+                      title: 'Karl Marx',
+                      levelLabel: 'Topic',
+                      note: 'Historical materialism, mode of production, alienation, class struggle.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-10', clauseNumber: 'pattern', excerptText: '(a) Karl Marx - Historical materialism, mode of production, alienation, class struggle.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-11',
+                      title: 'Emile Durkhteim',
+                      levelLabel: 'Topic',
+                      note: 'Division of labour, social fact, suicide, religion and society.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-11', clauseNumber: 'pattern', excerptText: '(b) Emile Durkhteim - Division of labour, social fact, suicide, religion and society.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-12',
+                      title: 'Max Weber',
+                      levelLabel: 'Topic',
+                      note: 'Social action, ideal types, authority, bureaucracy, protestant ethic and the spirit of capitalism.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-12', clauseNumber: 'pattern', excerptText: 'capitalism.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-13',
+                      title: 'Talcolt Parsons',
+                      levelLabel: 'Topic',
+                      note: 'Social system, pattern variables.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-13', clauseNumber: 'pattern', excerptText: '(d) Talcolt Parsons - Social system, pattern variables.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-14',
+                      title: 'Robert K. Merton',
+                      levelLabel: 'Topic',
+                      note: 'Latent and manifest functions, conformity and deviance, reference groups.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-14', clauseNumber: 'pattern', excerptText: '(e) Robert K. Merton - Latent and manifest functions, conformity and deviance, reference groups.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-15',
+                      title: 'Mead',
+                      levelLabel: 'Topic',
+                      note: 'Self and identity. 5. Stratification and Mobility :',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-15', clauseNumber: 'pattern', excerptText: '5. Stratification and Mobility :' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-16',
+                      title: 'Concepts',
+                      levelLabel: 'Topic',
+                      note: 'equality, inequality, hierarchy, exclusion, poverty and deprivation.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-16', clauseNumber: 'pattern', excerptText: '(a) Concepts - equality, inequality, hierarchy, exclusion, poverty and deprivation.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-17',
+                      title: 'Theories of social stratification',
+                      levelLabel: 'Topic',
+                      note: 'Structural func tionalist theory, Marxist theory, Weberian theory.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-17', clauseNumber: 'pattern', excerptText: '(b) Theories of social stratification - Structural func tionalist theory, Marxist theory, Weberian theory.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-18',
+                      title: 'Dimensions',
+                      levelLabel: 'Topic',
+                      note: 'Social stratification of class, status groups, gender, ethnicity and race.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-18', clauseNumber: 'pattern', excerptText: '(c) Dimensions - Social stratification of class, status groups, gender, ethnicity and race.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-19',
+                      title: 'Social mobility',
+                      levelLabel: 'Topic',
+                      note: 'open and closed systems, types of mobility, sources and causes of mobility. 6. Works and Economic Life :',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-19', clauseNumber: 'pattern', excerptText: '6. Works and Economic Life :' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-20',
+                      title: 'Social organization of work in different types of society',
+                      levelLabel: 'Topic',
+                      note: 'slave society, feudal society, industrial capitalist society.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-20', clauseNumber: 'pattern', excerptText: 'capitalist society.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-21',
+                      title: 'Formal and informal organization of work',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-21', clauseNumber: 'pattern', excerptText: '(b) Formal and informal organization of work.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-22',
+                      title: 'Labour and society. 7. Politics and Society',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-22', clauseNumber: 'pattern', excerptText: '7. Politics and Society:' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-23',
+                      title: 'Sociological theories of power',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-23', clauseNumber: 'pattern', excerptText: '(a) Sociological theories of power.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-24',
+                      title: 'Power elite, bureaucracy, pressure groups and political parties',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-24', clauseNumber: 'pattern', excerptText: '(b) Power elite, bureaucracy, pressure groups and political parties.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-25',
+                      title: 'Nation, state, citizenship, democracy, civil society, ideology',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-25', clauseNumber: 'pattern', excerptText: '(c) Nation, state, citizenship, democracy, civil society, ideology.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-26',
+                      title: 'Protest, agitation, social movements, collective action, revolution. 8. Religion and Society',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-26', clauseNumber: 'pattern', excerptText: '8. Religion and Society :' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-27',
+                      title: 'Sociological theories of religion',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-27', clauseNumber: 'pattern', excerptText: '(a) Sociological theories of religion.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-28',
+                      title: 'Types of religious practices',
+                      levelLabel: 'Topic',
+                      note: 'animism, monism, pluralism, sects, cults.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-28', clauseNumber: 'pattern', excerptText: '(b) Types of religious practices: animism, monism, pluralism, sects, cults.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-29',
+                      title: 'Religion in modern society',
+                      levelLabel: 'Topic',
+                      note: 'religion and science, secularization, religious revivalism, fundamen talism. 9. Systems of Kinship:',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-29', clauseNumber: 'pattern', excerptText: '9. Systems of Kinship:' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-30',
+                      title: 'Family, household, marriage. 146',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-30', clauseNumber: 'pattern', excerptText: '146' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-31',
+                      title: 'Types and forms of family',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-31', clauseNumber: 'pattern', excerptText: '(b) Types and forms of family.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-32',
+                      title: 'Lineage and descent',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-32', clauseNumber: 'pattern', excerptText: '(c) Lineage and descent.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-33',
+                      title: 'Patriarchy and sexual division of labour',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-33', clauseNumber: 'pattern', excerptText: '(d) Patriarchy and sexual division of labour.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-34',
+                      title: 'Contem porary trends. 10. Social Change in Modern Society',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-34', clauseNumber: 'pattern', excerptText: '10. Social Change in Modern Society :' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-35',
+                      title: 'Sociological theories of social change',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-35', clauseNumber: 'pattern', excerptText: '(a) Sociological theories of social change.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-36',
+                      title: 'Development and dependency',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-36', clauseNumber: 'pattern', excerptText: '(b) Development and dependency.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-37',
+                      title: 'Agents of social change',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-37', clauseNumber: 'pattern', excerptText: '(c) Agents of social change.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-38',
+                      title: 'Education and social change',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-38', clauseNumber: 'pattern', excerptText: '(d) Education and social change.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-39',
+                      title: 'Science, technology and social change',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-39', clauseNumber: 'pattern', excerptText: '(e) Science, technology and social change.' }
+                    }
+                  ]
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii',
+                  title: 'Paper II',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER–II' },
+                  children: [
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-1',
+                      title: 'Perspectives on the Study of Indian Society',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-1', clauseNumber: 'pattern', excerptText: '(i) Perspectives on the Study of Indian Society :' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-2',
+                      title: 'Indology (G.S. Ghure)',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-2', clauseNumber: 'pattern', excerptText: '(a) Indology (G.S. Ghure).' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-3',
+                      title: 'Structural functionalism (M. N. Srinivas)',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-3', clauseNumber: 'pattern', excerptText: '(b) Structural functionalism (M. N. Srinivas).' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-4',
+                      title: 'Marxist sociology (A. R. Desai)',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-4', clauseNumber: 'pattern', excerptText: '(c) Marxist sociology (A. R. Desai).' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-5',
+                      title: 'Impact of colonial rule on Indian society',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-5', clauseNumber: 'pattern', excerptText: '(ii) Impact of colonial rule on Indian society :' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-6',
+                      title: 'Social background of Indian nationalism',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-6', clauseNumber: 'pattern', excerptText: '(a) Social background of Indian nationalism.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-7',
+                      title: 'Modernization of Indian tradition',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-7', clauseNumber: 'pattern', excerptText: '(b) Modernization of Indian tradition.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-8',
+                      title: 'Protests and movements during the colonial period',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-8', clauseNumber: 'pattern', excerptText: '(c) Protests and movements during the colonial period.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-9',
+                      title: 'Social reforms. B. Social Structure',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-9', clauseNumber: 'pattern', excerptText: 'B. Social Structure:' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-10',
+                      title: 'Rural and Agrarian Social Structure',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-10', clauseNumber: 'pattern', excerptText: '(i) Rural and Agrarian Social Structure:' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-11',
+                      title: 'The idea of Indian village and village studies',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-11', clauseNumber: 'pattern', excerptText: '(a) The idea of Indian village and village studies.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-12',
+                      title: 'Agrarian social structure',
+                      levelLabel: 'Topic',
+                      note: 'evolution of land tenure system, land reforms.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-12', clauseNumber: 'pattern', excerptText: 'evolution of land tenure system, land reforms.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-13',
+                      title: 'Caste System',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-13', clauseNumber: 'pattern', excerptText: '(ii) Caste System:' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-14',
+                      title: 'Perspectives on the study of caste systems',
+                      levelLabel: 'Topic',
+                      note: 'G. S. Ghurye, M. N. Srinivas, Louis Dumont, Andre Beteille.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-14', clauseNumber: 'pattern', excerptText: 'Beteille.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-15',
+                      title: 'Features of caste system',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-15', clauseNumber: 'pattern', excerptText: '(b) Features of caste system.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-16',
+                      title: 'Untouchability-forms and perspectives',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-16', clauseNumber: 'pattern', excerptText: '(c) Untouchability-forms and perspectives' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-17',
+                      title: 'Tribal Communities in India',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-17', clauseNumber: 'pattern', excerptText: '(iii) Tribal Communities in India:' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-18',
+                      title: 'Definitional problems',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-18', clauseNumber: 'pattern', excerptText: '(a) Definitional problems.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-19',
+                      title: 'Geographical spread',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-19', clauseNumber: 'pattern', excerptText: '(b) Geographical spread.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-20',
+                      title: 'Colonial policies and tribes. 147',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-20', clauseNumber: 'pattern', excerptText: '147' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-21',
+                      title: 'Issues of integration and autonomy',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-21', clauseNumber: 'pattern', excerptText: '(d) Issues of integration and autonomy.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-22',
+                      title: 'Social Classes in India',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-22', clauseNumber: 'pattern', excerptText: '(iv) Social Classes in India:' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-23',
+                      title: 'Agrarian class structure',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-23', clauseNumber: 'pattern', excerptText: '(a) Agrarian class structure.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-24',
+                      title: 'Industrial class structure',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-24', clauseNumber: 'pattern', excerptText: '(b) Industrial class structure.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-25',
+                      title: 'Middle classes in India',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-25', clauseNumber: 'pattern', excerptText: '(c) Middle classes in India.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-26',
+                      title: 'Systems of Kinship in India',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-26', clauseNumber: 'pattern', excerptText: '(v) Systems of Kinship in India:' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-27',
+                      title: 'Lineage and descent in India',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-27', clauseNumber: 'pattern', excerptText: '(a) Lineage and descent in India.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-28',
+                      title: 'Types of kinship systems',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-28', clauseNumber: 'pattern', excerptText: '(b) Types of kinship systems.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-29',
+                      title: 'Family and marriage in India',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-29', clauseNumber: 'pattern', excerptText: '(c) Family and marriage in India.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-30',
+                      title: 'Household dimensions of the family',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-30', clauseNumber: 'pattern', excerptText: '(d) Household dimensions of the family.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-31',
+                      title: 'Patriarchy, entitlements and sexual division oflabour',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-31', clauseNumber: 'pattern', excerptText: '(e) Patriarchy, entitlements and sexual division oflabour.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-32',
+                      title: 'Religion and Society',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-32', clauseNumber: 'pattern', excerptText: '(vi) Religion and Society :' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-33',
+                      title: 'Religious communities in India',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-33', clauseNumber: 'pattern', excerptText: '(a) Religious communities in India.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-34',
+                      title: 'Problems of religious minorities. C. Social Changes in India',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-34', clauseNumber: 'pattern', excerptText: 'C. Social Changes in India:' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-35',
+                      title: 'Visions of Social Change in India',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-35', clauseNumber: 'pattern', excerptText: '(i) Visions of Social Change in India:' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-36',
+                      title: 'Idea of development planning and mixed economy',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-36', clauseNumber: 'pattern', excerptText: '(a) Idea of development planning and mixed economy.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-37',
+                      title: 'Constitution, law and social change',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-37', clauseNumber: 'pattern', excerptText: '(b) Constitution, law and social change.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-38',
+                      title: 'Education and social change',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-38', clauseNumber: 'pattern', excerptText: '(c) Education and social change.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-39',
+                      title: 'Rural and Agrarian Transformation in India',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-39', clauseNumber: 'pattern', excerptText: '(ii) Rural and Agrarian Transformation in India:' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-40',
+                      title: 'Programmes of rural development, Community Development Programme, cooperatives, poverty alleviation schemes',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-40', clauseNumber: 'pattern', excerptText: 'alleviation schemes.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-41',
+                      title: 'Green revolution and social change',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-41', clauseNumber: 'pattern', excerptText: '(b) Green revolution and social change.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-42',
+                      title: 'Changing modes of production in Indian agriculture',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-42', clauseNumber: 'pattern', excerptText: '(c) Changing modes of production in Indian agriculture.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-43',
+                      title: 'Problems of rural labour, bondage, migration',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-43', clauseNumber: 'pattern', excerptText: '(d) Problems of rural labour, bondage, migration.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-44',
+                      title: 'Industrialization and Urbanisation in India',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-44', clauseNumber: 'pattern', excerptText: '(iii) Industrialization and Urbanisation in India:' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-45',
+                      title: 'Evolution of modern industry in India',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-45', clauseNumber: 'pattern', excerptText: '(a) Evolution of modern industry in India.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-46',
+                      title: 'Growth of urban settlements in India',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-46', clauseNumber: 'pattern', excerptText: '(b) Growth of urban settlements in India.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-47',
+                      title: 'Working class',
+                      levelLabel: 'Topic',
+                      note: 'structure, growth, class mobilization.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-47', clauseNumber: 'pattern', excerptText: '(c) Working class: structure, growth, class mobilization.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-48',
+                      title: 'Informal sector, child labour',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-48', clauseNumber: 'pattern', excerptText: '(d) Informal sector, child labour.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-49',
+                      title: 'Slums and deprivation in urban areas',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-49', clauseNumber: 'pattern', excerptText: '(e) Slums and deprivation in urban areas.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-50',
+                      title: 'Politics and Society',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-50', clauseNumber: 'pattern', excerptText: '(iv) Politics and Society :' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-51',
+                      title: 'Nation, democracy and citizenship',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-51', clauseNumber: 'pattern', excerptText: '(a) Nation, democracy and citizenship.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-52',
+                      title: 'Political parties, pressure groups, social and political elite',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-52', clauseNumber: 'pattern', excerptText: '(b) Political parties, pressure groups, social and political elite.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-53',
+                      title: 'Regionalism and decentralization of power. 148',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-53', clauseNumber: 'pattern', excerptText: '148' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-54',
+                      title: 'Secularization',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-54', clauseNumber: 'pattern', excerptText: '(d) Secularization.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-55',
+                      title: 'Social Movements in Modern India',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-55', clauseNumber: 'pattern', excerptText: '(v) Social Movements in Modern India :' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-56',
+                      title: 'Peasants and farmers movements',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-56', clauseNumber: 'pattern', excerptText: '(a) Peasants and farmers movements.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-57',
+                      title: 'Women’s movement',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-57', clauseNumber: 'pattern', excerptText: '(b) Women’s movement.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-58',
+                      title: 'Backward classes & Dalit movements',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-58', clauseNumber: 'pattern', excerptText: '(c) Backward classes & Dalit movements.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-59',
+                      title: 'Environmental movements',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-59', clauseNumber: 'pattern', excerptText: '(d) Environmental movements.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-60',
+                      title: 'Ethnicity and Identity movements',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-60', clauseNumber: 'pattern', excerptText: '(e) Ethnicity and Identity movements.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-61',
+                      title: 'Population Dynamics',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-61', clauseNumber: 'pattern', excerptText: '(vi) Population Dynamics :' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-62',
+                      title: 'Population size, growth, composition and distribution',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-62', clauseNumber: 'pattern', excerptText: '(a) Population size, growth, composition and distribution.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-63',
+                      title: 'Components of population growth',
+                      levelLabel: 'Topic',
+                      note: 'birth, death, migration.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-63', clauseNumber: 'pattern', excerptText: '(b) Components of population growth: birth, death, migration.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-64',
+                      title: 'Population Policy and family planning',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-64', clauseNumber: 'pattern', excerptText: '(c) Population Policy and family planning.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-65',
+                      title: 'Emerging issues',
+                      levelLabel: 'Topic',
+                      note: 'ageing, sex ratios, child and infant mortality, reproductive health.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-65', clauseNumber: 'pattern', excerptText: '(d) Emerging issues: ageing, sex ratios, child and infant mortality, reproductive health.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-66',
+                      title: 'Challenges of Social Transformation',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-66', clauseNumber: 'pattern', excerptText: '(vii) Challenges of Social Transformation :' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-67',
+                      title: 'Crisis of development',
+                      levelLabel: 'Topic',
+                      note: 'displacement, environmental problems and sustainability.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-67', clauseNumber: 'pattern', excerptText: '(a) Crisis of development : displacement, environmental problems and sustainability.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-68',
+                      title: 'Poverty, deprivation and inequalities',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-68', clauseNumber: 'pattern', excerptText: '(b) Poverty, deprivation and inequalities.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-69',
+                      title: 'Violence against women',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-69', clauseNumber: 'pattern', excerptText: '(c) Violence against women.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-70',
+                      title: 'Caste conflicts',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-70', clauseNumber: 'pattern', excerptText: '(d) Caste conflicts.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-71',
+                      title: 'Ethnic conflicts, communalism, religious revivalism',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-71', clauseNumber: 'pattern', excerptText: '(e) Ethnic conflicts, communalism, religious revivalism.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-72',
+                      title: 'Illiteracy and disparities in education. STATISTICS',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-72', clauseNumber: 'pattern', excerptText: 'STATISTICS' }
+                    }
+                  ]
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i',
+                  title: 'Paper I',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER–I' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii',
+                  title: 'Paper II',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER II' }
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-i',
+                  title: 'Paper I',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i', clauseNumber: 'pattern', excerptText: 'PAPER–I' },
+                  children: [
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-1',
+                      title: 'Classification and relationship of various phyla up to subclasses',
+                      levelLabel: 'Topic',
+                      note: 'Acoelomate and Coelomate, 151 Protostomes and Deuterostomes, Bilateria and Radiata; Status of Protista, Parazoa, Onychophora and Hemichordata; Symmetry.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-1', clauseNumber: 'pattern', excerptText: 'Hemichordata; Symmetry.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-2',
+                      title: 'Protozoa',
+                      levelLabel: 'Topic',
+                      note: 'Locomotion, nutrition, reproduction, sex; General features and life history of Paramaecium, Monocystis. Plasmodium and Leishmania.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-2', clauseNumber: 'pattern', excerptText: 'Paramaecium, Monocystis. Plasmodium and Leishmania.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-3',
+                      title: 'Porifera',
+                      levelLabel: 'Topic',
+                      note: 'Skeleton, canal system and reproduction.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-3', clauseNumber: 'pattern', excerptText: '(c) Porifera: Skeleton, canal system and reproduction.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-4',
+                      title: 'Cnidaria',
+                      levelLabel: 'Topic',
+                      note: 'Polymorphism, defensive structures and their mechanism; coral reefs and their formation; metagenesis; general features and life history of Obelia and Aurelia.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-4', clauseNumber: 'pattern', excerptText: 'formation; metagenesis; general features and life history of Obelia and Aurelia.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-5',
+                      title: 'Platyhelminthes',
+                      levelLabel: 'Topic',
+                      note: 'Parasitic adaptation; general features and life history of Fasciola and Taenia and their-Pathogenic symptoms.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-5', clauseNumber: 'pattern', excerptText: 'their-Pathogenic symptoms.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-6',
+                      title: 'Nemathelminthes',
+                      levelLabel: 'Topic',
+                      note: 'General features, life history, parasitic adaptation of Ascaris and Wuchereria.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-6', clauseNumber: 'pattern', excerptText: '(f) Nemathelminthes: General features, life history, parasitic adaptation of Ascaris and Wuchereria.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-7',
+                      title: 'Annelida',
+                      levelLabel: 'Topic',
+                      note: 'Coelom and metamerism; modes of life in polychaetes; general features and life history of Nereis, earthworm and leach.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-7', clauseNumber: 'pattern', excerptText: 'of Nereis, earthworm and leach.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-8',
+                      title: 'Arthropoda',
+                      levelLabel: 'Topic',
+                      note: 'Larval forms and parasitism in Crustacea; vision and respiration in arthropods (Prawn, cockroach and scorpion); modification of mouth, parts in insects (cockroach, mosquito, housefly, honey bee and butterfly), metamorphosis in insect and its hormonal regulation, socialbehaviour ofApis and termites.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-8', clauseNumber: 'pattern', excerptText: 'and butterfly), metamorphosis in insect and its hormonal regulation, socialbehaviour ofApis and termites.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-9',
+                      title: 'Molluscs',
+                      levelLabel: 'Topic',
+                      note: 'Feeding, respiration, locomotion, general features and life history of Lamellidens, Pila and Sepia. Torsion and detorsion in gastropods.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-9', clauseNumber: 'pattern', excerptText: 'and Sepia. Torsion and detorsion in gastropods.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-10',
+                      title: 'Echinodermata',
+                      levelLabel: 'Topic',
+                      note: 'Feeding, respiration, locomotion, larval forms, general features and life history of Asterias.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-10', clauseNumber: 'pattern', excerptText: 'Asterias.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-11',
+                      title: 'Protochordata',
+                      levelLabel: 'Topic',
+                      note: 'Origin of chordates; general features and life history of Branchiostoma and Herdmania.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-11', clauseNumber: 'pattern', excerptText: 'Herdmania.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-12',
+                      title: 'Pisces',
+                      levelLabel: 'Topic',
+                      note: 'Respiration, locomotion and migration.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-12', clauseNumber: 'pattern', excerptText: '(l) Pisces: Respiration, locomotion and migration.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-13',
+                      title: 'Amphibia',
+                      levelLabel: 'Topic',
+                      note: 'Origin of tetrapods, parental care, paedomorphosis.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-13', clauseNumber: 'pattern', excerptText: '(m) Amphibia: Origin of tetrapods, parental care, paedomorphosis.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-14',
+                      title: 'Reptilia; Origin of reptiles, skull types, status of Sphenodon and crocodiles',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-14', clauseNumber: 'pattern', excerptText: '(n) Reptilia; Origin of reptiles, skull types, status of Sphenodon and crocodiles.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-15',
+                      title: 'Aves',
+                      levelLabel: 'Topic',
+                      note: 'Origin of birds, flight adaptation, migration.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-15', clauseNumber: 'pattern', excerptText: '(o) Aves: Origin of birds, flight adaptation, migration.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-16',
+                      title: 'Mammalia',
+                      levelLabel: 'Topic',
+                      note: 'Origin of mammals, dentition, general features of egg laying mammals, pouched￾mammals, aquatic mammals and primates, endocrine glands (pituitary, thyroid, parathyroid, adrenal, pancreas, gonads) and their interrelationships.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-16', clauseNumber: 'pattern', excerptText: 'pancreas, gonads) and their interrelationships.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-17',
+                      title: 'Comparative functional anatomy of various systems of vertebrates. (integument and its derivatives, endoskeleton, locomotory organs, digestive system,. respirato',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-17', clauseNumber: 'pattern', excerptText: '2. Ecology :' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-18',
+                      title: 'Biosphere',
+                      levelLabel: 'Topic',
+                      note: 'concept of biosphere; biomes, Biogeochemical cycles, Human induced changes in atmosphere including green house effect, ecological succession, biomes and ecotones, community ecology.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-18', clauseNumber: 'pattern', excerptText: 'including green house effect, ecological succession, biomes and ecotones, community ecology.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-19',
+                      title: 'Concept of ecosystem; structure and function of ecosystem, types of ecosystem, ecological succession, ecological adaptation',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-19', clauseNumber: 'pattern', excerptText: 'succession, ecological adaptation.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-20',
+                      title: 'Population; characteristics, population dynamics, population stabilization',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-20', clauseNumber: 'pattern', excerptText: '(c) Population; characteristics, population dynamics, population stabilization.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-21',
+                      title: 'Biodiversity and diversity conservation of natural resources. 152',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-21', clauseNumber: 'pattern', excerptText: '152' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-22',
+                      title: 'Wildlife of India',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-22', clauseNumber: 'pattern', excerptText: '(e) Wildlife of India.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-23',
+                      title: 'Remote sensing for sustainable development',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-23', clauseNumber: 'pattern', excerptText: '(f) Remote sensing for sustainable development.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-24',
+                      title: 'Environmental biodegradation; pollution and its impact on biosphere and its prevention. 3. Ethology',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-24', clauseNumber: 'pattern', excerptText: '3. Ethology :' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-25',
+                      title: 'Behaviour',
+                      levelLabel: 'Topic',
+                      note: 'Sensory filtering, responsiveness, sign stimuli, learning, and memory, instinct, habituation, conditioning, imprinting.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-25', clauseNumber: 'pattern', excerptText: 'conditioning, imprinting.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-26',
+                      title: 'Role of hormones in drive; role of pheromones in alarm spreading; crypsis, predator detection, predator tactics, social hierarchies in primates, social organiza',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-26', clauseNumber: 'pattern', excerptText: 'tactics, social hierarchies in primates, social organization in insects;' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-27',
+                      title: 'Orientation, navigation, homing; biological rhythms',
+                      levelLabel: 'Topic',
+                      note: 'biological clock, tidal, seasonal and circadian rhythms.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-27', clauseNumber: 'pattern', excerptText: 'rhythms.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-28',
+                      title: 'Methods of studying animal behaviour including sexual conflict, selfishness, kinship and altruism. 4. Economic Zoology',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-28', clauseNumber: 'pattern', excerptText: '4. Economic Zoology :' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-29',
+                      title: 'Apiculture, sericulture, lac culture, carp culture, pearl culture, prawn culture, vermiculture',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-29', clauseNumber: 'pattern', excerptText: '(a) Apiculture, sericulture, lac culture, carp culture, pearl culture, prawn culture, vermiculture.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-30',
+                      title: 'Major infectious and communicable diseases (malaria, filaria, tuberculosis, cholera and AIDS) their vectors, pathogens and prevention',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-30', clauseNumber: 'pattern', excerptText: 'vectors, pathogens and prevention.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-31',
+                      title: 'Cattle and livestock diseases, their pathogen (helminths) and vectors (ticks, mites, Tabanus, Stomoxys)',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-31', clauseNumber: 'pattern', excerptText: 'Stomoxys).' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-32',
+                      title: 'Pests of sugar cane (Pyrilla perpusiella), oil seed (Achaeajanata) and rice (Sitophilus oryzae)',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-32', clauseNumber: 'pattern', excerptText: '(d) Pests of sugar cane (Pyrilla perpusiella), oil seed (Achaeajanata) and rice (Sitophilus oryzae).' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-33',
+                      title: 'Transgenic animals',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-33', clauseNumber: 'pattern', excerptText: '(e) Transgenic animals.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-34',
+                      title: 'Medical biotechnology, human genetic disease and genetic counselling, gene therapy',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-34', clauseNumber: 'pattern', excerptText: '(f) Medical biotechnology, human genetic disease and genetic counselling, gene therapy.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-35',
+                      title: 'Forensic biotechnology. 5. Biostatistics',
+                      levelLabel: 'Topic',
+                      note: 'Designing of experiments; null hypothesis; correlation, regression, distribution and measure of central tendency, chi square, student-test, F-test (one-way & two-way F-test). 6. Instrumentation methods :',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-35', clauseNumber: 'pattern', excerptText: '6. Instrumentation methods :' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-36',
+                      title: 'Spectrophotometer, phase contrast and fluorescence microscopy, radioactive tracer, ultra centrifuge, gel . electrophoresis, PCR, ELISA, FISH and chromosome pain',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-36', clauseNumber: 'pattern', excerptText: 'gel . electrophoresis, PCR, ELISA, FISH and chromosome painting.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-i-37',
+                      title: 'Electron microscopy (TEM, SEM)',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-I' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-i-37', clauseNumber: 'pattern', excerptText: '(b) Electron microscopy (TEM, SEM).' }
+                    }
+                  ]
+                },
+{
+                  id: 'syl-section-iii-syllabi-for-th-paper-ii',
+                  title: 'Paper II',
+                  levelLabel: 'Paper',
+                  scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                  provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii', clauseNumber: 'pattern', excerptText: 'PAPER II' },
+                  children: [
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-1',
+                      title: 'Structure and function of cell and its organelles (nucleus, plasma membrane, mitochondria, Golgi bodies, endoplasmic reticulum, ribosomes and lysosomes), cell d',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-1', clauseNumber: 'pattern', excerptText: 'organization of chromatin, heterochromatin, Cell cycle regulation.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-2',
+                      title: 'Nucleic acid topology, DNA motif, DNA replication, transcription, RNA processing, translation, protein foldings and transport. 2. Genetics : 153',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-2', clauseNumber: 'pattern', excerptText: '153' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-3',
+                      title: 'Modern concept of gene, split gene, genetic regulation, genetic, code',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-3', clauseNumber: 'pattern', excerptText: '(a) Modern concept of gene, split gene, genetic regulation, genetic, code.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-4',
+                      title: 'Sex chromosomes and their evolution, sex determination in Drosophila and human',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-4', clauseNumber: 'pattern', excerptText: '(b) Sex chromosomes and their evolution, sex determination in Drosophila and human.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-5',
+                      title: 'Mendel’s laws of inheritance, recombination, linkage, multiple alleles, genetics of blood groups, pedigree analysis, hereditary diseases in human',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-5', clauseNumber: 'pattern', excerptText: 'pedigree analysis, hereditary diseases in human.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-6',
+                      title: 'Mutations and mutagenesis',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-6', clauseNumber: 'pattern', excerptText: '(d) Mutations and mutagenesis.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-7',
+                      title: 'Recombinant DNA technology, plasmid, cosmid, artificial chromosomes as vectors, transgenics, DNA cloning and whole animal cloning (principles and methods)',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-7', clauseNumber: 'pattern', excerptText: 'cloning and whole animal cloning (principles and methods).' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-8',
+                      title: 'Gene regulation and expression in prokaryotes and eukaryotes',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-8', clauseNumber: 'pattern', excerptText: '(f) Gene regulation and expression in prokaryotes and eukaryotes.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-9',
+                      title: 'Signal molecules, cell death, defects in signaling pathway and consequences',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-9', clauseNumber: 'pattern', excerptText: '(g) Signal molecules, cell death, defects in signaling pathway and consequences.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-10',
+                      title: 'RFLP, RAPD and AFLF and application of RFLP in DNA finger-printing, ribozyme technologies, human genome project, genomics and protomics. 3. Evolution',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-10', clauseNumber: 'pattern', excerptText: '3. Evolution :' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-11',
+                      title: 'Theories of origin of life',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-11', clauseNumber: 'pattern', excerptText: '(a) Theories of origin of life.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-12',
+                      title: 'Theories of evolution; Natural selection, role of mutation in evolution, evolutionary patterns, molecular drive, mimicry, variation, isolation and speciation',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-12', clauseNumber: 'pattern', excerptText: 'drive, mimicry, variation, isolation and speciation.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-13',
+                      title: 'Evolution of horse, elephant and human using fossil data',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-13', clauseNumber: 'pattern', excerptText: '(c) Evolution of horse, elephant and human using fossil data.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-14',
+                      title: 'Hardy-Weinberg Law',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-14', clauseNumber: 'pattern', excerptText: '(d) Hardy-Weinberg Law.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-15',
+                      title: 'Continental drift and distribution of animals. 4. Systematics',
+                      levelLabel: 'Topic',
+                      note: 'Zoological nomenclature, international code, cladistics, molecular taxonomy and biodiversity. 5. Biochemistry :',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-15', clauseNumber: 'pattern', excerptText: '5. Biochemistry :' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-16',
+                      title: 'Structure and role of carbohydrates, fats, fatty acids, cholesterol, proteins and amino-acids, nucleic acids. Bioenergetics',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-16', clauseNumber: 'pattern', excerptText: 'acids. Bioenergetics.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-17',
+                      title: 'Glycolysis and Krebs cycle, oxidation and reduction, oxidative phosphorylation; energy conservation and release, ATP, cycl cyclic AMP-its structure and role',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-17', clauseNumber: 'pattern', excerptText: 'release, ATP, cycl cyclic AMP-its structure and role.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-18',
+                      title: 'Hormone classification (steroid and peptide hormones), biosynthesis and functions',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-18', clauseNumber: 'pattern', excerptText: '(c) Hormone classification (steroid and peptide hormones), biosynthesis and functions.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-19',
+                      title: 'Enzymes',
+                      levelLabel: 'Topic',
+                      note: 'types and mechanisms of action.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-19', clauseNumber: 'pattern', excerptText: '(d) Enzymes: types and mechanisms of action.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-20',
+                      title: 'Vitamins and co-enzymes',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-20', clauseNumber: 'pattern', excerptText: '(e) Vitamins and co-enzymes.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-21',
+                      title: 'Immunoglobulin and immunity. 6. Physiology (with special reference to mammals)',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-21', clauseNumber: 'pattern', excerptText: '6. Physiology (with special reference to mammals) :' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-22',
+                      title: 'Composition and constituents of blood; blood groups and Rh factor in human; factors and mechanism of coagulation; iron metabolism, acid-base balance, thermo reg',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-22', clauseNumber: 'pattern', excerptText: 'of coagulation; iron metabolism, acid-base balance, thermo regulation, anticoagulants.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-23',
+                      title: 'Haemoglobin',
+                      levelLabel: 'Topic',
+                      note: 'Composition, types and role in transport of oxygen and carbon dioxide.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-23', clauseNumber: 'pattern', excerptText: '(b) Haemoglobin: Composition, types and role in transport of oxygen and carbon dioxide.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-24',
+                      title: 'Digestion and absorption',
+                      levelLabel: 'Topic',
+                      note: 'Role of salivary glands, liver, pancreas and intestinal glands.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-24', clauseNumber: 'pattern', excerptText: '(c) Digestion and absorption: Role of salivary glands, liver, pancreas and intestinal glands.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-25',
+                      title: 'Excretion',
+                      levelLabel: 'Topic',
+                      note: 'nephron and regulation of urine formation; osmo-regulation and excretory product.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-25', clauseNumber: 'pattern', excerptText: '(d) Excretion: nephron and regulation of urine formation; osmo-regulation and excretory product.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-26',
+                      title: 'Muscles',
+                      levelLabel: 'Topic',
+                      note: 'Types, mechanism of contraction of skeletal muscles, effects of exercise on muscles. 154',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-26', clauseNumber: 'pattern', excerptText: '154' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-27',
+                      title: 'Neuron',
+                      levelLabel: 'Topic',
+                      note: 'nerve impulse—its conduction and synaptic transmission; neurotransmitters.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-27', clauseNumber: 'pattern', excerptText: '(f) Neuron: nerve impulse—its conduction and synaptic transmission; neurotransmitters.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-28',
+                      title: 'Vision, hearing and olfaction in human',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-28', clauseNumber: 'pattern', excerptText: '(g) Vision, hearing and olfaction in human.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-29',
+                      title: 'Physiology of reproduction puberty and menopause in human. 7. Developmental Biology',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-29', clauseNumber: 'pattern', excerptText: '7. Developmental Biology :' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-30',
+                      title: 'Gametogenesis; spermatogenesis, composition of semen, in vitro and in vivo capacitation of mammalian sperm, Oogenesis, totipotency; fertilization, morphogenesis',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-30', clauseNumber: 'pattern', excerptText: 'development of eye and heart, placenta in mammals.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-31',
+                      title: 'Cell lineage, cell to cell interaction, Genetic and induced teratogenesis, role of thyroxine in control of metamorphosisin amphibia, paedogenesis and neoteny, c',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-31', clauseNumber: 'pattern', excerptText: 'metamorphosisin amphibia, paedogenesis and neoteny, cell death, aging.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-32',
+                      title: 'Developmental genes in human, in vitro fertilization; and embryo transfer; cloning',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-32', clauseNumber: 'pattern', excerptText: '(c) Developmental genes in human, in vitro fertilization; and embryo transfer; cloning.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-33',
+                      title: 'Stem cells',
+                      levelLabel: 'Topic',
+                      note: 'Sources, types and their use in human welfare.',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-33', clauseNumber: 'pattern', excerptText: '(d) Stem cells: Sources, types and their use in human welfare.' }
+                    },
+{
+                      id: 'syl-section-iii-syllabi-for-th-paper-ii-34',
+                      title: 'Biogenetic law. 155',
+                      levelLabel: 'Topic',
+                      scope: [{ kind: 'SECTION', label: 'Section-III' }, { kind: 'SECTION', label: 'Part-3' }, { kind: 'SECTION', label: 'Section-B' }, { kind: 'PAPER', label: 'Paper-II' }],
+                      provenance: { ...upscSyllabusSource, id: 'prov-syl-section-iii-syllabi-for-th-paper-ii-34', clauseNumber: 'pattern', excerptText: '155' }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
   syllabus: [
     // --- Preliminary: General Studies Paper-I (Section III, Part A) ---
     { id: 'upsc-syl-history', subject: 'History & Culture', tier: 'BOTH', topicName: 'History of India and the Indian National Movement', subtopics: ['Ancient & medieval India', 'Art, architecture & literature', 'Modern India from the mid-18th century', 'Freedom struggle — stages & contributors', 'Post-independence consolidation'], weightagePercentage: 18, avgQuestions: 18, isHighYield: true, officialProvenance: upscProvenanceSyllabus, weightageProvenance: upscWeightageProvenance },

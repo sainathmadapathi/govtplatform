@@ -108,6 +108,7 @@ import {
   EligibilityDiagnostic,
   Exam,
   ExamPatternNode,
+  ExamSyllabusNode,
   ExamQualificationLevel,
   ExcludedModule,
   InAppChapter,
@@ -16226,6 +16227,141 @@ const PatternNodeCard: React.FC<{
   );
 };
 
+/**
+ * One node of a published syllabus, and whatever the authority put under it.
+ *
+ * Depth is the document's, not this component's. A node with no children is a node whose
+ * children the authority did not publish, and it renders as one rather than as an empty
+ * shell: nothing here invents a topic to make a branch look complete.
+ */
+const SyllabusNodeCard: React.FC<{
+  node: ExamSyllabusNode;
+  depth: number;
+  onOpenProvenanceModal: (p: DataProvenance) => void;
+}> = ({ node, depth, onOpenProvenanceModal }) => {
+  const [open, setOpen] = React.useState<boolean>(depth < 2);
+  const kids = node.children || [];
+  const scope = (node.scope || []).map(s => s.label).join(' · ');
+  return (
+    <div style={{
+      padding: depth === 0 ? '18px' : '10px 12px',
+      borderRadius: depth === 0 ? 'var(--radius-md)' : 'var(--radius-sm)',
+      background: depth === 0 ? 'var(--surface-2)' : depth === 1 ? 'var(--surface-3)' : 'transparent',
+      border: depth <= 1 ? '1px solid var(--border-color)' : 'none',
+      borderLeft: depth > 1 ? '2px solid var(--border-color)' : undefined,
+      marginLeft: depth > 1 ? '10px' : undefined,
+      display: 'flex', flexDirection: 'column', gap: depth === 0 ? '12px' : '6px'
+    }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', flexWrap: 'wrap' }}>
+        {kids.length > 0 && (
+          <button
+            onClick={() => setOpen(v => !v)}
+            className="btn btn-secondary"
+            style={{ padding: '2px 7px', fontSize: '0.7rem', flexShrink: 0 }}
+            aria-label={open ? 'Collapse' : 'Expand'}
+          >
+            {open ? '−' : '+'}
+          </button>
+        )}
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.66rem', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+              {(node.levelLabel || '').toUpperCase()}
+            </span>
+            {node.status === 'NEEDS_REVIEW' && (
+              <span className="badge badge-pending" style={{ fontSize: '0.6rem' }}>NEEDS REVIEW</span>
+            )}
+            {kids.length > 0 && (
+              <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)' }}>{kids.length}</span>
+            )}
+          </div>
+          <div style={{
+            fontSize: depth === 0 ? '1.05rem' : depth === 1 ? '0.95rem' : '0.88rem',
+            fontWeight: depth <= 1 ? 800 : 600,
+            color: 'var(--text-primary)', lineHeight: 1.4
+          }}>
+            {node.title}
+          </div>
+          {node.note && (
+            <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginTop: '3px' }}>
+              {node.note}
+            </div>
+          )}
+          {scope && depth <= 1 && (
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '3px' }}>
+              Applies to: {scope}
+            </div>
+          )}
+        </div>
+        {node.provenance && (
+          <button
+            onClick={() => onOpenProvenanceModal(node.provenance as DataProvenance)}
+            className="btn btn-secondary"
+            style={{ fontSize: '0.68rem', padding: '4px 9px', flexShrink: 0 }}
+          >
+            Sourced Clause
+          </button>
+        )}
+      </div>
+      {open && kids.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: depth === 0 ? '8px' : '4px' }}>
+          {kids.map(child => (
+            <SyllabusNodeCard key={child.id} node={child} depth={depth + 1} onOpenProvenanceModal={onOpenProvenanceModal} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+/**
+ * The published syllabus, or an honest statement that there is none.
+ *
+ * Two different absences, and they are not the same thing. An authority that publishes no
+ * syllabus is a fact about that authority, and the section says so and points at what it
+ * does publish. A syllabus GovOS has not read yet is a gap here, and the section says that
+ * instead. Neither is filled with another exam's syllabus.
+ */
+const PublishedSyllabusPanel: React.FC<{
+  exam: Exam;
+  onOpenProvenanceModal: (p: DataProvenance) => void;
+}> = ({ exam, onOpenProvenanceModal }) => {
+  const tree = exam.syllabusTree || [];
+  const count = React.useMemo(() => {
+    const walk = (nodes: ExamSyllabusNode[]): number =>
+      nodes.reduce((total, node) => total + 1 + walk(node.children || []), 0);
+    return walk(tree);
+  }, [tree]);
+
+  if (tree.length === 0) {
+    return (
+      <div style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)' }}>
+        <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '6px' }}>
+          No official syllabus has been read for this exam
+        </div>
+        <div style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+          GovOS reads a syllabus from {exam.authorityName.split(' (')[0]}&apos;s own documents or not at all —
+          another exam&apos;s syllabus would be the wrong preparation, however close it looks. Some authorities
+          publish no syllabus for a recruitment and name only the subjects of each paper; where that is so, the
+          Exam Pattern section has those papers and their sections, from the same notice.
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+      <div style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+        The syllabus as {exam.authorityName.split(' (')[0]} published it — {count} entries at the depth its own
+        document uses. Each one opens the clause it was read from.
+      </div>
+      {tree.map(root => (
+        <SyllabusNodeCard key={root.id} node={root} depth={0} onOpenProvenanceModal={onOpenProvenanceModal} />
+      ))}
+    </div>
+  );
+};
+
 const ExamPatternPanel: React.FC<{ exam: Exam }> = ({ exam }) => (
   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
     <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
@@ -18202,6 +18338,12 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                       : ' No revisions applied since.'}
                   </div>
                 </div>
+
+                {/* The authority's own syllabus, at the depth it published it, above the
+                    record's topic list. The list is what the checkboxes, the weightage and
+                    the verifier's revisions are built on, so both are shown: one is what
+                    the authority printed, the other is what GovOS holds about it. */}
+                <PublishedSyllabusPanel exam={exam} onOpenProvenanceModal={onOpenProvenanceModal} />
 
                 {/* The notice board, read against the verified date. A notice here is a reason to
                     check, not a change: the syllabus below changes only when a verifier applies one. */}
