@@ -3751,7 +3751,7 @@ const PLATFORM_MAP: { keys: string[]; answer: string; action: AssistantAction }[
     keys: ['application practice', 'practice application', 'application simulator', 'application mock',
       'mock application', 'application form practice', 'practice form', 'form practice', 'dummy application',
       'form simulator', 'simulator', 'practice filling', 'fill the form', 'form drill'],
-    answer: 'The **Practice Mock Application Simulator** is inside the Exam Guide, section 04 Application & Docs, and that section opens on it by default — the button reads "Practice Mock Application Simulator (Fill → Submit → Spot Mistakes)".\n\nIt is a dummy SSC application form. You fill it in, and GovOS checks your photo and signature specifications, fee exemption, post preferences and eligibility declarations against the notice, then names every mistake — before one of them costs you the real form.\n\nThat is form practice, not question practice. For question papers and sectionals use **Practice & PYQs**, and for a paper built to your own specification use **Mock Tests**.',
+    answer: 'The **Practice Mock Application Simulator** is inside the Exam Guide, section 04 Application & Docs, and that section opens on it by default — the button reads "Practice Mock Application Simulator (Fill → Submit → Spot Mistakes)".\n\nIt is a dummy form for the exam you are in, built field by field from that authority’s own notice. You fill it in, and GovOS checks your answers against the notice — photo and signature specifications, the fee your category actually pays, the dates, the uploads and the declarations — then names every mistake — before one of them costs you the real form.\n\nThat is form practice, not question practice. For question papers and sectionals use **Practice & PYQs**, and for a paper built to your own specification use **Mock Tests**.',
     action: { label: 'Open the Application Practice Simulator', tab: 'EXAM_DETAIL', section: 4 }
   },
   {
@@ -12752,16 +12752,20 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
                 <Camera size={24} />
               </div>
               <div>
-                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)' }}>Live Webcam Photo Capture</h3>
+                {/* The record's own words. This card used to announce a webcam stream and
+                    a disabled upload to every exam, which is one authority's rule and the
+                    opposite of another's -- that one wants the photograph uploaded *and*
+                    a live capture besides. */}
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)' }}>{guide.photoRules.documentType}</h3>
                 <span className="badge badge-verified" style={{ fontSize: '0.75rem', marginTop: '2px' }}>
-                  SSC MANDATORY RULE
+                  AS THIS EXAM&apos;S NOTICE SPECIFIES IT
                 </span>
               </div>
             </div>
 
             <div style={{ padding: '14px', background: 'var(--surface-3)', borderRadius: 'var(--radius-md)', border: '1px dashed var(--border-color)', textAlign: 'center' }}>
-              <div style={{ fontSize: '0.85rem', color: '#235ddd', fontWeight: 600 }}>Format: Live WebRTC / SSC App Stream</div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>Upload of pre-saved passport photos is completely disabled.</div>
+              <div style={{ fontSize: '0.85rem', color: '#235ddd', fontWeight: 600 }}>{guide.photoRules.fileFormat} &middot; {guide.photoRules.dimensions}</div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>File size: {guide.photoRules.fileSize}</div>
             </div>
 
             <div>

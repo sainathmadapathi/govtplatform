@@ -5159,6 +5159,535 @@ export const UPSC_CSE_EXAM: Exam = {
 // IBPS PROBATIONARY OFFICER (CRP PO/MT-XVI) 2026
 // ============================================================================
 
+const IBPS_NOTICE_TITLE = 'Institute of Banking Personnel Selection — Detailed Notification, Common Recruitment Process for Probationary Officers/ Management Trainees (CRP PO/MT-XVI)';
+const IBPS_NOTICE_URL = 'https://www.ibps.in/wp-content/uploads/Detailed-Notification_CRP-PO-XVI_Final_V1_30.06.2026.pdf';
+
+/** A citation into IBPS's own detailed notification, for one clause of it. */
+const ibpsNotice = (id: string, clause: string, page: number, excerpt: string): DataProvenance => ({
+  id,
+  documentTitle: IBPS_NOTICE_TITLE,
+  officialUrl: IBPS_NOTICE_URL,
+  pageNumber: page,
+  clauseNumber: clause,
+  publishedDate: '2026-06-30',
+  verifiedDate: '2026-09-22',
+  verifiedBy: 'GovOS \u2014 read from the Institute\u2019s own notification',
+  taxonomyType: 'FACT',
+  verificationLevel: 'OFFICIALLY_VERIFIED',
+  excerptText: excerpt
+});
+
+/**
+ * IBPS PO's mock application form, authored from IBPS's own notification on 2026-09-22.
+ *
+ * It follows the four steps the notice sets out under "Procedure for applying online", in
+ * that order, and it holds nothing that any other exam's form holds: this authority
+ * registers once per cycle rather than for life, captures a live photograph *in addition
+ * to* the uploaded one, and allows a correction only after the closing date, once, for a
+ * fee, and never to the six fields it names.
+ *
+ * Where the notice gives a figure -- 200 x 230 pixels, 20-50 KB, Rs 850 and Rs 175, born
+ * not earlier than 02.07.1996 -- the figure here is that figure. Where it defers to the
+ * portal, this form says so rather than inventing a specification.
+ */
+const IBPS_APPLICATION_SIMULATOR: ApplicationSimulatorSpec = {
+  examId: 'exam-ibps-po-2026',
+  portalName: 'IBPS Online Application (CRP PO/MT-XVI)',
+  portalUrl: 'https://ibps.in',
+  sourceDocumentTitle: IBPS_NOTICE_TITLE,
+  sourceDocumentUrl: IBPS_NOTICE_URL,
+  modelledOnNote:
+    'This mock follows the four steps of IBPS\u2019s own online application, in the order the notification sets them out under \u201cProcedure for applying online\u201d. It is a practice form inside GovOS \u2014 nothing here reaches IBPS, and no application is submitted on your behalf.',
+  cleanSubmissionNote:
+    'No rule in the notification was broken by these answers. On the real portal the next thing you would see is the e-receipt and the system-generated application form \u2014 print both, and keep the Registration Number and Password, because there is no correction after COMPLETE REGISTRATION except through the paid edit window.',
+  provenance: ibpsNotice('prov-ibps-appsim', 'How to Apply \u2014 Procedure for applying online', 22,
+    'Candidates can apply online only and no other mode of application will be accepted.'),
+  modules: [
+    {
+      moduleNumber: 1,
+      cardName: 'Step 1 \u2014 New Registration',
+      title: 'Register on www.ibps.in and note the provisional credentials',
+      introduction:
+        'The notification\u2019s first step: open \u201cCLICK HERE TO APPLY ONLINE FOR CRP-PROBATIONARY OFFICERS/ MANAGEMENT TRAINEES (CRP-PO/MT-XVI)\u201d, then \u201cCLICK HERE FOR NEW REGISTRATION\u201d. The system generates a provisional registration number and password and sends them by e-mail and SMS; they are what reopens a half-filled form.',
+      noticeReference: 'Notice p.22, How to Apply \u2014 Procedure for applying online (1) and (2)',
+      fields: [
+        {
+          id: 'candidateName',
+          label: 'Candidate\u2019s name (exactly as on your certificates)',
+          kind: 'TEXT',
+          defaultValue: 'Ramesh Kumar Verma',
+          noteFromNotice: 'The notice asks that the name of the candidate and of the father/husband be spelt as it appears on the certificates and mark sheets. Any change or alteration found may disqualify the candidature \u2014 and \u2018Name\u2019 cannot be edited even in the edit window.'
+        },
+        {
+          id: 'email',
+          label: 'E-mail address',
+          kind: 'SELECT',
+          defaultValue: 'OWN',
+          options: [
+            { value: 'OWN', label: 'My own e-mail, active until the end of the process' },
+            { value: 'CYBER_CAFE', label: 'The cyber caf\u00e9\u2019s e-mail' },
+            { value: 'FRIEND', label: 'A friend\u2019s e-mail' }
+          ],
+          noteFromNotice: 'The registration number and password arrive here, and so does the acknowledgement. The notice says a candidate who receives no e-mail and SMS may take it that the application has not been registered.'
+        },
+        {
+          id: 'mobile',
+          label: 'Mobile number',
+          kind: 'SELECT',
+          defaultValue: 'OWN_ACTIVE',
+          options: [
+            { value: 'OWN_ACTIVE', label: 'Mine, and I will keep it active through the CRP' },
+            { value: 'TEMPORARY', label: 'A temporary number I may stop using' }
+          ],
+          noteFromNotice: 'The notice requires the mobile number and e-mail registered in the form to be active and maintained until the conclusion of the CRP.'
+        },
+        {
+          id: 'dob',
+          label: 'Date of birth',
+          kind: 'DATE',
+          defaultValue: '2001-05-14',
+          noteFromNotice: 'Age is reckoned as on 01.07.2026: a candidate must have been born not earlier than 02.07.1996 and not later than 01.07.2006, both dates inclusive.'
+        },
+        {
+          id: 'nationality',
+          label: 'Nationality / citizenship',
+          kind: 'SELECT',
+          defaultValue: 'INDIAN',
+          options: [
+            { value: 'INDIAN', label: 'Citizen of India' },
+            { value: 'NEPAL_BHUTAN', label: 'Subject of Nepal or Bhutan' },
+            { value: 'ELIGIBILITY_CERT', label: 'Other, with a certificate of eligibility from the Government of India' }
+          ],
+          noteFromNotice: '\u2018Nationality\u2019 is one of the six fields the notice says can never be edited after submission.'
+        }
+      ]
+    },
+    {
+      moduleNumber: 2,
+      cardName: 'Step 2 \u2014 Category, eligibility and graduation',
+      title: 'Fill in what decides your fee, your age relaxation and your eligibility',
+      introduction:
+        'These are the answers the rest of the form depends on. The category decides the fee and the age relaxation; the graduation percentage must be entered to two decimals, and a candidate must already be a graduate on the day of registration.',
+      noticeReference: 'Notice p.4, II Age; p.11, V Educational Qualifications; p.22, Application Fees',
+      fields: [
+        {
+          id: 'category',
+          label: 'Category',
+          kind: 'SELECT',
+          defaultValue: 'GEN',
+          options: [
+            { value: 'GEN', label: 'General' },
+            { value: 'EWS', label: 'Economically Weaker Section' },
+            { value: 'OBC', label: 'OBC (Non-Creamy Layer)' },
+            { value: 'SC', label: 'Scheduled Caste' },
+            { value: 'ST', label: 'Scheduled Tribe' },
+            { value: 'PWBD', label: 'Person with Benchmark Disability' }
+          ],
+          noteFromNotice: 'Upper age relaxation: SC/ST 5 years, OBC (NCL) 3 years, PwBD 10 years, Ex-Servicemen 5 years. The maximum of 30 years applies to General and EWS candidates.'
+        },
+        {
+          id: 'feeClaimed',
+          label: 'Fee you are about to pay',
+          kind: 'SELECT',
+          defaultValue: 'RS_850',
+          options: [
+            { value: 'RS_850', label: 'Rs 850 (inclusive of GST) \u2014 all others' },
+            { value: 'RS_175', label: 'Rs 175 (inclusive of GST) \u2014 SC / ST / PwBD' }
+          ],
+          noteFromNotice: 'The notice sets exactly these two figures, and the bank\u2019s transaction charges are borne by the candidate.'
+        },
+        {
+          id: 'graduationStatus',
+          label: 'Graduation',
+          kind: 'SELECT',
+          defaultValue: 'PASSED_WITH_MARKSHEET',
+          options: [
+            { value: 'PASSED_WITH_MARKSHEET', label: 'Passed \u2014 I hold a valid mark sheet / degree certificate' },
+            { value: 'RESULT_AWAITED', label: 'Final year, result awaited' },
+            { value: 'PASSED_NO_PROOF', label: 'Passed, but I cannot produce the mark sheet yet' }
+          ],
+          noteFromNotice: 'Educational qualification is reckoned as on 21.07.2026. The candidate must possess a valid mark sheet or degree certificate showing that he or she is a graduate on the day of registering, and must indicate the percentage obtained.'
+        },
+        {
+          id: 'graduationPercentage',
+          label: 'Percentage of marks in graduation',
+          kind: 'TEXT',
+          defaultValue: '68.42',
+          noteFromNotice: 'To be calculated to the nearest two decimals. Where a CGPA or OGPA is awarded, convert it to a percentage and enter that; documentary proof of the conversion criterion is produced at the interview.'
+        },
+        {
+          id: 'ewsCertificateYear',
+          label: 'If EWS: the year your certificate is valid for',
+          kind: 'SELECT',
+          defaultValue: 'NOT_APPLICABLE',
+          options: [
+            { value: 'NOT_APPLICABLE', label: 'Not applicable \u2014 I am not applying as EWS' },
+            { value: 'FY_2025_26', label: 'Valid for 2026-2027, for the financial year 2025-26' },
+            { value: 'OLDER', label: 'An older certificate I already hold' }
+          ],
+          noteFromNotice: 'For EWS candidates the notice requires a certificate valid for the year 2026-2027 for the financial year 2025-26.'
+        }
+      ]
+    },
+    {
+      moduleNumber: 3,
+      cardName: 'Step 3 \u2014 Uploads and live photo capture',
+      title: 'Six uploads, and a live photograph in addition to the uploaded one',
+      introduction:
+        'The notice lists what is uploaded: photograph, signature, left thumb impression, a hand-written declaration, the SSC/SSLC/10th certificate, and the clause J (ix) certificate where it applies \u2014 and then, separately, a live photograph captured through a webcam or a phone. Until the photograph and signature meet the specifications the portal will not let the form move on.',
+      noticeReference: 'Notice p.22, Procedure for applying online (3); pp.37-38, Guidelines for Scanning and Upload (Annexure III)',
+      fields: [
+        {
+          id: 'photoSpec',
+          label: 'Photograph you are uploading',
+          kind: 'SELECT',
+          defaultValue: 'PASSPORT_COLOUR',
+          options: [
+            { value: 'PASSPORT_COLOUR', label: 'Recent passport-style colour photo, light background, 200 x 230 px, 20-50 KB' },
+            { value: 'WITH_CAP_GLASSES', label: 'A recent photo, wearing a cap or dark glasses' },
+            { value: 'DARK_BACKGROUND', label: 'A photo taken in dark or improper background' }
+          ],
+          noteFromNotice: 'Caps, hats and dark glasses are not acceptable. Religious headwear is allowed but must not cover the face.'
+        },
+        {
+          id: 'livePhoto',
+          label: 'Live photograph capture',
+          kind: 'SELECT',
+          defaultValue: 'CAPTURED',
+          options: [
+            { value: 'CAPTURED', label: 'Captured live through the webcam / phone QR, as well as uploading the photo' },
+            { value: 'SKIPPED', label: 'Skipped \u2014 I have already uploaded a photograph' }
+          ],
+          noteFromNotice: 'The live capture is in addition to the uploaded photograph, not instead of it.'
+        },
+        {
+          id: 'signatureStyle',
+          label: 'Signature image',
+          kind: 'SELECT',
+          defaultValue: 'RUNNING_BLACK_INK',
+          options: [
+            { value: 'RUNNING_BLACK_INK', label: 'Signed on white paper in black ink, ordinary running hand' },
+            { value: 'CAPITALS', label: 'Written in capital letters' },
+            { value: 'BLUE_INK', label: 'Signed in blue ink' }
+          ],
+          noteFromNotice: 'Signature: white paper, black ink pen, 140 x 60 pixels preferred, 10-20 KB, and NOT IN CAPITAL LETTERS.'
+        },
+        {
+          id: 'thumbImpression',
+          label: 'Left thumb impression',
+          kind: 'SELECT',
+          defaultValue: 'LEFT_THUMB',
+          options: [
+            { value: 'LEFT_THUMB', label: 'Left thumb, black or blue ink on white paper' },
+            { value: 'SUBSTITUTE_UNLABELLED', label: 'Another finger or my right thumb, uploaded without saying which' },
+            { value: 'NOT_UPLOADED', label: 'Not uploaded' }
+          ],
+          noteFromNotice: 'Where the left thumb is not available the notice sets out what to use instead \u2014 right thumb, a finger, or a toe \u2014 and requires the uploaded document to specify which it is.'
+        },
+        {
+          id: 'declaration',
+          label: 'Hand-written declaration',
+          kind: 'SELECT',
+          defaultValue: 'OWN_HAND_ENGLISH',
+          options: [
+            { value: 'OWN_HAND_ENGLISH', label: 'In my own handwriting, in English, ordinary case' },
+            { value: 'CAPITALS', label: 'In my own handwriting, in capital letters' },
+            { value: 'OTHER_LANGUAGE', label: 'In my own handwriting, in another language' },
+            { value: 'WRITTEN_BY_SOMEONE_ELSE', label: 'Written out by someone else and photographed' }
+          ],
+          noteFromNotice: 'The text is fixed: \u201cI, ____ (Name of the candidate), hereby declare that all the information submitted by me in the application form is correct, true and valid. I will present the supporting documents as and when required.\u201d'
+        },
+        {
+          id: 'tenthCertificate',
+          label: 'SSC / SSLC / 10th standard certificate',
+          kind: 'SELECT',
+          defaultValue: 'PDF_A4_UNDER_500KB',
+          options: [
+            { value: 'PDF_A4_UNDER_500KB', label: 'PDF, A4 page size, under 500 KB' },
+            { value: 'IMAGE_FILE', label: 'A JPEG photograph of the certificate' },
+            { value: 'NOT_UPLOADED', label: 'Not uploaded' }
+          ],
+          noteFromNotice: 'The document must be a PDF, A4, not exceeding 500 KB, clear and readable.'
+        }
+      ]
+    },
+    {
+      moduleNumber: 4,
+      cardName: 'Step 4 \u2014 Fee payment and COMPLETE REGISTRATION',
+      title: 'Pay online, and understand that the form closes when you press the button',
+      introduction:
+        'Payment is online only, through the gateway built into the form. The notice is explicit that no change is permitted after COMPLETE REGISTRATION, and that the only later correction is the paid edit window, which opens after the closing date for two days and may be used once.',
+      noticeReference: 'Notice pp.22-24, How to Apply and Mode of Payment; p.25, \u2018Edit Window\u2019 for Candidates to Modify/ Correct Application Form',
+      fields: [
+        {
+          id: 'paymentMode',
+          label: 'How you are paying',
+          kind: 'SELECT',
+          defaultValue: 'ONLINE',
+          options: [
+            { value: 'ONLINE', label: 'Online \u2014 debit card, credit card, internet banking, IMPS, cash card, wallet or UPI' },
+            { value: 'CHALLAN', label: 'Offline challan at a bank branch' },
+            { value: 'DEMAND_DRAFT', label: 'Demand draft by post' }
+          ],
+          noteFromNotice: 'The notice allows the online mode only, and lists exactly these instruments.'
+        },
+        {
+          id: 'paymentDate',
+          label: 'Date you are paying the fee',
+          kind: 'DATE',
+          defaultValue: '2026-07-10',
+          noteFromNotice: 'The notification prints the window as 01.07.2026 to 21.07.2026, both dates inclusive. GovOS\u2019s own timeline for this exam currently shows a later window; where two official documents disagree, check the Institute\u2019s own page before you rely on either.'
+        },
+        {
+          id: 'verifiedBeforeSubmit',
+          label: 'Before pressing COMPLETE REGISTRATION',
+          kind: 'SELECT',
+          defaultValue: 'VERIFIED_EVERY_FIELD',
+          options: [
+            { value: 'VERIFIED_EVERY_FIELD', label: 'I used SAVE AND NEXT and verified every field' },
+            { value: 'SUBMITTED_QUICKLY', label: 'I filled it in one go and submitted' }
+          ],
+          noteFromNotice: 'No change is permitted after clicking COMPLETE REGISTRATION.'
+        },
+        {
+          id: 'correctionPlan',
+          label: 'If you spot a mistake afterwards',
+          kind: 'SELECT',
+          defaultValue: 'EDIT_WINDOW_ONCE',
+          options: [
+            { value: 'EDIT_WINDOW_ONCE', label: 'Use the edit window once, pay Rs 200, and check everything before re-submitting' },
+            { value: 'EMAIL_IBPS', label: 'E-mail IBPS asking them to correct it' },
+            { value: 'APPLY_AGAIN', label: 'Register again with the correct details' }
+          ],
+          noteFromNotice: 'The edit window opens after the closing date for two days, may be used once, costs Rs 200 inclusive of GST, and cannot change Name, E-mail ID, Mobile Number, State/UT, Post or Nationality.'
+        },
+        {
+          id: 'printout',
+          label: 'After the e-receipt is generated',
+          kind: 'SELECT',
+          defaultValue: 'PRINT_AND_KEEP',
+          options: [
+            { value: 'PRINT_AND_KEEP', label: 'Print the e-receipt and the application form and keep them' },
+            { value: 'POST_TO_IBPS', label: 'Post the printout to IBPS' },
+            { value: 'NOTHING', label: 'Nothing \u2014 the portal has my data' }
+          ],
+          noteFromNotice: 'The notice asks candidates to print and retain both, and says plainly that they should not be sent to IBPS or the participating banks.'
+        }
+      ]
+    }
+  ],
+  traps: [
+    {
+      id: 'ibps-trap-fee-concession',
+      rule: { kind: 'VALUE_IN_ALL', conditions: [
+        { fieldId: 'category', values: ['GEN', 'EWS', 'OBC'] },
+        { fieldId: 'feeClaimed', values: ['RS_175'] }
+      ] },
+      severity: 'CRITICAL',
+      title: 'The concessional fee is claimed by a category that does not carry it',
+      problem: 'Rs 175 is the fee for SC, ST and PwBD candidates. Every other candidate, including EWS and OBC (NCL), pays Rs 850.',
+      whyItMatters: 'An unsuccessful or short fee payment makes the application invalid, and the notice says so in the same breath as a missing photograph or signature.',
+      rememberRule: 'Rs 175 for SC / ST / PwBD; Rs 850 for everyone else. The bank\u2019s transaction charges are yours on top.',
+      officialClause: 'Rs. 175/- (inclusive of GST) for SC/ST/PwBD candidates. Rs. 850/- (inclusive of GST) for all others.',
+      noticeReference: 'Notice p.22, How to Apply \u2014 Application Fees/ Intimation Charges'
+    },
+    {
+      id: 'ibps-trap-payment-mode',
+      rule: { kind: 'VALUE_IN', fieldId: 'paymentMode', values: ['CHALLAN', 'DEMAND_DRAFT'] },
+      severity: 'CRITICAL',
+      title: 'The fee is being paid by a mode the notice does not allow',
+      problem: 'There is no challan and no demand draft in this recruitment. Payment is through the gateway inside the application form.',
+      whyItMatters: 'The notice says the online procedure is the only valid procedure for applying, and that applications following any other mode would be rejected.',
+      rememberRule: 'Online only: debit card, credit card, internet banking, IMPS, cash card, wallet or UPI.',
+      officialClause: 'Candidates can make the payment of requisite fees/ intimation charges through the ONLINE mode only.',
+      noticeReference: 'Notice p.23, Mode of Payment'
+    },
+    {
+      id: 'ibps-trap-window',
+      rule: { kind: 'DATE_OUTSIDE', fieldId: 'paymentDate', earliest: '2026-07-01', latest: '2026-07-21' },
+      severity: 'CRITICAL',
+      title: 'The fee is being paid outside the window the notification prints',
+      problem: 'The notification gives 01.07.2026 to 21.07.2026, both dates inclusive, for online payment of the fee and intimation charges.',
+      whyItMatters: 'An application whose fee payment did not succeed within the window is not a valid application, and the notice warns against leaving it to the last day because of load on the website.',
+      rememberRule: 'Pay inside the window and well before its last day \u2014 and check the Institute\u2019s own page, because a window can be extended after the notice is printed.',
+      officialClause: 'Application Fees/ Intimation Charges [Online payment from 01.07.2026 to 21.07.2026, both dates inclusive]',
+      noticeReference: 'Notice p.22, How to Apply'
+    },
+    {
+      id: 'ibps-trap-age',
+      rule: { kind: 'DATE_OUTSIDE', fieldId: 'dob', earliest: '1996-07-02', latest: '2006-07-01' },
+      severity: 'CRITICAL',
+      title: 'The date of birth is outside the age band',
+      problem: 'Age is reckoned as on 01.07.2026: a candidate must have been born not earlier than 02.07.1996 and not later than 01.07.2006.',
+      whyItMatters: 'The band is the General and EWS band. Relaxation for SC/ST, OBC (NCL), PwBD and Ex-Servicemen is applied on top of it, and is allowed on a cumulative basis with only one of the remaining categories.',
+      rememberRule: '20 to 30 years as on 01.07.2026, before any relaxation your category carries.',
+      officialClause: 'AGE (AS ON 01.07.2026) Minimum: 20 years Maximum: 30 years i.e. A candidate must have been born not earlier than 02.07.1996 and not later than 01.07.2006 (both dates inclusive)',
+      noticeReference: 'Notice p.4, II AGE'
+    },
+    {
+      id: 'ibps-trap-graduation',
+      rule: { kind: 'VALUE_IN', fieldId: 'graduationStatus', values: ['RESULT_AWAITED', 'PASSED_NO_PROOF'] },
+      severity: 'CRITICAL',
+      title: 'The degree is not in hand on the day of registering',
+      problem: 'This recruitment does not accept a result awaited. The candidate must hold a valid mark sheet or degree certificate showing that he or she is a graduate on the day of registering.',
+      whyItMatters: 'The qualification is reckoned as on 21.07.2026, and proof from the board or university that the result was declared on or before that date has to be produced later.',
+      rememberRule: 'Be a graduate, with the mark sheet, on the day you register \u2014 and enter the percentage while registering.',
+      officialClause: 'The candidate must possess valid Mark-sheet / Degree Certificate that he/ she is a graduate on the day he / she registers and indicate the percentage of marks obtained in Graduation while registering online.',
+      noticeReference: 'Notice p.11, V EDUCATIONAL QUALIFICATIONS (As on 21.07.2026)'
+    },
+    {
+      id: 'ibps-trap-ews-certificate',
+      rule: { kind: 'VALUE_IN_ALL', conditions: [
+        { fieldId: 'category', values: ['EWS'] },
+        { fieldId: 'ewsCertificateYear', values: ['OLDER', 'NOT_APPLICABLE'] }
+      ] },
+      severity: 'CRITICAL',
+      title: 'The EWS certificate is not for the year the notice requires',
+      problem: 'An EWS claim needs a certificate valid for the year 2026-2027, issued on the financial year 2025-26.',
+      whyItMatters: 'Certificates are verified with the issuing authority, and a claim that cannot be supported costs the reservation and can cost the candidature.',
+      rememberRule: 'EWS: the certificate must be for 2026-2027, on FY 2025-26 income.',
+      officialClause: 'For Economically Weaker Section (EWS) Category Candidates, the certificate should be valid for the year 2026-2027 for the financial year 2025-26.',
+      noticeReference: 'Notice p.10, IV (v)'
+    },
+    {
+      id: 'ibps-trap-live-photo',
+      rule: { kind: 'VALUE_IN', fieldId: 'livePhoto', values: ['SKIPPED'] },
+      severity: 'CRITICAL',
+      title: 'The live photograph was skipped because a photo was uploaded',
+      problem: 'The live capture is an additional requirement, not an alternative to the uploaded photograph. The notice asks for both.',
+      whyItMatters: 'An application incomplete in any respect \u2014 the notice lists the photograph among them \u2014 is not treated as valid.',
+      rememberRule: 'Upload the passport photo, and then capture the live one through the webcam or the phone QR.',
+      officialClause: 'Candidates will also be required to capture and upload their live photograph through webcam or mobile phone during the registration process.',
+      noticeReference: 'Notice p.22, Procedure for applying online (3)'
+    },
+    {
+      id: 'ibps-trap-photo-spec',
+      rule: { kind: 'VALUE_IN', fieldId: 'photoSpec', values: ['WITH_CAP_GLASSES', 'DARK_BACKGROUND'] },
+      severity: 'CRITICAL',
+      title: 'The photograph breaks the specification',
+      problem: 'A cap or dark glasses, or a dark and improper background, is outside what the notice accepts.',
+      whyItMatters: 'The portal itself blocks the next stage until the photograph and signature meet the specifications, and a photograph that passes upload but is unclear can still be questioned at the centre.',
+      rememberRule: 'Passport style, colour, light background, no cap and no dark glasses; 200 x 230 pixels and 20-50 KB.',
+      officialClause: 'Caps, hats and dark glasses are not acceptable. Religious headwear is allowed but it must not cover your face.',
+      noticeReference: 'Notice p.37, Annexure III \u2014 Photograph Image'
+    },
+    {
+      id: 'ibps-trap-signature-capitals',
+      rule: { kind: 'VALUE_IN', fieldId: 'signatureStyle', values: ['CAPITALS', 'BLUE_INK'] },
+      severity: 'CRITICAL',
+      title: 'The signature is in capitals, or not in black ink',
+      problem: 'The notice asks for a signature on white paper in black ink, and says in terms that it must not be in capital letters.',
+      whyItMatters: 'The signature on the application is what the signature in the examination hall is checked against; a mismatch is treated as an attempt at impersonation.',
+      rememberRule: 'Black ink, white paper, ordinary running hand \u2014 never block capitals.',
+      officialClause: 'The applicant has to sign on white paper with Black Ink pen. \u2026 Signature (NOT IN CAPITAL LETTERS) uploaded should be of appropriate size and clearly visible.',
+      noticeReference: 'Notice p.37, Annexure III \u2014 Signature'
+    },
+    {
+      id: 'ibps-trap-declaration',
+      rule: { kind: 'VALUE_IN', fieldId: 'declaration', values: ['CAPITALS', 'OTHER_LANGUAGE', 'WRITTEN_BY_SOMEONE_ELSE'] },
+      severity: 'CRITICAL',
+      title: 'The hand-written declaration is not in the candidate\u2019s own hand, in English, in ordinary case',
+      problem: 'The declaration has to be written by the candidate, in English, and not in capital letters.',
+      whyItMatters: 'This is one of the few places the notice states the consequence outright: written by anybody else, or in another language, and the application is considered invalid.',
+      rememberRule: 'Your handwriting, English, ordinary case, black ink, 50-100 KB.',
+      officialClause: 'The hand written declaration has to be in the candidate\u2019s hand writing and in English only. The text should NOT BE IN CAPITAL LETTERS. If it is written by anybody else and uploaded or in any other language, the application will be considered as invalid.',
+      noticeReference: 'Notice p.38, Annexure III \u2014 Hand-written declaration Image'
+    },
+    {
+      id: 'ibps-trap-thumb',
+      rule: { kind: 'VALUE_IN', fieldId: 'thumbImpression', values: ['SUBSTITUTE_UNLABELLED', 'NOT_UPLOADED'] },
+      severity: 'CRITICAL',
+      title: 'The thumb impression is missing, or a substitute is not identified',
+      problem: 'Where the left thumb cannot be used the notice allows the right thumb, a finger, or a toe \u2014 but requires the uploaded document to say which it is.',
+      whyItMatters: 'The notice lists the left thumb impression among the uploads whose absence makes an application invalid.',
+      rememberRule: 'If you upload anything other than the left thumb, write on the image which finger or toe it is, and of which hand.',
+      officialClause: 'In all such cases where left thumb impression is not uploaded, the candidate should specify in the uploaded document the name of finger and the specification of left/ right hand or toe.',
+      noticeReference: 'Notice p.38, Annexure III \u2014 Left thumb impression'
+    },
+    {
+      id: 'ibps-trap-tenth-certificate',
+      rule: { kind: 'VALUE_IN', fieldId: 'tenthCertificate', values: ['IMAGE_FILE', 'NOT_UPLOADED'] },
+      severity: 'WARNING',
+      title: 'The 10th certificate is not a PDF under 500 KB',
+      problem: 'The notice asks for a PDF at A4 page size, not exceeding 500 KB.',
+      whyItMatters: 'This document is how the date of birth is established, and an unreadable or rejected upload holds up the form at the stage that will not let you past it.',
+      rememberRule: 'PDF, A4, under 500 KB, clear and readable.',
+      officialClause: 'Document must be in PDF format. Page size of the document to be A4. Size of the file should not be exceeding 500 KB.',
+      noticeReference: 'Notice p.38, Annexure III'
+    },
+    {
+      id: 'ibps-trap-correction',
+      rule: { kind: 'VALUE_IN', fieldId: 'correctionPlan', values: ['EMAIL_IBPS', 'APPLY_AGAIN'] },
+      severity: 'CRITICAL',
+      title: 'There is no correcting this by asking, and no second application',
+      problem: 'After COMPLETE REGISTRATION nothing in the form can be changed except through the edit window, which opens after the closing date for two days, may be used once, and costs Rs 200.',
+      whyItMatters: 'Six fields cannot be corrected even then \u2014 Name, E-mail ID, Mobile Number, State/UT, Post and Nationality \u2014 so the time to catch a mistake is before the button, using SAVE AND NEXT.',
+      rememberRule: 'Verify every field before COMPLETE REGISTRATION. The edit window is one chance, paid, and cannot touch your name.',
+      officialClause: 'No change is permitted after clicking on COMPLETE REGISTRATION Button. \u2026 A candidate will be allowed to correct and re-submit the modified/ corrected application only once during the \u2018Edit Window to Modify/ Correct Application Form\u2019.',
+      noticeReference: 'Notice p.22, Procedure (4); p.25, Edit Window points 2 and 3'
+    },
+    {
+      id: 'ibps-trap-category-change',
+      rule: { kind: 'VALUE_IN_ALL', conditions: [
+        { fieldId: 'category', values: ['SC', 'ST', 'PWBD'] },
+        { fieldId: 'correctionPlan', values: ['APPLY_AGAIN'] }
+      ] },
+      severity: 'WARNING',
+      title: 'A category once claimed cannot be widened later',
+      problem: 'In the edit window, SC/ST/PwBD may be changed only to SC/ST/PwBD. Only GEN, EWS and OBC (NCL) may be changed to any of the six.',
+      whyItMatters: 'The change is one-way by design, and fees already paid are not refunded when a candidate moves from GEN/EWS/OBC to SC/ST/PwBD.',
+      rememberRule: 'Get the category right the first time; the edit window cannot move you back.',
+      officialClause: 'Modification/Correction in \u201cCategory\u201d can be made as per the following combinations: SC/ST/PwBD \u2192 SC/ST/PwBD; GEN/ EWS/ OBC (NCL) \u2192 GEN/EWS/OBC (NCL)/ SC/ ST/ PwBD.',
+      noticeReference: 'Notice p.25, Edit Window point 4'
+    },
+    {
+      id: 'ibps-trap-printout',
+      rule: { kind: 'VALUE_IN', fieldId: 'printout', values: ['POST_TO_IBPS'] },
+      severity: 'WARNING',
+      title: 'The printout is being posted to IBPS',
+      problem: 'The printout is for the candidate. The notice asks that it not be sent to IBPS or the participating banks.',
+      whyItMatters: 'Nothing is sent to IBPS by post at this stage, and the notice separately says no documents are to be sent directly before or after the interview.',
+      rememberRule: 'Print the e-receipt and the form, keep them with your registration number and password, and send nothing.',
+      officialClause: 'They should not send this printout to the IBPS/ Participating Banks.',
+      noticeReference: 'Notice p.24, How to Apply'
+    },
+    {
+      id: 'ibps-trap-email-ownership',
+      rule: { kind: 'VALUE_IN', fieldId: 'email', values: ['CYBER_CAFE', 'FRIEND'] },
+      severity: 'CRITICAL',
+      title: 'The registration is on an e-mail you do not control',
+      problem: 'The provisional registration number, the password and the acknowledgement all arrive at this address.',
+      whyItMatters: 'The e-mail cannot be corrected later \u2014 it is one of the six fields the edit window cannot touch \u2014 and the notice treats the absence of the acknowledgement as a sign that the application was never registered.',
+      rememberRule: 'Use an e-mail and a mobile you will still control when the final result is declared.',
+      officialClause: 'An email/ SMS intimation with the Registration Number and Password generated on successful registration of the application will be sent to the candidate\u2019s email ID/ Mobile Number specified in the online application form.',
+      noticeReference: 'Notice p.24, How to Apply'
+    },
+    {
+      id: 'ibps-trap-mobile',
+      rule: { kind: 'VALUE_IN', fieldId: 'mobile', values: ['TEMPORARY'] },
+      severity: 'WARNING',
+      title: 'The mobile number will not last the process',
+      problem: 'The number registered here has to stay active until the CRP concludes, which runs from the call letter through the interview and the provisional allotment.',
+      whyItMatters: 'It is also one of the six fields the edit window cannot change.',
+      rememberRule: 'One number, kept active until allotment.',
+      officialClause: 'The mobile number & Email ID, registered in the application form should be active & maintained by the candidate till conclusion of the CRP.',
+      noticeReference: 'Notice p.24, How to Apply \u2014 Note'
+    },
+    {
+      id: 'ibps-trap-rushed-submit',
+      rule: { kind: 'VALUE_IN', fieldId: 'verifiedBeforeSubmit', values: ['SUBMITTED_QUICKLY'] },
+      severity: 'WARNING',
+      title: 'The form was submitted without using SAVE AND NEXT to verify it',
+      problem: 'The notice asks candidates to use SAVE AND NEXT to verify and modify the form before submitting, because nothing can be modified afterwards.',
+      whyItMatters: 'A name spelt differently from the certificates may disqualify the candidature, and \u2018Name\u2019 is one of the fields the edit window cannot repair.',
+      rememberRule: 'Save, re-read every field against your certificates, then complete the registration.',
+      officialClause: 'Prior to submission of the online application candidates, are advised to use the \u201cSAVE AND NEXT\u201d facility to verify the details in the online application form and modify the same if required.',
+      noticeReference: 'Notice p.22, Procedure for applying online (4)'
+    }
+  ]
+};
+
+
 const ibpsProvenance: DataProvenance = {
   id: 'prov-ibps-01',
   documentTitle: 'IBPS CRP PO/MT-XVI Detailed Advertisement.pdf',
@@ -5800,25 +6329,225 @@ export const IBPS_PO_EXAM: Exam = {
   ],
   applicationGuide: {
     officialPortal: 'https://ibps.in',
-    otrSteps: [],
+    simulator: IBPS_APPLICATION_SIMULATOR,
+    otrSteps: [
+      {
+        stepNumber: 1,
+        title: 'Open the CRP PO/MT link and start a new registration',
+        portalUrl: 'https://ibps.in',
+        instructions: [
+          'Go to www.ibps.in and open the link \u201cCRP PO/MT\u201d on the home page.',
+          'Click \u201cCLICK HERE TO APPLY ONLINE FOR CRP- PROBATIONARY OFFICERS/ MANAGEMENT TRAINEES (CRP-PO/MT-XVI)\u201d.',
+          'Click \u201cCLICK HERE FOR NEW REGISTRATION\u201d and enter your basic information.',
+          'Note down the provisional registration number and password the system generates; they also arrive by e-mail and SMS, and they are what reopens a half-filled form.'
+        ],
+        mandatoryFields: ['Name as on your certificates', 'Father\u2019s / husband\u2019s name', 'Date of birth', 'E-mail ID', 'Mobile number'],
+        commonMistakesToAvoid: [
+          'Registering on a cyber caf\u00e9\u2019s e-mail or someone else\u2019s mobile \u2014 neither can be corrected later.',
+          'Spelling your name differently from your certificates; the notice says any alteration found may disqualify the candidature.',
+          'Not writing down the provisional registration number before closing the page.'
+        ]
+      },
+      {
+        stepNumber: 2,
+        title: 'Fill the application, using SAVE AND NEXT to verify it',
+        portalUrl: 'https://ibps.in',
+        instructions: [
+          'Fill in the form yourself; the notice says no change in any data will be possible or entertained afterwards.',
+          'Enter the percentage obtained in graduation to two decimals, converting CGPA or OGPA where your university awards one.',
+          'Use \u201cSAVE AND NEXT\u201d to verify every field and modify it before submitting.',
+          'Digi Locker is integrated with the form; giving it access to your Aadhaar and educational documents is voluntary.'
+        ],
+        mandatoryFields: ['Category', 'Nationality', 'Graduation percentage', 'State/UT in the correspondence address', 'Post applied for'],
+        commonMistakesToAvoid: [
+          'Applying with a result awaited \u2014 you must be a graduate, with the mark sheet, on the day you register.',
+          'Claiming a category whose certificate you do not yet hold in the prescribed format.',
+          'Leaving verification until after COMPLETE REGISTRATION, when nothing can be changed.'
+        ]
+      },
+      {
+        stepNumber: 3,
+        title: 'Upload the six documents, and capture the live photograph',
+        portalUrl: 'https://ibps.in',
+        instructions: [
+          'Upload the photograph, signature, left thumb impression, hand-written declaration, the SSC/SSLC/10th certificate, and the clause J (ix) certificate if it applies to you.',
+          'Separately, capture a live photograph through your webcam, or by scanning the QR code with your phone \u2014 this is in addition to the uploaded photograph, not instead of it.',
+          'Write the declaration yourself, in English, in ordinary case: \u201cI, ____ (Name of the candidate), hereby declare that all the information submitted by me in the application form is correct, true and valid. I will present the supporting documents as and when required.\u201d',
+          'Until the photograph and signature meet the specifications, the portal will not let you move to the next stage.'
+        ],
+        mandatoryFields: ['Photograph (200 x 230 px, 20-50 KB)', 'Signature (140 x 60 px, 10-20 KB)', 'Left thumb impression (240 x 240 px, 20-50 KB)', 'Hand-written declaration (800 x 400 px, 50-100 KB)', '10th certificate (PDF, A4, under 500 KB)'],
+        commonMistakesToAvoid: [
+          'Signing in capital letters, or in blue ink.',
+          'Having someone else write the declaration, or writing it in another language \u2014 the notice says the application is then invalid.',
+          'Uploading a different finger\u2019s impression without saying on the image which finger and which hand it is.',
+          'Skipping the live capture because a photograph was already uploaded.'
+        ]
+      },
+      {
+        stepNumber: 4,
+        title: 'Pay online, complete the registration, and print both',
+        portalUrl: 'https://ibps.in',
+        instructions: [
+          'Pay Rs 850, or Rs 175 if you are SC, ST or PwBD, through the payment gateway built into the form \u2014 debit card, credit card, internet banking, IMPS, cash card, wallet or UPI.',
+          'Do not press Back or Refresh while waiting for the server, or you may be charged twice.',
+          'On success an e-receipt is generated; print it together with the system-generated application form and keep both with your registration number and password.',
+          'Do not send the printout to IBPS or to any participating bank.'
+        ],
+        mandatoryFields: ['Fee payment', 'COMPLETE REGISTRATION'],
+        commonMistakesToAvoid: [
+          'Waiting for the last day \u2014 the notice warns about load on the website and accepts no responsibility for it.',
+          'Assuming the application is registered without the e-mail and SMS acknowledgement.',
+          'Treating the edit window as a general correction: it opens after the closing date for two days, may be used once, costs Rs 200, and cannot change Name, E-mail, Mobile, State/UT, Post or Nationality.'
+        ]
+      }
+    ],
     photoRules: {
-      documentType: 'Photograph',
-      dimensions: '200 x 230 pixels',
+      documentType: 'Photograph (4.5 cm x 3.5 cm), plus a live capture',
+      dimensions: '200 x 230 pixels (preferred)',
       fileFormat: 'JPG / JPEG',
       fileSize: '20 KB - 50 KB',
-      rules: ['Light-coloured, preferably white background'],
-      sampleDescription: 'Recent passport photo'
+      rules: [
+        'A recent passport-style colour picture, taken against a light-coloured, preferably white background.',
+        'Look straight at the camera with a relaxed face; no squinting and no harsh shadows.',
+        'If you wear glasses, no reflections, and your eyes must be clearly visible.',
+        'Caps, hats and dark glasses are not acceptable. Religious headwear is allowed but must not cover your face.',
+        'In addition to this upload, capture a live photograph through your webcam or by scanning the QR code with your phone.',
+        'Until the photograph is as specified, the portal will not let the application move to the next stage.'
+      ],
+      sampleDescription: 'Recent passport-style colour photograph on a white background, 200 x 230 pixels, 20-50 KB \u2014 uploaded, and then captured live as well.'
     },
     signatureRules: {
-      documentType: 'Signature',
-      dimensions: '140 x 60 pixels',
+      documentType: 'Signature, left thumb impression and hand-written declaration',
+      dimensions: 'Signature 140 x 60 px \u00b7 thumb 240 x 240 px \u00b7 declaration 800 x 400 px',
       fileFormat: 'JPG / JPEG',
-      fileSize: '10 KB - 20 KB',
-      rules: ['Black ink on white paper'],
-      sampleDescription: 'Clear signature'
+      fileSize: 'Signature 10-20 KB \u00b7 thumb 20-50 KB \u00b7 declaration 50-100 KB',
+      rules: [
+        'Sign on white paper with a black ink pen. The signature must NOT be in capital letters.',
+        'Put your left thumb impression on white paper in black or blue ink. If you have no left thumb, use the right; then a finger of the left hand from the forefinger, then the right; then a left toe \u2014 and write on the image which one it is.',
+        'Write the declaration in your own hand, in English, in ordinary case. Written by anyone else, or in any other language, and the application is considered invalid.',
+        'A candidate who cannot write may have the declaration typed and put a left thumb impression below it.',
+        'The signature, thumb impression and declaration must all be the applicant\u2019s own and not another person\u2019s.'
+      ],
+      sampleDescription: 'Ordinary running-hand signature in black ink on white paper \u2014 never block capitals \u2014 with the thumb impression and the hand-written declaration beside it.'
     },
-    certificateRules: [],
-    rejectionPitfalls: []
+    certificateRules: [
+      {
+        category: 'SC_ST',
+        title: 'Caste certificate for Scheduled Caste / Scheduled Tribe candidates',
+        issuingAuthority: [
+          'District Magistrate / Additional District Magistrate / Collector / Deputy Commissioner / Deputy Collector / First Class Stipendiary Magistrate / City Magistrate / Sub-Divisional Magistrate / Taluk Magistrate / Executive Magistrate / Extra Assistant Commissioner',
+          'Chief Presidency Magistrate / Additional Chief Presidency Magistrate / Presidency Magistrate',
+          'Revenue Officer not below the rank of Tehsildar',
+          'Sub-Divisional Officer of the area where the candidate or the family normally resides'
+        ],
+        financialYearValidity: 'No annual validity; the certificate must be in the prescribed format',
+        crucialDate: 'Produced at the interview, and verified with the issuing authority',
+        officialAnnexure: 'Detailed Notification, clause IV \u2014 Reservation and certificates',
+        keyConditions: [
+          'Carries 5 years of relaxation in the upper age limit.',
+          'The concessional fee of Rs 175 applies.',
+          'Every certificate is verified with the issuing authority; a wrongful submission attracts debarment and further legal action.'
+        ]
+      },
+      {
+        category: 'OBC_NCL',
+        title: 'OBC (Non-Creamy Layer) certificate',
+        issuingAuthority: [
+          'The same authorities as for SC/ST certificates, in the prescribed format for OBC (NCL)'
+        ],
+        financialYearValidity: 'In the prescribed format, in the candidate\u2019s possession on or before the date of interview',
+        crucialDate: 'On or before the date of the interview',
+        officialAnnexure: 'Detailed Notification, clause IV (v)',
+        keyConditions: [
+          'Carries 3 years of relaxation in the upper age limit.',
+          'The fee is Rs 850 \u2014 the concession is for SC, ST and PwBD only.',
+          'A candidate in the creamy layer is not eligible for the reservation.'
+        ]
+      },
+      {
+        category: 'EWS',
+        title: 'Economically Weaker Section certificate',
+        issuingAuthority: [
+          'District Magistrate / Additional District Magistrate / Collector / Deputy Commissioner / 1st Class Stipendiary Magistrate / Sub-Divisional Magistrate / Taluka Magistrate / Executive Magistrate / Extra Assistant Commissioner',
+          'Chief Presidency Magistrate / Additional Chief Presidency Magistrate / Presidency Magistrate',
+          'Revenue Officer not below the rank of Tehsildar',
+          'Sub-Divisional Officer of the area where the candidate or the family normally resides'
+        ],
+        financialYearValidity: 'Valid for the year 2026-2027, issued on the financial year 2025-26',
+        crucialDate: 'The certificate year is fixed by the notice; it is not interchangeable with an older one',
+        officialAnnexure: 'Detailed Notification, clause IV (v)',
+        keyConditions: [
+          'EWS candidates get no age relaxation \u2014 the maximum of 30 years applies to them as to General candidates.',
+          'The fee is Rs 850.',
+          'An older EWS certificate does not satisfy the requirement.'
+        ]
+      },
+      {
+        category: 'PwBD',
+        title: 'Disability certificate for Persons with Benchmark Disabilities',
+        issuingAuthority: [
+          'The Medical Board at the District level, consisting of the Chief Medical Officer, a Sub-Divisional Medical Officer in the district, and an Orthopaedic / Ophthalmic / ENT surgeon'
+        ],
+        financialYearValidity: 'As issued under the Rights of Persons with Disabilities Act, 2016',
+        crucialDate: 'Produced when called for; a UDID card is verified',
+        officialAnnexure: 'Detailed Notification, clause IV \u2014 Persons with Benchmark Disabilities',
+        keyConditions: [
+          'Carries 10 years of relaxation in the upper age limit.',
+          'The concessional fee of Rs 175 applies.',
+          'A scribe is allowed under the Government of India guidelines of 26 February 2013; the notice warns that fraudulent certificates or UDID cards attract action under sections 89 and 91 of the RPwD Act.'
+        ]
+      },
+      {
+        category: 'ESM',
+        title: 'Ex-Servicemen, including ECOs and SSCOs',
+        issuingAuthority: ['The competent military authority, as notified by the Government of India'],
+        financialYearValidity: 'Not applicable',
+        crucialDate: 'At least 5 years of military service rendered, with the assignment completed \u2014 or due to be completed within one year of 20.07.2027',
+        officialAnnexure: 'Detailed Notification, clause II \u2014 Relaxation of upper age limit',
+        keyConditions: [
+          'Carries 5 years of relaxation in the upper age limit, subject to the ceiling in the Government guidelines.',
+          'Relaxation for SC/ST/OBC is cumulative with only one of the remaining categories.',
+          'The release must not have been by dismissal or discharge for misconduct or inefficiency.'
+        ]
+      }
+    ],
+    rejectionPitfalls: [
+      {
+        pitfall: 'The hand-written declaration is in capitals, in another language, or in someone else\u2019s hand',
+        consequence: 'The notice says in terms that the application will be considered invalid.',
+        prevention: 'Write it yourself, in English, in ordinary case, in black ink on white paper, and upload it at 50-100 KB.'
+      },
+      {
+        pitfall: 'The live photograph was skipped because a photograph had already been uploaded',
+        consequence: 'The application is incomplete, and an incomplete application is not treated as valid.',
+        prevention: 'Do both: upload the passport-style photograph, then capture the live one through the webcam or the phone QR code.'
+      },
+      {
+        pitfall: 'The fee payment did not go through, or was paid outside the window',
+        consequence: 'An application with an unsuccessful fee payment is not a valid application.',
+        prevention: 'Pay online well before the last date, wait for the server instead of pressing Back or Refresh, and keep the e-receipt.'
+      },
+      {
+        pitfall: 'A mistake is noticed after COMPLETE REGISTRATION',
+        consequence: 'Nothing can be changed except in the paid edit window, and Name, E-mail, Mobile, State/UT, Post and Nationality can never be changed at all.',
+        prevention: 'Use SAVE AND NEXT and read every field against your certificates before you complete the registration.'
+      },
+      {
+        pitfall: 'The name is spelt differently from the certificates and mark sheets',
+        consequence: 'The notice says any change or alteration found may disqualify the candidature \u2014 and the name is uneditable.',
+        prevention: 'Copy the spelling from your 10th certificate, including initials, and check the father\u2019s or husband\u2019s name the same way.'
+      },
+      {
+        pitfall: 'The category was claimed wrongly and needs widening later',
+        consequence: 'The edit window allows SC/ST/PwBD to change only to SC/ST/PwBD, and fees already paid are not refunded.',
+        prevention: 'Claim the category whose certificate you actually hold in the prescribed format.'
+      },
+      {
+        pitfall: 'Applying with the graduation result awaited',
+        consequence: 'The candidate is not eligible: a valid mark sheet or degree certificate is required on the day of registering.',
+        prevention: 'Register only once you are a graduate, and enter the percentage to two decimals.'
+      }
+    ]
   },
   roadmapTracks: [
     {
