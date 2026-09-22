@@ -86,8 +86,21 @@ class IdentityCheck:
 #: How these documents title themselves. Capitalised run, then the noun that makes it an
 #: examination or a recruitment, optionally followed by a year. Nothing authority-specific.
 _TITLE_RX = re.compile(
+    # The trailing form -- "Combined Graduate Level Examination, 2026" -- and the leading
+    # one, "Recruitment of Assistant Administrative Officers (AAO)". An authority uses
+    # whichever reads better in its own language; both name the same thing.
     r'((?:[A-Z][\w&().\'-]*\s+){1,9}'
-    r'(?:Examination|Exam|Recruitment|Test|Services\s+Examination)'
+    r'(?i:Examination|Exam|Recruitment|Test|Services\s+Examination)'
+    # ... but not where the anchor is the *start* of the leading form. Without
+    # this, "Mumbai-400021 Recruitment" consumed the word that
+    # "Recruitment of Assistant Administrative Officers (AAO)" needed, and an
+    # authority whose notice is titled that way could not name itself at all.
+    r'(?!\s+(?i:of|to)\s)'  # the anchor word may be in capitals: many notices print their
+    # own title that way, and a case-sensitive anchor made every one of
+    # those titles invisible -- the document could not name itself at all.
+    r'(?:\s*[,\-–]?\s*(?:20\d{2}))?'
+    r'|(?i:Recruitment|Selection)\s+(?i:of|to)\s+(?i:the\s+)?'
+    r'(?:[A-Z][\w&().\'-]*[\s/]+){1,8}[A-Z][\w&().\'-]*'
     r'(?:\s*[,\-–]?\s*(?:20\d{2}))?)')
 
 #: A year written beside an exam name, in any of the usual shapes.
@@ -144,6 +157,16 @@ _STRUCTURAL = frozenset({
     'tier', 'phase', 'stage', 'paper', 'papers', 'prelim', 'prelims', 'preliminary',
     'main', 'mains', 'part', 'session', 'shift', 'advt', 'notice', 'notification',
     'computer', 'based', 'written', 'descriptive', 'objective', 'interview',
+    # The words an authority uses for the process itself and for the kinds of test inside
+    # it. A notice is full of these, and every one of them was being counted as a rival
+    # examination: "Common Recruitment", "Annexure I. Recruitment", "Personality Test",
+    # "Objective Test", "Result- Main Examination". They name this recruitment's own
+    # parts, so a phrase built only from them is not evidence of another exam.
+    'recruitment', 'common', 'process', 'annexure', 'appendix', 'result', 'results',
+    'online', 'offline', 'personality', 'test', 'tests', 'examination', 'exam',
+    'skill', 'typing', 'proficiency', 'document', 'verification', 'medical',
+    'physical', 'efficiency', 'final', 'merit', 'list', 'schedule', 'round',
+    'screening', 'qualifying', 'language', 'optional', 'compulsory', 'general',
 })
 
 
@@ -284,6 +307,16 @@ def verify(text: str, target: ExamIdentity, *, source_url: str = '',
             reasons=[f'the document names this examination for '
                      f'{", ".join(sorted({r.year for r in wrong_year}))}, not '
                      f'{target.year or "the requested year"}'])
+
+    if not other:
+        # Nothing matched and nothing rivals it either: every phrase the document names is
+        # built from process vocabulary. That is a document we cannot place, which is not
+        # the same as one that belongs elsewhere.
+        return IdentityCheck(
+            IdentityVerdict.AMBIGUOUS,
+            reasons=['the document names no examination distinctively — every phrase '
+                     'in it is built from process vocabulary — so its identity cannot '
+                     'be established from its content'])
 
     return IdentityCheck(
         IdentityVerdict.MISMATCH,

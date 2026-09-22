@@ -199,6 +199,15 @@ class Fact(Generic[T]):
     confidence: float = 0.0
     #: Why this is NEEDS_REVIEW or NOT_PUBLISHED, in words a person can act on.
     note: str = ''
+    #: The fields this value was computed from, where the authority did not print it
+    #: itself. A printed value has an empty list, so the two can never be confused: 200
+    #: marks over 100 questions is 2 marks a question and may be shown as such, but it is
+    #: our arithmetic on the authority's numbers, not the authority's statement.
+    derived_from: list[str] = dc_field(default_factory=list)
+
+    @property
+    def is_derived(self) -> bool:
+        return bool(self.derived_from)
 
     @property
     def has_value(self) -> bool:
@@ -240,6 +249,20 @@ class Fact(Generic[T]):
         """
         ev = evidence if isinstance(evidence, list) else ([evidence] if evidence else [])
         return cls(value=None, status=Status.NOT_PUBLISHED, evidence=ev, note=note)
+
+    @classmethod
+    def derived(cls, value: T, basis: list[str],
+                evidence: SourceEvidence | list[SourceEvidence] | None = None,
+                note: str = '') -> 'Fact[T]':
+        """A value computed from others, citing the span its inputs were read from.
+
+        Only for arithmetic that is guaranteed by the numbers themselves. It is never a
+        way to supply a value the authority did not publish: a missing negative-marking
+        rule is NOT_EXTRACTED, never derived from what other exams do.
+        """
+        ev = evidence if isinstance(evidence, list) else ([evidence] if evidence else [])
+        return cls(value=value, status=Status.VERIFIED, evidence=ev, confidence=1.0,
+                   note=note, derived_from=list(basis))
 
     @classmethod
     def not_extracted(cls, note: str = '') -> 'Fact[T]':
@@ -402,6 +425,27 @@ class NegativeMarking:
     deducted_per_wrong: Optional[float] = None
     awarded_per_correct: Optional[float] = None
     applies_to_unattempted: bool = False
+    #: Where the rule is a share of the question's own marks rather than a flat figure --
+    #: "one-third of the marks assigned to that question" -- the share is kept as well as
+    #: the figure it works out to, because the share is what the notice actually says.
+    fraction_of_marks: Optional[float] = None
+
+    @property
+    def is_none(self) -> bool:
+        """The authority stating there is no penalty. Not the same as not knowing."""
+        return self.deducted_per_wrong == 0 and bool(self.as_printed)
+
+
+@dataclass
+class CategoryMinimum:
+    """A minimum an authority prints for one group of candidates.
+
+    The label is the authority's own column heading, whatever groups it chooses to name.
+    """
+
+    label: str
+    minimum_marks: Optional[float] = None
+    minimum_percent: Optional[float] = None
 
 
 @dataclass
@@ -413,6 +457,23 @@ class QualifyingRule:
     minimum_marks: Optional[float] = None
     minimum_percent: Optional[float] = None
     counts_towards_merit: Optional[bool] = None
+    #: Where the minimum differs by category, as one notice's two columns do. Empty where
+    #: the authority prints a single minimum for everyone.
+    by_category: list[CategoryMinimum] = dc_field(default_factory=list)
+
+
+@dataclass
+class DurationVariant:
+    """A duration an authority prints for a particular group of candidates.
+
+    One notice prints the ordinary time and, in the same cell, a longer time for candidates
+    eligible for a scribe. Both are the authority's, and neither replaces the other.
+    """
+
+    minutes: Optional[int] = None
+    as_printed: str = ''
+    #: Who it applies to, in the authority's words. Empty means every candidate.
+    applies_to: str = ''
 
 
 @dataclass
@@ -445,6 +506,21 @@ class PatternNode:
     #: Anything the authority prints about this node that has no dedicated slot.
     remarks: Fact[str] = dc_field(default_factory=Fact)
 
+    #: The authority's own identifier for the node -- "Paper-II", "Section-III", "Tier-I".
+    code: str = ''
+    #: Objective / multiple choice / descriptive / conventional / practical, as printed.
+    question_type: Fact[str] = dc_field(default_factory=Fact)
+    #: Printed where a notice writes marks as "60*3 = 180"; otherwise derived from the
+    #: marks and the question count, and then marked as derived.
+    marks_per_question: Fact[float] = dc_field(default_factory=Fact)
+    #: True only where the authority says each section is timed separately.
+    sectional_timing: Fact[bool] = dc_field(default_factory=Fact)
+    #: Extra durations for named groups of candidates, beside `duration_minutes`.
+    duration_variants: list[DurationVariant] = dc_field(default_factory=list)
+    #: Evidence for the node's own existence, as distinct from any one of its fields.
+    evidence: list[SourceEvidence] = dc_field(default_factory=list)
+    status: Status = Status.NOT_EXTRACTED
+
     def walk(self) -> Iterator['PatternNode']:
         yield self
         for child in self.children:
@@ -466,6 +542,12 @@ class ExamPattern:
 
     stages: list[PatternNode] = dc_field(default_factory=list)
     note: Fact[str] = dc_field(default_factory=Fact)
+    #: The exam this pattern belongs to. A pattern with no exam id is not publishable:
+    #: a scheme page shared by several exams must not contribute to whichever one happens
+    #: to be selected.
+    exam_id: str = ''
+    #: The cycle the authority printed it for, where it says so.
+    cycle: str = ''
 
     def walk(self) -> Iterator[PatternNode]:
         for s in self.stages:

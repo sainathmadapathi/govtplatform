@@ -325,6 +325,48 @@ from UPSC's What's New — Civil Services" shelf for a UPSC exam, with an honest
 when none of the latest items concern the CSE, and the syllabus watch judges UPSC items by
 first sighting and says so in its `note`.
 
+### The exam pattern is read from the authority's own scheme
+
+`tools/exam_builder/pattern.py` reads an examination's structure out of whatever its
+authority published, and `PATTERN_AUDIT.md` records what four real notices actually look
+like. There is no `TIER_1`: the model is a recursive `PatternNode` carrying the authority's
+own word for each level (`level_label`), so Stage → Paper → Section, Stage → Subject and a
+single stage on its own are one shape at different depths.
+
+Four captured notices lay their scheme out four different ways, and no two share a layout:
+a clause-numbered heading over a flattened table whose duration cell spans every row and
+whose marks read `60*3 = 180`; two lettered headings over tables with a totals row in the
+middle; a phase heading with the penalty in prose and the minimum marks split across
+`SC/ST/PWBD` and `Others` columns; and one with no table at all, just labelled lines under
+"Qualifying Papers:" and "Papers to be counted for merit:". What the reader keys off is
+structure and vocabulary every authority shares — a marked heading, a table whose own header
+names its columns, rows delimited by the labels they carry, and rules stated beside the table
+they govern.
+
+Rules that cost real defects to learn, all of them in the file's comments:
+
+- **A heading has no verb.** In a flattened PDF no line ends in a full stop, so "Tier-II will
+  consist of Paper-I, Paper-II and" read as a heading and one notice produced 31 stages.
+- **A row's ordinal must continue the sequence.** "35 30 English and" is the middle of a row,
+  not row 35.
+- **A table's reading runs past row-shaped headings** ("Paper-II Statistics" is a row) but
+  stops at one with its own table under it, or one carrying a stage's own label.
+- **A merged cell is refused.** A row that sums itself across parts the table does not
+  separate is `NEEDS_REVIEW` with its raw text kept; a confident wrong mark is worse than a gap.
+- **A derived figure is never a printed one.** `Fact.derived_from` keeps them apart, and the
+  UI prints "(computed)".
+- **A qualifying statement attaches to the node it names**, by that node's code, anywhere in
+  the document — the sentence that says a stage's marks are not counted for the merit sits
+  pages away from the stage.
+
+`may_supply_pattern()` is the gate: a document that belongs to another exam supplies nothing,
+and one that merely mentions this exam supplies nothing unless its own title block names it.
+`pattern_merge.py` folds the result into the record field by field — never overwriting an
+authored figure — and `compat.pattern_tree()` projects it into `Exam.patternTree`, which
+section 05 renders at whatever depth it has. The section's heading no longer says "2-Tier",
+and `stageBadge()` shows the authority's own label ("Tier-I", "Phase I") or the stage's
+position, never the internal `TIER_1`.
+
 ### The syllabus, also as a map
 `SyllabusTreeMap` is section 06's **third view** — the switcher reads Post Study Plan ·
 Official Gazette Syllabus · Tree Map — not a card stacked under the others. It reads

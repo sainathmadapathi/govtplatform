@@ -152,12 +152,66 @@ export interface SyllabusTopic {
   };
 }
 
+/**
+ * One node of an exam's published structure, at whatever depth its authority uses.
+ *
+ * Stage -> Paper -> Section, Stage -> Subject and Stage alone are the same shape at
+ * different depths, so no exam has to be flattened into another's. Every measurable is
+ * optional because "not printed" has to survive: a zero renders as a claim.
+ *
+ * Produced by the exam builder from that exam's own documents (`tools/exam_builder`), and
+ * never shared between exams.
+ */
+export interface ExamPatternNode {
+  id: string;
+  /** STAGE | PAPER | SUBJECT | SECTION | PART | OTHER, structural, never an exam's names. */
+  level: string;
+  /** The authority's own word for this level: "Tier", "Phase", "Paper", "Session". */
+  levelLabel?: string;
+  name: string;
+  /** The authority's own identifier: "Tier-I", "Paper-II", "Section-III". */
+  code?: string;
+  order?: number;
+  status?: string;
+  questions?: number;
+  marks?: number;
+  durationMinutes?: number;
+  marksPerQuestion?: number;
+  negativeMarking?: string;
+  negativeMarkPerWrong?: number;
+  negativeFractionOfMarks?: number;
+  qualifying?: {
+    asPrinted?: string;
+    qualifyingOnly?: boolean;
+    countsTowardsMerit?: boolean;
+    minimumMarks?: number;
+    minimumPercent?: number;
+    byCategory?: { label: string; minimumMarks?: number }[];
+  };
+  languages?: string[];
+  mode?: string;
+  questionType?: string;
+  sectionalTiming?: boolean;
+  durationVariants?: { minutes?: number; asPrinted?: string; appliesTo?: string }[];
+  /** Field names on this node that GovOS computed rather than read. */
+  derived?: string[];
+  /** Field names read but not established; the UI says so rather than showing them plain. */
+  underReview?: string[];
+  note?: string;
+  provenance?: DataProvenance;
+  children?: ExamPatternNode[];
+}
+
 export interface ExamStage {
   id: string;
   stageNumber: number;
   stageName: string;
-  /** TIER_1 / TIER_2 are the written stages; INTERVIEW is a personality test with no paper. */
-  tier: 'TIER_1' | 'TIER_2' | 'INTERVIEW';
+  /**
+   * The record's own label for the stage. Deliberately a string: TIER_1 and TIER_2 are one
+   * authority's vocabulary, and an exam with phases, sessions or a single paper has to be
+   * able to say so. Existing records keep their values and nothing that reads them changes.
+   */
+  tier: string;
   durationMinutes: number;
   totalQuestions: number;
   totalMarks: number;
@@ -728,6 +782,12 @@ export interface Exam {
   dates: ImportantDate[];
   globalRuleGroup: RuleGroup;
   stages: ExamStage[];
+  /**
+   * The exam's structure as its authority published it, read by the exam builder and
+   * merged into this record. Absent where no official pattern has been read yet, and the
+   * section falls back to `stages`.
+   */
+  patternTree?: ExamPatternNode[];
   syllabus: SyllabusTopic[];
   practiceQuestions: PracticeQuestion[];
   corrigendums: CorrigendumNotice[];

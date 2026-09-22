@@ -448,3 +448,102 @@ def milestone_from_important_date(row: dict, *, exam_id: str, source_id: str = '
         superseded_by='(recorded in this exam record)' if superseded else '',
         status=Status.VERIFIED,
         note='')
+
+
+# ===================================================================== pattern
+def _pattern_provenance(node, *, prov_id: str, exam_title: str = ''):
+    """A citation for the fact that this node exists, from its own evidence."""
+    from .schema import Fact, Status
+    if not node.evidence:
+        return None
+    carrier = Fact(value=node.name, status=node.status if node.status.carries_value
+                   else Status.NEEDS_REVIEW, evidence=list(node.evidence))
+    return to_legacy_provenance(carrier, prov_id=prov_id)
+
+
+def _fact_value(fact, default=None):
+    return fact.value if (fact is not None and fact.has_value) else default
+
+
+def pattern_tree(pattern, *, exam_id: str) -> list:
+    """Project an `ExamPattern` into the recursive shape the Exam Pattern section renders.
+
+    Three rules carry over from the rest of the pipeline. A figure the authority did not
+    print is left out rather than written as a zero, because a zero renders as a claim.
+    A figure we computed from its figures is marked as derived, so the page can say so.
+    And every node carries its own citation, since a duration read from a table and a
+    penalty read from a clause six pages away are not the same source.
+    """
+    def project(node, path: str) -> dict:
+        out: dict = {
+            'id': node.id or f'{path}-{len(path)}',
+            'level': node.level.value,
+            'levelLabel': node.level_label or '',
+            'name': node.name or '',
+            'code': node.code or '',
+            'order': node.order,
+            'status': node.status.value,
+        }
+        for key, fact in (('questions', node.questions), ('marks', node.marks),
+                          ('durationMinutes', node.duration_minutes),
+                          ('marksPerQuestion', node.marks_per_question)):
+            value = _fact_value(fact)
+            if value is not None:
+                out[key] = value
+                if fact.is_derived:
+                    out.setdefault('derived', []).append(key)
+                if fact.status is not Status.VERIFIED:
+                    out.setdefault('underReview', []).append(key)
+        if node.negative_marking.has_value:
+            marking = node.negative_marking.value
+            out['negativeMarking'] = marking.as_printed
+            if marking.deducted_per_wrong is not None:
+                out['negativeMarkPerWrong'] = marking.deducted_per_wrong
+            if marking.fraction_of_marks is not None:
+                out['negativeFractionOfMarks'] = marking.fraction_of_marks
+            if node.negative_marking.is_derived:
+                out.setdefault('derived', []).append('negativeMarking')
+        if node.qualifying.has_value:
+            rule = node.qualifying.value
+            qualifying: dict = {'asPrinted': rule.as_printed}
+            if rule.is_qualifying_only is not None:
+                qualifying['qualifyingOnly'] = rule.is_qualifying_only
+            if rule.counts_towards_merit is not None:
+                qualifying['countsTowardsMerit'] = rule.counts_towards_merit
+            if rule.minimum_marks is not None:
+                qualifying['minimumMarks'] = rule.minimum_marks
+            if rule.minimum_percent is not None:
+                qualifying['minimumPercent'] = rule.minimum_percent
+            if rule.by_category:
+                qualifying['byCategory'] = [
+                    {'label': c.label, 'minimumMarks': c.minimum_marks}
+                    for c in rule.by_category]
+            out['qualifying'] = qualifying
+        if node.languages.has_value:
+            out['languages'] = list(node.languages.value)
+        if node.mode.has_value:
+            out['mode'] = node.mode.value
+        if node.question_type.has_value:
+            out['questionType'] = node.question_type.value
+        if node.sectional_timing.has_value:
+            out['sectionalTiming'] = bool(node.sectional_timing.value)
+        if node.duration_variants:
+            out['durationVariants'] = [
+                {'minutes': v.minutes, 'asPrinted': v.as_printed, 'appliesTo': v.applies_to}
+                for v in node.duration_variants]
+        if node.remarks.has_value or node.remarks.note:
+            out['note'] = node.remarks.note or str(node.remarks.value)
+        provenance = _pattern_provenance(node, prov_id=f'prov-{node.id}')
+        if provenance is not None:
+            out['provenance'] = provenance
+        if node.children:
+            out['children'] = [project(child, f'{path}-{i}')
+                               for i, child in enumerate(node.children, start=1)]
+        return out
+
+    if pattern.exam_id and pattern.exam_id != exam_id:
+        # The caller asked for one exam and handed us another's pattern. Refusing is the
+        # whole point of carrying the id: a scheme is not transferable.
+        return []
+    return [project(stage, f'{exam_id}-stage-{i}')
+            for i, stage in enumerate(pattern.stages, start=1)]

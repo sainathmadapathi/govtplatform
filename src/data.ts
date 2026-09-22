@@ -702,6 +702,389 @@ export const SSC_CGL_EXAM: Exam = {
   },
 
   // Full 2-Tier Exam Pattern & Stages
+  patternTree: [
+    {
+      id: 'stage-scheme-of-tier-i-examination',
+      level: 'STAGE',
+      levelLabel: 'Tier',
+      name: 'Scheme of Tier-I Examination',
+      code: 'Tier-I',
+      order: 1,
+      status: 'VERIFIED',
+      questions: 100,
+      derived: [
+        'questions',
+        'marks'
+      ],
+      marks: 200.0,
+      negativeMarking: '2 There will be negative marking of 0.',
+      negativeMarkPerWrong: 0.5,
+      languages: [
+        'English',
+        'Hindi except for English Comprehension'
+      ],
+      questionType: 'Objective Type',
+      sectionalTiming: true,
+      provenance: {
+        id: 'prov-stage-scheme-of-tier-i-examination',
+        documentTitle: 'Staff Selection Commission — Notice_of_adv_cgl_2026.pdf',
+        officialUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-20T14:18:33',
+        verifiedDate: '2026-09-20T14:18:33',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: '13.8 Scheme of Tier-I Examination:'
+      },
+      children: [
+        {
+          id: 'stage-scheme-of-tier-i-examination-general-intelligence-and-reasoning',
+          level: 'SUBJECT',
+          levelLabel: 'Subject',
+          name: 'General Intelligence and Reasoning',
+          code: 'A',
+          order: 1,
+          status: 'NEEDS_REVIEW',
+          questions: 25,
+          marks: 50.0,
+          durationMinutes: 60,
+          marksPerQuestion: 2.0,
+          derived: [
+            'marksPerQuestion',
+            'negativeMarking'
+          ],
+          negativeMarking: '2 There will be negative marking of 0.',
+          negativeMarkPerWrong: 0.5,
+          durationVariants: [
+            {
+              minutes: 20,
+              asPrinted: '20 minutes',
+              appliesTo: 'for the candidates eligible for scribe as per Para-7.1, 7.2 and 7.3'
+            }
+          ],
+          note: 'the row states 4 figures where its table declares 2 numeric columns, so the pairing is not established',
+          provenance: {
+            id: 'prov-stage-scheme-of-tier-i-examination-general-intelligence-and-reasoning',
+            documentTitle: 'Staff Selection Commission — Notice_of_adv_cgl_2026.pdf',
+            officialUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
+            pageNumber: 1,
+            clauseNumber: 'pattern',
+            publishedDate: '2026-09-20T14:18:33',
+            verifiedDate: '2026-09-20T14:18:33',
+            verifiedBy: 'GovOS exam builder — read from the source',
+            taxonomyType: 'FACT',
+            verificationLevel: 'UNDER_VERIFICATION',
+            excerptText: 'A. General Intelligence and Reasoning 25 50 1 hour (with sectional timer of 15 minutes for each subject) (1 hour and 20 minutes (with sectional timer of 15+5=20 minutes for each subject) for the candidates eligible for scribe as per Para-7.1, 7.2 and 7.3)'
+          }
+        },
+        {
+          id: 'stage-scheme-of-tier-i-examination-general-awareness',
+          level: 'SUBJECT',
+          levelLabel: 'Subject',
+          name: 'General Awareness',
+          code: 'B',
+          order: 2,
+          status: 'VERIFIED',
+          questions: 25,
+          marks: 50.0,
+          marksPerQuestion: 2.0,
+          derived: [
+            'marksPerQuestion',
+            'negativeMarking'
+          ],
+          negativeMarking: '2 There will be negative marking of 0.',
+          negativeMarkPerWrong: 0.5,
+          provenance: {
+            id: 'prov-stage-scheme-of-tier-i-examination-general-awareness',
+            documentTitle: 'Staff Selection Commission — Notice_of_adv_cgl_2026.pdf',
+            officialUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
+            pageNumber: 1,
+            clauseNumber: 'pattern',
+            publishedDate: '2026-09-20T14:18:33',
+            verifiedDate: '2026-09-20T14:18:33',
+            verifiedBy: 'GovOS exam builder — read from the source',
+            taxonomyType: 'FACT',
+            verificationLevel: 'OFFICIALLY_VERIFIED',
+            excerptText: 'B. General Awareness 25 50'
+          }
+        },
+        {
+          id: 'stage-scheme-of-tier-i-examination-quantitative-aptitude',
+          level: 'SUBJECT',
+          levelLabel: 'Subject',
+          name: 'Quantitative Aptitude',
+          code: 'C',
+          order: 3,
+          status: 'VERIFIED',
+          questions: 25,
+          marks: 50.0,
+          marksPerQuestion: 2.0,
+          derived: [
+            'marksPerQuestion',
+            'negativeMarking'
+          ],
+          negativeMarking: '2 There will be negative marking of 0.',
+          negativeMarkPerWrong: 0.5,
+          provenance: {
+            id: 'prov-stage-scheme-of-tier-i-examination-quantitative-aptitude',
+            documentTitle: 'Staff Selection Commission — Notice_of_adv_cgl_2026.pdf',
+            officialUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
+            pageNumber: 1,
+            clauseNumber: 'pattern',
+            publishedDate: '2026-09-20T14:18:33',
+            verifiedDate: '2026-09-20T14:18:33',
+            verifiedBy: 'GovOS exam builder — read from the source',
+            taxonomyType: 'FACT',
+            verificationLevel: 'OFFICIALLY_VERIFIED',
+            excerptText: 'C. Quantitative Aptitude 25 50'
+          }
+        },
+        {
+          id: 'stage-scheme-of-tier-i-examination-english-comprehension',
+          level: 'SUBJECT',
+          levelLabel: 'Subject',
+          name: 'English Comprehension',
+          code: 'D',
+          order: 4,
+          status: 'VERIFIED',
+          questions: 25,
+          marks: 50.0,
+          marksPerQuestion: 2.0,
+          derived: [
+            'marksPerQuestion',
+            'negativeMarking'
+          ],
+          negativeMarking: '2 There will be negative marking of 0.',
+          negativeMarkPerWrong: 0.5,
+          provenance: {
+            id: 'prov-stage-scheme-of-tier-i-examination-english-comprehension',
+            documentTitle: 'Staff Selection Commission — Notice_of_adv_cgl_2026.pdf',
+            officialUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
+            pageNumber: 1,
+            clauseNumber: 'pattern',
+            publishedDate: '2026-09-20T14:18:33',
+            verifiedDate: '2026-09-20T14:18:33',
+            verifiedBy: 'GovOS exam builder — read from the source',
+            taxonomyType: 'FACT',
+            verificationLevel: 'OFFICIALLY_VERIFIED',
+            excerptText: 'D. English Comprehension 25 50'
+          }
+        }
+      ]
+    },
+    {
+      id: 'stage-scheme-of-tier-ii-examination',
+      level: 'STAGE',
+      levelLabel: 'Tier',
+      name: 'Scheme of Tier-II Examination',
+      code: 'Tier-II',
+      order: 2,
+      status: 'VERIFIED',
+      mode: 'Computer Based Examination',
+      sectionalTiming: true,
+      provenance: {
+        id: 'prov-stage-scheme-of-tier-ii-examination',
+        documentTitle: 'Staff Selection Commission — Notice_of_adv_cgl_2026.pdf',
+        officialUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-20T14:18:33',
+        verifiedDate: '2026-09-20T14:18:33',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: '13.9 Scheme of Tier-II Examination:'
+      },
+      children: [
+        {
+          id: 'stage-scheme-of-tier-ii-examination-mathematical-abilities',
+          level: 'PAPER',
+          levelLabel: 'Paper',
+          name: 'Mathematical Abilities',
+          code: 'A',
+          order: 1,
+          status: 'VERIFIED',
+          provenance: {
+            id: 'prov-stage-scheme-of-tier-ii-examination-mathematical-abilities',
+            documentTitle: 'Staff Selection Commission — Notice_of_adv_cgl_2026.pdf',
+            officialUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
+            pageNumber: 1,
+            clauseNumber: 'pattern',
+            publishedDate: '2026-09-20T14:18:33',
+            verifiedDate: '2026-09-20T14:18:33',
+            verifiedBy: 'GovOS exam builder — read from the source',
+            taxonomyType: 'FACT',
+            verificationLevel: 'OFFICIALLY_VERIFIED',
+            excerptText: 'A: Mathematical Abilities'
+          }
+        },
+        {
+          id: 'stage-scheme-of-tier-ii-examination-reasoning-and-general-intelligence',
+          level: 'PAPER',
+          levelLabel: 'Paper',
+          name: 'Reasoning and General Intelligence',
+          code: 'B',
+          order: 2,
+          status: 'NEEDS_REVIEW',
+          note: 'the row states a total across parts its table does not separate, so no figure in it can be attributed to this part on its own',
+          provenance: {
+            id: 'prov-stage-scheme-of-tier-ii-examination-reasoning-and-general-intelligence',
+            documentTitle: 'Staff Selection Commission — Notice_of_adv_cgl_2026.pdf',
+            officialUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
+            pageNumber: 1,
+            clauseNumber: 'pattern',
+            publishedDate: '2026-09-20T14:18:33',
+            verifiedDate: '2026-09-20T14:18:33',
+            verifiedBy: 'GovOS exam builder — read from the source',
+            taxonomyType: 'FACT',
+            verificationLevel: 'UNDER_VERIFICATION',
+            excerptText: 'B: Reasoning and General Intelligence. 30 30 Total = 60 60*3 = 180 1 hour (with sectional timer of 30 minutes for each subject) (1 hours and 20 minutes (with sectional timer of 30+10=40 minutes for each subject) for the candidates eligible for scribe as per Para-7.1, 7.2 and 7.3)'
+          }
+        },
+        {
+          id: 'stage-scheme-of-tier-ii-examination-a-english-language-and-comprehension-b-gener',
+          level: 'PAPER',
+          levelLabel: 'Paper',
+          name: 'A: English Language and Comprehension B: General Awareness',
+          code: 'Section-II',
+          order: 3,
+          status: 'NEEDS_REVIEW',
+          note: 'the row states a total across parts its table does not separate, so no figure in it can be attributed to this part on its own',
+          provenance: {
+            id: 'prov-stage-scheme-of-tier-ii-examination-a-english-language-and-comprehension-b-gener',
+            documentTitle: 'Staff Selection Commission — Notice_of_adv_cgl_2026.pdf',
+            officialUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
+            pageNumber: 1,
+            clauseNumber: 'pattern',
+            publishedDate: '2026-09-20T14:18:33',
+            verifiedDate: '2026-09-20T14:18:33',
+            verifiedBy: 'GovOS exam builder — read from the source',
+            taxonomyType: 'FACT',
+            verificationLevel: 'UNDER_VERIFICATION',
+            excerptText: 'Section-II: A: English Language and Comprehension B: General Awareness 45 25 Total = 70 70*3 = 210 1 hour (with sectional timer of 40 minutes for Subject A i.e. English Language & Comprehension and 20 minutes for Subject B i.e. General Awareness) (1 hours and 20 minutes(with sectional timer of 40+15=55 minutes for Subject A i.e. English Language & Comprehension and 20+5=25 minutes for Subject B i.e. General Awareness) for the candidates eligible for scribe as per Para-7.1, 7.2 and 7.3)'
+          }
+        },
+        {
+          id: 'stage-scheme-of-tier-ii-examination-computer-knowledge-test',
+          level: 'PAPER',
+          levelLabel: 'Paper',
+          name: 'Computer Knowledge Test',
+          code: 'Section-III',
+          order: 4,
+          status: 'NEEDS_REVIEW',
+          questions: 20,
+          underReview: [
+            'questions',
+            'marks',
+            'durationMinutes',
+            'marksPerQuestion'
+          ],
+          marks: 60.0,
+          durationMinutes: 15,
+          marksPerQuestion: 3.0,
+          negativeMarking: '8 There will be negative marking of 1 mark for each wrong answer in Section-I, Section-II and Section-III of Paper-I and of 0.',
+          negativeMarkPerWrong: 1.0,
+          qualifying: {
+            asPrinted: 'Section-III is mandatory for all posts but qualifying in nature',
+            qualifyingOnly: true,
+            countsTowardsMerit: false
+          },
+          questionType: 'Data Entry'
+        },
+        {
+          id: 'stage-scheme-of-tier-ii-examination-data-entry-speed-test-one-data-entry-task-ca',
+          level: 'PAPER',
+          levelLabel: 'Paper',
+          name: 'Data Entry Speed Test One Data Entry Task - candidates eligible for scribe as per Para-7.1',
+          code: 'Section-IV',
+          order: 5,
+          status: 'VERIFIED',
+          questionType: 'Data Entry',
+          provenance: {
+            id: 'prov-stage-scheme-of-tier-ii-examination-data-entry-speed-test-one-data-entry-task-ca',
+            documentTitle: 'Staff Selection Commission — Notice_of_adv_cgl_2026.pdf',
+            officialUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
+            pageNumber: 1,
+            clauseNumber: 'pattern',
+            publishedDate: '2026-09-20T14:18:33',
+            verifiedDate: '2026-09-20T14:18:33',
+            verifiedBy: 'GovOS exam builder — read from the source',
+            taxonomyType: 'FACT',
+            verificationLevel: 'OFFICIALLY_VERIFIED',
+            excerptText: 'Section-IV: Data Entry Speed Test One Data Entry Task - candidates eligible for scribe as per Para-7.1, 7.2 and 7.3)'
+          }
+        },
+        {
+          id: 'stage-scheme-of-tier-ii-examination-statistics',
+          level: 'PAPER',
+          levelLabel: 'Paper',
+          name: 'Statistics',
+          code: 'Paper-II',
+          order: 6,
+          status: 'VERIFIED',
+          questions: 100,
+          marks: 200.0,
+          durationMinutes: 120,
+          marksPerQuestion: 2.0,
+          durationVariants: [
+            {
+              minutes: 160,
+              asPrinted: '2 hours and 40 minutes',
+              appliesTo: 'for the candidates eligible for scribe as per Para-7.1, 7.2 and 7.3'
+            }
+          ],
+          provenance: {
+            id: 'prov-stage-scheme-of-tier-ii-examination-statistics',
+            documentTitle: 'Staff Selection Commission — Notice_of_adv_cgl_2026.pdf',
+            officialUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
+            pageNumber: 1,
+            clauseNumber: 'pattern',
+            publishedDate: '2026-09-20T14:18:33',
+            verifiedDate: '2026-09-20T14:18:33',
+            verifiedBy: 'GovOS exam builder — read from the source',
+            taxonomyType: 'FACT',
+            verificationLevel: 'OFFICIALLY_VERIFIED',
+            excerptText: 'Paper-II Statistics 100 100*2 = 200 2 hours (2 hours and 40 minutes for the candidates eligible for scribe as per Para-7.1, 7.2 and 7.3)'
+          }
+        },
+        {
+          id: 'stage-scheme-of-tier-ii-examination-general-studies',
+          level: 'PAPER',
+          levelLabel: 'Paper',
+          name: 'General Studies',
+          code: 'Paper-III',
+          order: 7,
+          status: 'VERIFIED',
+          questions: 100,
+          marks: 200.0,
+          durationMinutes: 120,
+          marksPerQuestion: 2.0,
+          durationVariants: [
+            {
+              minutes: 160,
+              asPrinted: '2 hours and 40 minutes',
+              appliesTo: 'for the candidates eligible for scribe as per Para-7.1, 7.2 and 7.3'
+            }
+          ],
+          provenance: {
+            id: 'prov-stage-scheme-of-tier-ii-examination-general-studies',
+            documentTitle: 'Staff Selection Commission — Notice_of_adv_cgl_2026.pdf',
+            officialUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
+            pageNumber: 1,
+            clauseNumber: 'pattern',
+            publishedDate: '2026-09-20T14:18:33',
+            verifiedDate: '2026-09-20T14:18:33',
+            verifiedBy: 'GovOS exam builder — read from the source',
+            taxonomyType: 'FACT',
+            verificationLevel: 'OFFICIALLY_VERIFIED',
+            excerptText: 'Paper-III General Studies (Finance and Economics) 100 100*2 = 200 2 hours (2 hours and 40 minutes for the candidates eligible for scribe as per Para-7.1, 7.2 and 7.3)'
+          }
+        }
+      ]
+    }
+  ],
   stages: [
     {
       id: 'stage-tier1',
@@ -3481,6 +3864,350 @@ export const UPSC_CSE_EXAM: Exam = {
     { title: 'Cut-off Marks', url: 'https://www.upsc.gov.in/examinations/cutoff-marks', note: 'Minimum qualifying marks by category and stage, year by year' }
   ],
 
+  patternTree: [
+    {
+      id: 'stage-civil-services-preliminary-examination-objec',
+      level: 'STAGE',
+      levelLabel: 'Stage',
+      name: 'Civil Services (Preliminary) Examination (Objective Type) for the selection of candidates for Civil',
+      code: '',
+      order: 1,
+      status: 'VERIFIED',
+      negativeMarking: 'For each question for which a wrong answer has been given by the candidate, one-third (0.',
+      negativeFractionOfMarks: 0.33,
+      qualifying: {
+        asPrinted: 'Paper-II of the Civil Services (Preliminary) Examination will be a qualifying paper with minimum qualifying marks fixed at 33%',
+        qualifyingOnly: true,
+        countsTowardsMerit: false,
+        minimumPercent: 33.0
+      },
+      languages: [
+        'Hindi',
+        'English'
+      ],
+      mode: 'Written',
+      questionType: 'Objective Type',
+      provenance: {
+        id: 'prov-stage-civil-services-preliminary-examination-objec',
+        documentTitle: 'Union Public Service Commission — Notif-CSP-2026-Engl-060226Rev.pdf',
+        officialUrl: 'https://www.upsc.gov.in/sites/default/files/Notif-CSP-2026-Engl-060226Rev.pdf',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-20T14:18:58',
+        verifiedDate: '2026-09-20T14:18:58',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: '(i) Civil Services (Preliminary) Examination (Objective Type) for the selection of candidates for Civil'
+      }
+    },
+    {
+      id: 'stage-main-examination',
+      level: 'STAGE',
+      levelLabel: 'Stage',
+      name: 'MAIN EXAMINATION',
+      code: '',
+      order: 2,
+      status: 'VERIFIED',
+      marks: 2350.0,
+      derived: [
+        'marks'
+      ],
+      mode: 'Written',
+      provenance: {
+        id: 'prov-stage-main-examination',
+        documentTitle: 'Union Public Service Commission — Notif-CSP-2026-Engl-060226Rev.pdf',
+        officialUrl: 'https://www.upsc.gov.in/sites/default/files/Notif-CSP-2026-Engl-060226Rev.pdf',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-20T14:18:58',
+        verifiedDate: '2026-09-20T14:18:58',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'B. MAIN EXAMINATION:'
+      },
+      children: [
+        {
+          id: 'stage-main-examination-paper-a',
+          level: 'PAPER',
+          levelLabel: 'Paper',
+          name: '(One of the Indian Language to be selected by the candidate from the Languages included in the',
+          code: 'Paper-A',
+          order: 1,
+          status: 'VERIFIED',
+          marks: 300.0,
+          qualifying: {
+            asPrinted: 'below:— Note: (i) The papers on Indian languages and English (Paper A and paper B) will be of Matriculation or equivalent standard and will be of qualifying nature',
+            qualifyingOnly: true,
+            countsTowardsMerit: false
+          },
+          provenance: {
+            id: 'prov-stage-main-examination-paper-a',
+            documentTitle: 'Union Public Service Commission — Notif-CSP-2026-Engl-060226Rev.pdf',
+            officialUrl: 'https://www.upsc.gov.in/sites/default/files/Notif-CSP-2026-Engl-060226Rev.pdf',
+            pageNumber: 1,
+            clauseNumber: 'pattern',
+            publishedDate: '2026-09-20T14:18:58',
+            verifiedDate: '2026-09-20T14:18:58',
+            verifiedBy: 'GovOS exam builder — read from the source',
+            taxonomyType: 'FACT',
+            verificationLevel: 'OFFICIALLY_VERIFIED',
+            excerptText: 'Paper-A (One of the Indian Language to be selected by the candidate from the Languages included in the Eighth Schedule to the Constitution). 300 Marks'
+          }
+        },
+        {
+          id: 'stage-main-examination-paper-b',
+          level: 'PAPER',
+          levelLabel: 'Paper',
+          name: 'English',
+          code: 'Paper-B',
+          order: 2,
+          status: 'VERIFIED',
+          marks: 300.0,
+          qualifying: {
+            asPrinted: 'Qualifying Papers:',
+            qualifyingOnly: true,
+            countsTowardsMerit: false
+          },
+          provenance: {
+            id: 'prov-stage-main-examination-paper-b',
+            documentTitle: 'Union Public Service Commission — Notif-CSP-2026-Engl-060226Rev.pdf',
+            officialUrl: 'https://www.upsc.gov.in/sites/default/files/Notif-CSP-2026-Engl-060226Rev.pdf',
+            pageNumber: 1,
+            clauseNumber: 'pattern',
+            publishedDate: '2026-09-20T14:18:58',
+            verifiedDate: '2026-09-20T14:18:58',
+            verifiedBy: 'GovOS exam builder — read from the source',
+            taxonomyType: 'FACT',
+            verificationLevel: 'OFFICIALLY_VERIFIED',
+            excerptText: 'Paper-B English 300 Marks'
+          }
+        },
+        {
+          id: 'stage-main-examination-paper-i',
+          level: 'PAPER',
+          levelLabel: 'Paper',
+          name: 'Essay',
+          code: 'Paper-I',
+          order: 3,
+          status: 'VERIFIED',
+          marks: 250.0,
+          negativeMarking: 'Deductions from gross Total Income.',
+          qualifying: {
+            asPrinted: 'Papers to be counted for merit:',
+            qualifyingOnly: false,
+            countsTowardsMerit: true
+          },
+          provenance: {
+            id: 'prov-stage-main-examination-paper-i',
+            documentTitle: 'Union Public Service Commission — Notif-CSP-2026-Engl-060226Rev.pdf',
+            officialUrl: 'https://www.upsc.gov.in/sites/default/files/Notif-CSP-2026-Engl-060226Rev.pdf',
+            pageNumber: 1,
+            clauseNumber: 'pattern',
+            publishedDate: '2026-09-20T14:18:58',
+            verifiedDate: '2026-09-20T14:18:58',
+            verifiedBy: 'GovOS exam builder — read from the source',
+            taxonomyType: 'FACT',
+            verificationLevel: 'OFFICIALLY_VERIFIED',
+            excerptText: 'Paper-I Essay 250 Marks'
+          }
+        },
+        {
+          id: 'stage-main-examination-paper-ii',
+          level: 'PAPER',
+          levelLabel: 'Paper',
+          name: '27',
+          code: 'Paper-II',
+          order: 4,
+          status: 'VERIFIED',
+          marks: 250.0,
+          qualifying: {
+            asPrinted: 'Papers to be counted for merit:',
+            qualifyingOnly: false,
+            countsTowardsMerit: true
+          },
+          questionType: 'multiple choice',
+          provenance: {
+            id: 'prov-stage-main-examination-paper-ii',
+            documentTitle: 'Union Public Service Commission — Notif-CSP-2026-Engl-060226Rev.pdf',
+            officialUrl: 'https://www.upsc.gov.in/sites/default/files/Notif-CSP-2026-Engl-060226Rev.pdf',
+            pageNumber: 1,
+            clauseNumber: 'pattern',
+            publishedDate: '2026-09-20T14:18:58',
+            verifiedDate: '2026-09-20T14:18:58',
+            verifiedBy: 'GovOS exam builder — read from the source',
+            taxonomyType: 'FACT',
+            verificationLevel: 'OFFICIALLY_VERIFIED',
+            excerptText: 'Paper-II 27 General Studies-I 250 Marks (Indian Heritage and Culture, History and Geography of the World and Society)'
+          }
+        },
+        {
+          id: 'stage-main-examination-paper-iii',
+          level: 'PAPER',
+          levelLabel: 'Paper',
+          name: 'General Studies -II',
+          code: 'Paper-III',
+          order: 5,
+          status: 'VERIFIED',
+          marks: 250.0,
+          qualifying: {
+            asPrinted: 'Papers to be counted for merit:',
+            qualifyingOnly: false,
+            countsTowardsMerit: true
+          },
+          provenance: {
+            id: 'prov-stage-main-examination-paper-iii',
+            documentTitle: 'Union Public Service Commission — Notif-CSP-2026-Engl-060226Rev.pdf',
+            officialUrl: 'https://www.upsc.gov.in/sites/default/files/Notif-CSP-2026-Engl-060226Rev.pdf',
+            pageNumber: 1,
+            clauseNumber: 'pattern',
+            publishedDate: '2026-09-20T14:18:58',
+            verifiedDate: '2026-09-20T14:18:58',
+            verifiedBy: 'GovOS exam builder — read from the source',
+            taxonomyType: 'FACT',
+            verificationLevel: 'OFFICIALLY_VERIFIED',
+            excerptText: 'Paper-III General Studies -II 250 Marks (Governance, Constitution, Polity, Social Justice and International relations)'
+          }
+        },
+        {
+          id: 'stage-main-examination-paper-iv',
+          level: 'PAPER',
+          levelLabel: 'Paper',
+          name: 'General Studies -III',
+          code: 'Paper-IV',
+          order: 6,
+          status: 'VERIFIED',
+          marks: 250.0,
+          qualifying: {
+            asPrinted: 'Papers to be counted for merit:',
+            qualifyingOnly: false,
+            countsTowardsMerit: true
+          },
+          provenance: {
+            id: 'prov-stage-main-examination-paper-iv',
+            documentTitle: 'Union Public Service Commission — Notif-CSP-2026-Engl-060226Rev.pdf',
+            officialUrl: 'https://www.upsc.gov.in/sites/default/files/Notif-CSP-2026-Engl-060226Rev.pdf',
+            pageNumber: 1,
+            clauseNumber: 'pattern',
+            publishedDate: '2026-09-20T14:18:58',
+            verifiedDate: '2026-09-20T14:18:58',
+            verifiedBy: 'GovOS exam builder — read from the source',
+            taxonomyType: 'FACT',
+            verificationLevel: 'OFFICIALLY_VERIFIED',
+            excerptText: 'Paper-IV General Studies -III 250 Marks (Technology, Economic Development, Bio-diversity, Environment, Security and Disaster Management)'
+          }
+        },
+        {
+          id: 'stage-main-examination-paper-v',
+          level: 'PAPER',
+          levelLabel: 'Paper',
+          name: 'General Studies -IV',
+          code: 'Paper-V',
+          order: 7,
+          status: 'VERIFIED',
+          marks: 250.0,
+          qualifying: {
+            asPrinted: 'Papers to be counted for merit:',
+            qualifyingOnly: false,
+            countsTowardsMerit: true
+          },
+          provenance: {
+            id: 'prov-stage-main-examination-paper-v',
+            documentTitle: 'Union Public Service Commission — Notif-CSP-2026-Engl-060226Rev.pdf',
+            officialUrl: 'https://www.upsc.gov.in/sites/default/files/Notif-CSP-2026-Engl-060226Rev.pdf',
+            pageNumber: 1,
+            clauseNumber: 'pattern',
+            publishedDate: '2026-09-20T14:18:58',
+            verifiedDate: '2026-09-20T14:18:58',
+            verifiedBy: 'GovOS exam builder — read from the source',
+            taxonomyType: 'FACT',
+            verificationLevel: 'OFFICIALLY_VERIFIED',
+            excerptText: 'Paper-V General Studies -IV 250 Marks (Ethics, Integrity and Aptitude)'
+          }
+        },
+        {
+          id: 'stage-main-examination-paper-vi',
+          level: 'PAPER',
+          levelLabel: 'Paper',
+          name: 'Optional Subject - Paper',
+          code: 'Paper-VI',
+          order: 8,
+          status: 'VERIFIED',
+          marks: 250.0,
+          qualifying: {
+            asPrinted: 'Papers to be counted for merit:',
+            qualifyingOnly: false,
+            countsTowardsMerit: true
+          },
+          provenance: {
+            id: 'prov-stage-main-examination-paper-vi',
+            documentTitle: 'Union Public Service Commission — Notif-CSP-2026-Engl-060226Rev.pdf',
+            officialUrl: 'https://www.upsc.gov.in/sites/default/files/Notif-CSP-2026-Engl-060226Rev.pdf',
+            pageNumber: 1,
+            clauseNumber: 'pattern',
+            publishedDate: '2026-09-20T14:18:58',
+            verifiedDate: '2026-09-20T14:18:58',
+            verifiedBy: 'GovOS exam builder — read from the source',
+            taxonomyType: 'FACT',
+            verificationLevel: 'OFFICIALLY_VERIFIED',
+            excerptText: 'Paper-VI Optional Subject - Paper 1 250 Marks'
+          }
+        },
+        {
+          id: 'stage-main-examination-paper-vii',
+          level: 'PAPER',
+          levelLabel: 'Paper',
+          name: 'Optional Subject - Paper',
+          code: 'Paper-VII',
+          order: 9,
+          status: 'VERIFIED',
+          marks: 250.0,
+          qualifying: {
+            asPrinted: 'Papers to be counted for merit:',
+            qualifyingOnly: false,
+            countsTowardsMerit: true
+          },
+          provenance: {
+            id: 'prov-stage-main-examination-paper-vii',
+            documentTitle: 'Union Public Service Commission — Notif-CSP-2026-Engl-060226Rev.pdf',
+            officialUrl: 'https://www.upsc.gov.in/sites/default/files/Notif-CSP-2026-Engl-060226Rev.pdf',
+            pageNumber: 1,
+            clauseNumber: 'pattern',
+            publishedDate: '2026-09-20T14:18:58',
+            verifiedDate: '2026-09-20T14:18:58',
+            verifiedBy: 'GovOS exam builder — read from the source',
+            taxonomyType: 'FACT',
+            verificationLevel: 'OFFICIALLY_VERIFIED',
+            excerptText: 'Paper-VII Optional Subject - Paper 2 250 Marks Sub Total (Written test) 1750 Marks Personality Test 275 Marks ===================================================================================== Grand Total 2025 Marks Candidates may choose any one of the optional subjects from amongst the list of subjects given in para 2 below:— Note: (i) The papers on Indian languages and English (Paper A and paper B) will be of Matriculation or equivalent standard and will be of qualifying nature. The marks obtained in these papers will not be counted for ranking. (ii) Evaluation of the papers, namely, \'Ess'
+          }
+        }
+      ]
+    },
+    {
+      id: 'stage-interview-personality-test',
+      level: 'STAGE',
+      levelLabel: 'Stage',
+      name: 'Interview/Personality Test',
+      code: '',
+      order: 3,
+      status: 'VERIFIED',
+      mode: 'written',
+      provenance: {
+        id: 'prov-stage-interview-personality-test',
+        documentTitle: 'Union Public Service Commission — Notif-CSP-2026-Engl-060226Rev.pdf',
+        officialUrl: 'https://www.upsc.gov.in/sites/default/files/Notif-CSP-2026-Engl-060226Rev.pdf',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-20T14:18:58',
+        verifiedDate: '2026-09-20T14:18:58',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'C. Interview/Personality Test'
+      }
+    }
+  ],
   stages: [
     {
       id: 'stage-upsc-prelims',
@@ -4604,6 +5331,319 @@ export const IBPS_PO_EXAM: Exam = {
       }
     ]
   },
+  patternTree: [
+    {
+      id: 'stage-preliminary-examination-objective-test',
+      level: 'STAGE',
+      levelLabel: 'Stage',
+      name: 'Preliminary Examination (Objective Test)',
+      code: '',
+      order: 1,
+      status: 'VERIFIED',
+      questions: 100,
+      marks: 100.0,
+      durationMinutes: 60,
+      mode: 'Online',
+      questionType: 'Objective',
+      sectionalTiming: true,
+      provenance: {
+        id: 'prov-stage-preliminary-examination-objective-test',
+        documentTitle: 'Institute of Banking Personnel Selection — Detailed-Notification_CRP-PO-XVI_Final_V1_30.06.2026.pdf',
+        officialUrl: 'https://www.ibps.in/wp-content/uploads/Detailed-Notification_CRP-PO-XVI_Final_V1_30.06.2026.pdf',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-20T14:19:48',
+        verifiedDate: '2026-09-20T14:19:48',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'a. Preliminary Examination (Objective Test)'
+      },
+      children: [
+        {
+          id: 'stage-preliminary-examination-objective-test-english-language',
+          level: 'SUBJECT',
+          levelLabel: 'Name of Tests',
+          name: 'English Language',
+          code: '',
+          order: 1,
+          status: 'VERIFIED',
+          questions: 30,
+          marks: 30.0,
+          durationMinutes: 20,
+          marksPerQuestion: 1.0,
+          derived: [
+            'marksPerQuestion'
+          ],
+          languages: [
+            'English'
+          ],
+          provenance: {
+            id: 'prov-stage-preliminary-examination-objective-test-english-language',
+            documentTitle: 'Institute of Banking Personnel Selection — Detailed-Notification_CRP-PO-XVI_Final_V1_30.06.2026.pdf',
+            officialUrl: 'https://www.ibps.in/wp-content/uploads/Detailed-Notification_CRP-PO-XVI_Final_V1_30.06.2026.pdf',
+            pageNumber: 1,
+            clauseNumber: 'pattern',
+            publishedDate: '2026-09-20T14:19:48',
+            verifiedDate: '2026-09-20T14:19:48',
+            verifiedBy: 'GovOS exam builder — read from the source',
+            taxonomyType: 'FACT',
+            verificationLevel: 'OFFICIALLY_VERIFIED',
+            excerptText: '1 English Language 30 30 English 20 minutes'
+          }
+        },
+        {
+          id: 'stage-preliminary-examination-objective-test-quantitative-aptitude',
+          level: 'SUBJECT',
+          levelLabel: 'Name of Tests',
+          name: 'Quantitative Aptitude',
+          code: '',
+          order: 2,
+          status: 'VERIFIED',
+          questions: 35,
+          marks: 30.0,
+          durationMinutes: 20,
+          languages: [
+            'English',
+            'Hindi'
+          ],
+          provenance: {
+            id: 'prov-stage-preliminary-examination-objective-test-quantitative-aptitude',
+            documentTitle: 'Institute of Banking Personnel Selection — Detailed-Notification_CRP-PO-XVI_Final_V1_30.06.2026.pdf',
+            officialUrl: 'https://www.ibps.in/wp-content/uploads/Detailed-Notification_CRP-PO-XVI_Final_V1_30.06.2026.pdf',
+            pageNumber: 1,
+            clauseNumber: 'pattern',
+            publishedDate: '2026-09-20T14:19:48',
+            verifiedDate: '2026-09-20T14:19:48',
+            verifiedBy: 'GovOS exam builder — read from the source',
+            taxonomyType: 'FACT',
+            verificationLevel: 'OFFICIALLY_VERIFIED',
+            excerptText: '2 Quantitative Aptitude 35 30 English and Hindi 20 minutes'
+          }
+        },
+        {
+          id: 'stage-preliminary-examination-objective-test-reasoning-ability',
+          level: 'SUBJECT',
+          levelLabel: 'Name of Tests',
+          name: 'Reasoning Ability',
+          code: '',
+          order: 3,
+          status: 'VERIFIED',
+          questions: 35,
+          marks: 40.0,
+          durationMinutes: 20,
+          languages: [
+            'English',
+            'Hindi'
+          ],
+          provenance: {
+            id: 'prov-stage-preliminary-examination-objective-test-reasoning-ability',
+            documentTitle: 'Institute of Banking Personnel Selection — Detailed-Notification_CRP-PO-XVI_Final_V1_30.06.2026.pdf',
+            officialUrl: 'https://www.ibps.in/wp-content/uploads/Detailed-Notification_CRP-PO-XVI_Final_V1_30.06.2026.pdf',
+            pageNumber: 1,
+            clauseNumber: 'pattern',
+            publishedDate: '2026-09-20T14:19:48',
+            verifiedDate: '2026-09-20T14:19:48',
+            verifiedBy: 'GovOS exam builder — read from the source',
+            taxonomyType: 'FACT',
+            verificationLevel: 'OFFICIALLY_VERIFIED',
+            excerptText: '3 Reasoning Ability 35 40 English and Hindi 20 minutes'
+          }
+        }
+      ]
+    },
+    {
+      id: 'stage-main-examination-objective-and-descriptive',
+      level: 'STAGE',
+      levelLabel: 'Stage',
+      name: 'Main Examination (Objective and Descriptive)',
+      code: '',
+      order: 2,
+      status: 'VERIFIED',
+      questions: 170,
+      marks: 200.0,
+      durationMinutes: 160,
+      mode: 'Online',
+      questionType: 'Objective',
+      sectionalTiming: true,
+      provenance: {
+        id: 'prov-stage-main-examination-objective-and-descriptive',
+        documentTitle: 'Institute of Banking Personnel Selection — Detailed-Notification_CRP-PO-XVI_Final_V1_30.06.2026.pdf',
+        officialUrl: 'https://www.ibps.in/wp-content/uploads/Detailed-Notification_CRP-PO-XVI_Final_V1_30.06.2026.pdf',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-20T14:19:48',
+        verifiedDate: '2026-09-20T14:19:48',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'b. Main Examination (Objective and Descriptive)'
+      },
+      children: [
+        {
+          id: 'stage-main-examination-objective-and-descriptive-reasoning',
+          level: 'SUBJECT',
+          levelLabel: 'Name of Tests',
+          name: 'Reasoning',
+          code: '',
+          order: 1,
+          status: 'VERIFIED',
+          questions: 40,
+          marks: 60.0,
+          durationMinutes: 45,
+          marksPerQuestion: 1.5,
+          derived: [
+            'marksPerQuestion'
+          ],
+          languages: [
+            'English',
+            'Hindi'
+          ],
+          provenance: {
+            id: 'prov-stage-main-examination-objective-and-descriptive-reasoning',
+            documentTitle: 'Institute of Banking Personnel Selection — Detailed-Notification_CRP-PO-XVI_Final_V1_30.06.2026.pdf',
+            officialUrl: 'https://www.ibps.in/wp-content/uploads/Detailed-Notification_CRP-PO-XVI_Final_V1_30.06.2026.pdf',
+            pageNumber: 1,
+            clauseNumber: 'pattern',
+            publishedDate: '2026-09-20T14:19:48',
+            verifiedDate: '2026-09-20T14:19:48',
+            verifiedBy: 'GovOS exam builder — read from the source',
+            taxonomyType: 'FACT',
+            verificationLevel: 'OFFICIALLY_VERIFIED',
+            excerptText: '1 Reasoning 40 60 English & Hindi 45 minutes'
+          }
+        },
+        {
+          id: 'stage-main-examination-objective-and-descriptive-general-economy-banking-awareness-digital-fi',
+          level: 'SUBJECT',
+          levelLabel: 'Name of Tests',
+          name: 'General/ Economy/ Banking Awareness / Digital/ Financial Awareness including RBI circulars',
+          code: '',
+          order: 2,
+          status: 'VERIFIED',
+          questions: 50,
+          marks: 60.0,
+          durationMinutes: 35,
+          marksPerQuestion: 1.2,
+          derived: [
+            'marksPerQuestion'
+          ],
+          languages: [
+            'English',
+            'Hindi'
+          ],
+          provenance: {
+            id: 'prov-stage-main-examination-objective-and-descriptive-general-economy-banking-awareness-digital-fi',
+            documentTitle: 'Institute of Banking Personnel Selection — Detailed-Notification_CRP-PO-XVI_Final_V1_30.06.2026.pdf',
+            officialUrl: 'https://www.ibps.in/wp-content/uploads/Detailed-Notification_CRP-PO-XVI_Final_V1_30.06.2026.pdf',
+            pageNumber: 1,
+            clauseNumber: 'pattern',
+            publishedDate: '2026-09-20T14:19:48',
+            verifiedDate: '2026-09-20T14:19:48',
+            verifiedBy: 'GovOS exam builder — read from the source',
+            taxonomyType: 'FACT',
+            verificationLevel: 'OFFICIALLY_VERIFIED',
+            excerptText: '2 General/ Economy/ Banking Awareness / Digital/ Financial Awareness including RBI circulars 50 60 English & Hindi 35 minutes'
+          }
+        },
+        {
+          id: 'stage-main-examination-objective-and-descriptive-english-language',
+          level: 'SUBJECT',
+          levelLabel: 'Name of Tests',
+          name: 'English Language',
+          code: '',
+          order: 3,
+          status: 'VERIFIED',
+          questions: 40,
+          marks: 20.0,
+          durationMinutes: 35,
+          marksPerQuestion: 0.5,
+          derived: [
+            'marksPerQuestion'
+          ],
+          languages: [
+            'English'
+          ],
+          provenance: {
+            id: 'prov-stage-main-examination-objective-and-descriptive-english-language',
+            documentTitle: 'Institute of Banking Personnel Selection — Detailed-Notification_CRP-PO-XVI_Final_V1_30.06.2026.pdf',
+            officialUrl: 'https://www.ibps.in/wp-content/uploads/Detailed-Notification_CRP-PO-XVI_Final_V1_30.06.2026.pdf',
+            pageNumber: 1,
+            clauseNumber: 'pattern',
+            publishedDate: '2026-09-20T14:19:48',
+            verifiedDate: '2026-09-20T14:19:48',
+            verifiedBy: 'GovOS exam builder — read from the source',
+            taxonomyType: 'FACT',
+            verificationLevel: 'OFFICIALLY_VERIFIED',
+            excerptText: '3 English Language 40 20 English 35 minutes'
+          }
+        },
+        {
+          id: 'stage-main-examination-objective-and-descriptive-data-analysis-interpretation',
+          level: 'SUBJECT',
+          levelLabel: 'Name of Tests',
+          name: 'Data Analysis & Interpretation',
+          code: '',
+          order: 4,
+          status: 'VERIFIED',
+          questions: 40,
+          marks: 60.0,
+          durationMinutes: 45,
+          marksPerQuestion: 1.5,
+          derived: [
+            'marksPerQuestion'
+          ],
+          languages: [
+            'English',
+            'Hindi'
+          ],
+          provenance: {
+            id: 'prov-stage-main-examination-objective-and-descriptive-data-analysis-interpretation',
+            documentTitle: 'Institute of Banking Personnel Selection — Detailed-Notification_CRP-PO-XVI_Final_V1_30.06.2026.pdf',
+            officialUrl: 'https://www.ibps.in/wp-content/uploads/Detailed-Notification_CRP-PO-XVI_Final_V1_30.06.2026.pdf',
+            pageNumber: 1,
+            clauseNumber: 'pattern',
+            publishedDate: '2026-09-20T14:19:48',
+            verifiedDate: '2026-09-20T14:19:48',
+            verifiedBy: 'GovOS exam builder — read from the source',
+            taxonomyType: 'FACT',
+            verificationLevel: 'OFFICIALLY_VERIFIED',
+            excerptText: '4 Data Analysis & Interpretation 40 60 English & Hindi 45 minutes'
+          }
+        },
+        {
+          id: 'stage-main-examination-objective-and-descriptive-descriptive-paper',
+          level: 'SUBJECT',
+          levelLabel: 'Name of Tests',
+          name: 'Descriptive Paper*',
+          code: '',
+          order: 6,
+          status: 'VERIFIED',
+          questions: 2,
+          marks: 25.0,
+          durationMinutes: 30,
+          marksPerQuestion: 12.5,
+          derived: [
+            'marksPerQuestion'
+          ],
+          questionType: 'Descriptive',
+          provenance: {
+            id: 'prov-stage-main-examination-objective-and-descriptive-descriptive-paper',
+            documentTitle: 'Institute of Banking Personnel Selection — Detailed-Notification_CRP-PO-XVI_Final_V1_30.06.2026.pdf',
+            officialUrl: 'https://www.ibps.in/wp-content/uploads/Detailed-Notification_CRP-PO-XVI_Final_V1_30.06.2026.pdf',
+            pageNumber: 1,
+            clauseNumber: 'pattern',
+            publishedDate: '2026-09-20T14:19:48',
+            verifiedDate: '2026-09-20T14:19:48',
+            verifiedBy: 'GovOS exam builder — read from the source',
+            taxonomyType: 'FACT',
+            verificationLevel: 'OFFICIALLY_VERIFIED',
+            excerptText: '5 Descriptive Paper* (Essay and Comprehension) 02 25 English 30 minutes * May be broadly based on Economic and Social issues, emerging trends in Banking and Technology, Current events, Ethics etc.'
+          }
+        }
+      ]
+    }
+  ],
   stages: [
     {
       id: 'stage-ibps-pre',

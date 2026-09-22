@@ -39,6 +39,16 @@ class ColumnKind(str, Enum):
     AGE = 'AGE'
     VACANCY = 'VACANCY'
     QUALIFICATION = 'QUALIFICATION'
+    # --- a scheme table's columns. Structural like the rest: no authority's stage names.
+    STAGE = 'STAGE'
+    PAPER = 'PAPER'
+    SECTION = 'SECTION'
+    SUBJECT = 'SUBJECT'
+    QUESTIONS = 'QUESTIONS'
+    MARKS = 'MARKS'
+    DURATION = 'DURATION'
+    LANGUAGE = 'LANGUAGE'
+    QUALIFYING_MARKS = 'QUALIFYING_MARKS'
     OTHER = 'OTHER'
 
 
@@ -46,6 +56,24 @@ class ColumnKind(str, Enum):
 #: "Designation" or "Post"; all of them name the same column. Longest first so that
 #: "Educational Qualification" is not read as the generic "Qualification".
 _HEADER_CUES: tuple[tuple[ColumnKind, str], ...] = (
+    # -- scheme columns, most specific first ------------------------------------------
+    (ColumnKind.QUALIFYING_MARKS, r'\b(?:minimum|min\.?)\s+qualifying\s+marks?\b|'
+                                  r'\bqualifying\s+marks?\b|\bcut[\s-]?off\s+marks?\b|'
+                                  r'\bpassing\s+marks?\b'),
+    (ColumnKind.QUESTIONS, r'\b(?:no\.?|number|nos\.?)\s*of\s+(?:questions?|items?|'
+                           r'ques\.?)\b|\bquestions?\b(?!\s*paper)|\bno\.?\s*of\s+qs?\b'),
+    (ColumnKind.MARKS, r'\b(?:maximum|max\.?|total)\s+marks?\b|\bmarks?\s+allotted\b|'
+                       r'\bmarks?\b'),
+    (ColumnKind.DURATION, r'\b(?:time|duration)\s+(?:allowed|allotted|permitted)\b|'
+                          r'\bduration\b|\btime\s+allowed\b|\btime\s+allotted\b|'
+                          r'\btiming\b|\btime\s+limit\b'),
+    (ColumnKind.LANGUAGE, r'\bmedium\s+of\s+(?:exam\w*|test|paper)\b|\bmedium\b|'
+                          r'\blanguage\s+of\s+(?:exam\w*|paper|test)\b'),
+    (ColumnKind.SUBJECT, r'\bname\s+of\s+(?:the\s+)?(?:tests?|papers?|subjects?)\b|'
+                         r'\bsubjects?\b|\bname\s+of\s+the\s+test\b'),
+    (ColumnKind.PAPER, r'\bpapers?\b'),
+    (ColumnKind.SECTION, r'\bsections?\b|\bparts?\b'),
+    (ColumnKind.STAGE, r'\btiers?\b|\bstages?\b|\bphases?\b|\bsessions?\b'),
     # "No." alone is a serial column, unless "of" follows it -- "No. of Vacancies"
     # is a count, and matching the serial cue first made that column disappear.
     (ColumnKind.SERIAL, r'\bs\.?\s*no\.?(?!\s*of\b)|\bsl\.?\s*no\.?(?!\s*of\b)|\bserial\b|'
@@ -72,6 +100,10 @@ _HEADER_CUES: tuple[tuple[ColumnKind, str], ...] = (
 #: Value shapes, for the columns whose contents are recognisable on sight. These confirm an
 #: assignment; they never create one on their own.
 _VALUE_SHAPES: dict[ColumnKind, re.Pattern] = {
+    ColumnKind.QUESTIONS: re.compile(r'^\s*\d{1,3}\s*$'),
+    # "60*3 = 180" is a marks cell that shows its own arithmetic.
+    ColumnKind.MARKS: re.compile(r'^\s*\d{1,4}(?:\s*\*\s*\d{1,3}\s*=\s*\d{1,4})?\s*$'),
+    ColumnKind.DURATION: re.compile(r'\b\d{1,3}\s*(?:min\w*|hour|hrs?|hours?)\b', re.I),
     ColumnKind.AGE: re.compile(r'\b\d{1,2}\s*(?:[-–—]|to)\s*\d{1,2}\s*(?:years?|yrs?)?\b|'
                                r'\bnot\s+exceeding\s+\d{1,2}\b', re.I),
     ColumnKind.PAY: re.compile(r'\b(?:pay\s+)?level[\s-]*\d{1,2}\b|₹\s*[\d,]+|'

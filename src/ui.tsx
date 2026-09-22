@@ -107,6 +107,7 @@ import {
   DataProvenance,
   EligibilityDiagnostic,
   Exam,
+  ExamPatternNode,
   ExamQualificationLevel,
   ExcludedModule,
   InAppChapter,
@@ -3686,6 +3687,25 @@ const asksLocation = (q: string) => /\b(where|which (tab|section|page|part)|how 
  */
 const classificationIsConfirmed = (post: { id: string }): boolean =>
   Object.prototype.hasOwnProperty.call(CLASSIFICATION_CONFIRMED, post.id);
+
+/**
+ * What to print on a stage's badge.
+ *
+ * `tier` holds the frontend's own vocabulary (TIER_1), which no authority uses and no
+ * candidate of an exam with phases or a single paper would recognise. Where the stage's own
+ * name carries a label the authority printed, that is shown instead.
+ */
+const stageBadge = (stage: { tier: string; stageName: string; stageNumber: number }): string => {
+  const printed = /\b(?:tier|phase|stage|paper|session|round)[\s\-\u2013]*(?:[IVXL]{1,4}|\d{1,2}|[A-H])\b/i.exec(stage.stageName || '');
+  if (printed) return printed[0].toUpperCase();
+  // TIER_1 is this codebase's vocabulary, not an authority's, and an exam whose stages are
+  // phases, screenings or a single paper should not be told it has tiers. Where the
+  // record's label is that vocabulary, the stage's own position is shown instead, which is
+  // true of every exam; a label that means something on its own ("INTERVIEW") is kept.
+  const value = (stage.tier || '').replace(/_/g, ' ').trim();
+  if (/^TIER\s*\d+$/i.test(value)) return `STAGE ${stage.stageNumber}`;
+  return value;
+};
 
 /** Non-superseded date of a given type for the exam in hand, if the register has one. */
 const dateOfType = (type: string, exam: Exam = SSC_CGL_EXAM) =>
@@ -16082,6 +16102,126 @@ const PracticeShell: React.FC<{
 );
 
 /** One exam's own pattern, read from its own stages. Nothing is assumed about any other exam. */
+/**
+ * One node of an exam's published structure, and its children beneath it.
+ *
+ * Renders only what the authority stated. A missing figure is missing, not a zero; a figure
+ * GovOS computed from the authority's figures says so; and a row whose cells the document
+ * merged across parts is marked for review with its own text kept, because a confident
+ * wrong mark is worse than a gap.
+ */
+const PatternNodeCard: React.FC<{
+  node: ExamPatternNode;
+  depth: number;
+  onOpenProvenanceModal: (p: DataProvenance) => void;
+}> = ({ node, depth, onOpenProvenanceModal }) => {
+  const derived = new Set(node.derived || []);
+  const review = new Set(node.underReview || []);
+  const figures: { label: string; value: string; field: string }[] = [];
+  if (node.questions !== undefined) figures.push({ label: 'Questions', value: String(node.questions), field: 'questions' });
+  if (node.marks !== undefined) figures.push({ label: 'Marks', value: String(node.marks), field: 'marks' });
+  if (node.durationMinutes !== undefined) figures.push({ label: 'Minutes', value: String(node.durationMinutes), field: 'durationMinutes' });
+  if (node.marksPerQuestion !== undefined) figures.push({ label: 'Marks / question', value: String(node.marksPerQuestion), field: 'marksPerQuestion' });
+
+  return (
+    <div style={{
+      padding: depth === 0 ? '22px' : '14px 16px',
+      borderRadius: depth === 0 ? 'var(--radius-md)' : 'var(--radius-sm)',
+      background: depth === 0 ? 'var(--surface-2)' : 'var(--surface-3)',
+      border: '1px solid var(--border-color)',
+      display: 'flex', flexDirection: 'column', gap: depth === 0 ? '14px' : '8px'
+    }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
+            {node.code && <span className="badge badge-verified" style={{ fontSize: '0.62rem' }}>{node.code}</span>}
+            <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+              {(node.levelLabel || node.level || '').toUpperCase()}
+            </span>
+            {node.status === 'NEEDS_REVIEW' && (
+              <span className="badge badge-pending" style={{ fontSize: '0.62rem' }}>NEEDS REVIEW</span>
+            )}
+          </div>
+          <h4 style={{ fontSize: depth === 0 ? '1.15rem' : '0.95rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0, lineHeight: 1.35 }}>
+            {node.name}
+          </h4>
+        </div>
+        {/* The figures wrap onto their own line on a phone. `flexShrink: 0` here kept the
+            whole row at its full width and pushed the page sideways by 215px at 375. */}
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', minWidth: 0 }}>
+          {figures.map(f => (
+            <span
+              key={f.field}
+              className="glass-pill"
+              style={{ fontSize: '0.75rem' }}
+              title={derived.has(f.field)
+                ? `${f.label}: computed by GovOS from the figures this document states, not printed as such`
+                : `${f.label}, as stated in ${node.provenance ? node.provenance.documentTitle : 'the official document'}`}
+            >
+              {f.value} {f.label}{derived.has(f.field) ? ' (computed)' : ''}{review.has(f.field) ? ' *' : ''}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {(node.negativeMarking || node.qualifying || node.languages || node.mode || node.questionType || node.sectionalTiming) && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
+          {node.negativeMarking && (
+            <div><strong>Negative marking:</strong> {node.negativeMarking}
+              {derived.has('negativeMarking') ? ' (stated once for the whole stage)' : ''}</div>
+          )}
+          {node.qualifying && (
+            <div>
+              <strong>{node.qualifying.qualifyingOnly ? 'Qualifying only:' : 'Qualifying rule:'}</strong>{' '}
+              {node.qualifying.minimumPercent !== undefined && `minimum ${node.qualifying.minimumPercent}%. `}
+              {node.qualifying.minimumMarks !== undefined && `minimum ${node.qualifying.minimumMarks} marks. `}
+              {(node.qualifying.byCategory || []).map(c => `${c.label}: ${c.minimumMarks}`).join(' · ')}
+              {node.qualifying.asPrinted && (
+                <span style={{ color: 'var(--text-muted)' }}> {node.qualifying.asPrinted}</span>
+              )}
+            </div>
+          )}
+          {node.languages && node.languages.length > 0 && (
+            <div><strong>Medium:</strong> {node.languages.join(', ')}</div>
+          )}
+          {node.mode && <div><strong>Mode:</strong> {node.mode}</div>}
+          {node.questionType && <div><strong>Question type:</strong> {node.questionType}</div>}
+          {node.sectionalTiming && <div>Each section is timed separately.</div>}
+          {(node.durationVariants || []).map((v, i) => (
+            <div key={i} style={{ color: 'var(--text-muted)' }}>
+              {v.minutes} minutes {v.appliesTo}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {node.status === 'NEEDS_REVIEW' && node.note && (
+        <div style={{ fontSize: '0.8rem', color: 'var(--amber)', lineHeight: 1.5 }}>
+          {node.note}
+        </div>
+      )}
+
+      {node.provenance && (
+        <button
+          onClick={() => onOpenProvenanceModal(node.provenance as DataProvenance)}
+          className="btn btn-secondary"
+          style={{ fontSize: '0.74rem', padding: '5px 10px', alignSelf: 'flex-start' }}
+        >
+          Sourced Clause
+        </button>
+      )}
+
+      {node.children && node.children.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '2px' }}>
+          {node.children.map(child => (
+            <PatternNodeCard key={child.id} node={child} depth={depth + 1} onOpenProvenanceModal={onOpenProvenanceModal} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const ExamPatternPanel: React.FC<{ exam: Exam }> = ({ exam }) => (
   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
     <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
@@ -17916,15 +18056,30 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
         {/* Section 05: Exam Pattern */}
         {activeSection === 5 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
-              05 — Complete 2-Tier Exam Pattern & Scheme
-            </h3>
+            <div>
+              <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+                05 — Exam Pattern & Scheme
+              </h3>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', margin: '4px 0 0 0' }}>
+                {exam.patternTree && exam.patternTree.length > 0
+                  ? `${exam.stages.length > 0 ? 'The record\u2019s stages, and ' : ''}the structure as ${exam.authorityName.split(' (')[0]} published it \u2014 read from its own documents, at the depth it uses.`
+                  : `The stages ${exam.authorityName.split(' (')[0]} conducts for this exam, as the register holds them.`}
+              </p>
+            </div>
+
+            {exam.patternTree && exam.patternTree.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {exam.patternTree.map(node => (
+                  <PatternNodeCard key={node.id} node={node} depth={0} onOpenProvenanceModal={onOpenProvenanceModal} />
+                ))}
+              </div>
+            )}
 
             {exam.stages.map(stage => (
               <div key={stage.id} style={{ padding: '22px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
                   <div>
-                    <span className="badge badge-verified" style={{ marginBottom: '4px' }}>{stage.tier}</span>
+                    <span className="badge badge-verified" style={{ marginBottom: '4px' }}>{stageBadge(stage)}</span>
                     <h4 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>{stage.stageName}</h4>
                   </div>
                   <div style={{ display: 'flex', gap: '10px' }}>
