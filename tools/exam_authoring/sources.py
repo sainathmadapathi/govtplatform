@@ -18,6 +18,7 @@ import re
 import ssl
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from dataclasses import dataclass, field
 from html import unescape
@@ -89,6 +90,23 @@ def _now() -> str:
     return time.strftime('%Y-%m-%d')
 
 
+def _encoded(url: str) -> str:
+    """The same URL, safe to request.
+
+    Authorities link to their own files with spaces and other characters `urllib` rejects,
+    and a rejected request is a client-side failure -- never evidence that the document
+    does not exist. Only the path is touched, and only characters that are already illegal
+    in one; an already-encoded path passes through unchanged because `%` is left alone.
+    """
+    parts = urllib.parse.urlsplit(url)
+    if not parts.scheme:
+        return url
+    return urllib.parse.urlunsplit((
+        parts.scheme, parts.netloc,
+        urllib.parse.quote(parts.path, safe="/%:@&=+$,~!*'()"),
+        parts.query, parts.fragment))
+
+
 def fetch(url: str, *, use_cache: bool = True, max_age_hours: int = 24) -> bytes:
     """Get a document's bytes, retrying before declaring it unreachable."""
     blob = _cache_path(url, '.bin')
@@ -105,10 +123,13 @@ def fetch(url: str, *, use_cache: bool = True, max_age_hours: int = 24) -> bytes
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
 
+    # Requested with its path encoded; cached under the URL as the authority wrote it.
+    requested = _encoded(url)
+
     last = None
     for attempt in range(_RETRIES):
         try:
-            req = urllib.request.Request(url, headers=_UA)
+            req = urllib.request.Request(requested, headers=_UA)
             with urllib.request.urlopen(req, timeout=_TIMEOUT, context=ctx) as resp:
                 data = resp.read()
             os.makedirs(CACHE_DIR, exist_ok=True)

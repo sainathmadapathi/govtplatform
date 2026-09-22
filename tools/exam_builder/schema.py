@@ -1192,6 +1192,24 @@ class AttemptRule:
 
 
 # ================================================================== admit card
+class SourceOutcome(str, Enum):
+    """What happened when a source was read -- never what an authority published.
+
+    `INFRASTRUCTURE_IS_NOT_A_STATUS` is the rule this enum serves. A page that could not be
+    fetched, a network that was down, a PDF with no readable text: each says something about
+    this run and nothing about the authority, so each is recorded on the *report* and can
+    never reach a field. The one claim this enum cannot express is NOT_PUBLISHED, which is a
+    finding about the authority and belongs to `Status`.
+    """
+
+    READ = 'READ'
+    SOURCE_FETCH_FAILURE = 'SOURCE_FETCH_FAILURE'
+    NETWORK_UNAVAILABLE = 'NETWORK_UNAVAILABLE'
+    SOURCE_UNREADABLE = 'SOURCE_UNREADABLE'
+    BUILD_PAUSED = 'BUILD_PAUSED'
+    IDENTITY_REFUSED = 'IDENTITY_REFUSED'
+
+
 class AdmitCardNoticeKind(str, Enum):
     """Kinds of pre-exam notice. Each is a thing that may or may not exist.
 
@@ -1213,17 +1231,61 @@ class AdmitCardNotice:
     id: str
     kind: AdmitCardNoticeKind = AdmitCardNoticeKind.ADMIT_CARD
     scope: Scope = dc_field(default_factory=Scope)
+    #: The authority's own words for this thing: "e-Admit Card", "Call Letter",
+    #: "Admission Certificate", "City Intimation Slip". Shown to candidates as printed,
+    #: because that is the name they will be looking for on the authority's own site.
+    official_label: str = ''
+    #: The whole row or headline this was read from, where that is longer than the document's
+    #: own name. "Download of call letters for Online examination - Preliminary" names an
+    #: activity in a schedule; the document it concerns is a "Call letter", and a banner
+    #: reading the first is unreadable. Both are kept, and each is shown where it belongs.
+    source_label: str = ''
+    #: The exam this event admits to, as the source names it. Never the cycle of the record
+    #: it is published into: an admit card for a previous cycle is a previous cycle's.
+    cycle: str = ''
     released_at: Fact[str] = dc_field(default_factory=Fact)
+    #: `DAY` or `MONTH`, as the authority published it. An ISO date has to name some day, so
+    #: a month-precision release stores the first -- and without this field a UI would print
+    #: "1 August 2026" for an authority that wrote "August, 2026".
+    released_precision: str = ''
     available_until: Fact[str] = dc_field(default_factory=Fact)
+    #: Where a date is not published but a rule is: "7 days before the examination",
+    #: "in August 2026". Kept as printed rather than resolved into a date nobody stated.
+    release_rule: Fact[str] = dc_field(default_factory=Fact)
+    #: The date of the examination this admits to, where the same source states it. A
+    #: separate field from every release date above, because conflating them sends a
+    #: candidate to the centre on the day the download opened.
+    exam_date: Fact[str] = dc_field(default_factory=Fact)
+    #: Where a candidate logs in. Almost every authority has one; almost none publishes a
+    #: direct file link, and the two are not the same thing.
+    portal_url: Fact[str] = dc_field(default_factory=Fact)
     download_url: Fact[str] = dc_field(default_factory=Fact)
     #: What a candidate needs in order to log in, as listed.
     credentials_required: Fact[list] = dc_field(default_factory=Fact)
     instructions: list[Fact] = dc_field(default_factory=list)
     #: Regional or zonal portals, for authorities organised that way. Empty for those not.
     alternate_portals: list[Fact] = dc_field(default_factory=list)
+    #: Documents and items the source says a candidate must bring. Each is its own Fact so
+    #: each cites the sentence it came from: exam-day instructions borrowed from another
+    #: exam are how a candidate arrives without the identity proof their own authority asked
+    #: for.
+    documents_required: list[Fact] = dc_field(default_factory=list)
+    #: The id of the event this one supersedes, where an authority rescheduled or corrected.
+    supersedes: str = ''
     status: Status = Status.NOT_EXTRACTED
     evidence: list[SourceEvidence] = dc_field(default_factory=list)
     note: str = ''
+
+    @property
+    def is_publishable(self) -> bool:
+        """Shown to a candidate only when scoped, evidenced and verbatim.
+
+        A release date with no stage is an admit card for no exam in particular, and a
+        claim with no verbatim span is a claim with nothing behind it.
+        """
+        return (self.status is Status.VERIFIED
+                and bool(self.scope.refs or self.cycle)
+                and any(e.is_verbatim for e in self.evidence))
 
 
 # ===================================================================== results

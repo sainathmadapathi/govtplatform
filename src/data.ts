@@ -16880,6 +16880,34 @@ export const UPSC_CSE_EXAM: Exam = {
       }
     }
   ],
+  admitCardEvents: [
+    {
+      id: 'exam-upsc-cse-2026-admit-card-exam-2026-05-15',
+      examId: 'exam-upsc-cse-2026',
+      kind: 'ADMIT_CARD',
+      officialLabel: 'e - Admit Card',
+      sourceLabel: 'e - Admit Card',
+      status: 'VERIFIED',
+      cycle: '2026',
+      releasedAt: '2026-05-15',
+      releasePrecision: 'DAY',
+      portalUrl: 'https://upsconline.nic.in/',
+      portalNote: 'the portal is the authority’s own sign-in page, named in this record rather than in the row; it is not a direct link to the document',
+      provenance: {
+        id: 'prov-exam-upsc-cse-2026-admit-card-exam-2026-05-15',
+        documentTitle: 'Civil Services (Preliminary) Examination, 2026',
+        officialUrl: 'https://www.upsc.gov.in/examinations/Civil%20Services%20%28Preliminary%29%20Examination%2C%202026',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-05-15',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'e - Admit Card 15/05/2026'
+      }
+    }
+  ],
   syllabus: [
     // --- Preliminary: General Studies Paper-I (Section III, Part A) ---
     { id: 'upsc-syl-history', subject: 'History & Culture', tier: 'BOTH', topicName: 'History of India and the Indian National Movement', subtopics: ['Ancient & medieval India', 'Art, architecture & literature', 'Modern India from the mid-18th century', 'Freedom struggle — stages & contributors', 'Post-independence consolidation'], weightagePercentage: 18, avgQuestions: 18, isHighYield: true, officialProvenance: upscProvenanceSyllabus, weightageProvenance: upscWeightageProvenance },
@@ -18855,6 +18883,66 @@ export const IBPS_PO_EXAM: Exam = {
         }
       ],
       provenance: ibpsProvenance
+    }
+  ],
+  admitCardEvents: [
+    {
+      id: 'exam-ibps-po-2026-admit-card-preliminary-2026-08-01',
+      examId: 'exam-ibps-po-2026',
+      kind: 'ADMIT_CARD',
+      officialLabel: 'call letters',
+      sourceLabel: 'Download of call letters for Online examination – Preliminary',
+      status: 'VERIFIED',
+      cycle: '2026',
+      stageLabel: 'Preliminary',
+      stageRef: 'preliminary',
+      releasedAt: '2026-08-01',
+      releasePrecision: 'MONTH',
+      releaseNote: 'the authority published a month, not a day; shown as the month it printed rather than a date it did not',
+      portalUrl: 'https://www.ibps.in/',
+      portalNote: 'the portal is the authority’s own sign-in page, named in this record rather than in the row; it is not a direct link to the document',
+      provenance: {
+        id: 'prov-exam-ibps-po-2026-admit-card-preliminary-2026-08-01',
+        documentTitle: 'CRP PO/MT-XVI detailed notification',
+        officialUrl: 'https://www.ibps.in/wp-content/uploads/Detailed-Notification_CRP-PO-XVI_Final_V1_30.06.2026.pdf',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-06-30',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'Download of call letters for Online examination – Preliminary August, 2026'
+      }
+    },
+    {
+      id: 'exam-ibps-po-2026-admit-card-main-2026-09-01',
+      examId: 'exam-ibps-po-2026',
+      kind: 'ADMIT_CARD',
+      officialLabel: 'Call letter',
+      sourceLabel: 'Download of Call letter for Online examination – Main',
+      status: 'VERIFIED',
+      cycle: '2026',
+      stageLabel: 'Main',
+      stageRef: 'main',
+      releasedAt: '2026-09-01',
+      releasePrecision: 'MONTH',
+      releaseNote: 'the authority published a month, not a day; shown as the month it printed rather than a date it did not',
+      portalUrl: 'https://www.ibps.in/',
+      portalNote: 'the portal is the authority’s own sign-in page, named in this record rather than in the row; it is not a direct link to the document',
+      provenance: {
+        id: 'prov-exam-ibps-po-2026-admit-card-main-2026-09-01',
+        documentTitle: 'CRP PO/MT-XVI detailed notification',
+        officialUrl: 'https://www.ibps.in/wp-content/uploads/Detailed-Notification_CRP-PO-XVI_Final_V1_30.06.2026.pdf',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-06-30',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'Download of Call letter for Online examination – Main September, 2026'
+      }
     }
   ],
   syllabus: [

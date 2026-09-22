@@ -801,6 +801,65 @@ export interface RoadmapTrack {
   }[];
 }
 
+/**
+ * One admit-card event, exactly as one authority published it.
+ *
+ * `AdmitCardDetails` below holds one admit card per exam, with one date, one URL and a
+ * boolean for whether a city slip exists. Four real authorities publish nothing that fits
+ * that shape: one issues a city intimation and an admit card on two different dates from
+ * one notice; one issues a call letter per stage at month precision; one publishes a rule
+ * ("7 days before examination") and no date at all. So an exam holds a *list* of events.
+ *
+ * Every field here is something an authority actually printed:
+ *
+ * - `kind` keeps the two documents apart. A city intimation tells a candidate which city;
+ *   an admit card admits them to the hall. Merging them is the defect this type replaces.
+ * - `officialLabel` is the authority's own word — "e-Admit Card", "Call Letter",
+ *   "Admission Certificate" — because that is what a candidate will look for on its site.
+ * - `releasedAt` and `examDate` are separate, always. They sit in the same sentence of a
+ *   real notice, and confusing them sends someone to a centre on the wrong day.
+ * - `releaseRule` holds a relative rule where the authority published one instead of a
+ *   date. GovOS does not resolve it into a date, because the exam date it counts back from
+ *   can itself move.
+ * - `releasePrecision` says whether a day or only a month was printed, so "August, 2026" is
+ *   never rendered as 1 August.
+ * - `downloadUrl` appears only where the authority published a direct link, which is almost
+ *   nowhere. `portalUrl` is where a candidate signs in, and is a different claim.
+ */
+export interface ExamAdmitCardEvent {
+  id: string;
+  examId: string;
+  kind: 'ADMIT_CARD' | 'CITY_INTIMATION' | 'EXAM_INTIMATION' | 'OTHER';
+  officialLabel: string;
+  /** The whole row or headline it was read from, where longer than the document's name. */
+  sourceLabel?: string;
+  status: 'VERIFIED' | 'NEEDS_REVIEW' | 'NOT_PUBLISHED' | 'NOT_EXTRACTED';
+  /** The cycle the source names — never the record's own, so a past cycle stays past. */
+  cycle?: string;
+  /** The stage this admits to, in the authority's own word ("Tier-I", "Preliminary"). */
+  stageLabel?: string;
+  stageRef?: string;
+  releasedAt?: string;
+  releasePrecision?: 'DAY' | 'MONTH';
+  releaseNote?: string;
+  releaseRule?: string;
+  releaseRuleNote?: string;
+  availableUntil?: string;
+  /** The examination's own date, where the same source stated it. Never a release date. */
+  examDate?: string;
+  examDateNote?: string;
+  portalUrl?: string;
+  portalNote?: string;
+  /** Only where the authority published a file link of its own. Never its homepage. */
+  downloadUrl?: string;
+  credentials?: string[];
+  documents?: string[];
+  instructions?: string[];
+  supersedes?: string;
+  note?: string;
+  provenance?: DataProvenance;
+}
+
 export interface AdmitCardDetails {
   status: 'AVAILABLE' | 'NOT_YET_ANNOUNCED' | 'EXPIRED';
   releaseDateStr: string;
@@ -918,6 +977,12 @@ export interface Exam {
   applicationGuide: ApplicationGuideData;
   roadmapTracks: RoadmapTrack[];
   admitCardDetails?: AdmitCardDetails;
+  /**
+   * The admit-card events this exam's authority actually published, read from its own
+   * documents. Present only where they were read; absent means GovOS has not read them,
+   * which the section says in words rather than rendering as "not yet announced".
+   */
+  admitCardEvents?: ExamAdmitCardEvent[];
   examDayChecklist?: ExamDayChecklistItem[];
   resultNextSteps?: ResultNextStepStage[];
   /** The eligibility cards shown in section 03 — each exam states its own rules, cited. */

@@ -687,3 +687,79 @@ def answer_keys(keys: list, *, exam_id: str) -> list:
                 row['provenance'] = provenance
         rows.append(row)
     return rows
+
+
+def admit_card_events(events: list, *, exam_id: str) -> list:
+    """Project admit-card events into the shape section 14 renders.
+
+    Four things this projection is careful about, all of them from ADMIT_CARD_AUDIT.md:
+
+      * **`kind` travels.** The section has to be able to say "City Intimation Slip" and
+        "Admit Card" separately, because the record it replaces merged them into one
+        milestone label and one boolean.
+      * **A release date and an examination date are separate keys**, and the exam date is
+        optional, because most sources state only one of the two.
+      * **`downloadUrl` is emitted only where the authority published a file link**, which
+        is almost nowhere. `portalUrl` is a different key and carries its own note; neither
+        of them is ever the authority's homepage dressed up as a download.
+      * **`releasePrecision`** says whether the authority printed a day or a month, so
+        "August, 2026" is not rendered as 1 August.
+
+    An event whose exam is not this exam is dropped rather than relabelled.
+    """
+    from .schema import ScopeKind
+
+    rows = []
+    for event in events:
+        scope_refs = [r for r in event.scope.refs if r.kind is ScopeKind.STAGE]
+        row = {
+            'id': event.id,
+            'examId': exam_id,
+            'kind': event.kind.value,
+            'officialLabel': event.official_label,
+            'sourceLabel': event.source_label,
+            'status': event.status.value,
+        }
+        if event.cycle:
+            row['cycle'] = event.cycle
+        if scope_refs:
+            row['stageLabel'] = scope_refs[0].label
+            row['stageRef'] = scope_refs[0].ref
+        if event.released_at.has_value:
+            row['releasedAt'] = event.released_at.value
+            row['releasePrecision'] = event.released_precision or 'DAY'
+            if event.released_at.note:
+                row['releaseNote'] = event.released_at.note
+        if event.release_rule.has_value:
+            row['releaseRule'] = event.release_rule.value
+            if event.release_rule.note:
+                row['releaseRuleNote'] = event.release_rule.note
+        if event.available_until.has_value:
+            row['availableUntil'] = event.available_until.value
+        if event.exam_date.has_value:
+            row['examDate'] = event.exam_date.value
+            if event.exam_date.note:
+                row['examDateNote'] = event.exam_date.note
+        if event.portal_url.has_value:
+            row['portalUrl'] = event.portal_url.value
+            if event.portal_url.note:
+                row['portalNote'] = event.portal_url.note
+        if event.download_url.is_publishable:
+            row['downloadUrl'] = event.download_url.value
+        if event.credentials_required.has_value:
+            row['credentials'] = list(event.credentials_required.value)
+        if event.documents_required:
+            row['documents'] = [f.value for f in event.documents_required if f.value]
+        if event.instructions:
+            row['instructions'] = [f.value for f in event.instructions if f.value]
+        if event.supersedes:
+            row['supersedes'] = event.supersedes
+        if event.note:
+            row['note'] = event.note
+        source = (event.released_at if event.released_at.has_value
+                  else event.release_rule)
+        provenance = to_legacy_provenance(source, prov_id=f'prov-{event.id}')
+        if provenance is not None:
+            row['provenance'] = provenance
+        rows.append(row)
+    return rows

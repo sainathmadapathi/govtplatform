@@ -453,6 +453,56 @@ the weightage, the tree map and the verifier's revisions are all built on it.
 publish none; the section states that in words and points at the Exam Pattern section, which
 has those papers and their sections from the same notice.
 
+### The admit card is read as events, never as one card per exam
+
+`tools/exam_builder/admit_card.py` reads an exam's admit-card events out of whatever its
+authority published; `ADMIT_CARD_AUDIT.md` records what four real authorities publish and
+what the old model assumed. The unit is an **event** -- `Exam → Stage → Admit Card Event` --
+because no two of the four publish the same shape: SSC puts a city-intimation date, an
+admit-card date and the examination's own date in one sentence; UPSC publishes a row on the
+exam's page; IBPS publishes two call letters, one per stage, at **month precision**; LIC
+publishes a **rule** ("7 days before examination") and no date at all.
+
+Three separations are the whole design, and each was a real defect:
+
+- **A city intimation is not an admit card.** The record named one SSC milestone "Tier 1
+  City Intimation Slip & Admit Card Release", `cityIntimationAvailable` was a boolean, and
+  `cityIntimationDate` was computed as `label.includes('city') || type === 'ADMIT_CARD'`, so
+  any admit-card date doubled as the city date. `AdmitCardNoticeKind` keeps them apart and
+  the merge refuses to join them.
+- **A release date is not an examination date.** They share sentences. `exam_date` is its
+  own field, and where a notice states two exam dates the one after its own supersession
+  marker governs while the earlier is named in the fact's note.
+- **A homepage is not a download link.** The section's download button was
+  `href={exam.officialDomain}` labelled "Official Download Portal" for every exam. `classify_url`
+  calls a path-less URL a PORTAL; `downloadUrl` is emitted only where the authority published
+  a file link, which is **nowhere** among the four -- all of them serve the document behind
+  each candidate's own login.
+
+Rules that cost real defects to learn, all in the file's comments: a date belongs to the cue
+it sits **beside** (measured from where the cue ends), and a rival cue standing between a cue
+and a date takes that date; a date in another **sentence** belongs to another statement; a
+notice's **dateline** is not an event date; a **range** is quoted whole ("2/3 days", not
+"3 days"); a **cell seam** in a flattened table ends a value, or one row's release becomes the
+next row's exam date; and `Tier–1` with an en dash still names a tier.
+
+`SourceOutcome` (schema.py) is where a fetch failure, an unreachable network or an unreadable
+file is recorded. It is deliberately **not** a `Status`: NOT_PUBLISHED is a finding about an
+authority, and "we could not reach the page" may never become one. `may_supply_admit_card()`
+is the pattern gate, so another cycle's notice supplies nothing -- which is why **SSC CGL 2026
+has no events**: all four notices that name the CGL are for the **2025** cycle.
+
+`compat.admit_card_events()` projects into `Exam.admitCardEvents`, which section 14 renders as
+one card per document, with the authority's own word for it, the row it was listed in, the
+release as a date **or** a rule, the precision it was printed at, and a portal link labelled as
+a portal. The section has **four** states, not three: the fourth says GovOS has not read this
+exam's sources, because "not announced yet" is a claim about the authority. Green requires a
+read source *and* a release date that has passed, and says GovOS cannot see the candidate's own
+login -- it used to read "your Call Letter and reporting schedule are live" off a stale
+`status: 'AVAILABLE'` in a record that had never been re-read. The sample hall ticket prints
+the **names** of its fields; it used to print a roll number, a shift, a gate time and a named
+centre that came from no authority.
+
 ### The syllabus, also as a map
 `SyllabusTreeMap` is section 06's **third view** — the switcher reads Post Study Plan ·
 Official Gazette Syllabus · Tree Map — not a card stacked under the others. It reads

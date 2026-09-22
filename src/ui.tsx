@@ -137,7 +137,8 @@ import {
   UserInteractionEvent,
   ChatContext,
   ConversationTurn,
-  MultiTierResultEntry
+  MultiTierResultEntry,
+  ExamAdmitCardEvent
 } from './types';
 import {
   ALL_EXAMS,
@@ -13027,19 +13028,65 @@ export const AdmitCardSection: React.FC<AdmitCardSectionProps> = ({
 
   // Find admit card date from dates array
   const admitDate = exam.dates.find(d => d.type === 'ADMIT_CARD');
-  const cityIntimationDate = exam.dates.find(d => d.label.toLowerCase().includes('city') || d.type === 'ADMIT_CARD');
   const examDate = exam.dates.find(d => d.type === 'EXAM_TIER1' || d.type === 'EXAM_TIER2');
 
   // Admit-card facts declared on the exam record (falls back to the dates array)
   const admitDetails = exam.admitCardDetails;
 
-  // Determine availability status
-  // Three states, not two. An exam whose record carries no admit-card milestone at all must say
-  // so: it used to fall to the "city intimation released" branch and assert a slip the authority
-  // has not issued, while the same panel read "To be announced".
-  const isAvailable = admitDetails?.status === 'AVAILABLE' || admitDate?.status === 'AVAILABLE';
-  const hasAnnouncedDate = !!(admitDetails?.releaseDateStr || admitDate?.dateTimeStr);
+  // The events this exam's authority actually published, each read from its own document.
+  // `cityIntimationDate` used to be computed as `label.includes('city') || type ===
+  // 'ADMIT_CARD'`, so any admit-card milestone doubled as the city-intimation date; the two
+  // are separate records here and are never derived from one another.
+  const events: ExamAdmitCardEvent[] = exam.admitCardEvents || [];
+  const admitCards = events.filter(e => e.kind === 'ADMIT_CARD');
+  const cityEvents = events.filter(e => e.kind === 'CITY_INTIMATION');
+  const hasBeenRead = events.length > 0;
+
+  // Four states, not three. An exam whose sources have not been read must not render as
+  // "not announced yet": that is a claim about the authority made out of a gap in GovOS,
+  // and it used to be the default for every exam with no record.
+  // What GovOS can actually see is whether the release date the authority published has
+  // passed. It cannot see a candidate's own portal, so "your call letter is live" was a
+  // claim it had no basis for.
+  const today = new Date().toISOString().slice(0, 10);
+  const released = admitCards.filter(e => e.releasedAt && e.releasedAt <= today);
+  // Only where the authority's own documents were read. An exam whose record was authored
+  // earlier and never re-read rendered green — "your Call Letter and reporting schedule are
+  // live" — off a stale `status: 'AVAILABLE'` in the dates array, which is the strongest
+  // possible claim made on the weakest possible basis.
+  const isAvailable = hasBeenRead && released.length > 0;
+  const hasAnnouncedDate = !!(admitDetails?.releaseDateStr || admitDate?.dateTimeStr)
+    || admitCards.some(e => !!e.releasedAt || !!e.releaseRule);
   const releaseDateStr = admitDetails?.releaseDateStr || admitDate?.dateTimeStr || 'To be announced';
+
+  // The authority's own word for the document. "Admit card" is GovOS's word; a candidate on
+  // upsc.gov.in is looking for "e-Admit Card" and on ibps.in for a "Call Letter".
+  // Sentence case for a heading only. The authority's own words are kept in the data and
+  // on each row; a heading reading "call letters" is the row's casing, not its meaning.
+  const sentence = (t: string) => (t ? t.charAt(0).toUpperCase() + t.slice(1) : t);
+  const officialWord = sentence(admitCards[0]?.officialLabel || cityEvents[0]?.officialLabel || '');
+  const sectionHeading = hasBeenRead
+    ? [admitCards.length ? sentence(admitCards[0].officialLabel || 'Admit Card') : '',
+       cityEvents.length ? sentence(cityEvents[0].officialLabel || 'Exam City Intimation') : '']
+        .filter(Boolean).join(' & ')
+    : 'Admit Card & Exam City Intimation';
+
+  // A month is a month. An authority that printed "August, 2026" printed no day, and the
+  // ISO value has to be some day, so the precision decides how it is shown.
+  const showWhen = (e: ExamAdmitCardEvent): string => {
+    if (e.releasedAt) {
+      const d = new Date(e.releasedAt + 'T00:00:00');
+      return e.releasePrecision === 'MONTH'
+        ? d.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
+        : d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+    return e.releaseRule || 'Not stated';
+  };
+
+  const kindLabel = (kind: string): string =>
+    kind === 'CITY_INTIMATION' ? 'City Intimation'
+      : kind === 'EXAM_INTIMATION' ? 'Exam Intimation'
+        : kind === 'ADMIT_CARD' ? 'Admit Card' : 'Other';
 
   // Regional download mirrors are authority-specific, so they come from the exam
   // record. Exams without declared mirrors show only their single official portal.
@@ -13067,43 +13114,173 @@ export const AdmitCardSection: React.FC<AdmitCardSectionProps> = ({
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
+              {/* The middle state used to read "CITY INTIMATION RELEASED", asserting a
+                  slip for any exam with any admit-card date — including authorities that
+                  issue no such document. */}
               <span className={`badge ${isAvailable ? 'badge-verified' : hasAnnouncedDate ? 'badge-demo' : 'badge-pending'}`}>
                 {isAvailable
-                  ? '🟢 ADMIT CARD ACTIVE & DOWNLOADABLE'
+                  ? `🟢 ${(officialWord || 'Admit card').toUpperCase()} — RELEASE DATE HAS PASSED`
                   : hasAnnouncedDate
-                    ? '🟡 CITY INTIMATION RELEASED — ADMIT CARD SOON'
-                    : '⚪ ADMIT CARD NOT ANNOUNCED YET'}
+                    ? (hasBeenRead
+                      ? `🟡 ${(officialWord || 'Admit card').toUpperCase()} — RELEASE PUBLISHED`
+                      : '🟡 DATE FROM THE RECORD — NOT RE-READ FROM THE AUTHORITY')
+                    : hasBeenRead
+                      ? '⚪ NO RELEASE PUBLISHED FOR THIS CYCLE YET'
+                      : '⚪ NOT READ FROM THE AUTHORITY YET'}
               </span>
               <span className="badge" style={{ background: 'var(--surface-2)', color: 'var(--text-secondary)' }}>
                 Official Board: {exam.authorityName}
               </span>
             </div>
 
+            {/* The heading was hardcoded to one authority's two document names. */}
             <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px' }}>
-              e-Admit Card & Exam City Intimation Slip
+              {sectionHeading}
             </h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0 }}>
               {isAvailable
-                ? 'Your Computer Based Examination (CBT) Call Letter and reporting schedule are live.'
+                ? `The release date ${exam.authorityName.split(' (')[0]} published has passed, so the ${officialWord || 'admit card'} should be on its portal. GovOS cannot see your own login — sign in to check.`
                 : hasAnnouncedDate
-                  ? `Official admit cards are scheduled for release on ${releaseDateStr}. You can check your exam city intimation slip now.`
-                  : `${exam.authorityName.split(' (')[0]} has not announced an admit card date for this exam yet. The steps below are the download process for when it opens; nothing is downloadable at the moment.`}
+                  ? (hasBeenRead
+                      ? `${exam.authorityName.split(' (')[0]} has published the release below. Each row is one document, shown as the authority stated it.`
+                      : `This record carries a release date of ${releaseDateStr}, authored earlier and not yet re-read from ${exam.authorityName.split(' (')[0]}'s own documents. Confirm it on the authority's site before planning around it.`)
+                  : hasBeenRead
+                    ? `${exam.authorityName.split(' (')[0]} has published no release for this cycle in the documents GovOS has read. Nothing is downloadable at the moment.`
+                    : `GovOS has not yet read ${exam.authorityName.split(' (')[0]}'s own documents for this exam, so it has nothing to tell you about the admit card. That is a gap here, not a statement that the authority has issued none — check its official site.`}
             </p>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <a 
-              href={exam.officialDomain} 
-              target="_blank" 
-              rel="noreferrer"
-              className="btn btn-emerald"
-              style={{ fontSize: '0.9rem', padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '8px' }}
-            >
-              <Download size={18} /> Official Download Portal <ExternalLink size={14} />
-            </a>
+          {/* A download button only where the authority published a file link. Where it
+              did not — which is almost everywhere — this offers the portal a candidate
+              signs in to, labelled as one. It used to offer `exam.officialDomain`, an
+              authority's homepage, under the words "Official Download Portal". */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            {admitCards.find(e => e.downloadUrl) ? (
+              <a
+                href={admitCards.find(e => e.downloadUrl)!.downloadUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="btn btn-emerald"
+                style={{ fontSize: '0.9rem', padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '8px' }}
+              >
+                <Download size={18} /> Download from {exam.authorityName.split(' (')[0]} <ExternalLink size={14} />
+              </a>
+            ) : (
+              <a
+                href={admitCards.find(e => e.portalUrl)?.portalUrl || exam.officialDomain}
+                target="_blank"
+                rel="noreferrer"
+                className="btn btn-secondary"
+                style={{ fontSize: '0.9rem', padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '8px' }}
+              >
+                <ExternalLink size={16} /> Sign in on {exam.authorityName.split(' (')[0]}'s portal
+              </a>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Every event the authority published, each one its own card.
+          The record this replaced held one admit card per exam, and one SSC milestone
+          named "Tier 1 City Intimation Slip & Admit Card Release" — two documents, two
+          dates, one label. A city intimation and an admit card are never the same row
+          here, and one stage's call letter is never another stage's. */}
+      {hasBeenRead && (
+      <div className="glass-card" style={{ padding: '24px' }}>
+        <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <FileText size={18} color="var(--primary)" /> What {exam.authorityName.split(' (')[0]} has published
+        </h4>
+        <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: '0 0 16px' }}>
+          Each row below is one document, read from the authority's own notice or examination page and shown in its own words.
+        </p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {events.map(e => (
+            <div key={e.id} style={{
+              padding: '14px 16px',
+              borderRadius: 'var(--radius-md)',
+              background: 'var(--surface-2)',
+              border: e.status === 'VERIFIED' ? '1px solid var(--border-color)' : '1px solid rgba(165, 90, 5, 0.35)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '6px' }}>
+                <span className={`badge ${e.kind === 'ADMIT_CARD' ? 'badge-verified' : 'badge-demo'}`} style={{ fontSize: '0.7rem' }}>
+                  {kindLabel(e.kind).toUpperCase()}
+                </span>
+                {e.stageLabel && (
+                  <span className="badge" style={{ fontSize: '0.7rem', background: 'var(--surface-3)', color: 'var(--text-secondary)' }}>
+                    {e.stageLabel}
+                  </span>
+                )}
+                {e.cycle && (
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>cycle {e.cycle}</span>
+                )}
+                {e.status !== 'VERIFIED' && (
+                  <span className="badge badge-pending" style={{ fontSize: '0.68rem' }}>NEEDS REVIEW</span>
+                )}
+              </div>
+
+              <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                {e.officialLabel || kindLabel(e.kind)}
+              </div>
+              {/* The row the document was named in, where that is not its name. */}
+              {e.sourceLabel && e.sourceLabel !== e.officialLabel && (
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                  Listed by {exam.authorityName.split(' (')[0]} as “{e.sourceLabel}”
+                </div>
+              )}
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '18px', marginTop: '8px' }}>
+                <div>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                    {e.releasedAt ? 'Available from' : 'The rule the authority published'}
+                  </span>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-primary)' }}>{showWhen(e)}</div>
+                </div>
+                {/* Never the same field as the release. A notice saying the admit card is
+                    downloadable from the 9th for an exam on the 14th states two different
+                    things, and merging them sends a candidate five days early. */}
+                {e.examDate && (
+                  <div>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Examination date</span>
+                    <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      {new Date(e.examDate + 'T00:00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </div>
+                  </div>
+                )}
+                {e.availableUntil && (
+                  <div>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Available until</span>
+                    <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-primary)' }}>{e.availableUntil}</div>
+                  </div>
+                )}
+              </div>
+
+              {(e.releaseNote || e.releaseRuleNote || e.examDateNote || e.portalNote || e.note) && (
+                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '10px 0 0', lineHeight: 1.5 }}>
+                  {[e.releaseNote, e.releaseRuleNote, e.examDateNote, e.portalNote, e.note].filter(Boolean).join(' · ')}
+                </p>
+              )}
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginTop: '10px' }}>
+                {e.downloadUrl ? (
+                  <a href={e.downloadUrl} target="_blank" rel="noreferrer" className="btn btn-emerald" style={{ fontSize: '0.75rem', padding: '5px 12px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <Download size={12} /> Open the document
+                  </a>
+                ) : e.portalUrl ? (
+                  <a href={e.portalUrl} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '5px 12px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <ExternalLink size={12} /> Sign in to download
+                  </a>
+                ) : (
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    The authority publishes no direct link; it is served after sign-in.
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      )}
 
       {/* Grid: Instructions & Download Credentials */}
       <div className="grid-2" style={{ gap: '20px' }}>
@@ -13114,9 +13291,25 @@ export const AdmitCardSection: React.FC<AdmitCardSectionProps> = ({
             <ShieldCheck size={18} color="var(--primary)" /> Required Login Credentials
           </h4>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-            To access your hall ticket from the official {exam.authorityName.split(' ')[0]} server, keep the following credentials ready:
+            To access your {officialWord || 'admit card'} from the official {exam.authorityName.split(' (')[0]} server, keep the following credentials ready:
           </p>
 
+          {/* Where the authority's own document lists what a candidate signs in with, that
+              list is shown instead of the generic three below. Sign-in requirements differ
+              by authority, and GovOS never stores or supplies a credential itself. */}
+          {events.some(e => e.credentials && e.credentials.length) ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {Array.from(new Set(events.flatMap(e => e.credentials || []))).map(c => (
+                <div key={c} style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <User size={16} color="var(--cyan)" />
+                  <strong style={{ fontSize: '0.88rem', color: 'var(--text-primary)' }}>{c}</strong>
+                </div>
+              ))}
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>
+                Read from {exam.authorityName.split(' (')[0]}'s own document.
+              </p>
+            </div>
+          ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '10px' }}>
               <User size={16} color="var(--cyan)" />
@@ -13142,6 +13335,7 @@ export const AdmitCardSection: React.FC<AdmitCardSectionProps> = ({
               </div>
             </div>
           </div>
+          )}
         </div>
 
         {/* Box 2: Crucial Printing & Verification Guidelines */}
@@ -13149,6 +13343,12 @@ export const AdmitCardSection: React.FC<AdmitCardSectionProps> = ({
           <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Printer size={18} color="#235ddd" /> Essential Printing Rules
           </h4>
+          {/* General CBT guidance written by GovOS, not a clause of any authority's notice.
+              Where an authority's own document lists what to bring, that list is shown
+              above on the event it belongs to. */}
+          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '-6px 0 12px' }}>
+            General guidance from GovOS — not a rule of {exam.authorityName.split(' (')[0]}'s notice. Your card's own instructions govern.
+          </p>
 
           <ul style={{ paddingLeft: '20px', margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '10px', lineHeight: 1.5 }}>
             <li>
@@ -13235,36 +13435,40 @@ export const AdmitCardSection: React.FC<AdmitCardSectionProps> = ({
             </h4>
           </div>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            Illustrative layout showing key fields on your official paper
+            The fields your official card carries. GovOS fills none of them in — the authority does.
           </span>
         </div>
 
         <div style={{ padding: '20px', borderRadius: 'var(--radius-md)', background: 'var(--surface-3)', border: '1px solid var(--border-color)' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))', gap: '16px', marginBottom: '16px' }}>
+            {/* Field names, not invented values. This card used to print a roll number, a
+                shift, a reporting time and a named centre, none of which came from any
+                authority — an illustration that reads as a real allotment. Only the exam
+                date is filled, and only from the record. */}
             <div>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Candidate Name</span>
-              <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>CANDIDATE ASPIRANT</div>
+              <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-muted)' }}>as printed by {exam.authorityName.split(' (')[0]}</div>
             </div>
             <div>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Roll Number / User ID</span>
-              <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--cyan)', fontFamily: 'var(--font-mono)' }}>2201048291</div>
+              <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>your own, on your card</div>
             </div>
             <div>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Exam Date & Shift</span>
-              <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#af5109' }}>
-                {examDate?.dateTimeStr.split(' ')[0] || '28 Oct 2026'} (Shift 1: 09:00 - 10:00 AM)
+              <div style={{ fontSize: '0.95rem', fontWeight: 700, color: examDate ? '#af5109' : 'var(--text-muted)' }}>
+                {examDate ? `${examDate.dateTimeStr.split(' ')[0]} · shift as printed` : 'date and shift as printed on your card'}
               </div>
             </div>
             <div>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Reporting & Gate Closure</span>
-              <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#b71f1f' }}>07:30 AM (Gate Closes: 08:30 AM Strict)</div>
+              <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-muted)' }}>as printed — gates close before the exam starts</div>
             </div>
           </div>
 
           <div style={{ borderTop: '1px solid var(--surface-2)', paddingTop: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
               <MapPin size={14} color="var(--primary)" />
-              <span>Test Venue: iON Digital Zone iDZ, Central Assessment Centre Lab 4, New Delhi</span>
+              <span>Test venue: the centre {exam.authorityName.split(' (')[0]} allots you, printed on the card itself</span>
             </div>
 
             {onNavigateChecklist && (
