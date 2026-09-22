@@ -701,6 +701,144 @@ class OfficialPaper:
     note: str = ''
 
 
+# =================================================================== questions
+class QuestionFormat(str, Enum):
+    """What kind of question it is, as the paper presents it.
+
+    Open by design. An authority that asks for an essay, a numerical value, a match, or a
+    passage-based comprehension is not asking an MCQ with the options missing, and forcing
+    all of them into one shape is how a descriptive paper acquires four fake options.
+    """
+
+    MULTIPLE_CHOICE = 'MULTIPLE_CHOICE'
+    MULTIPLE_SELECT = 'MULTIPLE_SELECT'
+    NUMERICAL = 'NUMERICAL'
+    DESCRIPTIVE = 'DESCRIPTIVE'
+    ASSERTION_REASON = 'ASSERTION_REASON'
+    MATCHING = 'MATCHING'
+    PASSAGE_BASED = 'PASSAGE_BASED'
+    OTHER = 'OTHER'
+
+
+class AnswerStatus(str, Enum):
+    """What the authority has said about this question's answer.
+
+    ACTIVE and PUBLISHED are not the same thing: a question is ACTIVE and its answer may
+    still be unpublished. DROPPED, CANCELLED and MULTIPLE_ACCEPTED are published decisions
+    and are recorded only where a document states them -- silence is UNKNOWN, never a
+    cancellation.
+    """
+
+    PUBLISHED = 'PUBLISHED'
+    NOT_PUBLISHED = 'NOT_PUBLISHED'
+    DROPPED = 'DROPPED'
+    CANCELLED = 'CANCELLED'
+    MULTIPLE_ACCEPTED = 'MULTIPLE_ACCEPTED'
+    REVISED = 'REVISED'
+    UNKNOWN = 'UNKNOWN'
+
+
+class SourceStatus(str, Enum):
+    """How good the evidence behind an item is, in the candidate's terms.
+
+    Only OFFICIAL_VERIFIED may be badged as official. A coaching site's transcription of a
+    paper may be useful for finding the paper; it is never the paper.
+    """
+
+    OFFICIAL_VERIFIED = 'OFFICIAL_VERIFIED'
+    SECONDARY_UNVERIFIED = 'SECONDARY_UNVERIFIED'
+    NEEDS_REVIEW = 'NEEDS_REVIEW'
+    NOT_PUBLISHED = 'NOT_PUBLISHED'
+    NOT_EXTRACTED = 'NOT_EXTRACTED'
+
+
+@dataclass
+class QuestionOption:
+    """One option, with the label the paper printed beside it.
+
+    The label matters: a key that says "(b)" cannot be applied to a paper whose options are
+    numbered 1-4 unless the label is kept, and matching by position is how an answer ends up
+    against the wrong option.
+    """
+
+    label: str
+    text: str = ''
+
+
+@dataclass
+class AnswerEntry:
+    """What the authority says the answer is, for one question of one paper.
+
+    A list, because a key may accept more than one option after objections. A status,
+    because "no answer published" and "this question was dropped" are different findings and
+    neither is the other's default.
+    """
+
+    question_number: str
+    paper: 'PaperIdentity' = dc_field(default_factory=lambda: PaperIdentity(exam_id=''))
+    #: Option labels the key accepts -- usually one, sometimes several, sometimes none.
+    accepted: list = dc_field(default_factory=list)
+    #: For a numerical answer, the value as printed.
+    value: str = ''
+    status: AnswerStatus = AnswerStatus.UNKNOWN
+    #: The answer this one replaces, where a later key changed it. Kept, never overwritten.
+    supersedes: Optional['AnswerEntry'] = None
+    evidence: list[SourceEvidence] = dc_field(default_factory=list)
+    note: str = ''
+
+    @property
+    def is_publishable(self) -> bool:
+        """An answer is shown only where a document was read and its span verified."""
+        return (self.status in (AnswerStatus.PUBLISHED, AnswerStatus.MULTIPLE_ACCEPTED,
+                                AnswerStatus.REVISED)
+                and bool(self.accepted or self.value)
+                and any(e.is_verbatim for e in self.evidence))
+
+
+@dataclass
+class OfficialQuestion:
+    """One question of one paper, bound to the exact paper it was printed in.
+
+    Identity is the paper *and* the number: "Question 47" means nothing on its own, and two
+    shifts of one day both have a 47. `identity_key()` is what anything matching questions
+    must compare, and it is deliberately not the question's text -- a bilingual paper prints
+    the same question twice and both are the same question.
+    """
+
+    paper: 'PaperIdentity'
+    number: str
+    text: str = ''
+    format: QuestionFormat = QuestionFormat.OTHER
+    options: list[QuestionOption] = dc_field(default_factory=list)
+    #: Where the paper prints marks per question. Never assumed from the pattern, and where
+    #: it is derived from a verified pattern the Fact records what it was derived from.
+    marks: Fact[float] = dc_field(default_factory=Fact)
+    negative_marks: Fact[float] = dc_field(default_factory=Fact)
+    #: The authority's own language label for this version of the question.
+    language: str = ''
+    #: Questions that share a passage carry the same group id; the passage itself is one
+    #: node rather than being repeated into each question.
+    passage_id: str = ''
+    passage_text: str = ''
+    section: str = ''
+    subject: str = ''
+    answer: Optional[AnswerEntry] = None
+    source_status: SourceStatus = SourceStatus.NOT_EXTRACTED
+    status: Status = Status.NOT_EXTRACTED
+    evidence: list[SourceEvidence] = dc_field(default_factory=list)
+    note: str = ''
+
+    def identity_key(self) -> str:
+        return f'{self.paper.key()}#{(self.number or "").strip().lower()}'
+
+    @property
+    def is_publishable(self) -> bool:
+        """Publishable only with an exact paper, a number, text, and verbatim evidence."""
+        return (self.paper.is_paper_level and bool(self.number) and bool(self.text.strip())
+                and self.source_status is SourceStatus.OFFICIAL_VERIFIED
+                and any(e.is_verbatim for e in self.evidence))
+
+
 class AnswerKeyKind(str, Enum):
     PROVISIONAL = 'PROVISIONAL'
     FINAL = 'FINAL'
@@ -727,6 +865,23 @@ class AnswerKey:
     status: Status = Status.NOT_EXTRACTED
     evidence: list[SourceEvidence] = dc_field(default_factory=list)
     note: str = ''
+    #: The answers themselves, where the authority publishes them. Empty is an ordinary
+    #: outcome: several authorities announce a key and serve it only to each candidate
+    #: behind their own login, so the key exists, its paper is exact, and its contents are
+    #: not public.
+    entries: list['AnswerEntry'] = dc_field(default_factory=list)
+    #: How a candidate reaches the key, in the authority's words.
+    access: str = ''
+    #: The window in which the key may be viewed or challenged, where one is published.
+    window_opens: str = ''
+    window_closes: str = ''
+    source_status: 'SourceStatus' = None
+
+    @property
+    def is_publishable(self) -> bool:
+        """A key is shown only when it names its exact paper and cites a document."""
+        return (self.paper.is_paper_level
+                and any(e.is_verbatim for e in self.evidence))
 
     @property
     def is_attached_to_a_paper(self) -> bool:

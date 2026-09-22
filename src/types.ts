@@ -371,6 +371,81 @@ export interface InAppChapter {
  *   - `provenance` names the exact document and page, so every item can be checked against the
  *     original before it is trusted.
  */
+/**
+ * Which paper, exactly.
+ *
+ * Exam plus year identifies a *cycle*, not a paper: a cycle holds many papers, a paper may
+ * be sat in several shifts and printed in several languages, and an answer key belongs to
+ * exactly one of them. Every part beyond `examId` is optional because authorities label
+ * differently — what is not optional is that the parts an authority *did* print are kept,
+ * because they are what stops one paper's key reaching another paper's questions.
+ */
+export interface ExamPaperIdentity {
+  examId: string;
+  cycle?: string;
+  stage?: string;
+  paper?: string;
+  subject?: string;
+  language?: string;
+  setCode?: string;
+  session?: string;
+  /** The identity in the authority's own terms, for display. */
+  describe: string;
+}
+
+/**
+ * A question paper the authority itself published, as an entry in its own catalogue.
+ *
+ * `contentsStatus` is the honest part: a paper published as an image scan cannot be read
+ * into questions without OCR, and OCR of a scanned booklet loses word spacing and misreads
+ * option labels. Such a paper is catalogued with its exact identity and a note saying why
+ * its questions are absent — which is a different claim from the authority publishing none.
+ */
+export interface ExamOfficialPaper {
+  id: string;
+  identity: ExamPaperIdentity;
+  title: string;
+  url: string;
+  status?: string;
+  /** VERIFIED | NEEDS_REVIEW | NOT_PUBLISHED | NOT_EXTRACTED for the paper's contents. */
+  contentsStatus?: string;
+  contentsNote?: string;
+  provenance?: DataProvenance;
+}
+
+/**
+ * An official answer key, bound to the exact paper it answers.
+ *
+ * `entries` is empty wherever an authority announces a key and serves it only to each
+ * candidate through their own login: the key exists, its paper is exact, and its answers
+ * are not public. GovOS never supplies the missing answers from anywhere — not from another
+ * shift, not from another year, not from a coaching site, not from inference.
+ */
+export interface ExamAnswerKey {
+  id: string;
+  identity: ExamPaperIdentity;
+  /** PROVISIONAL | FINAL | REVISED | UNSPECIFIED, as the authority calls it. */
+  kind: string;
+  url: string;
+  status?: string;
+  /** OFFICIAL_VERIFIED | SECONDARY_UNVERIFIED | NEEDS_REVIEW | NOT_PUBLISHED. */
+  sourceStatus?: string;
+  publishedAt?: string;
+  windowOpens?: string;
+  windowCloses?: string;
+  access?: string;
+  /** The id of the key this one supersedes, for the same paper. Never an overwrite. */
+  revises?: string;
+  note?: string;
+  entries?: {
+    questionNumber: string;
+    accepted: string[];
+    value?: string;
+    status: string;
+  }[];
+  provenance?: DataProvenance;
+}
+
 export interface OfficialPaperQuestion {
   id: string;
   /** The exact exam this belongs to. Only that exam's engine may load it. */
@@ -825,6 +900,16 @@ export interface Exam {
    * some exams is because the authority publishes none, and the section says which.
    */
   syllabusTree?: ExamSyllabusNode[];
+  /**
+   * The question papers this exam's own authority publishes, each with the exact identity
+   * its own naming gives it. Absent where the authority publishes none.
+   */
+  officialPapers?: ExamOfficialPaper[];
+  /**
+   * The answer keys this exam's own authority has issued, each bound to an exact paper.
+   * Absent where the authority issues none.
+   */
+  answerKeys?: ExamAnswerKey[];
   practiceQuestions: PracticeQuestion[];
   corrigendums: CorrigendumNotice[];
   cutoffsHistory: CutoffEntry[];

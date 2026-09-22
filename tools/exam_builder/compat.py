@@ -598,3 +598,92 @@ def syllabus_tree(syllabus, *, exam_id: str, max_nodes: int = 4000) -> list:
         return out
 
     return [project(root) for root in syllabus.roots]
+
+
+# ======================================================== papers and answer keys
+def _identity_dict(identity) -> dict:
+    """A paper identity as the frontend holds it, with only the parts that were printed."""
+    out = {'examId': identity.exam_id}
+    for key, value in (('cycle', identity.cycle), ('stage', identity.stage),
+                       ('paper', identity.paper), ('subject', identity.subject),
+                       ('language', identity.language), ('setCode', identity.set_code),
+                       ('session', identity.session)):
+        if value:
+            out[key] = value
+    out['describe'] = identity.describe()
+    return out
+
+
+def official_papers(papers: list, *, exam_id: str, source_const: str = '') -> list:
+    """Project catalogued papers into the shape the PYQ section renders.
+
+    A paper whose exam is not this exam is dropped rather than relabelled -- the same rule
+    the projections for pattern and syllabus follow, and the reason the caller passes the
+    exam id rather than trusting the list.
+    """
+    rows = []
+    for paper in papers:
+        if paper.identity.exam_id != exam_id:
+            continue
+        row = {
+            'id': f'paper-{re.sub(r"[^a-z0-9]+", "-", paper.identity.key())[:60]}',
+            'identity': _identity_dict(paper.identity),
+            'title': paper.title,
+            'url': paper.url.value or '',
+            'status': paper.status.value,
+            'contentsStatus': paper.contents.status.value,
+        }
+        if paper.contents.note:
+            row['contentsNote'] = paper.contents.note
+        if paper.evidence:
+            provenance = to_legacy_provenance(paper.url, prov_id=f'prov-{row["id"]}')
+            if provenance is not None:
+                row['provenance'] = provenance
+        rows.append(row)
+    return rows
+
+
+def answer_keys(keys: list, *, exam_id: str) -> list:
+    """Project answer keys, each bound to the exact paper it answers.
+
+    `entries` is empty wherever the authority announces a key and serves it only to each
+    candidate: the key exists, its paper is exact, and its contents are not public. That is
+    recorded as it is, never as an absence of a key and never as answers GovOS supplies.
+    """
+    rows = []
+    for key in keys:
+        if key.paper.exam_id != exam_id:
+            continue
+        row = {
+            'id': key.id or f'key-{re.sub(r"[^a-z0-9]+", "-", key.paper.key())[:50]}',
+            'identity': _identity_dict(key.paper),
+            'kind': key.kind.value,
+            'url': key.url.value or '',
+            'status': key.status.value,
+            'sourceStatus': (key.source_status.value if key.source_status else
+                             'NEEDS_REVIEW'),
+        }
+        if key.published_at.has_value:
+            row['publishedAt'] = key.published_at.value
+        if key.window_opens:
+            row['windowOpens'] = key.window_opens
+        if key.window_closes:
+            row['windowCloses'] = key.window_closes
+        if key.access:
+            row['access'] = key.access
+        if key.revises:
+            row['revises'] = key.revises
+        if key.note:
+            row['note'] = key.note
+        row['entries'] = [
+            {'questionNumber': e.question_number,
+             'accepted': list(e.accepted),
+             'value': e.value,
+             'status': e.status.value}
+            for e in key.entries]
+        if key.evidence:
+            provenance = to_legacy_provenance(key.url, prov_id=f'prov-{row["id"]}')
+            if provenance is not None:
+                row['provenance'] = provenance
+        rows.append(row)
+    return rows

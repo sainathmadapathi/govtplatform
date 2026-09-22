@@ -367,6 +367,50 @@ section 05 renders at whatever depth it has. The section's heading no longer say
 and `stageBadge()` shows the authority's own label ("Tier-I", "Phase I") or the stage's
 position, never the internal `TIER_1`.
 
+### Previous-year papers and answer keys: the paper is the identity
+
+`tools/exam_builder/pyq.py` reads three different things and keeps them apart — a catalogue
+of the papers an authority publishes, the questions of a paper whose text can be read, and
+the answer keys it issues. `PYQ_AUDIT.md` records what the four captured authorities
+actually publish, which is the reason for that split.
+
+**Identity is `PaperIdentity`, never exam-plus-year.** Exam and year identify a *cycle*; a
+cycle holds many papers, a paper may be sat in several shifts and printed in several
+languages, and a key belongs to exactly one of them. `OfficialQuestion.identity_key()` is
+the paper *and* the number, because two shifts of one day both have a question 47. Nothing
+in `pyq_merge.py` compares a question number, a question's text or an answer before it has
+compared the paper.
+
+**A listing page cannot vouch for a file.** One authority publishes 702 PDFs for every
+examination it conducts on one page; 424 carry this exam's own codes and 410 resolve to a
+paper-level identity read from the file's own naming. The caller supplies which codes are
+its exam's and what they mean (`CSM` is that authority's Main examination), because only the
+caller knows; everything else is refused and counted.
+
+**Every one of those papers is a scan with no text layer.** Each is catalogued with its
+identity and its link, and its contents are `NOT_EXTRACTED` with the reason — a fact about
+the file, not about the authority. Nothing is OCR'd into questions: OCR of a scanned booklet
+loses word spacing and misreads option labels, and a wrong option label is a wrong answer.
+
+**An answer key can exist without a paper, and does.** Another authority publishes no
+question papers and announces every key in a dated notice naming the examination and the
+tier. Those become `AnswerKey` records with the kind the notice calls them, the publication
+date, the challenge window and the access route, and `entries: []` — the key exists, its
+paper is exact, and its answers are served only to each candidate through their own login.
+A final key records the provisional one it supersedes; both are kept.
+
+Rules the real documents taught: a question number and an option label look identical in
+extracted text, so each is read as whatever *sequence* it continues, and where a paper
+numbers its options as it numbers its questions the question says the boundary was read from
+the sequence rather than the page. A key whose paper cannot be identified is not recorded at
+all — never attached to the nearest-looking paper. And no answer is ever produced from
+another year's key, another shift's key, a coaching site or the question looking obvious.
+
+`compat.official_papers()` and `compat.answer_keys()` project into `Exam.officialPapers` and
+`Exam.answerKeys`, which `OfficialPaperCatalogue` and `AnswerKeyPanel` render inside Practice
+& PYQs for every engine. Both render nothing where an authority publishes nothing, so they
+carry no exam of their own.
+
 ### The syllabus is read from the authority's own document
 
 `tools/exam_builder/syllabus.py` reads a syllabus out of whatever its authority published,

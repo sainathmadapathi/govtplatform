@@ -109,6 +109,8 @@ import {
   Exam,
   ExamPatternNode,
   ExamSyllabusNode,
+  ExamAnswerKey,
+  ExamOfficialPaper,
   ExamQualificationLevel,
   ExcludedModule,
   InAppChapter,
@@ -9535,6 +9537,11 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
       {/* VIEW 1: AVAILABLE SHIFT PAPERS (100 Qs) */}
       {activePracticeTab === 'PAPERS_LIST' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* The authority's own catalogue and its own answer keys, each bound to an exact
+              paper. Both render nothing where the authority publishes neither, so this is
+              the same component every other engine mounts and carries no exam of its own. */}
+          <OfficialPaperCatalogue exam={exam} onOpenProvenanceModal={onOpenProvenanceModal} />
+          <AnswerKeyPanel exam={exam} onOpenProvenanceModal={onOpenProvenanceModal} />
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
             <div>
               <h4 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
@@ -16388,6 +16395,177 @@ const ExamPatternPanel: React.FC<{ exam: Exam }> = ({ exam }) => (
   </div>
 );
 
+/**
+ * The answer keys an authority has issued for this exam, each bound to an exact paper.
+ *
+ * A key is shown with the paper it answers, the kind of key it is and when it went up. Where
+ * the authority publishes the answers themselves they are shown; where it serves them only
+ * to each candidate, the panel says so and says how to reach them. Nothing fills that gap.
+ */
+const AnswerKeyPanel: React.FC<{
+  exam: Exam;
+  onOpenProvenanceModal: (p: DataProvenance) => void;
+}> = ({ exam, onOpenProvenanceModal }) => {
+  const keys = (exam.answerKeys || []).filter(k => k.identity.examId === exam.id);
+  if (keys.length === 0) return null;
+  const byPaper = new Map<string, ExamAnswerKey[]>();
+  keys.forEach(k => {
+    const list = byPaper.get(k.identity.describe);
+    if (list) list.push(k); else byPaper.set(k.identity.describe, [k]);
+  });
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div>
+        <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+          {exam.authorityName.split(' (')[0]}&apos;s own answer keys <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>({keys.length})</span>
+        </h4>
+        <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: '4px 0 0 0', lineHeight: 1.55 }}>
+          Each key below names the exact paper it answers — the cycle, the stage and the sitting the
+          authority printed. A later key does not replace an earlier one here: both are kept, because a
+          candidate who challenged an answer needs to see what changed.
+        </p>
+      </div>
+      {[...byPaper.entries()].map(([describe, group]) => (
+        <div key={describe} style={{ padding: '16px 18px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-primary)' }}>{describe}</div>
+          {group.map(key => {
+            const official = key.sourceStatus === 'OFFICIAL_VERIFIED';
+            const supersedes = group.find(other => other.id === key.revises);
+            return (
+              <div key={key.id} style={{ padding: '12px 14px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-3)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <span className={official ? 'badge badge-verified' : 'badge badge-pending'} style={{ fontSize: '0.62rem' }}>
+                    {key.kind}
+                  </span>
+                  {official
+                    ? <span style={{ fontSize: '0.7rem', color: 'var(--emerald)', fontWeight: 700 }}>OFFICIAL</span>
+                    : <span style={{ fontSize: '0.7rem', color: 'var(--amber)', fontWeight: 700 }}>NEEDS REVIEW</span>}
+                  {key.publishedAt && (
+                    <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>published {key.publishedAt}</span>
+                  )}
+                  {supersedes && (
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                      supersedes the {supersedes.kind.toLowerCase()} key
+                    </span>
+                  )}
+                </div>
+                {(key.windowOpens || key.windowCloses) && (
+                  <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                    Viewable {key.windowOpens || '?'} to {key.windowCloses || '?'}
+                  </div>
+                )}
+                {(key.entries && key.entries.length > 0) ? (
+                  <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                    {key.entries.length} answers published with this key.
+                  </div>
+                ) : (
+                  <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                    {key.note || 'The authority announced this key; its per-question answers are not published publicly.'}
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {key.url && (
+                    <a href={key.url} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ fontSize: '0.74rem', padding: '5px 10px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                      <ExternalLink size={12} /> Open the notice
+                    </a>
+                  )}
+                  {key.provenance && (
+                    <button onClick={() => onOpenProvenanceModal(key.provenance as DataProvenance)} className="btn btn-secondary" style={{ fontSize: '0.74rem', padding: '5px 10px' }}>
+                      Sourced Clause
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+};
+
+/**
+ * The papers this exam's authority publishes, as its own catalogue.
+ *
+ * Every entry carries the exact identity the authority's own naming gives it, so a paper of
+ * another of its examinations — or of another cycle, stage or optional subject — cannot be
+ * shown here. A paper GovOS has not transcribed says why, which is a fact about the file
+ * rather than about the authority.
+ */
+const OfficialPaperCatalogue: React.FC<{
+  exam: Exam;
+  onOpenProvenanceModal: (p: DataProvenance) => void;
+}> = ({ exam, onOpenProvenanceModal }) => {
+  const papers = (exam.officialPapers || []).filter(p => p.identity.examId === exam.id);
+  const [cycle, setCycle] = useState<string>('ALL');
+  if (papers.length === 0) return null;
+  const cycles = Array.from(new Set(papers.map(p => p.identity.cycle || 'undated'))).sort().reverse();
+  const shown = papers.filter(p => cycle === 'ALL' || (p.identity.cycle || 'undated') === cycle);
+  const transcribed = papers.filter(p => p.contentsStatus === 'VERIFIED').length;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div>
+        <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+          {exam.authorityName.split(' (')[0]}&apos;s own question papers <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>({papers.length})</span>
+        </h4>
+        <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: '4px 0 0 0', lineHeight: 1.55 }}>
+          Read from the authority&apos;s own listing, and filtered to this exam by each file&apos;s own naming —
+          a listing that carries every examination an authority conducts cannot vouch for any one of them.
+          {transcribed === 0 && ' None has been transcribed into questions here; each card says why.'}
+        </p>
+      </div>
+      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+        {['ALL', ...cycles].map(option => (
+          <button
+            key={option}
+            onClick={() => setCycle(option)}
+            className={`btn ${cycle === option ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ fontSize: '0.76rem', padding: '5px 11px' }}
+          >
+            {option === 'ALL' ? `All cycles (${papers.length})` : option}
+          </button>
+        ))}
+      </div>
+      <div className="grid-2">
+        {shown.slice(0, 60).map(paper => (
+          <div key={paper.id} style={{ padding: '14px 16px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <span className="badge badge-verified" style={{ fontSize: '0.6rem' }}>OFFICIAL PAPER</span>
+              <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontWeight: 700 }}>
+                {paper.identity.describe}
+              </span>
+            </div>
+            {paper.contentsNote && (
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                {paper.contentsNote}
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              {paper.url && (
+                <a href={paper.url} target="_blank" rel="noreferrer" className="btn btn-primary" style={{ fontSize: '0.75rem', padding: '5px 11px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                  <ExternalLink size={12} /> Open the paper
+                </a>
+              )}
+              {paper.provenance && (
+                <button onClick={() => onOpenProvenanceModal(paper.provenance as DataProvenance)} className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '5px 11px' }}>
+                  Sourced Clause
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+      {shown.length > 60 && (
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+          Showing 60 of {shown.length}. Narrow by cycle to see the rest.
+        </div>
+      )}
+    </div>
+  );
+};
+
 /** One exam's own official papers, from its own resources. Never another exam's. */
 const OfficialPapersPanel: React.FC<{ exam: Exam; onOpenProvenanceModal: (p: DataProvenance) => void }> = ({ exam, onOpenProvenanceModal }) => {
   const papers = exam.resources.filter(r => r.subject === 'Previous Year Papers' && r.type === 'OFFICIAL_PDF');
@@ -16713,6 +16891,11 @@ export const UPSCPracticeEngine: React.FC<{
 
       <ExamPatternPanel exam={exam} />
       <OfficialPapersPanel exam={exam} onOpenProvenanceModal={onOpenProvenanceModal} />
+      {/* The authority's own catalogue and its own keys, each bound to an exact paper.
+          Both render nothing where the authority publishes neither, which is why they
+          can sit in every engine without an exam-specific branch. */}
+      <OfficialPaperCatalogue exam={exam} onOpenProvenanceModal={onOpenProvenanceModal} />
+      <AnswerKeyPanel exam={exam} onOpenProvenanceModal={onOpenProvenanceModal} />
       <ExamAttemptHistory exam={exam} />
     </PracticeShell>
   );
@@ -16754,6 +16937,11 @@ export const IBPSPracticeEngine: React.FC<{
       />
       <ExamPatternPanel exam={exam} />
       <OfficialPapersPanel exam={exam} onOpenProvenanceModal={onOpenProvenanceModal} />
+      {/* The authority's own catalogue and its own keys, each bound to an exact paper.
+          Both render nothing where the authority publishes neither, which is why they
+          can sit in every engine without an exam-specific branch. */}
+      <OfficialPaperCatalogue exam={exam} onOpenProvenanceModal={onOpenProvenanceModal} />
+      <AnswerKeyPanel exam={exam} onOpenProvenanceModal={onOpenProvenanceModal} />
       <ExamAttemptHistory exam={exam} />
     </PracticeShell>
   );
@@ -16793,6 +16981,11 @@ export const APPSCGroup1PracticeEngine: React.FC<{
       />
       <ExamPatternPanel exam={exam} />
       <OfficialPapersPanel exam={exam} onOpenProvenanceModal={onOpenProvenanceModal} />
+      {/* The authority's own catalogue and its own keys, each bound to an exact paper.
+          Both render nothing where the authority publishes neither, which is why they
+          can sit in every engine without an exam-specific branch. */}
+      <OfficialPaperCatalogue exam={exam} onOpenProvenanceModal={onOpenProvenanceModal} />
+      <AnswerKeyPanel exam={exam} onOpenProvenanceModal={onOpenProvenanceModal} />
       <ExamAttemptHistory exam={exam} />
     </PracticeShell>
   );
@@ -16832,6 +17025,11 @@ export const APPSCGroup2PracticeEngine: React.FC<{
       />
       <ExamPatternPanel exam={exam} />
       <OfficialPapersPanel exam={exam} onOpenProvenanceModal={onOpenProvenanceModal} />
+      {/* The authority's own catalogue and its own keys, each bound to an exact paper.
+          Both render nothing where the authority publishes neither, which is why they
+          can sit in every engine without an exam-specific branch. */}
+      <OfficialPaperCatalogue exam={exam} onOpenProvenanceModal={onOpenProvenanceModal} />
+      <AnswerKeyPanel exam={exam} onOpenProvenanceModal={onOpenProvenanceModal} />
       <ExamAttemptHistory exam={exam} />
     </PracticeShell>
   );

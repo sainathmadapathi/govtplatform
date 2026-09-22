@@ -2028,6 +2028,163 @@ export const SSC_CGL_EXAM: Exam = {
       ]
     }
   ],
+  answerKeys: [
+    {
+      id: 'key-exam-ssc-cgl-2026-2025-tier-ii-final',
+      identity: {
+        examId: 'exam-ssc-cgl-2026',
+        cycle: '2025',
+        stage: 'Tier-II',
+        describe: '2025 · Tier-II'
+      },
+      kind: 'FINAL',
+      url: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Final_writeup_17062026.pdf',
+      status: 'VERIFIED',
+      sourceStatus: 'OFFICIAL_VERIFIED',
+      publishedAt: '2026-06-17',
+      windowOpens: '2026-06-17',
+      windowCloses: '2026-07-16',
+      access: 'by logging-in through their Registered ID and Password on the Login link given below',
+      revises: 'key-exam-ssc-cgl-2026-2025-tier-ii-provisional',
+      note: 'the authority announced this key; its per-question answers are not published publicly — by logging-in through their Registered ID and Password on the Login link given below',
+      provenance: {
+        id: 'prov-key-exam-ssc-cgl-2026-2025-tier-ii-final',
+        documentTitle: 'Final_writeup_17062026.pdf',
+        officialUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Final_writeup_17062026.pdf',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'Uploading of Final Answer Key(s) along with Candidates’ Response Sheet(s) and Marks of candidates of Combined Graduate Level Examination, 2025 (Tier-II) -reg'
+      }
+    },
+    {
+      id: 'key-exam-ssc-cgl-2026-2025-tier-ii-provisional',
+      identity: {
+        examId: 'exam-ssc-cgl-2026',
+        cycle: '2025',
+        stage: 'Tier-II',
+        describe: '2025 · Tier-II'
+      },
+      kind: 'PROVISIONAL',
+      url: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Tentative_answer_key_30012026.pdf',
+      status: 'NEEDS_REVIEW',
+      sourceStatus: 'NEEDS_REVIEW',
+      publishedAt: '2026-01-30',
+      note: 'the authority announced this key; its per-question answers are not published publicly'
+    },
+    {
+      id: 'key-exam-ssc-cgl-2026-2025-tier-i-final',
+      identity: {
+        examId: 'exam-ssc-cgl-2026',
+        cycle: '2025',
+        stage: 'Tier-I',
+        describe: '2025 · Tier-I'
+      },
+      kind: 'FINAL',
+      url: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Answer_key_09012025.pdf',
+      status: 'NEEDS_REVIEW',
+      sourceStatus: 'NEEDS_REVIEW',
+      publishedAt: '2026-01-09',
+      windowOpens: '2026-01-09',
+      windowCloses: '2026-02-08',
+      access: 'by logging-in through their Registered ID and Password on the website of the Commission',
+      revises: 'key-exam-ssc-cgl-2026-2025-tier-i-provisional',
+      note: 'the authority announced this key; its per-question answers are not published publicly — by logging-in through their Registered ID and Password on the website of the Commission'
+    },
+    {
+      id: 'key-exam-ssc-cgl-2026-2025-tier-i-provisional',
+      identity: {
+        examId: 'exam-ssc-cgl-2026',
+        cycle: '2025',
+        stage: 'Tier-I',
+        describe: '2025 · Tier-I'
+      },
+      kind: 'PROVISIONAL',
+      url: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Writeup_AnswerKey_Tier-I_CGLE_25.pdf',
+      status: 'NEEDS_REVIEW',
+      sourceStatus: 'NEEDS_REVIEW',
+      publishedAt: '2025-10-16',
+      windowOpens: '2025-09-12',
+      windowCloses: '2025-09-26',
+      access: 'Candidate Login and Response Sheet Overview Upon successful login to the Exam Conducting Agency',
+      note: 'the authority announced this key; its per-question answers are not published publicly — Candidate Login and Response Sheet Overview Upon successful login to the Exam Conducting Agency'
+    },
+    {
+      id: 'key-exam-ssc-cgl-2026-2024-tier-ii-final',
+      identity: {
+        examId: 'exam-ssc-cgl-2026',
+        cycle: '2024',
+        stage: 'Tier-II',
+        describe: '2024 · Tier-II'
+      },
+      kind: 'FINAL',
+      url: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Writeup_Final_Answer_Keyand_marks_CGLE_2024_Tier-II_18325.pdf',
+      status: 'NEEDS_REVIEW',
+      sourceStatus: 'NEEDS_REVIEW',
+      publishedAt: '2025-03-18',
+      windowOpens: '2025-03-18',
+      windowCloses: '2025-04-17',
+      access: 'by logging-in through their Registered ID and Password on the Login link given below',
+      note: 'the authority announced this key; its per-question answers are not published publicly — by logging-in through their Registered ID and Password on the Login link given below'
+    },
+    {
+      id: 'key-exam-ssc-cgl-2026-2024-paper-ii-provisional',
+      identity: {
+        examId: 'exam-ssc-cgl-2026',
+        cycle: '2024',
+        paper: 'Paper-II',
+        describe: '2024 · Paper-II'
+      },
+      kind: 'PROVISIONAL',
+      url: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Write_up_tentative_answer_key_21012025.pdf',
+      status: 'NEEDS_REVIEW',
+      sourceStatus: 'NEEDS_REVIEW',
+      publishedAt: '2025-01-21',
+      windowOpens: '2025-01-18',
+      windowCloses: '2025-01-20',
+      note: 'the authority announced this key; its per-question answers are not published publicly'
+    },
+    {
+      id: 'key-exam-ssc-cgl-2026-2024-tier-i-final',
+      identity: {
+        examId: 'exam-ssc-cgl-2026',
+        cycle: '2024',
+        stage: 'Tier-I',
+        describe: '2024 · Tier-I'
+      },
+      kind: 'FINAL',
+      url: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Writeup_Final_Anwerkey_CGLE_2024_T1_191224.pdf',
+      status: 'NEEDS_REVIEW',
+      sourceStatus: 'NEEDS_REVIEW',
+      publishedAt: '2024-12-19',
+      windowOpens: '2024-12-19',
+      windowCloses: '2025-01-08',
+      access: 'by logging-in through their Registered ID and Password on the website of the Commission',
+      revises: 'key-exam-ssc-cgl-2026-2024-tier-i-provisional',
+      note: 'the authority announced this key; its per-question answers are not published publicly — by logging-in through their Registered ID and Password on the website of the Commission'
+    },
+    {
+      id: 'key-exam-ssc-cgl-2026-2024-tier-i-provisional',
+      identity: {
+        examId: 'exam-ssc-cgl-2026',
+        cycle: '2024',
+        stage: 'Tier-I',
+        describe: '2024 · Tier-I'
+      },
+      kind: 'PROVISIONAL',
+      url: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Writeup_Answerkey_Tier_1_CGLE_2024_031024.pdf',
+      status: 'NEEDS_REVIEW',
+      sourceStatus: 'NEEDS_REVIEW',
+      publishedAt: '2024-10-03',
+      windowOpens: '2024-09-09',
+      windowCloses: '2024-09-26',
+      note: 'the authority announced this key; its per-question answers are not published publicly'
+    }
+  ],
   syllabus: [
     // --- Quantitative Aptitude ---
     {
@@ -12620,6 +12777,4107 @@ export const UPSC_CSE_EXAM: Exam = {
           ]
         }
       ]
+    }
+  ],
+  officialPapers: [
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-ii-zoology-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Zoology',
+        describe: '2026 · Main · Paper-II · Zoology'
+      },
+      title: 'QP-CSM-26-010926-Optional-ZOOLOGY-PAPER_II.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-ZOOLOGY-PAPER_II.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-ii-zoology-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-ZOOLOGY-PAPER_II.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-i-zoology-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Zoology',
+        describe: '2026 · Main · Paper-I · Zoology'
+      },
+      title: 'QP-CSM-26-010926-Optional-ZOOLOGY-PAPER_I.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-ZOOLOGY-PAPER_I.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-i-zoology-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-ZOOLOGY-PAPER_I.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-ii-statistics-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Statistics',
+        describe: '2026 · Main · Paper-II · Statistics'
+      },
+      title: 'QP-CSM-26-010926-Optional-STATISTICS-PAPER_II.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-STATISTICS-PAPER_II.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-ii-statistics-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'ps://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-STATISTICS-PAPER_II.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-i-statistics-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Statistics',
+        describe: '2026 · Main · Paper-I · Statistics'
+      },
+      title: 'QP-CSM-26-010926-Optional-STATISTICS-PAPER_I.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-STATISTICS-PAPER_I.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-i-statistics-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'tps://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-STATISTICS-PAPER_I.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-ii-sociology-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Sociology',
+        describe: '2026 · Main · Paper-II · Sociology'
+      },
+      title: 'QP-CSM-26-010926-Optional-SOCIOLOGY-PAPER_II.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-SOCIOLOGY-PAPER_II.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-ii-sociology-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'tps://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-SOCIOLOGY-PAPER_II.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-i-sociology-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Sociology',
+        describe: '2026 · Main · Paper-I · Sociology'
+      },
+      title: 'QP-CSM-26-010926-Optional-SOCIOLOGY-PAPER_I.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-SOCIOLOGY-PAPER_I.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-i-sociology-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'ttps://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-SOCIOLOGY-PAPER_I.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-ii-public-administration-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Public Administration',
+        describe: '2026 · Main · Paper-II · Public Administration'
+      },
+      title: 'QP-CSM-26-010926-Optional-PUBLIC-ADMINISTRATION-PAPER_II.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-PUBLIC-ADMINISTRATION-PAPER_II.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-ii-public-administration-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'sc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-PUBLIC-ADMINISTRATION-PAPER_II.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-i-public-administration-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Public Administration',
+        describe: '2026 · Main · Paper-I · Public Administration'
+      },
+      title: 'QP-CSM-26-010926-Optional-PUBLIC-ADMINISTRATION-PAPER_I.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-PUBLIC-ADMINISTRATION-PAPER_I.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-i-public-administration-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'psc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-PUBLIC-ADMINISTRATION-PAPER_I.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-ii-psychology-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Psychology',
+        describe: '2026 · Main · Paper-II · Psychology'
+      },
+      title: 'QP-CSM-26-010926-Optional-PSYCHOLOGY-PAPER_II.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-PSYCHOLOGY-PAPER_II.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-ii-psychology-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'ps://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-PSYCHOLOGY-PAPER_II.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-i-psychology-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Psychology',
+        describe: '2026 · Main · Paper-I · Psychology'
+      },
+      title: 'QP-CSM-26-010926-Optional-PSYCHOLOGY-PAPER_I.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-PSYCHOLOGY-PAPER_I.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-i-psychology-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'tps://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-PSYCHOLOGY-PAPER_I.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-ii-political-science-inte',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Political Science International Relations',
+        describe: '2026 · Main · Paper-II · Political Science International Relations'
+      },
+      title: 'QP-CSM-26-010926-Optional-POLITICAL-SCIENCE-INTERNATIONAL-RELATIONS-PAPER_II.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-POLITICAL-SCIENCE-INTERNATIONAL-RELATIONS-PAPER_II.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-ii-political-science-inte',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'ult/files/QP-CSM-26-010926-Optional-POLITICAL-SCIENCE-INTERNATIONAL-RELATIONS-PAPER_II.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-i-political-science-inter',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Political Science International Relations',
+        describe: '2026 · Main · Paper-I · Political Science International Relations'
+      },
+      title: 'QP-CSM-26-010926-Optional-POLITICAL-SCIENCE-INTERNATIONAL-RELATIONS PAPER_I.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-POLITICAL-SCIENCE-INTERNATIONAL-RELATIONS%20PAPER_I.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-i-political-science-inter',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'lt/files/QP-CSM-26-010926-Optional-POLITICAL-SCIENCE-INTERNATIONAL-RELATIONS%20PAPER_I.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-ii-physics-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Physics',
+        describe: '2026 · Main · Paper-II · Physics'
+      },
+      title: 'QP-CSM-26-010926-Optional-PHYSICS_PAPER_II.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-PHYSICS_PAPER_II.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-ii-physics-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-PHYSICS_PAPER_II.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-i-physics-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Physics',
+        describe: '2026 · Main · Paper-I · Physics'
+      },
+      title: 'QP-CSM-26-010926-Optional-PHYSICS-PAPER_I.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-PHYSICS-PAPER_I.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-i-physics-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-PHYSICS-PAPER_I.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-ii-philosophy-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Philosophy',
+        describe: '2026 · Main · Paper-II · Philosophy'
+      },
+      title: 'QP-CSM-26-010926-Optional-PHILOSOPHY-PAPER_II.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-PHILOSOPHY-PAPER_II.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-ii-philosophy-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'ps://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-PHILOSOPHY-PAPER_II.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-i-philosophy-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Philosophy',
+        describe: '2026 · Main · Paper-I · Philosophy'
+      },
+      title: 'QP-CSM-26-010926-Optional-PHILOSOPHY-PAPER_I.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-PHILOSOPHY-PAPER_I.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-i-philosophy-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'tps://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-PHILOSOPHY-PAPER_I.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-ii-medical-science-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Medical Science',
+        describe: '2026 · Main · Paper-II · Medical Science'
+      },
+      title: 'QP-CSM-26-010926-Optional-MEDICAL-SCIENCE-PAPER_II.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-MEDICAL-SCIENCE-PAPER_II.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-ii-medical-science-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-MEDICAL-SCIENCE-PAPER_II.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-i-medical-science-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Medical Science',
+        describe: '2026 · Main · Paper-I · Medical Science'
+      },
+      title: 'QP-CSM-26-010926-Optional-MEDICAL-SCIENCE-PAPER_I.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-MEDICAL-SCIENCE-PAPER_I.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-i-medical-science-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: '/www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-MEDICAL-SCIENCE-PAPER_I.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-ii-mechanical-engineering',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Mechanical Engineering',
+        describe: '2026 · Main · Paper-II · Mechanical Engineering'
+      },
+      title: 'QP-CSM-26-010926-Optional-MECHANICAL-ENGINEERING-PAPER_II.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-MECHANICAL-ENGINEERING-PAPER_II.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-ii-mechanical-engineering',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'c.gov.in/sites/default/files/QP-CSM-26-010926-Optional-MECHANICAL-ENGINEERING-PAPER_II.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-i-mechanical-engineering-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Mechanical Engineering',
+        describe: '2026 · Main · Paper-I · Mechanical Engineering'
+      },
+      title: 'QP-CSM-26-010926-Optional-MECHANICAL-ENGINEERING-PAPER_I.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-MECHANICAL-ENGINEERING-PAPER_I.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-i-mechanical-engineering-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'sc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-MECHANICAL-ENGINEERING-PAPER_I.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-ii-mathematics-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Mathematics',
+        describe: '2026 · Main · Paper-II · Mathematics'
+      },
+      title: 'QP-CSM-26-010926-Optional-MATHEMATICS-PAPER_II.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-MATHEMATICS-PAPER_II.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-ii-mathematics-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 's://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-MATHEMATICS-PAPER_II.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-i-mathematics-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Mathematics',
+        describe: '2026 · Main · Paper-I · Mathematics'
+      },
+      title: 'QP-CSM-26-010926-Optional-MATHEMATICS-PAPER_I.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-MATHEMATICS-PAPER_I.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-i-mathematics-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'ps://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-MATHEMATICS-PAPER_I.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-ii-management-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Management',
+        describe: '2026 · Main · Paper-II · Management'
+      },
+      title: 'QP-CSM-26-010926-Optional-MANAGEMENT-PAPER_II.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-MANAGEMENT-PAPER_II.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-ii-management-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'ps://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-MANAGEMENT-PAPER_II.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-i-management-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Management',
+        describe: '2026 · Main · Paper-I · Management'
+      },
+      title: 'QP-CSM-26-010926-Optional-MANAGEMENT-PAPER_I.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-MANAGEMENT-PAPER_I.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-i-management-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'tps://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-MANAGEMENT-PAPER_I.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-ii-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-II',
+        describe: '2026 · Main · Paper-II'
+      },
+      title: 'QP-CSM-26-010926-Optional-LAW-PAPER_II.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-LAW-PAPER_II.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-ii-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-LAW-PAPER_II.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-i-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-I',
+        describe: '2026 · Main · Paper-I'
+      },
+      title: 'QP-CSM-26-010926-Optional-LAW-PAPER_I.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-LAW-PAPER_I.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-i-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-LAW-PAPER_I.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-ii-history-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'History',
+        describe: '2026 · Main · Paper-II · History'
+      },
+      title: 'QP-CSM-26-010926-Optional-HISTORY-PAPER_II.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-HISTORY-PAPER_II.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-ii-history-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-HISTORY-PAPER_II.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-i-history-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'History',
+        describe: '2026 · Main · Paper-I · History'
+      },
+      title: 'QP-CSM-26-010926-Optional-HISTORY-PAPER_I.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-HISTORY-PAPER_I.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-i-history-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-HISTORY-PAPER_I.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-ii-geology-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Geology',
+        describe: '2026 · Main · Paper-II · Geology'
+      },
+      title: 'QP-CSM-26-010926-Optional-GEOLOGY-PAPER_II.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-GEOLOGY-PAPER_II.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-ii-geology-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-GEOLOGY-PAPER_II.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-i-geology-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Geology',
+        describe: '2026 · Main · Paper-I · Geology'
+      },
+      title: 'QP-CSM-26-010926-Optional-GEOLOGY-PAPER_I.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-GEOLOGY-PAPER_I.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-i-geology-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-GEOLOGY-PAPER_I.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-ii-geography-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Geography',
+        describe: '2026 · Main · Paper-II · Geography'
+      },
+      title: 'QP-CSM-26-010926-Optional-GEOGRAPHY_PAPER_II.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-GEOGRAPHY_PAPER_II.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-ii-geography-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'tps://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-GEOGRAPHY_PAPER_II.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-i-geography-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Geography',
+        describe: '2026 · Main · Paper-I · Geography'
+      },
+      title: 'QP-CSM-26-010926-Optional-GEOGRAPHY_PAPER_I.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-GEOGRAPHY_PAPER_I.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-i-geography-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'ttps://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-GEOGRAPHY_PAPER_I.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-ii-electrical-engineering',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Electrical Engineering',
+        describe: '2026 · Main · Paper-II · Electrical Engineering'
+      },
+      title: 'QP-CSM-26-010926-Optional-ELECTRICAL-ENGINEERING-PAPER_II.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-ELECTRICAL-ENGINEERING-PAPER_II.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-ii-electrical-engineering',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'c.gov.in/sites/default/files/QP-CSM-26-010926-Optional-ELECTRICAL-ENGINEERING-PAPER_II.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-i-electrical-engineering-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Electrical Engineering',
+        describe: '2026 · Main · Paper-I · Electrical Engineering'
+      },
+      title: 'QP-CSM-26-010926-Optional-ELECTRICAL-ENGINEERING-PAPER_I.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-ELECTRICAL-ENGINEERING-PAPER_I.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-i-electrical-engineering-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'sc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-ELECTRICAL-ENGINEERING-PAPER_I.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-ii-economics-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Economics',
+        describe: '2026 · Main · Paper-II · Economics'
+      },
+      title: 'QP-CSM-26-010926-Optional-ECONOMICS-PAPER_II.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-ECONOMICS-PAPER_II.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-ii-economics-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'tps://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-ECONOMICS-PAPER_II.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-i-economics-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Economics',
+        describe: '2026 · Main · Paper-I · Economics'
+      },
+      title: 'QP-CSM-26-010926-Optional-ECONOMICS-PAPER_I.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-ECONOMICS-PAPER_I.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-i-economics-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'ttps://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-ECONOMICS-PAPER_I.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-ii-commerce-accountancy-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Commerce Accountancy',
+        describe: '2026 · Main · Paper-II · Commerce Accountancy'
+      },
+      title: 'QP-CSM-26-010926-Optional-COMMERCE-ACCOUNTANCY PAPER_II.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-COMMERCE-ACCOUNTANCY%20PAPER_II.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-ii-commerce-accountancy-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'c.gov.in/sites/default/files/QP-CSM-26-010926-Optional-COMMERCE-ACCOUNTANCY%20PAPER_II.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-i-commerce-accountancy-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Commerce Accountancy',
+        describe: '2026 · Main · Paper-I · Commerce Accountancy'
+      },
+      title: 'QP-CSM-26-010926-Optional-COMMERCE -ACCOUNTANCY-PAPER_I.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-COMMERCE%20-ACCOUNTANCY-PAPER_I.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-i-commerce-accountancy-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'c.gov.in/sites/default/files/QP-CSM-26-010926-Optional-COMMERCE%20-ACCOUNTANCY-PAPER_I.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-ii-civil-engineering-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Civil Engineering',
+        describe: '2026 · Main · Paper-II · Civil Engineering'
+      },
+      title: 'QP-CSM-26-010926-Optional-CIVIL-ENGINEERING-PAPER_II.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-CIVIL-ENGINEERING-PAPER_II.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-ii-civil-engineering-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'w.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-CIVIL-ENGINEERING-PAPER_II.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-i-civil-engineering-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Civil Engineering',
+        describe: '2026 · Main · Paper-I · Civil Engineering'
+      },
+      title: 'QP-CSM-26-010926-Optional-CIVIL-ENGINEERING-PAPER_I.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-CIVIL-ENGINEERING-PAPER_I.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-i-civil-engineering-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'ww.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-CIVIL-ENGINEERING-PAPER_I.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-ii-chemistry-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Chemistry',
+        describe: '2026 · Main · Paper-II · Chemistry'
+      },
+      title: 'QP-CSM-26-010926-Optional-CHEMISTRY-PAPER_II.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-CHEMISTRY-PAPER_II.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-ii-chemistry-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'tps://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-CHEMISTRY-PAPER_II.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-i-chemistry-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Chemistry',
+        describe: '2026 · Main · Paper-I · Chemistry'
+      },
+      title: 'QP-CSM-26-010926-Optional-CHEMISTRY-PAPER_I.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-CHEMISTRY-PAPER_I.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-i-chemistry-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'ttps://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-CHEMISTRY-PAPER_I.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-ii-botany-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Botany',
+        describe: '2026 · Main · Paper-II · Botany'
+      },
+      title: 'QP-CSM-26-010926-Optional-BOTANY-PAPER_II.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-BOTANY-PAPER_II.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-ii-botany-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-BOTANY-PAPER_II.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-i-botany-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Botany',
+        describe: '2026 · Main · Paper-I · Botany'
+      },
+      title: 'QP-CSM-26-010926-Optional-BOTANY-PAPER_I.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-BOTANY-PAPER_I.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-i-botany-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-BOTANY-PAPER_I.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-ii-anthropology-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Anthropology',
+        describe: '2026 · Main · Paper-II · Anthropology'
+      },
+      title: 'QP-CSM-26-010926-Optional-ANTHROPOLOGY-PAPER_II.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-ANTHROPOLOGY-PAPER_II.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-ii-anthropology-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: '://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-ANTHROPOLOGY-PAPER_II.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-i-anthropology-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Anthropology',
+        describe: '2026 · Main · Paper-I · Anthropology'
+      },
+      title: 'QP-CSM-26-010926-Optional-ANTHROPOLOGY-PAPER_I.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-ANTHROPOLOGY-PAPER_I.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-i-anthropology-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 's://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-ANTHROPOLOGY-PAPER_I.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-ii-animal-husbandry-veter',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Animal Husbandry Veterinary Science',
+        describe: '2026 · Main · Paper-II · Animal Husbandry Veterinary Science'
+      },
+      title: 'QP-CSM-26-010926-Optional-ANIMAL-HUSBANDRY-VETERINARY-SCIENCE-PAPER_II.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-ANIMAL-HUSBANDRY-VETERINARY-SCIENCE-PAPER_II.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-ii-animal-husbandry-veter',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 's/default/files/QP-CSM-26-010926-Optional-ANIMAL-HUSBANDRY-VETERINARY-SCIENCE-PAPER_II.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-i-animal-husbandry-veteri',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Animal Husbandry Veterinary Science',
+        describe: '2026 · Main · Paper-I · Animal Husbandry Veterinary Science'
+      },
+      title: 'QP-CSM-26-010926-Optional-ANIMAL-HUSBANDRY-VETERINARY-SCIENCE-PAPER_I.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-ANIMAL-HUSBANDRY-VETERINARY-SCIENCE-PAPER_I.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-i-animal-husbandry-veteri',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'es/default/files/QP-CSM-26-010926-Optional-ANIMAL-HUSBANDRY-VETERINARY-SCIENCE-PAPER_I.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-ii-agriculture-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Agriculture',
+        describe: '2026 · Main · Paper-II · Agriculture'
+      },
+      title: 'QP-CSM-26-010926-Optional-AGRICULTURE_PAPER_II.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-AGRICULTURE_PAPER_II.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-ii-agriculture-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 's://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-AGRICULTURE_PAPER_II.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-i-agriculture-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Agriculture',
+        describe: '2026 · Main · Paper-I · Agriculture'
+      },
+      title: 'QP-CSM-26-010926-Optional-AGRICULTURE_PAPER_I.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-AGRICULTURE_PAPER_I.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-i-agriculture-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'ps://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Optional-AGRICULTURE_PAPER_I.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-ii-literature-urdu-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Literature',
+        language: 'Urdu',
+        describe: '2026 · Main · Paper-II · Literature · Urdu'
+      },
+      title: 'QP-CSM-26-010926-Lit-URDU-LITERATURE-PAPER_II.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-URDU-LITERATURE-PAPER_II.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-ii-literature-urdu-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'ps://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-URDU-LITERATURE-PAPER_II.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-i-literature-urdu-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Literature',
+        language: 'Urdu',
+        describe: '2026 · Main · Paper-I · Literature · Urdu'
+      },
+      title: 'QP-CSM-26-010926-Lit-URDU-LITERATURE-PAPER_I.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-URDU-LITERATURE-PAPER_I.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-i-literature-urdu-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'tps://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-URDU-LITERATURE-PAPER_I.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-ii-telugu-literature-telu',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Telugu Literature',
+        language: 'Telugu',
+        describe: '2026 · Main · Paper-II · Telugu Literature · Telugu'
+      },
+      title: 'QP-CSM-26-010926-Lit-TELUGU-LITERATURE-PAPER_II.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-TELUGU-LITERATURE-PAPER_II.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-ii-telugu-literature-telu',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: '://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-TELUGU-LITERATURE-PAPER_II.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-i-telugu-literature-telug',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Telugu Literature',
+        language: 'Telugu',
+        describe: '2026 · Main · Paper-I · Telugu Literature · Telugu'
+      },
+      title: 'QP-CSM-26-010926-Lit-TELUGU-LITERATURE-PAPER_I.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-TELUGU-LITERATURE-PAPER_I.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-i-telugu-literature-telug',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 's://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-TELUGU-LITERATURE-PAPER_I.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-ii-tamil-literature-tamil',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Tamil Literature',
+        language: 'Tamil',
+        describe: '2026 · Main · Paper-II · Tamil Literature · Tamil'
+      },
+      title: 'QP-CSM-26-010926-Lit-TAMIL-LITERATURE-PAPER_II.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-TAMIL-LITERATURE-PAPER_II.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-ii-tamil-literature-tamil',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 's://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-TAMIL-LITERATURE-PAPER_II.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-i-tamil-literature-tamil-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Tamil Literature',
+        language: 'Tamil',
+        describe: '2026 · Main · Paper-I · Tamil Literature · Tamil'
+      },
+      title: 'QP-CSM-26-010926-Lit-TAMIL-LITERATURE-PAPER_I.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-TAMIL-LITERATURE-PAPER_I.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-i-tamil-literature-tamil-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'ps://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-TAMIL-LITERATURE-PAPER_I.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-ii-sindhi-devanagari-lite',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Sindhi Devanagari Literature',
+        language: 'Sindhi',
+        describe: '2026 · Main · Paper-II · Sindhi Devanagari Literature · Sindhi'
+      },
+      title: 'QP-CSM-26-010926-Lit-SINDHI-DEVANAGARI-LITERATURE-PAPER_II.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-SINDHI-DEVANAGARI-LITERATURE-PAPER_II.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-ii-sindhi-devanagari-lite',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: '.gov.in/sites/default/files/QP-CSM-26-010926-Lit-SINDHI-DEVANAGARI-LITERATURE-PAPER_II.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-i-sindhi-devanagari-liter',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Sindhi Devanagari Literature',
+        language: 'Sindhi',
+        describe: '2026 · Main · Paper-I · Sindhi Devanagari Literature · Sindhi'
+      },
+      title: 'QP-CSM-26-010926-Lit-SINDHI-DEVANAGARI-LITERATURE-PAPER_I.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-SINDHI-DEVANAGARI-LITERATURE-PAPER_I.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-i-sindhi-devanagari-liter',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'c.gov.in/sites/default/files/QP-CSM-26-010926-Lit-SINDHI-DEVANAGARI-LITERATURE-PAPER_I.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-ii-sanskrit-sanskrit-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Sanskrit',
+        language: 'Sanskrit',
+        describe: '2026 · Main · Paper-II · Sanskrit · Sanskrit'
+      },
+      title: 'QP-CSM-26-010926-Lit-SANSKRIT-PAPER_II.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-SANSKRIT-PAPER_II.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-ii-sanskrit-sanskrit-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-SANSKRIT-PAPER_II.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-i-sanskrit-sanskrit-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Sanskrit',
+        language: 'Sanskrit',
+        describe: '2026 · Main · Paper-I · Sanskrit · Sanskrit'
+      },
+      title: 'QP-CSM-26-010926-Lit-SANSKRIT-PAPER_I.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-SANSKRIT-PAPER_I.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-i-sanskrit-sanskrit-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-SANSKRIT-PAPER_I.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-ii-punjabi-punjabi-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Punjabi',
+        language: 'Punjabi',
+        describe: '2026 · Main · Paper-II · Punjabi · Punjabi'
+      },
+      title: 'QP-CSM-26-010926-Lit-PUNJABI-PAPER_II.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-PUNJABI-PAPER_II.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-ii-punjabi-punjabi-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-PUNJABI-PAPER_II.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-i-punjabi-punjabi-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Punjabi',
+        language: 'Punjabi',
+        describe: '2026 · Main · Paper-I · Punjabi · Punjabi'
+      },
+      title: 'QP-CSM-26-010926-Lit-PUNJABI-PAPER_I.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-PUNJABI-PAPER_I.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-i-punjabi-punjabi-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-PUNJABI-PAPER_I.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-ii-marathi-marathi-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Marathi',
+        language: 'Marathi',
+        describe: '2026 · Main · Paper-II · Marathi · Marathi'
+      },
+      title: 'QP-CSM-26-010926-Lit-MARATHI-PAPER_II.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-MARATHI-PAPER_II.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-ii-marathi-marathi-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-MARATHI-PAPER_II.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-i-marathi-marathi-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Marathi',
+        language: 'Marathi',
+        describe: '2026 · Main · Paper-I · Marathi · Marathi'
+      },
+      title: 'QP-CSM-26-010926-Lit-MARATHI-PAPER_I.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-MARATHI-PAPER_I.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-i-marathi-marathi-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-MARATHI-PAPER_I.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-ii-manipuri-manipuri-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Manipuri',
+        language: 'Manipuri',
+        describe: '2026 · Main · Paper-II · Manipuri · Manipuri'
+      },
+      title: 'QP-CSM-26-010926-Lit-MANIPURI-PAPER_II.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-MANIPURI-PAPER_II.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-ii-manipuri-manipuri-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-MANIPURI-PAPER_II.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-i-manipuri-manipuri-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Manipuri',
+        language: 'Manipuri',
+        describe: '2026 · Main · Paper-I · Manipuri · Manipuri'
+      },
+      title: 'QP-CSM-26-010926-Lit-MANIPURI-PAPER_I.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-MANIPURI-PAPER_I.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-i-manipuri-manipuri-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-MANIPURI-PAPER_I.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-ii-malayalam-malayalam-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Malayalam',
+        language: 'Malayalam',
+        describe: '2026 · Main · Paper-II · Malayalam · Malayalam'
+      },
+      title: 'QP-CSM-26-010926-Lit-MALAYALAM-PAPER_II.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-MALAYALAM-PAPER_II.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-ii-malayalam-malayalam-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-MALAYALAM-PAPER_II.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-i-malayalam-malayalam-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Malayalam',
+        language: 'Malayalam',
+        describe: '2026 · Main · Paper-I · Malayalam · Malayalam'
+      },
+      title: 'QP-CSM-26-010926-Lit-MALAYALAM-PAPER_I.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-MALAYALAM-PAPER_I.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-i-malayalam-malayalam-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-MALAYALAM-PAPER_I.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-ii-maithili-maithili-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Maithili',
+        language: 'Maithili',
+        describe: '2026 · Main · Paper-II · Maithili · Maithili'
+      },
+      title: 'QP-CSM-26-010926-Lit-MAITHILI-PAPER_II.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-MAITHILI-PAPER_II.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-ii-maithili-maithili-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-MAITHILI-PAPER_II.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-i-maithili-maithili-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Maithili',
+        language: 'Maithili',
+        describe: '2026 · Main · Paper-I · Maithili · Maithili'
+      },
+      title: 'QP-CSM-26-010926-Lit-MAITHILI-PAPER_I.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-MAITHILI-PAPER_I.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-i-maithili-maithili-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-MAITHILI-PAPER_I.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-ii-kannada-kannada-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Kannada',
+        language: 'Kannada',
+        describe: '2026 · Main · Paper-II · Kannada · Kannada'
+      },
+      title: 'QP-CSM-26-010926-Lit-KANNADA-PAPER_II.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-KANNADA-PAPER_II.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-ii-kannada-kannada-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-KANNADA-PAPER_II.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-i-kannada-kannada-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Kannada',
+        language: 'Kannada',
+        describe: '2026 · Main · Paper-I · Kannada · Kannada'
+      },
+      title: 'QP-CSM-26-010926-Lit-KANNADA- PAPER_I.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-KANNADA-%20PAPER_I.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-i-kannada-kannada-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-KANNADA-%20PAPER_I.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-ii-hindi-literature-hindi',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Hindi Literature',
+        language: 'Hindi',
+        describe: '2026 · Main · Paper-II · Hindi Literature · Hindi'
+      },
+      title: 'QP-CSM-26-010926-Lit-HINDI-LITERATURE-PAPER_II.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-HINDI-LITERATURE-PAPER_II.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-ii-hindi-literature-hindi',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 's://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-HINDI-LITERATURE-PAPER_II.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-i-hindi-literature-hindi-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Hindi Literature',
+        language: 'Hindi',
+        describe: '2026 · Main · Paper-I · Hindi Literature · Hindi'
+      },
+      title: 'QP-CSM-26-010926-Lit-HINDI-LITERATURE-PAPER_I.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-HINDI-LITERATURE-PAPER_I.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-i-hindi-literature-hindi-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'ps://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-HINDI-LITERATURE-PAPER_I.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-ii-gujarati-gujarati-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Gujarati',
+        language: 'Gujarati',
+        describe: '2026 · Main · Paper-II · Gujarati · Gujarati'
+      },
+      title: 'QP-CSM-26-010926-Lit-GUJARATI-PAPER_II.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-GUJARATI-PAPER_II.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-ii-gujarati-gujarati-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-GUJARATI-PAPER_II.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-i-gujarati-gujarati-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Gujarati',
+        language: 'Gujarati',
+        describe: '2026 · Main · Paper-I · Gujarati · Gujarati'
+      },
+      title: 'QP-CSM-26-010926-Lit-GUJARATI-PAPER_I.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-GUJARATI-PAPER_I.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-i-gujarati-gujarati-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-GUJARATI-PAPER_I.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-ii-english-literature-eng',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'English Literature',
+        language: 'English',
+        describe: '2026 · Main · Paper-II · English Literature · English'
+      },
+      title: 'QP-CSM-26-010926-Lit-ENGLISH-LITERATURE-PAPER_II.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-ENGLISH-LITERATURE-PAPER_II.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-ii-english-literature-eng',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: '//www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-ENGLISH-LITERATURE-PAPER_II.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-i-english-literature-engl',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'English Literature',
+        language: 'English',
+        describe: '2026 · Main · Paper-I · English Literature · English'
+      },
+      title: 'QP-CSM-26-010926-Lit-ENGLISH-LITERATURE-PAPER_I.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-ENGLISH-LITERATURE-PAPER_I.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-i-english-literature-engl',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: '://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-ENGLISH-LITERATURE-PAPER_I.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-ii-bengali-bengali-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Bengali',
+        language: 'Bengali',
+        describe: '2026 · Main · Paper-II · Bengali · Bengali'
+      },
+      title: 'QP-CSM-26-010926-Lit-BENGALI-PAPER_II.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-BENGALI-PAPER_II.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-ii-bengali-bengali-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-BENGALI-PAPER_II.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-i-bengali-bengali-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Bengali',
+        language: 'Bengali',
+        describe: '2026 · Main · Paper-I · Bengali · Bengali'
+      },
+      title: 'QP-CSM-26-010926-Lit-BENGALI-PAPER_I.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-BENGALI-PAPER_I.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-i-bengali-bengali-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-BENGALI-PAPER_I.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-ii-assamese-assamese-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Assamese',
+        language: 'Assamese',
+        describe: '2026 · Main · Paper-II · Assamese · Assamese'
+      },
+      title: 'QP-CSM-26-010926-Lit-ASSAMESE-PAPER_II.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-ASSAMESE-PAPER_II.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-ii-assamese-assamese-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-ASSAMESE-PAPER_II.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-paper-i-assamese-assamese-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Assamese',
+        language: 'Assamese',
+        describe: '2026 · Main · Paper-I · Assamese · Assamese'
+      },
+      title: 'QP-CSM-26-010926-Lit-ASSAMESE PAPER_I.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-ASSAMESE%20PAPER_I.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-paper-i-assamese-assamese-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Lit-ASSAMESE%20PAPER_I.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-essay-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        subject: 'Essay',
+        describe: '2026 · Main · Essay'
+      },
+      title: 'QP-CSM-26-010926-ESSAY.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-ESSAY.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-essay-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-ESSAY.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-urdu-urdu-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        subject: 'Urdu',
+        language: 'Urdu',
+        describe: '2026 · Main · Urdu · Urdu'
+      },
+      title: 'QP-CSM-26-010926-Compulsory-URDU.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Compulsory-URDU.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-urdu-urdu-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Compulsory-URDU.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-telugu-telugu-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        subject: 'Telugu',
+        language: 'Telugu',
+        describe: '2026 · Main · Telugu · Telugu'
+      },
+      title: 'QP-CSM-26-010926-Compulsory-TELUGU.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Compulsory-TELUGU.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-telugu-telugu-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Compulsory-TELUGU.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-tamil-tamil-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        subject: 'Tamil',
+        language: 'Tamil',
+        describe: '2026 · Main · Tamil · Tamil'
+      },
+      title: 'QP-CSM-26-010926-Compulsory-TAMIL.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Compulsory-TAMIL.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-tamil-tamil-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Compulsory-TAMIL.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-sanskrit-sanskrit-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        subject: 'Sanskrit',
+        language: 'Sanskrit',
+        describe: '2026 · Main · Sanskrit · Sanskrit'
+      },
+      title: 'QP-CSM-26-010926-Compulsory-SANSKRIT.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Compulsory-SANSKRIT.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-sanskrit-sanskrit-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Compulsory-SANSKRIT.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-punjabi-punjabi-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        subject: 'Punjabi',
+        language: 'Punjabi',
+        describe: '2026 · Main · Punjabi · Punjabi'
+      },
+      title: 'QP-CSM-26-010926-Compulsory-PUNJABI.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Compulsory-PUNJABI.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-punjabi-punjabi-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Compulsory-PUNJABI.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-odia-odia-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        subject: 'Odia',
+        language: 'Odia',
+        describe: '2026 · Main · Odia · Odia'
+      },
+      title: 'QP-CSM-26-010926-Compulsory-ODIA.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Compulsory-ODIA.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-odia-odia-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Compulsory-ODIA.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-nepali-nepali-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        subject: 'Nepali',
+        language: 'Nepali',
+        describe: '2026 · Main · Nepali · Nepali'
+      },
+      title: 'QP-CSM-26-010926-Compulsory-NEPALI.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Compulsory-NEPALI.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-nepali-nepali-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Compulsory-NEPALI.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-marathi-marathi-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        subject: 'Marathi',
+        language: 'Marathi',
+        describe: '2026 · Main · Marathi · Marathi'
+      },
+      title: 'QP-CSM-26-010926-Compulsory-MARATHI.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Compulsory-MARATHI.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-marathi-marathi-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Compulsory-MARATHI.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-malayalam-malayalam-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        subject: 'Malayalam',
+        language: 'Malayalam',
+        describe: '2026 · Main · Malayalam · Malayalam'
+      },
+      title: 'QP-CSM-26-010926-Compulsory-MALAYALAM.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Compulsory-MALAYALAM.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-malayalam-malayalam-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Compulsory-MALAYALAM.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-maithili-maithili-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        subject: 'Maithili',
+        language: 'Maithili',
+        describe: '2026 · Main · Maithili · Maithili'
+      },
+      title: 'QP-CSM-26-010926-Compulsory-MAITHILI.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Compulsory-MAITHILI.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-maithili-maithili-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Compulsory-MAITHILI.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-kannada-kannada-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        subject: 'Kannada',
+        language: 'Kannada',
+        describe: '2026 · Main · Kannada · Kannada'
+      },
+      title: 'QP-CSM-26-010926-Compulsory-KANNADA.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Compulsory-KANNADA.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-kannada-kannada-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Compulsory-KANNADA.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-hindi-hindi-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        subject: 'Hindi',
+        language: 'Hindi',
+        describe: '2026 · Main · Hindi · Hindi'
+      },
+      title: 'QP-CSM-26-010926-Compulsory-HINDI.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Compulsory-HINDI.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-hindi-hindi-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Compulsory-HINDI.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-gujarati-gujarati-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        subject: 'Gujarati',
+        language: 'Gujarati',
+        describe: '2026 · Main · Gujarati · Gujarati'
+      },
+      title: 'QP-CSM-26-010926-Compulsory-GUJARATI.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Compulsory-GUJARATI.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-gujarati-gujarati-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Compulsory-GUJARATI.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-english-english-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        subject: 'English',
+        language: 'English',
+        describe: '2026 · Main · English · English'
+      },
+      title: 'QP-CSM-26-010926-Compulsory-ENGLISH.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Compulsory-ENGLISH.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-english-english-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Compulsory-ENGLISH.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-bodo-bodo-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        subject: 'Bodo',
+        language: 'Bodo',
+        describe: '2026 · Main · Bodo · Bodo'
+      },
+      title: 'QP-CSM-26-010926-Compulsory-BODO.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Compulsory-BODO.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-bodo-bodo-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Compulsory-BODO.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-bengali-bengali-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        subject: 'Bengali',
+        language: 'Bengali',
+        describe: '2026 · Main · Bengali · Bengali'
+      },
+      title: 'QP-CSM-26-010926-Compulsory-BENGALI.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Compulsory-BENGALI.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-bengali-bengali-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Compulsory-BENGALI.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2026-main-assamese-assamese-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2026',
+        stage: 'Main',
+        subject: 'Assamese',
+        language: 'Assamese',
+        describe: '2026 · Main · Assamese · Assamese'
+      },
+      title: 'QP-CSM-26-010926-Compulsory-ASSAMESE.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Compulsory-ASSAMESE.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2026-main-assamese-assamese-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/QP-CSM-26-010926-Compulsory-ASSAMESE.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2025-main-paper-ii-zoology-csm-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2025',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Zoology Csm',
+        describe: '2025 · Main · Paper-II · Zoology Csm'
+      },
+      title: 'ZOOLOGY-PAPER-II-QP-CSM-25-010925.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/ZOOLOGY-PAPER-II-QP-CSM-25-010925.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2025-main-paper-ii-zoology-csm-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/ZOOLOGY-PAPER-II-QP-CSM-25-010925.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2025-main-paper-i-zoology-csm-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2025',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Zoology Csm',
+        describe: '2025 · Main · Paper-I · Zoology Csm'
+      },
+      title: 'ZOOLOGY-PAPER-I-QP-CSM-25-010925.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/ZOOLOGY-PAPER-I-QP-CSM-25-010925.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2025-main-paper-i-zoology-csm-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/ZOOLOGY-PAPER-I-QP-CSM-25-010925.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2025-main-paper-ii-literature-csm-urdu-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2025',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Literature Csm',
+        language: 'Urdu',
+        describe: '2025 · Main · Paper-II · Literature Csm · Urdu'
+      },
+      title: 'URDU-LITERATURE-PAPER-II-QP-CSM-25-010925.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/URDU-LITERATURE-PAPER-II-QP-CSM-25-010925.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2025-main-paper-ii-literature-csm-urdu-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/URDU-LITERATURE-PAPER-II-QP-CSM-25-010925.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2025-main-paper-i-literature-csm-urdu-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2025',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Literature Csm',
+        language: 'Urdu',
+        describe: '2025 · Main · Paper-I · Literature Csm · Urdu'
+      },
+      title: 'URDU-LITERATURE-PAPER-I-QP-CSM-25-010925.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/URDU-LITERATURE-PAPER-I-QP-CSM-25-010925.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2025-main-paper-i-literature-csm-urdu-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/URDU-LITERATURE-PAPER-I-QP-CSM-25-010925.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2025-main-urdu-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2025',
+        stage: 'Main',
+        language: 'Urdu',
+        describe: '2025 · Main · Urdu'
+      },
+      title: 'URDU-COMPULSORY-QP-CSM-25-010925.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/URDU-COMPULSORY-QP-CSM-25-010925.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2025-main-urdu-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/URDU-COMPULSORY-QP-CSM-25-010925.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2025-main-telugu-csm-telugu-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2025',
+        stage: 'Main',
+        subject: 'Telugu Csm',
+        language: 'Telugu',
+        describe: '2025 · Main · Telugu Csm · Telugu'
+      },
+      title: 'TELUGU-COMPULSORY-QP-CSM-25-010925.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/TELUGU-COMPULSORY-QP-CSM-25-010925.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2025-main-telugu-csm-telugu-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/TELUGU-COMPULSORY-QP-CSM-25-010925.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2025-main-paper-ii-telugu-literature-csm-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2025',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Telugu (literature) Csm',
+        language: 'Telugu',
+        describe: '2025 · Main · Paper-II · Telugu (literature) Csm · Telugu'
+      },
+      title: 'TELUGU (LITERATURE) PAPER II-QP-CSM-25-010925.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/TELUGU%20%28LITERATURE%29%20PAPER%20II-QP-CSM-25-010925.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2025-main-paper-ii-telugu-literature-csm-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'psc.gov.in/sites/default/files/TELUGU%20%28LITERATURE%29%20PAPER%20II-QP-CSM-25-010925.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2025-main-paper-i-telugu-literature-csm-t',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2025',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Telugu (literature) Csm',
+        language: 'Telugu',
+        describe: '2025 · Main · Paper-I · Telugu (literature) Csm · Telugu'
+      },
+      title: 'TELUGU (LITERATURE) PAPER I-QP-CSM-25-010925.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/TELUGU%20%28LITERATURE%29%20PAPER%20I-QP-CSM-25-010925.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2025-main-paper-i-telugu-literature-csm-t',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'upsc.gov.in/sites/default/files/TELUGU%20%28LITERATURE%29%20PAPER%20I-QP-CSM-25-010925.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2025-main-paper-i-tamil-literature-csm-ta',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2025',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Tamil Literature Csm',
+        language: 'Tamil',
+        describe: '2025 · Main · Paper-I · Tamil Literature Csm · Tamil'
+      },
+      title: 'TAMIL-LITERATURE-PAPER-I-QP-CSM-25-010925.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/TAMIL-LITERATURE-PAPER-I-QP-CSM-25-010925.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2025-main-paper-i-tamil-literature-csm-ta',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/TAMIL-LITERATURE-PAPER-I-QP-CSM-25-010925.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2025-main-paper-ii-tamil-literature-csm-t',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2025',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Tamil Literature Csm',
+        language: 'Tamil',
+        describe: '2025 · Main · Paper-II · Tamil Literature Csm · Tamil'
+      },
+      title: 'TAMIL-LITERATURE-PAPER II-QP-CSM-25-010925.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/TAMIL-LITERATURE-PAPER%20II-QP-CSM-25-010925.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2025-main-paper-ii-tamil-literature-csm-t',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'tps://www.upsc.gov.in/sites/default/files/TAMIL-LITERATURE-PAPER%20II-QP-CSM-25-010925.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2025-main-tamil-csm-tamil-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2025',
+        stage: 'Main',
+        subject: 'Tamil Csm',
+        language: 'Tamil',
+        describe: '2025 · Main · Tamil Csm · Tamil'
+      },
+      title: 'TAMIL-COMPULSORY-QP-CSM-25-010925.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/TAMIL-COMPULSORY-QP-CSM-25-010925.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2025-main-tamil-csm-tamil-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/TAMIL-COMPULSORY-QP-CSM-25-010925.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2025-main-paper-ii-statistics-csm-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2025',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Statistics Csm',
+        describe: '2025 · Main · Paper-II · Statistics Csm'
+      },
+      title: 'STATISTICS-PAPER-II-QP-CSM-25-010925.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/STATISTICS-PAPER-II-QP-CSM-25-010925.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2025-main-paper-ii-statistics-csm-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/STATISTICS-PAPER-II-QP-CSM-25-010925.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2025-main-paper-i-statistics-csm-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2025',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Statistics Csm',
+        describe: '2025 · Main · Paper-I · Statistics Csm'
+      },
+      title: 'STATISTICS-PAPER-I-QP-CSM-25-010925.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/STATISTICS-PAPER-I-QP-CSM-25-010925.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2025-main-paper-i-statistics-csm-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/STATISTICS-PAPER-I-QP-CSM-25-010925.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2025-main-paper-ii-sociology-csm-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2025',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Sociology Csm',
+        describe: '2025 · Main · Paper-II · Sociology Csm'
+      },
+      title: 'SOCIOLOGY-PAPER-II-QP-CSM-25-010925.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/SOCIOLOGY-PAPER-II-QP-CSM-25-010925.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2025-main-paper-ii-sociology-csm-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/SOCIOLOGY-PAPER-II-QP-CSM-25-010925.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2025-main-paper-i-sociology-csm-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2025',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Sociology Csm',
+        describe: '2025 · Main · Paper-I · Sociology Csm'
+      },
+      title: 'SOCIOLOGY-PAPER-I-QP-CSM-25-010925.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/SOCIOLOGY-PAPER-I-QP-CSM-25-010925.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2025-main-paper-i-sociology-csm-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/SOCIOLOGY-PAPER-I-QP-CSM-25-010925.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2025-main-paper-ii-sindhi-devanagari-lite',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2025',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Sindhi Devanagari Literature Csm',
+        language: 'Sindhi',
+        describe: '2025 · Main · Paper-II · Sindhi Devanagari Literature Csm · Sindhi'
+      },
+      title: 'SINDHI-DEVANAGARI-LITERATURE-PAPER-II-QP-CSM-25-010925.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/SINDHI-DEVANAGARI-LITERATURE-PAPER-II-QP-CSM-25-010925.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2025-main-paper-ii-sindhi-devanagari-lite',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'upsc.gov.in/sites/default/files/SINDHI-DEVANAGARI-LITERATURE-PAPER-II-QP-CSM-25-010925.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2025-main-paper-i-sindhi-devanagari-liter',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2025',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Sindhi Devanagari Literature Csm',
+        language: 'Sindhi',
+        describe: '2025 · Main · Paper-I · Sindhi Devanagari Literature Csm · Sindhi'
+      },
+      title: 'SINDHI-DEVANAGARI-LITERATURE-PAPER-I-QP-CSM-25-010925.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/SINDHI-DEVANAGARI-LITERATURE-PAPER-I-QP-CSM-25-010925.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2025-main-paper-i-sindhi-devanagari-liter',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: '.upsc.gov.in/sites/default/files/SINDHI-DEVANAGARI-LITERATURE-PAPER-I-QP-CSM-25-010925.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2025-main-sindhi-devanagari-csm-sindhi-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2025',
+        stage: 'Main',
+        subject: 'Sindhi Devanagari Csm',
+        language: 'Sindhi',
+        describe: '2025 · Main · Sindhi Devanagari Csm · Sindhi'
+      },
+      title: 'SINDHI-DEVANAGARI-COMPULSORY-QP-CSM-25-010925.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/SINDHI-DEVANAGARI-COMPULSORY-QP-CSM-25-010925.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2025-main-sindhi-devanagari-csm-sindhi-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'ps://www.upsc.gov.in/sites/default/files/SINDHI-DEVANAGARI-COMPULSORY-QP-CSM-25-010925.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2025-main-paper-ii-sanskrit-literature-cs',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2025',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Sanskrit Literature Csm',
+        language: 'Sanskrit',
+        describe: '2025 · Main · Paper-II · Sanskrit Literature Csm · Sanskrit'
+      },
+      title: 'SANSKRIT-LITERATURE-PAPER-II-QP-CSM-25-010925.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/SANSKRIT-LITERATURE-PAPER-II-QP-CSM-25-010925.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2025-main-paper-ii-sanskrit-literature-cs',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'ps://www.upsc.gov.in/sites/default/files/SANSKRIT-LITERATURE-PAPER-II-QP-CSM-25-010925.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2025-main-paper-i-sanskrit-literature-csm',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2025',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Sanskrit Literature Csm',
+        language: 'Sanskrit',
+        describe: '2025 · Main · Paper-I · Sanskrit Literature Csm · Sanskrit'
+      },
+      title: 'SANSKRIT-LITERATURE-PAPER-I-QP-CSM-25-010925.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/SANSKRIT-LITERATURE-PAPER-I-QP-CSM-25-010925.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2025-main-paper-i-sanskrit-literature-csm',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'tps://www.upsc.gov.in/sites/default/files/SANSKRIT-LITERATURE-PAPER-I-QP-CSM-25-010925.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2025-main-sanskrit-csm-sanskrit-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2025',
+        stage: 'Main',
+        subject: 'Sanskrit Csm',
+        language: 'Sanskrit',
+        describe: '2025 · Main · Sanskrit Csm · Sanskrit'
+      },
+      title: 'SANSKRIT-COMPULSORY-QP-CSM-25-010925.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/SANSKRIT-COMPULSORY-QP-CSM-25-010925.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2025-main-sanskrit-csm-sanskrit-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/SANSKRIT-COMPULSORY-QP-CSM-25-010925.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2025-main-paper-ii-punjabi-literature-csm',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2025',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Punjabi Literature Csm',
+        language: 'Punjabi',
+        describe: '2025 · Main · Paper-II · Punjabi Literature Csm · Punjabi'
+      },
+      title: 'PUNJABI-LITERATURE-PAPER-II-QP-CSM-25-010925.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/PUNJABI-LITERATURE-PAPER-II-QP-CSM-25-010925.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2025-main-paper-ii-punjabi-literature-csm',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'tps://www.upsc.gov.in/sites/default/files/PUNJABI-LITERATURE-PAPER-II-QP-CSM-25-010925.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2025-main-paper-i-punjabi-literature-csm-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2025',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Punjabi Literature Csm',
+        language: 'Punjabi',
+        describe: '2025 · Main · Paper-I · Punjabi Literature Csm · Punjabi'
+      },
+      title: 'PUNJABI-LITERATURE-PAPER-I-QP-CSM-25-010925.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/PUNJABI-LITERATURE-PAPER-I-QP-CSM-25-010925.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2025-main-paper-i-punjabi-literature-csm-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'ttps://www.upsc.gov.in/sites/default/files/PUNJABI-LITERATURE-PAPER-I-QP-CSM-25-010925.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2025-main-punjabi-csm-punjabi-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2025',
+        stage: 'Main',
+        subject: 'Punjabi Csm',
+        language: 'Punjabi',
+        describe: '2025 · Main · Punjabi Csm · Punjabi'
+      },
+      title: 'PUNJABI-COMPULSORY-QP-CSM-25-010925.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/PUNJABI-COMPULSORY-QP-CSM-25-010925.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2025-main-punjabi-csm-punjabi-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/PUNJABI-COMPULSORY-QP-CSM-25-010925.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2025-main-paper-ii-public-administration-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2025',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Public Administration Csm',
+        describe: '2025 · Main · Paper-II · Public Administration Csm'
+      },
+      title: 'PUBLIC-ADMINISTRATION-PAPER-II-QP-CSM-25-010925.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/PUBLIC-ADMINISTRATION-PAPER-II-QP-CSM-25-010925.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2025-main-paper-ii-public-administration-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: '://www.upsc.gov.in/sites/default/files/PUBLIC-ADMINISTRATION-PAPER-II-QP-CSM-25-010925.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2025-main-paper-i-public-administration-c',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2025',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Public Administration Csm',
+        describe: '2025 · Main · Paper-I · Public Administration Csm'
+      },
+      title: 'PUBLIC-ADMINISTRATION-PAPER-I-QP-CSM-25-010925.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/PUBLIC-ADMINISTRATION-PAPER-I-QP-CSM-25-010925.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2025-main-paper-i-public-administration-c',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 's://www.upsc.gov.in/sites/default/files/PUBLIC-ADMINISTRATION-PAPER-I-QP-CSM-25-010925.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2025-main-paper-ii-psychology-csm-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2025',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Psychology Csm',
+        describe: '2025 · Main · Paper-II · Psychology Csm'
+      },
+      title: 'PSYCHOLOGY-PAPER-II-QP-CSM-25-010925.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/PSYCHOLOGY-PAPER-II-QP-CSM-25-010925.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2025-main-paper-ii-psychology-csm-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/PSYCHOLOGY-PAPER-II-QP-CSM-25-010925.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2025-main-paper-i-psychology-csm-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2025',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Psychology Csm',
+        describe: '2025 · Main · Paper-I · Psychology Csm'
+      },
+      title: 'PSYCHOLOGY-PAPER-I-QP-CSM-25-010925.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/PSYCHOLOGY-PAPER-I-QP-CSM-25-010925.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2025-main-paper-i-psychology-csm-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/PSYCHOLOGY-PAPER-I-QP-CSM-25-010925.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2025-main-paper-ii-political-science-inte',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2025',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Political Science Interanational Relations Csm',
+        describe: '2025 · Main · Paper-II · Political Science Interanational Relations Csm'
+      },
+      title: 'POLITICAL-SCIENCE-INTERANATIONAL-RELATIONS-PAPER-II-QP-CSM-25-010925.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/POLITICAL-SCIENCE-INTERANATIONAL-RELATIONS-PAPER-II-QP-CSM-25-010925.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2025-main-paper-ii-political-science-inte',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'tes/default/files/POLITICAL-SCIENCE-INTERANATIONAL-RELATIONS-PAPER-II-QP-CSM-25-010925.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2025-main-paper-i-political-science-inter',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2025',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Political Science Interanational Relations Csm',
+        describe: '2025 · Main · Paper-I · Political Science Interanational Relations Csm'
+      },
+      title: 'POLITICAL-SCIENCE-INTERANATIONAL-RELATIONS-PAPER-I-QP-CSM-25-010925.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/POLITICAL-SCIENCE-INTERANATIONAL-RELATIONS-PAPER-I-QP-CSM-25-010925.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2025-main-paper-i-political-science-inter',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'ites/default/files/POLITICAL-SCIENCE-INTERANATIONAL-RELATIONS-PAPER-I-QP-CSM-25-010925.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2025-main-paper-ii-physics-csm-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2025',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Physics Csm',
+        describe: '2025 · Main · Paper-II · Physics Csm'
+      },
+      title: 'PHYSICS-PAPER-II-QP-CSM-25-010925.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/PHYSICS-PAPER-II-QP-CSM-25-010925.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2025-main-paper-ii-physics-csm-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/PHYSICS-PAPER-II-QP-CSM-25-010925.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2025-main-paper-i-physics-csm-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2025',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Physics Csm',
+        describe: '2025 · Main · Paper-I · Physics Csm'
+      },
+      title: 'PHYSICS-PAPER-I-QP-CSM-25-010925.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/PHYSICS-PAPER-I-QP-CSM-25-010925.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2025-main-paper-i-physics-csm-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/PHYSICS-PAPER-I-QP-CSM-25-010925.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2025-main-paper-ii-philosophy-csm-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2025',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Philosophy Csm',
+        describe: '2025 · Main · Paper-II · Philosophy Csm'
+      },
+      title: 'PHILOSOPHY-PAPER-II-QP-CSM-25-010925.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/PHILOSOPHY-PAPER-II-QP-CSM-25-010925.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2025-main-paper-ii-philosophy-csm-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/PHILOSOPHY-PAPER-II-QP-CSM-25-010925.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2025-main-paper-i-philosophy-csm-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2025',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Philosophy Csm',
+        describe: '2025 · Main · Paper-I · Philosophy Csm'
+      },
+      title: 'PHILOSOPHY-PAPER-I-QP-CSM-25-010925.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/PHILOSOPHY-PAPER-I-QP-CSM-25-010925.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2025-main-paper-i-philosophy-csm-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/PHILOSOPHY-PAPER-I-QP-CSM-25-010925.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2025-main-odia-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2025',
+        stage: 'Main',
+        language: 'Odia',
+        describe: '2025 · Main · Odia'
+      },
+      title: 'ODIA-COMPULSORY-QP-CSM-25-010925.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/ODIA-COMPULSORY-QP-CSM-25-010925.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2025-main-odia-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/ODIA-COMPULSORY-QP-CSM-25-010925.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2025-main-nepali-csm-nepali-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2025',
+        stage: 'Main',
+        subject: 'Nepali Csm',
+        language: 'Nepali',
+        describe: '2025 · Main · Nepali Csm · Nepali'
+      },
+      title: 'NEPALI-COMPULSORY-QP-CSM-25-010925.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/NEPALI-COMPULSORY-QP-CSM-25-010925.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2025-main-nepali-csm-nepali-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/NEPALI-COMPULSORY-QP-CSM-25-010925.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2025-main-paper-ii-medical-science-csm-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2025',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Medical Science Csm',
+        describe: '2025 · Main · Paper-II · Medical Science Csm'
+      },
+      title: 'MEDICAL-SCIENCE-PAPER-II-QP-CSM-25-010925.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/MEDICAL-SCIENCE-PAPER-II-QP-CSM-25-010925.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2025-main-paper-ii-medical-science-csm-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/MEDICAL-SCIENCE-PAPER-II-QP-CSM-25-010925.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2025-main-paper-i-medical-science-csm-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2025',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Medical Science Csm',
+        describe: '2025 · Main · Paper-I · Medical Science Csm'
+      },
+      title: 'MEDICAL-SCIENCE-PAPER-I-QP-CSM-25-010925.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/MEDICAL-SCIENCE-PAPER-I-QP-CSM-25-010925.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2025-main-paper-i-medical-science-csm-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'https://www.upsc.gov.in/sites/default/files/MEDICAL-SCIENCE-PAPER-I-QP-CSM-25-010925.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2025-main-paper-ii-mechanical-engineering',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2025',
+        stage: 'Main',
+        paper: 'Paper-II',
+        subject: 'Mechanical Engineering Csm',
+        describe: '2025 · Main · Paper-II · Mechanical Engineering Csm'
+      },
+      title: 'MECHANICAL-ENGINEERING-PAPER-II-QP-CSM-25-010925.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/MECHANICAL-ENGINEERING-PAPER-II-QP-CSM-25-010925.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2025-main-paper-ii-mechanical-engineering',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: '//www.upsc.gov.in/sites/default/files/MECHANICAL-ENGINEERING-PAPER-II-QP-CSM-25-010925.pdf'
+      }
+    },
+    {
+      id: 'paper-exam-upsc-cse-2026-2025-main-paper-i-mechanical-engineering-',
+      identity: {
+        examId: 'exam-upsc-cse-2026',
+        cycle: '2025',
+        stage: 'Main',
+        paper: 'Paper-I',
+        subject: 'Mechanical Engineering Csm',
+        describe: '2025 · Main · Paper-I · Mechanical Engineering Csm'
+      },
+      title: 'MECHANICAL-ENGINEERING-PAPER-I-QP-CSM-25-010925.pdf',
+      url: 'https://www.upsc.gov.in/sites/default/files/MECHANICAL-ENGINEERING-PAPER-I-QP-CSM-25-010925.pdf',
+      status: 'VERIFIED',
+      contentsStatus: 'NOT_EXTRACTED',
+      contentsNote: 'published as an image scan with no text layer, so its questions cannot be read without OCR; OCR of a scanned booklet loses word spacing and misreads option labels, so nothing is transcribed from it here',
+      provenance: {
+        id: 'prov-paper-exam-upsc-cse-2026-2025-main-paper-i-mechanical-engineering-',
+        documentTitle: 'Previous question papers listing',
+        officialUrl: 'https://www.upsc.gov.in/examinations/previous-question-papers',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-22',
+        verifiedDate: '2026-09-22',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: '://www.upsc.gov.in/sites/default/files/MECHANICAL-ENGINEERING-PAPER-I-QP-CSM-25-010925.pdf'
+      }
     }
   ],
   syllabus: [
