@@ -1400,6 +1400,28 @@ def research_finding_status(finding_id):
     return jsonify({"status": "updated", "finding_id": finding_id, "new_status": status})
 
 
+@app.route('/api/llm/health', methods=['GET'])
+def llm_health():
+    """Diagnostic for the local semantic-verification model. Never exposes the model file
+    path or any secret -- only whether the verifier is enabled and its server reachable."""
+    try:
+        from tools.exam_builder.verification.client import get_provider
+        h = get_provider().health()
+    except Exception as e:                                       # noqa: BLE001
+        return jsonify({"enabled": False, "reachable": False, "error": type(e).__name__}), 200
+    model = h.get('model') or ''
+    # A GOVOS_LLM_MODEL set to a path is reduced to a label; candidates never see the path.
+    if '/' in model or '\\' in model or model.lower().endswith('.gguf'):
+        model = 'local-gguf'
+    return jsonify({
+        "enabled": bool(h.get('enabled')),
+        "reachable": bool(h.get('reachable')),
+        "model": model,
+        "endpoint": h.get('endpoint'),
+        "error": h.get('error'),
+    })
+
+
 # =============================================================================
 # Field-level research validation layer  (RESEARCH_VALIDATION_DESIGN.md)
 #

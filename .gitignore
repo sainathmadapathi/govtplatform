@@ -21,3 +21,6 @@ archive/
 
 # Discovery snapshots: which documents a past build found, never their contents
 .exam_manifests/
+
+# Local LLM model files must never be committed
+*.gguf
