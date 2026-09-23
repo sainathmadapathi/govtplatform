@@ -408,11 +408,11 @@ isolation + unknown-authority staging (5/5 hashes unchanged).
 
 ## 23. Final commit hash
 
-`<filled on commit>` — audit report only.
+`c7a80ee` — audit report only (report commit; the audit itself changed no source).
 
 ## 24. Push result
 
-`<filled on push>`.
+Pushed to `origin/main` (`14771c9..c7a80ee`). This §23/§24 record is a one-line follow-up commit.
 
 ## 25. Remaining known limitations
 
