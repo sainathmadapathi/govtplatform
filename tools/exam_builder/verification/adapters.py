@@ -244,3 +244,34 @@ def claim_from_question(q: dict, *, official_name: str, authority: str,
         source_text=composed,
         requires_value=bool(prompt),
     )
+
+
+def claim_from_exam_day(instruction: dict, *, exam_id: str, official_name: str, authority: str,
+                        cycle: str = '', stage: str = '', source_text: str = '') -> Claim:
+    """A `Claim` that an exam-day instruction is stated by this exam's official evidence.
+
+    Exam-day rules are cycle-sensitive and must never be copied between exams, so identity and
+    cycle come from the exam record and are checked before the model. The claim's value is the
+    instruction text and its evidence is the official clause; the category and stage travel in
+    the `field`, so a document that states a documents rule cannot verify a timing rule, and a
+    Prelims instruction cannot verify a Mains one. Generic: no branch on an authority or exam.
+    """
+    category = str(instruction.get('category', 'OTHER'))
+    text = str(instruction.get('text') or instruction.get('title') or instruction.get('description') or '')
+    excerpt = str(instruction.get('evidenceSpan') or instruction.get('evidence') or '')
+    title = str(instruction.get('sourceTitle') or '')
+    composed = source_text or (title + ' ' + excerpt).strip()
+    stage_part = f':{stage.lower()}' if stage else ''
+    return Claim(
+        exam_id=exam_id,
+        field=f'examday:{category.lower()}{stage_part}',
+        value=text,
+        cycle=str(cycle),
+        evidence_span=excerpt or text,
+        source_url=instruction.get('sourceUrl') or '',
+        source_title=title,
+        authority=authority,
+        official_name=official_name,
+        source_text=composed,
+        requires_value=bool(text),
+    )
