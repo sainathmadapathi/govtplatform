@@ -763,3 +763,87 @@ def admit_card_events(events: list, *, exam_id: str) -> list:
             row['provenance'] = provenance
         rows.append(row)
     return rows
+
+
+def result_declarations(events: list, *, exam_id: str) -> list:
+    """Project result declarations into the shape the Results section renders.
+
+    Five things this projection is careful about, all from RESULTS_AUDIT.md:
+
+      * **`kind` travels**, so the UI can say "Written Result", "Final Result", "Merit List"
+        and "Scheduled" distinctly — the record it replaces had no notion of an official
+        declaration at all.
+      * **A declared date and an expected date are separate keys.** `declaredAt` is only ever
+        a real declaration; `expectedAt` is only ever a scheduled row. A schedule can never
+        render as a declaration.
+      * **`documentUrl` is emitted only where the authority published one on its own host**;
+        a portal is a separate key. Neither is ever a homepage dressed as a result link.
+      * **`qualification` is carried only where the source stated it**, so a shortlist never
+        reads as a selection.
+      * **`lifecycle` and `supersedes` travel**, so a revised or cancelled result shows its
+        relationship to the one it replaced rather than silently overwriting it.
+
+    A declaration whose exam is not this exam is dropped rather than relabelled.
+    """
+    from .schema import ScopeKind
+
+    rows = []
+    for e in events:
+        stage_refs = [r for r in e.scope.refs if r.kind is ScopeKind.STAGE]
+        post_refs = [r for r in e.scope.refs if r.kind is ScopeKind.POST]
+        row = {
+            'id': e.id,
+            'examId': exam_id,
+            'kind': e.kind.value,
+            'label': e.label,
+            'isDeclaration': e.is_declaration,
+            'status': e.status.value,
+            'lifecycle': e.lifecycle.value,
+        }
+        if e.source_label and e.source_label != e.label:
+            row['sourceLabel'] = e.source_label
+        if e.cycle:
+            row['cycle'] = e.cycle
+        if stage_refs:
+            row['stageLabel'] = stage_refs[0].label
+            row['stageRef'] = stage_refs[0].ref
+        if post_refs:
+            row['postLabel'] = post_refs[0].label
+        if e.published_at.has_value:
+            row['declaredAt'] = e.published_at.value
+            row['declaredPrecision'] = e.published_precision or 'DAY'
+            if e.published_at.note:
+                row['declaredNote'] = e.published_at.note
+        if e.expected_at.has_value:
+            row['expectedAt'] = e.expected_at.value
+            row['expectedPrecision'] = e.expected_precision or 'DAY'
+            if e.expected_at.note:
+                row['expectedNote'] = e.expected_at.note
+        if e.qualification and e.qualification.value != 'UNSTATED':
+            row['qualification'] = e.qualification.value
+        if e.qualified_count.has_value:
+            row['qualifiedCount'] = e.qualified_count.value
+        if e.next_step.has_value:
+            row['nextStep'] = e.next_step.value
+        if e.next_stage_ref:
+            row['nextStageRef'] = e.next_stage_ref
+        if e.document_url.is_publishable:
+            row['documentUrl'] = e.document_url.value
+        if e.portal_url.has_value:
+            row['portalUrl'] = e.portal_url.value
+        if e.cutoffs:
+            row['cutoffs'] = [
+                {'marks': c.marks.value, 'basis': c.basis,
+                 'scope': str(c.scope)} for c in e.cutoffs if c.marks.has_value]
+        if e.supersedes:
+            row['supersedes'] = e.supersedes
+        if e.note:
+            row['note'] = e.note
+        source = (e.published_at if e.published_at.has_value
+                  else e.expected_at if e.expected_at.has_value
+                  else e.document_url)
+        provenance = to_legacy_provenance(source, prov_id=f'prov-{e.id}')
+        if provenance is not None:
+            row['provenance'] = provenance
+        rows.append(row)
+    return rows

@@ -16908,6 +16908,67 @@ export const UPSC_CSE_EXAM: Exam = {
       }
     }
   ],
+  resultDeclarations: [
+    {
+      id: 'exam-upsc-cse-2026-result-written-result-preliminary-2026-06-15',
+      examId: 'exam-upsc-cse-2026',
+      kind: 'WRITTEN_RESULT',
+      label: 'Written Result',
+      isDeclaration: true,
+      status: 'VERIFIED',
+      lifecycle: 'ORIGINAL',
+      cycle: '2026',
+      stageLabel: 'Preliminary',
+      stageRef: 'preliminary',
+      declaredAt: '2026-06-15',
+      declaredPrecision: 'DAY',
+      documentUrl: 'https://www.upsc.gov.in/sites/default/files/WR-CSP-2026-RollList-Engl-150626.pdf',
+      portalUrl: 'https://upsconline.nic.in/',
+      provenance: {
+        id: 'prov-exam-upsc-cse-2026-result-written-result-preliminary-2026-06-15',
+        documentTitle: 'Civil Services (Preliminary) Examination, 2026',
+        officialUrl: 'https://www.upsc.gov.in/examinations/Civil%20Services%20%28Preliminary%29%20Examination%2C%202026',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-23',
+        verifiedDate: '2026-09-23',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'Written Result WR-CSP-2026-RollList-Engl-150626.pdf 15/06/2026 https://www.upsc.gov.in/sites/default/files/WR-CSP-2026-RollList-Engl-150626.pdf'
+      }
+    },
+    {
+      id: 'exam-upsc-cse-2026-result-written-result-preliminary-2026-06-18',
+      examId: 'exam-upsc-cse-2026',
+      kind: 'WRITTEN_RESULT',
+      label: 'Written Result',
+      isDeclaration: true,
+      status: 'VERIFIED',
+      lifecycle: 'ORIGINAL',
+      sourceLabel: 'Written Result (with name)',
+      cycle: '2026',
+      stageLabel: 'Preliminary',
+      stageRef: 'preliminary',
+      declaredAt: '2026-06-18',
+      declaredPrecision: 'DAY',
+      documentUrl: 'https://www.upsc.gov.in/sites/default/files/WR-NameList-CSP-2026-Engl-18062026.pdf',
+      portalUrl: 'https://upsconline.nic.in/',
+      provenance: {
+        id: 'prov-exam-upsc-cse-2026-result-written-result-preliminary-2026-06-18',
+        documentTitle: 'Civil Services (Preliminary) Examination, 2026',
+        officialUrl: 'https://www.upsc.gov.in/examinations/Civil%20Services%20%28Preliminary%29%20Examination%2C%202026',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-09-23',
+        verifiedDate: '2026-09-23',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'Written Result (with name) WR-NameList-CSP-2026-Engl-18062026.pdf 18/06/2026 https://www.upsc.gov.in/sites/default/files/WR-NameList-CSP-2026-Engl-18062026.pdf'
+      }
+    }
+  ],
   syllabus: [
     // --- Preliminary: General Studies Paper-I (Section III, Part A) ---
     { id: 'upsc-syl-history', subject: 'History & Culture', tier: 'BOTH', topicName: 'History of India and the Indian National Movement', subtopics: ['Ancient & medieval India', 'Art, architecture & literature', 'Modern India from the mid-18th century', 'Freedom struggle — stages & contributors', 'Post-independence consolidation'], weightagePercentage: 18, avgQuestions: 18, isHighYield: true, officialProvenance: upscProvenanceSyllabus, weightageProvenance: upscWeightageProvenance },
@@ -18942,6 +19003,68 @@ export const IBPS_PO_EXAM: Exam = {
         taxonomyType: 'FACT',
         verificationLevel: 'OFFICIALLY_VERIFIED',
         excerptText: 'Download of Call letter for Online examination – Main September, 2026'
+      }
+    }
+  ],
+  resultDeclarations: [
+    {
+      id: 'exam-ibps-po-2026-result-scheduled-preliminary-2026-09-01',
+      examId: 'exam-ibps-po-2026',
+      kind: 'SCHEDULED',
+      label: 'Result',
+      isDeclaration: false,
+      status: 'VERIFIED',
+      lifecycle: 'ORIGINAL',
+      sourceLabel: 'Result of Online examination – Preliminary',
+      cycle: '2026',
+      stageLabel: 'Preliminary',
+      stageRef: 'preliminary',
+      expectedAt: '2026-09-01',
+      expectedPrecision: 'MONTH',
+      expectedNote: 'the authority published a month, not a day; shown as the month it printed rather than a date it did not',
+      portalUrl: 'https://www.ibps.in/',
+      provenance: {
+        id: 'prov-exam-ibps-po-2026-result-scheduled-preliminary-2026-09-01',
+        documentTitle: 'CRP PO/MT-XVI detailed notification',
+        officialUrl: 'https://www.ibps.in/wp-content/uploads/Detailed-Notification_CRP-PO-XVI_Final_V1_30.06.2026.pdf',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-06-30',
+        verifiedDate: '2026-09-23',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'Result of Online examination – Preliminary September, 2026'
+      }
+    },
+    {
+      id: 'exam-ibps-po-2026-result-scheduled-main-2026-11-01',
+      examId: 'exam-ibps-po-2026',
+      kind: 'SCHEDULED',
+      label: 'Declaration of Result',
+      isDeclaration: false,
+      status: 'VERIFIED',
+      lifecycle: 'ORIGINAL',
+      sourceLabel: 'Declaration of Result- Main Examination',
+      cycle: '2026',
+      stageLabel: 'Main',
+      stageRef: 'main',
+      expectedAt: '2026-11-01',
+      expectedPrecision: 'MONTH',
+      expectedNote: 'the authority published a month, not a day; shown as the month it printed rather than a date it did not',
+      portalUrl: 'https://www.ibps.in/',
+      provenance: {
+        id: 'prov-exam-ibps-po-2026-result-scheduled-main-2026-11-01',
+        documentTitle: 'CRP PO/MT-XVI detailed notification',
+        officialUrl: 'https://www.ibps.in/wp-content/uploads/Detailed-Notification_CRP-PO-XVI_Final_V1_30.06.2026.pdf',
+        pageNumber: 1,
+        clauseNumber: 'pattern',
+        publishedDate: '2026-06-30',
+        verifiedDate: '2026-09-23',
+        verifiedBy: 'GovOS exam builder — read from the source',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'Declaration of Result- Main Examination November, 2026'
       }
     }
   ],

@@ -503,6 +503,48 @@ login -- it used to read "your Call Letter and reporting schedule are live" off 
 the **names** of its fields; it used to print a roll number, a shift, a gate time and a named
 centre that came from no authority.
 
+### Results are read as declarations, not a self-assessment
+
+`tools/exam_builder/results.py` reads an exam's **result declarations** out of whatever its
+authority published; `RESULTS_AUDIT.md` records what four real authorities publish. This is
+the authority's own act of declaring a result, and it is a different thing from section 16's
+existing candidate self-assessment (`MultiTierResultEntry` — the marks a candidate types in,
+compared against `cutoffsHistory`), which is untouched and stays.
+
+The unit is a `ResultDeclaration` scoped to a stage (and post where named), never a fixed
+Prelims→Mains→Final progression — the stage is the authority's own word. Three separations
+are the design:
+
+- **A declared result is not a scheduled one.** UPSC declares a written result as a dated
+  PDF row on its exam page; IBPS only *schedules* one ("Result … September, 2026", month
+  precision). A SCHEDULED kind carries `expected_at`, never `published_at`, so an expectation
+  can never render as a declaration a candidate could act on.
+- **"Qualified" is not "selected".** `QualificationState` is read only where the source
+  states it — a shortlist is SHORTLISTED, never SELECTED — and `next_step` is read, never
+  inferred from a fixed workflow.
+- **A homepage is not a result link.** `documentUrl` is emitted only where the authority
+  published a file link on its own host (the publisher takes the page's own `href`, never a
+  constructed path); a portal is a separate key.
+
+Identity is exam · cycle · kind · stage · post · document, so SSC CGL **2025**'s many result
+notices stay out of the 2026 record, and UPSC's roll-number list and name list are two
+distinct documents of one Preliminary result rather than a conflict. `results_merge.py`
+carries a revision lifecycle (ORIGINAL → REVISED → CANCELLED → SUPERSEDED): a later official
+revision supersedes the earlier declaration and *keeps* it; two declarations that disagree
+with no revision between them are CONFLICTED and neither wins on timestamp. `SourceOutcome`
+keeps a fetch failure off the field status, so "we could not reach the page" never becomes
+"no result declared".
+
+`compat.result_declarations()` projects into `Exam.resultDeclarations`, which section 16's
+new "Official results from <authority>" panel renders above the self-assessment tool: one
+card per declaration with its kind, stage, cycle, declared-or-expected date, outcome and
+count where stated, a document or portal link, a Sourced Clause button, and a superseded
+fold. It has an honest empty state — "GovOS has not read a result declaration … that is a
+gap here, not a statement that no result has been declared" — never "not declared". Published:
+UPSC CSE 2026 two Preliminary written-result declarations; IBPS PO 2026 two scheduled result
+rows; SSC CGL 2026 and LIC AAO 2027 nothing (only prior cycles / no result row); APPSC not
+read. No candidate-level data (roll numbers, names, ranks, marks) is published for any exam.
+
 ### The syllabus, also as a map
 `SyllabusTreeMap` is section 06's **third view** — the switcher reads Post Study Plan ·
 Official Gazette Syllabus · Tree Map — not a card stacked under the others. It reads

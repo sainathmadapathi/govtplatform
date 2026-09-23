@@ -138,7 +138,8 @@ import {
   ChatContext,
   ConversationTurn,
   MultiTierResultEntry,
-  ExamAdmitCardEvent
+  ExamAdmitCardEvent,
+  ExamResultDeclaration
 } from './types';
 import {
   ALL_EXAMS,
@@ -13845,6 +13846,7 @@ interface ResultNextStepsSectionProps {
   onNavigateSection: (sectionNum: number) => void;
   onNavigatePractice?: () => void;
   onSelectAlternativeExam?: (examCode: string) => void;
+  onOpenProvenanceModal?: (provenance: DataProvenance) => void;
 }
 
 type CandidateResultStatus = 
@@ -13875,7 +13877,8 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
   exam,
   onNavigateSection,
   onNavigatePractice,
-  onSelectAlternativeExam
+  onSelectAlternativeExam,
+  onOpenProvenanceModal
 }) => {
   // ---- Exam Pattern Identification ----
   const isUPSC = exam.code?.includes('UPSC') || exam.id?.includes('upsc') || exam.title?.toLowerCase().includes('civil services');
@@ -14455,9 +14458,159 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
     }
   }, [unifiedVerdict, statusChosenManually]);
 
+  // ---- Official result declarations, read from the authority's own documents ----
+  // This is the authority's own act of declaring a result — separate from the candidate's
+  // self-assessment below, which is the marks they type in. Present only where GovOS has read
+  // them; absent is a gap here, never "no result declared".
+  const declarations = (exam.resultDeclarations || []).filter(d => d.lifecycle !== 'SUPERSEDED');
+  const supersededDecls = (exam.resultDeclarations || []).filter(d => d.lifecycle === 'SUPERSEDED');
+  const declared = declarations.filter(d => d.isDeclaration);
+  const scheduled = declarations.filter(d => !d.isDeclaration);
+  const declKindLabel = (k: string): string => ({
+    RESULT: 'Result', WRITTEN_RESULT: 'Written Result', STAGE_RESULT: 'Stage Result',
+    FINAL_RESULT: 'Final Result', SHORTLIST: 'Shortlist', QUALIFIED_LIST: 'Qualified List',
+    MERIT_LIST: 'Merit List', SCORECARD: 'Scorecard', MARKS: 'Marks', SELECTION: 'Selection',
+    WAITLIST: 'Waiting List', DV_SHORTLIST: 'Document-Verification Shortlist',
+    INTERVIEW_SHORTLIST: 'Interview Shortlist', RECOMMENDATION: 'Recommendation',
+    SCHEDULED: 'Scheduled', OTHER: 'Result'
+  }[k] || 'Result');
+  const declWhen = (d: ExamResultDeclaration): string => {
+    const iso = d.declaredAt || d.expectedAt;
+    if (!iso) return 'date not stated';
+    const dt = new Date(iso + 'T00:00:00');
+    const prec = d.declaredAt ? d.declaredPrecision : d.expectedPrecision;
+    return prec === 'MONTH'
+      ? dt.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
+      : dt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  };
+  const qualLabel = (q?: string): string => q ? ({
+    QUALIFIED: 'Qualified', NOT_QUALIFIED: 'Not qualified', SHORTLISTED: 'Shortlisted',
+    SELECTED: 'Selected', RECOMMENDED: 'Recommended', WAITLISTED: 'Waitlisted'
+  }[q] || q) : '';
+
+  const declarationCard = (d: ExamResultDeclaration) => (
+    <div key={d.id} style={{
+      padding: '14px 16px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)',
+      border: d.status === 'VERIFIED' ? '1px solid var(--border-color)' : '1px solid rgba(165, 90, 5, 0.35)'
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '6px' }}>
+        <span className={`badge ${d.isDeclaration ? 'badge-verified' : 'badge-demo'}`} style={{ fontSize: '0.7rem' }}>
+          {d.isDeclaration ? declKindLabel(d.kind).toUpperCase() : 'SCHEDULED · NOT YET DECLARED'}
+        </span>
+        {d.stageLabel && (
+          <span className="badge" style={{ fontSize: '0.7rem', background: 'var(--surface-3)', color: 'var(--text-secondary)' }}>{d.stageLabel}</span>
+        )}
+        {d.cycle && <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>cycle {d.cycle}</span>}
+        {d.lifecycle === 'REVISED' && <span className="badge badge-demo" style={{ fontSize: '0.68rem' }}>REVISED</span>}
+        {d.lifecycle === 'CANCELLED' && <span className="badge badge-pending" style={{ fontSize: '0.68rem' }}>CANCELLED</span>}
+        {d.status !== 'VERIFIED' && <span className="badge badge-pending" style={{ fontSize: '0.68rem' }}>NEEDS REVIEW</span>}
+      </div>
+      <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>{d.label || declKindLabel(d.kind)}</div>
+      {d.sourceLabel && d.sourceLabel !== d.label && (
+        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+          Listed by {exam.authorityName.split(' (')[0]} as “{d.sourceLabel}”
+        </div>
+      )}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '18px', marginTop: '8px' }}>
+        <div>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+            {d.isDeclaration ? 'Declared on' : 'Expected'}
+          </span>
+          <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-primary)' }}>{declWhen(d)}</div>
+        </div>
+        {d.qualification && (
+          <div>
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Outcome</span>
+            <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-primary)' }}>{qualLabel(d.qualification)}</div>
+          </div>
+        )}
+        {d.qualifiedCount !== undefined && (
+          <div>
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Candidates</span>
+            <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-primary)' }}>{d.qualifiedCount.toLocaleString('en-IN')}</div>
+          </div>
+        )}
+        {d.nextStep && (
+          <div>
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Next stage</span>
+            <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-primary)' }}>{d.nextStep}</div>
+          </div>
+        )}
+      </div>
+      {(d.declaredNote || d.expectedNote || d.note) && (
+        <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '10px 0 0', lineHeight: 1.5 }}>
+          {[d.declaredNote, d.expectedNote, d.note].filter(Boolean).join(' · ')}
+        </p>
+      )}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginTop: '10px' }}>
+        {d.documentUrl ? (
+          <a href={d.documentUrl} target="_blank" rel="noreferrer" className="btn btn-emerald" style={{ fontSize: '0.75rem', padding: '5px 12px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <Download size={12} /> Open the {declKindLabel(d.kind).toLowerCase()}
+          </a>
+        ) : d.portalUrl ? (
+          <a href={d.portalUrl} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '5px 12px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <ExternalLink size={12} /> Check on {exam.authorityName.split(' (')[0]}'s portal
+          </a>
+        ) : d.isDeclaration ? (
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>The authority publishes no direct link; it is served after sign-in.</span>
+        ) : null}
+        {d.provenance && onOpenProvenanceModal && (
+          <button className="btn btn-secondary" onClick={() => onOpenProvenanceModal(d.provenance!)} style={{ fontSize: '0.72rem', padding: '5px 10px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <ShieldCheck size={12} /> Sourced Clause
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      
+
+      {/* Official result declarations — the authority's own act, distinct from the
+          self-assessment below. Reads exam.resultDeclarations; an honest empty state when
+          GovOS has not read this exam's result documents, never "not declared". */}
+      <div className="glass-card" style={{ padding: '24px' }}>
+        <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <FileCheck size={20} color="var(--primary)" /> Official results from {exam.authorityName.split(' (')[0]}
+        </h3>
+        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '0 0 16px' }}>
+          What the authority has declared, read from its own result documents and exam pages. This is the authority's own record — separate from the self-assessment below, which is your own marks.
+        </p>
+        {declarations.length === 0 ? (
+          <div style={{ padding: '16px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)' }}>
+            <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.55 }}>
+              GovOS has not read a result declaration for this exam and cycle from {exam.authorityName.split(' (')[0]}'s own documents. That is a gap here, not a statement that no result has been declared — check the authority's official site, and use the self-assessment below once you have your marks.
+            </p>
+          </div>
+        ) : (
+          <>
+            {declared.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: scheduled.length ? '18px' : 0 }}>
+                {declared.map(declarationCard)}
+              </div>
+            )}
+            {scheduled.length > 0 && (
+              <div>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-secondary)', margin: '0 0 10px' }}>Scheduled — expected, not yet declared</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {scheduled.map(declarationCard)}
+                </div>
+              </div>
+            )}
+            {supersededDecls.length > 0 && (
+              <details style={{ marginTop: '16px' }}>
+                <summary style={{ fontSize: '0.82rem', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                  Show {supersededDecls.length} superseded declaration{supersededDecls.length > 1 ? 's' : ''}
+                </summary>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px', opacity: 0.7 }}>
+                  {supersededDecls.map(declarationCard)}
+                </div>
+              </details>
+            )}
+          </>
+        )}
+      </div>
+
       {/* Top Banner — Exam-Specific Styling & Content */}
       <div className="glass-card" style={{ padding: '24px', background: isUPSC ? 'linear-gradient(135deg, rgba(217, 119, 6, 0.15) 0%, #ffffff 100%)' : 'linear-gradient(135deg, rgba(234, 179, 8, 0.12) 0%, #ffffff 100%)', borderColor: isUPSC ? 'rgba(245, 158, 11, 0.4)' : 'rgba(234, 179, 8, 0.35)' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
@@ -19048,11 +19201,12 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
 
         {/* Section 16: Result & Personalized Next Steps Flow */}
         {activeSection === 16 && (
-          <ResultNextStepsSection 
+          <ResultNextStepsSection
             exam={exam}
             onNavigateSection={(secNum) => setActiveSection(secNum)}
             onNavigatePractice={onNavigatePractice}
             onSelectAlternativeExam={onSelectAlternativeExam}
+            onOpenProvenanceModal={onOpenProvenanceModal}
           />
         )}
       </div>

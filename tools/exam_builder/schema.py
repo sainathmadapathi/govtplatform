@@ -1289,6 +1289,62 @@ class AdmitCardNotice:
 
 
 # ===================================================================== results
+class ResultKind(str, Enum):
+    """What an authority published, in structural terms shared across authorities.
+
+    SCHEDULED is deliberately in the same enum and deliberately not a declaration: it is a
+    future date an authority printed for a result it has not yet declared. Keeping it here,
+    distinct, is what lets the reader carry "expected September 2026" without ever letting it
+    render as "declared".
+    """
+
+    RESULT = 'RESULT'
+    WRITTEN_RESULT = 'WRITTEN_RESULT'
+    STAGE_RESULT = 'STAGE_RESULT'
+    FINAL_RESULT = 'FINAL_RESULT'
+    SHORTLIST = 'SHORTLIST'
+    QUALIFIED_LIST = 'QUALIFIED_LIST'
+    MERIT_LIST = 'MERIT_LIST'
+    SCORECARD = 'SCORECARD'
+    MARKS = 'MARKS'
+    SELECTION = 'SELECTION'
+    WAITLIST = 'WAITLIST'
+    DV_SHORTLIST = 'DV_SHORTLIST'
+    INTERVIEW_SHORTLIST = 'INTERVIEW_SHORTLIST'
+    RECOMMENDATION = 'RECOMMENDATION'
+    #: A date the authority scheduled for a result it has not yet declared. Not a result.
+    SCHEDULED = 'SCHEDULED'
+    OTHER = 'OTHER'
+
+    @property
+    def is_declaration(self) -> bool:
+        """A result the authority has actually declared, as opposed to a scheduled date."""
+        return self not in (ResultKind.SCHEDULED, ResultKind.OTHER)
+
+
+class ResultLifecycle(str, Enum):
+    """Where a declaration sits in its own revision history. Never inferred from a timestamp."""
+
+    ORIGINAL = 'ORIGINAL'
+    REVISED = 'REVISED'
+    CANCELLED = 'CANCELLED'
+    SUPERSEDED = 'SUPERSEDED'
+
+
+class QualificationState(str, Enum):
+    """What the source says happened to the candidates it names -- only where it says it."""
+
+    QUALIFIED = 'QUALIFIED'
+    NOT_QUALIFIED = 'NOT_QUALIFIED'
+    SHORTLISTED = 'SHORTLISTED'
+    SELECTED = 'SELECTED'
+    RECOMMENDED = 'RECOMMENDED'
+    WAITLISTED = 'WAITLISTED'
+    #: The source declares a result but states no qualification outcome in it.
+    UNSTATED = 'UNSTATED'
+
+
+
 @dataclass
 class CutoffMark:
     """A bar, scoped to whatever the authority published it against."""
@@ -1311,17 +1367,51 @@ class ResultDeclaration:
     id: str
     #: The authority's own wording -- "Written Result", "Final Result", "Shortlist".
     label: str = ''
-    kind: str = ''
+    #: The whole row or headline it was read from, where longer than the document's name.
+    source_label: str = ''
+    kind: ResultKind = ResultKind.OTHER
     scope: Scope = dc_field(default_factory=Scope)
+    #: The cycle the source names -- never the record's own, so a past cycle stays past.
+    cycle: str = ''
+    #: When the result was declared. A declaration has this; a schedule row does not.
     published_at: Fact[str] = dc_field(default_factory=Fact)
+    published_precision: str = ''
+    #: When a scheduled result is expected. A schedule row has this; a declaration does not.
+    #: Kept apart from `published_at` so an expectation can never render as a declaration.
+    expected_at: Fact[str] = dc_field(default_factory=Fact)
+    expected_precision: str = ''
     document_url: Fact[str] = dc_field(default_factory=Fact)
+    #: Where a candidate signs in for a result served behind login, distinct from a document.
+    portal_url: Fact[str] = dc_field(default_factory=Fact)
     qualified_count: Fact[int] = dc_field(default_factory=Fact)
-    #: What happens to those who cleared, in the authority's words.
+    #: What the source says happened to the candidates, only where it says it.
+    qualification: QualificationState = QualificationState.UNSTATED
+    #: What happens to those who cleared, in the authority's words. Never inferred.
     next_step: Fact[str] = dc_field(default_factory=Fact)
+    #: The stage a cleared candidate advances to, where the source names it.
+    next_stage_ref: str = ''
     cutoffs: list[CutoffMark] = dc_field(default_factory=list)
+    lifecycle: ResultLifecycle = ResultLifecycle.ORIGINAL
+    #: The id of the declaration this one revises, cancels or supersedes.
+    supersedes: str = ''
     status: Status = Status.NOT_EXTRACTED
     evidence: list[SourceEvidence] = dc_field(default_factory=list)
     note: str = ''
+
+    @property
+    def is_declaration(self) -> bool:
+        return self.kind.is_declaration
+
+    @property
+    def is_publishable(self) -> bool:
+        """Shown to a candidate only when scoped, evidenced and verbatim.
+
+        A declaration with no stage is a result for no examination sitting in particular, and
+        a claim with no verbatim span is a claim with nothing behind it.
+        """
+        return (self.status is Status.VERIFIED
+                and bool(self.scope.refs or self.cycle)
+                and any(e.is_verbatim for e in self.evidence))
 
 
 # ================================================================== revisions

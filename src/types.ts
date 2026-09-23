@@ -893,6 +893,64 @@ export interface ResultActionOption {
   recommendedTimeline?: string;
 }
 
+/**
+ * One result an authority declared (or scheduled), read from its own document.
+ *
+ * `MultiTierResultEntry` above is the *candidate's own* self-assessment — the marks they
+ * type in. This is different: it is the authority's own act of declaring a result, with a
+ * date, a document and provenance. An exam holds a list of these, because a cycle has many
+ * (a Prelims written result, a Mains result, a final merit list), and the shape assumes no
+ * fixed Prelims → Mains → Final progression — the stage is whatever the authority named.
+ *
+ * Every field is something the authority published:
+ * - `kind` keeps the types apart (a written result, a final result, a shortlist, a merit
+ *   list, a scorecard) and, crucially, marks a `SCHEDULED` row — a date a result is expected
+ *   — so it can never render as a declaration.
+ * - `declaredAt` is only ever a real declaration; `expectedAt` is only ever a scheduled row.
+ * - `qualification` is carried only where the source states it, so a shortlist never reads
+ *   as a selection.
+ * - `documentUrl` appears only where the authority published a file link on its own host;
+ *   `portalUrl` is where a candidate signs in, and is a different claim.
+ * - `lifecycle` / `supersedes` carry a revised or cancelled result's relationship to the
+ *   one it replaced, rather than overwriting it.
+ *
+ * Candidate-level data (roll numbers, names, ranks, marks) is deliberately absent: where an
+ * authority publishes a list, GovOS links to it and transcribes no individual.
+ */
+export interface ExamResultDeclaration {
+  id: string;
+  examId: string;
+  kind:
+    | 'RESULT' | 'WRITTEN_RESULT' | 'STAGE_RESULT' | 'FINAL_RESULT' | 'SHORTLIST'
+    | 'QUALIFIED_LIST' | 'MERIT_LIST' | 'SCORECARD' | 'MARKS' | 'SELECTION' | 'WAITLIST'
+    | 'DV_SHORTLIST' | 'INTERVIEW_SHORTLIST' | 'RECOMMENDATION' | 'SCHEDULED' | 'OTHER';
+  label: string;
+  sourceLabel?: string;
+  isDeclaration: boolean;
+  status: 'VERIFIED' | 'NEEDS_REVIEW' | 'NOT_PUBLISHED' | 'NOT_EXTRACTED';
+  lifecycle: 'ORIGINAL' | 'REVISED' | 'CANCELLED' | 'SUPERSEDED';
+  cycle?: string;
+  stageLabel?: string;
+  stageRef?: string;
+  postLabel?: string;
+  declaredAt?: string;
+  declaredPrecision?: 'DAY' | 'MONTH';
+  declaredNote?: string;
+  expectedAt?: string;
+  expectedPrecision?: 'DAY' | 'MONTH';
+  expectedNote?: string;
+  qualification?: 'QUALIFIED' | 'NOT_QUALIFIED' | 'SHORTLISTED' | 'SELECTED' | 'RECOMMENDED' | 'WAITLISTED';
+  qualifiedCount?: number;
+  nextStep?: string;
+  nextStageRef?: string;
+  documentUrl?: string;
+  portalUrl?: string;
+  cutoffs?: { marks?: number; basis?: string; scope?: string }[];
+  supersedes?: string;
+  note?: string;
+  provenance?: DataProvenance;
+}
+
 export interface ResultNextStepStage {
   status: 'QUALIFIED' | 'NOT_QUALIFIED' | 'AWAITING_RESULT' | 'SKILL_TEST' | 'DOCUMENT_VERIFICATION';
   headline: string;
@@ -985,6 +1043,12 @@ export interface Exam {
   admitCardEvents?: ExamAdmitCardEvent[];
   examDayChecklist?: ExamDayChecklistItem[];
   resultNextSteps?: ResultNextStepStage[];
+  /**
+   * The result declarations this exam's authority actually published, read from its own
+   * documents. Present only where they were read; absent means GovOS has not read them,
+   * which the section says in words rather than rendering as "not declared".
+   */
+  resultDeclarations?: ExamResultDeclaration[];
   /** The eligibility cards shown in section 03 — each exam states its own rules, cited. */
   eligibilityHighlights?: { title: string; body: string; provenance: DataProvenance }[];
   /** The portals listed in section 12 — the authority's own, plus the ones its notice sends candidates to. */
