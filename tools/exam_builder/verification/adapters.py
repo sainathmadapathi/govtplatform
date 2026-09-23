@@ -41,3 +41,69 @@ def claim_from_result(row: dict, *, official_name: str, authority: str,
         # value. Both are checkable, so a value is required only when the row states one.
         requires_value=bool(value),
     )
+
+
+def claim_from_cutoff(entry: dict, *, exam_id: str, official_name: str, authority: str,
+                      tier: str = 'prelim', source_text: str = '') -> Claim:
+    """A `Claim` for one cut-off value.
+
+    Cut-offs are the case where Qwen earns its place: the value alone ("92.66") appears in
+    several rows of one sheet, so only reading it *in context* decides whether it is the
+    General prelim mark or another category's. So the claim carries the value, the category
+    and the stage in its `field`, and the evidence is the sheet's own verbatim excerpt.
+
+    Identity and cycle come from the exam record and the entry's own year, so a source for
+    another exam -- or another cycle -- is rejected deterministically before the model is
+    consulted. `tier` selects which published mark this claim is about ('prelim' -> the
+    tier-1/stage-1 mark, 'mains' -> tier-2), because one row can carry more than one.
+    """
+    prov = entry.get('provenance') or {}
+    category = entry.get('category', '')
+    value = entry.get('tier2Cutoff') if tier == 'mains' else entry.get('tier1Cutoff')
+    excerpt = prov.get('excerptText') or ''
+    title = prov.get('documentTitle') or ''
+    # The bare marks line names no exam; the sheet's own title does. Compose them so identity
+    # can be established and the value span confirmed against one text.
+    composed = source_text or (title + ' ' + excerpt).strip()
+    # Cut-off sheets pack every category's mark onto one line, and a whole-line span lets a
+    # model mis-bind a value to the wrong category. Focus the evidence on the claimed
+    # category's own pairing where the sheet writes it as "<value> (<Category>)", so the model
+    # is asked about the right cell. Generic: it keys on the category token, never an exam.
+    focused = _focus_on_category(excerpt, category)
+    return Claim(
+        exam_id=exam_id,
+        field=f'cutoff:{tier}:{category}',
+        value='' if value is None else str(value),
+        cycle=str(entry.get('year', '')),
+        evidence_span=focused or excerpt or title,
+        source_url=prov.get('officialUrl') or '',
+        source_title=title,
+        authority=authority,
+        official_name=official_name,
+        source_text=composed,
+        requires_value=value is not None,
+    )
+
+
+def _focus_on_category(excerpt: str, category: str) -> str:
+    """A tight window around the claimed category's own mark, where the sheet pairs them.
+
+    Cut-off sheets write "92.66 (General) 89.34 (EWS) 92.00 (OBC)"; asked about OBC, the model
+    should see "92.00 (OBC)", not the whole line. This finds the category token and returns a
+    small window that captures the value written beside it. It keys only on the category word
+    (a generic label like General/OBC/SC/ST/UR/EWS), never on an exam or authority, so it
+    stays universal; when the category is not found it returns '' and the caller keeps the
+    full excerpt.
+    """
+    import re as _re
+    if not excerpt or not category:
+        return ''
+    # Match "(Category)" or a standalone category word, and take ~20 chars before it (the
+    # value) through the token itself.
+    m = _re.search(r'[^\s(][^()]{0,24}\(?\s*' + _re.escape(category) + r'\s*\)?', excerpt, _re.I)
+    if not m:
+        m = _re.search(_re.escape(category), excerpt, _re.I)
+        if not m:
+            return ''
+    start = max(0, m.start() - 8)
+    return excerpt[start:m.end()].strip()
