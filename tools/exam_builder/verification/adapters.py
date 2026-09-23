@@ -275,3 +275,38 @@ def claim_from_exam_day(instruction: dict, *, exam_id: str, official_name: str, 
         source_text=composed,
         requires_value=bool(text),
     )
+
+
+def claim_from_faq(faq: dict, *, exam_id: str, official_name: str, authority: str,
+                   cycle: str = '', stage: str = '', source_text: str = '') -> Claim:
+    """A `Claim` that a FAQ's answer is supported by its cited official clause.
+
+    The value is the FAQ answer (the factual statement), the evidence is the clause's own
+    provenance excerpt, and identity/cycle come from the exam record -- so a FAQ verified
+    against another exam's or another cycle's clause is rejected before the model. The clause
+    label and stage travel in the `field`. A FAQ whose answer bundles several facts is best
+    verified fact by fact against each fact's own clause; the adapter shapes one such claim.
+    Generic: no branch on an authority or exam type.
+    """
+    import re as _re
+    prov = faq.get('provenance') or {}
+    answer = str(faq.get('answer') or faq.get('claim') or '')
+    clause = str(faq.get('officialClause') or '')
+    excerpt = str(faq.get('evidenceSpan') or prov.get('excerptText') or '')
+    title = str(prov.get('documentTitle') or clause)
+    composed = source_text or (title + ' ' + excerpt).strip()
+    slug = _re.sub(r'[^a-z0-9]+', '-', (clause or faq.get('question', '')).lower()).strip('-')[:36]
+    stage_part = f':{stage.lower()}' if stage else ''
+    return Claim(
+        exam_id=exam_id,
+        field=f'faq:{slug}{stage_part}',
+        value=answer,
+        cycle=str(cycle),
+        evidence_span=excerpt or answer,
+        source_url=prov.get('officialUrl') or '',
+        source_title=title,
+        authority=authority,
+        official_name=official_name,
+        source_text=composed,
+        requires_value=bool(answer),
+    )
