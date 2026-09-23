@@ -142,3 +142,67 @@ def claim_from_revision(rev: dict, *, exam_id: str, official_name: str, authorit
         source_text=composed,
         requires_value=new_value not in (None, ''),
     )
+
+
+def resource_officiality(url: str, authority_domain: str = '') -> str:
+    """'OFFICIAL' when the URL is on the authority's own host, else 'UNOFFICIAL'.
+
+    Deterministic and domain-based -- officiality is never taken from a snippet, a professional
+    look, or the model. A resource on a coaching or news host is UNOFFICIAL even when it is
+    useful. Reuses the admit-card URL host check, so there is one definition of "the authority's
+    own host" across the engine.
+    """
+    from urllib.parse import urlsplit
+    if not authority_domain:
+        return 'UNOFFICIAL'
+    host = urlsplit(url if '//' in url else '//' + url).netloc.lower().split(':')[0].removeprefix('www.')
+    base = urlsplit(authority_domain if '//' in authority_domain else '//' + authority_domain
+                    ).netloc.lower().split(':')[0].removeprefix('www.') or authority_domain.lower()
+    if not host:
+        return 'UNOFFICIAL'
+    return 'OFFICIAL' if (host == base or host.endswith('.' + base)) else 'UNOFFICIAL'
+
+
+_RESOURCE_LABEL = {
+    'OFFICIAL_PDF': 'official document', 'OFFICIAL_PORTAL': 'official portal',
+    'SIMPLIFIED_GUIDE': 'study guide', 'RECOMMENDED_BOOK': 'reference book',
+    'VIDEO_LECTURE': 'video resource', 'ONLINE_TOOL': 'practice tool',
+}
+
+
+def claim_from_resource(resource: dict, *, exam_id: str, official_name: str, authority: str,
+                        cycle: str = '', source_text: str = '') -> Claim:
+    """A `Claim` that a resource belongs to the exact exam/cycle and matches its claimed type.
+
+    The value is the resource's title and its evidence is the resource's own description or
+    provenance excerpt -- what the record already holds, not a Tavily snippet. Identity and
+    cycle come from the exam record, so a resource for another exam or cycle is rejected before
+    the model. The model then judges scope/type semantically (Step 6). Officiality is decided
+    separately and deterministically by `resource_officiality` on the URL's host -- never here.
+    """
+    prov = resource.get('provenance') or {}
+    rtype = str(resource.get('type', 'RESOURCE'))
+    title = str(resource.get('title', ''))
+    excerpt = (resource.get('description') or prov.get('excerptText') or title).strip()
+    doc_title = prov.get('documentTitle') or title
+    composed = source_text or (doc_title + ' ' + excerpt).strip()
+    # The claim's value is a scope phrase, not the verbatim title: a title often carries an
+    # identifier (a notice number, a file name) the evidence does not repeat, which makes the
+    # model conservatively return INSUFFICIENT. The evidence can support "an official document
+    # for <exam> <cycle>", which is what the record is actually asserting. Generic label map,
+    # no exam-specific branch.
+    label = _RESOURCE_LABEL.get(rtype, 'resource')
+    scope = f'{label} for {official_name}' + (f' {cycle}' if cycle else '')
+    return Claim(
+        exam_id=exam_id,
+        field=f'resource:{rtype.lower()}',
+        value=scope,
+        cycle=str(cycle),
+        evidence_span=excerpt,
+        source_url=resource.get('url') or resource.get('directPdfUrl') or prov.get('officialUrl') or '',
+        source_title=doc_title,
+        authority=authority,
+        official_name=official_name,
+        source_text=composed,
+        requires_value=bool(title),
+    )
