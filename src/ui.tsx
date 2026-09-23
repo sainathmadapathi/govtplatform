@@ -94,6 +94,8 @@ import {
   Zap
 } from 'lucide-react';
 import {
+  ResearchFact,
+  ResearchFactStatus,
   ResearchFinding,
   ResearchMode,
   ResearchRun,
@@ -4930,6 +4932,12 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
   const [researchError, setResearchError] = useState<{ error: string; setup?: string; notConfigured?: boolean } | null>(null);
   const [researchRun, setResearchRun] = useState<{ runId: number; query: string; mode: ResearchMode; answer?: string | null; results: ResearchFinding[]; filteredOut?: number } | null>(null);
   const [researchHistory, setResearchHistory] = useState<ResearchRun[]>([]);
+  // Field-level facts extracted from the current run (RESEARCH_VALIDATION_DESIGN.md). This is
+  // a review surface, not a publishing path — approving a fact only marks it eligible for the
+  // existing promote gate below.
+  const [researchFacts, setResearchFacts] = useState<ResearchFact[]>([]);
+  const [factsLoading, setFactsLoading] = useState<boolean>(false);
+  const [openFactEvidence, setOpenFactEvidence] = useState<number | null>(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(false);
   const [extractingId, setExtractingId] = useState<number | null>(null);
   const [extractedText, setExtractedText] = useState<Record<number, string>>({});
@@ -5011,6 +5019,30 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
     setResearchHistory(prev => prev.map(run => ({ ...run, findings: patch(run.findings) })));
     setResearchStatus(await researchService.getStatus());
   };
+
+  const extractFacts = async () => {
+    if (!researchRun || factsLoading) return;
+    setFactsLoading(true);
+    await researchService.extractFacts({ runId: researchRun.runId });
+    // Re-read the full set for this run so re-runs (which skip duplicates) still show everything.
+    setResearchFacts(await researchService.listFacts({ runId: researchRun.runId }));
+    setFactsLoading(false);
+  };
+
+  const setFactStatus = async (id: number, status: ResearchFactStatus) => {
+    const ok = await researchService.setFactStatus(id, status);
+    if (!ok) return;
+    setResearchFacts(prev => prev.map(f => (f.id === id
+      ? { ...f, status, reviewedAt: new Date().toISOString() } : f)));
+  };
+
+  // When a run is opened or reopened, load whatever facts were already extracted for it.
+  useEffect(() => {
+    if (!researchRun) { setResearchFacts([]); return; }
+    let live = true;
+    researchService.listFacts({ runId: researchRun.runId }).then(fs => { if (live) setResearchFacts(fs); });
+    return () => { live = false; };
+  }, [researchRun?.runId]);
 
   const researchExam = ALL_EXAMS.find(e => e.id === researchExamId) || ALL_EXAMS[0];
   const researchQuickQueries = researchExam
@@ -5770,6 +5802,90 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
 
               <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Info size={12} /> “Promote” records the verifier's decision. “Add to Resource Library” then publishes the source to candidates immediately, labelled as verifier-approved, and the GovOS server re-checks its link on schedule. Nothing reaches the library without that explicit second step.
+              </div>
+
+              {/* Structured facts — the rule-based validation layer (RESEARCH_VALIDATION_DESIGN.md).
+                  A review surface only: extraction never calls Tavily, and approving a fact just
+                  marks it eligible for the promote gate above. No LLM, no automatic publishing. */}
+              <div style={{ marginTop: '18px', borderTop: '1px dashed var(--border-color)', paddingTop: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '10px' }}>
+                  <div>
+                    <h4 style={{ fontSize: '1.0rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 2px', display: 'inline-flex', alignItems: 'center', gap: '7px' }}>
+                      <ShieldCheck size={16} color="var(--primary)" /> Structured facts
+                    </h4>
+                    <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                      Rule-based extraction of typed fields from the results above — validated, evidence-kept, conflict-aware. No LLM. Nothing here publishes to GovOS.
+                    </div>
+                  </div>
+                  <button className="btn btn-secondary" onClick={extractFacts} disabled={factsLoading}
+                    style={{ fontSize: '0.76rem', padding: '6px 12px', display: 'inline-flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                    <Database size={13} /> {factsLoading ? 'Extracting…' : researchFacts.length ? 'Re-extract facts' : 'Extract structured facts'}
+                  </button>
+                </div>
+
+                {researchFacts.length === 0 ? (
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', padding: '10px 12px', background: 'var(--surface-2)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
+                    No structured facts yet. “Extract structured facts” reads the stored results and proposes typed, validated field values for your review — it does not call Tavily.
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {researchFacts.map(fact => {
+                      const statusColor: Record<string, string> = {
+                        validated: '#137638', pending: '#8a6d00', conflicting: '#b45309',
+                        rejected: '#b71f1f', approved: '#235ddd'
+                      };
+                      const srcColor: Record<string, string> = {
+                        OFFICIAL: '#137638', HIGH: '#235ddd', MEDIUM: '#8a6d00', LOW: 'var(--text-muted)'
+                      };
+                      return (
+                        <div key={fact.id} style={{ padding: '11px 13px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-2)', border: fact.status === 'conflicting' ? '1px solid rgba(180, 83, 9, 0.4)' : '1px solid var(--border-color)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
+                            <code style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)' }}>{fact.field}</code>
+                            <span style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.03em', color: statusColor[fact.status] || 'var(--text-muted)', textTransform: 'uppercase' }}>{fact.status}</span>
+                            <span style={{ fontSize: '0.66rem', fontWeight: 700, color: srcColor[fact.sourceType] || 'var(--text-muted)' }}>{fact.sourceType}</span>
+                            {fact.conflictGroup && <span className="badge" style={{ fontSize: '0.62rem', background: 'rgba(180,83,9,0.14)', color: '#b45309' }}>CONFLICT</span>}
+                            <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)' }}>conf {fact.confidence.toFixed(2)}</span>
+                          </div>
+                          <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)', wordBreak: 'break-word' }}>
+                            {fact.value || <em style={{ color: 'var(--text-muted)', fontWeight: 400 }}>no value</em>}
+                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 400 }}> · {fact.valueType}{fact.rawValue && fact.rawValue !== fact.value ? ` · read as “${fact.rawValue}”` : ''}</span>
+                          </div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '3px' }}>
+                            {(fact.validationNotes || []).join(' · ')}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '8px' }}>
+                            <a href={fact.sourceUrl} target="_blank" rel="noreferrer" style={{ fontSize: '0.72rem', color: '#235ddd', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                              <ExternalLink size={11} /> {researchHost(fact.sourceUrl)}
+                            </a>
+                            {fact.evidence && (
+                              <button className="btn btn-secondary" onClick={() => setOpenFactEvidence(openFactEvidence === fact.id ? null : fact.id)} style={{ fontSize: '0.7rem', padding: '3px 9px' }}>
+                                {openFactEvidence === fact.id ? 'Hide evidence' : 'Evidence'}
+                              </button>
+                            )}
+                            {fact.status !== 'approved' && (
+                              <button className="btn btn-emerald" onClick={() => setFactStatus(fact.id, 'approved')} style={{ fontSize: '0.7rem', padding: '3px 9px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                <CheckCircle2 size={11} /> Approve
+                              </button>
+                            )}
+                            {fact.status !== 'rejected' && (
+                              <button className="btn btn-secondary" onClick={() => setFactStatus(fact.id, 'rejected')} style={{ fontSize: '0.7rem', padding: '3px 9px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                <XCircle size={11} /> Reject
+                              </button>
+                            )}
+                          </div>
+                          {openFactEvidence === fact.id && fact.evidence && (
+                            <div style={{ marginTop: '8px', padding: '9px 11px', background: 'var(--surface-3)', borderRadius: 'var(--radius-sm)', fontSize: '0.76rem', color: 'var(--text-secondary)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+                              {fact.evidence}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Info size={12} /> Conflicting values from different sources are both kept — GovOS never chooses one. Approving a fact records your judgement; it still reaches candidates only through the Promote → Add to Resource Library step above.
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

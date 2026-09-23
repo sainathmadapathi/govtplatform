@@ -197,6 +197,41 @@ def init_database():
         )
     ''')
 
+    # 12. Field-level facts extracted from research_findings (RESEARCH_VALIDATION_DESIGN.md).
+    #     One row = one candidate value for one field of one exam, from one source. This is
+    #     a validation/evidence layer between Tavily findings and the existing human promote
+    #     gate -- it never publishes to GovOS on its own. Statuses are the fact lifecycle
+    #     (pending|validated|conflicting|rejected|approved), distinct from a finding's
+    #     review_status. The shape maps 1:1 to a future Firestore document if ever needed.
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS research_facts (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            finding_id      INTEGER NOT NULL,
+            run_id          INTEGER,
+            exam_id         TEXT,
+            exam_name       TEXT,
+            field           TEXT NOT NULL,
+            raw_value       TEXT,
+            value           TEXT,
+            value_type      TEXT NOT NULL DEFAULT 'TEXT',
+            source_url      TEXT NOT NULL,
+            source_title    TEXT,
+            source_type     TEXT NOT NULL DEFAULT 'LOW',
+            evidence        TEXT,
+            extraction_rule TEXT,
+            confidence      REAL DEFAULT 0,
+            status          TEXT NOT NULL DEFAULT 'pending',
+            validation_notes TEXT,
+            conflict_group  TEXT,
+            retrieved_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            reviewed_at     TIMESTAMP,
+            FOREIGN KEY (finding_id) REFERENCES research_findings(id),
+            FOREIGN KEY (run_id)     REFERENCES research_runs(id)
+        )
+    ''')
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_research_facts_conflict ON research_facts(conflict_group)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_research_facts_status ON research_facts(status)")
+
     # Insert default primary user if not exists
     cursor.execute('SELECT id FROM users WHERE id = ?', ('default-candidate',))
     if not cursor.fetchone():
@@ -1363,6 +1398,352 @@ def research_finding_status(finding_id):
     conn.commit()
     conn.close()
     return jsonify({"status": "updated", "finding_id": finding_id, "new_status": status})
+
+
+# =============================================================================
+# Field-level research validation layer  (RESEARCH_VALIDATION_DESIGN.md)
+#
+#   Tavily -> research_findings -> [rule-based extraction] -> research_facts
+#          -> human review -> existing PROMOTE gate -> GovOS
+#
+# This layer turns a stored finding (a whole web document) into typed, validated,
+# evidence-backed facts. It is deliberately rule-based: no LLM, no generation. Every fact
+# enters as `pending` and a human still approves before it can reach the existing promotion
+# flow -- this module writes to `research_facts` and nothing else.
+#
+# WHERE A LOCAL LLM GOES LATER: replace or supplement `_extract_facts` (the regex reader)
+# with an LLM extractor that returns the same fact dicts, and/or add an LLM pass in
+# `_validate_fact` that sets confidence. The table, the statuses, the endpoints and the
+# human gate do not change. That insertion point is the only thing that changes.
+# =============================================================================
+
+# The 18 GovOS fields, each with its value type and the label cues a reader looks for.
+# A fact is emitted only where a cue fires AND a value of the field's type is found; an
+# unknown label is never guessed at.
+_FACT_FIELDS = [
+    ('exam_name',              'TEXT',    [r'name of (?:the )?exam', r'examination name']),
+    ('conducting_authority',   'TEXT',    [r'conducted by', r'conducting (?:authority|body)', r'\bauthority\b', r'\bcommission\b', r'recruitment board']),
+    ('official_website',       'URL',     [r'official website', r'apply online at', r'website\s*[:\-]']),
+    ('notification',           'URL',     [r'notification', r'advertisement no', r'notice no']),
+    ('eligibility',            'TEXT',    [r'eligibility', r'eligible candidates']),
+    ('age_limit',              'TEXT',    [r'age limit', r'(?:minimum|maximum) age', r'age (?:as on|between)']),
+    ('qualification',          'TEXT',    [r'educational qualification', r'qualification', r'must (?:hold|possess)', r'degree in']),
+    ('vacancies',              'INTEGER', [r'vacanc(?:y|ies)', r'number of posts', r'total posts', r'tentative vacanc']),
+    ('application_start_date',  'DATE',    [r'application start', r'applications? open', r'commencement of (?:online )?application', r'start date', r'apply(?:ing)? from']),
+    ('application_last_date',   'DATE',    [r'last date', r'closing date', r'last day', r'application (?:end|close)', r'up ?to']),
+    ('correction_window',       'DATE',    [r'correction window', r'edit(?:/| )window', r'modify (?:the )?application', r'window for correction']),
+    ('exam_date',              'DATE',    [r'date of (?:the )?exam', r'exam(?:ination)? (?:date|scheduled)', r'held on', r'scheduled (?:on|for)']),
+    ('admit_card',             'DATE',    [r'admit card', r'call letter', r'hall ticket']),
+    ('result',                 'DATE',    [r'\bresult\b', r'declared on']),
+    ('syllabus',               'TEXT',    [r'syllabus', r'scheme of exam']),
+    ('exam_pattern',           'TEXT',    [r'exam(?:ination)? pattern', r'scheme of the exam', r'marking scheme']),
+    ('application_fee',        'TEXT',    [r'application fee', r'examination fee', r'fee (?:of|is)']),
+    ('previous_papers',        'URL',     [r'previous (?:year )?(?:question )?paper', r'past papers', r'pyq']),
+]
+
+_MONTHS = {m: i for i, m in enumerate(
+    ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'], 1)}
+_URL_RE = re.compile(r'https?://[^\s<>"\')\]]+', re.I)
+_INT_RE = re.compile(r'\b(\d[\d,]{0,9})\b')
+
+
+def _to_iso(day, mon, year):
+    try:
+        if year < 100:
+            year += 2000
+        return datetime(year, mon, day).date().isoformat()
+    except ValueError:
+        return None
+
+
+def _extract_date(text):
+    """The first well-formed date in a passage, ISO-normalised, or (None, None).
+
+    Rule-based only. Indian dd/mm/yyyy is assumed for numeric dates, matching the notices."""
+    m = re.search(r'\b(\d{1,2})[./\-](\d{1,2})[./\-](\d{2,4})\b', text)
+    if m:
+        iso = _to_iso(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+        if iso:
+            return iso, m.group(0)
+    m = re.search(r'\b(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]{3,9})\.?,?\s+(\d{4})\b', text)
+    if m and m.group(2)[:3].lower() in _MONTHS:
+        iso = _to_iso(int(m.group(1)), _MONTHS[m.group(2)[:3].lower()], int(m.group(3)))
+        if iso:
+            return iso, m.group(0)
+    m = re.search(r'\b([A-Za-z]{3,9})\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})\b', text)
+    if m and m.group(1)[:3].lower() in _MONTHS:
+        iso = _to_iso(int(m.group(2)), _MONTHS[m.group(1)[:3].lower()], int(m.group(3)))
+        if iso:
+            return iso, m.group(0)
+    return None, None
+
+
+def _valid_url(url):
+    try:
+        p = urlparse(url or '')
+        return p.scheme in ('http', 'https') and bool(p.netloc)
+    except ValueError:
+        return False
+
+
+def _extract_facts(finding):
+    """Turn one finding into candidate facts, rule-based. Never guesses a value.
+
+    A fact is produced only when a field's label cue fires and a value of that field's type
+    is found near it. Where a cue fires but no confident value can be read, no fact is
+    emitted (a gap is not a fact); the value that IS read may still be low-confidence, in
+    which case validation leaves it `pending` rather than `validated`.
+    """
+    text = ((finding.get('snippet') or '') + ' ' + (finding.get('extracted_text') or '')).strip()
+    low = text.lower()
+    out = []
+    seen = set()
+    for field, vtype, cues in _FACT_FIELDS:
+        for cue in cues:
+            cm = re.search(cue, low)
+            if not cm:
+                continue
+            window = text[cm.start():cm.start() + 200]
+            value = raw = None
+            if vtype == 'DATE':
+                value, raw = _extract_date(window)
+            elif vtype == 'URL':
+                um = _URL_RE.search(window) or _URL_RE.search(text)
+                if um:
+                    value = raw = um.group(0).rstrip('.,);')
+                elif field in ('official_website', 'notification', 'previous_papers') and finding.get('url'):
+                    value = raw = finding['url']  # the finding's own official page is the source
+            elif vtype == 'INTEGER':
+                im = _INT_RE.search(window)
+                if im:
+                    raw = im.group(0)
+                    value = str(int(raw.replace(',', '')))
+            else:  # TEXT: the clause around the cue, trimmed at a sentence boundary
+                clause = re.split(r'(?<=[.;])\s', window, 1)[0].strip()
+                if len(clause) >= 8:
+                    value = raw = clause[:200]
+            if not value:
+                continue
+            key = (field, str(value).strip().lower())
+            if key in seen:
+                continue
+            seen.add(key)
+            conf = 0.4
+            if vtype in ('DATE', 'URL', 'INTEGER'):
+                conf += 0.2  # a typed value parsed cleanly
+            if ' ' in cue:
+                conf += 0.1  # a specific multi-word cue
+            out.append({
+                'field': field, 'value_type': vtype, 'value': value, 'raw_value': raw,
+                'evidence': window.strip(), 'extraction_rule': 'cue:' + cue,
+                'confidence': round(min(conf, 0.95), 2),
+            })
+            break  # one fact per field per finding; the first (most specific) cue wins
+    return out
+
+
+def _fact_source_type(trust):
+    """Map the existing trust tiers onto the design's four (task 6, one source of truth)."""
+    return {'OFFICIAL': 'OFFICIAL', 'TRUSTED_PUBLIC': 'HIGH'}.get(trust, 'LOW')
+
+
+def _validate_fact(cursor, fact, exam_key, reachable_cache):
+    """Run the seven rules; return (status, notes). Never selects a winner on conflict."""
+    notes = []
+    # 1. required
+    if not fact.get('field') or not fact.get('source_url') or not str(fact.get('value') or '').strip():
+        return 'rejected', ['missing required field/value/source']
+    # 2. valid URL (the source, and a URL-typed value)
+    if not _valid_url(fact['source_url']):
+        return 'rejected', ['source URL is not a valid http(s) URL']
+    if fact['value_type'] == 'URL' and not _valid_url(fact['value']):
+        return 'rejected', ['extracted URL value is not valid']
+    # 3. valid date
+    if fact['value_type'] == 'DATE':
+        try:
+            datetime.fromisoformat(fact['value'])
+            notes.append('date parsed')
+        except ValueError:
+            return 'rejected', ['date value did not parse']
+    # 5. duplicate: same exam+field+value+source already stored -> caller skips
+    cursor.execute(
+        "SELECT id FROM research_facts WHERE COALESCE(exam_id, exam_name)=? AND field=? "
+        "AND value=? AND source_url=?",
+        (exam_key, fact['field'], str(fact['value']), fact['source_url']))
+    if cursor.fetchone():
+        return 'duplicate', ['identical fact from this source already stored']
+    # 6. conflict: same exam+field, different value, different source
+    cursor.execute(
+        "SELECT id, value, source_url FROM research_facts WHERE COALESCE(exam_id, exam_name)=? "
+        "AND field=? AND status IN ('pending','validated','conflicting')",
+        (exam_key, fact['field']))
+    rivals = [r for r in cursor.fetchall()
+              if str(r['value']).strip().lower() != str(fact['value']).strip().lower()
+              and r['source_url'] != fact['source_url']]
+    conflict = bool(rivals)
+    if conflict:
+        notes.append('conflicts with %d existing fact(s); both kept, none chosen' % len(rivals))
+    # 7. reachability (cached per URL so a batch does not re-check one source repeatedly)
+    url = fact['source_url']
+    if url not in reachable_cache:
+        try:
+            reachable_cache[url] = _check_one_link(url)['status'] in ('HEALTHY', 'REDIRECT')
+        except Exception:  # noqa: BLE001
+            reachable_cache[url] = False
+    reachable = reachable_cache[url]
+    notes.append('source reachable' if reachable else 'source not reachable at check time')
+    if conflict:
+        return 'conflicting', notes
+    # `validated` needs a well-formed value, a reachable source, and enough confidence;
+    # anything short of that stays `pending` rather than being asserted (task 16).
+    if reachable and fact['confidence'] >= 0.6:
+        return 'validated', notes
+    return 'pending', notes
+
+
+def _fact_row(r):
+    import json as _json
+    notes = []
+    if r['validation_notes']:
+        try:
+            notes = _json.loads(r['validation_notes'])
+        except Exception:  # noqa: BLE001
+            notes = [r['validation_notes']]
+    return {
+        'id': r['id'], 'findingId': r['finding_id'], 'runId': r['run_id'],
+        'examId': r['exam_id'], 'examName': r['exam_name'], 'field': r['field'],
+        'rawValue': r['raw_value'], 'value': r['value'], 'valueType': r['value_type'],
+        'sourceUrl': r['source_url'], 'sourceTitle': r['source_title'],
+        'sourceType': r['source_type'], 'evidence': r['evidence'],
+        'extractionRule': r['extraction_rule'], 'confidence': r['confidence'],
+        'status': r['status'], 'validationNotes': notes,
+        'conflictGroup': r['conflict_group'], 'retrievedAt': r['retrieved_at'],
+        'reviewedAt': r['reviewed_at'],
+    }
+
+
+@app.route('/api/research/facts/extract', methods=['POST'])
+def research_facts_extract():
+    """Extract + validate typed facts from already-stored findings. Does NOT call Tavily,
+    does NOT publish anything -- it fills research_facts for human review."""
+    data = request.get_json(silent=True) or {}
+    finding_id = data.get('finding_id')
+    run_id = data.get('run_id')
+    if not finding_id and not run_id:
+        return jsonify({"error": "finding_id or run_id is required"}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    if finding_id:
+        cursor.execute("SELECT * FROM research_findings WHERE id = ?", (finding_id,))
+    else:
+        cursor.execute("SELECT * FROM research_findings WHERE run_id = ?", (run_id,))
+    findings = cursor.fetchall()
+    if not findings:
+        conn.close()
+        return jsonify({"error": "no findings for that id"}), 404
+
+    reachable_cache = {}
+    stored, summary = [], {'validated': 0, 'pending': 0, 'conflicting': 0, 'rejected': 0, 'duplicate': 0}
+    for f in findings:
+        finding = dict(f)
+        cursor.execute("SELECT exam_id, query FROM research_runs WHERE id = ?", (finding['run_id'],))
+        run = cursor.fetchone()
+        exam_id = run['exam_id'] if run else None
+        exam_name = (run['query'] if run else None)
+        exam_key = exam_id or exam_name or 'unknown'
+        source_type = _fact_source_type(finding.get('trust_level'))
+        candidates = _extract_facts(finding)
+        print("[research-fact] extract finding=%s run=%s exam=%s -> %d candidate facts"
+              % (finding['id'], finding['run_id'], exam_key, len(candidates)))
+        for c in candidates:
+            c['source_url'] = finding['url']
+            print("[research-fact] field=%s raw=%r value=%r rule=%s"
+                  % (c['field'], c['raw_value'], c['value'], c['extraction_rule']))
+            status, notes = _validate_fact(cursor, c, exam_key, reachable_cache)
+            print("[research-fact] validate field=%s result=%s notes=%s" % (c['field'], status, notes))
+            print("[research-fact] classify field=%s source=%s url=%s"
+                  % (c['field'], source_type, urlparse(finding['url']).hostname))
+            if status == 'duplicate':
+                summary['duplicate'] += 1
+                continue
+            conflict_group = None
+            if status == 'conflicting':
+                conflict_group = '%s:%s' % (exam_key, c['field'])
+                # mark existing rivals conflicting too -- never silently choose one
+                cursor.execute(
+                    "UPDATE research_facts SET status='conflicting', conflict_group=? "
+                    "WHERE COALESCE(exam_id, exam_name)=? AND field=? AND status IN ('pending','validated')",
+                    (conflict_group, exam_key, c['field']))
+            cursor.execute(
+                "INSERT INTO research_facts (finding_id, run_id, exam_id, exam_name, field, "
+                "raw_value, value, value_type, source_url, source_title, source_type, evidence, "
+                "extraction_rule, confidence, status, validation_notes, conflict_group) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (finding['id'], finding['run_id'], exam_id, exam_name, c['field'],
+                 c['raw_value'], str(c['value']), c['value_type'], finding['url'],
+                 finding.get('title'), source_type, c['evidence'], c['extraction_rule'],
+                 c['confidence'], status, json.dumps(notes), conflict_group))
+            fact_id = cursor.lastrowid
+            print("[research-fact] store id=%s status=%s table=research_facts" % (fact_id, status))
+            stored.append(fact_id)
+    conn.commit()
+    # Re-read the inserted rows so the response reflects final status -- a conflict flips an
+    # earlier row from validated to conflicting, and the payload must show that, not the
+    # pre-flip value.
+    facts = []
+    for fid in stored:
+        cursor.execute("SELECT * FROM research_facts WHERE id = ?", (fid,))
+        row = cursor.fetchone()
+        if row:
+            fr = _fact_row(row)
+            facts.append(fr)
+            summary[fr['status']] = summary.get(fr['status'], 0) + 1
+    conn.close()
+    return jsonify({"facts": facts, "summary": summary, "count": len(facts)})
+
+
+@app.route('/api/research/facts', methods=['GET'])
+def research_facts_list():
+    """List extracted facts for the Trust Panel, filtered by run/status/exam."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    clauses, params = [], []
+    for col, arg in (('run_id', 'run_id'), ('status', 'status'),
+                     ('exam_id', 'exam_id'), ('finding_id', 'finding_id')):
+        v = request.args.get(arg)
+        if v:
+            clauses.append("%s = ?" % col)
+            params.append(v)
+    where = (' WHERE ' + ' AND '.join(clauses)) if clauses else ''
+    cursor.execute("SELECT * FROM research_facts%s ORDER BY conflict_group IS NULL, "
+                   "conflict_group, field, id" % where, params)
+    facts = [_fact_row(r) for r in cursor.fetchall()]
+    conn.close()
+    return jsonify({"facts": facts, "count": len(facts)})
+
+
+@app.route('/api/research/facts/<int:fact_id>/status', methods=['POST'])
+def research_facts_status(fact_id):
+    """Human review of a fact. `approved` is the only state that makes a fact eligible for
+    the EXISTING promote gate -- this route never publishes anything itself."""
+    data = request.get_json(silent=True) or {}
+    status = data.get('status', 'approved')
+    if status not in ('pending', 'validated', 'conflicting', 'rejected', 'approved'):
+        return jsonify({"error": "invalid status"}), 400
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM research_facts WHERE id = ?", (fact_id,))
+    if not cursor.fetchone():
+        conn.close()
+        return jsonify({"error": "no such fact"}), 404
+    cursor.execute("UPDATE research_facts SET status = ?, reviewed_at = ? WHERE id = ?",
+                   (status, datetime.now().isoformat(timespec='seconds'), fact_id))
+    conn.commit()
+    conn.close()
+    print("[research-fact] review id=%s -> %s" % (fact_id, status))
+    return jsonify({"status": "updated", "factId": fact_id, "newStatus": status})
+
 
 
 # =============================================================================

@@ -3,6 +3,8 @@
 import {
   ResourceLinkCheck,
   ResearchExtractResult,
+  ResearchFact,
+  ResearchFactStatus,
   ResearchFinding,
   ResearchMode,
   ResearchOutcome,
@@ -2090,6 +2092,59 @@ export const researchService = {
   async setFindingStatus(id: number, status: ResearchReviewStatus): Promise<boolean> {
     try {
       const res = await fetch(`/api/research/findings/${id}/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  },
+
+  // --- Field-level validation layer (RESEARCH_VALIDATION_DESIGN.md) ---
+  // These sit beside the existing finding review; they never call Tavily and never publish.
+
+  /** Extract + validate typed facts from findings already stored for a run or one finding. */
+  async extractFacts(target: { runId?: number; findingId?: number }): Promise<ResearchFact[]> {
+    try {
+      const res = await fetch('/api/research/facts/extract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ run_id: target.runId, finding_id: target.findingId })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.facts)) return data.facts;
+      }
+    } catch {
+      // server offline
+    }
+    return [];
+  },
+
+  /** List extracted facts for the Trust Panel, filtered by run / status / exam. */
+  async listFacts(filter: { runId?: number; status?: string; examId?: string } = {}): Promise<ResearchFact[]> {
+    try {
+      const qs = new URLSearchParams();
+      if (filter.runId) qs.set('run_id', String(filter.runId));
+      if (filter.status) qs.set('status', filter.status);
+      if (filter.examId) qs.set('exam_id', filter.examId);
+      const res = await fetch(`/api/research/facts?${qs.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.facts)) return data.facts;
+      }
+    } catch {
+      // server offline
+    }
+    return [];
+  },
+
+  /** Human review of a fact. `approved` only marks eligibility for the existing promote gate. */
+  async setFactStatus(id: number, status: ResearchFactStatus): Promise<boolean> {
+    try {
+      const res = await fetch(`/api/research/facts/${id}/status`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })

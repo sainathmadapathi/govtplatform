@@ -581,6 +581,39 @@ export interface ResearchSearchResult {
   responseTime?: number;
 }
 
+/**
+ * One field-level fact extracted from a research finding by the rule-based validation layer
+ * (RESEARCH_VALIDATION_DESIGN.md). A fact is one candidate value for one GovOS field of one
+ * exam, from one source, with its evidence retained. Its `status` is the fact lifecycle —
+ * distinct from a finding's `reviewStatus` — and `approved` is the only state that makes a
+ * fact eligible for the existing promote gate. Nothing here publishes to GovOS on its own.
+ */
+export type ResearchFactStatus = 'pending' | 'validated' | 'conflicting' | 'rejected' | 'approved';
+
+export interface ResearchFact {
+  id: number;
+  findingId: number;
+  runId?: number | null;
+  examId?: string | null;
+  examName?: string | null;
+  field: string;
+  rawValue?: string | null;
+  value?: string | null;
+  valueType: 'DATE' | 'URL' | 'TEXT' | 'INTEGER' | 'ENUM';
+  sourceUrl: string;
+  sourceTitle?: string | null;
+  /** OFFICIAL | HIGH | MEDIUM | LOW — the source tier, from the existing _classify_trust. */
+  sourceType: string;
+  evidence?: string | null;
+  extractionRule?: string | null;
+  confidence: number;
+  status: ResearchFactStatus;
+  validationNotes: string[];
+  conflictGroup?: string | null;
+  retrievedAt?: string | null;
+  reviewedAt?: string | null;
+}
+
 export interface ResearchExtractResult {
   url: string;
   rawContent: string;
