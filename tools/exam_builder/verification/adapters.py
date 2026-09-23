@@ -206,3 +206,41 @@ def claim_from_resource(resource: dict, *, exam_id: str, official_name: str, aut
         source_text=composed,
         requires_value=bool(title),
     )
+
+
+def claim_from_question(q: dict, *, official_name: str, authority: str,
+                        source_text: str = '') -> Claim:
+    """A `Claim` that an official past question belongs to its exact exam/cycle/paper.
+
+    Only for OFFICIAL_PYQ items -- questions the authority actually printed. The value is the
+    question text; the evidence is the question's own provenance (the OCR-read page), so the
+    model checks whether the source establishes that this question is in that paper. Identity,
+    cycle and paper come from the question's own fields, so a question from another exam or
+    cycle -- or a generated one with no official provenance -- is rejected before the model.
+
+    A generated (GOVOS_CREATED / AI_GENERATED) question has no official provenance and no source
+    document, so it cannot pass this check and can never be verified as an official PYQ. Generic:
+    no branch on an authority or exam type.
+    """
+    prov = q.get('provenance') or {}
+    paper = str(q.get('paperName', ''))
+    stage = str(q.get('stage', ''))
+    prompt = str(q.get('promptEnglish') or q.get('prompt') or '')
+    doc_title = prov.get('documentTitle') or paper
+    excerpt = (prov.get('excerptText') or prompt).strip()
+    composed = source_text or (doc_title + ' ' + excerpt).strip()
+    import re as _re
+    paper_slug = _re.sub(r'[^a-z0-9]+', '-', paper.lower()).strip('-')[:40]
+    return Claim(
+        exam_id=str(q.get('examId', '')),
+        field=f'pyq:{stage.lower()}:{paper_slug}:q{q.get("questionNumber", "")}',
+        value=prompt,
+        cycle=str(q.get('paperYear', '')),
+        evidence_span=prompt,
+        source_url=prov.get('officialUrl') or '',
+        source_title=doc_title,
+        authority=authority,
+        official_name=official_name,
+        source_text=composed,
+        requires_value=bool(prompt),
+    )
