@@ -310,3 +310,82 @@ def claim_from_faq(faq: dict, *, exam_id: str, official_name: str, authority: st
         source_text=composed,
         requires_value=bool(answer),
     )
+
+
+def portal_officiality(url: str, authority_domains='') -> str:
+    """'OFFICIAL' when a portal URL is on one of the authority's own hosts, else 'UNOFFICIAL'.
+
+    The single deterministic officiality rule for portals, and it is *not* a ".gov.in" test on
+    two counts. First, an authority publishes on a non-`.gov.in` host -- IBPS on `ibps.in`, LIC
+    on `licindia.in`. Second, one authority legitimately owns *several* official hosts on
+    different TLDs: UPSC's notices are on `upsc.gov.in` but its application and admit-card portal
+    is `upsconline.nic.in` (NIC's `.nic.in`), a distinct host that is not a subdomain of the
+    first. So officiality is a match against the authority's *set* of own domains, which the
+    caller supplies from the record -- deterministic, never the model, never a guess. It
+    delegates to `resource_officiality` per domain, so there is one host-match definition across
+    the engine. `authority_domains` may be a single domain, a comma/space-separated string, or an
+    iterable. A coaching, look-alike or aggregator host matches none and is UNOFFICIAL even when
+    it mirrors a real notice.
+    """
+    if isinstance(authority_domains, str):
+        domains = [d for d in authority_domains.replace(',', ' ').split() if d]
+    else:
+        domains = [str(d) for d in (authority_domains or []) if str(d).strip()]
+    for domain in domains:
+        if resource_officiality(url, domain) == 'OFFICIAL':
+            return 'OFFICIAL'
+    return 'UNOFFICIAL'
+
+
+_PORTAL_LABEL = {
+    'OFFICIAL_HOME': 'official website', 'NOTIFICATION': 'notification page',
+    'APPLICATION': 'online application portal', 'ADMIT_CARD': 'admit-card download portal',
+    'CITY_INTIMATION': 'city-intimation portal', 'RESULT': 'result portal',
+    'ANSWER_KEY': 'answer-key portal', 'CORRIGENDUM': 'corrigendum notice',
+    'SYLLABUS': 'syllabus page', 'CUT_OFF': 'cut-off portal',
+    'RECRUITMENT': 'recruitment portal', 'OTHER': 'portal',
+}
+
+
+def claim_from_portal(link: dict, *, exam_id: str, official_name: str, authority: str,
+                      purpose: str = 'OTHER', cycle: str = '', stage: str = '',
+                      source_text: str = '') -> Claim:
+    """A `Claim` that a portal/link has its *claimed purpose* for the exact exam/cycle.
+
+    This is the check the phase is about: a URL must not become "Download Admit Card" merely by
+    existing. So the claim binds the URL's *host* to its purpose -- the model is asked whether
+    the official evidence supports that *this host* is the application (or admit-card, result, …)
+    portal for this exam and cycle, not merely that some such portal exists. A homepage clause
+    that names no purpose cannot support "admit-card download portal", so a homepage claimed as a
+    download link lands at INSUFFICIENT -> NEEDS_REVIEW, never VERIFIED.
+
+    Identity and cycle come from the exam record, so a portal for another exam or another cycle
+    is rejected deterministically before the model. The purpose and stage travel in the `field`,
+    so evidence for one purpose cannot verify another. Officiality is **not** decided here: it is
+    `portal_officiality(url, authority_domain)`, deterministic and domain-based. Generic: no
+    branch on an authority or exam type, and no URL is ever invented or inferred from a filename.
+    """
+    from urllib.parse import urlsplit
+    url = str(link.get('url') or '')
+    host = urlsplit(url if '//' in url else '//' + url).netloc.lower().split(':')[0].removeprefix('www.')
+    label = _PORTAL_LABEL.get(str(purpose).upper(), 'portal')
+    excerpt = str(link.get('evidenceSpan') or link.get('note') or link.get('title') or '')
+    title = str(link.get('sourceTitle') or link.get('title') or '')
+    composed = source_text or (title + ' ' + excerpt).strip()
+    # The value binds the URL's host to the purpose, so the model judges URL<->purpose, not the
+    # bare existence of a portal. A scope phrase (host + purpose + exam/cycle), never a snippet.
+    scope = f'{host} is the {label} for {official_name}' + (f' {cycle}' if cycle else '')
+    stage_part = f':{stage.lower()}' if stage else ''
+    return Claim(
+        exam_id=exam_id,
+        field=f'portal:{str(purpose).lower()}{stage_part}',
+        value=scope,
+        cycle=str(cycle),
+        evidence_span=excerpt,
+        source_url=url,
+        source_title=title,
+        authority=authority,
+        official_name=official_name,
+        source_text=composed,
+        requires_value=bool(host),
+    )
