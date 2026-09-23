@@ -107,3 +107,38 @@ def _focus_on_category(excerpt: str, category: str) -> str:
             return ''
     start = max(0, m.start() - 8)
     return excerpt[start:m.end()].strip()
+
+
+def claim_from_revision(rev: dict, *, exam_id: str, official_name: str, authority: str,
+                        source_text: str = '') -> Claim:
+    """A `Claim` for one corrigendum/revision -- specifically, that its NEW value is
+    established by the revision source.
+
+    A revision has two values, and they are checked in different places: the *old* value was
+    verified once against the original source and is preserved in the record; the *new* value
+    is what this revision's own document must support, so that is what the verifier checks. The
+    affected field travels in the claim's `field`, so a document that changes the last date can
+    never verify a change to the exam date -- the model is asked about the right field.
+
+    Identity and cycle come from the exam record, so a corrigendum for another exam or another
+    cycle is rejected deterministically before the model is consulted. Generic: no branch on an
+    authority or exam type.
+    """
+    affected = rev.get('affected') or rev.get('fieldPath') or 'field'
+    new_value = rev.get('newValue', rev.get('revisedValue', ''))
+    excerpt = rev.get('evidenceSpan') or rev.get('evidence') or ''
+    title = rev.get('sourceTitle') or rev.get('title') or ''
+    composed = source_text or (title + ' ' + excerpt).strip()
+    return Claim(
+        exam_id=exam_id,
+        field=f'revision:{affected}',
+        value='' if new_value is None else str(new_value),
+        cycle=str(rev.get('cycle', '')),
+        evidence_span=excerpt or title,
+        source_url=rev.get('sourceUrl') or rev.get('pdfUrl') or '',
+        source_title=title,
+        authority=authority,
+        official_name=official_name,
+        source_text=composed,
+        requires_value=new_value not in (None, ''),
+    )
