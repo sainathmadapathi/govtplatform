@@ -196,8 +196,8 @@ destructive replacement; LLM unavailable → unverified facts never published (p
 No `src/`, `app.py`, `govos.db`, `index.html`, `dist/`, `.env`, or model file changed. No exam
 data changed. No UI change.
 
-## 22. Commit hash — `<filled on commit>`.
-## 23. Push result — `<filled on push>`.
+## 22. Commit hash — `d691b75` (this §22/§23 record is a one-line follow-up commit).
+## 23. Push result — Pushed to `origin/main`.
 
 ## 24. Remaining limitations (the HARD STOP boundary, classified P1)
 
