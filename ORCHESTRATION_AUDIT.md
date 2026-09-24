@@ -195,11 +195,11 @@ standalone modules, all pass; tsc clean; build ok.
 
 ## 15. Commit hash
 
-`<filled on commit>`.
+`88101c6` (this §15/§16 record is a one-line follow-up commit).
 
 ## 16. Push result
 
-`<filled on push>`.
+Pushed to `origin/main`.
 
 ## 17. Remaining limitations
 
