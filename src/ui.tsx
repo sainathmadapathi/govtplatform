@@ -109,6 +109,7 @@ import {
   DataProvenance,
   EligibilityDiagnostic,
   Exam,
+  ExamDayChecklistItem,
   ExamPatternNode,
   ExamSyllabusNode,
   ExamAnswerKey,
@@ -184,6 +185,7 @@ import {
   calculateDetailedAge,
   evaluateCandidateEligibility,
   evaluateEligibility,
+  examDayChecklistStatus,
   getCategoryAgeRelaxation,
   findAgeRelaxation,
   MockAttemptRecord,
@@ -13613,133 +13615,17 @@ interface ExamDayChecklistSectionProps {
   exam: Exam;
 }
 
-interface ChecklistItem {
-  id: string;
-  category: 'DOCUMENTS' | 'TIMING' | 'ITEMS_ALLOWED' | 'ITEMS_PROHIBITED' | 'CENTRE_RULES';
-  title: string;
-  description: string;
-  isCrucial: boolean;
-}
-
 export const ExamDayChecklistSection: React.FC<ExamDayChecklistSectionProps> = ({ exam }) => {
   const storageKey = `govos_checklist_${exam.id}`;
 
-  const defaultItems: ChecklistItem[] = [
-    // 1. Documents
-    {
-      id: 'doc-admit',
-      category: 'DOCUMENTS',
-      title: 'Printed Copy of Official e-Admit Card (Clear & Unsmudged)',
-      description: 'Ensure the candidate barcode, roll number, and photograph are sharply printed. Color or B&W laser printout is accepted.',
-      isCrucial: true
-    },
-    {
-      id: 'doc-photos',
-      category: 'DOCUMENTS',
-      title: '2 Recent Passport-Sized Colour Photographs',
-      description: 'Must match or closely resemble the photo uploaded during application. Paste one on the commission copy inside the lab.',
-      isCrucial: true
-    },
-    {
-      id: 'doc-original-id',
-      category: 'DOCUMENTS',
-      title: 'Original Valid Government Photo ID Proof (Original Only)',
-      description: 'Accepted: Aadhaar Card / e-Aadhaar printout, Voter ID, Driving License, PAN Card, or Passport. Photocopies or digital phone screenshots are strictly NOT accepted.',
-      isCrucial: true
-    },
-    {
-      id: 'doc-dob-proof',
-      category: 'DOCUMENTS',
-      title: 'Secondary DoB Certificate (If ID lacks complete DD/MM/YYYY)',
-      description: 'If your Aadhaar/PAN only mentions the year of birth (YYYY), you MUST carry your Original Class 10th Certificate or Birth Certificate as proof of full date of birth.',
-      isCrucial: true
-    },
-    {
-      id: 'doc-scribe',
-      category: 'DOCUMENTS',
-      title: 'PwD Disability Certificate & Scribe Approval Letter (If Applicable)',
-      description: 'Original medical certificate and official scribe proforma in the prescribed Annexure format.',
-      isCrucial: false
-    },
-
-    // 2. Timing & Centre Protocol
-    {
-      id: 'time-reporting',
-      category: 'TIMING',
-      title: 'Arrival 90 Minutes Prior to Exam Start',
-      description: 'Arrive at the examination venue at the specified Reporting Time. Biometric iris and thumb scan takes up to 20-30 minutes per candidate batch.',
-      isCrucial: true
-    },
-    {
-      id: 'time-gate-closing',
-      category: 'TIMING',
-      title: 'Strict Gate Closing Policy (No Entry After Deadline)',
-      description: 'Examination center gates are locked exactly 30 minutes before exam commencement. Server login locks automatically under central CCTV audit.',
-      isCrucial: true
-    },
-
-    // 3. Allowed Items
-    {
-      id: 'item-pen',
-      category: 'ITEMS_ALLOWED',
-      title: 'Transparent Body Blue or Black Ballpoint Pen',
-      description: 'Pen with clear barrel. Gel pens or fountain pens are not recommended for signing biometric slips.',
-      isCrucial: false
-    },
-    {
-      id: 'item-water',
-      category: 'ITEMS_ALLOWED',
-      title: 'Transparent Water Bottle (500ml, Without Sticker/Label)',
-      description: 'Bottles with wrappers or opaque colored plastic are prohibited.',
-      isCrucial: false
-    },
-    {
-      id: 'item-sanitizer',
-      category: 'ITEMS_ALLOWED',
-      title: 'Small Transparent Hand Sanitizer Bottle (50ml)',
-      description: 'Optional personal hygiene bottle.',
-      isCrucial: false
-    },
-
-    // 4. Prohibited Items
-    {
-      id: 'ban-electronics',
-      category: 'ITEMS_PROHIBITED',
-      title: 'Mobile Phones, Smartwatches, Bluetooth & Earphones',
-      description: 'Strictly prohibited. Possession of any electronic device inside the exam zone leads to immediate cancellation and a 3-5 year debarment.',
-      isCrucial: true
-    },
-    {
-      id: 'ban-metallic',
-      category: 'ITEMS_PROHIBITED',
-      title: 'Metallic Accessories, Belts with Large Buckles & Wallets',
-      description: 'Metal detectors frisk all candidates. Avoid belts with heavy brass buckles, key rings, coins, or metallic hairpins.',
-      isCrucial: false
-    },
-    {
-      id: 'ban-stationery',
-      category: 'ITEMS_PROHIBITED',
-      title: 'Bags, Books, Notes, Paper Scraps & Calculators',
-      description: 'Rough sheets are provided inside the computer lab. Carrying personal blank sheets is considered unfair means (UFM).',
-      isCrucial: true
-    },
-
-    // 5. CBT Lab Protocol
-    {
-      id: 'lab-mouse-test',
-      category: 'CENTRE_RULES',
-      title: 'Verify Mouse & Keyboard During Buffer Time',
-      description: 'Before the exam countdown begins, test that the left mouse click, right click, and scroll wheel are fully functional on the virtual test screen.',
-      isCrucial: false
-    },
-    {
-      id: 'lab-rough-sheet',
-      category: 'CENTRE_RULES',
-      title: 'Write Roll No & Name on Rough Sheet Immediately',
-      description: 'Sign your allocated rough sheets and submit them into the collection box before exiting the examination hall.',
-      isCrucial: false
-    }
-  ];
+  // Section 12 renders ONLY the exam's own authored exam-day instructions. It holds no
+  // generic checklist of its own: showing generic CBT content under an official badge for
+  // every exam was the honesty defect this section had (wrong for descriptive papers, and
+  // never sourced). Status is a pure projection over the exam's record — no cross-exam data
+  // and no hardcoded exam branch, so one exam can never display another's instructions.
+  const status = examDayChecklistStatus(exam);
+  const items = exam.examDayChecklist ?? [];
+  const authority = exam.authorityName ? exam.authorityName.split(' (')[0] : 'the authority';
 
   const [checkedIds, setCheckedIds] = useState<Record<string, boolean>>(() => {
     try {
@@ -13748,11 +13634,7 @@ export const ExamDayChecklistSection: React.FC<ExamDayChecklistSectionProps> = (
     } catch (e) {
       console.warn('Checklist localstorage read error:', e);
     }
-    return {
-      'doc-admit': true,
-      'doc-photos': true,
-      'doc-original-id': true
-    };
+    return {};
   });
 
   useEffect(() => {
@@ -13764,53 +13646,80 @@ export const ExamDayChecklistSection: React.FC<ExamDayChecklistSectionProps> = (
   }, [checkedIds, storageKey]);
 
   const toggleCheck = (id: string) => {
-    setCheckedIds(prev => ({
-      ...prev,
-      [id]: !prev[id]
-    }));
+    setCheckedIds(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const handleResetChecklist = () => {
-    setCheckedIds({});
-  };
+  const handleResetChecklist = () => setCheckedIds({});
 
-  const totalItems = defaultItems.length;
-  const completedCount = defaultItems.filter(i => checkedIds[i.id]).length;
-  const progressPercent = Math.round((completedCount / totalItems) * 100);
+  // Honest empty state: no exam-day instructions have been extracted for this exam. GovOS
+  // will not fill the gap with generic content dressed up as this exam's official protocol.
+  if (status === 'NONE') {
+    return (
+      <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <div className="glass-card" style={{ padding: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+            <span className="badge" style={{ background: 'var(--amber-soft)', color: '#a55a05', border: '1px solid rgba(165, 90, 5, 0.35)' }}>
+              <Clock size={14} /> NOT YET EXTRACTED
+            </span>
+            <span className="badge badge-demo">{exam.code}</span>
+          </div>
+          <h3 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 8px' }}>
+            Exam-day instructions
+          </h3>
+          <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.6 }}>
+            GovOS has not yet extracted official exam-day instructions for {exam.title} from {authority}'s
+            own documents. That is a gap here, not a statement that {authority} has published none — check
+            the official notice and your admit card for the reporting time, permitted items and centre rules.
+            GovOS will not show generic exam-day instructions as if they were this exam's official protocol.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
-  const categories = [
-    { key: 'DOCUMENTS', name: '1. Mandatory Documents to Carry', icon: FileText, color: '#235ddd' },
-    { key: 'TIMING', name: '2. Reporting Schedule & Strict Gate Closing', icon: Clock, color: '#f59e0b' },
-    { key: 'ITEMS_ALLOWED', name: '3. Allowed Physical Items', icon: CheckCircle2, color: '#137638' },
-    { key: 'ITEMS_PROHIBITED', name: '4. Strictly Prohibited Articles (Debarment Risk)', icon: Ban, color: '#b33333' },
-    { key: 'CENTRE_RULES', name: '5. Computer Lab & CBT Examination Protocols', icon: ShieldCheck, color: 'var(--primary)' }
+  const isVerified = status === 'VERIFIED';
+  const totalItems = items.length;
+  const completedCount = items.filter(i => checkedIds[i.id]).length;
+  const progressPercent = totalItems ? Math.round((completedCount / totalItems) * 100) : 0;
+
+  const categories: { key: ExamDayChecklistItem['category']; name: string; icon: React.ElementType; color: string }[] = [
+    { key: 'DOCUMENTS', name: 'Documents to carry', icon: FileText, color: '#235ddd' },
+    { key: 'TIMING', name: 'Reporting & timing', icon: Clock, color: '#a55a05' },
+    { key: 'ITEMS_ALLOWED', name: 'Permitted items', icon: CheckCircle2, color: '#137638' },
+    { key: 'ITEMS_PROHIBITED', name: 'Prohibited items', icon: Ban, color: '#b33333' },
+    { key: 'CENTRE_INSTRUCTIONS', name: 'Centre instructions', icon: ShieldCheck, color: 'var(--primary)' }
   ];
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      
-      {/* Top Banner with Packing Progress Bar */}
-      <div className="glass-card" style={{ padding: '24px', background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, #ffffff 100%)', borderColor: 'rgba(99, 102, 241, 0.35)' }}>
+
+      <div className="glass-card" style={{ padding: '24px' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px', marginBottom: '16px' }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-              <span className="badge badge-verified">
-                <ShieldCheck size={14} /> OFFICIAL EXAM-DAY PROTOCOL
-              </span>
-              <span className="badge badge-demo">
-                {exam.code}
-              </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' }}>
+              {isVerified ? (
+                <span className="badge badge-verified">
+                  <ShieldCheck size={14} /> OFFICIAL — SOURCE-BACKED
+                </span>
+              ) : (
+                <span className="badge" style={{ background: 'var(--amber-soft)', color: '#a55a05', border: '1px solid rgba(165, 90, 5, 0.35)' }}>
+                  <Clock size={14} /> UNDER VERIFICATION — NOT OFFICIALLY VERIFIED
+                </span>
+              )}
+              <span className="badge badge-demo">{exam.code}</span>
             </div>
 
             <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 4px' }}>
               Candidate Exam-Day Readiness Checklist
             </h3>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0 }}>
-              Physically tick off items as you pack your exam kit. Never get turned away at the entry gate.
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0, lineHeight: 1.55 }}>
+              {isVerified
+                ? `Read from ${authority}'s own documents for ${exam.title}. Tick items off as you pack; always confirm against your admit card.`
+                : `Authored for ${exam.title} but not yet verified against ${authority}'s own documents. Treat it as a working list, not an official protocol — confirm every item on the official notice and admit card.`}
             </p>
           </div>
 
-          <button 
+          <button
             className="btn btn-secondary"
             onClick={handleResetChecklist}
             style={{ fontSize: '0.8rem', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}
@@ -13819,11 +13728,10 @@ export const ExamDayChecklistSection: React.FC<ExamDayChecklistSectionProps> = (
           </button>
         </div>
 
-        {/* Live Progress Bar */}
         <div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.85rem' }}>
             <span style={{ color: '#334155', fontWeight: 600 }}>
-              Packing & Verification Status: <strong style={{ color: progressPercent === 100 ? '#137638' : 'var(--primary)' }}>{completedCount} of {totalItems} confirmed</strong>
+              Packing status: <strong style={{ color: progressPercent === 100 ? '#137638' : 'var(--primary)' }}>{completedCount} of {totalItems} confirmed</strong>
             </span>
             <span style={{ fontWeight: 800, color: progressPercent === 100 ? '#137638' : 'var(--primary)' }}>
               {progressPercent}% READY
@@ -13831,62 +13739,20 @@ export const ExamDayChecklistSection: React.FC<ExamDayChecklistSectionProps> = (
           </div>
 
           <div style={{ width: '100%', height: '8px', borderRadius: '4px', background: 'var(--surface-2)', overflow: 'hidden' }}>
-            <div 
-              style={{ 
-                width: `${progressPercent}%`, 
-                height: '100%', 
-                background: progressPercent === 100 ? 'var(--emerald)' : 'linear-gradient(90deg, #6366f1 0%, #10b981 100%)', 
-                transition: 'width 0.3s ease' 
-              }} 
-            />
+            <div style={{ width: `${progressPercent}%`, height: '100%', background: progressPercent === 100 ? 'var(--emerald)' : 'linear-gradient(90deg, #6366f1 0%, #10b981 100%)', transition: 'width 0.3s ease' }} />
           </div>
 
           {progressPercent === 100 && (
             <div className="animate-fade-in" style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', color: '#137638' }}>
-              <Sparkles size={16} /> All mandatory documents and items packed! Best wishes for your examination.
+              <Sparkles size={16} /> All items packed! Best wishes for your examination.
             </div>
           )}
         </div>
       </div>
 
-      {/* Shift Timing Reference Table */}
-      <div className="glass-card" style={{ padding: '24px' }}>
-        <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Clock size={18} color="var(--amber)" /> Standard Shift Timings & Gate Closing Deadlines
-        </h4>
-
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem', textAlign: 'left' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
-                <th style={{ padding: '10px 14px' }}>Shift</th>
-                <th style={{ padding: '10px 14px' }}>Reporting Time</th>
-                <th style={{ padding: '10px 14px', color: '#b71f1f' }}>Gate Closing (Strict)</th>
-                <th style={{ padding: '10px 14px' }}>Exam Timing (1 Hour CBT)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[
-                { shift: 'Shift 1 (Morning)', rep: '07:45 AM', close: '08:30 AM', exam: '09:00 AM – 10:00 AM' },
-                { shift: 'Shift 2 (Noon)', rep: '10:30 AM', close: '11:15 AM', exam: '11:45 AM – 12:45 PM' },
-                { shift: 'Shift 3 (Afternoon)', rep: '01:15 PM', close: '02:00 PM', exam: '02:30 PM – 03:30 PM' },
-                { shift: 'Shift 4 (Evening)', rep: '04:00 PM', close: '04:45 PM', exam: '05:15 PM – 06:15 PM' }
-              ].map(s => (
-                <tr key={s.shift} style={{ borderBottom: '1px solid var(--surface-2)' }}>
-                  <td style={{ padding: '12px 14px', fontWeight: 600, color: 'var(--text-primary)' }}>{s.shift}</td>
-                  <td style={{ padding: '12px 14px', color: 'var(--text-secondary)' }}>{s.rep}</td>
-                  <td style={{ padding: '12px 14px', fontWeight: 700, color: '#b71f1f' }}>{s.close}</td>
-                  <td style={{ padding: '12px 14px', fontWeight: 600, color: '#235ddd' }}>{s.exam}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Categorized Checklists */}
       {categories.map(cat => {
-        const items = defaultItems.filter(i => i.category === cat.key);
+        const catItems = items.filter(i => i.category === cat.key);
+        if (catItems.length === 0) return null;
         const CatIcon = cat.icon;
 
         return (
@@ -13896,7 +13762,7 @@ export const ExamDayChecklistSection: React.FC<ExamDayChecklistSectionProps> = (
             </h4>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {items.map(item => {
+              {catItems.map(item => {
                 const isChecked = Boolean(checkedIds[item.id]);
 
                 return (
@@ -13921,15 +13787,15 @@ export const ExamDayChecklistSection: React.FC<ExamDayChecklistSectionProps> = (
 
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                        <div style={{ 
-                          fontSize: '0.95rem', 
-                          fontWeight: 700, 
+                        <div style={{
+                          fontSize: '0.95rem',
+                          fontWeight: 700,
                           color: isChecked ? '#63738a' : 'var(--text-primary)',
                           textDecoration: isChecked ? 'line-through' : 'none'
                         }}>
                           {item.title}
                         </div>
-                        {item.isCrucial && (
+                        {item.isMandatory && (
                           <span className="badge" style={{ fontSize: '0.65rem', background: 'rgba(239, 68, 68, 0.2)', color: '#b71f1f', border: '1px solid rgba(239, 68, 68, 0.4)' }}>
                             MANDATORY
                           </span>
@@ -13939,6 +13805,18 @@ export const ExamDayChecklistSection: React.FC<ExamDayChecklistSectionProps> = (
                       <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: '4px 0 0', lineHeight: 1.45 }}>
                         {item.description}
                       </p>
+
+                      {item.provenance?.officialUrl && (
+                        <a
+                          href={item.provenance.officialUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginTop: '6px', fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 600 }}
+                        >
+                          <FileText size={12} /> Source: {item.provenance.documentTitle}
+                        </a>
+                      )}
                     </div>
                   </div>
                 );

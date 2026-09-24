@@ -916,6 +916,10 @@ export interface ExamDayChecklistItem {
   title: string;
   description: string;
   isMandatory: boolean;
+  // Optional source for this instruction. An item is treated as officially verified only
+  // when it carries a provenance whose verificationLevel is OFFICIALLY_VERIFIED; without
+  // one it is authored-but-unverified and must never be shown under an official badge.
+  provenance?: DataProvenance;
 }
 
 export interface ResultActionOption {

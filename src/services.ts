@@ -365,6 +365,27 @@ export const evaluateCandidateEligibility = evaluateEligibility;
 
 
 // ==========================================================================
+// Exam-day checklist verification status (Section 12).
+// A pure projection over the exam's own authored `examDayChecklist`, so the UI can decide
+// honestly what to show and never present generic content as an official, exam-specific
+// protocol. It reads only the passed exam — no cross-exam data, no hardcoded exam branch.
+//   NONE       — the authority's exam-day instructions have not been extracted for this exam.
+//   UNVERIFIED — items are authored but not (all) backed by an OFFICIALLY_VERIFIED source.
+//   VERIFIED   — every item carries a provenance verified as OFFICIALLY_VERIFIED.
+// ==========================================================================
+export type ExamDayChecklistStatus = 'VERIFIED' | 'UNVERIFIED' | 'NONE';
+
+export function examDayChecklistStatus(exam: Exam): ExamDayChecklistStatus {
+  const items = exam.examDayChecklist ?? [];
+  if (items.length === 0) return 'NONE';
+  const allVerified = items.every(
+    (i) => i.provenance?.verificationLevel === 'OFFICIALLY_VERIFIED'
+  );
+  return allVerified ? 'VERIFIED' : 'UNVERIFIED';
+}
+
+
+// ==========================================================================
 // storageService.ts
 // ==========================================================================
 /**
