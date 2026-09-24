@@ -389,3 +389,37 @@ def claim_from_portal(link: dict, *, exam_id: str, official_name: str, authority
         source_text=composed,
         requires_value=bool(host),
     )
+
+
+def claim_from_field(field, *, exam_id: str, official_name: str, authority: str,
+                     cycle: str = '') -> Claim:
+    """A `Claim` for one extracted record `Field` (the build pipeline's output).
+
+    This is the generic bridge from the record model (`exam_authoring.record.Field`) to the
+    verifier, so the orchestrator can run the same deterministic + Qwen gate over whatever a
+    build read, without the verifier knowing anything about the field. It reads only the
+    field's own value and citation -- value, evidence excerpt, source url/title -- and composes
+    a source text from the document title plus the excerpt, exactly as the other adapters do,
+    so identity can be established and the span confirmed against one text. Duck-typed on
+    `field.name`, `field.value`, `field.citation` (with `.excerpt`, `.document_title`, `.url`),
+    so it needs no import of the record type and no exam-specific branch.
+    """
+    cit = getattr(field, 'citation', None)
+    excerpt = str(getattr(cit, 'excerpt', '') or '') if cit is not None else ''
+    title = str(getattr(cit, 'document_title', '') or '') if cit is not None else ''
+    url = str(getattr(cit, 'url', '') or '') if cit is not None else ''
+    value = getattr(field, 'value', None)
+    composed = (title + ' ' + excerpt).strip()
+    return Claim(
+        exam_id=exam_id,
+        field=f'field:{getattr(field, "name", "")}',
+        value='' if value is None else str(value),
+        cycle=str(cycle),
+        evidence_span=excerpt,
+        source_url=url,
+        source_title=title,
+        authority=authority,
+        official_name=official_name,
+        source_text=composed,
+        requires_value=value not in (None, '', [], {}),
+    )
