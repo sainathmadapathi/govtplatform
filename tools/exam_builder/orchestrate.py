@@ -45,6 +45,7 @@ from typing import Callable, Optional
 from ..exam_authoring.record import ExamRecord, Field, Status
 from ..exam_authoring.verify import IsolationError, run_all
 from . import publish as P
+from . import render as R
 from .build import BuildResult, build
 from .gate import BuildState, GateReport, evaluate as gate_evaluate
 from .identity import IdentityVerdict
@@ -83,6 +84,7 @@ class OrchestrationState(str, Enum):
     INFRASTRUCTURE_FAILURE = 'INFRASTRUCTURE_FAILURE'   # search/discovery could not run
     SOURCE_FETCH_FAILURE = 'SOURCE_FETCH_FAILURE'       # a source could not be fetched (build PAUSED_INFRASTRUCTURE)
     ISOLATION_VIOLATION = 'ISOLATION_VIOLATION'   # publishing would change another exam's bytes
+    PRESERVATION_BLOCKED = 'PRESERVATION_BLOCKED'  # target already exists; a partial build must not overwrite authored data
 
 
 @dataclass
@@ -137,7 +139,7 @@ class OrchestrationResult:
 def orchestrate(exam_query: str = '', *, year: str = '', dry_run: bool = True,
                 use_llm: bool = False, provider=None, cache=None,
                 replay=None, siblings: Optional[list] = None, max_docs: int = 8,
-                data_ts: str = P.DATA_TS, typecheck: bool = True,
+                data_ts: str = P.DATA_TS, typecheck: bool = True, allow_overwrite: bool = False,
                 render: Optional[Callable[[ExamRecord], str]] = None) -> OrchestrationResult:
     """Run the universal pipeline for one exam. Universal: the input is a name and a year and
     nothing authority-specific; every branch reads a *state*, never an exam or an authority.
@@ -239,19 +241,28 @@ def orchestrate(exam_query: str = '', *, year: str = '', dry_run: bool = True,
     elif dry_run:
         res.state = OrchestrationState.STAGED
         res.reason = 'gate PASS; dry run, so the live register was not touched.'
-    elif render is None:
-        res.state = OrchestrationState.STAGED
-        res.reason = ('gate PASS, but no record renderer was supplied, so the orchestrator '
-                      'staged an auditable artifact and did not write the live register.')
+    elif R.target_in_register(rec.exam_id, data_ts) and not allow_overwrite:
+        # Preservation-first: a partial build must never overwrite an existing record, because
+        # publish.stage replaces the exam's whole slice and a re-emit cannot preserve authored
+        # arrays, shared-const provenance or comments (see PRODUCTION_RENDERER_AUDIT.md). A
+        # missing section is not an empty one, so the existing record is left byte-identical.
+        res.state = OrchestrationState.PRESERVATION_BLOCKED
+        res.reason = ('gate PASS, but the target already exists in the register; a partial '
+                      'build will not overwrite an authored record. The live register is '
+                      'untouched. Merging into an existing record is a documented P1.')
     else:
+        # A NEW exam (or an explicit, disposable overwrite): render with the existing universal
+        # renderer and publish atomically through the existing publisher and its isolation
+        # proof + typecheck. The orchestrator never writes a fact around the gate.
         res.reached = Stage.ATOMIC_PUBLISH
+        renderer = render if callable(render) else R.render_exam
         try:
-            ts = render(rec)
+            ts = renderer(rec)
             report = P.stage(rec.exam_id, ts, data_ts=data_ts)
             P.publish(report, data_ts=data_ts, typecheck=typecheck)
             res.published = True
             res.state = OrchestrationState.PUBLISHED
-            res.reason = 'gate PASS; published atomically through publish.stage + publish.publish.'
+            res.reason = 'gate PASS; new exam published atomically through publish.stage + publish.publish.'
         except P.IsolationViolation as exc:
             res.state = OrchestrationState.ISOLATION_VIOLATION
             res.reason = f'publishing would change another exam or fails typecheck: {exc}'

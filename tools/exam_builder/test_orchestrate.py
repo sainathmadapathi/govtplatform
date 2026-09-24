@@ -283,7 +283,7 @@ class TestOrchestration(unittest.TestCase):
             before = P.fingerprint(io.open(reg, encoding='utf-8').read())
             patch_build(self, lambda *a, **k: _build(_rec('exam-ssc-cgl-2026')))
             r = O.orchestrate('SSC CGL 2026', dry_run=False, data_ts=reg, typecheck=False,
-                              render=_render('exam-ssc-cgl-2026'))
+                              allow_overwrite=True, render=_render('exam-ssc-cgl-2026'))
             self.assertEqual(r.state, O.OrchestrationState.PUBLISHED)
             self.assertTrue(r.published)
             after = P.fingerprint(io.open(reg, encoding='utf-8').read())
@@ -299,7 +299,7 @@ class TestOrchestration(unittest.TestCase):
             before = P.fingerprint(io.open(reg, encoding='utf-8').read())
             patch_build(self, lambda *a, **k: _build(_rec('exam-ssc-cgl-2026')))
             r = O.orchestrate('SSC CGL 2026', dry_run=False, data_ts=reg, typecheck=False,
-                              render=_render('exam-ssc-cgl-2026'))
+                              allow_overwrite=True, render=_render('exam-ssc-cgl-2026'))
             self.assertEqual(r.state, O.OrchestrationState.PUBLISHED)
             after = P.fingerprint(io.open(reg, encoding='utf-8').read())
             for other in ('exam-upsc-cse-2026', 'exam-ibps-po-2026', 'exam-lic-aao-2027', 'exam-appsc-group1-2026'):
@@ -312,12 +312,12 @@ class TestOrchestration(unittest.TestCase):
             # publish UPSC, assert SSC unchanged
             f0 = P.fingerprint(io.open(reg, encoding='utf-8').read())
             patch_build(self, lambda *a, **k: _build(_rec('exam-upsc-cse-2026', 'Civil Services', 'Union Public Service Commission', 'https://upsc.gov.in')))
-            O.orchestrate('UPSC', dry_run=False, data_ts=reg, typecheck=False, render=_render('exam-upsc-cse-2026'))
+            O.orchestrate('UPSC', dry_run=False, data_ts=reg, typecheck=False, allow_overwrite=True, render=_render('exam-upsc-cse-2026'))
             f1 = P.fingerprint(io.open(reg, encoding='utf-8').read())
             self.assertEqual(f0['exam-ssc-cgl-2026'], f1['exam-ssc-cgl-2026'])
             # now publish SSC, assert UPSC unchanged
             O.build = lambda *a, **k: _build(_rec('exam-ssc-cgl-2026'))
-            O.orchestrate('SSC', dry_run=False, data_ts=reg, typecheck=False, render=_render('exam-ssc-cgl-2026'))
+            O.orchestrate('SSC', dry_run=False, data_ts=reg, typecheck=False, allow_overwrite=True, render=_render('exam-ssc-cgl-2026'))
             f2 = P.fingerprint(io.open(reg, encoding='utf-8').read())
             self.assertEqual(f1['exam-upsc-cse-2026'], f2['exam-upsc-cse-2026'])
 
