@@ -15,7 +15,7 @@ Run: python -m tools.exam_builder.test_application
 """
 from __future__ import annotations
 
-from .application import (extract_application_process, extract_fees, extract_portal,
+from .application import (exemption_wording, extract_fee_exemptions, extract_application_process, extract_fees, extract_portal,
                           extract_stages, merge_facts)
 from .compat import application_simulator_spec
 from .schema import Fact, ScopeKind, SourceDocument, SourceEvidence, SourceKind, Status
@@ -365,6 +365,54 @@ def test_merge_corroborates_and_contests() -> None:
     check('and nothing found stays nothing found', nothing.status, Status.NOT_EXTRACTED)
 
 
+# ======================================================== I. fees and their names
+def _fees(text: str):
+    return extract_fees(doc(), text)
+
+
+def test_i_fee_only() -> None:
+    rules = _fees('Fee: Each applicant must pay Rs. 500/- towards the application fee.')
+    check('I: one amount', [r.amount.value for r in rules if r.amount.has_value], [500.0])
+    check('I: named as the application fee', [r.fee_type for r in rules], ['APPLICATION_PROCESSING'])
+    check('I: nobody exempted', [r for r in rules if r.is_exempt.has_value], [])
+
+
+def test_i_two_named_fees_are_two_fees() -> None:
+    text = ('8.1 Application Processing Fee:- Each applicant must pay Rs. 200/- (Rupees Two '
+            'Hundred Only) towards Online Application Processing Fee.\n'
+            '8.2 Examination Fee:- Each applicant has to pay 120/- (Rupees One Hundred and '
+            'Twenty Only) towards Examination Fee.')
+    got = {r.fee_type: r.amount.value for r in _fees(text) if r.amount.has_value}
+    check('I: the processing fee', got.get('APPLICATION_PROCESSING'), 200.0)
+    check('I: the examination fee, printed as "120/-" with no currency word', got.get('EXAMINATION'), 120.0)
+    check('I: nothing summed into a total', 'TOTAL' in got, False)
+
+
+def test_i_a_stated_group_exemption_is_an_exemption() -> None:
+    text = ('8.2 Examination Fee:- Each applicant has to pay 120/- towards Examination Fee, '
+            'subject to following: a) All unemployed candidates are exempted from payment of '
+            'examination fee, and b) All employees shall pay the prescribed examination fee.')
+    ex = extract_fee_exemptions(doc(), text)
+    check('I: the exemption is read', [e['category'] for e in ex], ['unemployed candidates'])
+    check('I: with the fee it lifts', [e.get('exemptedFeeType') for e in ex], ['EXAMINATION'])
+    check('I: and the notice\'s own sentence as its condition',
+          'unemployed candidates are exempted' in ex[0]['condition'], True)
+
+
+def test_i_a_category_exemption_keeps_its_category() -> None:
+    ex = extract_fee_exemptions(doc(), 'Fee: Rs. 100/-. Women, SC and ST candidates are '
+                                       'exempted from payment of the examination fee.')
+    check('I: category exemptions still read', sorted(e['category'] for e in ex),
+          ['CATEGORY:sc', 'CATEGORY:st', 'CATEGORY:women'])
+
+
+def test_i_no_fee_information_yields_nothing() -> None:
+    check('I: no fee, no rule', _fees('The examination will be held at the notified centres.'), [])
+    check('I: and no exemption wording', exemption_wording('The examination will be held.'), '')
+    check('I: exemption wording is found where the reader could not structure it',
+          bool(exemption_wording('The fee is waived for the candidates named in Annexure-III.')), True)
+
+
 def test_the_extractor_names_no_authority() -> None:
     """The architectural guarantee, checked mechanically rather than by inspection."""
     import io
@@ -423,6 +471,11 @@ def main() -> int:
     test_no_sources_at_all_is_not_a_claim_about_anyone()
     test_merge_corroborates_and_contests()
     test_the_extractor_names_no_authority()
+    test_i_fee_only()
+    test_i_two_named_fees_are_two_fees()
+    test_i_a_stated_group_exemption_is_an_exemption()
+    test_i_a_category_exemption_keeps_its_category()
+    test_i_no_fee_information_yields_nothing()
     test_the_existing_simulator_shape_can_still_be_produced()
     test_no_spec_rather_than_an_empty_one()
     if _FAILURES:

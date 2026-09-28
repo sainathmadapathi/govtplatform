@@ -159,7 +159,9 @@ EVENT_CUES: tuple[EventCue, ...] = (
     EventCue('CORRECTION_WINDOW',
              (r'correction\s+window', r'window\s+for\s+(?:application\s+form\s+)?correction',
               r'edit(?:ing)?\s+(?:of\s+)?(?:the\s+)?application',
-              r'modif\w+\s+(?:of\s+)?(?:the\s+)?application')),
+              r'modif\w+\s+(?:of\s+)?(?:the\s+)?application',
+              # The noun first: "Application Edit Option From X To Y".
+              r'application\s+(?:form\s+)?(?:edit|correction|modification)\w*')),
     EventCue('FEE_PAYMENT_END',
              (r'(?:last\s+date|closing\s+date)[^.]{0,40}\b(?:fee|payment)\b',
               r'\bfee\s+payment\b[^.]{0,30}\b(?:last|upto|up\s+to|till)\b',
@@ -175,7 +177,16 @@ EVENT_CUES: tuple[EventCue, ...] = (
               # "Candidates may submit online applications from X to Y".
               r'submit\w*\s+(?:the\s+)?(?:online\s+)?applications?\b',
               r'\bfil(?:l|ing)\w*\s+(?:up\s+)?(?:the\s+)?(?:online\s+)?applications?\b',
-              r'last\s+date[^.]{0,40}\bapplication', r'closing\s+date[^.]{0,30}\bapplication'),
+              r'last\s+date[^.]{0,40}\bapplication', r'closing\s+date[^.]{0,30}\bapplication',
+              # A window stated as a pair of ends rather than as an act of applying:
+              # "Applications From X To Y", "Apply online from X to Y", "Applications are
+              # invited from X up to Y", "Online application starts X and closes Y".
+              r'\bapplications?\s*(?:are\s+|will\s+be\s+)?(?:invited\s+|accepted\s+|received\s+)?'
+              r'(?:online\s+)?(?:from|between)\b',
+              r'\bapply\s+(?:online\s+)?(?:from|between)\b',
+              r'\b(?:online\s+)?applications?\s+(?:window\s+|process\s+|portal\s+)?'
+              r'(?:starts?|opens?|begins?|commences?|closes?|ends?)\b',
+              r'\b(?:submission|registration)\s+(?:window\s+)?(?:starts?|opens?|begins?|commences?|ends?|closes?)\b'),
              against=(r'\bfee\b.{0,20}\bpayment\b',)),
     EventCue('ADMIT_CARD',
              (r'(?:e-?\s?)?admit\s+cards?', r'call\s+letters?', r'hall\s+tickets?'),
@@ -275,6 +286,22 @@ _STAGE_REF = re.compile(
     r'\b((?:tier|phase|stage|paper|part|session|shift)\s*[-–—:]?\s*'
     r'(?:[ivxIVX]{1,4}|\d{1,2}|[A-Z])\b)', re.I)
 
+#: A stage the authority names rather than numbers: "Schedule of Preliminary Test", "Main
+#: Examination". Only the stage *words* are listed; which stage of which exam they belong to is
+#: whatever the document says. "Preliminary" alone is not a stage ("preliminary key"), so the
+#: noun of an examination has to follow it.
+_STAGE_NAME = re.compile(
+    r'\b(preliminary\s+(?:written\s+)?(?:test|exam(?:ination)?|stage)|prelims?\b(?:\s+exam(?:ination)?)?|'
+    r'screening\s+test|main\s+(?:written\s+)?(?:exam(?:ination)?|test|stage)|mains\b|'
+    # The noun first: "Dates of Online Examination – Preliminary (tentative)".
+    r'(?:exam(?:ination)?|test)\s*[-–—:(]\s*(?:preliminary|prelims?|mains?)\b)', re.I)
+
+#: The two ends of a window, stated with verbs rather than with "from ... to".
+_OPENS = re.compile(r'\b(?:starts?|opens?|begins?|commences?|opening\s+date|start\s+date|from)\b', re.I)
+_CLOSES = re.compile(r'\b(?:closes?|ends?|last\s+date|closing\s+date|deadline|up\s*to|upto|till|to)\b', re.I)
+_OPEN_THEN_CLOSE = re.compile(
+    r'\b(?:starts?|opens?|begins?|commences?)\b.{0,80}?\b(?:closes?|ends?|last\s+date)\b', re.I)
+
 #: A cycle label the authority attaches to an event, so two cycles in one document stay apart.
 _CYCLE = re.compile(r'\b(20\d{2})(?:\s*[-–—/]\s*(\d{2,4}))?\b')
 
@@ -326,6 +353,8 @@ class DateReading:
     stage_ref: str = ''
     cycle: str = ''
     precision: DatePrecision = DatePrecision.DAY
+    #: True where a single application date is stated as the *opening* of the window.
+    opens_only: bool = False
 
 
 def _label_for(passage: str, kind: str) -> str:
@@ -338,7 +367,15 @@ def _label_for(passage: str, kind: str) -> str:
     dates = read_dates(text)
     if dates:
         head = text[:dates[0].start].strip(' :|-–—\t')
+        if re.search(rf'\b(?:{_MONTH_WORD})\s*/\s*$', head, re.I):
+            # "May/June 2024": the authority gave alternative months, and cutting the label
+            # at the date read would leave "May/" and hide that the month is not settled.
+            head = text[:dates[0].end].strip(' :|-–—\t')
         head = re.sub(r'^\d{1,2}(?:\.\d{1,2})*\s*[.)]?\s*', '', head).strip()
+        # "Applications From: X To: Y" labels a window, and the window's two rows (opening,
+        # closing) each carry the label; a dangling "From" would describe only one of them.
+        bare = re.sub(r'\s*\b(?:from|between)\s*[:\-–—]?\s*$', '', head, flags=re.I).strip()
+        head = bare if _is_a_label(bare) else head
         if 3 <= len(head) <= 90:
             return head
     trimmed = re.sub(r'^\d{1,2}(?:\.\d{1,2})*\s*[.)]?\s*', '', text).strip()
@@ -357,7 +394,9 @@ def _nearest_cue(context: str, passage: str) -> EventCue | None:
     """
     low = context.lower()
     at = low.find(normalise_ws(passage).lower()[:40])
+    end = at + len(normalise_ws(passage)) if at >= 0 else -1
     best: tuple[int, EventCue] | None = None
+    overlapping: EventCue | None = None
     fallback: EventCue | None = None
     for cue in EVENT_CUES:
         if not cue.matches(context):
@@ -371,20 +410,38 @@ def _nearest_cue(context: str, passage: str) -> EventCue | None:
                     gap = at - m.end()
                     if best is None or gap < best[0]:
                         best = (gap, cue)
-    return best[1] if best else fallback
+                elif overlapping is None and m.start() < end:
+                    # A label split across the line break ("Last Date & Time for receipt of"
+                    # / "Online Applications 14/03/2024") reaches into the date line. It is
+                    # still this line's label, and it outranks a cue on the line *after*.
+                    overlapping = cue
+    return best[1] if best else (overlapping or fallback)
 
 
-def read_statement(passage: str, *, context: str = '') -> DateReading | None:
-    """What event, if any, this passage states — and the date it gives for it."""
+def read_statement(passage: str, *, context: str = '', lead: str = '') -> DateReading | None:
+    """What event, if any, this passage states — and the date it gives for it.
+
+    `lead` is the statement immediately before the passage. Where the passage names no event
+    and the lead does, the two are one row laid out on two lines ("Schedule of Main
+    Examination" / "(Conventional Type) September/October 2024"): the lead supplies the event
+    *and* the stage, and the evidence span is the two together, so the words that decided the
+    reading are inside the evidence rather than beside it.
+    """
     # The passage first: a table row names its own event, and classifying it by its
     # neighbours read "Date of examination" as an application window because the row above
     # it mentioned applications.
     cue = next((c for c in EVENT_CUES if c.matches(passage)), None)
     haystack = passage
+    stated = passage
     if cue is None and context:
         # Only now the neighbourhood, for a row whose label and date are on separate lines.
         haystack = context
         cue = _nearest_cue(context, passage)
+        if (cue is not None and lead and not read_dates(lead)
+                and (cue.matches(lead) or cue.matches(f'{lead} {passage}'))):
+            # The label is the lead, or the lead and the date line together: "Last Date &
+            # Time of submission of Online" / "Application 17/08/2031 at 5:00 PM".
+            stated = f'{normalise_ws(lead)} {normalise_ws(passage)}'
     if cue is None:
         return None
     # Hedging and lifecycle are read from the wider text either way, because "the above
@@ -403,21 +460,29 @@ def read_statement(passage: str, *, context: str = '') -> DateReading | None:
         if state is MilestoneState.ANNOUNCED:
             state = MilestoneState.AWAITED
 
-    stage = _STAGE_REF.search(passage)
+    # A stage is read only from the statement itself (and its label line), never from a
+    # neighbour after it: the line below a Preliminary schedule is often the Main one.
+    stage = _STAGE_REF.search(stated) or _STAGE_NAME.search(stated)
     cycle_match = _CYCLE.search(passage) or _CYCLE.search(haystack)
     precision = dates[0].precision if dates else DatePrecision.UNSPECIFIED
+    is_range = bool(len(dates) >= 2 and (_RANGE.search(stated) or _OPEN_THEN_CLOSE.search(stated)))
+    # One application date stated as the opening of the window is the opening, not the
+    # deadline: "Online application starts on X" must not become the last date.
+    opens_only = bool(cue.kind == 'APPLICATION_WINDOW' and len(dates) == 1
+                      and _OPENS.search(stated) and not _CLOSES.search(stated))
 
     return DateReading(
         kind=cue.kind,
-        label=_label_for(passage, cue.kind),
-        span=normalise_ws(passage),
+        label=_label_for(stated, cue.kind),
+        span=normalise_ws(stated),
         dates=dates,
-        is_range=bool(len(dates) >= 2 and _RANGE.search(passage)),
+        is_range=is_range,
         tentative=bool(_TENTATIVE.search(wider)),
         state=state,
         stage_ref=normalise_ws(stage.group(1)) if stage else '',
         cycle=cycle_match.group(1) if cycle_match else '',
-        precision=precision)
+        precision=precision,
+        opens_only=opens_only)
 
 
 # =============================================================== milestones
@@ -447,10 +512,22 @@ def extract_milestones(doc: SourceDocument, text: str, *, exam_id: str,
     out: list[Milestone] = []
     seen: set[tuple[str, str, str]] = set()
 
+    consumed: set[int] = set()
     for index, passage in enumerate(parts):
+        if index in consumed:
+            continue
         if not read_dates(passage) and not _AWAITED.search(passage):
             continue
-        reading = read_statement(passage, context=_window(parts, index))
+        nxt = parts[index + 1] if index + 1 < len(parts) else ''
+        if (len(read_dates(passage)) == 1 and re.search(r'\bfrom\b', passage, re.I)
+                and not _CLOSES.search(passage[read_dates(passage)[0].end:])
+                and re.match(r'\s*(?:to|till|up\s*to|upto)\b', nxt, re.I) and read_dates(nxt)):
+            # A window broken over two lines: "... From: 23/03/2031 at 10:00 A.M." /
+            # "To: 27/03/2031 at 5:00 P.M." is one statement with two ends.
+            passage = f'{passage} {nxt}'
+            consumed.add(index + 1)
+        reading = read_statement(passage, context=_window(parts, index),
+                                 lead=parts[index - 1] if index else '')
         if reading is None:
             continue
         if _FURNITURE.search(passage):
@@ -480,7 +557,8 @@ def extract_milestones(doc: SourceDocument, text: str, *, exam_id: str,
         if ev is None:
             continue
 
-        key = (reading.kind, reading.dates[0].iso if reading.dates else '',
+        kind = 'APPLICATION_START' if reading.opens_only else reading.kind
+        key = (kind, reading.dates[0].iso if reading.dates else '',
                reading.stage_ref.lower())
         if key in seen:
             continue
@@ -495,6 +573,8 @@ def extract_milestones(doc: SourceDocument, text: str, *, exam_id: str,
         if reading.is_range:
             starts = Fact.verified(reading.dates[0].iso, ev)
             ends = Fact.verified(reading.dates[1].iso, ev)
+        elif reading.dates and reading.opens_only:
+            starts = Fact.verified(reading.dates[0].iso, ev)
         elif reading.dates:
             ends = Fact.verified(reading.dates[0].iso, ev)
         alternatives = [Fact.verified(d.iso, ev) for d in reading.dates[2:4]] \
@@ -512,9 +592,9 @@ def extract_milestones(doc: SourceDocument, text: str, *, exam_id: str,
                     f'inferred')
 
         out.append(Milestone(
-            id=f'date-{exam_id}-{_slug(reading.kind)}-{_slug(reading.label)[:16]}',
+            id=f'date-{exam_id}-{_slug(kind)}-{_slug(reading.label)[:16]}',
             label=reading.label,
-            kind=reading.kind,
+            kind=kind,
             scope=scope,
             cycle=reading.cycle or cycle,
             starts_at=starts,

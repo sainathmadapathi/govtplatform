@@ -37,6 +37,7 @@ from .gate import BuildState
 from .identity import ExamIdentity, IdentityCheck, IdentityVerdict, field_is_attributable, verify as verify_identity
 from .manifest import SourceManifest, content_hash, from_source_set, to_source_set
 from .resolve import Authority, ResolvedExam, resolve, stable_exam_id
+from .evidence import normalise_ws
 from .schema import SourceDocument, SourceKind, Status as SchemaStatus
 
 
@@ -190,37 +191,53 @@ def _extract_html_tables(html: str) -> list[list[list[str]]]:
 def _printed_relaxations(age_rules) -> list[dict]:
     """The age relaxations the notice itself printed, each with its figure and evidence.
 
-    Only a VERIFIED relaxation carrying a figure (years added, or an absolute upper limit) is
-    kept: a relaxation named without a figure is not one a candidate can apply, and no figure
-    is ever supplied from a national default."""
+    A plain printed figure is VERIFIED. A figure the notice qualifies ("up to 5 years based on
+    service", "3 years & length of service") is kept as printed, NEEDS_REVIEW, with the
+    qualification as its condition -- shown to the candidate, never added to a limit. A group
+    whose relaxation is stated only in words is kept as a NEEDS_REVIEW textual rule with no
+    figure. No figure is ever supplied from a national default."""
     from .schema import Status as _S
     out, seen = [], set()
     for rule in age_rules:
         post_ids = [ref.ref for ref in getattr(rule.scope, 'refs', [])
                     if getattr(ref.kind, 'value', '') == 'POST' and ref.ref]
         for rx in getattr(rule, 'relaxations', []) or []:
-            years = rx.years.value if rx.years.has_value and rx.years.status is _S.VERIFIED else None
+            if rx.years.status is _S.NOT_PUBLISHED:
+                continue
+            years = rx.years.value if rx.years.has_value and rx.years.status in (_S.VERIFIED, _S.NEEDS_REVIEW) else None
             maximum = (rx.absolute_maximum.value if rx.absolute_maximum.has_value
-                       and rx.absolute_maximum.status is _S.VERIFIED else None)
-            if years is None and maximum is None:
+                       and rx.absolute_maximum.status in (_S.VERIFIED, _S.NEEDS_REVIEW) else None)
+            fact = rx.years if (years is not None or not rx.absolute_maximum.has_value) else rx.absolute_maximum
+            if not fact.evidence:
                 continue
             key = (rx.category_label, years, maximum, tuple(post_ids))
             if key in seen:
                 continue
             seen.add(key)
-            fact = rx.years if years is not None else rx.absolute_maximum
-            item = {'category': rx.category_label, 'status': 'VERIFIED',
-                    'evidenceSpan': fact.evidence[0].span if fact.evidence else ''}
+            verified = fact.status is _S.VERIFIED and (years is not None or maximum is not None)
+            item = {'category': rx.category_label, 'status': 'VERIFIED' if verified else 'NEEDS_REVIEW',
+                    'evidenceSpan': fact.evidence[0].span}
             if years is not None:
                 item['years'] = float(years)
             if maximum is not None:
                 item['maximumAge'] = float(maximum)
             if rx.conditions.has_value:
                 item['condition'] = str(rx.conditions.value)
+            elif years is None and maximum is None:
+                item['condition'] = 'stated in words without a figure: ' + fact.evidence[0].span[:200]
             if len(post_ids) == 1:
                 item['appliesToPostId'] = post_ids[0]
             out.append(item)
     return out
+
+
+def _printed_amount(value) -> str:
+    """A fee amount as the notice printed it: "100" for 100.0, "12.50" kept as "12.5"."""
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return str(value)
+    return str(int(number)) if number.is_integer() else repr(number)
 
 
 def _post_name(item) -> str:
@@ -229,31 +246,100 @@ def _post_name(item) -> str:
     return str(item or '').strip()
 
 
-def _vet_posts(got: Field, rec: ExamRecord) -> Field:
+def _vet_posts(got: Field, rec: ExamRecord, loaded: dict | None = None) -> Field:
     """Every posts reading passes one test, whichever reader produced it.
 
     A checklist of documents to produce ("Hall Ticket", "Non-Creamy Layer Certificate")
     reconstructs exactly like a list of posts, and the semantic reader, the table reader and
-    the legacy extractor have each returned one. A reading that is wholly documents is not a
-    reading of posts: it is kept, with its evidence, as NEEDS_REVIEW -- never published as
-    posts and never discarded. Document names mixed into a real post list are removed, and the
-    removal is logged."""
-    from .eligibility import is_document_not_post
+    the legacy extractor have each returned one. The candidates are classified on their own
+    words and on the text around the evidence in the cited document (a checklist's
+    instructions against a post table's headers). Only POSTS and MIXED readings publish
+    posts; DOCUMENTS and AMBIGUOUS readings are kept, with their evidence, as NEEDS_REVIEW --
+    never published as posts and never discarded."""
+    from .eligibility import classify_post_candidates
 
     if got is None or not got.usable or not isinstance(got.value, list):
         return got
-    kept = [x for x in got.value if not is_document_not_post(_post_name(x))]
-    dropped = [_post_name(x) for x in got.value if is_document_not_post(_post_name(x))]
-    if not dropped:
-        return got
-    if not kept:
+    # The text *before* the list -- its heading and its instructions. The candidates' own
+    # words are weighed separately, so they must not also count as their neighbourhood.
+    context = ''
+    document = (loaded or {}).get(got.citation.url) if got.citation else None
+    text = document.all_text() if document is not None and hasattr(document, 'all_text') else ''
+    if text and got.citation and got.citation.excerpt:
+        flat = ' '.join(text.split())
+        at = flat.find(' '.join(got.citation.excerpt.split())[:60])
+        if at >= 0:
+            context = flat[max(0, at - 600):at]
+    verdict = classify_post_candidates([_post_name(x) for x in got.value], context=context)
+    if verdict.kind in ('DOCUMENTS', 'AMBIGUOUS'):
+        what = ('documents a candidate must produce, not posts' if verdict.kind == 'DOCUMENTS'
+                else f'not separable into posts and documents with confidence '
+                     f'({len(verdict.documents)} read as documents, {len(verdict.ambiguous)} undecided)')
+        example = (verdict.documents or verdict.ambiguous or [''])[0]
         return Field.needs_review(
             'posts', got.value,
-            f'the {len(dropped)} candidate(s) read here are documents a candidate must produce, not posts '
-            f'(e.g. "{dropped[0]}"); held for review with the evidence, not published as posts',
+            f'the {len(got.value)} candidate(s) read here are {what} (e.g. "{example}"); '
+            f'{"; ".join(verdict.reasons) or "judged on the candidates' own words"}. '
+            f'Held for review with the evidence, not published as posts',
             got.citation)
-    rec.note(f'posts: removed {len(dropped)} document name(s) from the post list: {", ".join(dropped[:4])}')
+    if not verdict.documents:
+        return got
+    kept = [x for x in got.value if normalise_ws(_post_name(x)) not in set(verdict.documents)]
+    rec.note(f'posts: removed {len(verdict.documents)} document name(s) from the post list: '
+             f'{", ".join(verdict.documents[:4])}')
     return Field(name='posts', status=got.status, value=kept, citation=got.citation, note=got.note)
+
+
+def enforce_semantic_states(rec: ExamRecord) -> list[str]:
+    """A field's status must agree with what its value and evidence are, not only with
+    whether a value exists. Applied after extraction, and to a stored record re-read offline.
+
+      * posts FOUND whose candidates are documents (or cannot be told apart) -> NEEDS_REVIEW;
+      * examPattern FOUND with no stage read with confidence -> NEEDS_REVIEW;
+      * feeExemptions NOT_PUBLISHED while the fee's own evidence states an exemption ->
+        NEEDS_REVIEW with that sentence, because "we did not structure it" is not "the
+        authority published none".
+    Returns what it changed, each also noted on the record."""
+    from .eligibility import classify_post_candidates
+    changed: list[str] = []
+    posts = rec.fields.get('posts')
+    if posts is not None and posts.status is RecordStatus.FOUND and isinstance(posts.value, list):
+        verdict = classify_post_candidates([_post_name(x) for x in posts.value])
+        if verdict.kind in ('DOCUMENTS', 'AMBIGUOUS'):
+            rec.set(Field.needs_review('posts', posts.value,
+                                       f'the candidates read as posts are {verdict.kind.lower()} '
+                                       f'(e.g. "{(verdict.documents or verdict.ambiguous or [""])[0]}"); '
+                                       f'held for review, not published as posts', posts.citation))
+            changed.append(f'posts FOUND -> NEEDS_REVIEW ({verdict.kind})')
+    pattern = rec.fields.get('examPattern')
+    if pattern is not None and pattern.status is RecordStatus.FOUND and isinstance(pattern.value, list):
+        # Only a tree that says what its roots are is judged: every root carries a level, and
+        # none is a stage whose own status is verified. A reader that emits no level or status
+        # (an HTML scheme table) has not claimed anything this check could contradict.
+        roots = [n for n in pattern.value if isinstance(n, dict)]
+        described = roots and all('level' in n and 'status' in n for n in roots)
+        if described and not any(n['level'] == 'STAGE' and n['status'] == 'VERIFIED' for n in roots):
+            rec.set(Field.needs_review('examPattern', pattern.value,
+                                       'no root of the pattern tree is a stage read with confidence',
+                                       pattern.citation))
+            changed.append('examPattern FOUND -> NEEDS_REVIEW (no confident stage)')
+    fee, exemptions = rec.fields.get('fee'), rec.fields.get('feeExemptions')
+    if (exemptions is not None and exemptions.status is RecordStatus.NOT_PUBLISHED
+            and fee is not None and fee.citation and fee.citation.excerpt):
+        stated = D_APPLICATION.exemption_wording(fee.citation.excerpt)
+        if stated:
+            cite = Citation(document_title=fee.citation.document_title, url=fee.citation.url,
+                            page=fee.citation.page, clause='Fee Exemptions', excerpt=stated[:400],
+                            verified_date=fee.citation.verified_date)
+            rec.set(Field.needs_review('feeExemptions',
+                                       [{'category': '', 'isExempt': True, 'evidenceSpan': stated[:400],
+                                         'status': 'NEEDS_REVIEW'}],
+                                       "the fee's own evidence states an exemption; it was recorded as "
+                                       'not published, which the evidence contradicts', cite))
+            changed.append('feeExemptions NOT_PUBLISHED -> NEEDS_REVIEW (exemption in the fee evidence)')
+    for c in changed:
+        rec.note(f'semantic state: {c}')
+    return changed
 
 
 def _dispatch_domain_extraction(
@@ -268,8 +354,57 @@ def _dispatch_domain_extraction(
     """Dispatch one contract field, then vet the reading where a generic test applies."""
     got = _dispatch_domain_extraction_raw(cf, sources, loaded, rec, resolved, identity, target)
     if cf.name == 'posts':
-        got = _vet_posts(got, rec)
+        got = _vet_posts(got, rec, loaded)
+    if cf.name == 'fee':
+        got = _type_fee_components(got, loaded, rec, resolved)
     return got
+
+
+_FEE_TYPE_LABEL = {'APPLICATION_PROCESSING': 'Application processing fee',
+                   'EXAMINATION': 'Examination fee', 'TOTAL': 'Total fee'}
+
+
+def _type_fee_components(got: Field, loaded: dict, rec: ExamRecord, resolved) -> Field:
+    """Which fee each printed amount is, read from the document the fee field cites.
+
+    A notice that charges an application processing fee and a separate examination fee
+    states two amounts with two names; a reading that keeps only "200" loses the second fee
+    and the relationship between them. Only amounts the document itself names as a fee type
+    are added, each with its own sentence as evidence -- nothing is summed, and a pay scale
+    or a recounting charge the reader also saw is not promoted into the application fee.
+    """
+    if got is None or not got.usable or not isinstance(got.value, dict) or not got.citation:
+        return got
+    document = loaded.get(got.citation.url)
+    text = document.all_text() if document is not None and hasattr(document, 'all_text') else ''
+    if not text:
+        return got
+    src_doc = SourceDocument(id=got.citation.url, url=got.citation.url, kind=SourceKind.OTHER_OFFICIAL,
+                             title=got.citation.document_title, authority=resolved.authority.name,
+                             exam_id=rec.exam_id)
+    try:
+        rules = D_APPLICATION.extract_fees(src_doc, text)
+    except Exception as exc:                      # noqa: BLE001 - reported, not hidden
+        rec.note(f'fee components: extract_fees failed on {got.citation.url}: {exc!r}')
+        return got
+    components, seen = [], set()
+    for r in rules:
+        if not (r.fee_type and r.amount.has_value and r.amount.status is SchemaStatus.VERIFIED
+                and r.scope.is_global and r.amount.evidence):
+            continue
+        key = (r.fee_type, float(r.amount.value))
+        if key in seen:
+            continue
+        seen.add(key)
+        components.append({'feeType': r.fee_type, 'label': _FEE_TYPE_LABEL.get(r.fee_type, r.fee_type),
+                           'amount': float(r.amount.value), 'currency': r.currency or 'INR',
+                           'evidenceSpan': r.amount.evidence[0].span})
+    if not components:
+        return got
+    value = dict(got.value, components=components)
+    rec.note(f'fee: {len(components)} named fee component(s) read from the cited document: '
+             + ', '.join(f"{c['label']} {c['amount']:g}" for c in components))
+    return Field(name='fee', status=got.status, value=value, citation=got.citation, note=got.note)
 
 
 def _dispatch_domain_extraction_raw(
@@ -410,6 +545,16 @@ def _dispatch_domain_extraction_raw(
                                         clause='Exam Pattern',
                                         excerpt=getattr(pat.stages[0], 'name', 'Pattern') or 'Scheme',
                                         verified_date=_today())
+                        # FOUND means a stage was read. A tree whose roots are only headings
+                        # or held rows is kept with its evidence, for a person to confirm.
+                        if not any(s.level is D_PATTERN.PatternLevel.STAGE
+                                   and s.status is SchemaStatus.VERIFIED for s in pat.stages):
+                            return Field.needs_review(
+                                'examPattern', tree,
+                                'no stage of the examination was read with confidence: '
+                                + '; '.join(f'"{s.name}" is a {s.level.value.lower()} '
+                                            f'({s.status.value})' for s in pat.stages[:4]),
+                                cite)
                         return Field.found('examPattern', tree, cite)
             except Exception as exc:
                 rec.note(f'extract_pattern failed on {doc.url}: {exc!r}')
@@ -886,7 +1031,9 @@ def _dispatch_domain_extraction_raw(
                     modes = list(unscoped.accepted_modes.value) if unscoped.accepted_modes.has_value else []
                     fee_obj = {
                         'amount': unscoped.amount.value if unscoped.amount.has_value else 0,
-                        'amounts': [f.amount.value for f in fees if f.amount.has_value],
+                        # As printed, the shape the semantic and legacy readers emit and the
+                        # frontend's `ApplicationFeeDetails.amounts` declares: 100, not 100.0.
+                        'amounts': [_printed_amount(f.amount.value) for f in fees if f.amount.has_value],
                         'exemptions': ', '.join(exemptions),
                         'acceptedModes': modes,
                         'rules': [{'scope': str(f.scope), 'amount': f.amount.value, 'isExempt': f.is_exempt.value} for f in fees]
@@ -922,13 +1069,30 @@ def _dispatch_domain_extraction_raw(
             try:
                 exemptions = D_APPLICATION.extract_fee_exemptions(src_doc, text)
                 if exemptions:
-                    cite = Citation(document_title=doc.title, url=doc.url, page=1, clause='Fee Exemptions',
+                    cite = Citation(document_title=doc.title, url=doc.url,
+                                    page=_page_of(document, exemptions[0]['evidenceSpan']), clause='Fee Exemptions',
                                     excerpt=exemptions[0]['evidenceSpan'] or exemptions[0]['category'],
                                     verified_date=_today())
                     return Field.found('feeExemptions', exemptions, cite)
             except Exception as exc:
                 rec.note(f'extract_fee_exemptions failed on {doc.url}: {exc!r}')
 
+        # Not finding a structured exemption is not the authority publishing none. Where any
+        # document read for this field states an exemption in words, the reading is held for
+        # review with that sentence; only a document set with no such wording at all is
+        # evidence that no exemption was published.
+        for doc in candidate_docs:
+            document = loaded[doc.url]
+            text = document.all_text() if hasattr(document, 'all_text') else ''
+            stated = D_APPLICATION.exemption_wording(text)
+            if stated:
+                cite = Citation(document_title=doc.title, url=doc.url, page=_page_of(document, stated),
+                                clause='Fee Exemptions', excerpt=stated[:400], verified_date=_today())
+                return Field.needs_review(
+                    'feeExemptions', [{'category': '', 'isExempt': True, 'evidenceSpan': stated[:400],
+                                       'status': 'NEEDS_REVIEW'}],
+                    'the document states a fee exemption, but the group it applies to could not be '
+                    'read with confidence; the sentence is kept for a person to confirm', cite)
         return Field.not_published('feeExemptions', 'No fee exemptions published in official document')
 
     elif cf.name == 'requiredDocuments':
@@ -1298,6 +1462,8 @@ def build(exam_query: str = '', *, year: str = '',
                                 cf, sources, loaded, rec, resolved, identity, target)
                             if got is not None:
                                 rec.set(got)
+
+    enforce_semantic_states(rec)
 
     # A field that was searched for on the authority's own domain and is still unread has been
     # through every acquisition path this engine has: that is "no applicable source found after

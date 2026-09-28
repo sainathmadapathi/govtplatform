@@ -487,6 +487,76 @@ Section-III: Computer Knowledge Test 20 20*3 = 60 15 Minutes
     check('and its raw text is kept for a person to read', bool(row.remarks.note), True)
 
 
+# ================================================== X. headings are not stages
+#: The shape a flattened annexure takes when one scheme table holds two stages: the row
+#: headings name the stages, the duration "2 ½" splits into a cell of its own, and a topic
+#: list inside a paper carries years that read like marks.
+ONE_TABLE_TWO_STAGES = """
+ANNEXURE-II
+SCHEME OF EXAMINATION
+SUBJECT DURATION
+(HOURS)
+MAXIMUM
+MARKS
+Preliminary Test
+General Aptitude
+(Objective Type) 120 Questions
+2 ½ 120
+Written Examination (Main)
+Paper-I Regional History
+1. The region (1801 to 1899 A.D)
+3 150
+Paper-II Public Administration
+3 150
+TOTAL MARKS: 300
+"""
+
+
+def test_x_a_scheme_heading_over_several_stages_is_a_heading() -> None:
+    pattern = read(ONE_TABLE_TWO_STAGES)
+    stages = [s for s in pattern.stages if s.level is PatternLevel.STAGE]
+    check('X: no stage is invented from the heading', stages, [])
+    heading = next((s for s in pattern.stages if 'SCHEME' in s.name.upper()), None)
+    check('X: the heading is kept, as a heading', heading.level if heading else None,
+          PatternLevel.HEADING)
+    check('X: and held for review', heading.status if heading else None, Status.NEEDS_REVIEW)
+    verified = [(n.name, f) for n in pattern.walk() for f in ('questions', 'marks', 'duration_minutes')
+                if getattr(n, f).has_value and getattr(n, f).status is Status.VERIFIED]
+    check('X: no figure read from the flattened table is published as verified', verified, [])
+
+
+def test_x_a_heading_over_labelled_stages_stays_out() -> None:
+    pattern = read(TWO_STAGES)
+    check('X: labelled stages are still stages',
+          [s.level for s in pattern.stages], [PatternLevel.STAGE, PatternLevel.STAGE])
+
+
+def test_x_a_wrapped_heading_tail_is_not_a_stage() -> None:
+    text = SINGLE_STAGE + ('\nPARA-11: RESOLVING OBJECTIONS AND VALUATION OF\n'
+                           'DESCRIPTIVE TYPE EXAMINATION FOR WRITTEN (MAINS):\n'
+                           '11.1 The question paper is set in English and translated in to '
+                           'Hindi language.\n')
+    pattern = read(text)
+    check('X: the tail of a wrapped heading is not a stage',
+          any('DESCRIPTIVE' in (s.name or '').upper() for s in pattern.stages), False)
+    check('X: the real stage stays', len(pattern.stages), 1)
+
+
+def test_x_a_stage_named_inside_the_syllabus_is_not_a_stage() -> None:
+    text = SINGLE_STAGE + ('\nSYLLABUS\nGENERAL STUDIES\n(PRELIMINARY TEST)\n'
+                           '1. Current Affairs.\n2. History of the region.\n')
+    pattern = read(text)
+    check('X: a syllabus sub-heading is not a stage of the scheme',
+          any('PRELIMINARY' in (s.name or '').upper() for s in pattern.stages), False)
+
+
+def test_x_an_interview_heading_alone_is_still_a_stage() -> None:
+    pattern = read(SINGLE_STAGE + '\nPhase-III: Interview\n'
+                   'Candidates who qualify will be called for it.\n')
+    check('X: a bare labelled stage is not demoted',
+          [s.level for s in pattern.stages if 'Interview' in s.name], [PatternLevel.STAGE])
+
+
 def test_no_exam_is_named_in_the_extractor() -> None:
     import io
     import re
@@ -525,6 +595,11 @@ def main() -> int:
                test_v_a_field_the_authority_did_not_print_is_absent,
                test_w_one_exam_s_pattern_cannot_reach_another,
                test_merged_cells_are_held_for_review_not_guessed,
+               test_x_a_scheme_heading_over_several_stages_is_a_heading,
+               test_x_a_heading_over_labelled_stages_stays_out,
+               test_x_a_wrapped_heading_tail_is_not_a_stage,
+               test_x_a_stage_named_inside_the_syllabus_is_not_a_stage,
+               test_x_an_interview_heading_alone_is_still_a_stage,
                test_no_exam_is_named_in_the_extractor):
         fn()
     if _FAILURES:

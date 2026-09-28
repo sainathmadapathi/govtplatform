@@ -4284,7 +4284,7 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
       const published = (exam.ageRelaxations || []).find(entry =>
         new RegExp(cat, 'i').test(entry.category));
       if (published && published.status === 'NOT_PUBLISHED') return 0;
-      if (published && typeof published.years === 'number') return published.years;
+      if (published && published.status === 'VERIFIED' && typeof published.years === 'number') return published.years;
       const m = ageCard && new RegExp(`${cat}[^.;]*?(\\d+) years`, 'i').exec(ageCard.body);
       return m ? Number(m[1]) : null;
     };
@@ -4463,7 +4463,9 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
       : /\b(last date|deadline|closing|close|apply by|fill)/.test(q) ? ['APPLICATION_CLOSE']
       : /\bnotification|notice out|when will .* (come|release)/.test(q) ? ['NOTIFICATION']
       : [];
-    const chosen = wanted.length > 0 ? live.filter(d => wanted.includes(d.type)) : [];
+    // A date whose own evidence named no stage is not the answer to "when is prelims?".
+    const chosen = wanted.length > 0
+      ? live.filter(d => wanted.includes(d.type) && d.stageAssociation !== 'NEEDS_REVIEW') : [];
     const fmt = (d: ImportantDate) => `• ${d.label}: ${d.dateTimeStr}${d.isTentative ? ' (tentative)' : ''}`;
     const close = dateOfType('APPLICATION_CLOSE', exam);
     const superseded = exam.dates.filter(d => d.status === 'SUPERSEDED');
@@ -13153,7 +13155,14 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
                   <button className="btn btn-outline" onClick={() => onOpenProvenanceModal(guide.fee!.provenance!)} style={{ fontSize: '0.75rem', padding: '4px 10px' }}>Sourced Clause</button>
                 )}
               </div>
-              {guide.fee.amounts.length > 0 && (
+              {guide.fee.rules.some(r => r.feeType) ? (
+                // Each fee under the name the notice gave it; never one merged figure.
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                  {guide.fee.rules.filter(r => r.feeType).map((r, i) => (
+                    <div key={i} style={{ fontSize: '0.95rem', color: 'var(--text-primary)', fontWeight: 700 }}>{r.scope}: Rs. {r.amount}</div>
+                  ))}
+                </div>
+              ) : guide.fee.amounts.length > 0 && (
                 <div style={{ fontSize: '0.95rem', color: 'var(--text-primary)', fontWeight: 700 }}>Rs. {guide.fee.amounts.join(' / Rs. ')}</div>
               )}
               {guide.fee.statedAs && (
@@ -13166,7 +13175,7 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
                 <div>
                   <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '4px' }}>Exemptions the notice states</div>
                   <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                    {guide.fee.exemptions.map((ex, i) => <li key={i}>{ex.category}{ex.statedAs ? ` — “${ex.statedAs}”` : ''}</li>)}
+                    {guide.fee.exemptions.map((ex, i) => <li key={i}>{ex.category || 'Exemption stated'}{ex.exemptedFeeType ? ` (from the ${ex.exemptedFeeType === 'EXAMINATION' ? 'examination' : ex.exemptedFeeType === 'APPLICATION_PROCESSING' ? 'application processing' : 'total'} fee)` : ''}{ex.statedAs ? ` — “${ex.statedAs}”` : ''}</li>)}
                   </ul>
                 </div>
               ) : (
@@ -18570,6 +18579,18 @@ const SectionStateNote: React.FC<{ exam: Exam; sectionNum: number }> = ({ exam, 
   );
 };
 
+// The first two header tiles. A notification date is not an application opening date: each
+// milestone is shown only under its own name, so an exam with no published opening date shows
+// its notification date as "Notification Date" rather than as "Application Starts".
+export function examHeaderWindowTiles(liveDates: ImportantDate[]): { label: string; value: string }[] {
+  const tile = (d: ImportantDate | undefined, label: string) =>
+    ({ label: d && d.isTentative ? `${label} (Tentative)` : label, value: d ? d.dateTimeStr.slice(0, 10) : 'TBA' });
+  const open = liveDates.find(d => d.type === 'APPLICATION_OPEN');
+  const notice = liveDates.find(d => d.type === 'NOTIFICATION');
+  const first = open ? tile(open, 'Application Starts') : notice ? tile(notice, 'Notification Date') : tile(undefined, 'Application Starts');
+  return [first, tile(liveDates.find(d => d.type === 'APPLICATION_CLOSE'), 'Application Closes')];
+}
+
 export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
   exam,
   onBackHome,
@@ -18718,8 +18739,11 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
   // The four tiles under the exam name: the milestones a candidate looks for first.
   const liveDates = exam.dates.filter(d => d.status !== 'SUPERSEDED');
   const tileFor = (types: ImportantDate['type'][], label: string) => {
-    const d = liveDates.find(x => types.includes(x.type));
-    return { label: d && d.isTentative ? `${label} (Tentative)` : label, value: d ? d.dateTimeStr.slice(0, 10) : 'TBA' };
+    // A stage tile shows only a date whose evidence named that stage.
+    const d = liveDates.find(x => types.includes(x.type) && x.stageAssociation !== 'NEEDS_REVIEW');
+    // The authority's own name for the stage, where the date's evidence gave one.
+    const named = d?.stageAssociation === 'STATED' && d.stageLabel ? d.stageLabel : label;
+    return { label: d && d.isTentative ? `${named} (Tentative)` : named, value: d ? d.dateTimeStr.slice(0, 10) : 'TBA' };
   };
   const stageLabel = (idx: number, fallback: string) => {
     const st = exam.stages[idx];
@@ -18730,8 +18754,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
     return name.length > 26 ? fallback : name.replace(/^Civil Services \((\w+)\) Examination$/, '$1');
   };
   const tiles = [
-    tileFor(['APPLICATION_OPEN', 'NOTIFICATION'], 'Application Starts'),
-    tileFor(['APPLICATION_CLOSE'], 'Application Ends'),
+    ...examHeaderWindowTiles(liveDates),
     tileFor(['EXAM_TIER1'], stageLabel(0, 'Exam — Stage 1')),
     tileFor(['EXAM_TIER2'], stageLabel(1, 'Exam — Stage 2'))
   ];

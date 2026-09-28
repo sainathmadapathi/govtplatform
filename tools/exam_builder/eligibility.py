@@ -47,7 +47,12 @@ _CATEGORY = re.compile(
     r'other\s+backward\s+class(?:es)?(?:\s*\(?non[- ]creamy\s+layer\)?)?|'
     r'economically\s+weaker\s+sections?|scheduled\s+castes?|scheduled\s+tribes?|'
     r'ex-?servicemen|serving\s+defence\s+personnel|widows?|divorced\s+women|'
-    r'departmental\s+candidates?|transgender|pwbd|pwd|obc|ews|esm|sc\s*/\s*st|sc|st)\b',
+    r'departmental\s+candidates?|transgender|pwbd|pwd|obc|ews|esm|sc\s*/\s*st|sc|st|'
+    # The older and state-level names for the same groups, and the groups state notices
+    # relax the age for most often. Vocabulary about people, not about any authority.
+    r'physically\s+(?:handicapped|challenged)(?:\s+persons?)?|persons?\s+with\s+disabilit(?:y|ies)|'
+    r'differently[\s-]abled|(?:state|central)\s+government\s+employees|'
+    r'government\s+(?:employees|servants)|n\.\s?c\.\s?c|ncc|bcs?)\b',
     re.I)
 
 _YEARS = re.compile(r'\b(\d{1,2})\s*(?:\(\s*\w+\s*\))?\s*(?:years?|yrs?)\b', re.I)
@@ -297,6 +302,13 @@ def extract_relaxation_rows(doc: SourceDocument, text: str) -> list[AgeRelaxatio
             years = int(m.group('years'))
             if len(category) < 2 or not _CATEGORY.search(category):
                 continue
+            if category.count('(') != category.count(')'):
+                # The tail of a cell the PDF wrapped ("Instructor in N.C.C.)"), not a group.
+                continue
+            if _FIGURE_QUALIFIER.match(region[m.end():m.end() + 40].lstrip()):
+                # "3 Years & length of service": a qualified figure is the numbered-row
+                # reader's to keep with its condition, not a plain row's to publish bare.
+                continue
             # A row is a short label plus a figure. A sentence that happens to end in
             # "N years" is not a row.
             if len(category.split()) > 6:
@@ -316,6 +328,91 @@ def extract_relaxation_rows(doc: SourceDocument, text: str) -> list[AgeRelaxatio
     return out
 
 
+#: A numbered row of a relaxation table: "4. SC/ST/BCs & EWS 5 Years".
+#: The serial may carry a dot or not ("4." / "4"), and may stand alone on its line with the
+#: cell text on the next -- so a row is recognised by its number continuing the sequence.
+_ITEM_START = re.compile(r'^\s*(\d{1,2})\s*[.)]?(?:\s+\S.*)?\s*$')
+#: Where a relaxation table stops: a note, the next clause, a page break.
+_TABLE_END = re.compile(r'^\s*(?:note\b|n\.\s?b\.|\d{1,2}\.\d{1,2}\b|para\b|=====)', re.I)
+#: A printed figure that is the most a group can get, or a figure with a part the candidate's
+#: own record decides ("3 years & length of service rendered"). Kept as printed and held for
+#: review: adding the bare number to an age limit would state a rule the notice did not.
+_FIGURE_QUALIFIER = re.compile(r'^(?:&|and\b|plus\b|\+|based\b|depending\b|in\s+addition\b|'
+                               r'subject\b|equal\s+to\b|after\s+deduct\w*)', re.I)
+
+
+def _group_key(label: str) -> str:
+    # One group however the table decorated it: "Ex-Servicemen (ESM)" and "Ex-Servicemen".
+    return re.sub(r'[^a-z0-9]', '', re.sub(r'\([^()]*\)', '', label.lower()))
+_ITEM_FIGURE = re.compile(r'(?P<upto>\b(?:up\s*to|upto|maximum\s+of|not\s+exceeding)\s+)?'
+                          r'(?P<n>\d{1,2})\s*(?:years?|yrs?)\b', re.I)
+
+
+def extract_relaxation_items(doc: SourceDocument, text: str) -> list[AgeRelaxation]:
+    """Numbered rows of a relaxation table whose cells the PDF wrapped over several lines.
+
+    "1. State Government / Employees / (Employees of ... not eligible). / Up to 5
+    Years based on the length of / regular service." is one row: a group, an exclusion and a
+    figure that depends on service. The row is reassembled from its number to the next
+    number, the group is what precedes the figure, and anything that qualifies the figure is
+    kept with it as the condition. A plain figure is VERIFIED; a qualified one is kept as
+    printed and NEEDS_REVIEW, so it is shown to the candidate and never added to a limit.
+    """
+    out: list[AgeRelaxation] = []
+    seen: set[str] = set()
+    for region in _relaxation_regions(text):
+        items: list[list[str]] = []
+        for line in region.split('\n'):
+            start = _ITEM_START.match(line)
+            if start and int(start.group(1)) == len(items) + 1:
+                items.append([line.strip()])
+            elif items:
+                if _TABLE_END.match(line):
+                    break
+                if line.strip() and not line.strip().isdigit():   # a page number is not a cell
+                    items[-1].append(line.strip())
+        for lines in items:
+            row = normalise_ws(' '.join(lines))
+            body = re.sub(r'^\d{1,2}\s*[.)]?\s*', '', row)
+            m = _ITEM_FIGURE.search(body)
+            if not m:
+                continue
+            head = body[:m.start()].strip(' .-:')
+            exclusion = re.search(r'\(([^()]{3,160})\)\s*\.?$', head)
+            category = normalise_ws(head[:exclusion.start()] if exclusion else head).strip(' .-')
+            # Serials the flattened table left in front of the cell ("2 3 1. State ...").
+            category = re.sub(r'^(?:\d{1,2}\s*[.)]?\s+)+', '', category).strip(' .-')
+            if not category or not _CATEGORY.search(category) or len(category.split()) > 8:
+                continue
+            key = category.lower()
+            if key in seen:
+                continue
+            ev = _evidence(row, doc, text, reading=f'age relaxation: {category}')
+            if ev is None:
+                continue
+            seen.add(key)
+            rest = normalise_ws(body[m.end():])
+            qualified = bool(m.group('upto')) or bool(rest and _FIGURE_QUALIFIER.match(rest))
+            relaxation = AgeRelaxation(
+                category_label=category,
+                scope=Scope([ScopeRef(ScopeKind.CATEGORY, _slug(category), category)]))
+            if qualified:
+                relaxation.years = Fact.needs_review(
+                    float(m.group('n')),
+                    'the notice qualifies this figure (a maximum, or a part that depends on the '
+                    "candidate's own service); it is shown as printed and not added to the limit", ev)
+            else:
+                relaxation.years = Fact.verified(float(m.group('n')), ev)
+            printed = normalise_ws(body[m.start():])
+            if exclusion or qualified:
+                condition = printed if qualified else ''
+                if exclusion:
+                    condition = normalise_ws(f'{condition} ({exclusion.group(1)})')
+                relaxation.conditions = Fact.verified(condition.strip(), ev)
+            out.append(relaxation)
+    return out
+
+
 def extract_relaxations(doc: SourceDocument, text: str, *,
                         posts: list[Post] | None = None) -> list[AgeRelaxation]:
     """Per-category age relaxation, exactly as the authority states it.
@@ -331,6 +428,10 @@ def extract_relaxations(doc: SourceDocument, text: str, *,
     # Tables first: that is how authorities actually publish this, and a row carries the
     # category and the figure together.
     out: list[AgeRelaxation] = extract_relaxation_rows(doc, text)
+    tabled = {_group_key(r.category_label) for r in out}
+    # Numbered rows whose cells wrapped over several lines, for the groups a one-line row
+    # did not already carry.
+    out += [r for r in extract_relaxation_items(doc, text) if _group_key(r.category_label) not in tabled]
     seen: set[tuple[str, str]] = {(r.category_label.lower(),
                                    f'[{int(r.years.value)}]False') for r in out
                                   if r.years.has_value}
@@ -404,7 +505,14 @@ def extract_relaxations(doc: SourceDocument, text: str, *,
                 relaxation.conditions = Fact.verified(
                     normalise_ws(condition.group(1)), ev)
             out.append(relaxation)
-    return out
+    # A group the table gives a figure for is not also listed as "stated without a figure"
+    # because a later sentence mentions its relaxation in words.
+    def norm(label: str) -> str:
+        return re.sub(r'[^a-z0-9]', '', label.lower())
+    figured = {norm(r.category_label) for r in out
+               if r.years.has_value or r.absolute_maximum.has_value}
+    return [r for r in out if r.years.has_value or r.absolute_maximum.has_value
+            or r.years.status is Status.NOT_PUBLISHED or norm(r.category_label) not in figured]
 
 
 # =============================================================== qualification
@@ -645,6 +753,100 @@ def is_document_not_post(name: str) -> bool:
     can never reach a candidate as a list of posts whichever reader happened to produce it."""
     n = normalise_ws(name or '')
     return bool(n) and bool(_DOCUMENT_ROW.match(n) or _DOCUMENT_WORD.search(n))
+
+
+#: What a post is called, as distinct from a document: the head nouns of public-service
+#: designations. Ordinary English for jobs and ranks; no authority's post list.
+_POST_NOUN = re.compile(
+    r'\b(?:officers?|assistants?|inspectors?|commissioners?|collectors?|superintendents?|'
+    r'clerks?|engineers?|managers?|registrars?|directors?|secretar(?:y|ies)|auditors?|'
+    r'accountants?|analysts?|investigators?|lecturers?|teachers?|professors?|constables?|'
+    r'stenographers?|typists?|translators?|librarians?|executives?|controllers?|examiners?|'
+    r'surveyors?|overseers?|supervisors?|wardens?|jailors?|pharmacists?|nurses?|'
+    r'scientists?|statisticians?|draughtsm[ae]n|operators?|attendants?|drivers?)\b', re.I)
+
+#: The neighbourhood of a table of posts: its headers name what a post table holds.
+_POST_TABLE_CONTEXT = re.compile(
+    r'\bname\s+of\s+(?:the\s+)?(?:posts?|services?)\b|\bpost\s+code\b|\bno\.?\s+of\s+(?:posts|vacancies)\b|'
+    r'\bvacanc\w+\b|\bscale\s+of\s+pay\b|\bpay\s+(?:level|scale|band|matrix)\b|\bcadre\b|'
+    r'\beducational\s+qualifications?\b', re.I)
+
+#: The neighbourhood of a checklist: what a candidate is told to do with the items.
+_DOCUMENT_CONTEXT = re.compile(
+    r'\b(?:upload\w*|enclos\w*|attach\w*|furnish\w*|to\s+be\s+(?:produced|submitted)|'
+    r'must\s+be\s+(?:produced|submitted)|at\s+the\s+time\s+of\s+(?:certificate\s+)?verification)\b|'
+    + _NOT_A_POST_TABLE.pattern, re.I)
+
+
+@dataclass
+class PostVerdict:
+    """What a list of post candidates is, and what each candidate is."""
+
+    #: POSTS | DOCUMENTS | MIXED | AMBIGUOUS
+    kind: str
+    posts: list[str]
+    documents: list[str]
+    ambiguous: list[str]
+    reasons: list[str]
+
+
+def classify_post_candidates(names: list[str], *, context: str = '') -> PostVerdict:
+    """Decide whether a reader's post candidates are posts, from several signals at once.
+
+    Each candidate is weighed on its own words (a document's name -- "certificate", "hall
+    ticket", "proof of" -- against a designation's head noun -- "officer", "inspector") and
+    on its neighbourhood (a checklist says upload / enclose / produce at verification; a post
+    table's headers say name of the post / post code / vacancies / scale of pay). A candidate
+    whose signals point one way is that; one whose signals tie is ambiguous.
+
+    The list as a whole:
+      * all posts (or posts plus candidates nothing speaks against)   -> POSTS
+      * documents and nothing else                                   -> DOCUMENTS
+      * documents and posts, every candidate decided                 -> MIXED
+      * documents alongside candidates that could not be decided     -> AMBIGUOUS
+    A caller publishes posts only for POSTS and MIXED; the others are held for review.
+    """
+    doc_ctx = bool(_DOCUMENT_CONTEXT.search(context or ''))
+    post_ctx = bool(_POST_TABLE_CONTEXT.search(context or ''))
+    posts, documents, ambiguous, reasons = [], [], [], []
+    for raw in names:
+        name = normalise_ws(raw or '')
+        if not name:
+            continue
+        own_d = 2 if is_document_not_post(name) else 0
+        own_p = 2 if _POST_NOUN.search(name) else 0
+        d = own_d + (1 if doc_ctx else 0)
+        p = own_p + (1 if post_ctx else 0)
+        if not own_d and not own_p and not post_ctx:
+            # Nothing in the name speaks either way, and no post table surrounds it: the
+            # neighbourhood alone does not turn a name into a document.
+            ambiguous.append(name)
+        elif d > p:
+            documents.append(name)
+        elif p > d:
+            posts.append(name)
+        else:
+            ambiguous.append(name)
+    if doc_ctx:
+        reasons.append('the surrounding text tells candidates to produce or upload the items')
+    if post_ctx:
+        reasons.append('the surrounding text carries post-table headers')
+    if documents and not posts and not ambiguous:
+        kind = 'DOCUMENTS'
+    elif documents and ambiguous:
+        kind = 'AMBIGUOUS'
+    elif documents and posts:
+        kind = 'MIXED'
+    elif ambiguous and doc_ctx and not posts:
+        # Nothing names a post, and the neighbourhood is a checklist.
+        kind = 'AMBIGUOUS'
+    else:
+        # Posts, or candidates from a post reader with nothing speaking against them --
+        # which is what every post list without a designation noun used to be.
+        kind = 'POSTS'
+        posts, ambiguous = posts + ambiguous, []
+    return PostVerdict(kind=kind, posts=posts, documents=documents, ambiguous=ambiguous,
+                       reasons=reasons)
 
 
 def vet_post_names(names: list[str]) -> tuple[list[str], list[str]]:

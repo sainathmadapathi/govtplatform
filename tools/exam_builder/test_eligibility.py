@@ -354,6 +354,99 @@ def test_s_the_frontend_lookup_needs_the_exam() -> None:
           'const published = exam?.ageRelaxations;' in services, True)
 
 
+# ============================================ T. relaxation tables the PDF wrapped
+WRAPPED_RELAXATION = """6.6 Age Relaxations: The upper age limit prescribed above is however further
+relaxable in the following cases:
+Sl.
+No. Category of candidates Relaxation of age permissible
+1. State Government
+Employees
+(Employees of Corporations are not eligible).
+Up to 5 Years based on the length of
+regular service.
+2. Ex-Servicemen 3 years & length of service
+rendered in the armed forces.
+3. SC/ST/BCs & EWS 5 Years
+4. Physically Handicapped persons 10Years
+Note: Provided that the age after deductions shall not exceed the maximum.
+"""
+
+
+def test_t_a_wrapped_relaxation_table_is_read_row_by_row() -> None:
+    got = {r.category_label: r for r in relax(WRAPPED_RELAXATION)}
+    check('T: a plain figure is the printed figure', got['SC/ST/BCs & EWS'].years.value, 5.0)
+    check('T: and verified', got['SC/ST/BCs & EWS'].years.status, Status.VERIFIED)
+    check('T: an older name for a disability group is read', got['Physically Handicapped persons'].years.value, 10.0)
+    esm = got.get('Ex-Servicemen')
+    check('T: a figure with a service-dependent part is kept as printed', esm.years.value if esm else None, 3.0)
+    check('T: but held for review, never added to a limit', esm.years.status if esm else None, Status.NEEDS_REVIEW)
+    check('T: with the qualification as its condition',
+          'length of service' in (esm.conditions.value if esm and esm.conditions.has_value else ''), True)
+    emp = got.get('State Government Employees')
+    check('T: an "up to" figure is a maximum, held for review', emp.years.status if emp else None, Status.NEEDS_REVIEW)
+    check('T: and its exclusion is kept', 'not eligible' in (emp.conditions.value if emp else ''), True)
+    check('T: no group appears twice', len(got), len(relax(WRAPPED_RELAXATION)))
+
+
+def test_t_serials_without_dots_and_on_their_own_line() -> None:
+    text = ('6.4 Age Relaxations: The upper age limit prescribed above is further relaxable in the\n'
+            'following cases:\nSl.\nNo. Category of candidates Relaxation of age permissible\n'
+            '1 SC/ST/BCs & EWS 5 Years\n2 Physically Handicapped persons 10 Years\n'
+            '3\nEx-Servicemen 3 years & length of service rendered\nin the armed forces.\n'
+            'Note: Provided that the age shall not exceed the maximum.\n')
+    got = {r.category_label: r for r in relax(text)}
+    check('T: an undotted serial is a row', got['SC/ST/BCs & EWS'].years.value if 'SC/ST/BCs & EWS' in got else None, 5.0)
+    esm = got.get('Ex-Servicemen')
+    check('T: a serial alone on its line starts the row below it', esm.years.value if esm else None, 3.0)
+    check('T: and its qualified figure is held for review', esm.years.status if esm else None, Status.NEEDS_REVIEW)
+    check('T: no serial is read into a group name', any(k[:1].isdigit() for k in got), False)
+
+
+def test_t_a_group_named_without_a_figure_gets_no_figure() -> None:
+    items = relax('Age relaxation is admissible to Ex-servicemen as per the rules in force.')
+    check('T: the group is kept', [r.category_label for r in items], ['Ex-servicemen'])
+    check('T: with no number', items[0].years.value if items else 'x', None)
+    check('T: and held for review', items[0].years.status if items else None, Status.NEEDS_REVIEW)
+
+
+def test_t_no_relaxation_text_no_relaxation() -> None:
+    check('T: silence is not a default table', relax('Candidates must be 21 to 30 years old.'), [])
+
+
+# ======================================================= U. posts and documents
+def test_u_a_document_list_is_not_posts() -> None:
+    from .eligibility import classify_post_candidates
+    v = classify_post_candidates(['PDF Application form', 'Hall Ticket', 'Proof of Educational Qualifications',
+                                  'Non-Creamy Layer Certificate for BCs', 'No Objection Certificate from Employer'],
+                                 context='The following certificates / documents must be submitted at the time of verification')
+    check('U: a checklist is documents', v.kind, 'DOCUMENTS')
+    check('U: and nothing is published as a post', v.posts, [])
+
+
+def test_u_a_post_table_is_posts() -> None:
+    from .eligibility import classify_post_candidates
+    v = classify_post_candidates(['Deputy Collector', 'Commercial Tax Officer', 'District Registrar'],
+                                 context='Post Code No. Name of the Post Educational Qualifications')
+    check('U: a post table is posts', v.kind, 'POSTS')
+    check('U: every one of them', len(v.posts), 3)
+
+
+def test_u_a_mixed_list_is_separated() -> None:
+    from .eligibility import classify_post_candidates
+    v = classify_post_candidates(['Assistant Engineer', 'Hall Ticket', 'Junior Accounts Officer'])
+    check('U: mixed', v.kind, 'MIXED')
+    check('U: the posts kept', v.posts, ['Assistant Engineer', 'Junior Accounts Officer'])
+    check('U: the document named', v.documents, ['Hall Ticket'])
+
+
+def test_u_an_undecidable_list_is_held() -> None:
+    from .eligibility import classify_post_candidates
+    v = classify_post_candidates(['Lab Technician', 'Data Entry', 'Caste Certificate'])
+    check('U: documents beside undecided names are held for review', v.kind, 'AMBIGUOUS')
+    w = classify_post_candidates(['Lab Technician', 'Data Entry'], context='Candidates must upload the following')
+    check('U: undecided names in a checklist are held too', w.kind, 'AMBIGUOUS')
+
+
 def main() -> int:
     for fn in (test_a_exam_wide_age, test_a_table_cell_band, test_b_post_specific_age,
                test_c_dob_range_is_kept_as_printed, test_d_cutoff_date,
@@ -374,7 +467,13 @@ def main() -> int:
                test_r_no_cross_exam_contamination,
                test_s_no_universal_relaxation_without_evidence,
                test_s_the_extractor_carries_no_default_table,
-               test_s_the_frontend_lookup_needs_the_exam):
+               test_s_the_frontend_lookup_needs_the_exam,
+               test_t_a_wrapped_relaxation_table_is_read_row_by_row,
+               test_t_serials_without_dots_and_on_their_own_line,
+               test_t_a_group_named_without_a_figure_gets_no_figure,
+               test_t_no_relaxation_text_no_relaxation,
+               test_u_a_document_list_is_not_posts, test_u_a_post_table_is_posts,
+               test_u_a_mixed_list_is_separated, test_u_an_undecidable_list_is_held):
         fn()
     if _FAILURES:
         print(f'{len(_FAILURES)} FAILURE(S):')

@@ -148,5 +148,22 @@ class TestRealWorldRematerialization(unittest.TestCase):
             self.assertNotIn(foreign, blob)
 
 
+class TestStoredRecordSemanticStates(unittest.TestCase):
+    """The stored record predates the semantic-state check; applying it to that record must
+    turn the two states its own evidence contradicts into NEEDS_REVIEW, and touch nothing else."""
+
+    def test_contradicted_states_become_needs_review(self):
+        from .build import enforce_semantic_states
+        rec = M.record_from_snapshot(_load()['record'])
+        before = {n: f.status for n, f in rec.fields.items()}
+        changed = enforce_semantic_states(rec)
+        self.assertIs(rec.fields['posts'].status, Status.NEEDS_REVIEW)
+        self.assertIs(rec.fields['feeExemptions'].status, Status.NEEDS_REVIEW)
+        self.assertIn('exempted', rec.fields['feeExemptions'].citation.excerpt)
+        self.assertEqual(len(changed), 2, changed)
+        after = {n: f.status for n, f in rec.fields.items()}
+        self.assertEqual({n for n in before if before[n] is not after[n]}, {'posts', 'feeExemptions'})
+
+
 if __name__ == '__main__':
     unittest.main()

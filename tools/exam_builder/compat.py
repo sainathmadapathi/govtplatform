@@ -294,19 +294,59 @@ _KIND_TO_LEGACY_TYPE = {
 }
 
 
+#: A stage label that names the first stage of an examination, in words or by number.
+_FIRST_STAGE = re.compile(
+    r'\b(?:preliminary|prelims?|screening)\b|'
+    r'\b(?:tier|phase|stage)\s*[-–—:]?\s*(?:1|i|a|one|first)\b', re.I)
+#: A stage label that names a stage after the first.
+_LATER_STAGE = re.compile(
+    r'\bmains?\b|'
+    r'\b(?:tier|phase|stage)\s*[-–—:]?\s*(?:[2-9]|ii|iii|iv|v|b|c|d|two|three|second|third)\b', re.I)
+
+
+def exam_stage_of(stage_label: str) -> str:
+    """FIRST, LATER or '' -- which stage an examination date's own label names.
+
+    Only stage vocabulary counts. A paper, part, session or shift number says which paper of
+    *some* stage is sat that day, not which stage; and a date with no label names none.
+    """
+    label = stage_label or ''
+    if _LATER_STAGE.search(label):
+        return 'LATER'
+    if _FIRST_STAGE.search(label):
+        return 'FIRST'
+    return ''
+
+
 def legacy_date_type(kind: str, *, stage_label: str = '') -> str:
     """The nearest type the existing union has for this event.
 
     Lossy by construction, and the loss is recorded rather than hidden: the milestone's own
     `kind` and label carry the authority's meaning, and the label is what the timeline
-    actually shows. A stage-scoped examination maps onto the second tier where the authority
-    numbered it beyond the first, which is the most the closed union can express.
+    actually shows. An examination whose stage is named maps onto the tier that stage is; a
+    later stage is never mapped onto the first merely because it is an examination date.
+    Where no stage is named the row keeps the historical first-tier type, and
+    `exam_stage_association` marks that association NEEDS_REVIEW.
     """
     mapped = _KIND_TO_LEGACY_TYPE.get(kind, 'NOTIFICATION')
     if kind == 'EXAM' and stage_label:
+        stage = exam_stage_of(stage_label)
+        if stage == 'LATER':
+            return 'EXAM_TIER2'
+        if stage == 'FIRST':
+            return 'EXAM_TIER1'
+        # A paper-numbered row, as before: "Paper II" sits after "Paper I".
         if re.search(r'\b(?:2|ii|b)\b', stage_label, re.I):
             return 'EXAM_TIER2'
     return mapped
+
+
+def exam_stage_association(kind: str, stage_label: str = '') -> str:
+    """'STATED' where an examination date's stage is named by its own evidence, otherwise
+    'NEEDS_REVIEW'; '' for a milestone that is not an examination."""
+    if kind != 'EXAM':
+        return ''
+    return 'STATED' if exam_stage_of(stage_label) else 'NEEDS_REVIEW'
 
 
 def important_dates(milestones, *, exam_id: str, timezone: str = 'IST') -> list[dict]:
@@ -349,19 +389,54 @@ def important_dates(milestones, *, exam_id: str, timezone: str = 'IST') -> list[
             fact, prov_id=f'prov-{milestone.id}', superseded=superseded)
         if provenance is None:
             continue
+        tentative = bool(milestone.is_tentative
+                         or milestone.precision is not DatePrecision.DAY
+                         or milestone.status is _Status.NEEDS_REVIEW)
+        status = 'SUPERSEDED' if superseded else 'AVAILABLE'
 
-        rows.append({
+        # A window's opening is a date of its own. "Applications From 23/02 To 14/03" used to
+        # become one APPLICATION_CLOSE row, and the opening -- in the very same evidence span
+        # -- was lost. The opening row cites the same span, which contains both ends.
+        if (_KIND_TO_LEGACY_TYPE.get(milestone.kind) == 'APPLICATION_CLOSE'
+                and milestone.kind != 'APPLICATION_END'
+                and milestone.starts_at.has_value and milestone.ends_at.has_value
+                and str(milestone.starts_at.value) != str(milestone.ends_at.value)):
+            opened = str(milestone.starts_at.value)
+            open_key = ('APPLICATION_OPEN', opened)
+            open_prov = to_legacy_provenance(
+                milestone.starts_at, prov_id=f'prov-{milestone.id}-open', superseded=superseded)
+            if open_key not in emitted and open_prov is not None:
+                emitted.add(open_key)
+                rows.append({
+                    'id': f'{milestone.id or f"date-{exam_id}-{index}"}-open',
+                    'type': 'APPLICATION_OPEN',
+                    'label': milestone.label,
+                    'dateTimeStr': f'{opened} 00:00:00',
+                    'timezone': timezone,
+                    'isTentative': tentative,
+                    'status': status,
+                    'provenance': open_prov,
+                })
+
+        row = {
             'id': milestone.id or f'date-{exam_id}-{index}',
             'type': legacy_date_type(milestone.kind, stage_label=stage_refs),
             'label': milestone.label,
             'dateTimeStr': f'{shown} 00:00:00',
             'timezone': timezone,
-            'isTentative': bool(milestone.is_tentative
-                                or milestone.precision is not DatePrecision.DAY
-                                or milestone.status is _Status.NEEDS_REVIEW),
-            'status': 'SUPERSEDED' if superseded else 'AVAILABLE',
+            'isTentative': tentative,
+            'status': status,
             'provenance': provenance,
-        })
+        }
+        # Which stage an examination date belongs to is its own fact: STATED where the
+        # evidence names the stage, NEEDS_REVIEW where it does not -- the type alone cannot
+        # say which, because the union has no member for "an examination, stage unnamed".
+        association = exam_stage_association(milestone.kind, stage_refs)
+        if association:
+            row['stageAssociation'] = association
+            if stage_refs:
+                row['stageLabel'] = stage_refs
+        rows.append(row)
     return rows
 
 

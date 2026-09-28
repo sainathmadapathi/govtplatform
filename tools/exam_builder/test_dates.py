@@ -308,6 +308,91 @@ def test_the_projection_maps_open_kinds_onto_the_closed_union() -> None:
           legacy_date_type('SOMETHING_NEW'), 'NOTIFICATION')
 
 
+# ================================================ Q. windows, openings, stages
+def _rows(text: str):
+    return important_dates(milestones(text), exam_id='exam-x')
+
+
+def _by_type(rows) -> dict:
+    out: dict = {}
+    for r in rows:
+        out.setdefault(r['type'], []).append(r)
+    return out
+
+
+def test_q_a_window_yields_its_opening_and_its_closing() -> None:
+    for text in ('Date of Submission of Online\nApplications From: 03/03/2031 To:24/03/2031',
+                 'Apply online from 03.03.2031 to 24.03.2031.',
+                 'Applications are invited from 03 March 2031 up to 24 March 2031.',
+                 'Online application starts on 03/03/2031 and closes on 24/03/2031.',
+                 'Online registration begins 03.03.2031 and ends 24.03.2031.'):
+        got = _by_type(_rows(text))
+        check(f'Q: opening read from "{text[:40]}"',
+              [r['dateTimeStr'][:10] for r in got.get('APPLICATION_OPEN', [])], ['2031-03-03'])
+        check(f'Q: closing read from "{text[:40]}"',
+              [r['dateTimeStr'][:10] for r in got.get('APPLICATION_CLOSE', [])], ['2031-03-24'])
+        opened = (got.get('APPLICATION_OPEN') or [{}])[0]
+        check(f'Q: the opening cites a span carrying its own date ("{text[:30]}")',
+              '03' in (opened.get('provenance') or {}).get('excerptText', ''), True)
+
+
+def test_q_a_single_opening_is_not_a_deadline() -> None:
+    got = _by_type(_rows('Online application starts on 03/03/2031.'))
+    check('Q: an opening stated alone is the opening',
+          [r['dateTimeStr'][:10] for r in got.get('APPLICATION_OPEN', [])], ['2031-03-03'])
+    check('Q: and never the closing date', got.get('APPLICATION_CLOSE'), None)
+    got = _by_type(_rows('Last date for submission of online applications is 24.03.2031.'))
+    check('Q: a deadline stated alone is still the closing', len(got.get('APPLICATION_CLOSE', [])), 1)
+    check('Q: with no opening invented', got.get('APPLICATION_OPEN'), None)
+
+
+def test_q_the_notification_date_is_its_own_row() -> None:
+    got = _by_type(_rows('Date of Notification 19/02/2031.\n'
+                         'Applications From: 23/02/2031 To:14/03/2031'))
+    check('Q: notification kept', [r['dateTimeStr'][:10] for r in got['NOTIFICATION']], ['2031-02-19'])
+    check('Q: never standing in for the opening',
+          [r['dateTimeStr'][:10] for r in got['APPLICATION_OPEN']], ['2031-02-23'])
+
+
+def test_q_named_stages_keep_their_identity() -> None:
+    text = ('Schedule of Preliminary Test\n(Objective Type) May/June 2031\n'
+            'Schedule of Main Examination\n(Conventional Type) September/October 2031.')
+    rows = _rows(text)
+    exams = [r for r in rows if r['type'] in ('EXAM_TIER1', 'EXAM_TIER2')]
+    check('Q: two examination dates', len(exams), 2)
+    by = {r['type']: r for r in exams}
+    check('Q: the preliminary is the first stage', by.get('EXAM_TIER1', {}).get('dateTimeStr', '')[:7], '2031-06')
+    check('Q: the main examination is a later stage, not the first',
+          by.get('EXAM_TIER2', {}).get('dateTimeStr', '')[:7], '2031-10')
+    check('Q: both stated by their own evidence',
+          sorted(r.get('stageAssociation') for r in exams), ['STATED', 'STATED'])
+    check('Q: the stage words are inside the evidence span',
+          'Main Examination' in by['EXAM_TIER2']['provenance']['excerptText'], True)
+    check('Q: month-only dates stay tentative', all(r['isTentative'] for r in exams), True)
+
+
+def test_q_an_unnamed_stage_is_held_for_review() -> None:
+    rows = _rows('The examination will be held on 15 May 2031.')
+    check('Q: one exam row', len(rows), 1)
+    check('Q: kept in the historical bucket', rows[0]['type'], 'EXAM_TIER1')
+    check('Q: but its stage is not claimed', rows[0].get('stageAssociation'), 'NEEDS_REVIEW')
+    check('Q: a later stage is never mapped to the first by being an exam date',
+          legacy_date_type('EXAM', stage_label='Main Examination'), 'EXAM_TIER2')
+    check('Q: a third tier is a later stage', legacy_date_type('EXAM', stage_label='Tier III'), 'EXAM_TIER2')
+    check('Q: the preliminary is the first', legacy_date_type('EXAM', stage_label='Preliminary Test'), 'EXAM_TIER1')
+    tent = _rows('The examination is tentatively scheduled to be held on 15 May 2031.')
+    check('Q: a hedged date is tentative', tent[0]['isTentative'], True)
+    check('Q: rows that are not examinations carry no stage association',
+          [r.get('stageAssociation') for r in _rows('Date of Notification 19/02/2031.')], [None])
+
+
+def test_q_a_correction_window_named_noun_first() -> None:
+    found = by_kind(milestones('Application Edit Option From: 23/03/2031 at 10:00 A.M.\n'
+                               'To: 27/03/2031 at 5:00 P.M.'))
+    check('Q: read as a correction window', 'CORRECTION_WINDOW' in found, True)
+    check('Q: not as the application window', 'APPLICATION_WINDOW' in found, False)
+
+
 def test_only_verified_effective_dates_can_remind() -> None:
     from .schema import Fact, Milestone
     good = milestones('The examination will be held on 15 May 2026.')
@@ -364,6 +449,12 @@ def main() -> int:
         test_o_dates_in_prose, test_p_dates_in_a_numbered_notice,
         test_the_projection_leaves_undated_events_out,
         test_the_projection_maps_open_kinds_onto_the_closed_union,
+        test_q_a_window_yields_its_opening_and_its_closing,
+        test_q_a_single_opening_is_not_a_deadline,
+        test_q_the_notification_date_is_its_own_row,
+        test_q_named_stages_keep_their_identity,
+        test_q_an_unnamed_stage_is_held_for_review,
+        test_q_a_correction_window_named_noun_first,
         test_only_verified_effective_dates_can_remind,
         test_nothing_is_recorded_without_a_verbatim_span,
         test_the_extractor_names_no_authority,

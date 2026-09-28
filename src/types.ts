@@ -40,6 +40,15 @@ export interface ImportantDate {
   isTentative: boolean;
   status: 'AVAILABLE' | 'NOT_YET_ANNOUNCED' | 'SUPERSEDED';
   provenance: DataProvenance;
+  /**
+   * Examination dates only, set by the exam builder. STATED: the date's own evidence names its
+   * stage ("Schedule of Main Examination"), and `type` is that stage's tier. NEEDS_REVIEW: the
+   * evidence names no stage, so `type` is only the historical EXAM_TIER1 bucket and must not be
+   * presented as "the first stage". Absent on authored records, whose types a person assigned.
+   */
+  stageAssociation?: 'STATED' | 'NEEDS_REVIEW';
+  /** The authority's own words for the stage, where the evidence named one. */
+  stageLabel?: string;
 }
 
 export interface PostRequirement {
@@ -842,9 +851,12 @@ export interface ApplicationRequiredDocument {
 export interface ApplicationFeeDetails {
   /** Amounts exactly as printed (strings, so no rounding or currency is assumed). */
   amounts: string[];
-  rules: { scope: string; amount: string; isExempt: boolean }[];
+  /** A rule with `feeType` is one named fee the notice printed (application processing,
+   * examination, total), with its own sentence in `statedAs`. */
+  rules: { scope: string; amount: string; isExempt: boolean; feeType?: string; statedAs?: string }[];
   acceptedModes: string[];
-  exemptions: { category: string; statedAs: string; provenance?: DataProvenance }[];
+  /** `exemptedFeeType`: which fee the exemption lifts, where the notice names it. */
+  exemptions: { category: string; statedAs: string; exemptedFeeType?: string; provenance?: DataProvenance }[];
   statedAs?: string;
   provenance?: DataProvenance;
 }

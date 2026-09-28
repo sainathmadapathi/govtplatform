@@ -874,6 +874,11 @@ def _stage_regions(cur: _Cursor) -> list[tuple[int, str, str]]:
         line = raw.strip()
         if not _is_heading(line):
             continue
+        if _continues_previous(cur.lines, index):
+            # The tail of a heading the column wrapped: "... AND VALUATION OF" /
+            # "DESCRIPTIVE TYPE EXAMINATION FOR WRITTEN (MAINS):". The line names a stage
+            # only as the object of the heading above it, which is about something else.
+            continue
         labelled = _STAGE_LABELLED.search(line)
         named = _STAGE_NAMED.search(line)
         scheme = _SCHEME_HEADING.search(line)
@@ -900,6 +905,112 @@ def _stage_regions(cur: _Cursor) -> list[tuple[int, str, str]]:
         found.append((index, line, 'labelled' if labelled else
                       ('named' if named else 'scheme')))
     return found
+
+
+_DANGLING = re.compile(
+    r'\b(?:for|of|in|to|and|or|the|a|an|with|by|from|as|on|at|regarding|relating|under)\s*$',
+    re.I)
+
+
+def _continues_previous(lines: list[str], index: int) -> bool:
+    """Is this line the continuation of the line above it?
+
+    A heading or a sentence that the column wrapped leaves its first line hanging on a
+    function word; the next line finishes it and is not a heading of its own.
+    """
+    if re.match(r'^\s*(?:\(?[ivxlc]{1,5}\)|\(?[a-h]\)|[A-H][.)]|\d+(?:\.\d+)*[.)]?)\s+\S', lines[index], re.I):
+        # A list or clause marker starts a new item, whatever the line above ended with:
+        # "(ii) Stage-II: ... Papers); and" / "(iii) Stage-III: Personality Test/Interview".
+        return False
+    for back in range(index - 1, max(-1, index - 3), -1):
+        prev = lines[back].strip()
+        if prev:
+            return bool(_DANGLING.search(prev))
+    return False
+
+
+def _under_other_heading(lines: list[str], index: int, reach: int = 5) -> bool:
+    """Does this line sit directly under a heading over some other list?
+
+    "SYLLABUS" / "GENERAL STUDIES AND MENTAL ABILITY" / "(PRELIMINARY TEST)" names a stage,
+    but as the part of the syllabus that follows, not as a stage of the scheme.
+    """
+    for back in range(index - 1, max(-1, index - 1 - reach), -1):
+        prev = lines[back].strip()
+        if not prev or not _is_heading(prev) or not _is_marked(prev):
+            continue
+        if _NOT_THE_SCHEME.search(prev) and not _SCHEME_HEADING.search(prev):
+            return True
+    return False
+
+
+#: A row heading inside a scheme table that names a stage of its own: "Preliminary Test",
+#: "Written Examination (Main)". Words for a phase of a selection, not any exam's names.
+_ROW_STAGE = re.compile(
+    r'^\s*(?P<name>preliminary|prelims?|main|mains|written|screening|final|objective|'
+    r'descriptive)\b[\s\-–—]*(?:exam\w*|test)\b', re.I)
+
+
+def _stages_named_in(cur: _Cursor, start: int, end: int) -> set[str]:
+    """The distinct stages that row headings inside [start, end) name."""
+    names: set[str] = set()
+    for raw in cur.lines[start:end]:
+        line = raw.strip()
+        m = _ROW_STAGE.match(line)
+        if m and len(line.split()) <= 8 and not _IS_STATEMENT.search(line):
+            names.add(m.group('name').lower().rstrip('s'))
+    return names
+
+
+_FIGURES = ('questions', 'marks', 'duration_minutes', 'marks_per_question')
+
+
+def _hold_figures(node: PatternNode, why: str) -> None:
+    """Every figure on this node and under it becomes NEEDS_REVIEW, with the reason."""
+    for n in node.walk():
+        for name in _FIGURES:
+            fact = getattr(n, name)
+            if fact.has_value and fact.status is Status.VERIFIED:
+                fact.status = Status.NEEDS_REVIEW
+                fact.note = why
+
+
+def _classify_scheme_containers(pattern: ExamPattern, cur: _Cursor,
+                                containers: dict[str, tuple[int, int]]) -> None:
+    """A scheme heading whose table names several stages is a heading over them.
+
+    "SCHEME OF EXAMINATION" over a table with a "Preliminary Test" row block and a
+    "Written Examination (Main)" row block is the heading of two stages, not one. Which rows
+    belong to which stage is not decided here -- a flattened table does not say -- so the
+    node is kept as a HEADING with everything read under it, and every figure in it is held
+    for review: a total across two stages is nobody's total.
+    """
+    for node in pattern.stages:
+        span = containers.get(node.id)
+        if span is None:
+            continue
+        named = _stages_named_in(cur, *span)
+        if len(named) < 2:
+            continue
+        node.level = PatternLevel.HEADING
+        node.level_label = 'Heading'
+        node.status = Status.NEEDS_REVIEW
+        _hold_figures(node, 'read from a table that spans several stages '
+                            f'({", ".join(sorted(named))}); not attributed to one stage')
+
+
+def _hold_figures_of_unsure_rows(pattern: ExamPattern) -> None:
+    """A row the reader could not delimit is NEEDS_REVIEW, and so are the figures on it.
+
+    A merged cell ("2 ½ 150") or a year inside a topic list ("1757 to 1947") reads as marks
+    once the row boundaries are lost; the row was already held, and its figures must not be
+    published as verified on their own.
+    """
+    for stage in pattern.stages:
+        for node in stage.walk():
+            if node.status is Status.NEEDS_REVIEW:
+                _hold_figures(node, 'the row this figure was read from could not be delimited '
+                                    'with confidence')
 
 
 def _stage_name(line: str) -> tuple[str, str, str]:
@@ -977,6 +1088,7 @@ def extract_pattern(doc: SourceDocument, text: str, *, exam_id: str,
     bounds = [r[0] for r in regions] + [len(cur.lines)]
     seen: set[str] = set()
     consumed = 0
+    containers: dict[str, tuple[int, int]] = {}
     for position, (line_no, line, _kind) in enumerate(regions):
         end = bounds[position + 1]
         if end - line_no < 2 or line_no < consumed:
@@ -1021,14 +1133,24 @@ def extract_pattern(doc: SourceDocument, text: str, *, exam_id: str,
 
         if not _keeps(stage, line):
             continue
+        measurable = any(getattr(stage, f).has_value for f in
+                         ('questions', 'marks', 'duration_minutes', 'negative_marking', 'qualifying'))
+        if not children and not measurable and _under_other_heading(cur.lines, line_no):
+            # A stage named as a part of the syllabus (or of a list, or of the fee), with
+            # nothing of the scheme read under it: a heading of that list, not a stage.
+            continue
         pattern.stages.append(stage)
         seen.add(stage_id)
+        if _kind == 'scheme':
+            containers[stage_id] = (line_no + 1, end)
         if children:
             consumed = end
 
     _fold_restated_stages(pattern)
     _apply_merit_statements(pattern, doc, text)
     _push_down_stage_rules(pattern)
+    _classify_scheme_containers(pattern, cur, containers)
+    _hold_figures_of_unsure_rows(pattern)
     return pattern
 
 

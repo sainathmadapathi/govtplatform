@@ -189,7 +189,9 @@ export function getCategoryAgeRelaxation(
   postId?: string
 ): number {
   const entry = findAgeRelaxation(exam, category, postId);
-  if (!entry || entry.status === 'NOT_PUBLISHED') return 0;
+  // Only a VERIFIED figure is added to a limit. A figure the notice qualifies ("up to",
+  // "& length of service") or a rule stated in words is shown, never computed with.
+  if (!entry || entry.status !== 'VERIFIED') return 0;
   return entry.years ?? 0;
 }
 

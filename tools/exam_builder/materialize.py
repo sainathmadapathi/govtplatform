@@ -258,6 +258,8 @@ def _dates(rec: ExamRecord) -> list[dict]:
                 # keep it, and fall back to the field's citation only where a row has none.
                 'provenance': (d.get('provenance') if isinstance(d.get('provenance'), dict) and d['provenance']
                                else (prov or {})),
+                # Which stage an examination date belongs to, and whether its evidence said so.
+                **{k: d[k] for k in ('stageAssociation', 'stageLabel') if d.get(k)},
             })
     sup = rec.get('lastDateSuperseded')
     if sup and sup.usable and isinstance(sup.value, dict):
@@ -396,6 +398,11 @@ def _eligibility_highlights(rec: ExamRecord) -> list[dict]:
                            if v.get('bornNotEarlierThan') else '.'))
         elif isinstance(v, dict) and v.get('text'):
             body = str(v['text'])[:400]
+        elif name == 'fee' and isinstance(v, dict) and v.get('components'):
+            # Each fee under the name the notice gave it, never one merged figure.
+            body = '; '.join(f"{c.get('label') or c.get('feeType')}: Rs. {c.get('amount'):g}"
+                             for c in v['components'] if isinstance(c, dict) and isinstance(c.get('amount'), (int, float)))
+            body += ' — as printed in the notice; exemptions, where stated, are listed with the application guide.'
         elif name == 'fee' and isinstance(v, dict) and (v.get('amounts') or v.get('amount')):
             # The fee as the notice printed it; the reader's structure is not a sentence.
             amounts = [str(a) for a in (v.get('amounts') or [v.get('amount')]) if a not in (None, '')]
@@ -561,6 +568,16 @@ def _fee_details(rec: ExamRecord) -> Optional[dict]:
             out['rules'] = [{'scope': _clean(r.get('scope'), 120), 'amount': (str(r['amount']) if r.get('amount') not in (None, '') else ''),
                              'isExempt': r.get('isExempt') is True}
                             for r in (v.get('rules') or []) if isinstance(r, dict)]
+            # Named fee components (application processing, examination): each amount under
+            # its own name, with the sentence it was printed in.
+            for c in v.get('components') or []:
+                if isinstance(c, dict) and isinstance(c.get('amount'), (int, float)):
+                    amount = f"{c['amount']:g}"
+                    out['rules'].append({'scope': _clean(c.get('label') or c.get('feeType'), 120),
+                                         'amount': amount, 'isExempt': False,
+                                         'feeType': c.get('feeType', ''), 'statedAs': _clean(c.get('evidenceSpan'))})
+                    if amount not in out['amounts']:
+                        out['amounts'].append(amount)
         else:
             out['amounts'] = [_clean(v, 80)]
         if fee.citation:
@@ -571,9 +588,12 @@ def _fee_details(rec: ExamRecord) -> Optional[dict]:
         for i, e in enumerate(exf.value):
             if not isinstance(e, dict):
                 continue
-            out['exemptions'].append({'category': _clean(e.get('category'), 160),
-                                      'statedAs': _clean(e.get('evidenceSpan')),
-                                      'provenance': dict(ex_prov, id=f"{ex_prov.get('id', 'prov')}-{i}")})
+            item = {'category': _clean(e.get('category'), 160),
+                    'statedAs': _clean(e.get('evidenceSpan')),
+                    'provenance': dict(ex_prov, id=f"{ex_prov.get('id', 'prov')}-{i}")}
+            if e.get('exemptedFeeType'):
+                item['exemptedFeeType'] = e['exemptedFeeType']
+            out['exemptions'].append(item)
     return out
 
 
@@ -1053,8 +1073,10 @@ def _age_relaxations(rec: ExamRecord) -> list[dict]:
         if not isinstance(r, dict) or not _clean(r.get('category')):
             continue
         years, maximum = r.get('years'), r.get('maximumAge')
-        if not isinstance(years, (int, float)) and not isinstance(maximum, (int, float)):
-            continue      # a relaxation with no figure is not one a candidate can apply
+        if not isinstance(years, (int, float)) and not isinstance(maximum, (int, float))                 and not (r.get('status') == 'NEEDS_REVIEW' and r.get('condition')):
+            continue      # a relaxation with no figure and no stated rule carries nothing
+        # A rule with no figure, or a qualified figure, is shown as the notice's words and
+        # held for review: the eligibility engine adds only VERIFIED figures to a limit.
         entry = {'category': _clean(r.get('category'), 160),
                  'status': 'VERIFIED' if (f.ok and r.get('status', 'VERIFIED') == 'VERIFIED') else 'NEEDS_REVIEW',
                  'provenance': dict(prov, id=f"{prov.get('id', 'prov')}-{i}",
@@ -1142,10 +1164,17 @@ def _section_states(report: Optional[ExamCompletenessReport], held: Optional[dic
             summary = ('Part of this section was read from the notice but is held for review before it '
                        'is shown: ' + ', '.join(wholly_held) + '.')
         key = _DERIVED_SECTION_CONTENT.get(s.section_id)
-        if key and runtime is not None and not runtime.get(key) and state in ('SUPPORTED_AND_PROJECTED', 'RUNTIME_DERIVED'):
+        # A derived section is GovOS's to generate, so it is never "not published by the
+        # authority": with no content it is NOT_YET_GENERATED, and where its input (the pattern)
+        # is not verified the summary says that is why.
+        if key and runtime is not None and not runtime.get(key) and state in (
+                'SUPPORTED_AND_PROJECTED', 'RUNTIME_DERIVED', 'NOT_YET_PUBLISHED'):
+            waiting = not runtime.get('patternTree')
             state = 'NOT_YET_GENERATED'
             summary = ('GovOS guidance for this section has not been generated yet. It would be GovOS '
-                       'guidance built from the verified pattern and syllabus, never an official statement.')
+                       'guidance built from the verified pattern and syllabus, never an official statement.'
+                       + (' It needs a verified examination pattern first, and the pattern read from the '
+                          'notice is under review.' if waiting else ''))
         out[s.section_id] = {'state': state, 'nature': s.nature.value, 'studentStatusSummary': summary,
                              'sectionNum': s.section_num, 'isApplicable': s.is_applicable}
     return out

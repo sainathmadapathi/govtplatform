@@ -93,6 +93,26 @@ _CATEGORY = re.compile(
     r'ex-?servicemen|transgender|female|women|pwbd|pwd|esm|obc|ews|sc|st)\b', re.I)
 
 _AMOUNT = re.compile(r'(?:rs\.?|inr|₹)\s*([\d,]+(?:\.\d{1,2})?)', re.I)
+#: The Indian notation for a sum of rupees without the symbol: "pay 120/- (Rupees One Hundred
+#: and Twenty Only)". The "/-" is itself the currency mark, so the figure is an amount.
+_AMOUNT_SLASH = re.compile(r'(?<![\d./:])(\d[\d,]{0,6})\s*/-')
+
+#: Which fee a sentence names. Read nearest to the amount, because one sentence may name two
+#: ("Unless full payment of both Examination fee and Application fee is made").
+_FEE_TYPES = (
+    ('APPLICATION_PROCESSING', re.compile(r'application\s+(?:processing\s+)?fees?|processing\s+fees?|'
+                                          r'registration\s+fees?|intimation\s+charges?', re.I)),
+    ('EXAMINATION', re.compile(r'exam(?:ination)?\s+fees?', re.I)),
+    ('TOTAL', re.compile(r'total\s+fees?|fees?\s+in\s+total', re.I)),
+)
+
+#: An exemption stated of a group the reservation vocabulary does not name: "All unemployed
+#: candidates are exempted from payment of examination fee". The group is whatever words
+#: the authority put before "candidates"; nothing is supplied.
+_EXEMPT_GROUP = re.compile(
+    r'(?:^|[\s(])(?:all\s+)?(?P<who>[A-Za-z][A-Za-z/&,\- ]{1,60}?)\s+(?:candidates|applicants|persons)\s+'
+    r'(?:are|is|shall\s+be|will\s+be)\s+(?:fully\s+)?exempt\w*\s+from\s+(?:the\s+)?'
+    r'(?:payment\s+of\s+)?(?:the\s+)?(?P<fee>[a-z ]{0,30}?fees?)\b', re.I)
 
 #: Money the post pays, rather than money the candidate pays. "Pay" is a noun here, and
 #: matching it as a verb recorded four pay scales as application fees. No authority, exam or
@@ -347,6 +367,29 @@ def extract_instructions(doc: SourceDocument, text: str, body: str) -> list[Fact
 
 
 # ======================================================================= fees
+def _amounts_in(sentence: str) -> list[tuple[str, int]]:
+    """Every sum in the sentence, with where it stands: "Rs. 200", "INR 850", "120/-"."""
+    found: dict[int, str] = {}
+    for m in _AMOUNT.finditer(sentence):
+        if any(c.isdigit() for c in m.group(1)):
+            found[m.start(1)] = m.group(1)
+    for m in _AMOUNT_SLASH.finditer(sentence):
+        if m.start(1) not in found and not any(abs(m.start(1) - k) < 8 for k in found):
+            found[m.start(1)] = m.group(1)
+    return [(v, k) for k, v in sorted(found.items())]
+
+
+def _fee_type(sentence: str, at: int = -1) -> str:
+    """The fee a sentence names nearest to position `at` (or anywhere, with no position)."""
+    best: tuple[int, str] | None = None
+    for kind, rx in _FEE_TYPES:
+        for m in rx.finditer(sentence):
+            gap = 0 if at < 0 else min(abs(m.start() - at), abs(m.end() - at))
+            if best is None or gap < best[0]:
+                best = (gap, kind)
+    return best[1] if best else ''
+
+
 def extract_fees(doc: SourceDocument, text: str) -> list[FeeRule]:
     """Amounts, exemptions and modes — each scoped to whoever the document says it is for.
 
@@ -381,9 +424,11 @@ def extract_fees(doc: SourceDocument, text: str) -> list[FeeRule]:
 
         # A digit is required: the amount pattern's character class accepts separators, so
         # "Rs. ," matches and yields nothing to convert.
-        amounts = [a for a in _AMOUNT.findall(sentence) if any(c.isdigit() for c in a)]
+        located = _amounts_in(sentence)
+        amounts = [a for a, _ in located]
         exempting = re.search(r'\b(exempt\w*|remission|not required to pay)\b', sentence, re.I)
         categories = [c.lower() for c in _CATEGORY.findall(sentence)]
+        group = _EXEMPT_GROUP.search(sentence) if exempting else None
 
         if exempting and categories:
             ev = _evidence(sentence, doc, text, reading='fee exemption')
@@ -391,9 +436,22 @@ def extract_fees(doc: SourceDocument, text: str) -> list[FeeRule]:
                 for cat in dict.fromkeys(categories):
                     rules.append(FeeRule(
                         scope=Scope([ScopeRef(ScopeKind.CATEGORY, _slug(cat), cat)]),
-                        is_exempt=Fact.verified(True, ev)))
+                        is_exempt=Fact.verified(True, ev),
+                        fee_type=_fee_type(sentence, exempting.start())))
             # Deliberately no `continue`: a clause that grants an exemption very often
             # states the amount in the same breath, and consuming the passage here lost it.
+        elif group is not None:
+            # A group the category vocabulary has no word for. Its name is the authority's,
+            # taken whole; no category is inferred from it.
+            who = normalise_ws(re.sub(r'^\s*(?:all|the)\s+', '', group.group('who'), flags=re.I))
+            ev = _evidence(sentence, doc, text, reading='fee exemption')
+            if ev is not None and who:
+                label = f'{who} candidates'
+                rules.append(FeeRule(
+                    scope=Scope([ScopeRef(ScopeKind.CATEGORY, _slug(label), label)]),
+                    is_exempt=Fact.verified(True, ev),
+                    fee_type=_fee_type(group.group('fee')),
+                    stated_group=label))
 
         if amounts:
             ev = _evidence(sentence, doc, text, reading='fee amount')
@@ -410,6 +468,7 @@ def extract_fees(doc: SourceDocument, text: str) -> list[FeeRule]:
             modes = [normalise_ws(m) for m in _PAY_MODE.findall(sentence)]
             rules.append(FeeRule(
                 scope=scope,
+                fee_type=_fee_type(sentence, located[0][1]),
                 amount=Fact.verified(value, ev),
                 accepted_modes=(Fact.verified(list(dict.fromkeys(modes)), ev) if modes
                                 else Fact.not_extracted(
@@ -688,14 +747,38 @@ def extract_fee_exemptions(doc: SourceDocument, text: str) -> list[dict]:
     seen: set[str] = set()
     for rule in fees:
         if rule.is_exempt.has_value and rule.is_exempt.value:
-            cat_label = str(rule.scope) if not rule.scope.is_global else 'All Candidates (No Fee)'
+            cat_label = (rule.stated_group or str(rule.scope)) if not rule.scope.is_global else 'All Candidates (No Fee)'
             if cat_label in seen:
                 continue
             seen.add(cat_label)
             ev = rule.is_exempt.evidence[0] if rule.is_exempt.evidence else None
-            exemptions.append({
+            item = {
                 'category': cat_label,
                 'isExempt': True,
                 'evidenceSpan': ev.span if ev else '',
-            })
+                # The notice's own sentence is the condition; nothing is paraphrased into it.
+                'condition': ev.span if ev else '',
+                'status': 'VERIFIED' if ev else 'NEEDS_REVIEW',
+            }
+            if rule.fee_type:
+                item['exemptedFeeType'] = rule.fee_type
+            exemptions.append(item)
     return exemptions
+
+
+#: Wording that states an exemption or waiver of a fee, whatever group it names.
+_EXEMPTION_WORDING = re.compile(
+    r'[^.\n]{0,200}\b(?:exempt\w*|waive\w*|remission|not\s+required\s+to\s+pay|'
+    r'no\s+fee\s+(?:is\s+)?(?:payable|required))\b[^.\n]{0,200}', re.I)
+
+
+def exemption_wording(text: str) -> str:
+    """The first passage that states a fee exemption in words, or ''.
+
+    Used to keep "the reader could not structure the exemption" apart from "the authority
+    published none": only a document with no such wording at all can say the second."""
+    for m in _EXEMPTION_WORDING.finditer(text or ''):
+        passage = normalise_ws(m.group(0))
+        if re.search(r'\bfees?\b', passage, re.I):
+            return passage
+    return ''
