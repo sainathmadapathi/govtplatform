@@ -103,7 +103,8 @@ def _passing_record(exam_id='exam-zeta-clerk-2028', title='Zeta Clerk Examinatio
         'howToApply': 'Apply online through the portal; upload certificates; pay the fee.',
         'qualification': 'Degree from a recognised university.',
         'attempts': {'text': 'No limit on number of attempts.'},
-        'examPattern': {'stages': 1},
+        'examPattern': {'papers': [{'label': 'Paper-I', 'name': 'General Studies', 'marks': 100,
+                                    'duration': '120 minutes'}]},
     }
     for name, val in found.items():
         rec.set(Field.found(name, val, cit))
@@ -242,10 +243,14 @@ class TestMaterializationEngine(unittest.TestCase):
         # emit writes `admitCardDetails: undefined` when absent; the JSON twin omits an absent
         # optional rather than writing null — same contract, no nulls in the payload.
         self.assertTrue(emitted_keys - {'admitCardDetails'} <= set(exam), emitted_keys - set(exam))
-        # dates outside the frontend union are dropped, never coerced; OTHER never appears
-        self.assertEqual({d['type'] for d in exam['dates']}, {'APPLICATION_CLOSE', 'EXAM_TIER1'})
-        # a post without a printed Group is named, not faked
-        self.assertEqual([p['postName'] for p in exam['posts']], ['Clerk'])
+        # A printed milestone with no specific type is carried as OTHER, in its own words -- it
+        # used to be dropped, which lost a date the notice printed. Never coerced to a member.
+        self.assertEqual({d['type'] for d in exam['dates']}, {'APPLICATION_CLOSE', 'EXAM_TIER1', 'OTHER'})
+        self.assertEqual(next(d['label'] for d in exam['dates'] if d['type'] == 'OTHER'), 'Date of upload')
+        # A post without a printed Group is published by name with an empty classification --
+        # never faked, and no longer dropped (dropping it lost a verified post name).
+        self.assertEqual([p['postName'] for p in exam['posts']], ['Clerk', 'Assistant (no group printed)'])
+        self.assertEqual(next(p['classification'] for p in exam['posts'] if p['postName'].startswith('Assistant')), '')
         self.assertEqual(exam['materialization']['postsWithoutPrintedGroup'], ['Assistant (no group printed)'])
         # every emitted value carries provenance
         self.assertTrue(all(d['provenance'].get('officialUrl') for d in exam['dates']))
@@ -299,7 +304,7 @@ class TestMaterializationEngine(unittest.TestCase):
         projected = apply_overlays_to_exam_dict(exam, [o])
         self.assertEqual(len(projected['dates']), len(exam['dates']) + 1)   # applies to its own exam
         self.assertIs(apply_overlays_to_exam_dict(other, [o]), other)        # never to another
-        self.assertEqual(len(exam['dates']), 2)                              # original untouched
+        self.assertEqual(len(exam['dates']), 3)                              # original untouched (incl. the OTHER date)
 
     # 10. test_registry_failure_does_not_break_authored_exams -------------------------------
     def test_registry_failure_does_not_break_authored_exams(self):

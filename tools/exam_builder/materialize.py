@@ -46,7 +46,58 @@ from .orchestrate import OrchestrationResult, OrchestrationState, orchestrate
 from .overlay import get_exam_cycle
 from .render import target_in_register
 
-MATERIALIZER_VERSION = 'materialize-1'
+MATERIALIZER_VERSION = 'materialize-2'
+
+
+# ------------------------------------------------------------------ the projection map
+#: Every canonical contract field that has a runtime representation, and where it lands.
+#:
+#: This table is the materializer's contract with the canonical record, and it is enforced:
+#: `validate_projection` checks, for every canonical field that is FOUND, that the runtime
+#: paths below exist and carry content -- or that the materialization ledger records an
+#: explicit, reasoned disposition for it (held for review, withheld as unreliable). A FOUND
+#: field that reaches neither is a *silent loss*, and publication fails on it.
+#:
+#: Authoritative runtime representation for a machine-acquired exam, and its compatibility
+#: projections (derived deterministically from the authoritative one, never independently):
+#:
+#:   patternTree      authoritative   ->  stages          (one ExamStage per STAGE root node)
+#:   syllabusTree     authoritative   ->  syllabus        (flat topics for map / list / checklist)
+#:   admitCardEvents  authoritative   ->  (admitCardDetails is not derived: collapsing a list of
+#:                                         events into one card would invent a status)
+#:   officialPapers / answerKeys / resultDeclarations / cutoffsHistory / ageRelaxations /
+#:   resultNextSteps / applicationGuide   carried as read; no competing representation.
+PROJECTION_MAP: dict[str, tuple[str, ...]] = {
+    'officialName': ('title',),
+    'authority': ('authorityName',),
+    'applicationPortal': ('applicationGuide.officialPortal',),
+    'howToApply': ('applicationGuide.otrSteps',),
+    'requiredDocuments': ('applicationGuide.requiredDocuments',),
+    'photoSignatureGuidelines': ('applicationGuide.photoRules.rules|applicationGuide.signatureRules.rules',),
+    'fee': ('applicationGuide.fee',),
+    'feeExemptions': ('applicationGuide.fee.exemptions',),
+    'posts': ('posts',),
+    'vacancies': ('vacanciesTotal',),
+    'ageLimits': ('eligibilityHighlights[Age limits]',),
+    'qualification': ('eligibilityHighlights[Educational qualification]',),
+    'attempts': ('eligibilityHighlights[Number of attempts]',),
+    'dates': ('dates',),
+    'corrigenda': ('corrigendums',),
+    'examPattern': ('patternTree',),
+    'syllabus': ('syllabusTree', 'syllabus'),
+    'officialPapers': ('officialPapers',),
+    'answerKeys': ('answerKeys',),
+    'admitCard': ('admitCardEvents',),
+    'results': ('resultDeclarations',),
+    'nextSteps': ('resultNextSteps',),
+    'cutoffs': ('cutoffsHistory',),
+    'examDayChecklist': ('examDayChecklist',),
+    'faqs': ('faqs',),
+}
+
+
+class MaterializationLoss(ValueError):
+    """A canonical FOUND field that did not survive materialization, with no recorded reason."""
 
 # ------------------------------------------------------------------ the runtime Exam contract
 #: The frontend `Exam` interface's 21 required fields and the JSON type each must carry. A
@@ -61,8 +112,11 @@ RUNTIME_EXAM_REQUIRED: dict[str, type] = {
     'faqs': list, 'applicationGuide': dict, 'roadmapTracks': list,
 }
 
+#: The frontend ImportantDate.type union. OTHER carries a milestone the notice printed with a
+#: label no specific member names ("Date of upload"); forcing it into the nearest member would
+#: invent a milestone, and dropping it would lose a printed date.
 _DATE_TYPES = {'NOTIFICATION', 'APPLICATION_OPEN', 'APPLICATION_CLOSE', 'CORRECTION_WINDOW',
-               'ADMIT_CARD', 'EXAM_TIER1', 'EXAM_TIER2', 'ANSWER_KEY', 'RESULT', 'INTERVIEW'}
+               'ADMIT_CARD', 'EXAM_TIER1', 'EXAM_TIER2', 'ANSWER_KEY', 'RESULT', 'INTERVIEW', 'OTHER'}
 
 
 def validate_runtime_exam(exam: Any) -> list[str]:
@@ -92,8 +146,10 @@ def validate_runtime_exam(exam: Any) -> list[str]:
         if d.get('type') not in _DATE_TYPES:
             errors.append(f'date {d.get("id", "?")!r} has a type outside the frontend union: {d.get("type")!r}')
     for p in (exam.get('posts') or []):
-        if not isinstance(p, dict) or not p.get('postName') or not p.get('classification'):
-            errors.append('every post must carry postName and a printed classification')
+        # A post needs its name; its Group is carried only where the authority printed one, so
+        # an empty classification is the honest value, never a gap to be filled in.
+        if not isinstance(p, dict) or not p.get('postName') or not isinstance(p.get('classification'), str):
+            errors.append('every post must carry postName and a classification string (empty where none was printed)')
     rg = exam.get('globalRuleGroup')
     if isinstance(rg, dict):
         if rg.get('operator') not in ('AND', 'OR') or not isinstance(rg.get('rules'), list) or not rg.get('id'):
@@ -104,6 +160,77 @@ def validate_runtime_exam(exam: Any) -> list[str]:
             if k not in ag:
                 errors.append(f'applicationGuide is missing {k!r}')
     return errors
+
+
+def _path_has_content(exam: dict, path: str) -> bool:
+    """Does the runtime exam carry content at `path`?
+
+    `a.b.c` walks objects; `x|y` is satisfied by either; `highlights[Title]` asks for a card of
+    that title in a list of {title, body} cards."""
+    if '|' in path:
+        return any(_path_has_content(exam, p) for p in path.split('|'))
+    m = re.match(r'^(\w+)\[(.+)\]$', path)
+    if m:
+        cards = exam.get(m.group(1)) or []
+        return any(isinstance(c, dict) and c.get('title') == m.group(2) and c.get('body') for c in cards)
+    node: Any = exam
+    for part in path.split('.'):
+        if not isinstance(node, dict) or part not in node:
+            return False
+        node = node[part]
+    return node not in (None, '', [], {})
+
+
+#: Canonical list fields whose items must each reach runtime (no silent partial drop).
+_ITEM_PRESERVING = (('dates', 'dates'), ('admitCard', 'admitCardEvents'), ('answerKeys', 'answerKeys'),
+                    ('results', 'resultDeclarations'), ('officialPapers', 'officialPapers'),
+                    ('cutoffs', 'cutoffsHistory'), ('corrigenda', 'corrigendums'))
+
+#: Runtime collections of official facts; every item must carry provenance.
+_PROVENANCED = ('dates', 'admitCardEvents', 'officialPapers', 'answerKeys', 'resultDeclarations',
+                'cutoffsHistory', 'examDayChecklist', 'faqs', 'eligibilityHighlights', 'ageRelaxations')
+
+
+def validate_projection(rec: ExamRecord, exam: dict) -> list[str]:
+    """Every canonical FOUND fact that did not survive into the runtime exam, as reasons.
+
+    The canonical gate judges the record; it cannot see what materialization then does to it.
+    This is the second layer: a FOUND field must reach the runtime paths PROJECTION_MAP names,
+    or be listed in the ledger (`materialization.heldForReview`) with a reason. A list field
+    must not lose items, and every official item must keep its provenance. An empty result
+    means nothing was lost silently."""
+    losses: list[str] = []
+    held = ((exam.get('materialization') or {}).get('heldForReview') or {}) if isinstance(exam, dict) else {}
+    for name, paths in PROJECTION_MAP.items():
+        f = rec.get(name)
+        if not (f and f.status is Status.FOUND and f.value not in (None, '', [], {})):
+            continue
+        if name in held and not held[name].get('partial'):
+            continue                      # accounted for: held for review, with its reason
+        for p in paths:
+            if not _path_has_content(exam, p):
+                losses.append(f'{name}: FOUND in the canonical record, but runtime {p} is empty '
+                              f'and no reason is recorded')
+    for name, coll in _ITEM_PRESERVING:
+        f = rec.get(name)
+        if not (f and f.status is Status.FOUND and isinstance(f.value, list)):
+            continue
+        n_canonical = sum(1 for x in f.value if isinstance(x, dict))
+        n_runtime = len(exam.get(coll) or [])
+        if name == 'dates':
+            # The superseded-last-date row comes from a different field; it is not one of these.
+            n_runtime = sum(1 for d in exam.get('dates') or []
+                            if not str(d.get('id', '')).endswith('-close-superseded'))
+        if n_runtime < n_canonical:
+            losses.append(f'{name}: {n_canonical} canonical item(s) but only {n_runtime} reached runtime {coll}')
+    tree = exam.get('patternTree') or []
+    if any(isinstance(n, dict) and n.get('level') == 'STAGE' for n in tree) and not exam.get('stages'):
+        losses.append('examPattern: the pattern tree names stages, but the stages projection is empty')
+    for coll in _PROVENANCED:
+        for item in exam.get(coll) or []:
+            if isinstance(item, dict) and not (isinstance(item.get('provenance'), dict) and item['provenance']):
+                losses.append(f'{coll}: item {item.get("id") or item.get("title") or "?"} carries no provenance')
+    return losses
 
 
 # ------------------------------------------------------------------ ExamRecord -> runtime Exam
@@ -183,37 +310,64 @@ def _corrigendums(rec: ExamRecord) -> list[dict]:
     }]
 
 
-def _posts(rec: ExamRecord) -> tuple[list[dict], list[str]]:
-    """Posts whose Group the authority printed; the rest are returned by name, never faked."""
+def _single_age_band(rec: ExamRecord) -> tuple[int, int]:
+    """The exam-wide age band, only where the record states exactly one.
+
+    A notice that prints different limits for different posts (`minima`/`maxima` that
+    disagree) has no exam-wide band, and giving every post the widest one would tell some
+    candidates they qualify for posts they do not. 0/0 is returned then -- the eligibility
+    engine reads a 0 upper limit as "not published", never as a limit of zero."""
+    f = rec.get('ageLimits')
+    if not (f and f.ok and isinstance(f.value, dict)):
+        return 0, 0
+    v = f.value
+    minima, maxima = v.get('minima'), v.get('maxima')
+    if (isinstance(minima, list) and len(set(minima)) > 1) or (isinstance(maxima, list) and len(set(maxima)) > 1):
+        return 0, 0
+    lo, hi = v.get('minAge'), v.get('maxAge')
+    return (int(lo) if isinstance(lo, (int, float)) else 0, int(hi) if isinstance(hi, (int, float)) else 0)
+
+
+def _posts(rec: ExamRecord) -> tuple[list[dict], list[str], list[dict]]:
+    """Posts as read: name always, Group only where printed (never inferred), age only where one
+    exam-wide band exists. Returns (posts, names-without-printed-group, held-for-review).
+
+    A candidate that is plainly a document or a certificate ("Hall Ticket", "Non-Creamy Layer
+    Certificate") is not a post: a checklist of what to bring reconstructs like a list of what
+    one is recruited to. Such candidates are never published as posts; they are held for
+    review with their evidence, and the ledger says so."""
+    from .eligibility import is_document_not_post
+
     f = rec.get('posts')
     if not (f and f.usable and isinstance(f.value, list)):
-        return [], []
-    age = rec.value('ageLimits') or {}
-    rows, skipped = [], []
-    prov = _prov(rec, f, 'posts')
-    for i, item in enumerate(f.value[:60]):
+        return [], [], []
+    lo, hi = _single_age_band(rec)
+    rows, no_group, held = [], [], []
+    prov = _prov(rec, f, 'posts') or {}
+    for i, item in enumerate(f.value[:80]):
         if isinstance(item, dict):
             name = str(item.get('postName') or item.get('name') or '').strip()
             cls = str(item.get('classification') or '') or classification_of(name)
-            department = str(item.get('department') or rec.authority_name)
+            department = str(item.get('department') or '')
             pay_level = str(item.get('payLevel') or '')
         else:
             name = str(item).strip()
-            cls, department, pay_level = classification_of(name), rec.authority_name, ''
+            cls, department, pay_level = classification_of(name), '', ''
         if not name:
             continue
-        if not cls:
-            skipped.append(name)
+        if is_document_not_post(name):
+            held.append({'candidate': name, 'reason': 'reads as a document or certificate, not a post'})
             continue
+        if not cls:
+            no_group.append(name)
         rows.append({
             'id': f'post-{rec.exam_id}-{i}', 'postName': re.sub(_GROUP_TAIL_RX, '', name).strip(),
-            'department': department,
+            'department': department or rec.authority_name,
             'payLevel': pay_level, 'payScale': '', 'classification': cls,
-            'minAge': age.get('minAge', 0) if isinstance(age, dict) else 0,
-            'maxAge': age.get('maxAge', 0) if isinstance(age, dict) else 0,
-            'provenance': prov or {},
+            'minAge': lo, 'maxAge': hi,
+            'provenance': prov,
         })
-    return rows, skipped
+    return rows, no_group, held
 
 
 def _eligibility_highlights(rec: ExamRecord) -> list[dict]:
@@ -345,6 +499,84 @@ def _how_to_apply_lines(value: Any) -> list[str]:
     return lines[:20]
 
 
+def _clean(text: Any, limit: int = 600) -> str:
+    return re.sub(r'\s+', ' ', str(text or '')).strip()[:limit]
+
+
+def _upload_spec(kind: str, rules: list[str], prov: Optional[dict]) -> dict:
+    """A DocumentSpecification carrying exactly what the notice said about this upload.
+
+    `rules` are the notice's own sentences. The structured slots (dimensions, format, size)
+    are left empty rather than filled with a plausible value: the notice's sentence is the
+    fact, and the UI prints only slots that carry one."""
+    spec = {'documentType': kind, 'dimensions': '', 'fileFormat': '', 'fileSize': '',
+            'rules': [r for r in (_clean(x) for x in rules) if r][:20], 'sampleDescription': ''}
+    if prov:
+        spec['provenance'] = prov
+    return spec
+
+
+def _required_documents(rec: ExamRecord) -> list[dict]:
+    f = rec.get('requiredDocuments')
+    if not (f and f.usable and isinstance(f.value, list)):
+        return []
+    prov = _prov(rec, f, 'documents') or {}
+    out = []
+    for i, d in enumerate(f.value[:60]):
+        if isinstance(d, dict):
+            name = _clean(d.get('name'), 200)
+            if not name or _garbage_name(name):
+                continue
+            item = {'id': str(d.get('id') or f'doc-{rec.exam_id}-{i}'), 'name': name,
+                    'required': bool(d.get('required', True)),
+                    'specifications': [_clean(s, 200) for s in (d.get('specifications') or []) if _clean(s)],
+                    'provenance': dict(prov, id=f"{prov.get('id', 'prov')}-{i}",
+                                       **({'excerptText': _clean(d.get('evidenceSpan'))} if d.get('evidenceSpan') else {}))}
+        else:
+            name = _clean(d, 200)
+            if not name or _garbage_name(name):
+                continue
+            item = {'id': f'doc-{rec.exam_id}-{i}', 'name': name, 'required': True,
+                    'specifications': [], 'provenance': dict(prov, id=f"{prov.get('id', 'prov')}-{i}")}
+        out.append(item)
+    return out
+
+
+def _fee_details(rec: ExamRecord) -> Optional[dict]:
+    """The fee as the notice printed it, with the exemptions it stated -- no amount computed,
+    no category assumed exempt."""
+    fee = rec.get('fee')
+    exf = rec.get('feeExemptions')
+    has_fee = bool(fee and fee.usable)
+    has_ex = bool(exf and exf.usable and isinstance(exf.value, list))
+    if not (has_fee or has_ex):
+        return None
+    out: dict = {'amounts': [], 'rules': [], 'acceptedModes': [], 'exemptions': []}
+    if has_fee:
+        v = fee.value
+        if isinstance(v, dict):
+            amounts = v.get('amounts') or ([v['amount']] if v.get('amount') not in (None, '', 0) else [])
+            out['amounts'] = [str(a) for a in dict.fromkeys(str(a) for a in amounts if str(a) not in ('', 'None'))]
+            out['acceptedModes'] = [_clean(m, 80) for m in (v.get('acceptedModes') or v.get('paymentModes') or []) if _clean(m)]
+            out['rules'] = [{'scope': _clean(r.get('scope'), 120), 'amount': (str(r['amount']) if r.get('amount') not in (None, '') else ''),
+                             'isExempt': r.get('isExempt') is True}
+                            for r in (v.get('rules') or []) if isinstance(r, dict)]
+        else:
+            out['amounts'] = [_clean(v, 80)]
+        if fee.citation:
+            out['statedAs'] = _clean(fee.citation.excerpt)
+        out['provenance'] = _prov(rec, fee, 'fee') or {}
+    if has_ex:
+        ex_prov = _prov(rec, exf, 'fee-exemptions') or {}
+        for i, e in enumerate(exf.value):
+            if not isinstance(e, dict):
+                continue
+            out['exemptions'].append({'category': _clean(e.get('category'), 160),
+                                      'statedAs': _clean(e.get('evidenceSpan')),
+                                      'provenance': dict(ex_prov, id=f"{ex_prov.get('id', 'prov')}-{i}")})
+    return out
+
+
 def _application_guide(rec: ExamRecord) -> dict:
     portal = rec.value('applicationPortal') or rec.official_domain
     how = rec.get('howToApply')
@@ -352,22 +584,35 @@ def _application_guide(rec: ExamRecord) -> dict:
     if how and how.usable:
         instructions = _how_to_apply_lines(how.value)
         if instructions:
-            # The documents the notice lists to keep ready become this step's checklist, so
-            # the guide carries them without a second card the section layout does not expect.
-            docs = rec.get('requiredDocuments')
-            fields: list[str] = []
-            if docs and docs.usable and isinstance(docs.value, list):
-                for d in docs.value:
-                    nm = re.sub(r'\s+', ' ', str(d.get('name') if isinstance(d, dict) else d).strip())
-                    if nm and not _garbage_name(nm):
-                        fields.append(nm[:160])
             steps.append({'stepNumber': 1, 'title': 'How to apply — as the notice states it',
                           'portalUrl': portal, 'instructions': instructions,
-                          'mandatoryFields': fields[:30], 'commonMistakesToAvoid': []})
-    spec = {'documentType': 'As stated on the portal’s upload screen', 'dimensions': '',
-            'fileFormat': '', 'fileSize': '', 'rules': [], 'sampleDescription': ''}
-    return {'officialPortal': portal, 'otrSteps': steps, 'photoRules': dict(spec),
-            'signatureRules': dict(spec), 'certificateRules': [], 'rejectionPitfalls': []}
+                          'mandatoryFields': [], 'commonMistakesToAvoid': [],
+                          'provenance': _prov(rec, how, 'how-to-apply') or {}})
+    # Photo and signature: the notice's own sentences, from the canonical record. The blank
+    # "as stated on the portal" placeholder that used to overwrite them is gone; where the
+    # record has no guideline the spec is empty and the UI says the notice sets none.
+    psg = rec.get('photoSignatureGuidelines')
+    photo_rules: list[str] = []
+    sig_rules: list[str] = []
+    psg_prov = None
+    if psg and psg.usable and isinstance(psg.value, dict):
+        photo_rules = list(psg.value.get('photograph') or [])
+        sig_rules = list(psg.value.get('signature') or [])
+        psg_prov = _prov(rec, psg, 'photo-signature')
+    guide: dict = {'officialPortal': portal, 'otrSteps': steps,
+                   'photoRules': _upload_spec('Photograph', photo_rules, psg_prov),
+                   'signatureRules': _upload_spec('Signature', sig_rules, psg_prov),
+                   # No canonical field carries certificate-validity rules or rejection
+                   # statistics; a document's *name* says nothing about its validity window,
+                   # so nothing is inferred into these.
+                   'certificateRules': [], 'rejectionPitfalls': []}
+    docs = _required_documents(rec)
+    if docs:
+        guide['requiredDocuments'] = docs
+    fee = _fee_details(rec)
+    if fee:
+        guide['fee'] = fee
+    return guide
 
 
 def _overview(rec: ExamRecord) -> str:
@@ -458,13 +703,23 @@ def _garbage_name(name: str) -> bool:
 _IMPLAUSIBLE_QUESTIONS = 300
 
 
-def _pattern_node(n: dict, prov: dict) -> Optional[dict]:
+#: Structural pattern fields carried through exactly as the reader produced them.
+_PATTERN_PASSTHROUGH = ('questionType', 'sectionalTiming', 'marksPerQuestion', 'negativeMarkPerWrong',
+                        'negativeFractionOfMarks', 'durationVariants', 'derived', 'underReview')
+
+
+def _pattern_node(n: dict, prov: dict, withheld: Optional[list] = None) -> Optional[dict]:
     """One extracted pattern node -> ExamPatternNode. Only what the reader printed is carried;
     a value it did not read is omitted, not guessed. A node whose name is only a cell seam
     ("½") is dropped, and an implausible question count -- the signature of a merged cell in a
-    flattened table -- withholds that node's numbers instead of asserting them."""
+    flattened table -- withholds that node's numbers instead of asserting them. Every
+    withheld figure and dropped node is recorded in `withheld` (the materialization ledger),
+    so nothing leaves the record without a stated reason."""
     name = str(n.get('name') or n.get('title') or '').strip()
     if _garbage_name(name):
+        if withheld is not None:
+            withheld.append({'node': name or '(blank)', 'fields': ['node'],
+                             'reason': 'the node name is a cell seam of a flattened table, not a stage, paper or subject'})
         return None
     label = str(n.get('levelLabel') or n.get('level') or '')
     level = label.upper() if label.upper() in _PATTERN_LEVELS else 'OTHER'
@@ -482,41 +737,103 @@ def _pattern_node(n: dict, prov: dict) -> Optional[dict]:
     # subject's name, "1757", was read as 1757 marks), or when a question count is
     # impossibly large (the signature of a merged cell in a flattened table). The node, its
     # name and its structure are still carried; only the unreliable number is held back.
-    unreliable = (str(n.get('status') or 'VERIFIED') == 'NEEDS_REVIEW'
-                  or (isinstance(qs, (int, float)) and qs > _IMPLAUSIBLE_QUESTIONS))
-    if isinstance(marks, (int, float)) and not unreliable:
-        node['marks'] = marks
-    if isinstance(qs, (int, float)) and not unreliable:
-        node['questions'] = qs
+    implausible = isinstance(qs, (int, float)) and qs > _IMPLAUSIBLE_QUESTIONS
+    unreliable = str(n.get('status') or 'VERIFIED') == 'NEEDS_REVIEW' or implausible
     dur = n.get('durationMinutes')
     if not isinstance(dur, (int, float)):
         dur = _minutes(n.get('duration'))
-    if isinstance(dur, (int, float)) and not unreliable:
-        node['durationMinutes'] = int(dur)
+    figures = {'marks': marks, 'questions': qs, 'durationMinutes': dur}
+    present = {k: v for k, v in figures.items() if isinstance(v, (int, float))}
+    if unreliable and present and withheld is not None:
+        withheld.append({'node': name, 'fields': sorted(present), 'values': present,
+                         'reason': ('an impossibly large question count, the signature of a merged cell'
+                                    if implausible else
+                                    'the reader could not establish which column this figure belongs to')})
+    if not unreliable:
+        if 'marks' in present:
+            node['marks'] = present['marks']
+        if 'questions' in present:
+            node['questions'] = present['questions']
+        if 'durationMinutes' in present:
+            node['durationMinutes'] = int(present['durationMinutes'])
     if n.get('negativeMarking'):
         node['negativeMarking'] = str(n['negativeMarking'])
     if n.get('mode'):
         node['mode'] = str(n['mode'])
     if isinstance(n.get('languages'), list) and n['languages']:
         node['languages'] = [str(x) for x in n['languages']][:8]
-    if isinstance(n.get('qualifying'), dict) and n['qualifying'].get('asPrinted'):
-        node['qualifying'] = {'asPrinted': str(n['qualifying']['asPrinted'])[:200]}
+    q = n.get('qualifying')
+    if isinstance(q, dict) and q:
+        node['qualifying'] = {k: q[k] for k in ('asPrinted', 'qualifyingOnly', 'countsTowardsMerit',
+                                                'minimumMarks', 'minimumPercent', 'byCategory') if k in q}
+    for k in _PATTERN_PASSTHROUGH:
+        if n.get(k) not in (None, '', [], {}):
+            node[k] = n[k]
     if n.get('note'):
         node['note'] = str(n['note'])
     children = n.get('children')
     if isinstance(children, list) and children:
-        kids = [k for k in (_pattern_node(c, prov) for c in children if isinstance(c, dict)) if k]
+        kids = [k for k in (_pattern_node(c, prov, withheld) for c in children if isinstance(c, dict)) if k]
         if kids:
             node['children'] = kids
     return {k: v for k, v in node.items() if v is not None}
 
 
-def _pattern_tree(rec: ExamRecord) -> list[dict]:
+def _paper_row_node(row: dict, i: int, negative: str = '') -> dict:
+    """A flat paper row ("Paper-I · Civil Engineering · 150 marks · 150 minutes") as a PAPER node.
+
+    Two readers produce rows rather than a tree: the semantic reader (`{'papers': [...]}`) and
+    the legacy prose reader (a list of `{paper, name, marks, duration}`). The row's own label is
+    its code and part of its name; nothing is added that the row did not print."""
+    label = _clean(row.get('label') or row.get('paper'), 40)
+    name = _clean(row.get('name'), 160).rstrip(' (-:—–')
+    node = {'id': f'paper-row-{i}', 'level': 'PAPER', 'levelLabel': 'Paper',
+            'name': f'{label} — {name}' if label and name else (name or label),
+            'code': label, 'status': str(row.get('status') or 'VERIFIED')}
+    for key in ('marks', 'questions'):
+        if isinstance(row.get(key), (int, float)):
+            node[key] = row[key]
+    if row.get('duration'):
+        node['duration'] = row['duration']
+    if negative:
+        node['negativeMarking'] = negative
+        node['derived'] = ['negativeMarking']      # stated once for the scheme, shown on each paper
+    return node
+
+
+def _pattern_input(value: Any) -> tuple[list[dict], Optional[str]]:
+    """Every shape a pattern reader produces, as a list of nodes -- or a reason it has none.
+
+    tree nodes (level / levelLabel / children)   carried as they are
+    {'papers': [rows], 'negativeMarking': ...}  one PAPER node per row (semantic reader)
+    [rows with 'paper' or 'label']              one PAPER node per row (legacy reader)"""
+    if isinstance(value, dict):
+        rows = [r for r in (value.get('papers') or []) if isinstance(r, dict)]
+        negative = _clean(value.get('negativeMarking'), 200)
+        if rows:
+            return [_paper_row_node(r, i, negative) for i, r in enumerate(rows)], None
+        return [], ('the scheme states a rule (' + negative + ') but no paper rows' if negative
+                    else 'the reading carries no stage, paper or section to show')
+    if isinstance(value, list):
+        nodes = [n for n in value if isinstance(n, dict)]
+        if nodes and all(('level' not in n and 'levelLabel' not in n and 'children' not in n)
+                         and ('paper' in n or 'label' in n) for n in nodes):
+            return [_paper_row_node(r, i) for i, r in enumerate(nodes)], None
+        return nodes, None
+    return [], 'the reading is not a pattern structure'
+
+
+def _pattern_tree(rec: ExamRecord, withheld: Optional[list] = None, held: Optional[dict] = None) -> list[dict]:
     f = rec.get('examPattern')
-    if not (f and f.usable and isinstance(f.value, list)):
+    if not (f and f.usable):
         return []
     prov = _prov(rec, f, 'pattern') or {}
-    return [node for node in (_pattern_node(n, prov) for n in f.value if isinstance(n, dict)) if node]
+    nodes, why_none = _pattern_input(f.value)
+    tree = [node for node in (_pattern_node(n, prov, withheld) for n in nodes) if node]
+    if not tree and held is not None:
+        held['examPattern'] = {'reason': why_none or 'every node read was a cell seam, not a stage or paper',
+                               'items': [f.value]}
+    return tree
 
 
 def _syllabus_tree(rec: ExamRecord) -> list[dict]:
@@ -591,15 +908,247 @@ def flat_syllabus_from_tree(tree: list[dict]) -> list[dict]:
     return topics[:200]
 
 
-def _section_states(report: Optional[ExamCompletenessReport]) -> dict:
+# ------------------------------------------------------------------ lifecycle projections
+def _event_list(rec: ExamRecord, name: str, suffix: str) -> list[dict]:
+    """A canonical field whose value is already a list of frontend-shaped events (the readers
+    project through `compat.*`). Each event keeps its own identity and provenance; one without
+    provenance inherits the field's citation rather than going unsourced. Never collapsed."""
+    f = rec.get(name)
+    if not (f and f.usable):
+        return []
+    items = f.value if isinstance(f.value, list) else [f.value]
+    field_prov = _prov(rec, f, suffix) or {}
+    out = []
+    for i, e in enumerate(items):
+        if not isinstance(e, dict):
+            continue
+        item = json.loads(json.dumps(e, default=str))
+        item.setdefault('id', f'{suffix}-{rec.exam_id}-{i}')
+        if not isinstance(item.get('provenance'), dict) or not item['provenance']:
+            item['provenance'] = dict(field_prov, id=f"{field_prov.get('id', 'prov')}-{i}")
+        out.append(item)
+    return out
+
+
+def _admit_card_events(rec: ExamRecord) -> list[dict]:
+    events = []
+    for e in _event_list(rec, 'admitCard', 'admit'):
+        # The event model is the authoritative shape; a legacy dict-shaped reading (one card
+        # with a text) is carried as one event of kind OTHER, in its own words, never as a date.
+        if 'kind' not in e or 'officialLabel' not in e:
+            e = {'id': e['id'], 'examId': rec.exam_id, 'kind': 'OTHER',
+                 'officialLabel': _clean(e.get('label') or e.get('title') or 'Admit card', 120),
+                 'status': 'VERIFIED' if rec.get('admitCard').ok else 'NEEDS_REVIEW',
+                 'instructions': [x for x in [_clean(e.get('text'))] if x],
+                 'portalUrl': e.get('portalUrl') or '', 'provenance': e['provenance']}
+        e.setdefault('examId', rec.exam_id)
+        events.append(e)
+    return events
+
+
+def _official_papers(rec: ExamRecord) -> list[dict]:
+    out = []
+    for p in _event_list(rec, 'officialPapers', 'paper'):
+        if 'identity' not in p or 'url' not in p:
+            # A legacy {label: url} catalogue: each entry is a paper whose identity is its label.
+            continue
+        out.append(p)
+    f = rec.get('officialPapers')
+    if not out and f and f.usable and isinstance(f.value, dict):
+        prov = _prov(rec, f, 'paper') or {}
+        for i, (label, url) in enumerate(sorted(f.value.items())):
+            title = str(label).split('::', 1)[-1]
+            out.append({'id': f'paper-{rec.exam_id}-{i}', 'title': title, 'url': str(url),
+                        'identity': {'examId': rec.exam_id, 'describe': title},
+                        'status': 'VERIFIED' if f.ok else 'NEEDS_REVIEW',
+                        'provenance': dict(prov, id=f"{prov.get('id', 'prov')}-{i}")})
+    return out
+
+
+def _answer_keys(rec: ExamRecord) -> list[dict]:
+    return [k for k in _event_list(rec, 'answerKeys', 'key') if 'identity' in k and 'kind' in k]
+
+
+def _result_declarations(rec: ExamRecord) -> list[dict]:
+    return [r for r in _event_list(rec, 'results', 'result') if 'kind' in r and 'label' in r]
+
+
+def _result_next_steps(rec: ExamRecord) -> list[dict]:
+    """GovOS guidance derived from a declared result and the pattern -- never an official fact.
+
+    Every stage carries `isGuidance: True` and the basis it was derived from, so the UI can
+    keep it visibly apart from the authority's own declarations above it."""
+    f = rec.get('nextSteps')
+    if not (f and f.usable and isinstance(f.value, list)):
+        return []
+    prov = _prov(rec, f, 'next-steps') or {}
+    if prov:
+        prov = dict(prov, taxonomyType='RECOMMENDATION', verificationLevel='UNDER_VERIFICATION')
+    out = []
+    for g in f.value:
+        if not isinstance(g, dict):
+            continue
+        headline = _clean(g.get('action') or g.get('headline'), 160)
+        summary = _clean(g.get('guidance') or g.get('summary'))
+        if not (headline or summary):
+            continue
+        out.append({'status': 'AWAITING_RESULT', 'headline': headline or 'Next step', 'summary': summary,
+                    'actions': [], 'isGuidance': True,
+                    'basis': ('Derived by GovOS from '
+                              + (f"the declared result for {_clean(g.get('fromStage'), 80)}" if g.get('fromStage')
+                                 else 'the official lifecycle') + ' and the exam pattern; not an official statement.'),
+                    'fromStage': _clean(g.get('fromStage'), 80), 'nextStage': _clean(g.get('nextStage'), 80),
+                    'provenance': prov})
+    return out
+
+
+def _cutoffs(rec: ExamRecord) -> list[dict]:
+    """Cut-offs exactly as a reader recorded them: year, stage, category, post, value, type.
+
+    `tier1Cutoff` is filled only where the record itself says the figure is the first stage's;
+    otherwise the value travels in `value` with its own `stage`, because relabelling a Mains or
+    a final cut-off as "Tier 1" would misstate it."""
+    f = rec.get('cutoffs')
+    if not (f and f.usable and isinstance(f.value, list)):
+        return []
+    prov = _prov(rec, f, 'cutoffs') or {}
+    out = []
+    for i, c in enumerate(f.value):
+        if not isinstance(c, dict):
+            continue
+        raw = c.get('value', c.get('cutoffMarks', c.get('marks', c.get('tier1Cutoff'))))
+        try:
+            value = float(raw)
+        except (TypeError, ValueError):
+            continue
+        try:
+            year = int(str(c.get('year') or '')[:4])
+        except ValueError:
+            continue
+        entry = {'year': year, 'category': _clean(c.get('category'), 80) or 'Not stated',
+                 'value': value, 'stage': _clean(c.get('stage'), 80), 'post': _clean(c.get('post'), 160),
+                 'cutoffType': _clean(c.get('cutoffType') or c.get('type'), 60),
+                 'provenance': (c['provenance'] if isinstance(c.get('provenance'), dict) and c['provenance']
+                                else dict(prov, id=f"{prov.get('id', 'prov')}-{i}"))}
+        if 'tier1Cutoff' in c:
+            entry['tier1Cutoff'] = float(c['tier1Cutoff'])
+        if 'tier2Cutoff' in c:
+            entry['tier2Cutoff'] = float(c['tier2Cutoff'])
+        if c.get('postsEligible'):
+            entry['postsEligible'] = _clean(c['postsEligible'], 200)
+        out.append(entry)
+    return out
+
+
+def _age_relaxations(rec: ExamRecord) -> list[dict]:
+    """Relaxations the notice itself printed, carried in the canonical ageLimits value.
+
+    Nothing is supplied from a national default: no printed relaxation, no entry."""
+    f = rec.get('ageLimits')
+    if not (f and f.usable and isinstance(f.value, dict)):
+        return []
+    prov = _prov(rec, f, 'age-relaxation') or {}
+    out = []
+    for i, r in enumerate(f.value.get('relaxations') or []):
+        if not isinstance(r, dict) or not _clean(r.get('category')):
+            continue
+        years, maximum = r.get('years'), r.get('maximumAge')
+        if not isinstance(years, (int, float)) and not isinstance(maximum, (int, float)):
+            continue      # a relaxation with no figure is not one a candidate can apply
+        entry = {'category': _clean(r.get('category'), 160),
+                 'status': 'VERIFIED' if (f.ok and r.get('status', 'VERIFIED') == 'VERIFIED') else 'NEEDS_REVIEW',
+                 'provenance': dict(prov, id=f"{prov.get('id', 'prov')}-{i}",
+                                    **({'excerptText': _clean(r.get('evidenceSpan'))} if r.get('evidenceSpan') else {}))}
+        if isinstance(years, (int, float)):
+            entry['years'] = years
+        if isinstance(maximum, (int, float)):
+            entry['maximumAge'] = maximum
+        if r.get('condition'):
+            entry['condition'] = _clean(r['condition'], 300)
+        if r.get('appliesToPostId'):
+            entry['appliesToPostId'] = str(r['appliesToPostId'])
+        out.append(entry)
+    return out
+
+
+def stages_from_pattern(tree: list[dict]) -> list[dict]:
+    """The legacy `stages` projection of an authoritative pattern tree.
+
+    One ExamStage per root node the tree itself labels a STAGE -- none is guessed from a
+    paper, a section or a heading. A stage's figures are carried only where the tree carries
+    them; an unstated figure is 0 *and* named in `unstatedFields`, so a consumer that prints
+    it can say "not stated" instead of "0 marks"."""
+    stages = []
+    for node in tree:
+        if not isinstance(node, dict) or node.get('level') != 'STAGE':
+            continue
+        unstated = [k for k, src in (('durationMinutes', 'durationMinutes'), ('totalQuestions', 'questions'),
+                                     ('totalMarks', 'marks')) if not isinstance(node.get(src), (int, float))]
+        sections = []
+        for ch in node.get('children') or []:
+            if not isinstance(ch, dict) or not ch.get('name'):
+                continue
+            sections.append({'sectionName': ch['name'],
+                             'modules': [g['name'] for g in (ch.get('children') or []) if isinstance(g, dict) and g.get('name')][:20],
+                             'questions': ch.get('questions') if isinstance(ch.get('questions'), (int, float)) else 0,
+                             'marks': ch.get('marks') if isinstance(ch.get('marks'), (int, float)) else 0,
+                             'durationMinutes': ch.get('durationMinutes') if isinstance(ch.get('durationMinutes'), (int, float)) else 0,
+                             'negativeMarking': ch.get('negativeMarking') or ''})
+        qualifying = node.get('qualifying') or {}
+        stages.append({
+            'id': node.get('id') or f'stage-{len(stages) + 1}',
+            'stageNumber': len(stages) + 1,
+            'stageName': node['name'],
+            'tier': node.get('code') or node.get('levelLabel') or f'Stage {len(stages) + 1}',
+            'durationMinutes': node.get('durationMinutes') if isinstance(node.get('durationMinutes'), (int, float)) else 0,
+            'totalQuestions': node.get('questions') if isinstance(node.get('questions'), (int, float)) else 0,
+            'totalMarks': node.get('marks') if isinstance(node.get('marks'), (int, float)) else 0,
+            'negativeMarking': node.get('negativeMarking') or '',
+            'mode': node.get('mode') or '',
+            'qualifyingNature': qualifying.get('asPrinted') or '',
+            'sections': sections,
+            'unstatedFields': unstated,
+            'derivedFrom': 'patternTree',
+            'provenance': node.get('provenance') or {},
+        })
+    return stages
+
+
+#: Sections whose content GovOS would *derive* (guidance, practice), mapped to the runtime key that
+#: would carry it. The canonical report can say such a section is derivable ("supported and
+#: projected"); if the runtime carries nothing for it, the student must be told it has not been
+#: generated -- never that it exists.
+_DERIVED_SECTION_CONTENT = {'roadmap': 'roadmapTracks', 'mock-tests': 'practiceQuestions'}
+
+
+def _section_states(report: Optional[ExamCompletenessReport], held: Optional[dict] = None,
+                    runtime: Optional[dict] = None) -> dict:
     """The 17 completeness states, carried as metadata so the UI can tell an honest absence from
-    an unpublished one — never rendered as raw enum text (that translation is a UI boundary)."""
+    an unpublished one — never rendered as raw enum text (that translation is a UI boundary).
+
+    The canonical report describes the record; materialization can hold a reading back (a
+    document list that is not a list of posts). A section containing a wholly held field is
+    reported as under review, so the runtime state describes what the student actually sees."""
     if report is None:
         return {}
-    return {s.section_id: {'state': s.state.value, 'nature': s.nature.value,
-                           'studentStatusSummary': s.student_status_summary,
-                           'sectionNum': s.section_num, 'isApplicable': s.is_applicable}
-            for s in report.sections}
+    held = held or {}
+    out = {}
+    for s in report.sections:
+        state, summary = s.state.value, s.student_status_summary
+        fields = getattr(s, 'fields', {}) or {}
+        wholly_held = [f for f in fields if f in held and not held[f].get('partial')]
+        if wholly_held and state == 'VERIFIED_AVAILABLE':
+            state = 'NEEDS_REVIEW'
+            summary = ('Part of this section was read from the notice but is held for review before it '
+                       'is shown: ' + ', '.join(wholly_held) + '.')
+        key = _DERIVED_SECTION_CONTENT.get(s.section_id)
+        if key and runtime is not None and not runtime.get(key) and state in ('SUPPORTED_AND_PROJECTED', 'RUNTIME_DERIVED'):
+            state = 'NOT_YET_GENERATED'
+            summary = ('GovOS guidance for this section has not been generated yet. It would be GovOS '
+                       'guidance built from the verified pattern and syllabus, never an official statement.')
+        out[s.section_id] = {'state': state, 'nature': s.nature.value, 'studentStatusSummary': summary,
+                             'sectionNum': s.section_num, 'isApplicable': s.is_applicable}
+    return out
 
 
 def materialize_exam(rec: ExamRecord, *, cycle: str = '',
@@ -613,57 +1162,80 @@ def materialize_exam(rec: ExamRecord, *, cycle: str = '',
     UNDER_VERIFICATION. The completeness states ride along as metadata.
     """
     cycle = cycle or get_exam_cycle({'id': rec.exam_id, 'title': rec.title}) or ''
-    admit = rec.get('admitCard')
-    admit_details = None
-    if admit and admit.usable and isinstance(admit.value, dict):
-        admit_details = {'status': 'NOT_YET_ANNOUNCED', 'releaseDateStr': '',
-                         'officialPortalUrl': admit.value.get('portalUrl') or rec.value('applicationPortal') or rec.official_domain,
-                         'loginCredentialsRequired': [], 'instructions': [str(admit.value.get('text', ''))[:500]],
-                         'cityIntimationAvailable': False}
-    posts, skipped_posts = _posts(rec)
+    held: dict[str, dict] = {}                       # field -> reasoned disposition (the ledger)
+    pattern_withheld: list[dict] = []
+
+    posts, no_group, held_posts = _posts(rec)
+    if held_posts:
+        held['posts'] = {'reason': 'candidate(s) read as documents or certificates, not posts; held for review '
+                                   'with their evidence rather than published as posts',
+                         'items': held_posts, 'partial': bool(posts)}
     age = rec.value('ageLimits') or {}
+    vac = rec.get('vacancies')
+    vacancies_total = ''
+    if vac and vac.ok and vac.value not in (None, ''):
+        vacancies_total = str(vac.value)
+    elif vac and vac.status is Status.NEEDS_REVIEW and vac.value not in (None, ''):
+        held['vacancies'] = {'reason': vac.note or 'the vacancy figure is not established', 'items': [vac.value]}
+
+    pattern_tree = _pattern_tree(rec, pattern_withheld, held)
+    syllabus_tree = _syllabus_tree(rec)
     exam: dict = {
         'id': rec.exam_id, 'code': rec.code, 'title': rec.title,
         'authorityName': rec.authority_name, 'officialDomain': rec.official_domain,
+        # The date age is reckoned on, only as the notice printed it. Never a default: an
+        # exam without one is shown as "not stated", and eligibility is not evaluated.
         'crucialEligibilityDate': str((age.get('asOn') if isinstance(age, dict) else '') or ''),
         'isGoldenJourney': False, 'isDemoData': False,
         'overviewDescription': _overview(rec),
-        'vacanciesTotal': str(rec.value('vacancies') or ''),
+        'vacanciesTotal': vacancies_total,
         'posts': posts, 'dates': _dates(rec),
         'globalRuleGroup': {'id': f'rules-{rec.exam_id}', 'operator': 'AND', 'rules': []},
-        # The flat, closed-union forms (stages, syllabus topics) need figures and vocabulary the
-        # readers did not print, so they stay honest empties; the typed trees the UI renders
-        # (patternTree, syllabusTree) carry exactly what was read, node by node, with provenance.
-        'stages': [], 'syllabus': [], 'practiceQuestions': [],
-        'corrigendums': _corrigendums(rec), 'cutoffsHistory': [],
+        # Compatibility projections of the authoritative trees (see PROJECTION_MAP).
+        'stages': stages_from_pattern(pattern_tree),
+        'syllabus': flat_syllabus_from_tree(syllabus_tree) if syllabus_tree else [],
+        # No canonical field supplies practice questions or an official roadmap. These stay
+        # empty, and the sections say so; nothing is generated to fill them.
+        'practiceQuestions': [], 'roadmapTracks': [],
+        'corrigendums': _corrigendums(rec), 'cutoffsHistory': _cutoffs(rec),
         'resources': _resources(rec), 'faqs': _faqs(rec),
-        'applicationGuide': _application_guide(rec), 'roadmapTracks': [],
+        'applicationGuide': _application_guide(rec),
         'eligibilityHighlights': _eligibility_highlights(rec),
-        'officialLinks': [{'title': f'{rec.authority_name} — official website', 'url': rec.official_domain,
-                           'note': 'The authority’s own site.'}],
+        'officialLinks': _official_links(rec),
         'origin': 'MACHINE_ACQUIRED',
         'cycle': cycle,
-        'sectionStates': _section_states(completeness),
-        'materialization': {'version': MATERIALIZER_VERSION,
-                            'generatedAt': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
-                            'gateDecision': gate.decision.value if gate else None,
-                            'postsWithoutPrintedGroup': skipped_posts},
     }
-    if admit_details is not None:
-        exam['admitCardDetails'] = admit_details
-    pattern_tree = _pattern_tree(rec)
-    if pattern_tree:
-        exam['patternTree'] = pattern_tree
-    syllabus_tree = _syllabus_tree(rec)
-    if syllabus_tree:
-        exam['syllabusTree'] = syllabus_tree
-        # The flat array the tree map, the topic checklist and the weightage view read. Same
-        # content as the tree, in the shape those three views need; the tree stays canonical.
-        exam['syllabus'] = flat_syllabus_from_tree(syllabus_tree)
-    exam_day = _exam_day(rec)
-    if exam_day:
-        exam['examDayChecklist'] = exam_day
+    for key, value in (('patternTree', pattern_tree), ('syllabusTree', syllabus_tree),
+                       ('examDayChecklist', _exam_day(rec)), ('admitCardEvents', _admit_card_events(rec)),
+                       ('officialPapers', _official_papers(rec)), ('answerKeys', _answer_keys(rec)),
+                       ('resultDeclarations', _result_declarations(rec)),
+                       ('resultNextSteps', _result_next_steps(rec)),
+                       ('ageRelaxations', _age_relaxations(rec))):
+        if value:
+            exam[key] = value
+    if pattern_withheld and pattern_tree:
+        held['examPattern'] = {'reason': 'figures the reader could not tie to a column were withheld; '
+                                         'the stages, papers and subjects are published',
+                               'items': pattern_withheld, 'partial': True}
+    exam['sectionStates'] = _section_states(completeness, held, exam)
+    exam['materialization'] = {
+        'version': MATERIALIZER_VERSION,
+        'generatedAt': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+        'gateDecision': gate.decision.value if gate else None,
+        'postsWithoutPrintedGroup': no_group,
+        'heldForReview': held,
+    }
     return exam
+
+
+def _official_links(rec: ExamRecord) -> list[dict]:
+    links = [{'title': f'{rec.authority_name} — official website', 'url': rec.official_domain,
+              'note': 'The authority’s own site.'}]
+    portal = rec.value('applicationPortal')
+    if isinstance(portal, str) and portal.startswith('http') and portal.rstrip('/') != rec.official_domain.rstrip('/'):
+        links.append({'title': 'Online application portal', 'url': portal,
+                      'note': 'Where the notice sends candidates to apply.'})
+    return links
 
 
 # ------------------------------------------------------------------ the runtime registry
@@ -772,6 +1344,11 @@ class ExamRegistry:
         errors = validate_runtime_exam(exam)
         if errors:
             raise RegistryRejected('runtime exam fails the frontend contract: ' + '; '.join(errors[:6]))
+        # The second publication layer: a hollow runtime object never reaches candidates, on
+        # any path into the registry, whatever the canonical gate said about the record.
+        losses = validate_projection(rec, exam)
+        if losses:
+            raise MaterializationLoss('canonical facts were lost in materialization: ' + '; '.join(losses[:6]))
         if exam.get('id') != rec.exam_id:
             raise RegistryRejected(f"identity mismatch: exam payload id {exam.get('id')!r} != record {rec.exam_id!r}")
         if target_in_register(rec.exam_id, data_ts):
@@ -868,6 +1445,7 @@ class EngineState(str, Enum):
     SOURCE_FETCH_FAILURE = 'SOURCE_FETCH_FAILURE'
     ISOLATION_VIOLATION = 'ISOLATION_VIOLATION'
     MATERIALIZATION_INVALID = 'MATERIALIZATION_INVALID'   # gate passed but the payload fails the contract
+    PROJECTION_LOSS = 'PROJECTION_LOSS'                   # a canonical FOUND fact did not survive into runtime
     REGISTRY_REJECTED = 'REGISTRY_REJECTED'               # e.g. an authored id, a missing cycle
 
 
@@ -937,7 +1515,7 @@ def build_exam(exam_query: str, year: str | int = '', *, registry: Optional[Exam
                replay=None) -> EngineBuildResult:
     """The single generic engine entry point: name + cycle in, a registered runtime Exam out.
 
-        build_exam("SSC CGL", 2027)  ·  build_exam("RRB NTPC", 2027)  ·  build_exam("Any Unknown Board Exam", 2028)
+        build_exam("<an authored exam>", 2027)  ·  build_exam("Any Unknown Board Exam", 2028)
 
     all take the same path: the existing orchestrator (resolve → discover → identity → extract →
     verify → gate, always a dry run — this engine never writes data.ts), then materialize →
@@ -983,21 +1561,47 @@ def build_exam(exam_query: str, year: str | int = '', *, registry: Optional[Exam
 
     br, rec = res.build, res.build.record
     cycle = str(br.resolved.year or year or get_exam_cycle({'id': rec.exam_id, 'title': rec.title}) or '')
-    exam = materialize_exam(rec, cycle=cycle, completeness=getattr(br, 'completeness', None), gate=res.gate)
+    return _materialize_and_publish(out, rec, gate=res.gate, completeness=getattr(br, 'completeness', None),
+                                    cycle=cycle, registry=registry, data_ts=data_ts)
+
+
+def _materialize_and_publish(out: EngineBuildResult, rec: ExamRecord, *, gate: GateReport,
+                             completeness: Optional[ExamCompletenessReport], cycle: str,
+                             registry: Optional[ExamRegistry], data_ts: str) -> EngineBuildResult:
+    """canonical gate PASS -> materialize -> runtime contract -> projection -> register.
+
+    Shared by a fresh build and by re-materializing a stored canonical record, so the two
+    cannot drift: each failing layer keeps its own state and registers nothing."""
+    exam = materialize_exam(rec, cycle=cycle, completeness=completeness, gate=gate)
     errors = validate_runtime_exam(exam)
-    out.materialization = {'ok': not errors, 'errors': errors, 'version': MATERIALIZER_VERSION,
-                           'postsWithoutPrintedGroup': exam['materialization']['postsWithoutPrintedGroup']}
+    losses = validate_projection(rec, exam) if not errors else []
+    out.materialization = {'ok': not errors and not losses, 'errors': errors, 'projectionLosses': losses,
+                           'version': MATERIALIZER_VERSION,
+                           'postsWithoutPrintedGroup': exam['materialization']['postsWithoutPrintedGroup'],
+                           'heldForReview': exam['materialization']['heldForReview']}
+    out.gate = dict(out.gate or {}, runtimeDecision='PASS' if not errors and not losses else 'BLOCK')
     if errors:
         out.state = EngineState.MATERIALIZATION_INVALID
         out.registry = {'status': 'NOT_REGISTERED'}
         out.reason = 'gate PASS, but the materialized exam fails the frontend contract: ' + '; '.join(errors[:4])
         return out
+    if losses:
+        out.state = EngineState.PROJECTION_LOSS
+        out.registry = {'status': 'NOT_REGISTERED'}
+        out.reason = ('gate PASS on the canonical record, but materialization lost verified facts, so '
+                      'nothing was published: ' + '; '.join(losses[:4]))
+        return out
     out.exam = exam
 
     registry = registry or ExamRegistry()
     try:
-        rr = registry.register(rec, gate=res.gate, exam=exam, completeness=getattr(br, 'completeness', None),
+        rr = registry.register(rec, gate=gate, exam=exam, completeness=completeness,
                                cycle=cycle, data_ts=data_ts)
+    except MaterializationLoss as exc:
+        out.state = EngineState.PROJECTION_LOSS
+        out.registry = {'status': 'NOT_REGISTERED'}
+        out.reason = str(exc)
+        return out
     except RegistryRejected as exc:
         out.state = EngineState.REGISTRY_REJECTED
         out.registry = {'status': 'NOT_REGISTERED'}
@@ -1005,9 +1609,68 @@ def build_exam(exam_query: str, year: str | int = '', *, registry: Optional[Exam
         return out
     out.state = EngineState.REGISTERED
     out.registry = {'status': 'REGISTERED', 'examId': rr.exam_id, 'cycle': rr.cycle, 'version': rr.version}
-    out.reason = (f'gate PASS; {rec.exam_id} (cycle {cycle}) materialized and registered as a runtime exam, '
-                  f'version {rr.version}. data.ts untouched.')
+    out.reason = (f'gate PASS; {rec.exam_id} (cycle {cycle}) materialized, projection-validated and '
+                  f'registered as a runtime exam, version {rr.version}. data.ts untouched.')
     return out
+
+
+# ------------------------------------------------------------------ re-materialization
+def record_from_snapshot(snapshot: dict) -> ExamRecord:
+    """Rebuild the canonical ExamRecord a registry row stored (`_record_snapshot`). Exact: every
+    field keeps its status, value, note and citation, so re-materializing changes nothing about
+    what was read -- only how it is projected."""
+    from ..exam_authoring.record import Citation
+    rec = ExamRecord(exam_id=snapshot['examId'], code=snapshot['code'], title=snapshot['title'],
+                     authority_name=snapshot['authorityName'], official_domain=snapshot['officialDomain'])
+    rec.sources_read.extend(snapshot.get('sourcesRead') or [])
+    for name, f in (snapshot.get('fields') or {}).items():
+        c = f.get('citation')
+        rec.set(Field(name=name, status=Status(f['status']), value=f.get('value'),
+                      citation=Citation(**c) if isinstance(c, dict) else None, note=f.get('note') or ''))
+    return rec
+
+
+def rematerialize(registry: ExamRegistry, exam_id: str, cycle: Optional[str] = None, *,
+                  reviews: Optional[list] = None, target: Optional[ExamRegistry] = None,
+                  data_ts: str = P.DATA_TS) -> EngineBuildResult:
+    """Re-project a stored canonical record through the current materializer. No acquisition,
+    no network: the record is the one the registry already holds.
+
+    Reviews (review.py) may be applied, exactly as on a fresh build. The canonical gate is run
+    again over the record as it now stands, then the same runtime and projection layers as a
+    fresh build. The completeness report is re-evaluated from the record, keeping the fields
+    the original build had searched for and not found."""
+    from .completeness import evaluate_completeness
+    from .gate import evaluate as gate_evaluate
+    from types import SimpleNamespace
+
+    row = registry.get(exam_id, cycle)
+    out = EngineBuildResult(query=exam_id, year=str(cycle or ''), state=EngineState.BLOCKED_BY_GATE)
+    if row is None:
+        out.reason = f'no published registry record for {exam_id}' + (f' cycle {cycle}' if cycle else '')
+        out.registry = {'status': 'NOT_REGISTERED'}
+        return out
+    rec = record_from_snapshot(row.record)
+    if reviews:
+        from .review import apply_reviews
+        out.reviews = apply_reviews(rec, reviews).to_dict()
+    searched = frozenset(
+        fname for sec in ((row.completeness or {}).get('sections') or [])
+        for fname, st in (sec.get('fields') or {}).items() if st == 'SOURCE_NOT_FOUND_AFTER_SEARCH')
+    completeness = evaluate_completeness(rec, SimpleNamespace(infrastructure_failed=False),
+                                         searched_not_found=searched)
+    gate = gate_evaluate(rec, completeness=completeness)
+    out.gate = {'decision': gate.decision.value, 'blockers': [str(b) for b in gate.blockers],
+                'allowedUnpublished': list(gate.allowed)}
+    out.completeness = completeness.to_dict()
+    out.resolution = {'examId': rec.exam_id, 'authorityName': rec.authority_name,
+                      'authorityDomain': rec.official_domain, 'officialName': rec.title}
+    if not gate.may_publish:
+        out.registry = {'status': 'NOT_REGISTERED'}
+        out.reason = 'the canonical gate did not PASS: ' + '; '.join(str(b) for b in gate.blockers[:4])
+        return out
+    return _materialize_and_publish(out, rec, gate=gate, completeness=completeness, cycle=row.cycle,
+                                    registry=target or registry, data_ts=data_ts)
 
 
 # ------------------------------------------------------------------ CLI

@@ -32,7 +32,8 @@ export interface CorrigendumNotice {
 
 export interface ImportantDate {
   id: string;
-  type: 'NOTIFICATION' | 'APPLICATION_OPEN' | 'APPLICATION_CLOSE' | 'CORRECTION_WINDOW' | 'ADMIT_CARD' | 'EXAM_TIER1' | 'EXAM_TIER2' | 'ANSWER_KEY' | 'RESULT' | 'INTERVIEW';
+  /** OTHER: a milestone the notice printed under a label no specific member names. */
+  type: 'NOTIFICATION' | 'APPLICATION_OPEN' | 'APPLICATION_CLOSE' | 'CORRECTION_WINDOW' | 'ADMIT_CARD' | 'EXAM_TIER1' | 'EXAM_TIER2' | 'ANSWER_KEY' | 'RESULT' | 'INTERVIEW' | 'OTHER';
   label: string;
   dateTimeStr: string;
   timezone: string;
@@ -248,6 +249,14 @@ export interface ExamStage {
   negativeMarking: string;
   mode: string;
   qualifyingNature: string;
+  /**
+   * Figures the source did not state. A machine-acquired exam's stages are projected from
+   * its pattern tree; a figure the tree does not carry is 0 here *and* named in this list, so
+   * a consumer prints "not stated" instead of "0 marks".
+   */
+  unstatedFields?: string[];
+  /** 'patternTree' when this stage is a compatibility projection of the authoritative tree. */
+  derivedFrom?: string;
   sections: {
     sectionName: string;
     modules: string[];
@@ -318,7 +327,16 @@ export interface PracticeQuestion {
 export interface CutoffEntry {
   year: number;
   category: string;
-  tier1Cutoff: number;
+  /** The first stage's cut-off, where the source labels it so (authored SSC-style tables). */
+  tier1Cutoff?: number;
+  /**
+   * A cut-off in its own terms, for any exam: the figure, the stage it belongs to, the post
+   * and the kind of cut-off, exactly as recorded. Never relabelled as a Tier-1 figure.
+   */
+  value?: number;
+  stage?: string;
+  post?: string;
+  cutoffType?: string;
   tier2Cutoff?: number;
   postsEligible?: string;
   provenance: DataProvenance;
@@ -642,6 +660,7 @@ export interface OTRStep {
   instructions: string[];
   mandatoryFields: string[];
   commonMistakesToAvoid: string[];
+  provenance?: DataProvenance;
 }
 
 export interface DocumentSpecification {
@@ -651,6 +670,8 @@ export interface DocumentSpecification {
   fileSize: string;
   rules: string[];
   sampleDescription: string;
+  /** Where the rules above were read, for a machine-acquired exam. */
+  provenance?: DataProvenance;
 }
 
 export interface CertificateValidityRule {
@@ -804,6 +825,28 @@ export interface ApplicationGuideData {
     consequence: string;
     prevention: string;
   }[];
+  /** The documents the notice lists, by name, each cited. Not certificate-validity rules. */
+  requiredDocuments?: ApplicationRequiredDocument[];
+  /** The fee as the notice printed it, with the exemptions it stated. */
+  fee?: ApplicationFeeDetails;
+}
+
+export interface ApplicationRequiredDocument {
+  id: string;
+  name: string;
+  required: boolean;
+  specifications: string[];
+  provenance?: DataProvenance;
+}
+
+export interface ApplicationFeeDetails {
+  /** Amounts exactly as printed (strings, so no rounding or currency is assumed). */
+  amounts: string[];
+  rules: { scope: string; amount: string; isExempt: boolean }[];
+  acceptedModes: string[];
+  exemptions: { category: string; statedAs: string; provenance?: DataProvenance }[];
+  statedAs?: string;
+  provenance?: DataProvenance;
 }
 
 export interface RoadmapPhase {
@@ -993,6 +1036,13 @@ export interface ResultNextStepStage {
   headline: string;
   summary: string;
   actions: ResultActionOption[];
+  /** True for GovOS guidance derived from official facts — never an official statement. */
+  isGuidance?: boolean;
+  /** What the guidance was derived from, in words. */
+  basis?: string;
+  fromStage?: string;
+  nextStage?: string;
+  provenance?: DataProvenance;
   contingencyPlan?: {
     summary: string;
     alternativeExams: string[];
@@ -1110,6 +1160,15 @@ export interface Exam {
    * absence from an unpublished one; it is never rendered as raw enum text.
    */
   sectionStates?: Record<string, { state: string; nature: string; studentStatusSummary: string; sectionNum: number; isApplicable: boolean }>;
+  /**
+   * The materializer's ledger for a machine-acquired exam: what it held back from display and
+   * why (e.g. a document list read where posts were expected). Audit data; never a fact.
+   */
+  materialization?: {
+    version?: string;
+    postsWithoutPrintedGroup?: string[];
+    heldForReview?: Record<string, { reason: string; partial?: boolean; items?: unknown[] }>;
+  };
 }
 
 export interface UserProfile {
@@ -1133,7 +1192,8 @@ export interface PostVerdict {
   department: string;
   payLevel: string;
   eligible: boolean;
-  ageStatus: 'OK' | 'EXCEEDED' | 'UNDERAGE';
+  /** UNKNOWN: the record carries no age limit for this post, or no date to reckon age on. */
+  ageStatus: 'OK' | 'EXCEEDED' | 'UNDERAGE' | 'UNKNOWN';
   calculatedAge: number;
   maxPermissibleAge: number;
   qualStatus: 'OK' | 'DISQUALIFIED';
@@ -1144,7 +1204,11 @@ export interface PostVerdict {
 
 export interface EligibilityDiagnostic {
   isEligible: boolean;
-  status: 'ELIGIBLE' | 'CONDITIONAL' | 'INELIGIBLE';
+  /**
+   * NOT_EVALUABLE: the record lacks what a verdict needs (no posts, no published age limit,
+   * or no crucial date). Never shown as eligible or ineligible.
+   */
+  status: 'ELIGIBLE' | 'CONDITIONAL' | 'INELIGIBLE' | 'NOT_EVALUABLE';
   calculatedAgeOnCutoff: {
     years: number;
     months: number;

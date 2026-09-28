@@ -143,6 +143,7 @@ import {
   MultiTierResultEntry,
   ExamAdmitCardEvent,
   ExamResultDeclaration,
+  CutoffEntry,
   DiscoveryProfile,
   DiscoveryProfileField,
   DiscoveryResult,
@@ -2398,7 +2399,9 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
   const hasStatisticsPosts = selectedExam.posts.some(p => /statistic|JSO/i.test(p.postName) || !!p.specialQualification);
   const hasPhysicalPosts = selectedExam.posts.some(p => p.physicalRequired);
   const diagnostic: EligibilityDiagnostic = evaluateEligibility(selectedExam, profile);
-  const detailedAge = calculateDetailedAge(profile.dateOfBirth, selectedExam.crucialEligibilityDate || '2026-08-01');
+  const detailedAge = selectedExam.crucialEligibilityDate
+    ? calculateDetailedAge(profile.dateOfBirth, selectedExam.crucialEligibilityDate)
+    : null;
   // The exam's own published relaxation, or none. This used to be a national default
   // applied to whichever exam the candidate happened to be looking at.
   const relaxationEntry = findAgeRelaxation(selectedExam, profile.category);
@@ -2514,7 +2517,7 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
                   Calculated Age on {selectedExam.crucialEligibilityDate} (Crucial Date)
                 </span>
                 <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '2px' }}>
-                  {detailedAge.years} Years, {detailedAge.months} Months, {detailedAge.days} Days
+                  {detailedAge ? `${detailedAge.years} Years, ${detailedAge.months} Months, ${detailedAge.days} Days` : 'Not computed — the record states no crucial date'}
                 </div>
               </div>
               <span className="badge badge-verified" style={{ fontSize: '0.75rem' }}>
@@ -2657,6 +2660,7 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
                   {diagnostic.status === 'ELIGIBLE' && `Fully Eligible for ${examShort}`}
                   {diagnostic.status === 'CONDITIONAL' && 'Partially Eligible (Post-Specific Constraints)'}
                   {diagnostic.status === 'INELIGIBLE' && `Ineligible for ${examShort}`}
+                  {diagnostic.status === 'NOT_EVALUABLE' && `Eligibility cannot be evaluated for ${examShort} yet`}
                 </h3>
                 <span className="badge badge-verified" style={{ fontSize: '0.75rem', marginTop: '3px' }}>
                   {diagnostic.categoryRelaxationApplied}
@@ -2829,6 +2833,9 @@ export const ExamCompare: React.FC<ExamCompareProps> = ({ onSelectExam }) => {
 
   const stagesLabel = (exam: Exam) => {
     if (exam.stages.length === 0) return 'Not specified in register';
+    // Stages projected from a pattern tree are in the document's order, which is not
+    // necessarily the order they are sat in -- listed, never chained with arrows.
+    if (exam.stages.some(st => st.derivedFrom)) return exam.stages.map(st => st.stageName.split(':')[0].trim()).join('; ');
     return exam.stages.map(st => st.stageName.split(':')[0].trim()).join(' \u2192 ');
   };
 
@@ -2841,7 +2848,7 @@ export const ExamCompare: React.FC<ExamCompareProps> = ({ onSelectExam }) => {
   const latestCutoffLabel = (exam: Exam) => {
     if (exam.cutoffsHistory.length === 0) return 'No published cut-off in register';
     const latest = [...exam.cutoffsHistory].sort((a, b) => b.year - a.year)[0];
-    return latest.tier1Cutoff + ' marks (' + latest.category + ', ' + latest.year + ')';
+    return cutoffFigure(latest) + ' marks (' + latest.category + ', ' + latest.year + (latest.stage ? ', ' + latest.stage : '') + ')';
   };
 
   const nextDateLabel = (exam: Exam) => {
@@ -3944,12 +3951,15 @@ const dateOfType = (type: string, exam: Exam = SSC_CGL_EXAM) =>
   exam.dates.find(d => d.type === type && d.status !== 'SUPERSEDED') ||
   exam.dates.find(d => d.type === type);
 
-const citeFrom = (provenance: DataProvenance, fallbackTitle: string) => ({
+/** A cut-off's figure: the Tier-1 column where the source labels it so, else its own value. */
+const cutoffFigure = (c: CutoffEntry) => (c.tier1Cutoff ?? c.value ?? 'not stated');
+
+const citeFrom = (provenance: DataProvenance | undefined, fallbackTitle: string) => (provenance ? {
   documentTitle: provenance.documentTitle || fallbackTitle,
   pageNumber: provenance.pageNumber || 1,
   clauseNumber: provenance.clauseNumber || 'See source document',
   provenance
-});
+} : undefined);
 
 /** Where each thing lives, so the assistant can answer "where do I …" consistently. */
 const PLATFORM_MAP: { keys: string[]; answer: string; action: AssistantAction }[] = [
@@ -4314,13 +4324,13 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
     const card = (exam.eligibilityHighlights || []).find(c => /attempt/i.test(c.title));
     return card
       ? { verified: true, subject: FACT_SUBJECTS.attempts, text: `${card.body}\n\nThat is the rule as the notice states it; the age limit still applies on top.`, citation: citeFrom(card.provenance, `${exam.title} Official Notice`), action: { label: 'Open Eligibility & Posts', tab: 'EXAM_DETAIL', section: 3 } }
-      : { verified: true, subject: FACT_SUBJECTS.attempts, text: `The ${exam.title} notice sets no limit on the number of attempts: you may appear every year you are within the age limit (counted on ${exam.crucialEligibilityDate}) and hold the qualification. Only the age band caps it.`, citation: citeFrom(exam.posts[0].provenance, `${exam.title} Official Notice`), action: { label: 'Open Eligibility & Posts', tab: 'EXAM_DETAIL', section: 3 } };
+      : { verified: true, subject: FACT_SUBJECTS.attempts, text: `The ${exam.title} notice sets no limit on the number of attempts: you may appear every year you are within the age limit (counted on ${exam.crucialEligibilityDate}) and hold the qualification. Only the age band caps it.`, citation: citeFrom(exam.posts[0]?.provenance, `${exam.title} Official Notice`), action: { label: 'Open Eligibility & Posts', tab: 'EXAM_DETAIL', section: 3 } };
   }
 
   if (factId === 'physical') {
     const physical = exam.posts.filter(p => p.physicalRequired);
     if (physical.length === 0) {
-      return { verified: true, subject: FACT_SUBJECTS.physical, text: `None of the ${exam.posts.length} ${exam.title} posts on record requires a physical or endurance test; selection is on the written stages${exam.stages.some(st => st.tier === 'INTERVIEW') ? ' and the interview' : ''} alone.`, citation: citeFrom(exam.posts[0].provenance, `${exam.title} Official Notice`), action: { label: 'See all posts', tab: 'EXAM_DETAIL', section: 1 } };
+      return { verified: true, subject: FACT_SUBJECTS.physical, text: `None of the ${exam.posts.length} ${exam.title} posts on record requires a physical or endurance test; selection is on the written stages${exam.stages.some(st => st.tier === 'INTERVIEW') ? ' and the interview' : ''} alone.`, citation: citeFrom(exam.posts[0]?.provenance, `${exam.title} Official Notice`), action: { label: 'See all posts', tab: 'EXAM_DETAIL', section: 1 } };
     }
     const lines = physical.map(p => `• ${p.postName}${p.physicalNote ? ` — ${p.physicalNote}` : ''}`).join('\n');
     return {
@@ -4422,8 +4432,8 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
         verified: true,
         sourceKind: 'CLARIFY',
         subject: 'eligibility',
-        text: `I can check this properly rather than in general — but I need your details first: date of birth, degree, and category. Enter them in **Am I Eligible?** and GovOS checks you against all ${exam.posts.length} ${exam.title} posts, one by one, with your category's age relaxation applied.\n\nThe rule itself: a bachelor's degree in any discipline, held on the crucial date ${exam.crucialEligibilityDate}. Two posts add conditions — Junior Statistical Officer needs 60% in Mathematics at Class 12 or Statistics in the degree, and Statistical Investigator needs Statistics as a subject.`,
-        citation: citeFrom(exam.posts[0].provenance, `${exam.title} Official Notice`),
+        text: `I can check this properly rather than in general — but I need your details first: date of birth, degree, and category. Enter them in **Am I Eligible?** and GovOS checks you against all ${exam.posts.length} ${exam.title} posts, one by one, with your category's age relaxation applied.\n\n${exam.crucialEligibilityDate ? `Age is reckoned on ${exam.crucialEligibilityDate}.` : `The record states no date on which age is reckoned.`}${exam.posts.some(p => p.specialQualification) ? ` Posts with their own conditions: ${exam.posts.filter(p => p.specialQualification).map(p => `${p.postName} (${p.specialQualification})`).join('; ')}.` : ''}`,
+        citation: citeFrom(exam.posts[0]?.provenance, `${exam.title} Official Notice`),
         action: { label: 'Open Am I Eligible?', tab: 'ELIGIBILITY' }
       };
     }
@@ -4436,7 +4446,7 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
       sourceKind: 'OFFICIAL',
       subject: 'eligibility',
       text: `Checked against your saved details (${profile.degree}, ${profile.category}, born ${profile.dateOfBirth}) for ${exam.title}:\n\n${diag.plainEnglishExplanation}${targetLine}\n\nOpen Am I Eligible? for the full post-by-post verdict and the clause behind each one.`,
-      citation: citeFrom(exam.posts[0].provenance, `${exam.title} Official Notice`),
+      citation: citeFrom(exam.posts[0]?.provenance, `${exam.title} Official Notice`),
       action: { label: 'Open Am I Eligible?', tab: 'ELIGIBILITY' }
     };
   }
@@ -4482,7 +4492,7 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
       verified: true,
       subject: FACT_SUBJECTS.pattern,
       text: `Penalty for a wrong answer in ${exam.title}:\n\n${lines}\n\nA question left blank costs nothing, so an answer you cannot narrow down is better left.`,
-      citation: citeFrom(exam.stages[0].provenance, `${exam.title} Official Notice`),
+      citation: citeFrom(exam.stages[0]?.provenance, `${exam.title} Official Notice`),
       action: { label: 'Open the pattern section', tab: 'EXAM_DETAIL', section: 5 }
     };
   }
@@ -4508,7 +4518,7 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
     return {
       verified: true,
       text: `${exam.vacanciesTotal ? `Vacancies on record: ${exam.vacanciesTotal}.` : `The vacancy figure is announced separately by ${authority} and is not final in the register yet.`}${exam.posts.length > 0 ? `\n\nThe register carries ${exam.posts.length} post${exam.posts.length === 1 ? '' : 's'}, from ${exam.posts[0].postName} to ${exam.posts[exam.posts.length - 1].postName}, each with its own pay level and eligibility conditions.` : ''}\n\n${authority} publishes the final post-wise, category-wise vacancy table after the application window closes, so treat any earlier figure as indicative.`,
-      citation: exam.posts[0] ? citeFrom(exam.posts[0].provenance, `${exam.title} official notice`) : undefined,
+      citation: exam.posts[0] ? citeFrom(exam.posts[0]?.provenance, `${exam.title} official notice`) : undefined,
       action: { label: 'See all posts', tab: 'EXAM_DETAIL', section: 1 }
     };
   }
@@ -4522,7 +4532,7 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
     return {
       verified: true,
       text: `Pay by post, straight from the register:\n\n${top}\n\nAll ${exam.posts.length} posts with their pay levels, departments and nature of work are in section 01 of the Exam Guide. The figures are the pay scale; allowances vary by posting city.`,
-      citation: exam.posts[0] ? citeFrom(exam.posts[0].provenance, `${exam.title} official notice`) : undefined,
+      citation: exam.posts[0] ? citeFrom(exam.posts[0]?.provenance, `${exam.title} official notice`) : undefined,
       action: { label: 'See all posts and pay', tab: 'EXAM_DETAIL', section: 1 }
     };
   }
@@ -4596,13 +4606,13 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
       return {
         verified: true,
         subject: FACT_SUBJECTS.cutoff,
-        text: `${sec ? sec.sectionName : 'That paper'} is qualifying, not ranked: ${qualifyingStage.qualifyingNature}\n\nSo there is no category-wise cut-off for it; the cut-off that decides who goes through is on the other paper${picked.length > 0 ? ` — ${year}: ${picked.map(r => `${r.category} ${r.tier1Cutoff}`).join(', ')}` : ''}.`,
+        text: `${sec ? sec.sectionName : 'That paper'} is qualifying, not ranked: ${qualifyingStage.qualifyingNature}\n\nSo there is no category-wise cut-off for it; the cut-off that decides who goes through is on the other paper${picked.length > 0 ? ` — ${year}: ${picked.map(r => `${r.category} ${cutoffFigure(r)}`).join(', ')}` : ''}.`,
         citation: citeFrom(qualifyingStage.provenance, `${exam.title} Official Notice`),
         action: { label: 'Open the pattern section', tab: 'EXAM_DETAIL', section: 5 }
       };
     }
     if (picked.length > 0) {
-      const lines = picked.map(r => `• ${r.category}: ${label1} ${r.tier1Cutoff}${r.tier2Cutoff ? ` · ${label2} ${r.tier2Cutoff}` : ''}${r.postsEligible ? ` · ${r.postsEligible}` : ''}`).join('\n');
+      const lines = picked.map(r => `• ${r.category}: ${r.tier1Cutoff === undefined && r.stage ? r.stage : label1} ${cutoffFigure(r)}${r.tier2Cutoff ? ` · ${label2} ${r.tier2Cutoff}` : ''}${r.postsEligible ? ` · ${r.postsEligible}` : ''}`).join('\n');
       return {
         verified: true,
         subject: FACT_SUBJECTS.cutoff,
@@ -4614,7 +4624,7 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
     return {
       verified: true,
       subject: FACT_SUBJECTS.cutoff,
-      text: `${latestYear ? `Most recent cut-off on record: ${latestYear} — ${rows.filter(r => r.year === latestYear).map(r => `${r.category} ${r.tier1Cutoff}`).join(', ')} (${label1}). Ask for a category or a year and I will give that row; the full table is in section 10.` : 'Cut-off history is listed in section 10 of the exam page.'}\n\nCut-offs move every year with vacancies and paper difficulty, so use them as a target band rather than a promise.`,
+      text: `${latestYear ? `Most recent cut-off on record: ${latestYear} — ${rows.filter(r => r.year === latestYear).map(r => `${r.category} ${cutoffFigure(r)}`).join(', ')} (${label1}). Ask for a category or a year and I will give that row; the full table is in section 10.` : 'Cut-off history is listed in section 10 of the exam page.'}\n\nCut-offs move every year with vacancies and paper difficulty, so use them as a target band rather than a promise.`,
       citation: rows[0] ? citeFrom(rows[0].provenance, `${exam.title} cut-off sheet`) : undefined,
       action: { label: 'Open Cutoffs', tab: 'EXAM_DETAIL', section: 10 }
     };
@@ -8134,7 +8144,7 @@ export const PreparationPlanner: React.FC<PreparationPlannerProps> = ({ exam }) 
     () => storageService.getRoadmapGoals(exam.id)
   );
 
-  const currentTrack: RoadmapTrack = tracks.find(t => t.id === selectedTrackId) || tracks[0];
+  const currentTrack: RoadmapTrack | undefined = tracks.find(t => t.id === selectedTrackId) || tracks[0];
   /**
    * A track can be on record without its week-by-week phases being authored yet. That is a
    * missing piece of data, not a missing feature: the track, its hours and its focus are real
@@ -8147,6 +8157,21 @@ export const PreparationPlanner: React.FC<PreparationPlannerProps> = ({ exam }) 
   const toggleGoal = (goalKey: string) => {
     setCompletedGoals(storageService.toggleRoadmapGoal(exam.id, goalKey));
   };
+
+  // No track on record: GovOS has generated no study guidance for this exam, and none is
+  // borrowed from another exam. Said plainly, with what does exist -- never a crash.
+  if (!currentTrack) {
+    return (
+      <div className="glass-card animate-fade-in" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <span className="badge badge-pending" style={{ alignSelf: 'flex-start' }}>GOVOS STUDY GUIDANCE — NOT YET GENERATED</span>
+        <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>GovOS study guidance not yet generated for {exam.title}</h3>
+        <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
+          A study roadmap is GovOS guidance, not part of the official notice, and none has been generated for this exam.
+          Nothing is shown in its place from another exam. What is on record: {exam.syllabus.length > 0 ? `its ${exam.syllabus.length}-topic syllabus in section 06` : 'its syllabus section (06)'}{(exam.patternTree?.length || exam.stages.length) ? ' and its exam pattern in section 05' : ''}, both read from {exam.authorityName}&apos;s own documents.
+        </p>
+      </div>
+    );
+  }
 
   const totalGoals = currentTrack.phases.reduce((acc, phase) => {
     return acc + phase.weeklySchedule.reduce((wAcc, w) => wAcc + w.goals.length, 0);
@@ -8167,7 +8192,7 @@ export const PreparationPlanner: React.FC<PreparationPlannerProps> = ({ exam }) 
                 <ShieldCheck size={14} /> ADAPTIVE MULTI-TRACK PREPARATION ENGINE
               </span>
               <span className="badge badge-demo" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#137638' }}>
-                Synced with 2026 Exam Timeline
+                GovOS study guidance
               </span>
             </div>
             <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '6px' }}>
@@ -12822,8 +12847,17 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
 }) => {
   // The form simulator and the ssc.nic.in notice describe SSC's portal only.
   const isSscPortal = /ssc\.gov\.in/.test(guide.officialPortal);
-  const [applicationMode, setApplicationMode] = useState<'PRACTICE_SIMULATOR' | 'INSTRUCTIONS'>('PRACTICE_SIMULATOR');
-  const [activeTab, setActiveTab] = useState<'OTR_STEPS' | 'PHOTO_SIGNATURE' | 'CERTIFICATES' | 'PITFALLS'>('OTR_STEPS');
+  // A practice simulator exists only where a form was authored (the exam's own spec) or SSC's
+  // bespoke one applies. Nowhere else is a simulator offered -- and the official instructions
+  // are the default wherever the record carries them, so a candidate never lands on an
+  // "unauthored simulator" notice while the notice's real instructions sit behind a tab.
+  const hasSimulator = !!guide.simulator || isSscPortal;
+  const hasOfficialInstructions = guide.otrSteps.length > 0 || (guide.requiredDocuments?.length ?? 0) > 0
+    || !!guide.fee || guide.photoRules.rules.length > 0 || guide.signatureRules.rules.length > 0;
+  const [applicationMode, setApplicationMode] = useState<'PRACTICE_SIMULATOR' | 'INSTRUCTIONS'>(
+    hasSimulator && !hasOfficialInstructions ? 'PRACTICE_SIMULATOR' : 'INSTRUCTIONS');
+  const [activeTab, setActiveTab] = useState<'OTR_STEPS' | 'DOCUMENTS_FEE' | 'PHOTO_SIGNATURE' | 'CERTIFICATES' | 'PITFALLS'>('OTR_STEPS');
+  const hasDocumentsOrFee = (guide.requiredDocuments?.length ?? 0) > 0 || !!guide.fee;
   const [expandedStep, setExpandedStep] = useState<number>(1);
   const [selectedCertCategory, setSelectedCertCategory] = useState<string>('OBC_NCL');
   const [certificateIssueDate, setCertificateIssueDate] = useState<string>('2025-06-15');
@@ -12881,7 +12915,7 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
     }
   };
 
-  const selectedCert = guide.certificateRules.find(c => c.category === selectedCertCategory) || guide.certificateRules[0];
+  const selectedCert = guide.certificateRules.find(c => c.category === selectedCertCategory) || guide.certificateRules[0] || null;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -12902,7 +12936,7 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
               Interactive Application & Document Compliance Assistant
             </h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-              Complete step-by-step guidance on One-Time Registration (OTR), live camera photo framing, signature uploads, and certificate validity checking to ensure zero application rejection risk.
+              Step-by-step application guidance read from this exam&apos;s own notice: how to apply, the documents and fee it lists, and its photograph and signature rules{hasSimulator ? ', with a practice form' : ''}.
             </p>
           </div>
 
@@ -12919,6 +12953,7 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
       </div>
 
       {/* Top Mode Switcher: Practice Simulator vs Step-by-Step Instructions */}
+      {hasSimulator && (
       <div style={{ display: 'flex', gap: '8px', background: 'var(--surface-2)', padding: '6px', borderRadius: 'var(--radius-md)' }}>
         <button
           onClick={() => setApplicationMode('PRACTICE_SIMULATOR')}
@@ -12935,6 +12970,7 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
           <FileText size={16} /> 📖 Step-by-Step Instructions & Rules
         </button>
       </div>
+      )}
 
       {/* VIEW 1: INTERACTIVE PRACTICE APPLICATION SIMULATOR
           An exam with its own authored form gets its own form. SSC keeps the bespoke
@@ -12950,11 +12986,6 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
       {applicationMode === 'PRACTICE_SIMULATOR' && !guide.simulator && isSscPortal && (
         <PracticeApplicationSimulator onOpenProvenanceModal={onOpenProvenanceModal} />
       )}
-      {applicationMode === 'PRACTICE_SIMULATOR' && !guide.simulator && !isSscPortal && (
-        <div className="glass-card" style={{ padding: '22px', fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-          A practice form for this exam has not been authored yet. GovOS builds each one field by field from that authority&apos;s own notice, because practising another exam&apos;s form would teach the wrong mistakes. Follow the step-by-step instructions here, which are read from this exam&apos;s own notice, and apply on {guide.officialPortal.replace(/^https?:\/\//, '')}.
-        </div>
-      )}
 
       {/* VIEW 2: STEP-BY-STEP INSTRUCTIONS & SPECIFICATIONS */}
       {applicationMode === 'INSTRUCTIONS' && (
@@ -12966,32 +12997,46 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
               className={`btn ${activeTab === 'OTR_STEPS' ? 'btn-primary' : 'btn-secondary'}`}
               style={{ fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}
             >
-              <FileText size={16} /> 1. OTR & Registration Steps ({guide.otrSteps.length})
+              <FileText size={16} /> 1. How to Apply ({guide.otrSteps.length})
             </button>
+
+            {hasDocumentsOrFee && (
+            <button
+              onClick={() => setActiveTab('DOCUMENTS_FEE')}
+              className={`btn ${activeTab === 'DOCUMENTS_FEE' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}
+            >
+              <FileCheck size={16} /> Documents & Fee
+            </button>
+            )}
 
             <button
               onClick={() => setActiveTab('PHOTO_SIGNATURE')}
               className={`btn ${activeTab === 'PHOTO_SIGNATURE' ? 'btn-primary' : 'btn-secondary'}`}
               style={{ fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}
             >
-              <Camera size={16} /> 2. Live Photo & Signature Specs
+              <Camera size={16} /> Photo & Signature
             </button>
 
+            {guide.certificateRules.length > 0 && (
             <button
               onClick={() => setActiveTab('CERTIFICATES')}
               className={`btn ${activeTab === 'CERTIFICATES' ? 'btn-primary' : 'btn-secondary'}`}
               style={{ fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}
             >
-              <Award size={16} /> 3. Category Certificate Validity Tool
+              <Award size={16} /> Category Certificates
             </button>
+            )}
 
+            {guide.rejectionPitfalls.length > 0 && (
             <button
               onClick={() => setActiveTab('PITFALLS')}
               className={`btn ${activeTab === 'PITFALLS' ? 'btn-primary' : 'btn-secondary'}`}
               style={{ fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}
             >
-              <AlertTriangle size={16} /> 4. Top 10 Rejection Pitfalls
+              <AlertTriangle size={16} /> Rejection Pitfalls
             </button>
+            )}
           </div>
 
       {/* Tab Content 1: OTR Steps */}
@@ -13007,6 +13052,11 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
           )}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {guide.otrSteps.length === 0 && (
+              <div className="glass-card" style={{ padding: '18px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                The record carries no application steps read from this exam&apos;s notice. Apply on the official portal, {guide.officialPortal.replace(/^https?:\/\//, '')}, following the notice itself.
+              </div>
+            )}
             {guide.otrSteps.map((step) => {
               const isExpanded = expandedStep === step.stepNumber;
               return (
@@ -13092,6 +13142,60 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
         </div>
       )}
 
+      {/* Tab Content: Documents & Fee -- exactly the documents and fee the notice lists, each cited. */}
+      {activeTab === 'DOCUMENTS_FEE' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {guide.fee && (
+            <div className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Application fee</h3>
+                {guide.fee.provenance && (
+                  <button className="btn btn-outline" onClick={() => onOpenProvenanceModal(guide.fee!.provenance!)} style={{ fontSize: '0.75rem', padding: '4px 10px' }}>Sourced Clause</button>
+                )}
+              </div>
+              {guide.fee.amounts.length > 0 && (
+                <div style={{ fontSize: '0.95rem', color: 'var(--text-primary)', fontWeight: 700 }}>Rs. {guide.fee.amounts.join(' / Rs. ')}</div>
+              )}
+              {guide.fee.statedAs && (
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>As printed: &ldquo;{guide.fee.statedAs}&rdquo;</div>
+              )}
+              {guide.fee.acceptedModes.length > 0 && (
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Accepted payment modes: {guide.fee.acceptedModes.join(', ')}</div>
+              )}
+              {guide.fee.exemptions.length > 0 ? (
+                <div>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '4px' }}>Exemptions the notice states</div>
+                  <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                    {guide.fee.exemptions.map((ex, i) => <li key={i}>{ex.category}{ex.statedAs ? ` — “${ex.statedAs}”` : ''}</li>)}
+                  </ul>
+                </div>
+              ) : (
+                <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>GovOS has not read a fee exemption out of this notice as a separate rule. The notice&apos;s own wording above governs; read it for any exemption it states.</div>
+              )}
+            </div>
+          )}
+          {(guide.requiredDocuments?.length ?? 0) > 0 && (
+            <div className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Documents the notice lists</h3>
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: 0 }}>Names as read from the notice. The notice&apos;s own clause governs each one; open the source for its exact wording.</p>
+              <ul style={{ margin: 0, padding: 0, listStyleType: 'none', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {guide.requiredDocuments!.map(doc => (
+                  <li key={doc.id} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                    <span style={{ display: 'flex', gap: '8px', minWidth: 0 }}>
+                      <FileCheck size={15} color="var(--primary)" style={{ flexShrink: 0, marginTop: '3px' }} />
+                      <span>{doc.name}{doc.specifications.length > 0 ? ` — ${doc.specifications.join('; ')}` : ''}</span>
+                    </span>
+                    {doc.provenance && (
+                      <button className="btn btn-outline" onClick={() => onOpenProvenanceModal(doc.provenance!)} style={{ fontSize: '0.72rem', padding: '3px 8px', flexShrink: 0 }}>Source</button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Tab Content 2: Photo & Signature */}
       {activeTab === 'PHOTO_SIGNATURE' && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: '20px' }}>
@@ -13114,10 +13218,15 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
               </div>
             </div>
 
+            {(guide.photoRules.fileFormat || guide.photoRules.dimensions || guide.photoRules.fileSize) && (
             <div style={{ padding: '14px', background: 'var(--surface-3)', borderRadius: 'var(--radius-md)', border: '1px dashed var(--border-color)', textAlign: 'center' }}>
-              <div style={{ fontSize: '0.85rem', color: '#235ddd', fontWeight: 600 }}>{guide.photoRules.fileFormat} &middot; {guide.photoRules.dimensions}</div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>File size: {guide.photoRules.fileSize}</div>
+              <div style={{ fontSize: '0.85rem', color: '#235ddd', fontWeight: 600 }}>{[guide.photoRules.fileFormat, guide.photoRules.dimensions].filter(Boolean).join(' · ')}</div>
+              {guide.photoRules.fileSize && <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>File size: {guide.photoRules.fileSize}</div>}
             </div>
+            )}
+            {guide.photoRules.rules.length === 0 && (
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>The record carries no photograph rule from this notice. Follow the portal&apos;s upload screen.</div>
+            )}
 
             <div>
               <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '8px' }}>
@@ -13141,23 +13250,32 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
                 <PenTool size={24} />
               </div>
               <div>
-                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)' }}>Scanned Signature Specimen</h3>
-                <span className="badge badge-verified" style={{ fontSize: '0.75rem', marginTop: '2px' }}>
-                  DIMENSION: 4.0 cm × 2.0 cm
-                </span>
+                {/* The exam's own signature spec. This card used to print SSC's 4.0 cm x 2.0 cm,
+                    10-20 KB, JPEG-only for every exam, including ones whose notice says otherwise. */}
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)' }}>{guide.signatureRules.documentType || 'Signature'}</h3>
+                {guide.signatureRules.dimensions && (
+                  <span className="badge badge-verified" style={{ fontSize: '0.75rem', marginTop: '2px' }}>
+                    {guide.signatureRules.dimensions}
+                  </span>
+                )}
               </div>
             </div>
 
+            {(guide.signatureRules.fileSize || guide.signatureRules.fileFormat) && (
             <div style={{ padding: '14px', background: 'var(--surface-3)', borderRadius: 'var(--radius-md)', border: '1px dashed var(--border-color)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', textAlign: 'center' }}>
               <div>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>FILE SIZE</span>
-                <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>10 KB to 20 KB</div>
+                <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{guide.signatureRules.fileSize || 'Not stated in the record'}</div>
               </div>
               <div>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>FILE FORMAT</span>
-                <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>JPEG / JPG only</div>
+                <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{guide.signatureRules.fileFormat || 'Not stated in the record'}</div>
               </div>
             </div>
+            )}
+            {guide.signatureRules.rules.length === 0 && (
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>The record carries no signature rule from this notice. Follow the portal&apos;s upload screen.</div>
+            )}
 
             <div>
               <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '8px' }}>
@@ -13177,7 +13295,7 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
       )}
 
       {/* Tab Content 3: Certificate Validity Checker */}
-      {activeTab === 'CERTIFICATES' && (
+      {activeTab === 'CERTIFICATES' && selectedCert && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div className="glass-card" style={{ padding: '24px' }}>
             <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '6px' }}>
@@ -13187,6 +13305,10 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
               Verify whether your category certificate meets the strict Central Government cutoff dates and DoP&T format guidelines.
             </p>
 
+            {/* The date checker below computes SSC's own windows (its closing date, its FY rule);
+                it is shown only on SSC's portal. Other exams show their recorded rules, unchecked. */}
+            {isSscPortal && (
+            <>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(240px, 100%), 1fr))', gap: '16px', marginBottom: '20px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
@@ -13262,6 +13384,16 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
                 {certValidityResult.message}
               </div>
             )}
+            </>
+            )}
+            {!isSscPortal && guide.certificateRules.length > 1 && (
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
+                {guide.certificateRules.map(c => (
+                  <button key={c.category} className={`btn ${selectedCert.category === c.category ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => setSelectedCertCategory(c.category)} style={{ fontSize: '0.82rem', padding: '6px 12px' }}>{c.title}</button>
+                ))}
+              </div>
+            )}
 
             {/* Selected Certificate Official Specs */}
             <div style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: 'var(--surface-3)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -13304,12 +13436,14 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
       {/* Tab Content 4: Top 10 Pitfalls */}
       {activeTab === 'PITFALLS' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          {isSscPortal && (
           <div style={{ padding: '14px 18px', background: 'rgba(239, 68, 68, 0.08)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(239, 68, 68, 0.3)', display: 'flex', alignItems: 'center', gap: '12px' }}>
             <AlertTriangle size={22} color="#b71f1f" />
             <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-              Over <strong>2.5 Lakh applications</strong> are cancelled each year in SSC examinations due to preventable administrative and photo errors. Review these 10 pitfalls carefully.
+              Over <strong>2.5 Lakh applications</strong> are cancelled each year in SSC examinations due to preventable administrative and photo errors. Review these pitfalls carefully.
             </div>
           </div>
+          )}
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: '16px' }}>
             {guide.rejectionPitfalls.map((pitfall, pIdx) => (
@@ -14098,9 +14232,10 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
   onOpenProvenanceModal
 }) => {
   // ---- Exam Pattern Identification ----
-  const isUPSC = exam.code?.includes('UPSC') || exam.id?.includes('upsc') || exam.title?.toLowerCase().includes('civil services');
-  const isIBPS = exam.code?.includes('IBPS') || exam.id?.includes('ibps');
-  const isSSC = exam.code?.includes('SSC') || exam.id?.includes('ssc');
+  const isAuthored = exam.origin !== 'MACHINE_ACQUIRED';
+  const isUPSC = isAuthored && (exam.code?.includes('UPSC') || exam.id?.includes('upsc') || exam.title?.toLowerCase().includes('civil services'));
+  const isIBPS = isAuthored && (exam.code?.includes('IBPS') || exam.id?.includes('ibps'));
+  const isSSC = isAuthored && (exam.code?.includes('SSC') || exam.id?.includes('ssc'));
 
   /**
    * Stage names for this exam, from its own record. This panel used to label every exam's
@@ -14444,19 +14579,23 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
   const upscFinalTotal = (upscMains !== null && upscInterview !== null) ? +(upscMains + upscInterview).toFixed(2) : (entry?.upscFinalTotalMarks ?? null);
   const upscAllocatedService = entry?.allocatedService || (entry?.allocatedPost && entry.allocatedPost !== 'NOT_RECOMMENDED' ? entry.allocatedPost : null);
 
-  const upscGs1Cutoff = matchedCutoff?.tier1Cutoff ?? 92.66;
-  const upscMainsCutoff = matchedCutoff?.tier2Cutoff ?? 739.0;
+  // The recorded row's figures, or none. These used to fall back to 92.66 / 739 / 963 -- one
+  // year's figures -- whenever the chosen year or category had no row, and report a pass or a
+  // miss against a cut-off that was never recorded for it.
+  const upscGs1Cutoff: number | null = matchedCutoff?.tier1Cutoff ?? null;
+  const upscMainsCutoff: number | null = matchedCutoff?.tier2Cutoff ?? null;
   const finalCutoffMatch = matchedCutoff?.postsEligible ? matchedCutoff.postsEligible.match(/(\d{3,4})\s*\/\s*2025/) : null;
-  const upscFinalCutoff = finalCutoffMatch ? parseFloat(finalCutoffMatch[1]) : (matchedCutoff?.postsEligible ? parseFloat(matchedCutoff.postsEligible.replace(/[^0-9.]/g, '')) || 963.0 : 963.0);
+  const upscFinalParsed = finalCutoffMatch ? parseFloat(finalCutoffMatch[1]) : (matchedCutoff?.postsEligible ? parseFloat(matchedCutoff.postsEligible.replace(/[^0-9.]/g, '')) : NaN);
+  const upscFinalCutoff: number | null = Number.isFinite(upscFinalParsed) ? upscFinalParsed : null;
 
-  const upscGs1Margin = upscGs1 !== null ? +(upscGs1 - upscGs1Cutoff).toFixed(2) : null;
+  const upscGs1Margin = upscGs1 !== null && upscGs1Cutoff !== null ? +(upscGs1 - upscGs1Cutoff).toFixed(2) : null;
   const upscGs1Passed = upscGs1Margin !== null && upscGs1Margin >= 0;
   const upscCsatPassed = upscCsat !== null ? upscCsat >= 66.66 : true; // Qualifying at 33%
 
-  const upscMainsMargin = upscMains !== null ? +(upscMains - upscMainsCutoff).toFixed(2) : null;
+  const upscMainsMargin = upscMains !== null && upscMainsCutoff !== null ? +(upscMains - upscMainsCutoff).toFixed(2) : null;
   const upscMainsPassed = upscMainsMargin !== null && upscMainsMargin >= 0;
 
-  const upscFinalMargin = upscFinalTotal !== null ? +(upscFinalTotal - upscFinalCutoff).toFixed(2) : null;
+  const upscFinalMargin = upscFinalTotal !== null && upscFinalCutoff !== null ? +(upscFinalTotal - upscFinalCutoff).toFixed(2) : null;
   const upscFinalPassed = upscFinalMargin !== null && upscFinalMargin >= 0;
 
   if (isUPSC) {
@@ -14474,7 +14613,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
         nextAction: `Strategic Turnaround Plan: Prioritize CSAT Reading Comprehension inference and Class X basic numeracy to reliably guarantee 80+ marks in Paper-II.`,
         recommendedTab: 'UPSC_CSAT_RECOVERY'
       };
-    } else if (upscGs1 !== null) {
+    } else if (upscGs1 !== null && upscGs1Cutoff !== null) {
       if (!upscGs1Passed) {
         // Prelims GS-1 Missed
         unifiedVerdict = {
@@ -14491,9 +14630,9 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
         };
       } else {
         // Prelims Cleared
-        if (upscMains !== null) {
+        if (upscMains !== null && upscMainsCutoff !== null) {
           if (upscMainsPassed) {
-            if (upscFinalTotal !== null) {
+            if (upscFinalTotal !== null && upscFinalCutoff !== null) {
               if (upscFinalPassed) {
                 // Final Selection Achieved
                 unifiedVerdict = {
@@ -14561,7 +14700,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
             badgeBg: 'rgba(56, 189, 248, 0.2)',
             badgeColor: '#0272ab',
             borderColor: '#0272ab',
-            headline: `Through to Civil Services (Main) Examination (Target: ${upscMainsCutoff}+ Marks)`,
+            headline: `Through to Civil Services (Main) Examination${upscMainsCutoff !== null ? ` (last recorded written cut-off: ${upscMainsCutoff})` : ''}`,
             summaryText: `Your Prelims GS-1 score of ${upscGs1} cleared the cutoff (${upscGs1Cutoff}) by +${upscGs1Margin} marks, with qualifying CSAT.`,
             conclusion: `Comprehensive Multi-Stage Conclusion: Candidate is officially shortlisted for the Civil Services (Main) Examination. Prelims marks are not counted for final ranking; merit is determined 100% by Mains Written (1750) + Interview (275).`,
             nextAction: `Mains Blueprint: Complete DAF-I submission, master Essay and GS 1–4 structured templates, and finalize 2 revisions of your Optional Subject.`,
@@ -14828,6 +14967,24 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
         )}
       </div>
 
+      {/* GovOS guidance derived from the declared result and the pattern. It sits apart from the
+          authority's declarations above and says what it is: guidance, not an official statement. */}
+      {(exam.resultNextSteps?.length ?? 0) > 0 && (
+        <div className="glass-card" style={{ padding: '24px', borderStyle: 'dashed' }}>
+          <span className="badge badge-pending" style={{ fontSize: '0.7rem' }}>GOVOS GUIDANCE — NOT AN OFFICIAL STATEMENT</span>
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', margin: '8px 0 12px' }}>What comes next</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {exam.resultNextSteps!.map((step, i) => (
+              <div key={i} style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)' }}>
+                <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.92rem' }}>{step.headline}</div>
+                {step.summary && <div style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', marginTop: '4px', lineHeight: 1.5 }}>{step.summary}</div>}
+                {step.isGuidance && step.basis && <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '6px' }}>{step.basis}</div>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Top Banner — Exam-Specific Styling & Content */}
       <div className="glass-card" style={{ padding: '24px', background: isUPSC ? 'linear-gradient(135deg, rgba(217, 119, 6, 0.15) 0%, #ffffff 100%)' : 'linear-gradient(135deg, rgba(234, 179, 8, 0.12) 0%, #ffffff 100%)', borderColor: isUPSC ? 'rgba(245, 158, 11, 0.4)' : 'rgba(234, 179, 8, 0.35)' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
@@ -14861,7 +15018,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Cutoffs Benchmark ({selectedYear} · {activeCategory})</div>
               {isUPSC ? (
                 <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#af5109' }}>
-                  GS-1: {upscGs1Cutoff} | Mains: {upscMainsCutoff} | Final: {upscFinalCutoff}
+                  GS-1: {upscGs1Cutoff ?? 'not on record'} | Mains: {upscMainsCutoff ?? 'not on record'} | Final: {upscFinalCutoff ?? 'not on record'}
                 </div>
               ) : (
                 <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--primary)' }}>
@@ -15192,7 +15349,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                     CSAT: <strong style={{ color: upscCsatPassed ? '#137638' : '#b71f1f' }}>{upscCsat !== null ? `${upscCsat} / 200` : 'Qualifying (min 66.66)'}</strong>
                   </div>
                   <div style={{ fontSize: '0.72rem', color: '#63738a', marginTop: '4px' }}>
-                    GS-1 Cutoff: <strong>{upscGs1Cutoff}</strong> ({upscGs1Margin !== null ? (upscGs1Margin >= 0 ? `+${upscGs1Margin} margin` : `${upscGs1Margin} margin`) : 'Merit Decider'})
+                    GS-1 Cutoff: <strong>{upscGs1Cutoff ?? 'not on record'}</strong> ({upscGs1Margin !== null ? (upscGs1Margin >= 0 ? `+${upscGs1Margin} margin` : `${upscGs1Margin} margin`) : 'Merit Decider'})
                   </div>
                 </div>
 
@@ -15205,10 +15362,10 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                     </span>
                   </div>
                   <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-                    {upscMains !== null ? upscMains : `Target: ${upscMainsCutoff}`} <span style={{ fontSize: '0.75rem', color: '#63738a' }}>/ 1750</span>
+                    {upscMains !== null ? upscMains : (upscMainsCutoff !== null ? `Target: ${upscMainsCutoff}` : 'Cut-off not on record')} <span style={{ fontSize: '0.75rem', color: '#63738a' }}>/ 1750</span>
                   </div>
                   <div style={{ fontSize: '0.75rem', color: '#334155', marginTop: '4px' }}>
-                    7 Merit Papers · Cutoff: <strong>{upscMainsCutoff}</strong>
+                    7 Merit Papers · Cutoff: <strong>{upscMainsCutoff ?? 'not on record'}</strong>
                   </div>
                   <div style={{ fontSize: '0.72rem', color: '#63738a', marginTop: '2px' }}>
                     {upscMainsMargin !== null ? (upscMainsMargin >= 0 ? `+${upscMainsMargin} above cutoff` : `${upscMainsMargin} shortfall`) : 'Essay + GS 1-4 + Optional'}
@@ -15243,7 +15400,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                     </span>
                   </div>
                   <div style={{ fontSize: '1.15rem', fontWeight: 800, color: upscFinalPassed ? '#137638' : 'var(--text-primary)' }}>
-                    {upscFinalTotal !== null ? upscFinalTotal : `Cutoff: ${upscFinalCutoff}`} <span style={{ fontSize: '0.75rem', color: '#63738a' }}>/ 2025</span>
+                    {upscFinalTotal !== null ? upscFinalTotal : (upscFinalCutoff !== null ? `Cutoff: ${upscFinalCutoff}` : 'Cut-off not on record')} <span style={{ fontSize: '0.75rem', color: '#63738a' }}>/ 2025</span>
                   </div>
                   <div style={{ fontSize: '0.75rem', color: '#334155', marginTop: '4px' }}>
                     Service: <strong>{upscAllocatedService || (upscFinalPassed ? 'IAS / IFS / IPS' : 'Pending Rank')}</strong>
@@ -15580,7 +15737,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
               </h4>
             </div>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0, lineHeight: 1.5 }}>
-              Preliminary marks are zeroed out for final ranking. Your <strong>final all-India merit and Service Allocation (IAS, IFS, IPS) depend 100% on the 7 descriptive merit papers (1750 Marks)</strong> and Personality Test (275 Marks). Target a minimum of <strong>{upscMainsCutoff || '739+'} marks</strong> in written papers. Follow this 4-step strategic roadmap:
+              Preliminary marks are zeroed out for final ranking. Your <strong>final all-India merit and Service Allocation (IAS, IFS, IPS) depend 100% on the 7 descriptive merit papers (1750 Marks)</strong> and Personality Test (275 Marks). {upscMainsCutoff !== null ? <>Last recorded written cut-off: <strong>{upscMainsCutoff} marks</strong>.</> : <>No written cut-off is recorded for this selection.</>} Follow this 4-step strategic roadmap:
             </p>
           </div>
 
@@ -17641,8 +17798,13 @@ interface PracticeEngineEntry {
 }
 
 /** An exam whose engine is not built yet. It never borrows another exam's. */
-const UnavailablePracticeEngine: React.FC<{ exam: Exam; scope: PracticeScope }> = ({ exam, scope }) => {
+const UnavailablePracticeEngine: React.FC<{
+  exam: Exam;
+  scope: PracticeScope;
+  onOpenProvenanceModal: (provenance: DataProvenance) => void;
+}> = ({ exam, scope, onOpenProvenanceModal }) => {
   const stage = exam.stages[0];
+  const hasOfficial = (exam.officialPapers?.length ?? 0) > 0 || (exam.answerKeys?.length ?? 0) > 0;
   return (
     <div className="animate-fade-in glass-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
       <div>
@@ -17655,16 +17817,21 @@ const UnavailablePracticeEngine: React.FC<{ exam: Exam; scope: PracticeScope }> 
         <strong>{exam.title} practice is not available yet.</strong>
         <div style={{ marginTop: '6px' }}>
           GovOS has not built a practice engine for this exam. It is left empty rather than run
-          through another exam&apos;s engine: {stage ? `this exam's ${stage.stageName.split(' — ')[0]} ` : 'this exam '}
+          through another exam&apos;s engine: {stage && !stage.derivedFrom ? `this exam's ${stage.stageName.split(' — ')[0]} ` : 'this exam '}
           has its own pattern, marking and timing, and questions written to a different exam&apos;s paper
           would teach the wrong thing.
         </div>
       </div>
       <div style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
         What does exist for {exam.title} today: the <strong>Exam Pattern</strong> and <strong>Syllabus</strong> sections,
-        read from {exam.authorityName.split(' (')[0]}&apos;s own notice, and whatever official papers the authority
-        has published, in <strong>Resources</strong>.
+        read from {exam.authorityName.split(' (')[0]}&apos;s own notice{hasOfficial
+          ? ', and the official papers and answer keys the authority published, listed below with their exact identity.'
+          : '. No official question paper or answer key is on record for this exam.'}
       </div>
+      {/* The authority's own papers and keys, bound to their exact paper identity. Both render
+          nothing when the record has none. */}
+      <OfficialPaperCatalogue exam={exam} onOpenProvenanceModal={onOpenProvenanceModal} />
+      <AnswerKeyPanel exam={exam} onOpenProvenanceModal={onOpenProvenanceModal} />
     </div>
   );
 };
@@ -17734,7 +17901,7 @@ export const ExamPracticeRouter: React.FC<{
   onOpenProvenanceModal: (provenance: DataProvenance) => void;
 }> = ({ exam, scope = 'ALL', onOpenProvenanceModal }) => {
   const entry = PRACTICE_ENGINES[exam.id];
-  if (!entry) return <UnavailablePracticeEngine key={exam.id} exam={exam} scope={scope} />;
+  if (!entry) return <UnavailablePracticeEngine key={exam.id} exam={exam} scope={scope} onOpenProvenanceModal={onOpenProvenanceModal} />;
   return <React.Fragment key={exam.id}>{entry.render({ exam, scope, onOpenProvenanceModal })}</React.Fragment>;
 };
 
@@ -18360,6 +18527,49 @@ interface ExamDetailViewProps {
   onSelectAlternativeExam?: (examCode: string) => void;
 }
 
+// ==========================================================================
+// SectionStateNote -- the honest state of one section of a machine-acquired exam
+// ==========================================================================
+/**
+ * A machine-acquired exam carries, per section, the state the engine established: verified,
+ * derived guidance, not yet published, not found after search, unreadable, extraction failed,
+ * held for review, or an infrastructure failure. Those are six different claims and must not
+ * look alike. This renders the state in words (never the raw state name) above the section;
+ * a verified section needs no note. Authored exams carry no states and are unaffected.
+ */
+const SECTION_STATE_WORDING: Record<string, { tone: 'info' | 'warn' | 'guide'; label: string; text: string }> = {
+  SUPPORTED_AND_PROJECTED: { tone: 'guide', label: 'GovOS guidance', text: 'Derived by GovOS from verified facts in this record. It is guidance, not an official statement.' },
+  RUNTIME_DERIVED: { tone: 'guide', label: 'GovOS guidance', text: 'Derived by GovOS from verified facts in this record. It is guidance, not an official statement.' },
+  NOT_YET_GENERATED: { tone: 'guide', label: 'Not yet generated', text: 'GovOS guidance for this section has not been generated for this exam. Nothing from another exam is shown in its place.' },
+  NOT_YET_PUBLISHED: { tone: 'info', label: 'Not published yet', text: 'The authority has not published this for this cycle.' },
+  NOT_APPLICABLE: { tone: 'info', label: 'Does not apply', text: 'This does not apply to this exam, on the evidence in its notice.' },
+  SOURCE_NOT_FOUND_AFTER_SEARCH: { tone: 'info', label: 'Not found', text: "GovOS searched the authority's official sources and did not find this. It may still be published elsewhere; check the official site." },
+  SOURCE_UNREADABLE: { tone: 'warn', label: 'Source unreadable', text: 'The official document exists but could not be read (for example, a scanned image). Open the source to read it directly.' },
+  EXTRACTION_FAILED: { tone: 'warn', label: "GovOS couldn't read this", text: "A document covering this was read, but GovOS could not extract it reliably. That is a gap in GovOS, not a statement that the authority is silent." },
+  NEEDS_REVIEW: { tone: 'warn', label: 'Under review', text: 'Part of this was read from the notice but is held for review before it is shown.' },
+  INFRASTRUCTURE_FAILURE: { tone: 'warn', label: 'Check incomplete', text: 'GovOS could not finish checking the official sources. This says nothing about whether the authority has published it.' },
+};
+
+const SectionStateNote: React.FC<{ exam: Exam; sectionNum: number }> = ({ exam, sectionNum }) => {
+  if (exam.origin !== 'MACHINE_ACQUIRED' || !exam.sectionStates) return null;
+  const entry = Object.values(exam.sectionStates).find(s => s.sectionNum === sectionNum);
+  if (!entry || entry.state === 'VERIFIED_AVAILABLE') return null;
+  const wording = SECTION_STATE_WORDING[entry.state];
+  if (!wording) return null;
+  const palette = wording.tone === 'warn'
+    ? { bg: 'var(--amber-soft)', border: 'rgba(180, 83, 9, 0.3)', color: '#92400e' }
+    : wording.tone === 'guide'
+      ? { bg: 'var(--primary-soft)', border: 'rgba(43, 98, 235, 0.25)', color: 'var(--text-secondary)' }
+      : { bg: 'var(--surface-2)', border: 'var(--border-color)', color: 'var(--text-secondary)' };
+  // The engine's own summary is more specific where it named what was held or not found.
+  const detail = entry.state === 'NEEDS_REVIEW' || entry.state === 'NOT_YET_GENERATED' ? entry.studentStatusSummary || wording.text : wording.text;
+  return (
+    <div role="note" style={{ padding: '12px 16px', borderRadius: 'var(--radius-md)', background: palette.bg, border: `1px solid ${palette.border}`, fontSize: '0.86rem', color: palette.color, lineHeight: 1.5, marginBottom: '16px' }}>
+      <strong>{wording.label}.</strong> {detail}
+    </div>
+  );
+};
+
 export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
   exam,
   onBackHome,
@@ -18513,15 +18723,17 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
   };
   const stageLabel = (idx: number, fallback: string) => {
     const st = exam.stages[idx];
-    if (!st) return fallback;
+    // A stage projected from a pattern tree is in document order, not examination order, so
+    // pairing it with the first/second examination date would be a guess.
+    if (!st || st.derivedFrom) return fallback;
     const name = st.stageName.split(' — ')[0].split(':')[0];
     return name.length > 26 ? fallback : name.replace(/^Civil Services \((\w+)\) Examination$/, '$1');
   };
   const tiles = [
     tileFor(['APPLICATION_OPEN', 'NOTIFICATION'], 'Application Starts'),
     tileFor(['APPLICATION_CLOSE'], 'Application Ends'),
-    tileFor(['EXAM_TIER1'], stageLabel(0, 'Tier 1')),
-    tileFor(['EXAM_TIER2'], stageLabel(1, 'Tier 2'))
+    tileFor(['EXAM_TIER1'], stageLabel(0, 'Exam — Stage 1')),
+    tileFor(['EXAM_TIER2'], stageLabel(1, 'Exam — Stage 2'))
   ];
   const examInitials = exam.code.split('_').slice(0, 2).join(' ');
   const latestUpdates = [
@@ -18657,6 +18869,9 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
       {/* Section Content Views */}
       <div className="glass-card" style={{ padding: '28px' }}>
 
+        {/* The engine's honest state for this section of a machine-acquired exam. */}
+        <SectionStateNote exam={exam} sectionNum={activeSection} />
+
         {/* Section 01: Overview & Posts */}
         {activeSection === 1 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -18666,8 +18881,10 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                 {[
                   { icon: <Building size={16} />, label: 'Conducting Body', value: exam.authorityName },
                   { icon: <Award size={16} />, label: 'Exam Level', value: exam.minimumQualification === 'GRADUATION' ? 'Graduation' : (exam.minimumQualification || 'See notice') },
-                  { icon: <Briefcase size={16} />, label: 'Posts', value: `${exam.posts.length} posts · ${Array.from(new Set(exam.posts.map(p => p.classification))).join(', ')}` },
-                  { icon: <Layers size={16} />, label: 'Selection Process', value: exam.stages.map((st, i) => `${st.stageName.split(' — ')[0].split(':')[0]}`).join(' → ') },
+                  { icon: <Briefcase size={16} />, label: 'Posts', value: exam.posts.length > 0
+                    ? `${exam.posts.length} posts${exam.posts.some(p => p.classification) ? ` · ${Array.from(new Set(exam.posts.map(p => p.classification).filter(Boolean))).join(', ')}` : ''}`
+                    : exam.materialization?.heldForReview?.posts ? 'Post list under review — see the notice' : 'Not stated in the record' },
+                  { icon: <Layers size={16} />, label: exam.stages.some(st => st.derivedFrom) ? 'Stages in the notice' : 'Selection Process', value: exam.stages.length === 0 ? 'Not stated in the record' : exam.stages.map((st, i) => `${st.stageName.split(' — ')[0].split(':')[0]}`).join(exam.stages.some(st => st.derivedFrom) ? '; ' : ' → ') },
                   { icon: <Globe size={16} />, label: 'Official Website', value: exam.officialDomain, href: exam.officialDomain }
                 ].map(row => (
                   <div key={row.label} className="info-row">
@@ -18701,7 +18918,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
             </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
-                01 — Official Exam Profile & All {exam.posts.length} Posts Breakdown
+                01 — Official Exam Profile{exam.posts.length > 0 ? ` & All ${exam.posts.length} Posts Breakdown` : ''}
               </h3>
               {exam.posts[0] && (
                 <button className="btn btn-outline" onClick={() => onOpenProvenanceModal(exam.posts[0].provenance)} style={{ fontSize: '0.75rem', padding: '4px 10px' }}>
@@ -18913,7 +19130,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
               <div>
                 <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
-                  03 — Configured Eligibility Rules (Crucial Date: {exam.crucialEligibilityDate})
+                  03 — Configured Eligibility Rules (Crucial Date: {exam.crucialEligibilityDate || 'not stated in the record'})
                 </h3>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: '4px 0 0 0' }}>
                   Deterministic verification rules configured directly from the official {exam.authorityName} notification.
@@ -18952,7 +19169,36 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                   <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', margin: 0 }}>{rule.operator} {Array.isArray(rule.ruleValue) ? rule.ruleValue.join(', ') : String(rule.ruleValue)}</p>
                 </div>
               ))}
+              {(exam.eligibilityHighlights || []).length === 0 && exam.globalRuleGroup.rules.length === 0 && (
+                <div style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
+                  No eligibility rule is recorded for {exam.title} yet. Read the eligibility clauses in the notice itself.
+                </div>
+              )}
             </div>
+
+            {/* Relaxations the notice itself printed, each cited. None is supplied from a default. */}
+            {(exam.ageRelaxations?.length ?? 0) > 0 && (
+              <div className="glass-card" style={{ padding: '18px' }}>
+                <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 8px' }}>Age relaxations the notice states</h4>
+                <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '0.88rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {exam.ageRelaxations!.map((r, i) => (
+                    <li key={i}>
+                      {r.category}: {r.years !== undefined ? `+${r.years} years` : r.maximumAge !== undefined ? `upper limit ${r.maximumAge} years` : 'stated without a figure'}{r.condition ? ` — ${r.condition}` : ''}
+                      {r.status === 'NEEDS_REVIEW' && ' (under review)'}
+                      <button className="btn btn-outline" onClick={() => onOpenProvenanceModal(r.provenance)} style={{ fontSize: '0.7rem', padding: '1px 7px', marginLeft: '8px' }}>Source</button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* A reading materialization held back (e.g. a document checklist read where the post
+                list was expected) is named, not hidden and not shown as posts. */}
+            {exam.materialization?.heldForReview?.posts && !exam.materialization.heldForReview.posts.partial && (
+              <div style={{ padding: '14px 16px', borderRadius: 'var(--radius-md)', background: 'var(--amber-soft)', border: '1px solid rgba(180, 83, 9, 0.3)', fontSize: '0.86rem', color: '#92400e', lineHeight: 1.55 }}>
+                <strong>The post list for {exam.title} is under review.</strong> What was read from the notice looks like a list of documents to produce rather than the posts recruited to, so it is not shown as posts. The notice itself lists the posts.
+              </div>
+            )}
           </div>
         )}
 
@@ -18974,11 +19220,16 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
               </h3>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', margin: '4px 0 0 0' }}>
                 {exam.patternTree && exam.patternTree.length > 0
-                  ? `${exam.stages.length > 0 ? 'The record\u2019s stages, and ' : ''}the structure as ${exam.authorityName.split(' (')[0]} published it \u2014 read from its own documents, at the depth it uses.`
+                  ? `${exam.stages.some(st => !st.derivedFrom) ? 'The record\u2019s stages, and ' : ''}the structure as ${exam.authorityName.split(' (')[0]} published it \u2014 read from its own documents, at the depth it uses.`
                   : `The stages ${exam.authorityName.split(' (')[0]} conducts for this exam, as the register holds them.`}
               </p>
             </div>
 
+            {!(exam.patternTree && exam.patternTree.length > 0) && exam.stages.length === 0 && (
+              <div className="glass-card" style={{ padding: '18px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                The record carries no examination pattern for {exam.title} yet. The stages and papers will appear here once they are read from {exam.authorityName.split(' (')[0]}&apos;s own notice.
+              </div>
+            )}
             {exam.patternTree && exam.patternTree.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 {exam.patternTree.map(node => (
@@ -18987,7 +19238,9 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
               </div>
             )}
 
-            {exam.stages.map(stage => (
+            {/* The tree above is authoritative. Stages projected from it (derivedFrom) are a
+                compatibility view for other sections and are not shown again here. */}
+            {exam.stages.filter(stage => !(stage.derivedFrom && exam.patternTree && exam.patternTree.length > 0)).map(stage => (
               <div key={stage.id} style={{ padding: '22px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
                   <div>
@@ -18995,15 +19248,17 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                     <h4 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>{stage.stageName}</h4>
                   </div>
                   <div style={{ display: 'flex', gap: '10px' }}>
-                    <span className="glass-pill" style={{ color: '#0272ab' }}>{stage.durationMinutes} Mins</span>
-                    <span className="glass-pill" style={{ color: 'var(--emerald)' }}>{stage.totalMarks} Marks</span>
-                    <span className="glass-pill">{stage.negativeMarking}</span>
+                    <span className="glass-pill" style={{ color: '#0272ab' }}>{stage.unstatedFields?.includes('durationMinutes') ? 'Duration not stated' : `${stage.durationMinutes} Mins`}</span>
+                    <span className="glass-pill" style={{ color: 'var(--emerald)' }}>{stage.unstatedFields?.includes('totalMarks') ? 'Marks not stated' : `${stage.totalMarks} Marks`}</span>
+                    {stage.negativeMarking && <span className="glass-pill">{stage.negativeMarking}</span>}
                   </div>
                 </div>
 
+                {stage.qualifyingNature && (
                 <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', margin: 0 }}>
                   <strong>Nature of Stage:</strong> {stage.qualifyingNature}
                 </p>
+                )}
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {stage.sections.map((sec, sIdx) => (
@@ -19274,14 +19529,54 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
             <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
               10 — Official Category Cutoff History{exam.cutoffsHistory.length > 0 ? ` (${Math.min(...exam.cutoffsHistory.map(c => c.year))} to ${Math.max(...exam.cutoffsHistory.map(c => c.year))})` : ''}
             </h3>
+            {exam.cutoffsHistory.length === 0 && (
+              <div className="glass-card" style={{ padding: '18px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                No cut-off is recorded for {exam.title}. Cut-offs appear here only as {exam.authorityName.split(' (')[0]} publishes them; none is estimated or carried over from another exam.
+              </div>
+            )}
+            {exam.cutoffsHistory.length > 0 && exam.cutoffsHistory.some(c => c.tier1Cutoff === undefined) && (
+            <div style={{ overflowX: 'auto' }}>
+              {/* A cut-off in its own terms: its stage, post and kind as recorded, never
+                  relabelled as a Tier-1 figure. */}
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--border-color)', textAlign: 'left', color: 'var(--text-secondary)' }}>
+                    <th style={{ padding: '12px' }}>Year</th>
+                    <th style={{ padding: '12px' }}>Stage</th>
+                    <th style={{ padding: '12px' }}>Category</th>
+                    <th style={{ padding: '12px' }}>Post</th>
+                    <th style={{ padding: '12px' }}>Cut-off</th>
+                    <th style={{ padding: '12px' }}>Source</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {exam.cutoffsHistory.map((c, idx) => (
+                    <tr key={idx} style={{ borderBottom: '1px solid var(--surface-2)' }}>
+                      <td style={{ padding: '12px', fontWeight: 700, color: 'var(--text-primary)' }}>{c.year}</td>
+                      <td style={{ padding: '12px' }}>{c.stage || 'Not stated'}</td>
+                      <td style={{ padding: '12px', color: '#235ddd' }}>{c.category}</td>
+                      <td style={{ padding: '12px' }}>{c.post || 'All posts (as recorded)'}</td>
+                      <td style={{ padding: '12px', fontWeight: 700, color: 'var(--emerald)', fontFamily: 'var(--font-mono)' }}>{c.value ?? c.tier1Cutoff}{c.cutoffType ? ` (${c.cutoffType})` : ''}</td>
+                      <td style={{ padding: '12px' }}>
+                        <button onClick={() => onOpenProvenanceModal(c.provenance)} className="btn btn-outline" style={{ fontSize: '0.7rem', padding: '2px 8px' }}>
+                          <ShieldCheck size={11} /> Source
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            )}
+            {exam.cutoffsHistory.length > 0 && !exam.cutoffsHistory.some(c => c.tier1Cutoff === undefined) && (
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--border-color)', textAlign: 'left', color: 'var(--text-secondary)' }}>
                     <th style={{ padding: '12px' }}>Year</th>
                     <th style={{ padding: '12px' }}>Category</th>
-                    <th style={{ padding: '12px' }}>{exam.stages[0] ? `${exam.stages[0].stageName.split(' — ')[0].split(':')[0]} cut-off` : 'Stage 1 cut-off'}{exam.stages[0]?.sections?.[0] && exam.stages[0].sections.length > 1 && exam.stages[0].tier === 'TIER_1' && exam.id !== PRACTICE_BANK_EXAM_ID ? ` (${exam.stages[0].sections[0].sectionName}, of ${exam.stages[0].sections[0].marks})` : exam.stages[0] ? ` (of ${exam.stages[0].totalMarks})` : ''}</th>
-                    <th style={{ padding: '12px' }}>{exam.stages[1] ? `${exam.stages[1].stageName.split(' — ')[0].split(':')[0]} cut-off (of ${exam.stages[1].totalMarks})` : 'Stage 2 cut-off'}</th>
+                    <th style={{ padding: '12px' }}>{exam.stages[0] ? `${exam.stages[0].stageName.split(' — ')[0].split(':')[0]} cut-off` : 'Stage 1 cut-off'}{exam.stages[0]?.sections?.[0] && exam.stages[0].sections.length > 1 && exam.stages[0].tier === 'TIER_1' && exam.id !== PRACTICE_BANK_EXAM_ID ? ` (${exam.stages[0].sections[0].sectionName}, of ${exam.stages[0].sections[0].marks})` : exam.stages[0] && !exam.stages[0].unstatedFields?.includes('totalMarks') ? ` (of ${exam.stages[0].totalMarks})` : ''}</th>
+                    <th style={{ padding: '12px' }}>{exam.stages[1] ? `${exam.stages[1].stageName.split(' — ')[0].split(':')[0]} cut-off${exam.stages[1].unstatedFields?.includes('totalMarks') ? '' : ` (of ${exam.stages[1].totalMarks})`}` : 'Stage 2 cut-off'}</th>
                     <th style={{ padding: '12px' }}>Source Provenance</th>
                   </tr>
                 </thead>
@@ -19302,6 +19597,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                 </tbody>
               </table>
             </div>
+            )}
 
             <div style={{ padding: '16px 20px', borderRadius: 'var(--radius-md)', background: 'rgba(234, 179, 8, 0.08)', border: '1px solid rgba(234, 179, 8, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
               <div>
@@ -19327,6 +19623,11 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
             <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
               11 — Frequently Asked Questions with Official Gazette Citations
             </h3>
+            {exam.faqs.length === 0 && (
+              <div className="glass-card" style={{ padding: '18px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                No official FAQ is recorded for {exam.title}. Questions appear here only as {exam.authorityName.split(' (')[0]} publishes them, with the clause each answer rests on.
+              </div>
+            )}
             {exam.faqs.map(faq => (
               <div key={faq.id} style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>

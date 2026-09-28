@@ -74,7 +74,8 @@ export interface DetailedAge {
  * @param dateOfBirth Candidate DOB in YYYY-MM-DD format
  * @param referenceDate Official cutoff date in YYYY-MM-DD format
  */
-export function calculateAge(dateOfBirth: string, referenceDate: string = '2026-08-01'): number {
+/** No default reference date: an exam that states no crucial date has no age to reckon. */
+export function calculateAge(dateOfBirth: string, referenceDate: string): number {
   const dob = new Date(dateOfBirth);
   const reference = new Date(referenceDate);
 
@@ -98,7 +99,7 @@ export function calculateAge(dateOfBirth: string, referenceDate: string = '2026-
 /**
  * Calculates detailed age in years, months, and days as of crucial cutoff date.
  */
-export function calculateDetailedAge(dateOfBirth: string, referenceDate: string = '2026-08-01'): DetailedAge {
+export function calculateDetailedAge(dateOfBirth: string, referenceDate: string): DetailedAge {
   const dob = new Date(dateOfBirth);
   const ref = new Date(referenceDate);
 
@@ -219,24 +220,31 @@ export function normalizeDegree(value: string): string {
 export function evaluatePostEligibility(
   post: PostRequirement,
   profile: UserProfile,
-  crucialDate: string = '2026-08-01',
+  /** The exam's own crucial date. '' when the record states none: age is then not evaluated. */
+  crucialDate: string,
   /** The exam whose published rules govern this verdict. Without it there is no relaxation. */
   exam?: Exam | null
 ): PostVerdict {
-  const age = calculateAge(profile.dateOfBirth, crucialDate);
+  const age = crucialDate ? calculateAge(profile.dateOfBirth, crucialDate) : 0;
   const relaxationEntry = findAgeRelaxation(exam, profile.category, post.id);
   const relaxation = getCategoryAgeRelaxation(exam, profile.category, post.id);
   const maxPermissibleAge = post.maxAge + relaxation;
   const userDegreeNorm = normalizeDegree(profile.degree);
   const isBachelor = userDegreeNorm.includes('bachelor') || userDegreeNorm.includes('degree');
 
-  let ageStatus: 'OK' | 'EXCEEDED' | 'UNDERAGE' = 'OK';
+  let ageStatus: 'OK' | 'EXCEEDED' | 'UNDERAGE' | 'UNKNOWN' = 'OK';
   let qualStatus: 'OK' | 'DISQUALIFIED' = 'OK';
   let physicalStatus: 'OK' | 'RESTRICTED' = 'OK';
   const reasons: string[] = [];
 
-  // 1. Age Verification
-  if (age < post.minAge) {
+  // 1. Age Verification. A post with no published upper limit (0), or an exam with no date to
+  // reckon age on, is not evaluated: a limit of zero would declare every candidate over-age.
+  if (!crucialDate || !(post.maxAge > 0)) {
+    ageStatus = 'UNKNOWN';
+    reasons.push(!crucialDate
+      ? `Age not evaluated: the record states no date on which age is reckoned`
+      : `Age not evaluated: the record carries no upper age limit for ${post.postName}`);
+  } else if (age < post.minAge) {
     ageStatus = 'UNDERAGE';
     reasons.push(`Underage: ${age} yrs is below minimum requirement of ${post.minAge} yrs`);
   } else if (age > maxPermissibleAge) {
@@ -307,13 +315,17 @@ export function evaluatePostEligibility(
     qualStatus,
     physicalStatus,
     reason: reasons.join(' • '),
-    officialClause: post.provenance.clauseNumber || 'Section 3.1 & Annexure-VII'
+    officialClause: post.provenance?.clauseNumber || 'the notice'
   };
 }
 
 export function evaluateEligibility(exam: Exam, profile: UserProfile): EligibilityDiagnostic {
-  const crucialDate = exam.crucialEligibilityDate || '2026-08-01';
-  const detailedAge = calculateDetailedAge(profile.dateOfBirth, crucialDate);
+  // The exam's own date, or none. There is no fallback date: another exam's cut-off date
+  // would compute an age this exam never asked about.
+  const crucialDate = exam.crucialEligibilityDate || '';
+  const detailedAge = crucialDate
+    ? calculateDetailedAge(profile.dateOfBirth, crucialDate)
+    : { years: 0, months: 0, days: 0, formatted: 'not computed' };
   const relaxationEntry = findAgeRelaxation(exam, profile.category);
   const relaxation = getCategoryAgeRelaxation(exam, profile.category);
   const userAge = detailedAge.years;
@@ -322,7 +334,9 @@ export function evaluateEligibility(exam: Exam, profile: UserProfile): Eligibili
   // for every exam in the register, so a candidate looking at a state commission's exam was
   // shown an SSC clause number as the basis of their own verdict.
   const legalClauses: string[] = [
-    `${exam.title}: age is reckoned as on ${crucialDate}`,
+    crucialDate
+      ? `${exam.title}: age is reckoned as on ${crucialDate}`
+      : `${exam.title}: the record states no date on which age is reckoned, so age is not evaluated.`,
     relaxationEntry
       ? `Age relaxation for ${profile.category}: ${relaxationEntry.years !== undefined ? `+${relaxationEntry.years} years` : relaxationEntry.maximumAge !== undefined ? `upper limit ${relaxationEntry.maximumAge} years` : 'stated without a figure'} — ${relaxationEntry.provenance.documentTitle}`
       : `No age relaxation for ${profile.category} is recorded from ${exam.authorityName}'s own documents, so none has been applied.`,
@@ -337,23 +351,35 @@ export function evaluateEligibility(exam: Exam, profile: UserProfile): Eligibili
 
   const eligibleCount = postVerdicts.filter(p => p.eligible).length;
   const totalCount = postVerdicts.length;
+  const unknownCount = postVerdicts.filter(p => p.ageStatus === 'UNKNOWN').length;
+  const evaluableCount = totalCount - unknownCount;
 
-  let status: 'ELIGIBLE' | 'CONDITIONAL' | 'INELIGIBLE' = 'INELIGIBLE';
+  let status: EligibilityDiagnostic['status'] = 'INELIGIBLE';
   let plainEnglishExplanation = '';
 
-  if (eligibleCount === totalCount) {
+  // Zero posts, or no post whose rules the record carries, is not "eligible for all of them":
+  // an empty set satisfies "every post" trivially, and that used to read as ELIGIBLE.
+  if (totalCount === 0 || evaluableCount === 0) {
+    status = 'NOT_EVALUABLE';
+    plainEnglishExplanation = totalCount === 0
+      ? `The ${exam.title} record carries no posts yet, so eligibility cannot be evaluated. Read the notice's own eligibility clauses.`
+      : !crucialDate
+        ? `The ${exam.title} record states no date on which age is reckoned, so eligibility cannot be evaluated.`
+        : `None of the ${totalCount} posts on record carries a published age limit, so eligibility cannot be evaluated.`;
+  } else if (eligibleCount === totalCount) {
     status = 'ELIGIBLE';
-    plainEnglishExplanation = `Congratulations! Based on official SSC CGL 2026 rules, you are fully eligible for ALL ${totalCount} posts (including Group B Gazetted & Non-Gazetted posts) with your calculated age of ${detailedAge.formatted} as on ${crucialDate}.`;
-  } else if (eligibleCount > 0) {
-    status = 'CONDITIONAL';
-    plainEnglishExplanation = `You are eligible for ${eligibleCount} out of ${totalCount} posts. Some posts (like JSO, Statistical Investigator, or 18-27 age bracket posts) have specific age brackets or subject requirements that you do not satisfy.`;
+    plainEnglishExplanation = `On the rules in the ${exam.title} record you meet the age and qualification conditions for all ${totalCount} posts, with your age of ${detailedAge.formatted} as on ${crucialDate}.`;
+  } else if (eligibleCount > 0 || unknownCount > 0) {
+    status = eligibleCount > 0 ? 'CONDITIONAL' : 'NOT_EVALUABLE';
+    plainEnglishExplanation = eligibleCount > 0
+      ? `You meet the conditions for ${eligibleCount} of ${totalCount} posts in the ${exam.title} record.${unknownCount ? ` ${unknownCount} post(s) have no published age limit in the record and were not evaluated.` : ' The others set age limits or subject requirements you do not meet — see each post below.'}`
+      : `You do not meet the published conditions for the ${evaluableCount} post(s) whose rules the record carries; ${unknownCount} other post(s) have no published age limit and were not evaluated.`;
   } else {
     status = 'INELIGIBLE';
-    if (userAge < 18) {
-      plainEnglishExplanation = `You are currently ${userAge} years old as of the crucial cutoff date (${crucialDate}). Minimum age required for SSC CGL is 18 years.`;
-    } else {
-      plainEnglishExplanation = `Your calculated age (${userAge} years as of ${crucialDate}) exceeds the upper age limit for all SSC CGL posts even after applying ${profile.category} category relaxation (+${relaxation} years).`;
-    }
+    const minAge = Math.min(...exam.posts.map(p => p.minAge).filter(a => a > 0));
+    plainEnglishExplanation = Number.isFinite(minAge) && userAge < minAge
+      ? `You are ${userAge} years old as on ${crucialDate}; the youngest minimum age for any ${exam.title} post on record is ${minAge}.`
+      : `Your age (${userAge} years as on ${crucialDate}) or qualification does not meet the published conditions for any ${exam.title} post on record${relaxation ? `, after the ${profile.category} relaxation of +${relaxation} years` : ''}.`;
   }
 
   return {

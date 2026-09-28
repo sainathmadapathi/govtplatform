@@ -258,7 +258,11 @@ class TestPhase3Completion(unittest.TestCase):
         self.assertTrue(exam['syllabus'])
         self.assertTrue(all(t['topicName'] and t['subject'] and t['officialProvenance'] for t in exam['syllabus']))
         self.assertTrue(all(t['weightagePercentage'] == 0 and not t['isHighYield'] for t in exam['syllabus']))
-        self.assertEqual([p['postName'] for p in exam['posts']], [])                # no printed Group -> named, not faked
+        # The notice names the posts but prints no Group: they are published by name with an
+        # empty classification (never inferred), and listed as such. Dropping them lost two
+        # verified post names; the projection contract no longer allows that.
+        self.assertEqual([p['postName'] for p in exam['posts']], ['Scientist (Agronomy)', 'Scientist (Genetics)'])
+        self.assertTrue(all(p['classification'] == '' for p in exam['posts']))
         self.assertEqual(exam['materialization']['postsWithoutPrintedGroup'],
                          ['Scientist (Agronomy)', 'Scientist (Genetics)'])
 
@@ -304,7 +308,7 @@ class TestPhase3Completion(unittest.TestCase):
             'application': 'VERIFIED_AVAILABLE', 'pattern': 'VERIFIED_AVAILABLE', 'syllabus': 'VERIFIED_AVAILABLE',
             'admit-card': 'VERIFIED_AVAILABLE', 'corrigenda': 'VERIFIED_AVAILABLE', 'resources': 'VERIFIED_AVAILABLE',
             'official-links': 'VERIFIED_AVAILABLE',
-            'roadmap': 'SUPPORTED_AND_PROJECTED', 'mock-tests': 'SUPPORTED_AND_PROJECTED',
+            'roadmap': 'NOT_YET_GENERATED', 'mock-tests': 'NOT_YET_GENERATED',
             'exam-day': 'SOURCE_NOT_FOUND_AFTER_SEARCH', 'faqs': 'SOURCE_NOT_FOUND_AFTER_SEARCH',
             'pyqs': 'NOT_YET_PUBLISHED', 'results': 'NOT_YET_PUBLISHED', 'cutoffs': 'NOT_YET_PUBLISHED',
         }

@@ -187,7 +187,92 @@ def _extract_html_tables(html: str) -> list[list[list[str]]]:
     return tables
 
 
+def _printed_relaxations(age_rules) -> list[dict]:
+    """The age relaxations the notice itself printed, each with its figure and evidence.
+
+    Only a VERIFIED relaxation carrying a figure (years added, or an absolute upper limit) is
+    kept: a relaxation named without a figure is not one a candidate can apply, and no figure
+    is ever supplied from a national default."""
+    from .schema import Status as _S
+    out, seen = [], set()
+    for rule in age_rules:
+        post_ids = [ref.ref for ref in getattr(rule.scope, 'refs', [])
+                    if getattr(ref.kind, 'value', '') == 'POST' and ref.ref]
+        for rx in getattr(rule, 'relaxations', []) or []:
+            years = rx.years.value if rx.years.has_value and rx.years.status is _S.VERIFIED else None
+            maximum = (rx.absolute_maximum.value if rx.absolute_maximum.has_value
+                       and rx.absolute_maximum.status is _S.VERIFIED else None)
+            if years is None and maximum is None:
+                continue
+            key = (rx.category_label, years, maximum, tuple(post_ids))
+            if key in seen:
+                continue
+            seen.add(key)
+            fact = rx.years if years is not None else rx.absolute_maximum
+            item = {'category': rx.category_label, 'status': 'VERIFIED',
+                    'evidenceSpan': fact.evidence[0].span if fact.evidence else ''}
+            if years is not None:
+                item['years'] = float(years)
+            if maximum is not None:
+                item['maximumAge'] = float(maximum)
+            if rx.conditions.has_value:
+                item['condition'] = str(rx.conditions.value)
+            if len(post_ids) == 1:
+                item['appliesToPostId'] = post_ids[0]
+            out.append(item)
+    return out
+
+
+def _post_name(item) -> str:
+    if isinstance(item, dict):
+        return str(item.get('postName') or item.get('name') or '').strip()
+    return str(item or '').strip()
+
+
+def _vet_posts(got: Field, rec: ExamRecord) -> Field:
+    """Every posts reading passes one test, whichever reader produced it.
+
+    A checklist of documents to produce ("Hall Ticket", "Non-Creamy Layer Certificate")
+    reconstructs exactly like a list of posts, and the semantic reader, the table reader and
+    the legacy extractor have each returned one. A reading that is wholly documents is not a
+    reading of posts: it is kept, with its evidence, as NEEDS_REVIEW -- never published as
+    posts and never discarded. Document names mixed into a real post list are removed, and the
+    removal is logged."""
+    from .eligibility import is_document_not_post
+
+    if got is None or not got.usable or not isinstance(got.value, list):
+        return got
+    kept = [x for x in got.value if not is_document_not_post(_post_name(x))]
+    dropped = [_post_name(x) for x in got.value if is_document_not_post(_post_name(x))]
+    if not dropped:
+        return got
+    if not kept:
+        return Field.needs_review(
+            'posts', got.value,
+            f'the {len(dropped)} candidate(s) read here are documents a candidate must produce, not posts '
+            f'(e.g. "{dropped[0]}"); held for review with the evidence, not published as posts',
+            got.citation)
+    rec.note(f'posts: removed {len(dropped)} document name(s) from the post list: {", ".join(dropped[:4])}')
+    return Field(name='posts', status=got.status, value=kept, citation=got.citation, note=got.note)
+
+
 def _dispatch_domain_extraction(
+    cf,
+    sources: SourceSet,
+    loaded: dict[str, object],
+    rec: ExamRecord,
+    resolved: ResolvedExam,
+    identity: dict[str, IdentityCheck] | None = None,
+    target: ExamIdentity | None = None
+) -> Field:
+    """Dispatch one contract field, then vet the reading where a generic test applies."""
+    got = _dispatch_domain_extraction_raw(cf, sources, loaded, rec, resolved, identity, target)
+    if cf.name == 'posts':
+        got = _vet_posts(got, rec)
+    return got
+
+
+def _dispatch_domain_extraction_raw(
     cf,
     sources: SourceSet,
     loaded: dict[str, object],
@@ -525,6 +610,9 @@ def _dispatch_domain_extraction(
                         ev = facts.evidence[0] if facts.evidence else None
                     if mins and maxs:
                         val = {'minAge': mins[0], 'maxAge': maxs[-1], 'asOn': str(cutoffs[0]) if cutoffs else ''}
+                        relax = _printed_relaxations(rules)
+                        if relax:
+                            val['relaxations'] = relax
                         cite = Citation(document_title=doc.title, url=doc.url, page=1, clause='Age Limits',
                                         excerpt=(ev.span if ev else str(val)), verified_date=_today())
                         if len(mins) == 1 and len(maxs) == 1:

@@ -629,6 +629,32 @@ _DOCUMENT_ROW = re.compile(
     r'sports?|discharge|date\s+of\s+birth)\b[^.]{0,40}\bcertificate|certificate\b)', re.I)
 
 
+#: A word that names a thing a candidate *submits*, never a thing a candidate is recruited to.
+#: Used on whole names, so "Photographer" (a post) does not match "photograph".
+_DOCUMENT_WORD = re.compile(
+    r'\b(?:certificates?|declaration|affidavit|undertaking|hall\s*tickets?|admit\s*cards?|'
+    r'application\s+forms?|photographs?|signatures?|proof\s+of|marks?\s*(?:sheets?|memos?)|'
+    r'testimonials?)\b', re.I)
+
+
+def is_document_not_post(name: str) -> bool:
+    """Is this candidate post name plainly a document or credential rather than a post?
+
+    One test for every path that produces post candidates (the table reader, the semantic
+    reader, a legacy extractor, a stored record being re-materialized), so a document list
+    can never reach a candidate as a list of posts whichever reader happened to produce it."""
+    n = normalise_ws(name or '')
+    return bool(n) and bool(_DOCUMENT_ROW.match(n) or _DOCUMENT_WORD.search(n))
+
+
+def vet_post_names(names: list[str]) -> tuple[list[str], list[str]]:
+    """Split candidate post names into (posts, documents)."""
+    posts, documents = [], []
+    for n in names:
+        (documents if is_document_not_post(n) else posts).append(n)
+    return posts, documents
+
+
 def extract_posts(doc: SourceDocument, text: str, *, exam_id: str) -> list[Post]:
     """Posts, from tables reconstructed out of the flattened document.
 
@@ -655,7 +681,7 @@ def extract_posts(doc: SourceDocument, text: str, *, exam_id: str) -> list[Post]
                 name = normalise_ws(row.cells.get(ColumnKind.DEPARTMENT, ''))
             if len(name) < 4 or name.lower() in seen:
                 continue
-            if _DOCUMENT_ROW.match(name):
+            if is_document_not_post(name):
                 continue
             ev = _evidence(row.span, doc, text, reading=f'post: {name[:60]}')
             if ev is None:
