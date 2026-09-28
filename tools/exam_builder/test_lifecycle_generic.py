@@ -479,6 +479,46 @@ class TestPortalOnTheAuthoritysEstate(unittest.TestCase):
                          ('https://apply.newpsc.gov.in/otr', ''))
 
 
+class TestAdmissionRuleIsAnOfficialStep(unittest.TestCase):
+    """How many candidates reach the next stage is the authority's own rule, quoted."""
+
+    STAGES = [{'level': 'STAGE', 'name': 'Preliminary Test'},
+              {'level': 'STAGE', 'name': 'Written Examination (Main)'}]
+    TEXT = ('(B) The number of candidates to be admitted to the Written (Main) Examination '
+            '(Conventional Type) would be Twenty (20) times to the total number of vacancies in each Zone. '
+            'The Preliminary Test will be conducted in English.')
+
+    def test_the_rule_is_tied_to_the_stage_it_names_and_the_one_before(self):
+        from .results import admission_rules
+        got = admission_rules(self.TEXT, self.STAGES, document_title='Notice', document_url='u')
+        self.assertEqual([(r['fromStage'], r['nextStage'], r['source']) for r in got],
+                         [('Preliminary Test', 'Written Examination (Main)', 'OFFICIAL_RULE')])
+        self.assertIn('Twenty (20) times', got[0]['evidenceSpan'])
+        self.assertFalse(got[0]['isDerived'])
+
+    def test_a_rule_naming_no_stage_of_the_pattern_is_not_attached(self):
+        from .results import admission_rules
+        other = self.TEXT.replace('Written (Main) Examination', 'Interview')
+        self.assertEqual(admission_rules(other, self.STAGES), [])
+
+
+class TestServicePageListsTheExamAsAnOption(unittest.TestCase):
+
+    def test_only_the_exam_s_own_option_is_kept(self):
+        from ..exam_authoring.sources import Document
+        from .build import _listing_entry
+        html = ('<select><option>Select Notification</option>'
+                '<option>07/2031 - DIVISION-II SERVICES</option>'
+                '<option>09/2031 - DIVISION-III SERVICES</option>'
+                '<option>04/2027 - DIVISION-II SERVICES</option></select>')
+        d = Document(url='https://psc.example/searchHallTicket', kind='HTML', fetched_at='2031-03-01',
+                     raw=html.encode(), text=' '.join(html.split()))
+        d.html = html
+        entry = _listing_entry(d, TARGET)
+        self.assertIsNotNone(entry)
+        self.assertEqual(entry.text, '07/2031 - DIVISION-II SERVICES')
+
+
 class TestAdmitCardRuleIsQuotedWhole(unittest.TestCase):
 
     def test_a_capitalised_noun_after_the_is_not_a_cell_seam(self):

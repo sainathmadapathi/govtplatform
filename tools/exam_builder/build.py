@@ -145,6 +145,51 @@ def record_official_sources(rec: ExamRecord, sources: SourceSet, loaded: dict,
     return len(items)
 
 
+def record_vacancy_breakups(rec: ExamRecord, sources: SourceSet, loaded: dict,
+                            identity: dict) -> int:
+    """Vacancy break-ups printed as ruled tables in this exam's own PDFs, tied to its posts.
+
+    A break-up table flattens to a run of numbers whose column cannot be told once one cell is
+    blank or carries a marker, so the flattened-text post reader never publishes one. The
+    ruled-table reader reads the drawn grid instead, and a table is attached only when its own
+    printed totals reconcile and every row joins one post (see `vacancy_breakup.attach`).
+    Returns the number of tables recorded.
+    """
+    from . import vacancy_breakup as VB
+    posts = rec.value('posts')
+    if not isinstance(posts, list) or not posts:
+        return 0
+    found = []
+    for doc in sources.docs:
+        document = loaded.get(doc.url)
+        check = identity.get(doc.url)
+        if (document is None or getattr(document, 'kind', '') != 'PDF' or not getattr(document, 'raw', b'')
+                or check is None or check.verdict is not IdentityVerdict.MATCH):
+            continue
+        try:
+            tables, refused = VB.breakups_in(document.raw, posts)
+        except Exception as exc:                      # noqa: BLE001 - recorded, not hidden
+            rec.note(f'ruled-table reading failed on {doc.url}: {exc!r}')
+            continue
+        for why in refused:
+            rec.note(f'vacancy table in {doc.url} not attached: {why}')
+        for t in tables:
+            t.update({'documentTitle': normalise_ws(doc.title or '')[:220], 'documentUrl': doc.url,
+                      'documentKind': doc.kind.value})
+            found.append(t)
+    if not found:
+        return 0
+    first = found[0]
+    cite = Citation(document_title=first['documentTitle'], url=first['documentUrl'],
+                    page=first['pages'][0], clause='Vacancy break-up (ruled table)',
+                    excerpt='; '.join(first['checks'])[:400], verified_date=_today())
+    field = Field.found('vacancyBreakup', found, cite)
+    field.note = ('read from the drawn grid of the authority\'s own table; each table reconciled '
+                  'with its printed totals and every row joined one post')
+    rec.set(field)
+    return len(found)
+
+
 def record_date_revisions(rec: ExamRecord) -> int:
     """Every superseded date becomes one entry in the exam's revision history, old to new.
 
@@ -225,6 +270,12 @@ def _listing_entry(document, target: ExamIdentity):
     if getattr(document, 'kind', '') != 'HTML' or not getattr(document, 'html', ''):
         return None
     rows = html_rows(document)
+    # A service page lists the recruitments it serves as a drop-down, not a table: each
+    # option is an entry like a row ("02/2024 - GROUP-I SERVICES" under "Select Notification").
+    from html import unescape
+    rows += [[normalise_ws(unescape(re.sub(r'<[^>]+>', ' ', o)))]
+             for o in re.findall(r'<option\b[^>]*>(.*?)</option>', document.html, re.S | re.I)
+             if o.strip()]
     own = [r for r in rows
            if verify_identity(' | '.join(r), target).verdict is IdentityVerdict.MATCH]
     if not own or len(own) == len(rows):
@@ -1365,8 +1416,37 @@ def _dispatch_domain_extraction_raw(
         res_val = res_field.value if (res_field and res_field.ok and res_field.value) else []
         pat_val = pat_field.value if (pat_field and pat_field.ok and pat_field.value) else []
         
-        from .results import derive_next_steps
+        from .results import admission_rules, derive_next_steps
         guidance = derive_next_steps(res_val, pat_val)
+        # The authority's own rule for moving candidates between its stages, quoted from an
+        # identity-matched notification. Official statements, listed before any guidance.
+        rules: list[dict] = []
+        for doc in sources.docs:
+            check = (identity or {}).get(doc.url)
+            document = loaded.get(doc.url)
+            if (doc.kind is not DocKind.NOTIFICATION or document is None or check is None
+                    or check.verdict is not IdentityVerdict.MATCH):
+                continue
+            text = document.all_text() if hasattr(document, 'all_text') else ''
+            for rule in admission_rules(text, pat_val, document_title=doc.title, document_url=doc.url,
+                                        page_of=lambda span, d=document: _page_of(d, span)):
+                if (rule['fromStage'], rule['nextStage']) not in {(r['fromStage'], r['nextStage']) for r in rules}:
+                    rules.append(rule)
+        if rules:
+            # A derived step keeps the declaration it was derived from as its own source; the
+            # field's citation becomes the rule's, and must not be lent to the guidance.
+            basis = res_field.citation if (res_field and res_field.citation) else None
+            derived = [dict(g, **({'documentTitle': basis.document_title, 'documentUrl': basis.url,
+                                   'basisPage': 1, 'basisClause': 'Next Steps Guidance',
+                                   'basisExcerpt': 'Derived from verified result declaration and exam pattern'}
+                                  if basis else {}))
+                       for g in guidance if g.get('action') != 'Awaiting Official Result Declaration']
+            steps = rules + derived
+            first = rules[0]
+            cite = Citation(document_title=first['documentTitle'], url=first['documentUrl'],
+                            page=first['page'], clause='Admission to the next stage',
+                            excerpt=first['evidenceSpan'][:400], verified_date=_today())
+            return Field.found('nextSteps', steps, cite)
         if res_val:
             doc_title = res_field.citation.document_title if (res_field and res_field.citation) else rec.title
             doc_url = res_field.citation.url if (res_field and res_field.citation) else resolved.authority.domain
@@ -1693,6 +1773,9 @@ def build(exam_query: str = '', *, year: str = '',
                                 rec.set(got)
 
     record_official_sources(rec, sources, loaded, identity)
+    breakups = record_vacancy_breakups(rec, sources, loaded, identity)
+    if breakups:
+        rec.note(f'{breakups} vacancy break-up table(s) read from ruled grids and verified')
     revisions = record_date_revisions(rec)
     if revisions:
         rec.note(f'{revisions} date revision(s) recorded in the revision history from later '

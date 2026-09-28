@@ -132,6 +132,15 @@ def full_record() -> ExamRecord:
                               'description': 'Candidates must carry the printed admit card.', 'isMandatory': True}],
         'faqs': [{'question': 'Can I apply offline?', 'answer': 'No. Applications are accepted online only.',
                   'officialClause': 'FAQ 3'}],
+        # A break-up read from a ruled table (not a contract field: the build records it only
+        # where the grid reconciles), so the "every mapped field reaches runtime" check covers it.
+        'vacancyBreakup': [{'documentTitle': 'Notice', 'documentUrl': 'https://zeta.gov.in/notice.pdf', 'pages': [4],
+                            'checks': ['3 columns summed against the printed total row'],
+                            'columns': [['GEN'], ['RES']],
+                            'rows': [{'postId': '', 'postCode': '1', 'printedName': 'Clerk', 'zone': '',
+                                      'counts': [{'fresh': 70, 'carriedForward': 0}, {'fresh': 30, 'carriedForward': 0}],
+                                      'postTotal': 100, 'page': 4}],
+                            'tableTotal': 100}],
     }
     names = {c.name for c in CONTRACT if c.sources or c.name in ('officialName', 'authority')}
     missing = names - set(values)

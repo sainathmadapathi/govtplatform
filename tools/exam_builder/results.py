@@ -502,6 +502,59 @@ def _following_stage(stage_name: str, names: list[str]) -> str:
     return ''
 
 
+#: "The number of candidates to be admitted to the Written (Main) Examination ... would be
+#: Fifty (50) times ..." -- how an authority moves candidates from one stage to the next.
+_ADMISSION_RULE = re.compile(
+    r'(?:the\s+)?number\s+of\s+candidates\s+to\s+be\s+(?:admitted|called|shortlisted|selected)\s+'
+    r'(?:to|for)\s+(?:the\s+)?(?P<stage>[^.]{3,120}?)\s+(?:would|will|shall)\s+be\s+(?P<rule>[^.]{3,260})\.',
+    re.I)
+
+_STAGE_GENERIC = frozenset({'exam', 'examination', 'test', 'type', 'the', 'stage', 'written',
+                            'objective', 'conventional'})
+
+
+def _stage_marks(name: str) -> set:
+    return {w for w in re.findall(r'[a-z]{4,}', (name or '').lower())} - _STAGE_GENERIC
+
+
+def admission_rules(text: str, stages: list[dict] | None, *, document_title: str = '',
+                    document_url: str = '', page_of=None) -> list[dict]:
+    """The authority's own rule for how many candidates reach a stage, tied to that stage.
+
+    Only a sentence naming a stage of this exam's own pattern is kept, and the stage before it
+    in that pattern is the one it follows from; the sentence is quoted, not paraphrased, so the
+    step is the authority's statement and not GovOS guidance."""
+    names = [str(st.get('stageName') or st.get('name') or '') for st in (stages or [])
+             if isinstance(st, dict) and st.get('level') in (None, 'STAGE')]
+    names = [n for n in names if n]
+    flat = ' '.join((text or '').split())
+    out: list[dict] = []
+    seen: set = set()
+    for m in _ADMISSION_RULE.finditer(flat):
+        phrase = set(re.findall(r'[a-z]{4,}', m.group('stage').lower()))
+        hits = [i for i, n in enumerate(names) if _stage_marks(n) and _stage_marks(n) <= phrase]
+        if len(hits) != 1 or hits[0] == 0:
+            continue
+        target, source = names[hits[0]], names[hits[0] - 1]
+        sentence = m.group(0).strip()
+        if (source, target) in seen:
+            continue
+        seen.add((source, target))
+        out.append({
+            'isDerived': False,
+            'source': 'OFFICIAL_RULE',
+            'fromStage': source,
+            'nextStage': target,
+            'action': f'From {source} to {target}: as the notice states it',
+            'guidance': sentence,
+            'evidenceSpan': sentence,
+            'documentTitle': document_title,
+            'documentUrl': document_url,
+            'page': page_of(sentence) if page_of else 1,
+        })
+    return out
+
+
 def derive_next_steps(results_facts: list[dict], stages: list[dict] | None = None) -> list[dict]:
     """Next-step guidance from a declared result and the exam's own pattern -- nothing else.
 

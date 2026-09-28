@@ -1082,6 +1082,28 @@ export type ExamCategoryTag =
   | 'RAILWAYS'
   | 'DEFENCE';
 
+export interface VacancyBreakupTable {
+  id: string;
+  documentTitle: string;
+  documentUrl: string;
+  pages: number[];
+  /** The arithmetic the table reconciled against its own printed totals. */
+  checks: string[];
+  /** Each counting column's header path, as printed ("OC / MZ1 / UR"). */
+  columns: string[];
+  rows: {
+    postId: string;
+    postCode: string;
+    printedName: string;
+    zone: string;
+    counts: { fresh: number; carriedForward: number }[];
+    postTotal?: number;
+    page?: number;
+  }[];
+  tableTotal?: number;
+  provenance: DataProvenance;
+}
+
 export interface Exam {
   id: string;
   code: string;
@@ -1122,6 +1144,12 @@ export interface Exam {
     basis?: string;
     steps: { topicId: string; topicName: string; subject: string; rationale: string }[];
   };
+  /**
+   * Vacancy break-ups the authority printed as ruled tables, read from the drawn grid by the
+   * exam builder. A table is present only when its own printed totals reconciled and every
+   * row joined one post; its columns are the table's own header paths, as printed.
+   */
+  vacancyBreakups?: VacancyBreakupTable[];
   /**
    * The syllabus as its authority published it, read by the exam builder from that
    * authority's own documents. Absent where no official syllabus has been read — which for

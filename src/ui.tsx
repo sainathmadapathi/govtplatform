@@ -15005,12 +15005,36 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
 
       {/* GovOS guidance derived from the declared result and the pattern. It sits apart from the
           authority's declarations above and says what it is: guidance, not an official statement. */}
-      {(exam.resultNextSteps?.length ?? 0) > 0 && (
+      {/* The authority's own rules for moving candidates between stages, quoted and cited. */}
+      {(exam.resultNextSteps ?? []).some(s => s.isGuidance === false) && (
+        <div className="glass-card" style={{ padding: '24px' }}>
+          <span className="badge badge-verified" style={{ fontSize: '0.7rem' }}>OFFICIAL RULE — AS THE NOTICE STATES IT</span>
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', margin: '8px 0 12px' }}>How candidates move to the next stage</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {exam.resultNextSteps!.filter(s => s.isGuidance === false).map((step, i) => (
+              <div key={i} style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)' }}>
+                <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.92rem' }}>{step.headline}</div>
+                <div style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', marginTop: '4px', lineHeight: 1.5 }}>“{step.summary}”</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px', flexWrap: 'wrap' }}>
+                  {step.basis && <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>{step.basis}</span>}
+                  {step.provenance && onOpenProvenanceModal && (
+                    <button onClick={() => onOpenProvenanceModal(step.provenance!)} className="btn btn-outline" style={{ fontSize: '0.7rem', padding: '2px 8px' }}>
+                      <ShieldCheck size={11} /> Sourced Clause
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {(exam.resultNextSteps ?? []).some(s => s.isGuidance !== false) && (
         <div className="glass-card" style={{ padding: '24px', borderStyle: 'dashed' }}>
           <span className="badge badge-pending" style={{ fontSize: '0.7rem' }}>GOVOS GUIDANCE — NOT AN OFFICIAL STATEMENT</span>
           <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', margin: '8px 0 12px' }}>What comes next</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {exam.resultNextSteps!.map((step, i) => (
+            {exam.resultNextSteps!.filter(s => s.isGuidance !== false).map((step, i) => (
               <div key={i} style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)' }}>
                 <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.92rem' }}>{step.headline}</div>
                 {step.summary && <div style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', marginTop: '4px', lineHeight: 1.5 }}>{step.summary}</div>}
@@ -19248,6 +19272,69 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                 </div>
               )}
             </div>
+
+            {/* Vacancy break-ups read from the authority's ruled tables. Each table is shown with
+                its own column headers, the pages it came from and the totals it reconciled with;
+                carried-forward vacancies stay apart from fresh ones, as printed. */}
+            {(exam.vacancyBreakups ?? []).map(table => (
+              <div key={table.id} className="glass-card" style={{ padding: '18px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+                  <div style={{ minWidth: 0 }}>
+                    <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                      Vacancies by post, as printed — {table.documentTitle}
+                    </h4>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                      Page{table.pages.length > 1 ? 's' : ''} {table.pages.join(', ')} · read from the table’s drawn grid ·
+                      reconciled: {table.checks.join('; ')}
+                      {table.tableTotal !== undefined ? ` · ${table.tableTotal} vacancies in all` : ''}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                    <button onClick={() => onOpenProvenanceModal(table.provenance)} className="btn btn-outline" style={{ fontSize: '0.7rem', padding: '2px 8px' }}>
+                      <ShieldCheck size={11} /> Sourced Clause
+                    </button>
+                    <a href={table.documentUrl} target="_blank" rel="noreferrer" className="btn btn-outline" style={{ fontSize: '0.7rem', padding: '2px 8px' }}>
+                      <ExternalLink size={11} /> Open the document
+                    </a>
+                  </div>
+                </div>
+                <div style={{ overflowX: 'auto', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)' }}>
+                  <table style={{ borderCollapse: 'collapse', fontSize: '0.74rem', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+                    <thead>
+                      <tr style={{ background: 'var(--surface-2)' }}>
+                        <th style={{ padding: '6px 8px', textAlign: 'left', position: 'sticky', left: 0, background: 'var(--surface-2)' }}>Post</th>
+                        {table.rows.some(r => r.zone) && <th style={{ padding: '6px 8px' }}>Zone</th>}
+                        {table.columns.map((col, i) => (
+                          <th key={i} style={{ padding: '6px 6px', fontWeight: 600, borderLeft: '1px solid var(--border-color)' }}>{col}</th>
+                        ))}
+                        <th style={{ padding: '6px 8px', borderLeft: '1px solid var(--border-color)' }}>Post total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {table.rows.map((row, ri) => (
+                        <tr key={ri} style={{ borderTop: '1px solid var(--border-color)' }}>
+                          <td style={{ padding: '5px 8px', position: 'sticky', left: 0, background: 'var(--bg-card)', fontWeight: 600 }}>
+                            {row.postCode ? `${row.postCode}. ` : ''}{row.printedName}
+                          </td>
+                          {table.rows.some(r => r.zone) && <td style={{ padding: '5px 8px' }}>{row.zone}</td>}
+                          {row.counts.map((c, ci) => (
+                            <td key={ci} style={{ padding: '5px 6px', textAlign: 'center', borderLeft: '1px solid var(--border-color)' }}>
+                              {c.fresh === 0 && c.carriedForward === 0 ? '–' : `${c.fresh || ''}${c.fresh && c.carriedForward ? ' + ' : ''}${c.carriedForward ? `${c.carriedForward} cf` : ''}`}
+                            </td>
+                          ))}
+                          <td style={{ padding: '5px 8px', textAlign: 'center', fontWeight: 700, borderLeft: '1px solid var(--border-color)' }}>
+                            {row.postTotal ?? ''}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>
+                  “cf” is a carried-forward vacancy, printed apart from the fresh ones. Column headings are the table’s own abbreviations.
+                </div>
+              </div>
+            ))}
 
             {/* Relaxations the notice itself printed, each cited. None is supplied from a default. */}
             {(exam.ageRelaxations?.length ?? 0) > 0 && (

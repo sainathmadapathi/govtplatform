@@ -93,6 +93,7 @@ PROJECTION_MAP: dict[str, tuple[str, ...]] = {
     'cutoffs': ('cutoffsHistory',),
     'examDayChecklist': ('examDayChecklist',),
     'faqs': ('faqs',),
+    'vacancyBreakup': ('vacancyBreakups',),
 }
 
 
@@ -152,7 +153,8 @@ def validate_runtime_exam(exam: Any) -> list[str]:
             errors.append('every post must carry postName and a classification string (empty where none was printed)')
     # The UI keys every card on its id; two items sharing one are one item to it, and the later
     # may silently not render. That is a loss after the projection check, so it is refused here.
-    for key in ('dates', 'posts', 'resultDeclarations', 'admitCardEvents', 'syllabusTree'):
+    for key in ('dates', 'posts', 'resultDeclarations', 'admitCardEvents', 'syllabusTree',
+                'vacancyBreakups'):
         ids: list = []
         stack = list(exam.get(key) or [])
         while stack:
@@ -198,11 +200,13 @@ def _path_has_content(exam: dict, path: str) -> bool:
 #: Canonical list fields whose items must each reach runtime (no silent partial drop).
 _ITEM_PRESERVING = (('dates', 'dates'), ('admitCard', 'admitCardEvents'), ('answerKeys', 'answerKeys'),
                     ('results', 'resultDeclarations'), ('officialPapers', 'officialPapers'),
-                    ('cutoffs', 'cutoffsHistory'), ('corrigenda', 'corrigendums'))
+                    ('cutoffs', 'cutoffsHistory'), ('corrigenda', 'corrigendums'),
+                    ('vacancyBreakup', 'vacancyBreakups'))
 
 #: Runtime collections of official facts; every item must carry provenance.
 _PROVENANCED = ('dates', 'admitCardEvents', 'officialPapers', 'answerKeys', 'resultDeclarations',
-                'cutoffsHistory', 'examDayChecklist', 'faqs', 'eligibilityHighlights', 'ageRelaxations')
+                'cutoffsHistory', 'examDayChecklist', 'faqs', 'eligibilityHighlights', 'ageRelaxations',
+                'vacancyBreakups')
 
 
 def validate_projection(rec: ExamRecord, exam: dict) -> list[str]:
@@ -252,6 +256,45 @@ def _prov(rec: ExamRecord, f: Field, suffix: str) -> Optional[dict]:
     if not f.citation:
         return None
     return f.citation.to_provenance(prov_id=f'prov-{rec.exam_id}-{suffix}', level=f.verification_level)
+
+
+def _vacancy_breakups(rec: ExamRecord) -> list[dict]:
+    """Each verified break-up table, as the authority printed its columns, rows tied to posts.
+
+    Counts stay split into fresh and carried-forward, as printed; the column labels are the
+    table's own header paths. Every table names its document, its pages and the arithmetic it
+    reconciled, so the section can say why the figures are trusted."""
+    f = rec.get('vacancyBreakup')
+    if not (f and f.usable and isinstance(f.value, list)):
+        return []
+    # Rows were joined to the canonical posts; the runtime names a post by its position in
+    # that same list (see `_posts`), so the join is carried across by position.
+    posts = rec.value('posts') if isinstance(rec.value('posts'), list) else []
+    runtime_id = {str(p.get('id')): f'post-{rec.exam_id}-{i}'
+                  for i, p in enumerate(posts[:80]) if isinstance(p, dict) and p.get('id')}
+    out = []
+    for i, t in enumerate(x for x in f.value if isinstance(x, dict)):
+        prov = dict(_prov(rec, f, f'vacancy-breakup-{i}') or {},
+                    documentTitle=t.get('documentTitle', ''), officialUrl=t.get('documentUrl', ''),
+                    pageNumber=(t.get('pages') or [1])[0],
+                    excerptText='; '.join(t.get('checks') or [])[:400])
+        out.append({
+            'id': f'vb-{rec.exam_id}-{i}',
+            'documentTitle': t.get('documentTitle', ''), 'documentUrl': t.get('documentUrl', ''),
+            'pages': list(t.get('pages') or []),
+            'checks': list(t.get('checks') or []),
+            'columns': [' / '.join(re.sub(r'\s+', ' ', p) for p in path) for path in t.get('columns') or []],
+            'rows': [{'postId': runtime_id.get(str(r.get('postId', '')), ''), 'postCode': r.get('postCode', ''),
+                      'printedName': r.get('printedName', ''), 'zone': r.get('zone', ''),
+                      'counts': [{'fresh': c.get('fresh', 0), 'carriedForward': c.get('carriedForward', 0)}
+                                 for c in r.get('counts') or []],
+                      **({'postTotal': r['postTotal']} if r.get('postTotal') is not None else {}),
+                      'page': r.get('page')}
+                     for r in t.get('rows') or []],
+            'tableTotal': t.get('tableTotal'),
+            'provenance': prov,
+        })
+    return out
 
 
 def _dates(rec: ExamRecord) -> list[dict]:
@@ -1164,13 +1207,33 @@ def _result_next_steps(rec: ExamRecord) -> list[dict]:
         summary = _clean(g.get('guidance') or g.get('summary'))
         if not (headline or summary):
             continue
+        if g.get('source') == 'OFFICIAL_RULE':
+            # The authority's own sentence, quoted: an official statement with its own
+            # provenance, never folded into the guidance below it.
+            out.append({'status': 'AWAITING_RESULT', 'headline': headline or 'Next stage', 'summary': summary,
+                        'actions': [], 'isGuidance': False,
+                        'basis': f"Stated in {_clean(g.get('documentTitle'), 160)}.",
+                        'fromStage': _clean(g.get('fromStage'), 80), 'nextStage': _clean(g.get('nextStage'), 80),
+                        'provenance': dict(_prov(rec, f, 'next-steps-official') or {},
+                                           documentTitle=g.get('documentTitle', ''),
+                                           officialUrl=g.get('documentUrl', ''),
+                                           pageNumber=g.get('page') or 1,
+                                           excerptText=g.get('evidenceSpan', ''),
+                                           taxonomyType='FACT', verificationLevel='OFFICIALLY_VERIFIED')})
+            continue
+        own = prov
+        if prov and g.get('documentUrl'):
+            # The declaration this step was derived from, not whatever the field cites first.
+            own = dict(prov, documentTitle=g.get('documentTitle', ''), officialUrl=g.get('documentUrl', ''),
+                       **({'pageNumber': g['basisPage'], 'clauseNumber': g.get('basisClause', ''),
+                           'excerptText': g.get('basisExcerpt', '')} if g.get('basisPage') else {}))
         out.append({'status': 'AWAITING_RESULT', 'headline': headline or 'Next step', 'summary': summary,
                     'actions': [], 'isGuidance': True,
                     'basis': ('Derived by GovOS from '
                               + (f"the declared result for {_clean(g.get('fromStage'), 80)}" if g.get('fromStage')
                                  else 'the official lifecycle') + ' and the exam pattern; not an official statement.'),
                     'fromStage': _clean(g.get('fromStage'), 80), 'nextStage': _clean(g.get('nextStage'), 80),
-                    'provenance': prov})
+                    'provenance': own})
     return out
 
 
@@ -1422,7 +1485,8 @@ def materialize_exam(rec: ExamRecord, *, cycle: str = '',
                        ('officialPapers', _official_papers(rec)), ('answerKeys', _answer_keys(rec)),
                        ('resultDeclarations', _result_declarations(rec)),
                        ('resultNextSteps', _result_next_steps(rec)),
-                       ('ageRelaxations', _age_relaxations(rec))):
+                       ('ageRelaxations', _age_relaxations(rec)),
+                       ('vacancyBreakups', _vacancy_breakups(rec))):
         if value:
             exam[key] = value
     if pattern_withheld and pattern_tree:
@@ -1459,11 +1523,16 @@ def _official_links(rec: ExamRecord) -> list[dict]:
         seen = {l['url'] for l in links}
         for s in official.value:
             url = str((s or {}).get('url') or '')
-            if (isinstance(s, dict) and s.get('kind') == 'EXAM_PAGE' and s.get('identity') == 'MATCH'
-                    and url.startswith('http') and url not in seen):
+            if (isinstance(s, dict) and s.get('kind') in ('EXAM_PAGE', 'ADMIT_CARD')
+                    and s.get('identity') == 'MATCH' and url.startswith('http') and url not in seen
+                    and not re.search(r'\.pdf$|/preview/', url, re.I)):
                 seen.add(url)
+                note = ('The authority’s own page listing this recruitment and its dates.'
+                        if s.get('kind') == 'EXAM_PAGE' else
+                        'The authority’s own hall-ticket service; this recruitment is among those it serves. '
+                        'Each candidate’s hall ticket is served through it, not published as a file.')
                 links.append({'title': _clean(s.get('title') or 'Examination page', 120), 'url': url,
-                              'note': 'The authority’s own page listing this recruitment and its dates.'})
+                              'note': note})
     return links
 
 
