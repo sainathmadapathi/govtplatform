@@ -9,11 +9,19 @@ wearing the same clothes.
 So the rule is asymmetric on purpose:
 
     NOT_PUBLISHED   allowed     the authority genuinely has not released it
-    NOT_EXTRACTED   blocks      a document exists and we failed to read it
+    NOT_EXTRACTED   blocks      when the field is one the contract marks required -- an exam
+                                cannot be offered without it; an optional field that could not
+                                be read is *allowed*, and its honest state (searched-and-not-
+                                found, reader failed, ...) travels with the record so the UI
+                                shows the gap as ours rather than as the authority's silence.
+                                Its status is never rewritten to NOT_PUBLISHED.
     NEEDS_REVIEW    blocks      read, but not confidently enough to assert
     MISMATCH        blocks      a source belonged to another exam
     AMBIGUOUS       blocks      a required field rests on a source that names several exams
     infrastructure  blocks      and is *never* rewritten as NOT_PUBLISHED
+
+Which fields are required is the contract's decision (`ContractField.required`), not this
+module's: the gate reads it rather than keeping a list of its own.
 
 That last one matters most. A network outage produces exactly the same silence as an
 authority that has published nothing, and translating one into the other would have GovOS
@@ -43,12 +51,13 @@ class GateDecision(str, Enum):
     BLOCK = 'BLOCK'
 
 
-#: Fields whose absence would leave a candidate with an exam page that misinforms. A field
-#: not listed here may be missing without blocking, because the app renders an honest empty
-#: state for it.
-REQUIRED_FIELDS: frozenset[str] = frozenset({
-    'officialName', 'authority', 'applicationPortal', 'dates',
-})
+#: Fields whose absence would leave a candidate with an exam page that misinforms. Read from
+#: the contract, which is the one place that decides what is required; a field not marked
+#: there may be missing without blocking, because the app renders an honest state for it.
+#: An intrinsic contract entry (no source kinds: e.g. the sources read) is established by the
+#: pipeline itself and carried on the record as an attribute, never as an extracted Field, so it
+#: is not something the gate can find missing.
+REQUIRED_FIELDS: frozenset[str] = frozenset(f.name for f in CONTRACT if f.required and f.sources)
 
 
 @dataclass
@@ -80,7 +89,7 @@ class GateReport:
             lines.append(f'blocked by {len(self.blockers)}:')
             lines += [f'   - {b}' for b in self.blockers]
         if self.allowed:
-            lines.append(f'allowed unpublished ({len(self.allowed)}): '
+            lines.append(f'allowed absences, state preserved ({len(self.allowed)}): '
                          f'{", ".join(sorted(self.allowed))}')
         lines += [f'   note: {n}' for n in self.notes]
         return '\n'.join(lines)
@@ -93,12 +102,21 @@ def evaluate(record: ExamRecord, *,
              conflicts: list[str] | None = None,
              schema_ok: bool = True,
              typecheck_ok: bool = True,
-             isolation_ok: bool = True) -> GateReport:
-    """Decide whether this build may modify production."""
+             isolation_ok: bool = True,
+             completeness=None) -> GateReport:
+    """Decide whether this build may modify production.
+
+    `completeness` (an ExamCompletenessReport) is optional and never changes the decision; it
+    lets the report name the honest state of each optional field that was allowed through.
+    """
     blockers: list[Blocker] = []
     allowed: list[str] = []
     notes: list[str] = []
     identity_by_source = identity_by_source or {}
+    field_state: dict[str, str] = {}
+    for sec in (getattr(completeness, 'sections', None) or []):
+        for fname, st in (getattr(sec, 'fields', None) or {}).items():
+            field_state[fname] = st
 
     # --- infrastructure first. A paused build has not established anything, and its
     # --- silences must not be read as findings about the authority.
@@ -137,9 +155,18 @@ def evaluate(record: ExamRecord, *,
             continue
 
         if f.status is Status.NOT_EXTRACTED:
-            blockers.append(Blocker(
-                name, 'a source exists but could not be read',
-                'publishing would show a gap the authority did not leave'))
+            if name in required:
+                blockers.append(Blocker(
+                    name, 'a required field could not be read from any source',
+                    'an exam cannot be offered without it'))
+                continue
+            # An optional field we could not read is a gap of ours, and it is published *as*
+            # ours: the field keeps its NOT_EXTRACTED status and its completeness state, and the
+            # app renders that state -- never an empty section dressed as the authority's silence.
+            allowed.append(name)
+            state = field_state.get(name)
+            notes.append(f'{name}: optional, not read; carried as '
+                         f'{state or "NOT_EXTRACTED"} rather than published as a fact or hidden')
             continue
 
         if f.status is Status.NEEDS_REVIEW:

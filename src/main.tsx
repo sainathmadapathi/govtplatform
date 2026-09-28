@@ -18,7 +18,8 @@ import {
   Exam,
   NotificationPreference,
   ResourceItem,
-  SyllabusRevision
+  SyllabusRevision,
+  ExamFactOverlay
 } from './types';
 import {
   ALL_EXAMS,
@@ -26,9 +27,14 @@ import {
 } from './data';
 import {
   applySyllabusRevisions,
+  applyExamOverlays,
+  examOverlayService,
+  examRegistryService,
+  getExamUniverse,
   storageService,
   syllabusLiveService
 } from './services';
+
 import {
   AdminVerificationPanel,
   AIAssistant,
@@ -62,6 +68,28 @@ export const App: React.FC = () => {
     const savedId = storageService.getCurrentExamId();
     return ALL_EXAMS.find(e => e.id === savedId) || SSC_CGL_EXAM;
   });
+
+  /**
+   * Runtime exam registry (Phase 3): machine-acquired exams served by the engine. The exam
+   * universe every finder, shelf and notification reads is authored ∪ runtime; the authored
+   * register stands alone if the server cannot be reached. A saved current exam that lives in
+   * the registry is restored once the registry has loaded.
+   */
+  const [registryExams, setRegistryExams] = useState<Exam[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    examRegistryService.load().then(found => {
+      if (cancelled) return;
+      setRegistryExams(found);
+      const savedId = storageService.getCurrentExamId();
+      if (savedId && !ALL_EXAMS.some(e => e.id === savedId)) {
+        const restored = found.find(e => e.id === savedId);
+        if (restored) setSelectedExam(restored);
+      }
+    });
+    return () => { cancelled = true; };
+  }, []);
+  const examUniverse = useMemo(() => getExamUniverse(ALL_EXAMS, registryExams), [registryExams]);
 
   /**
    * Every navigation request goes through here.
@@ -108,8 +136,22 @@ export const App: React.FC = () => {
     return () => { cancelled = true; };
   }, [selectedExam.id, activeTab, syllabusReadCount]);
 
-  /** The exam every exam-scoped feature is handed: identity from the register, syllabus as revised. */
-  const liveExam = useMemo(() => applySyllabusRevisions(selectedExam, syllabusRevisions), [selectedExam, syllabusRevisions]);
+  /** Canonical fact overlays (Phase 1) */
+  const [examOverlays, setExamOverlays] = useState<ExamFactOverlay[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    examOverlayService.getOverlays(selectedExam.id).then(found => {
+      if (!cancelled) setExamOverlays(found);
+    });
+    return () => { cancelled = true; };
+  }, [selectedExam.id, activeTab]);
+
+  /** The exam every exam-scoped feature is handed: identity from the register, syllabus as revised, plus canonical fact overlays. */
+  const liveExam = useMemo(() => {
+    const withSyllabus = applySyllabusRevisions(selectedExam, syllabusRevisions);
+    return applyExamOverlays(withSyllabus, examOverlays);
+  }, [selectedExam, syllabusRevisions, examOverlays]);
+
   
   // Tracked Exams & Notifications State
   const [trackedExamIds, setTrackedExamIds] = useState<string[]>(() => storageService.getTrackedExams());
@@ -137,7 +179,7 @@ export const App: React.FC = () => {
       setNotificationPreferences(remotePrefs);
 
       // 3. Generate initial personalized notifications for tracked exams
-      const generated = storageService.generatePersonalizedNotificationsForTrackedExams(ALL_EXAMS);
+      const generated = storageService.generatePersonalizedNotificationsForTrackedExams(getExamUniverse(ALL_EXAMS));
       setNotifications(generated);
 
       // 4. Retry any accuracy reports queued while the server was unreachable
@@ -151,7 +193,7 @@ export const App: React.FC = () => {
     const updated = await storageService.toggleTrackExam(examId);
     setTrackedExamIds(updated);
     // Regenerate notifications scoped strictly to newly tracked exams
-    const regenerated = storageService.generatePersonalizedNotificationsForTrackedExams(ALL_EXAMS);
+    const regenerated = storageService.generatePersonalizedNotificationsForTrackedExams(getExamUniverse(ALL_EXAMS));
     setNotifications(regenerated);
   };
 
@@ -168,7 +210,7 @@ export const App: React.FC = () => {
   const handleSavePreferences = async (newPrefs: NotificationPreference) => {
     await storageService.saveNotificationPreferences(newPrefs);
     setNotificationPreferences(newPrefs);
-    const regenerated = storageService.generatePersonalizedNotificationsForTrackedExams(ALL_EXAMS);
+    const regenerated = storageService.generatePersonalizedNotificationsForTrackedExams(getExamUniverse(ALL_EXAMS));
     setNotifications(regenerated);
   };
 
@@ -185,7 +227,7 @@ export const App: React.FC = () => {
    * honoured now, with a sensible section per action type as the fallback.
    */
   const handleNotificationAction = (notif: CandidateNotification) => {
-    const targetExam = ALL_EXAMS.find(e => e.id === notif.examId) || ALL_EXAMS[0];
+    const targetExam = examUniverse.find(e => e.id === notif.examId) || ALL_EXAMS[0];
     setSelectedExam(targetExam);
     storageService.setCurrentExamId(targetExam.id);
 
@@ -258,6 +300,7 @@ export const App: React.FC = () => {
       <main style={{ paddingBottom: activeTab === 'EXAM_DETAIL' ? '0' : '60px' }}>
         {activeTab === 'FINDER' && (
           <ExamFinder
+            exams={examUniverse}
             onNavigate={navigate}
             onSelectExam={handleSelectExam}
             onNavigateEligibility={() => setActiveTab('ELIGIBILITY')}
@@ -321,6 +364,7 @@ export const App: React.FC = () => {
 
         {activeTab === 'MY_EXAMS' && (
           <MyExams
+            exams={examUniverse}
             trackedExamIds={trackedExamIds}
             currentExamId={selectedExam.id}
             onSelectExam={handleSelectExam}

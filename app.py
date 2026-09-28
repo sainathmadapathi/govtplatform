@@ -317,6 +317,57 @@ def init_database():
         ON user_interactions(user_id, timestamp DESC)
     ''')
 
+    # 14. Universal Canonical Exam Fact Overlays (Phase 1)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS exam_fact_overlays (
+            id TEXT PRIMARY KEY,
+            exam_id TEXT NOT NULL,
+            cycle TEXT NOT NULL,
+            domain TEXT NOT NULL,
+            target_id TEXT,
+            target_scope_json TEXT,
+            kind TEXT NOT NULL,
+            value_json TEXT NOT NULL,
+            provenance_json TEXT NOT NULL,
+            status TEXT NOT NULL,
+            supersedes_id TEXT,
+            previous_value_json TEXT,
+            effective_date TEXT,
+            conflict_note TEXT,
+            created_at TEXT NOT NULL,
+            created_by TEXT NOT NULL,
+            retired INTEGER NOT NULL DEFAULT 0
+        )
+    ''')
+    cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_exam_fact_overlays_lookup
+        ON exam_fact_overlays(exam_id, cycle, domain, retired)
+    ''')
+
+    # 15. Runtime Exam Registry (Phase 3): the runtime home for machine-acquired exams. One row
+    #     per (exam_id, cycle); only a gate-PASS, contract-valid exam is ever published here.
+    #     Authored exams stay in src/data.ts and are never duplicated or overwritten.
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS exam_registry (
+            exam_id TEXT NOT NULL,
+            cycle TEXT NOT NULL,
+            authority_name TEXT NOT NULL,
+            authority_domain TEXT NOT NULL,
+            official_name TEXT NOT NULL,
+            version INTEGER NOT NULL DEFAULT 1,
+            gate_decision TEXT NOT NULL,
+            published INTEGER NOT NULL DEFAULT 0,
+            exam_json TEXT NOT NULL,
+            record_json TEXT NOT NULL,
+            completeness_json TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            retired INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (exam_id, cycle)
+        )
+    ''')
+
+
     # ---------------------------------------------------------------- exam-id migration
     # Practice history is scoped by exam_id, so an attempt carrying an id that matches no exam
     # would simply disappear from every exam's history. One short id was written by an earlier
@@ -2316,6 +2367,132 @@ def retire_syllabus_revision(revision_id):
     if cur.rowcount == 0:
         return jsonify({"error": "not found"}), 404
     return jsonify({"retired": revision_id})
+
+
+# =============================================================================
+# Universal Canonical Exam Fact Overlays API (Phase 1)
+# =============================================================================
+
+def _overlay_row(r):
+    scope_d = json.loads(r['target_scope_json']) if r['target_scope_json'] else None
+    prev_v = json.loads(r['previous_value_json']) if r['previous_value_json'] else None
+    return {
+        'id': r['id'],
+        'examId': r['exam_id'],
+        'cycle': r['cycle'],
+        'domain': r['domain'],
+        'targetId': r['target_id'],
+        'targetScope': scope_d,
+        'kind': r['kind'],
+        'value': json.loads(r['value_json']),
+        'provenance': json.loads(r['provenance_json']),
+        'status': r['status'],
+        'supersedesId': r['supersedes_id'],
+        'previousValue': prev_v,
+        'effectiveDate': r['effective_date'],
+        'conflictNote': r['conflict_note'],
+        'createdAt': r['created_at'],
+        'createdBy': r['created_by'],
+        'retired': bool(r['retired'])
+    }
+
+
+@app.route('/api/exams/<exam_id>/overlays', methods=['GET', 'POST'])
+def exam_overlays(exam_id):
+    if request.method == 'GET':
+        cycle = request.args.get('cycle')
+        domain = request.args.get('domain')
+        conn = get_db_connection()
+        query = "SELECT * FROM exam_fact_overlays WHERE exam_id = ? AND retired = 0 AND status IN ('VERIFIED', 'NOT_PUBLISHED') AND kind != 'CONFLICT'"
+        params = [exam_id]
+        if cycle:
+            query += " AND cycle = ?"
+            params.append(cycle)
+        if domain:
+            query += " AND domain = ?"
+            params.append(domain)
+        query += " ORDER BY created_at ASC"
+        rows = conn.execute(query, params).fetchall()
+        conn.close()
+        return jsonify({"overlays": [_overlay_row(r) for r in rows]})
+
+    # POST: Strictly validated machine overlay (server-side verification enforcement)
+    data = request.get_json(silent=True) or {}
+    data['examId'] = exam_id
+    from tools.exam_builder.overlay import ExamFactOverlay, OverlayStore, validate_overlay
+    try:
+        overlay = ExamFactOverlay.from_dict(data)
+    except Exception as exc:
+        return jsonify({"error": f"Malformed overlay payload: {exc}"}), 400
+
+    errors = validate_overlay(overlay)
+    if errors:
+        return jsonify({"error": "Validation failed", "details": errors}), 400
+
+    # Ensure client cannot bypass verification
+    if overlay.status not in ('VERIFIED', 'NOT_PUBLISHED'):
+        return jsonify({"error": f"Only VERIFIED or NOT_PUBLISHED facts can be registered as active overlays (got {overlay.status})"}), 400
+
+    store = OverlayStore(DB_FILE)
+    saved = store.record(overlay)
+    return jsonify({"overlay": saved.to_dict()}), 201
+
+
+@app.route('/api/exams/overlays/<overlay_id>/retire', methods=['POST'])
+def retire_exam_overlay(overlay_id):
+    from tools.exam_builder.overlay import OverlayStore
+    store = OverlayStore(DB_FILE)
+    success = store.retire(overlay_id)
+    if not success:
+        return jsonify({"error": "overlay not found"}), 404
+    return jsonify({"retired": overlay_id})
+
+
+# =============================================================================
+# Runtime Exam Registry API (Phase 3) — the runtime home for machine-acquired exams.
+#
+# The frontend's exam universe is authored ALL_EXAMS (compiled from src/data.ts) UNION the
+# published runtime exams served here; overlays then apply exactly as for authored exams.
+# There is deliberately NO client-side insert: a runtime exam can only enter the registry
+# through the server-side engine (build_exam), which runs the existing publication gate.
+# =============================================================================
+
+@app.route('/api/exams', methods=['GET'])
+def list_runtime_exams():
+    from tools.exam_builder.materialize import ExamRegistry
+    records = ExamRegistry(DB_FILE).list_published()
+    return jsonify({"exams": [r.exam for r in records], "origin": "MACHINE_ACQUIRED",
+                    "count": len(records)})
+
+
+@app.route('/api/exams/<exam_id>', methods=['GET'])
+def get_runtime_exam(exam_id):
+    from tools.exam_builder.materialize import ExamRegistry
+    cycle = request.args.get('cycle')
+    rec = ExamRegistry(DB_FILE).get(exam_id, cycle)
+    if rec is None:
+        return jsonify({"error": "no published runtime exam with that id" + (f" for cycle {cycle}" if cycle else ""),
+                        "examId": exam_id}), 404
+    return jsonify({"exam": rec.exam, "origin": "MACHINE_ACQUIRED", "registry": rec.meta()})
+
+
+@app.route('/api/exams/build', methods=['POST'])
+def build_runtime_exam():
+    """Server-side, gate-controlled build of one exam into the runtime registry.
+
+    The client supplies only a name and a cycle; every fact comes from the authority's own
+    documents through the universal pipeline, and nothing is published unless the existing
+    publication gate returns PASS. The client can never declare VERIFIED or PUBLISHED itself.
+    """
+    data = request.get_json(silent=True) or {}
+    query = (data.get('query') or data.get('exam') or '').strip()
+    year = str(data.get('year') or data.get('cycle') or '').strip()
+    if not query:
+        return jsonify({"error": "query (the exam name) is required"}), 400
+    from tools.exam_builder.materialize import ExamRegistry, build_exam
+    result = build_exam(query, year, registry=ExamRegistry(DB_FILE), use_llm=bool(data.get('llm')))
+    return jsonify(result.to_dict()), (201 if result.registered else 200)
+
 
 
 # =============================================================================

@@ -8,7 +8,7 @@ Run: python -m tools.exam_builder.test_gate
 """
 from __future__ import annotations
 
-from ..exam_authoring.record import Citation, ExamRecord, Field
+from ..exam_authoring.record import Citation, ExamRecord, Field, Status
 from .gate import BuildState, GateDecision, evaluate
 from .identity import IdentityVerdict
 
@@ -57,11 +57,20 @@ def test_unpublished_is_allowed() -> None:
 
 
 def test_not_extracted_blocks() -> None:
-    """A source exists and we failed to read it. Publishing would show a gap they did not leave."""
+    """A field we failed to read blocks only when the contract requires it. An optional one is
+    allowed through with its status kept -- never rewritten to NOT_PUBLISHED, never hidden --
+    so the app renders the gap as ours. A required one still stops the build."""
     rec = _record(fee=Field.not_extracted('fee', 'https://x.invalid', 'fee clause'))
     r = evaluate(rec)
-    check('an unread field blocks publication', r.decision, GateDecision.BLOCK)
-    check('and the blocker names it', _blocked_on(r, 'fee'), True)
+    check('an unread optional field does not block publication', r.decision, GateDecision.PASS)
+    check('but it is reported as an allowed absence, not a fact', 'fee' in r.allowed, True)
+    check('and its status is untouched', rec.fields['fee'].status, Status.NOT_EXTRACTED)
+    check('and the report says it is carried as ours',
+          any(n.startswith('fee: optional, not read') for n in r.notes), True)
+    req = _record(dates=Field.not_extracted('dates', 'https://x.invalid', 'dates'))
+    rr = evaluate(req)
+    check('an unread REQUIRED field blocks publication', rr.decision, GateDecision.BLOCK)
+    check('and the blocker names it', _blocked_on(rr, 'dates'), True)
 
 
 def test_needs_review_blocks_its_field() -> None:
@@ -110,12 +119,18 @@ def test_a_required_field_may_not_be_merely_unpublished() -> None:
 
 
 def test_the_asymmetry_holds_in_one_comparison() -> None:
-    """Same shape of hole, opposite verdicts, decided only by whose hole it is."""
+    """Same shape of hole, and the asymmetry is in how it is *labelled*, never collapsed: the
+    authority's gap and our gap both publish for an optional field, but each keeps its own
+    status and note, so the app can say which it is. For a required field only theirs is
+    even a question -- ours blocks (see test_not_extracted_blocks)."""
     theirs = evaluate(_record(cutoffs=Field.not_published('cutoffs', 'not yet declared')))
     ours = evaluate(_record(cutoffs=Field.not_extracted('cutoffs', 'https://x.invalid',
                                                         'cut-off table')))
     check('their gap publishes', theirs.decision, GateDecision.PASS)
-    check('our gap does not', ours.decision, GateDecision.BLOCK)
+    check('our optional gap publishes too', ours.decision, GateDecision.PASS)
+    check('but the two are told apart in the report',
+          any('cutoffs: optional, not read' in n for n in ours.notes)
+          and not any('cutoffs: optional, not read' in n for n in theirs.notes), True)
 
 
 def main() -> int:

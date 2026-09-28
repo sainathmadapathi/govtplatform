@@ -413,3 +413,106 @@ def admit_card(doc: Document, doc_title: str) -> Field:
                 'portalUrl': portal.group(1).rstrip('.]') if portal else '',
             }, cite(doc, doc_title, page_no, 'Issuance of e-Admit Card', body))
     return Field.not_extracted('admitCard', doc.url, 'admit-card clause')
+
+
+# ------------------------------------------------------------------------ FAQs
+_FAQ_QUESTION_RX = re.compile(
+    # "Q1." / "Q:" / "Question 3 -" / "12." / "12)" followed by a question that ends in "?"
+    # The bare-number form must not start inside a date or a larger number ("2028." is not "28.").
+    r'(?:\bQ(?:uestion)?\s*\.?\s*\d{0,2}\s*[.:)\-–]\s*|(?<![\d/.\-])\b\d{1,2}\s*[.)]\s+)([^?]{8,220}\?)',
+    re.I)
+_FAQ_ANSWER_MARK_RX = re.compile(r'^\s*(?:A(?:ns(?:wer)?)?\s*\.?\s*\d{0,2}\s*[.:)\-–]\s*)', re.I)
+
+
+def faqs(doc: Document, doc_title: str) -> Field:
+    """Question-and-answer clauses the authority itself printed, verbatim.
+
+    Reads explicit Q/A pairs: a numbered or Q-marked question ending in "?" and the text that
+    follows it up to the next question. It never composes a question, never answers one, and
+    returns NOT_EXTRACTED when the document carries no such clauses -- a notice with no FAQ
+    section is not evidence of anything and must not be filled from elsewhere.
+    """
+    items: list[dict] = []
+    for page_no, page in enumerate(pages_of(doc), start=1):
+        matches = list(_FAQ_QUESTION_RX.finditer(page))
+        for i, m in enumerate(matches):
+            question = _clean(m.group(1))
+            tail_end = matches[i + 1].start() if i + 1 < len(matches) else min(len(page), m.end() + 700)
+            answer = _clean(_FAQ_ANSWER_MARK_RX.sub('', page[m.end():tail_end]))
+            if len(answer) < 5 or answer.endswith('?'):
+                continue
+            items.append({
+                'id': f'faq-{len(items) + 1}',
+                'question': question,
+                'answer': answer[:600],
+                'officialClause': f'FAQ / question-and-answer clause, page {page_no}',
+                'page': page_no,
+                'excerpt': f'{question} {answer[:300]}',
+            })
+        if items:
+            first = items[0]
+            return Field.found('faqs', items[:40],
+                               cite(doc, doc_title, first['page'], 'Frequently asked questions', first['excerpt']))
+    return Field.not_extracted('faqs', doc.url, 'FAQ / question-and-answer clauses')
+
+
+# ------------------------------------------------------------------------ exam day
+#: Each cue names an instruction the authority is actually giving a candidate about the day
+#: of the examination. Nothing here is a rule of its own; a sentence is kept only because the
+#: document says it. Structural vocabulary, no exam or authority.
+_EXAM_DAY_CUES: tuple[tuple[str, 're.Pattern[str]'], ...] = (
+    ('TIMING', re.compile(
+        r'\b(?:report(?:ing)?\s+(?:time|at)|reach\s+the\s+(?:venue|centre|center|examination\s+hall)'
+        r'|gates?\s+(?:will\s+)?(?:be\s+)?clos|entry\s+(?:will|shall)\s+(?:not\s+)?be\s+(?:allowed|permitted)'
+        r'|no\s+entry\s+after|late\s+(?:arrival|comers?|entry))', re.I)),
+    ('DOCUMENTS', re.compile(
+        r'\b(?:carry|bring|produce)\b[^.]{0,120}?\b(?:admit\s+card|hall\s+ticket|call\s+letter|identity\s+(?:proof|card)|id\s+proof|photo(?:graph)?s?)\b'
+        r'|\b(?:original\s+)?(?:photo\s+)?identity\s+(?:proof|card)\b|\bid\s+proof\b', re.I)),
+    ('ITEMS_PROHIBITED', re.compile(
+        r'\b(?:not\s+(?:be\s+)?(?:allowed|permitted)|prohibited|banned|strictly\s+(?:prohibited|forbidden))\b[^.]{0,120}?\b(?:mobile|phones?|calculators?|electronic|bluetooth|watch(?:es)?|bags?|papers?|books?|notes)\b'
+        r'|\b(?:mobile|phones?|calculators?|electronic|bluetooth|watch(?:es)?)\b[^.]{0,120}?\b(?:not\s+(?:be\s+)?(?:allowed|permitted)|prohibited|banned)\b', re.I)),
+    ('ITEMS_ALLOWED', re.compile(
+        r'\b(?:allowed|permitted)\s+to\s+(?:carry|bring)\b|\bmay\s+(?:carry|bring)\b', re.I)),
+    ('CENTRE_INSTRUCTIONS', re.compile(
+        r'\b(?:frisk(?:ing)?|biometric|attendance\s+sheet|invigilators?|examination\s+hall|leave\s+the\s+(?:hall|centre|center|room)'
+        r'|rough\s+(?:sheets?|work)|seat(?:ing)?\s+(?:number|arrangement))\b', re.I)),
+)
+_MANDATORY_RX = re.compile(r'\b(?:must|shall|mandatory|compulsor|not\s+(?:be\s+)?(?:allowed|permitted)|prohibited|banned)\b', re.I)
+_SENTENCE_SPLIT_RX = re.compile(r'(?<=[.!?])\s+')
+
+
+def exam_day_checklist(doc: Document, doc_title: str) -> Field:
+    """Exam-day instructions the authority actually printed: reporting time, entry, documents to
+    carry, permitted and prohibited items, centre conduct.
+
+    Every item is one verbatim sentence from the document, categorised by the cue it carries.
+    No generic CBT rule, no assumption from another exam; a document with no such sentence
+    returns NOT_EXTRACTED.
+    """
+    items: list[dict] = []
+    seen: set[str] = set()
+    for page_no, page in enumerate(pages_of(doc), start=1):
+        for sentence in _SENTENCE_SPLIT_RX.split(page):
+            s = _clean(sentence)
+            if len(s) < 20 or len(s) > 600 or s.lower() in seen:
+                continue
+            for category, rx in _EXAM_DAY_CUES:
+                if rx.search(s):
+                    seen.add(s.lower())
+                    items.append({
+                        'id': f'examday-{len(items) + 1}',
+                        'category': category,
+                        'title': s[:90],
+                        'description': s,
+                        'isMandatory': bool(_MANDATORY_RX.search(s)),
+                        'page': page_no,
+                        'excerpt': s,
+                    })
+                    break
+            if len(items) >= 20:
+                break
+        if items:
+            first = items[0]
+            return Field.found('examDayChecklist', items,
+                               cite(doc, doc_title, first['page'], 'Instructions to candidates', first['excerpt']))
+    return Field.not_extracted('examDayChecklist', doc.url, 'exam-day instruction clauses')

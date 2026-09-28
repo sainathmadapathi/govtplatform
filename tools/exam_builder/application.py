@@ -613,3 +613,89 @@ def _dedupe_fees(fees: list[FeeRule]) -> list[FeeRule]:
                 if ev.span_digest not in {e.span_digest for e in existing.evidence}:
                     existing.evidence.append(ev)
     return out
+
+
+# ===================================================================== document requirements & specs
+_PHOTO_SIG_CUE = re.compile(r'\b(photo(?:graph)?|signature|sign|thumb impression)\b', re.I)
+_DIM_SPEC = re.compile(r'\b(\d+(?:\.\d+)?\s*(?:cm|mm|px|pixels?)\s*[xX*×]\s*\d+(?:\.\d+)?\s*(?:cm|mm|px|pixels?))\b', re.I)
+_SIZE_SPEC = re.compile(r'\b(\d+\s*(?:to|-)\s*\d+\s*[Kk][Bb]|\b(?:not\s+more\s+than|maximum\s+of|max\.?|up\s+to)\s*\d+\s*[Kk][Bb]|\b\d+\s*[Kk][Bb]\b)', re.I)
+_FORMAT_SPEC = re.compile(r'\b(jpeg|jpg|png|pdf)\b', re.I)
+
+
+def extract_required_documents(doc: SourceDocument, text: str) -> list[dict]:
+    """Extract required application documents/certificates from text with verbatim evidence."""
+    docs = extract_documents(doc, text, text, stage_id='app')
+    out: list[dict] = []
+    seen: set[str] = set()
+    for d in docs:
+        name_clean = d.name.strip()
+        if name_clean.lower() in seen:
+            continue
+        seen.add(name_clean.lower())
+        ev_span = d.evidence[0].span if d.evidence else ''
+        out.append({
+            'id': d.id,
+            'name': name_clean,
+            'required': True if d.required is not False else False,
+            'specifications': d.specifications,
+            'evidenceSpan': ev_span,
+        })
+    return out
+
+
+def extract_photo_signature_guidelines(doc: SourceDocument, text: str) -> dict | None:
+    """Extracts officially stated photograph and signature specifications without inventing defaults."""
+    photo_rules: list[str] = []
+    sig_rules: list[str] = []
+    evidence_spans: list[str] = []
+
+    for sentence in _sentences(text):
+        if not _PHOTO_SIG_CUE.search(sentence):
+            continue
+        has_spec = bool(_SIZE_SPEC.search(sentence) or _FORMAT_SPEC.search(sentence) or _DIM_SPEC.search(sentence)
+                        or re.search(r'\b(background|white|recent|clear|glasses|spectacles|cap|mask)\b', sentence, re.I))
+        if not has_spec:
+            continue
+
+        ev = _evidence(sentence, doc, text, reading='photo/signature guideline')
+        if ev is None:
+            continue
+        evidence_spans.append(sentence)
+
+        is_photo = bool(re.search(r'\bphoto(?:graph)?\b', sentence, re.I))
+        is_sig = bool(re.search(r'\b(?:signature|sign|thumb)\b', sentence, re.I))
+
+        if is_photo:
+            photo_rules.append(normalise_ws(sentence))
+        if is_sig:
+            sig_rules.append(normalise_ws(sentence))
+
+    if not photo_rules and not sig_rules:
+        return None
+
+    return {
+        'hasOfficialGuidelines': True,
+        'photograph': photo_rules,
+        'signature': sig_rules,
+        'evidenceSpans': evidence_spans,
+    }
+
+
+def extract_fee_exemptions(doc: SourceDocument, text: str) -> list[dict]:
+    """Extract officially stated category fee exemptions and waivers."""
+    fees = extract_fees(doc, text)
+    exemptions: list[dict] = []
+    seen: set[str] = set()
+    for rule in fees:
+        if rule.is_exempt.has_value and rule.is_exempt.value:
+            cat_label = str(rule.scope) if not rule.scope.is_global else 'All Candidates (No Fee)'
+            if cat_label in seen:
+                continue
+            seen.add(cat_label)
+            ev = rule.is_exempt.evidence[0] if rule.is_exempt.evidence else None
+            exemptions.append({
+                'category': cat_label,
+                'isExempt': True,
+                'evidenceSpan': ev.span if ev else '',
+            })
+    return exemptions

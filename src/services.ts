@@ -39,8 +39,12 @@ import {
   ChatContext,
   ConversationTurn,
   MultiTierResultEntry,
-  AgeRelaxationEntry
+  AgeRelaxationEntry,
+  ExamFactOverlay,
+  ExamFactOverlayKind,
+  ExamOverlayScope
 } from './types';
+
 
 // ==========================================================================
 // profileUtils.ts
@@ -2563,3 +2567,367 @@ export function buildChatContext(exam: Exam, channel: ChatChannel): ChatContext 
     history: conversationService.history(channel)
   };
 }
+
+// ==========================================================================
+// Universal Canonical Exam Fact Overlay Engine (Phase 1)
+// ==========================================================================
+
+export const examOverlayService = {
+  async getOverlays(examId: string, cycle?: string, domain?: string): Promise<ExamFactOverlay[]> {
+    try {
+      let url = `/api/exams/${encodeURIComponent(examId)}/overlays`;
+      const params = new URLSearchParams();
+      if (cycle) params.append('cycle', cycle);
+      if (domain) params.append('domain', domain);
+      const qs = params.toString();
+      if (qs) url += `?${qs}`;
+      const res = await fetch(url);
+      if (!res.ok) return [];
+      const data = await res.json();
+      return Array.isArray(data.overlays) ? data.overlays : [];
+    } catch {
+      return [];
+    }
+  },
+
+  async addOverlay(examId: string, overlay: Partial<ExamFactOverlay>): Promise<ExamFactOverlay | null> {
+    try {
+      const res = await fetch(`/api/exams/${encodeURIComponent(examId)}/overlays`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(overlay)
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.overlay || null;
+    } catch {
+      return null;
+    }
+  },
+
+  async retireOverlay(overlayId: string): Promise<boolean> {
+    try {
+      const res = await fetch(`/api/exams/overlays/${encodeURIComponent(overlayId)}/retire`, {
+        method: 'POST'
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }
+};
+
+// ==========================================================================
+// Runtime Exam Registry (Phase 3) — machine-acquired exams served at runtime.
+//
+// The exam universe a candidate can discover, open and track is:
+//     authored ALL_EXAMS (compiled from src/data.ts)  UNION  published runtime registry exams
+// Authored records always win on an id collision, and the registry is read best-effort: if the
+// server is unreachable the authored register still stands, so the app never shows "no exams".
+// ==========================================================================
+
+let runtimeRegistryExams: Exam[] = [];
+
+export const examRegistryService = {
+  /** Every published runtime exam. Caches the result for getExamUniverse(); [] on any failure. */
+  async load(): Promise<Exam[]> {
+    try {
+      const res = await fetch('/api/exams');
+      if (!res.ok) return [];
+      const data = await res.json();
+      const exams: Exam[] = Array.isArray(data.exams) ? data.exams : [];
+      runtimeRegistryExams = exams.map(e => ({ ...e, origin: 'MACHINE_ACQUIRED' as const }));
+      return runtimeRegistryExams;
+    } catch {
+      return [];
+    }
+  },
+
+  async get(examId: string, cycle?: string): Promise<Exam | null> {
+    try {
+      const qs = cycle ? `?cycle=${encodeURIComponent(cycle)}` : '';
+      const res = await fetch(`/api/exams/${encodeURIComponent(examId)}${qs}`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.exam ? { ...data.exam, origin: 'MACHINE_ACQUIRED' as const } : null;
+    } catch {
+      return null;
+    }
+  },
+
+  /** The runtime exams loaded so far (synchronous read of the cache). */
+  loaded(): Exam[] {
+    return runtimeRegistryExams;
+  }
+};
+
+/**
+ * authored ∪ runtime, authored winning on an id collision. Pure over its inputs; pass the
+ * authored register (ALL_EXAMS) and, optionally, an explicit runtime list — otherwise the
+ * cache filled by examRegistryService.load() is used.
+ */
+export function getExamUniverse(authored: Exam[], runtime?: Exam[]): Exam[] {
+  const extra = runtime ?? runtimeRegistryExams;
+  if (!extra || extra.length === 0) return authored;
+  const seen = new Set(authored.map(e => e.id));
+  return [...authored, ...extra.filter(e => e && e.id && !seen.has(e.id))];
+}
+
+export function getExamCycle(exam: Exam): string {
+  const idMatch = exam.id.match(/\b(20\d\d)\b/);
+  if (idMatch) return idMatch[1];
+  const titleMatch = exam.title.match(/\b(20\d\d)\b/);
+  if (titleMatch) return titleMatch[1];
+  return '';
+}
+
+/**
+ * Pure, non-destructive projection of canonical exam fact overlays over an authored Exam record.
+ * 
+ * Rules (Phase 1):
+ * 1. If overlays is empty or has no active entries for this exam, returns the exact same Exam reference.
+ * 2. Preserves strict exam isolation (o.examId === exam.id).
+ * 3. Preserves strict cycle/year isolation (o.cycle === getExamCycle(exam)).
+ * 4. Only VERIFIED and unretired overlays enter the live projection (never CONFLICT or unverified).
+ * 5. Never mutates the original Exam object.
+ * 6. Preserves historical values when superseded (marking old with status 'SUPERSEDED').
+ * 7. Preserves authored provenance and appends/updates verified provenance on machine items.
+ */
+function upsertById<T extends { id?: string }>(list: T[], item: T): T[] {
+  if (!item.id) return [...list, item];
+  const idx = list.findIndex(x => x.id === item.id);
+  if (idx >= 0) {
+    const next = [...list];
+    next[idx] = item;
+    return next;
+  }
+  return [...list, item];
+}
+
+export function applyExamOverlays(exam: Exam, overlays: ExamFactOverlay[]): Exam {
+  if (!overlays || overlays.length === 0) return exam;
+
+  const cycle = getExamCycle(exam);
+  const active = overlays.filter(o => 
+    o.examId === exam.id &&
+    (!o.cycle || !cycle || o.cycle === cycle) &&
+    !o.retired &&
+    o.kind !== 'CONFLICT' &&
+    (o.status === 'VERIFIED' || o.status === 'NOT_PUBLISHED')
+  );
+
+  if (active.length === 0) return exam;
+
+  let projected: Exam = { ...exam };
+
+  for (const o of active) {
+    const val = o.value;
+    const targetId = o.targetId;
+    const targetScope = o.targetScope;
+
+    switch (o.domain) {
+      case 'dates': {
+        let dates = [...projected.dates];
+        if (o.kind === 'SUPERSEDE') {
+          const supId = o.supersedesId || targetId;
+          dates = dates.map(d => d.id === supId ? { ...d, status: 'SUPERSEDED' } : d);
+          dates = upsertById(dates, {
+            id: o.id,
+            type: val.type || 'NOTIFICATION',
+            label: val.label || 'Revised Date',
+            dateTimeStr: val.dateTimeStr,
+            timezone: val.timezone || 'IST',
+            isTentative: Boolean(val.isTentative),
+            status: 'AVAILABLE',
+            provenance: o.provenance
+          });
+        } else if (o.kind === 'AMEND') {
+          dates = dates.map(d => d.id === targetId ? { ...d, ...val, provenance: o.provenance } : d);
+        } else if (o.kind === 'ADD') {
+          dates = upsertById(dates, {
+            id: targetId || o.id,
+            type: val.type || 'NOTIFICATION',
+            label: val.label || 'Important Date',
+            dateTimeStr: val.dateTimeStr,
+            timezone: val.timezone || 'IST',
+            isTentative: Boolean(val.isTentative),
+            status: val.status || 'AVAILABLE',
+            provenance: o.provenance
+          });
+        }
+        projected.dates = dates;
+        break;
+      }
+
+      case 'posts': {
+        let posts = [...projected.posts];
+        if (o.kind === 'ADD') {
+          posts = upsertById(posts, { ...val, id: targetId || o.id, provenance: o.provenance });
+        } else if (o.kind === 'AMEND') {
+          posts = posts.map(p => {
+            const matches = p.id === targetId || (targetScope?.postId && p.id === targetScope.postId);
+            return matches ? { ...p, ...val, provenance: o.provenance } : p;
+          });
+        } else if (o.kind === 'SUPERSEDE') {
+          const supId = o.supersedesId || targetId;
+          posts = posts.filter(p => p.id !== supId);
+          posts = upsertById(posts, { ...val, id: o.id, provenance: o.provenance });
+        }
+        projected.posts = posts;
+        break;
+      }
+
+      case 'eligibility': {
+        if (val.category || val.years || val.maximumAge) {
+          let relax = [...(projected.ageRelaxations || [])];
+          const cat = val.category;
+          if (o.kind === 'ADD') {
+            const item = { ...val, provenance: o.provenance };
+            if (cat) {
+              const idx = relax.findIndex(r => r.category === cat);
+              if (idx >= 0) relax[idx] = item;
+              else relax.push(item);
+            } else {
+              relax.push(item);
+            }
+          } else if (o.kind === 'AMEND') {
+            const idx = relax.findIndex(r => r.category === val.category);
+            if (idx >= 0) relax[idx] = { ...relax[idx], ...val, provenance: o.provenance };
+            else relax.push({ ...val, provenance: o.provenance });
+          }
+          projected.ageRelaxations = relax;
+        }
+        break;
+      }
+
+      case 'syllabus': {
+        let topics = [...projected.syllabus];
+        if (o.kind === 'ADD') {
+          topics = upsertById(topics, { ...val, id: targetId || o.id, officialProvenance: o.provenance });
+        } else if (o.kind === 'AMEND') {
+          topics = topics.map(t => {
+            const matches = t.id === targetId || (targetScope?.topicId && t.id === targetScope.topicId);
+            return matches ? { ...t, ...val, officialProvenance: o.provenance } : t;
+          });
+        }
+        projected.syllabus = topics;
+        break;
+      }
+
+      case 'resources': {
+        let resList = [...(projected.resources || [])];
+        if (o.kind === 'ADD') {
+          resList = upsertById(resList, { ...val, id: targetId || o.id, provenance: o.provenance });
+        }
+        projected.resources = resList;
+        break;
+      }
+
+      case 'officialPapers': {
+        let papers = [...(projected.officialPapers || [])];
+        if (o.kind === 'ADD') {
+          papers = upsertById(papers, { ...val, id: targetId || o.id });
+        }
+        projected.officialPapers = papers;
+        break;
+      }
+
+      case 'answerKeys': {
+        let keys = [...(projected.answerKeys || [])];
+        if (o.kind === 'SUPERSEDE') {
+          const supId = o.supersedesId || targetId;
+          keys = keys.filter(k => k.id !== supId);
+          keys = upsertById(keys, { ...val, id: o.id });
+        } else if (o.kind === 'ADD') {
+          keys = upsertById(keys, { ...val, id: targetId || o.id });
+        }
+        projected.answerKeys = keys;
+        break;
+      }
+
+      case 'admitCard': {
+        let events = [...(projected.admitCardEvents || [])];
+        if (o.kind === 'ADD') {
+          events = upsertById(events, { ...val, id: targetId || o.id });
+        }
+        projected.admitCardEvents = events;
+        break;
+      }
+
+      case 'results': {
+        let resList = [...(projected.resultDeclarations || [])];
+        if (o.kind === 'ADD') {
+          resList = upsertById(resList, { ...val, id: targetId || o.id });
+        }
+        projected.resultDeclarations = resList;
+        break;
+      }
+
+      case 'cutoffsHistory': {
+        let cuts = [...(projected.cutoffsHistory || [])];
+        if (o.kind === 'ADD') {
+          cuts = upsertById(cuts, { ...val, id: targetId || o.id });
+        }
+        projected.cutoffsHistory = cuts;
+        break;
+      }
+
+      case 'faqs': {
+        let faqs = [...(projected.faqs || [])];
+        if (o.kind === 'ADD') {
+          faqs = upsertById(faqs, { ...val, id: targetId || o.id });
+        }
+        projected.faqs = faqs;
+        break;
+      }
+
+      case 'officialLinks': {
+        const links = [...(projected.officialLinks || [])];
+        if (o.kind === 'ADD') {
+          const item = { ...val };
+          const idx = links.findIndex(l => (item.url && l.url === item.url) || (item.title && l.title === item.title));
+          if (idx >= 0) links[idx] = item;
+          else links.push(item);
+        }
+        projected.officialLinks = links;
+        break;
+      }
+
+      case 'corrigendums': {
+        let corrs = [...(projected.corrigendums || [])];
+        if (o.kind === 'ADD') {
+          corrs = upsertById(corrs, { ...val, id: targetId || o.id });
+        }
+        projected.corrigendums = corrs;
+        break;
+      }
+
+      case 'examDayChecklist': {
+        let checklist = [...(projected.examDayChecklist || [])];
+        if (o.kind === 'ADD') {
+          checklist = upsertById(checklist, { ...val, id: targetId || o.id });
+        }
+        projected.examDayChecklist = checklist;
+        break;
+      }
+
+      case 'overview': {
+        if (val.overviewDescription) projected.overviewDescription = val.overviewDescription;
+        if (val.vacanciesTotal) projected.vacanciesTotal = val.vacanciesTotal;
+        break;
+      }
+
+      case 'roadmapTracks': {
+        let tracks = [...(projected.roadmapTracks || [])];
+        if (o.kind === 'ADD') {
+          tracks = upsertById(tracks, { ...val, id: targetId || o.id });
+        }
+        projected.roadmapTracks = tracks;
+        break;
+      }
+    }
+  }
+
+  return projected;
+}
+

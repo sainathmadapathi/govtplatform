@@ -1098,6 +1098,18 @@ export interface Exam {
    * the UI must not present it as such.
    */
   ageRelaxations?: AgeRelaxationEntry[];
+  /**
+   * 'MACHINE_ACQUIRED' when this exam was materialized at runtime by the universal engine
+   * (Phase 3) and served from the runtime registry; absent/'AUTHORED' for records in data.ts.
+   * Both origins satisfy the same Exam contract.
+   */
+  origin?: 'AUTHORED' | 'MACHINE_ACQUIRED';
+  /**
+   * Per-section completeness carried from the engine for a machine-acquired exam, keyed by the
+   * section id (e.g. 'syllabus'). `state` is engine metadata so the UI can tell an honest
+   * absence from an unpublished one; it is never rendered as raw enum text.
+   */
+  sectionStates?: Record<string, { state: string; nature: string; studentStatusSummary: string; sectionNum: number; isApplicable: boolean }>;
 }
 
 export interface UserProfile {
@@ -1437,3 +1449,41 @@ export interface ChatContext {
   daysToApplicationClose?: number | null;
   history: ConversationTurn[];
 }
+
+/**
+ * Universal Canonical Exam Fact Overlay (Phase 1).
+ * Additive, provenance-carrying, revision-aware machine fact.
+ */
+export type ExamFactOverlayKind = 'ADD' | 'AMEND' | 'SUPERSEDE' | 'RETIRE' | 'CONFLICT';
+
+export interface ExamOverlayScope {
+  stageId?: string;
+  paperId?: string;
+  postId?: string;
+  ruleId?: string;
+  categoryLabel?: string;
+  subject?: string;
+  topicId?: string;
+  levelLabel?: string;
+}
+
+export interface ExamFactOverlay {
+  id: string;
+  examId: string;
+  cycle: string; // Strict year/cycle isolation (e.g. '2026')
+  domain: string; // e.g. 'dates', 'posts', 'eligibility', 'pattern', 'syllabus', etc.
+  targetId?: string;
+  targetScope?: ExamOverlayScope;
+  kind: ExamFactOverlayKind;
+  value: any;
+  provenance: DataProvenance;
+  status: 'VERIFIED' | 'NEEDS_REVIEW' | 'NOT_PUBLISHED';
+  supersedesId?: string;
+  previousValue?: any;
+  effectiveDate?: string;
+  conflictNote?: string;
+  createdAt: string;
+  createdBy: string;
+  retired: boolean;
+}
+

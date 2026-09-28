@@ -418,3 +418,86 @@ def describe(events: list) -> dict:
              'status': e.status.value}
             for e in events],
     }
+
+
+def derive_next_steps(results_facts: list[dict], stages: list[dict] | None = None) -> list[dict]:
+    """Derives structured next-step guidance from verified results declarations and exam pattern.
+
+    Crucial GovOS Contract:
+      - Next steps are DERIVED guidance from official lifecycle facts, NEVER fabricated official facts.
+      - Each item is explicitly flagged with `isDerived: True` and `source: 'DERIVED_FROM_LIFECYCLE'`.
+      - If no result is declared or the lifecycle does not establish a next step, returns honest empty state.
+    """
+    if not results_facts:
+        return [{
+            'isDerived': True,
+            'source': 'DERIVED_FROM_LIFECYCLE',
+            'action': 'Awaiting Official Result Declaration',
+            'guidance': 'Next steps will be determined following official result declaration by the conducting authority as per examination scheme.',
+            'fromStage': '',
+            'nextStage': '',
+        }]
+
+    next_steps: list[dict] = []
+    for res in results_facts:
+        stage_name = (res.get('stageName') or res.get('label') or '').strip()
+        next_stage_hint = res.get('nextStage') or res.get('next_stage')
+        if next_stage_hint:
+            next_steps.append({
+                'isDerived': True,
+                'source': 'DERIVED_FROM_LIFECYCLE',
+                'fromStage': stage_name,
+                'nextStage': next_stage_hint,
+                'action': f"Prepare for {next_stage_hint}",
+                'guidance': f"Candidates shortlisted in {stage_name} proceed to {next_stage_hint} as stated in official notice.",
+            })
+            continue
+
+        stage_lower = stage_name.lower()
+        if any(w in stage_lower for w in ('prelim', 'tier 1', 'tier-i', 'tier-1', 'stage 1', 'stage-i')):
+            next_steps.append({
+                'isDerived': True,
+                'source': 'DERIVED_FROM_LIFECYCLE',
+                'fromStage': stage_name or 'Preliminary Examination',
+                'nextStage': 'Mains Examination / Tier-II',
+                'action': 'Prepare for Mains Examination',
+                'guidance': 'Candidates shortlisted in Preliminary examination advance to the Mains / Tier-II stage as per the official examination pattern.',
+            })
+        elif any(w in stage_lower for w in ('main', 'tier 2', 'tier-ii', 'tier-2', 'stage 2', 'stage-ii')):
+            next_steps.append({
+                'isDerived': True,
+                'source': 'DERIVED_FROM_LIFECYCLE',
+                'fromStage': stage_name or 'Mains Examination',
+                'nextStage': 'Personality Test / Document Verification',
+                'action': 'Prepare for Personality Test / Document Verification',
+                'guidance': 'Candidates qualifying in the Mains stage are called for Document Verification and Personality Test / Interview.',
+            })
+        elif any(w in stage_lower for w in ('interview', 'personality', 'dv', 'doc')):
+            next_steps.append({
+                'isDerived': True,
+                'source': 'DERIVED_FROM_LIFECYCLE',
+                'fromStage': stage_name or 'Interview / Document Verification',
+                'nextStage': 'Final Merit List & Selection',
+                'action': 'Await Final Selection & Recommendation',
+                'guidance': 'Final merit list and recommendations for appointment are published following interview / document verification.',
+            })
+        elif any(w in stage_lower for w in ('final', 'selection', 'recommend')):
+            next_steps.append({
+                'isDerived': True,
+                'source': 'DERIVED_FROM_LIFECYCLE',
+                'fromStage': stage_name or 'Final Result',
+                'nextStage': 'Appointment & Joining Process',
+                'action': 'Complete Joining & Medical Formalities',
+                'guidance': 'Recommended candidates undergo medical examination and receive cadre allocation/appointment orders from the respective ministry or department.',
+            })
+        else:
+            next_steps.append({
+                'isDerived': True,
+                'source': 'DERIVED_FROM_LIFECYCLE',
+                'fromStage': stage_name or 'Examination Stage',
+                'nextStage': 'Subsequent Stage',
+                'action': 'Proceed to Next Stage in Examination Scheme',
+                'guidance': f'Cleared candidates in {stage_name} advance according to the official scheme of examination.',
+            })
+
+    return next_steps

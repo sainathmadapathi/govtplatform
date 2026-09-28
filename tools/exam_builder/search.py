@@ -43,7 +43,8 @@ def _load_key() -> str:
     if key:
         return key
     try:
-        env = io.open(os.path.join(os.getcwd(), '.env'), encoding='utf-8').read()
+        with io.open(os.path.join(os.getcwd(), '.env'), encoding='utf-8') as f:
+            env = f.read()
     except OSError:
         return ''
     m = re.search(r'^\s*TAVILY_API_KEY\s*=\s*["\']?([^"\'\s]+)', env, re.M)

@@ -140,7 +140,10 @@ def orchestrate(exam_query: str = '', *, year: str = '', dry_run: bool = True,
                 use_llm: bool = False, provider=None, cache=None,
                 replay=None, siblings: Optional[list] = None, max_docs: int = 8,
                 data_ts: str = P.DATA_TS, typecheck: bool = True, allow_overwrite: bool = False,
+                allow_overlay: bool = False, overlay_store=None,
+                search_fn: Optional[Callable] = None,
                 render: Optional[Callable[[ExamRecord], str]] = None) -> OrchestrationResult:
+
     """Run the universal pipeline for one exam. Universal: the input is a name and a year and
     nothing authority-specific; every branch reads a *state*, never an exam or an authority.
 
@@ -155,7 +158,7 @@ def orchestrate(exam_query: str = '', *, year: str = '', dry_run: bool = True,
     # --- RESOLUTION → DISCOVERY → SOURCE CAPTURE → IDENTITY → EXTRACTION (existing build) ----
     try:
         br = build(exam_query, year=year, sibling_exam_words=siblings, max_docs=max_docs,
-                   replay=replay)
+                   replay=replay, search_fn=search_fn)
     except AmbiguousAuthority as exc:
         res.state = OrchestrationState.AMBIGUOUS_AUTHORITY
         res.reached = Stage.RESOLUTION
@@ -223,7 +226,8 @@ def orchestrate(exam_query: str = '', *, year: str = '', dry_run: bool = True,
     identity_by_source = {u: c.verdict for u, c in br.identity.items()}
     gate = gate_evaluate(rec, build_state=br.build_state,
                          identity_by_source=identity_by_source, conflicts=conflicts,
-                         isolation_ok=isolation_ok)
+                         isolation_ok=isolation_ok,
+                         completeness=getattr(br, 'completeness', None))
     res.gate = gate
 
     # --- STAGING (always; never mutates the live register) ----------------------------------
@@ -242,14 +246,39 @@ def orchestrate(exam_query: str = '', *, year: str = '', dry_run: bool = True,
         res.state = OrchestrationState.STAGED
         res.reason = 'gate PASS; dry run, so the live register was not touched.'
     elif R.target_in_register(rec.exam_id, data_ts) and not allow_overwrite:
-        # Preservation-first: a partial build must never overwrite an existing record, because
-        # publish.stage replaces the exam's whole slice and a re-emit cannot preserve authored
-        # arrays, shared-const provenance or comments (see PRODUCTION_RENDERER_AUDIT.md). A
-        # missing section is not an empty one, so the existing record is left byte-identical.
-        res.state = OrchestrationState.PRESERVATION_BLOCKED
-        res.reason = ('gate PASS, but the target already exists in the register; a partial '
-                      'build will not overwrite an authored record. The live register is '
-                      'untouched. Merging into an existing record is a documented P1.')
+        if allow_overlay:
+            # Canonical Data Ownership (Phase 1):
+            # Existing exam in register -> DO NOT overwrite data.ts!
+            # Create and persist verified additive overlays via OverlayStore.
+            res.reached = Stage.ATOMIC_PUBLISH
+            from .overlay import OverlayStore, create_overlays_from_record
+            overlays = create_overlays_from_record(rec, gate)
+            if overlays:
+                try:
+                    store = overlay_store or OverlayStore()
+                    for o in overlays:
+                        store.record(o)
+                    res.published = True
+                    res.state = OrchestrationState.PUBLISHED
+                    res.reason = (f'gate PASS; existing exam updated safely with {len(overlays)} verified '
+                                  f'canonical overlay(s) in OverlayStore without modifying data.ts.')
+                except Exception as exc:
+                    res.state = OrchestrationState.BLOCKED_BY_GATE
+                    res.reason = f'Failed to persist canonical overlays: {exc}'
+            else:
+                res.published = True
+                res.state = OrchestrationState.PUBLISHED
+                res.reason = ('gate PASS; existing exam verified against canonical register; '
+                              'no new overlays required, data.ts left byte-identical.')
+        else:
+            # Preservation-first without overlay: a partial build must never overwrite an existing record,
+            # because publish.stage replaces the exam's whole slice. Register is left byte-identical.
+            res.state = OrchestrationState.PRESERVATION_BLOCKED
+            res.reason = ('gate PASS, but the target already exists in the register; a partial '
+                          'build will not overwrite an authored record. The live register is '
+                          'untouched. Pass allow_overlay=True to record verified machine facts as overlays.')
+
+
     else:
         # A NEW exam (or an explicit, disposable overwrite): render with the existing universal
         # renderer and publish atomically through the existing publisher and its isolation

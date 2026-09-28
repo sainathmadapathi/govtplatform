@@ -52,8 +52,16 @@ CONTRACT: tuple[ContractField, ...] = (
     ContractField('howToApply', 'Application', (DocKind.NOTIFICATION, DocKind.APPLICATION_PORTAL),
                   extractor='how_to_apply',
                   purpose='The process, in the authority’s own words — the mock form is built from this.'),
+    ContractField('requiredDocuments', 'Application', (DocKind.NOTIFICATION, DocKind.APPLICATION_PORTAL),
+                  extractor='required_documents',
+                  purpose='Certificates, documents, and uploads officially required for application.'),
+    ContractField('photoSignatureGuidelines', 'Application', (DocKind.NOTIFICATION, DocKind.APPLICATION_PORTAL),
+                  extractor='photo_signature_guidelines',
+                  purpose='Photograph and signature dimensions, file size limits, and format specifications.'),
     ContractField('fee', 'Application', (DocKind.NOTIFICATION,), extractor='fee',
-                  purpose='Amount, exemptions and the modes that are accepted.'),
+                  purpose='Amount and the payment modes that are accepted.'),
+    ContractField('feeExemptions', 'Application', (DocKind.NOTIFICATION,), extractor='fee_exemptions',
+                  purpose='Officially stated category fee exemptions and concessions.'),
 
     # -- Posts and eligibility --------------------------------------------------------
     ContractField('posts', 'Posts', (DocKind.NOTIFICATION,), extractor='services_list',
@@ -72,6 +80,7 @@ CONTRACT: tuple[ContractField, ...] = (
                   extractor='dates_from_rows',
                   purpose='Every milestone the authority has announced.', required=True),
     ContractField('corrigenda', 'Timeline', (DocKind.CORRIGENDUM,),
+                  extractor='corrigenda_notices',
                   purpose='Anything the authority changed after publishing.'),
 
     # -- Pattern and syllabus ---------------------------------------------------------
@@ -79,12 +88,15 @@ CONTRACT: tuple[ContractField, ...] = (
                   extractor='scheme_tables',
                   purpose='Papers, marks and duration.'),
     ContractField('syllabus', 'Syllabus', (DocKind.SYLLABUS, DocKind.NOTIFICATION),
+                  extractor='syllabus_tree',
                   purpose='The topics, from the authority’s own scheme.'),
 
     # -- Practice material ------------------------------------------------------------
     ContractField('officialPapers', 'PYQs', (DocKind.QUESTION_PAPER,),
+                  extractor='official_papers',
                   purpose='Past papers the authority itself published.'),
     ContractField('answerKeys', 'Answer Keys', (DocKind.ANSWER_KEY,),
+                  extractor='answer_keys',
                   purpose='Official keys. Without one a paper cannot be scored without inventing answers.'),
 
     # -- Downstream -------------------------------------------------------------------
@@ -92,9 +104,20 @@ CONTRACT: tuple[ContractField, ...] = (
                   extractor='admit_card',
                   purpose='When and where the call letter appears.'),
     ContractField('results', 'Results', (DocKind.RESULT,),
+                  extractor='result_declarations',
                   purpose='What the authority has declared so far.'),
+    ContractField('nextSteps', 'Results', (DocKind.RESULT, DocKind.NOTIFICATION),
+                  extractor='next_step_guidance',
+                  purpose='Structured next-step guidance derived from verified exam lifecycle stages.'),
     ContractField('cutoffs', 'Results', (DocKind.CUTOFF,),
+                  extractor='cutoffs',
                   purpose='The bar, by category and year, where published.'),
+    ContractField('examDayChecklist', 'Exam Day', (DocKind.NOTIFICATION, DocKind.ADMIT_CARD),
+                  extractor='exam_day_checklist',
+                  purpose='Official exam day instructions, reporting times, and items permitted.'),
+    ContractField('faqs', 'FAQs', (DocKind.NOTIFICATION, DocKind.EXAM_PAGE),
+                  extractor='faqs',
+                  purpose='Official frequently asked questions and clauses.'),
 
     # -- Provenance -------------------------------------------------------------------
     ContractField('officialSources', 'Official Sources', (),

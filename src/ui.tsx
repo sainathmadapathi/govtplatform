@@ -762,6 +762,8 @@ export const Header: React.FC<HeaderProps> = ({
 // Reads the same storage the finder and the exam page write; every button is an existing handler.
 // ==========================================================================
 interface MyExamsProps {
+  /** The exam universe (authored ∪ runtime registry). Defaults to the authored register. */
+  exams?: Exam[];
   trackedExamIds: string[];
   currentExamId: string;
   onSelectExam: (exam: Exam) => void;
@@ -769,9 +771,9 @@ interface MyExamsProps {
   onFindExams: () => void;
 }
 
-export const MyExams: React.FC<MyExamsProps> = ({ trackedExamIds, currentExamId, onSelectExam, onToggleTrackExam, onFindExams }) => {
+export const MyExams: React.FC<MyExamsProps> = ({ exams = ALL_EXAMS, trackedExamIds, currentExamId, onSelectExam, onToggleTrackExam, onFindExams }) => {
   const bookmarked = storageService.getBookmarkedExams();
-  const mine = ALL_EXAMS.filter(e => trackedExamIds.includes(e.id) || bookmarked.includes(e.id) || e.id === currentExamId)
+  const mine = exams.filter(e => trackedExamIds.includes(e.id) || bookmarked.includes(e.id) || e.id === currentExamId)
     .sort((a, b) => (a.id === currentExamId ? -1 : b.id === currentExamId ? 1 : 0));
   const nextDate = (exam: Exam) => {
     const now = Date.now();
@@ -833,6 +835,8 @@ export const MyExams: React.FC<MyExamsProps> = ({ trackedExamIds, currentExamId,
 // ExamFinder.tsx
 // ==========================================================================
 interface ExamFinderProps {
+  /** The exam universe to discover over (authored ∪ runtime registry). Defaults to the authored register. */
+  exams?: Exam[];
   /** Lets the feature cards open a tab (and a section) — the same navigate() every button uses. */
   onNavigate?: (tab: GovOSTab, section?: number) => void;
   onSelectExam: (exam: Exam) => void;
@@ -841,9 +845,10 @@ interface ExamFinderProps {
   onToggleTrackExam?: (examId: string) => void;
 }
 
-export const ExamFinder: React.FC<ExamFinderProps> = ({ 
+export const ExamFinder: React.FC<ExamFinderProps> = ({
+  exams = ALL_EXAMS,
   onNavigate,
-  onSelectExam, 
+  onSelectExam,
   onNavigateEligibility,
   trackedExamIds = [],
   onToggleTrackExam
@@ -855,7 +860,7 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
 
   // --- Smarter Personalized Recommendations (Time-Decayed BPR) ---
   const [recommendations, setRecommendations] = useState<ExamRecommendation[]>(() =>
-    storageService.getPersonalizedRecommendations(ALL_EXAMS)
+    storageService.getPersonalizedRecommendations(exams)
   );
   const [interactions, setInteractions] = useState<UserInteractionEvent[]>(() =>
     storageService.getUserInteractions()
@@ -867,14 +872,14 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
   const [simulationNotice, setSimulationNotice] = useState<string | null>(null);
 
   const refreshRecommendations = () => {
-    setRecommendations(storageService.getPersonalizedRecommendations(ALL_EXAMS));
+    setRecommendations(storageService.getPersonalizedRecommendations(exams));
     setInteractions(storageService.getUserInteractions());
     setBookmarkedIds(storageService.getBookmarkedExams());
   };
 
   useEffect(() => {
     refreshRecommendations();
-  }, [trackedExamIds]);
+  }, [trackedExamIds, exams]);
 
   const handleToggleBookmark = (examId: string) => {
     const updated = storageService.toggleBookmarkExam(examId);
@@ -886,7 +891,7 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
     setSearchQuery(val);
     if (val.trim().length >= 3) {
       const q = val.trim().toLowerCase();
-      const matched = ALL_EXAMS.find(e =>
+      const matched = exams.find(e =>
         e.title.toLowerCase().includes(q) ||
         e.code.toLowerCase().includes(q) ||
         e.authorityName.toLowerCase().includes(q)
@@ -1023,7 +1028,7 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
 
   const candidateRank = QUALIFICATION_RANK[PERSONA_LEVEL[selectedPersona] || 'GRADUATION'];
 
-  const filteredExams = ALL_EXAMS.filter(exam => {
+  const filteredExams = exams.filter(exam => {
     const query = searchQuery.trim().toLowerCase();
     const matchesSearch =
       query === '' ||
@@ -2002,7 +2007,7 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
       <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
           <h3 style={{ fontSize: '1.3rem', fontWeight: 700 }}>
-            Available Examination Guides ({filteredExams.length} of {ALL_EXAMS.length})
+            Available Examination Guides ({filteredExams.length} of {exams.length})
           </h3>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
