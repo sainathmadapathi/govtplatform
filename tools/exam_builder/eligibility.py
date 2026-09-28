@@ -611,6 +611,23 @@ _POST_CUE = re.compile(
 
 _PAY_LEVEL = re.compile(r'\b(?:pay\s+level|level)\s*[-–—:]?\s*(\d{1,2})\b', re.I)
 
+#: A table that lists what a candidate must *bring*, not what they are recruited *to*. A
+#: notice's "documents to be produced / uploaded" checklist reconstructs like a post table
+#: (one item per row), and its rows became posts named "PDF Application form", "Hall Ticket",
+#: "Non-Creamy Layer Certificate". Its heading, and its own row text, give it away.
+_NOT_A_POST_TABLE = re.compile(
+    r'documents?\s+to\s+be\s+(?:produced|uploaded|submitted|kept)|list\s+of\s+documents|'
+    r'certificates?\s+to\s+be|documents?\s+required|self[\s-]?declaration|check\s*list|'
+    r'instructions?\s+to\s+(?:the\s+)?(?:candidates?|applicants?)', re.I)
+
+#: A single row that is plainly a document/credential, not a post, even with no telltale
+#: table heading (an application form, a hall ticket, a named certificate).
+_DOCUMENT_ROW = re.compile(
+    r'^(?:pdf\b|application\s+form|hall\s+ticket|proof\s+of\b|'
+    r's\.?\s?s\.?\s?c\b|cbse|icse|declaration\b|no[\s-]?objection|non[\s-]?creamy|'
+    r'(?:community|nativity|caste|income|study|service|character|medical|disability|'
+    r'sports?|discharge|date\s+of\s+birth)\b[^.]{0,40}\bcertificate|certificate\b)', re.I)
+
 
 def extract_posts(doc: SourceDocument, text: str, *, exam_id: str) -> list[Post]:
     """Posts, from tables reconstructed out of the flattened document.
@@ -625,6 +642,9 @@ def extract_posts(doc: SourceDocument, text: str, *, exam_id: str) -> list[Post]
     # Grids first, then lists: an authority that publishes a grid has said more
     # about each post, so its rows are the better reading where both exist.
     for table in reconstruct(text) + reconstruct_lists(text):
+        # A checklist of documents to bring is not the list of posts recruited to.
+        if _NOT_A_POST_TABLE.search(table.heading or ''):
+            continue
         for row in table.rows:
             if not row.reconstructed:
                 continue
@@ -634,6 +654,8 @@ def extract_posts(doc: SourceDocument, text: str, *, exam_id: str) -> list[Post]
                 # "Service" or "Cadre"; that is still the thing being recruited to.
                 name = normalise_ws(row.cells.get(ColumnKind.DEPARTMENT, ''))
             if len(name) < 4 or name.lower() in seen:
+                continue
+            if _DOCUMENT_ROW.match(name):
                 continue
             ev = _evidence(row.span, doc, text, reading=f'post: {name[:60]}')
             if ev is None:

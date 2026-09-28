@@ -251,7 +251,13 @@ class TestPhase3Completion(unittest.TestCase):
         # what was not sourced stays an honest empty; nothing invented
         self.assertEqual(exam['faqs'], [])
         self.assertNotIn('examDayChecklist', exam)
-        self.assertEqual(exam['syllabus'], [])                                     # flat closed-union form untouched
+        # The flat syllabus is projected from the tree so the tree map, the topic checklist
+        # and the weightage view (which all read exam.syllabus) render; the tree stays the
+        # source of record. Same content, the shape those views need — nothing invented, and
+        # nothing weighted (the authority printed no weightage).
+        self.assertTrue(exam['syllabus'])
+        self.assertTrue(all(t['topicName'] and t['subject'] and t['officialProvenance'] for t in exam['syllabus']))
+        self.assertTrue(all(t['weightagePercentage'] == 0 and not t['isHighYield'] for t in exam['syllabus']))
         self.assertEqual([p['postName'] for p in exam['posts']], [])                # no printed Group -> named, not faked
         self.assertEqual(exam['materialization']['postsWithoutPrintedGroup'],
                          ['Scientist (Agronomy)', 'Scientist (Genetics)'])

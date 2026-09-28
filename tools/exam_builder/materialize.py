@@ -225,10 +225,21 @@ def _eligibility_highlights(rec: ExamRecord) -> list[dict]:
             continue
         v = f.value
         if name == 'ageLimits' and isinstance(v, dict):
-            body = (f"{v.get('minAge')} to {v.get('maxAge')} years"
-                    + (f" as on {v['asOn']}" if v.get('asOn') else '')
-                    + (f"; born on or after {v['bornNotEarlierThan']} and on or before {v['bornNotLaterThan']}."
-                       if v.get('bornNotEarlierThan') else '.'))
+            minima, maxima = v.get('minima'), v.get('maxima')
+            if isinstance(minima, list) and isinstance(maxima, list) and (len(set(minima)) > 1 or len(set(maxima)) > 1):
+                # Post-scoped limits: the notice states a different band per post code. Stating
+                # one band would misdescribe some posts, so the full spread is shown as read.
+                lo = '/'.join(str(x) for x in sorted(set(minima)))
+                hi = '/'.join(str(x) for x in sorted(set(maxima)))
+                body = (f"{lo} to {hi} years, depending on the post"
+                        + (f", as on {v['asOn']}" if v.get('asOn') else '')
+                        + ". The exact band for each post is in the notice; GovOS did not "
+                          "collapse them into one figure.")
+            else:
+                body = (f"{v.get('minAge')} to {v.get('maxAge')} years"
+                        + (f" as on {v['asOn']}" if v.get('asOn') else '')
+                        + (f"; born on or after {v['bornNotEarlierThan']} and on or before {v['bornNotLaterThan']}."
+                           if v.get('bornNotEarlierThan') else '.'))
         elif isinstance(v, dict) and v.get('text'):
             body = str(v['text'])[:400]
         elif name == 'fee' and isinstance(v, dict) and (v.get('amounts') or v.get('amount')):
@@ -243,20 +254,54 @@ def _eligibility_highlights(rec: ExamRecord) -> list[dict]:
     return cards
 
 
+def _notice_url(rec: ExamRecord) -> tuple[str, Optional[Field]]:
+    """The document this record's facts were actually read from: the URL cited most often by
+    the FOUND fields (the notification), and the field whose provenance to reuse. There is no
+    separate `notice` field on a machine build -- the notification is a source, and its URL
+    lives on every citation it produced."""
+    counts: dict[str, int] = {}
+    holder: dict[str, Field] = {}
+    for name, f in rec.fields.items():
+        if name in ('officialName', 'authority'):
+            continue
+        if f.usable and f.citation and getattr(f.citation, 'url', ''):
+            u = f.citation.url
+            if '/preview/' in u or u.lower().split('?')[0].endswith('.pdf'):
+                counts[u] = counts.get(u, 0) + 1
+                holder.setdefault(u, f)
+    if not counts:
+        return '', None
+    best = max(counts, key=lambda u: counts[u])
+    return best, holder[best]
+
+
 def _resources(rec: ExamRecord) -> list[dict]:
-    """Links only — the content policy forbids storing anything."""
+    """Links only — the content policy forbids storing anything. The authority's own notice
+    and its application portal, each read from this build, so the library is never empty for
+    an exam whose notice we read."""
     items = []
-    notice = rec.get('notice')
-    if notice and notice.usable and notice.citation:
-        url = notice.value['url'] if isinstance(notice.value, dict) else notice.value
+    notice_url, notice_field = _notice_url(rec)
+    if notice_url and notice_field:
         items.append({
             'id': f'res-{rec.exam_id}-notice', 'title': f'{rec.title} — Examination Notice (official PDF)',
             'subject': 'Official Gazette', 'author': rec.authority_name, 'type': 'OFFICIAL_PDF',
-            'resourceFormat': 'DIRECT_PDF', 'url': url, 'directPdfUrl': url,
-            'officialTag': f'{rec.code} — OFFICIAL NOTICE',
+            'resourceFormat': 'DIRECT_PDF', 'url': notice_url, 'directPdfUrl': notice_url,
+            'officialTag': f'{rec.code} — OFFICIAL NOTICE', 'isEssential': True,
             'recommendedFor': 'The rules themselves, from the authority that wrote them.',
             'description': 'The examination notice this record was read from.',
-            'linkVerifiedDate': notice.citation.verified_date, 'provenance': _prov(rec, notice, 'notice') or {},
+            'linkVerifiedDate': notice_field.citation.verified_date,
+            'provenance': _prov(rec, notice_field, 'notice') or {},
+        })
+    portal = rec.value('applicationPortal')
+    if portal and isinstance(portal, str) and portal.startswith('http'):
+        items.append({
+            'id': f'res-{rec.exam_id}-portal', 'title': f'{rec.authority_name} — Online Application Portal',
+            'subject': 'Official Portal', 'author': rec.authority_name, 'type': 'OFFICIAL_PORTAL',
+            'resourceFormat': 'EXTERNAL_PORTAL', 'url': portal, 'isEssential': True,
+            'officialTag': f'{rec.code} — APPLY HERE',
+            'recommendedFor': 'Where the authority takes the application.',
+            'description': 'The portal the notice sends candidates to.',
+            'linkVerifiedDate': '', 'provenance': _prov(rec, rec.get('applicationPortal'), 'portal') or {},
         })
     papers = rec.get('officialPapers')
     if papers and papers.usable and isinstance(papers.value, dict):
@@ -274,16 +319,51 @@ def _resources(rec: ExamRecord) -> list[dict]:
     return items
 
 
+def _how_to_apply_lines(value: Any) -> list[str]:
+    """Readable instruction lines from whatever the howToApply reader produced.
+
+    The semantic reader returns a *list of stage dicts* (id, title, description); rendering
+    the list with `str()` printed a raw Python repr into the UI. Each stage becomes one
+    "Title — description" line here, in the authority's own words, nothing invented."""
+    lines: list[str] = []
+    if isinstance(value, list):
+        for item in value:
+            if isinstance(item, dict):
+                title = re.sub(r'\s+', ' ', str(item.get('title') or '').strip())
+                desc = re.sub(r'\s+', ' ', str(item.get('description') or item.get('text') or '').strip())
+                text = f'{title} — {desc}' if title and desc and title.lower() not in desc.lower() else (desc or title)
+            else:
+                text = re.sub(r'\s+', ' ', str(item).strip())
+            if text:
+                lines.append(text[:600])
+    elif isinstance(value, dict):
+        text = re.sub(r'\s+', ' ', str(value.get('text') or '').strip())
+        if text:
+            lines.append(text[:1200])
+    elif value:
+        lines.append(re.sub(r'\s+', ' ', str(value).strip())[:1200])
+    return lines[:20]
+
+
 def _application_guide(rec: ExamRecord) -> dict:
     portal = rec.value('applicationPortal') or rec.official_domain
     how = rec.get('howToApply')
     steps: list[dict] = []
     if how and how.usable:
-        # Kept whole, as one cited step: splitting an authority's prose into invented sub-steps
-        # would be GovOS writing the process rather than quoting it (same rule as emit).
-        steps.append({'stepNumber': 1, 'title': 'How to Apply — as the notice states it',
-                      'portalUrl': portal, 'instructions': [str(how.value)[:1200]],
-                      'mandatoryFields': [], 'commonMistakesToAvoid': []})
+        instructions = _how_to_apply_lines(how.value)
+        if instructions:
+            # The documents the notice lists to keep ready become this step's checklist, so
+            # the guide carries them without a second card the section layout does not expect.
+            docs = rec.get('requiredDocuments')
+            fields: list[str] = []
+            if docs and docs.usable and isinstance(docs.value, list):
+                for d in docs.value:
+                    nm = re.sub(r'\s+', ' ', str(d.get('name') if isinstance(d, dict) else d).strip())
+                    if nm and not _garbage_name(nm):
+                        fields.append(nm[:160])
+            steps.append({'stepNumber': 1, 'title': 'How to apply — as the notice states it',
+                          'portalUrl': portal, 'instructions': instructions,
+                          'mandatoryFields': fields[:30], 'commonMistakesToAvoid': []})
     spec = {'documentType': 'As stated on the portal’s upload screen', 'dimensions': '',
             'fileFormat': '', 'fileSize': '', 'rules': [], 'sampleDescription': ''}
     return {'officialPortal': portal, 'otrSteps': steps, 'photoRules': dict(spec),
@@ -362,38 +442,72 @@ def _minutes(text) -> Optional[int]:
     return None
 
 
-def _pattern_node(n: dict, prov: dict) -> dict:
+#: A node whose whole name is punctuation, a stray fraction or a bare number is a
+#: cell-seam artefact of a flattened PDF ("½", "150", "-"), not a stage or a subject.
+_GARBAGE_NODE_RX = re.compile(r'^[\W\d½¼¾⅓⅔⅛\s]*$')
+
+
+def _garbage_name(name: str) -> bool:
+    return not name or bool(_GARBAGE_NODE_RX.match(name))
+
+
+#: No single stage, paper or section of an Indian recruitment exam sets more than this many
+#: questions in one node. A larger count is a merged-cell artefact of a flattened PDF ("2 ½
+#: 150" read as 900), so that node's whole numeric cell (its marks and its question count) is
+#: withheld rather than published, while its name and structure are kept.
+_IMPLAUSIBLE_QUESTIONS = 300
+
+
+def _pattern_node(n: dict, prov: dict) -> Optional[dict]:
     """One extracted pattern node -> ExamPatternNode. Only what the reader printed is carried;
-    a value it did not read is omitted, not guessed."""
+    a value it did not read is omitted, not guessed. A node whose name is only a cell seam
+    ("½") is dropped, and an implausible question count -- the signature of a merged cell in a
+    flattened table -- withholds that node's numbers instead of asserting them."""
+    name = str(n.get('name') or n.get('title') or '').strip()
+    if _garbage_name(name):
+        return None
     label = str(n.get('levelLabel') or n.get('level') or '')
     level = label.upper() if label.upper() in _PATTERN_LEVELS else 'OTHER'
     node: dict = {'id': str(n.get('id') or ''), 'level': level, 'levelLabel': label or None,
-                  'name': str(n.get('name') or n.get('title') or ''), 'status': str(n.get('status') or 'VERIFIED'),
+                  'name': name, 'status': str(n.get('status') or 'VERIFIED'),
                   'provenance': n.get('provenance') or prov}
     if n.get('code'):
         node['code'] = str(n['code'])
     if n.get('order') is not None:
         node['order'] = n['order']
     marks = n.get('marks', n.get('totalMarks'))
-    if isinstance(marks, (int, float)):
-        node['marks'] = marks
     qs = n.get('questions', n.get('totalQuestions'))
-    if isinstance(qs, (int, float)):
+    # A figure is withheld when the reader itself is unsure of it (the node is NEEDS_REVIEW,
+    # e.g. "2 figures where the table declares 1 numeric column" -- which is how a year in a
+    # subject's name, "1757", was read as 1757 marks), or when a question count is
+    # impossibly large (the signature of a merged cell in a flattened table). The node, its
+    # name and its structure are still carried; only the unreliable number is held back.
+    unreliable = (str(n.get('status') or 'VERIFIED') == 'NEEDS_REVIEW'
+                  or (isinstance(qs, (int, float)) and qs > _IMPLAUSIBLE_QUESTIONS))
+    if isinstance(marks, (int, float)) and not unreliable:
+        node['marks'] = marks
+    if isinstance(qs, (int, float)) and not unreliable:
         node['questions'] = qs
     dur = n.get('durationMinutes')
     if not isinstance(dur, (int, float)):
         dur = _minutes(n.get('duration'))
-    if isinstance(dur, (int, float)):
+    if isinstance(dur, (int, float)) and not unreliable:
         node['durationMinutes'] = int(dur)
     if n.get('negativeMarking'):
         node['negativeMarking'] = str(n['negativeMarking'])
     if n.get('mode'):
         node['mode'] = str(n['mode'])
+    if isinstance(n.get('languages'), list) and n['languages']:
+        node['languages'] = [str(x) for x in n['languages']][:8]
+    if isinstance(n.get('qualifying'), dict) and n['qualifying'].get('asPrinted'):
+        node['qualifying'] = {'asPrinted': str(n['qualifying']['asPrinted'])[:200]}
     if n.get('note'):
         node['note'] = str(n['note'])
     children = n.get('children')
     if isinstance(children, list) and children:
-        node['children'] = [_pattern_node(c, prov) for c in children if isinstance(c, dict)]
+        kids = [k for k in (_pattern_node(c, prov) for c in children if isinstance(c, dict)) if k]
+        if kids:
+            node['children'] = kids
     return {k: v for k, v in node.items() if v is not None}
 
 
@@ -402,7 +516,7 @@ def _pattern_tree(rec: ExamRecord) -> list[dict]:
     if not (f and f.usable and isinstance(f.value, list)):
         return []
     prov = _prov(rec, f, 'pattern') or {}
-    return [_pattern_node(n, prov) for n in f.value if isinstance(n, dict)]
+    return [node for node in (_pattern_node(n, prov) for n in f.value if isinstance(n, dict)) if node]
 
 
 def _syllabus_tree(rec: ExamRecord) -> list[dict]:
@@ -412,6 +526,69 @@ def _syllabus_tree(rec: ExamRecord) -> list[dict]:
     if not (f and f.usable and isinstance(f.value, list)):
         return []
     return json.loads(json.dumps([n for n in f.value if isinstance(n, dict) and n.get('title')], default=str))
+
+
+def _slugify(text: str) -> str:
+    return re.sub(r'[^a-z0-9]+', '-', (text or '').lower()).strip('-')[:48] or 'x'
+
+
+def _subject_label(title: str) -> str:
+    t = re.sub(r'\s+', ' ', (title or '').strip())
+    return (t[:58] + '…') if len(t) > 60 else (t or 'Syllabus')
+
+
+def flat_syllabus_from_tree(tree: list[dict]) -> list[dict]:
+    """Project the syllabus tree into the flat SyllabusTopic[] the tree map, the topic
+    checklist and the weightage view read (`exam.syllabus`). The tree stays the source of
+    record (`exam.syllabusTree`); this is the same content in the shape those views need.
+
+    Subject = the root heading it sits under; a node whose children are all leaves becomes a
+    topic carrying those leaves as subtopics; a deeper branch recurses. Nothing is weighted,
+    because the authority printed no weightage: weightagePercentage/avgQuestions are 0 and
+    isHighYield is false -- honest zeros, never invented emphasis."""
+    topics: list[dict] = []
+    counter = [0]
+
+    def add(node: dict, subject: str, subtopics: list[str]) -> None:
+        title = re.sub(r'\s+', ' ', str(node.get('title') or '').strip())
+        if _garbage_name(title):
+            return
+        counter[0] += 1
+        subs = [re.sub(r'\s+', ' ', str(s).strip()) for s in subtopics]
+        subs = [s for s in subs if s and not _garbage_name(s)][:40]
+        topics.append({
+            'id': f'syltopic-{counter[0]}-{_slugify(title)}',
+            'subject': subject, 'tier': 'BOTH', 'topicName': title[:220],
+            'subtopics': subs, 'weightagePercentage': 0, 'avgQuestions': 0,
+            'isHighYield': False,
+            'officialProvenance': node.get('provenance') or {},
+        })
+
+    def walk(node: dict, subject: str) -> None:
+        children = [c for c in (node.get('children') or []) if isinstance(c, dict)]
+        branches = [c for c in children if c.get('children')]
+        leaves = [c for c in children if not c.get('children')]
+        if not children:
+            add(node, subject, [])
+        elif not branches:
+            add(node, subject, [str(c.get('title') or '') for c in leaves])
+        else:
+            for c in leaves:
+                add(c, subject, [])
+            for c in branches:
+                walk(c, subject)
+
+    for root in tree:
+        if not isinstance(root, dict):
+            continue
+        subject = _subject_label(root.get('title'))
+        children = [c for c in (root.get('children') or []) if isinstance(c, dict)]
+        if not children:
+            add(root, subject, [])
+        else:
+            for c in children:
+                walk(c, subject)
+    return topics[:200]
 
 
 def _section_states(report: Optional[ExamCompletenessReport]) -> dict:
@@ -480,6 +657,9 @@ def materialize_exam(rec: ExamRecord, *, cycle: str = '',
     syllabus_tree = _syllabus_tree(rec)
     if syllabus_tree:
         exam['syllabusTree'] = syllabus_tree
+        # The flat array the tree map, the topic checklist and the weightage view read. Same
+        # content as the tree, in the shape those three views need; the tree stays canonical.
+        exam['syllabus'] = flat_syllabus_from_tree(syllabus_tree)
     exam_day = _exam_day(rec)
     if exam_day:
         exam['examDayChecklist'] = exam_day
