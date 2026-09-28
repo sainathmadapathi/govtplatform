@@ -826,6 +826,9 @@ def _faqs(rec: ExamRecord) -> list[dict]:
         item_prov['id'] = f'{prov.get("id", "prov")}-{i}'
         if q.get('excerpt'):
             item_prov['excerptText'] = str(q['excerpt'])[:600]
+        if q.get('page'):
+            item_prov['pageNumber'] = q['page']
+            item_prov['clauseNumber'] = str(q.get('officialClause') or '')
         out.append({'id': f'faq-{rec.exam_id}-{i}', 'question': str(q['question']),
                     'answer': str(q['answer']), 'officialClause': str(q.get('officialClause') or 'Official clause'),
                     'provenance': item_prov})

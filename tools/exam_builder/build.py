@@ -1410,6 +1410,39 @@ def _dispatch_domain_extraction_raw(
 
         return Field.not_published('photoSignatureGuidelines', 'No distinct photograph/signature guidelines published')
 
+    elif cf.name == 'faqs':
+        # An FAQ document for this exam first; failing that, the notice's own procedure
+        # clauses, each quoted under the heading the notice printed (see `clauses`).
+        fn = getattr(X, cf.extractor, None) if cf.extractor else None
+        if fn is not None:
+            for doc in candidate_docs:
+                try:
+                    got = fn(loaded[doc.url], f'{rec.title} — FAQs')
+                    if got is not None and got.ok:
+                        return got
+                except Exception as exc:
+                    rec.note(f'{cf.extractor} failed on {doc.url}: {exc!r}')
+        from .clauses import procedure_clauses
+        for doc in candidate_docs:
+            check = (identity or {}).get(doc.url)
+            if doc.kind is not DocKind.NOTIFICATION or check is None or check.verdict is not IdentityVerdict.MATCH:
+                continue
+            document = loaded[doc.url]
+            text = document.all_text() if hasattr(document, 'all_text') else ''
+            items = procedure_clauses(text, page_of=lambda span, d=document: _page_of(d, span))
+            if items:
+                faqs = [{'question': c['heading'], 'answer': c['text'],
+                         'officialClause': f"Clause {c['number']} of the notice", 'excerpt': c['text'],
+                         'page': c['page']} for c in items]
+                cite = Citation(document_title=doc.title, url=doc.url, page=items[0]['page'],
+                                clause='Procedure clauses of the notice', excerpt=items[0]['text'][:400],
+                                verified_date=_today())
+                field = Field.found('faqs', faqs, cite)
+                field.note = ('the notice\'s own procedure clauses, quoted under its headings; no FAQ '
+                              'page specific to this recruitment was found')
+                return field
+        return Field.not_extracted('faqs', resolved.authority.domain, 'faqs')
+
     elif cf.name == 'nextSteps':
         res_field = rec.fields.get('results')
         pat_field = rec.fields.get('examPattern')

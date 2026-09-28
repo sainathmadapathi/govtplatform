@@ -519,6 +519,34 @@ class TestServicePageListsTheExamAsAnOption(unittest.TestCase):
         self.assertEqual(entry.text, '07/2031 - DIVISION-II SERVICES')
 
 
+class TestProcedureClausesAreQuoted(unittest.TestCase):
+    """A notice's own procedure clauses, quoted under its headings; other headings are left."""
+
+    NOTICE = """PARA-6 AGE: 6.1 Applicants must be between 18 and 40 years of age on the crucial date.
+PARA-9: RESOLVING OBJECTIONS RELATED TO QUESTIONS, PRELIMINARY KEY AND OTHER MATTERS OF THE
+PRELIMINARY TEST: 9.1 The Commission publishes the key on its website after the test. 9.2 Objections
+on the final key will not be entertained by the Commission.
+PARA-12 MEMORANDUM OF MARKS:- 12.1 The marks of the Preliminary Test will not be notified as it is a
+Screening Test. 12.2 The marks list of the Main Examination will be displayed on the website.
+PARA-13: DEBARMENT: see PARA-12 above for marks."""
+
+    def test_procedure_clauses_are_read_verbatim_with_their_numbers(self):
+        from .clauses import procedure_clauses
+        got = procedure_clauses(self.NOTICE)
+        self.assertEqual([c['number'] for c in got], ['9.1', '9.2', '12.1', '12.2'])
+        self.assertTrue(got[0]['heading'].startswith('Resolving objections related to questions'))
+        self.assertEqual(got[2]['text'], 'The marks of the Preliminary Test will not be notified as it is '
+                                         'a Screening Test.')
+
+    def test_an_eligibility_heading_is_left_to_its_own_section(self):
+        from .clauses import procedure_clauses
+        self.assertFalse(any(c['number'].startswith('6.') for c in procedure_clauses(self.NOTICE)))
+
+    def test_a_heading_with_no_clauses_of_its_own_yields_nothing(self):
+        from .clauses import procedure_clauses
+        self.assertFalse(any(c['number'].startswith('13.') for c in procedure_clauses(self.NOTICE)))
+
+
 class TestAdmitCardRuleIsQuotedWhole(unittest.TestCase):
 
     def test_a_capitalised_noun_after_the_is_not_a_cell_seam(self):
