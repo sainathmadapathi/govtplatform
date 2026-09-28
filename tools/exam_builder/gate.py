@@ -128,10 +128,26 @@ def evaluate(record: ExamRecord, *,
     elif build_state is BuildState.FAILED:
         blockers.append(Blocker('(build)', 'the build failed'))
 
-    # --- a source that belongs to another exam must never have contributed anything
+    # --- a source that belongs to another exam must never have contributed anything. One
+    # --- that was read, judged MISMATCH and excluded from extraction contributed nothing:
+    # --- it is retained for audit, not a blocker. A real site's navigation pages name a
+    # --- dozen other examinations, and blocking on their mere presence would make every
+    # --- exam on such a site unpublishable while proving nothing about its facts. The
+    # --- blocker is a MISMATCH source that a field *cites* -- that is contamination.
+    # The two intrinsic fields cite the *authority resolution* (the domain root), not a
+    # document that was read; a home page later judged MISMATCH shares that URL without
+    # having supplied either of them.
+    cited = {f.citation.url for name, f in record.fields.items()
+             if f.citation is not None and getattr(f.citation, 'url', '')
+             and name not in ('officialName', 'authority')}
     for url, verdict in identity_by_source.items():
         if verdict is IdentityVerdict.MISMATCH:
-            blockers.append(Blocker('(source)', 'document belongs to another exam', url))
+            if url in cited:
+                blockers.append(Blocker('(source)', 'a field cites a document that belongs '
+                                        'to another exam', url))
+            else:
+                notes.append(f'source excluded as another exam’s and retained for audit '
+                             f'only; it supplied no field: {url}')
 
     # --- field-by-field
     field_names = {f.name for f in CONTRACT}

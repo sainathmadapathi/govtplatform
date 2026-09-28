@@ -30,7 +30,7 @@ from dataclasses import dataclass, field as dc_field
 from enum import Enum
 
 from .evidence import Evidence, EvidenceStatus, normalise_ws
-from .resolve import distinctive_words, exam_aliases
+from .resolve import alias_in, distinctive_words, exam_aliases
 
 
 class IdentityVerdict(str, Enum):
@@ -89,7 +89,10 @@ _TITLE_RX = re.compile(
     # The trailing form -- "Combined Graduate Level Examination, 2026" -- and the leading
     # one, "Recruitment of Assistant Administrative Officers (AAO)". An authority uses
     # whichever reads better in its own language; both name the same thing.
-    r'((?:[A-Z][\w&().\'-]*\s+){1,9}'
+    # A token may open with a bracket, and a bare dash is a token: authorities title a
+    # recruitment "GROUP-I SERVICES (GENERAL RECRUITMENT)" and "GROUP – I SERVICES", and a
+    # run that stopped at "(" or "–" could not read either title at all.
+    r'((?:(?:[A-Z(][\w&().\'–—-]*|[–—-])\s+){1,9}'
     r'(?i:Examination|Exam|Recruitment|Test|Services\s+Examination)'
     # ... but not where the anchor is the *start* of the leading form. Without
     # this, "Mumbai-400021 Recruitment" consumed the word that
@@ -99,12 +102,20 @@ _TITLE_RX = re.compile(
     # own title that way, and a case-sensitive anchor made every one of
     # those titles invisible -- the document could not name itself at all.
     r'(?:\s*[,\-–]?\s*(?:20\d{2}))?'
-    r'|(?i:Recruitment|Selection)\s+(?i:of|to)\s+(?i:the\s+)?'
-    r'(?:[A-Z][\w&().\'-]*[\s/]+){1,8}[A-Z][\w&().\'-]*'
+    # "Recruitment for the post of Manager" names a recruitment as surely as "Recruitment
+    # of Managers"; without "for", such a notice named no examination at all and passed
+    # as AMBIGUOUS instead of being told apart from the target.
+    r'|(?i:Recruitment|Selection)\s+(?i:of|to|for)\s+(?i:the\s+)?(?:(?i:posts?\s+of\s+(?:the\s+)?))?'
+    r'(?:(?:[A-Z(][\w&().\'–—-]*|[–—-])[\s/]+){1,8}[A-Z(][\w&().\'–—-]*'
     r'(?:\s*[,\-–]?\s*(?:20\d{2}))?)')
 
 #: A year written beside an exam name, in any of the usual shapes.
 _YEAR_RX = re.compile(r'\b(20\d{2})\b')
+
+#: How much of a document is its title block: the heading, the notice number and the
+#: opening paragraph. A rival examination named within it makes the document ambiguous; one
+#: named only beyond it is a mention inside the body.
+_TITLE_BLOCK_CHARS = 1500
 
 #: Words that make a phrase a section heading rather than an exam's name.
 _NOT_A_TITLE = re.compile(
@@ -128,11 +139,20 @@ def exam_references(text: str, *, limit: int = 400) -> list[ExamReference]:
         if ym:
             year = ym.group(1)
         else:
-            # A title often carries its year a few words later ("... Examination, 2026").
+            # A title often carries its year a few words later ("... Examination, 2026") --
+            # or just before it: "NOTIFICATION NO. 04/2022, DATED: 26/04/2022 GROUP-I
+            # SERVICES". The notice number and dateline are the document's own statement of
+            # its cycle, and reading no year there let a previous cycle's notice pass as the
+            # current one. The nearest year on either side, within a short window, is taken.
             tail = flat[m.end():m.end() + 24]
             ym2 = _YEAR_RX.search(tail)
             if ym2:
                 year = ym2.group(1)
+            else:
+                before = flat[max(0, m.start() - 48):m.start()]
+                years_before = _YEAR_RX.findall(before)
+                if years_before:
+                    year = years_before[-1]
         # A run of capitalised words before the noun may include text that is not part of
         # the title — "Annual Calendar Combined Graduate Level Examination" is a heading
         # followed by a title. Emitting every suffix lets the real title surface without
@@ -206,6 +226,24 @@ def _identifies(ref: ExamReference, target: ExamIdentity) -> bool:
     """
     alias_set = set(target.aliases)
     ref_tokens = set(ref.tokens)
+    low = ref.text.lower()
+
+    # A compound alias ("group i") is matched on its own boundary in the reference's text:
+    # its ordinal is too short to survive tokenisation, and "Group-II Services" must not
+    # answer to it. A reference that carries the compound and adds no foreign words names
+    # the target; one that carries the bare head with a different ordinal does not.
+    compounds = {a for a in alias_set if ' ' in a}
+    if compounds:
+        heads = {c.split(' ', 1)[0] for c in compounds}
+        if any(alias_in(c, low) for c in compounds):
+            # A bracketed tail qualifies the name rather than naming another exam:
+            # "(GENERAL RECRUITMENT)", "(HONS. DEGREE STANDARD)".
+            unbracketed = re.sub(r'\([^)]*\)?', ' ', low)
+            foreign = set(distinctive_words(unbracketed)) - alias_set - heads - _STRUCTURAL
+            if not foreign:
+                return True
+        elif ref_tokens & heads:
+            return False
 
     # Symmetric match: the reference's own initials against the target's aliases. This is
     # what lets "Combined Graduate Level Examination" answer to "CGL".
@@ -216,9 +254,13 @@ def _identifies(ref: ExamReference, target: ExamIdentity) -> bool:
     if not overlap:
         # The acronym form may sit inside a single token ("CGLE", "CGL-2026").
         joined = ' '.join(ref.tokens)
-        return any(a in joined for a in alias_set if len(a) >= 4)
+        return any(alias_in(a, joined) for a in alias_set if len(a) >= 4)
 
-    foreign = ref_tokens - alias_set - _STRUCTURAL
+    # A bracketed tail -- "(AAO)", "(General Recruitment)" -- qualifies the name; it is not
+    # another exam's word. Overlap and acronyms above still see it, so a user who typed the
+    # acronym is matched; only the foreign-word test looks past it.
+    core_tokens = set(distinctive_words(re.sub(r'\([^)]*\)?', ' ', low)))
+    foreign = core_tokens - alias_set - _STRUCTURAL
     if not foreign:
         return True
     # An explicit acronym match outweighs surrounding description: a reference containing
@@ -290,6 +332,23 @@ def verify(text: str, target: ExamIdentity, *, source_url: str = '',
                              reasons=['the document names this exam and no other'])
 
     if matching and other:
+        # A document declares itself in its title block. A 50-page notice names its own
+        # recruitment on page one and then, in its body, the school examination that proves
+        # a language qualification, the "preliminary test" it consists of, and a sentence
+        # or two that merely look like titles. Those are references inside the document,
+        # not rival declarations of what it is. So: the target named in the opening, and no
+        # rival named there, is a MATCH that records the body mentions; a rival in the
+        # opening too (a calendar, a combined notice) stays AMBIGUOUS.
+        head = normalise_ws(text)[:_TITLE_BLOCK_CHARS].lower()
+        target_in_head = any(r.text.lower() in head for r in matching)
+        rivals_in_head = [r for r in other if r.text.lower() in head]
+        if target_in_head and not rivals_in_head:
+            return IdentityCheck(
+                IdentityVerdict.MATCH, evidence=ev,
+                matched=[r.text for r in matching[:3]],
+                competing=[r.text for r in other[:5]],
+                reasons=[f'the document’s title block names this exam and no other; '
+                         f'{len(other)} other examination(s) are mentioned in its body'])
         # A calendar or a combined notice listing several exams. It is real evidence of
         # *something*, but not of a fact belonging to this exam in particular.
         return IdentityCheck(

@@ -174,10 +174,15 @@ class TestMaterializationEngine(unittest.TestCase):
         exam['id'] = 'exam-someone-else-2028'            # payload identity != record identity
         with self.assertRaises(RegistryRejected):
             ExamRegistry(':memory:').register(rec, gate=gate, exam=exam, cycle='2028')
-        # a source that belongs to another exam blocks at the gate itself
+        # a source that belongs to another exam blocks at the gate itself when a field cites
+        # it; one that was excluded from extraction and cited by nothing is retained for audit
         from .identity import IdentityCheck, IdentityVerdict
-        gate2 = gate_evaluate(rec, identity_by_source={'https://zeta.gov.in/other': IdentityVerdict.MISMATCH})
+        cited = rec.fields['fee'].citation.url
+        gate2 = gate_evaluate(rec, identity_by_source={cited: IdentityVerdict.MISMATCH})
         self.assertFalse(gate2.may_publish)
+        gate3 = gate_evaluate(rec, identity_by_source={'https://zeta.gov.in/other': IdentityVerdict.MISMATCH})
+        self.assertTrue(gate3.may_publish)
+        self.assertTrue(any('retained for audit' in n for n in gate3.notes))
 
     # 4. test_materialize_unknown_exam (NAEB, real pipeline, real gate) -----------------------
     def test_materialize_unknown_exam(self):

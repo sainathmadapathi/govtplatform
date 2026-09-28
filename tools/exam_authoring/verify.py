@@ -22,10 +22,14 @@ def assert_single_authority(rec: ExamRecord) -> None:
     own = urlparse(rec.official_domain).netloc.replace('www.', '')
     if not own:
         raise IsolationError(f'{rec.exam_id}: no official domain set')
+    # The authority's estate is its registered domain, not one host on it: a commission's
+    # apply portal (otr.<body>.gov.in) is the commission's own, and reading it is not
+    # reading another authority.
+    from .sources import same_estate
     foreign = []
     for url in rec.sources_read:
         host = urlparse(url).netloc.replace('www.', '')
-        if host and host != own and not host.endswith('.' + own):
+        if host and not same_estate(host, own):
             foreign.append(url)
     if foreign:
         raise IsolationError(

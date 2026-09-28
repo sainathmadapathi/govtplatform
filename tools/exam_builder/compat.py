@@ -325,6 +325,7 @@ def important_dates(milestones, *, exam_id: str, timezone: str = 'IST') -> list[
     from .schema import DatePrecision, MilestoneState, Status as _Status
 
     rows: list[dict] = []
+    emitted: set[tuple[str, str]] = set()
     for index, milestone in enumerate(milestones):
         effective = milestone.effective_date
         superseded = milestone.is_superseded
@@ -333,6 +334,15 @@ def important_dates(milestones, *, exam_id: str, timezone: str = 'IST') -> list[
         shown = effective or (milestone.ends_at.value or milestone.starts_at.value)
         if not shown:
             continue
+        from .schema import ScopeKind
+        stage_scopes = milestone.scope.of(ScopeKind.STAGE)
+        stage_refs = stage_scopes[0].label if stage_scopes else ''
+        # Two statements of one date ("Applications from 23/02 to 14/03" and "Online
+        # applications 14/03 at 5 PM") are one milestone on the timeline, not two.
+        row_key = (legacy_date_type(milestone.kind, stage_label=stage_refs), str(shown))
+        if row_key in emitted and not superseded:
+            continue
+        emitted.add(row_key)
 
         fact = milestone.ends_at if milestone.ends_at.has_value else milestone.starts_at
         provenance = to_legacy_provenance(
@@ -340,9 +350,6 @@ def important_dates(milestones, *, exam_id: str, timezone: str = 'IST') -> list[
         if provenance is None:
             continue
 
-        from .schema import ScopeKind
-        stage_scopes = milestone.scope.of(ScopeKind.STAGE)
-        stage_refs = stage_scopes[0].label if stage_scopes else ''
         rows.append({
             'id': milestone.id or f'date-{exam_id}-{index}',
             'type': legacy_date_type(milestone.kind, stage_label=stage_refs),

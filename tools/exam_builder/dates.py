@@ -208,7 +208,9 @@ EVENT_CUES: tuple[EventCue, ...] = (
               # Once a notice has named its papers it stops repeating the noun:
               # "Paper I will be held on X" is an examination date.
               r'(?:tier|paper|phase|stage|session|shift)\s*[-–—:]?\s*(?:[ivxIVX]{1,4}|\d{1,2}|[A-Z])\b[^.\n]{0,30}?\b(?:is|are|will\s+be|shall\s+be|to\s+be)\s+(?:held|conducted|scheduled)',
-              r'schedule\s+of\s+(?:the\s+)?exam(?:ination)?',
+              # "Schedule of Main Examination", "Schedule of Preliminary Test": the
+              # authority names the stage between "schedule of" and the noun.
+              r'schedule\s+of\s+(?:the\s+)?(?:[\w()]+\s+){0,3}?(?:exam(?:ination)?|test)\b',
               r'conduct\s+of\s+(?:the\s+)?exam(?:ination)?',
               # An examination being moved is still an examination. Without these the
               # lifecycle wording carried the event and the cue set did not recognise it.
@@ -343,6 +345,35 @@ def _label_for(passage: str, kind: str) -> str:
     return (trimmed[:90] or kind.replace('_', ' ').title()).strip()
 
 
+def _nearest_cue(context: str, passage: str) -> EventCue | None:
+    """The cue a date sits beside, when the date's own line carries no cue.
+
+    A schedule lays its label and its date on separate lines, and the neighbourhood of a
+    date line holds *both* the label above it ("Schedule of Main Examination") and whatever
+    comes after it ("Submission of online applications is mandatory ..."). Taking the first
+    cue in list order read a main-examination month as an application deadline. The cue
+    whose wording ends nearest *before* the date line is the label of that line; only where
+    no cue precedes it does the first match anywhere in the neighbourhood stand.
+    """
+    low = context.lower()
+    at = low.find(normalise_ws(passage).lower()[:40])
+    best: tuple[int, EventCue] | None = None
+    fallback: EventCue | None = None
+    for cue in EVENT_CUES:
+        if not cue.matches(context):
+            continue
+        fallback = fallback or cue
+        if at < 0:
+            continue
+        for anchor in cue.anchors:
+            for m in re.finditer(anchor, low):
+                if m.end() <= at:
+                    gap = at - m.end()
+                    if best is None or gap < best[0]:
+                        best = (gap, cue)
+    return best[1] if best else fallback
+
+
 def read_statement(passage: str, *, context: str = '') -> DateReading | None:
     """What event, if any, this passage states — and the date it gives for it."""
     # The passage first: a table row names its own event, and classifying it by its
@@ -353,7 +384,7 @@ def read_statement(passage: str, *, context: str = '') -> DateReading | None:
     if cue is None and context:
         # Only now the neighbourhood, for a row whose label and date are on separate lines.
         haystack = context
-        cue = next((c for c in EVENT_CUES if c.matches(context)), None)
+        cue = _nearest_cue(context, passage)
     if cue is None:
         return None
     # Hedging and lifecycle are read from the wider text either way, because "the above

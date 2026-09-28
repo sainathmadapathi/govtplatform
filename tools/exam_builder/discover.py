@@ -28,7 +28,8 @@ from enum import Enum
 from urllib.parse import urlparse
 
 from ..exam_authoring.sources import Document, FetchError, html_links, load_html
-from .resolve import ResolvedExam, distinctive_words, exam_aliases  # noqa: F401
+from ..exam_authoring.sources import same_estate as on_estate
+from .resolve import ResolvedExam, alias_in, distinctive_words, exam_aliases  # noqa: F401
 
 
 class DocKind(str, Enum):
@@ -141,8 +142,8 @@ def gate(link_text: str, link_url: str, *, exam_words: list[str],
     parsed = urlparse(link_url or '')
     path_only = f'{parsed.path} {parsed.query}' if parsed.scheme else (link_url or '')
     blob = f'{link_text} {path_only}'.lower()
-    matched = [w for w in exam_words if w in blob]
-    foreign = [w for w in (sibling_exam_words or []) if w in blob and w not in exam_words]
+    matched = [w for w in exam_words if alias_in(w, blob)]
+    foreign = [w for w in (sibling_exam_words or []) if alias_in(w, blob) and w not in exam_words]
 
     if foreign and not matched:
         return Relevance.REJECTED, matched, foreign
@@ -165,7 +166,7 @@ def page_is_specific_to(title: str, url: str, exam_words: list[str], *, need: in
     parsed = urlparse(url or '')
     path_only = parsed.path if parsed.scheme else (url or '')
     blob = f'{title} {path_only}'.lower()
-    hits = sum(1 for w in exam_words if w in blob)
+    hits = sum(1 for w in exam_words if alias_in(w, blob))
     return hits >= min(need, len(exam_words))
 
 
@@ -200,45 +201,63 @@ def discover(resolved: ResolvedExam, *, exam_id: str, max_pages: int = 6,
 
     # Visit the most exam-specific seeds first, so inheritance starts from a real exam page.
     seeds = sorted((u for u in dict.fromkeys(resolved.seed_urls) if u not in seen_urls),
-                   key=lambda u: -sum(1 for w in words if w in urlparse(u).path.lower()))
+                   key=lambda u: -sum(1 for w in words if alias_in(w, urlparse(u).path.lower())))
 
-    for seed in seeds[:max_pages]:
-        if seed in seen_urls:
-            continue
-        seen_urls.add(seed)
+    # Site-wide listing pages met while crawling (a "Notifications" or "Results" link on the
+    # authority's own estate). They are pages, not documents, so they are never kept as
+    # sources on the strength of their link text; they are crawled so that the documents
+    # they list can earn their place through the gate.
+    listing_candidates: list[str] = []
+    _LISTING_KINDS = (DocKind.NOTIFICATION, DocKind.CORRIGENDUM, DocKind.SYLLABUS, DocKind.EXAM_PATTERN,
+                      DocKind.QUESTION_PAPER, DocKind.ANSWER_KEY, DocKind.ADMIT_CARD, DocKind.RESULT,
+                      DocKind.CUTOFF, DocKind.CALENDAR)
+
+    def crawl(page_url: str) -> None:
+        seen_urls.add(page_url)
         try:
-            page = load_html(seed)
+            page = load_html(page_url)
         except FetchError as exc:
             # A page we could not fetch is a page we did not look at.
             out.infrastructure_failed = True
-            out.infrastructure_note = f'could not read {seed}: {exc}'
+            out.infrastructure_note = f'could not read {page_url}: {exc}'
             out.log.append(out.infrastructure_note)
-            continue
+            return
 
         title = _title_of(page)
-        specific = page_is_specific_to(title, seed, words)
-        out.log.append(f'{"exam-specific" if specific else "general"} page: {seed}')
+        specific = page_is_specific_to(title, page_url, words)
+        out.log.append(f'{"exam-specific" if specific else "general"} page: {page_url}')
+        # What kind of listing this page is ("/notifications", "Results"), so that a link on
+        # it whose own text is only a recruitment's name ("02/2024 - GROUP-I SERVICES") is
+        # filed under the kind of list it sits in rather than dropped as unclassifiable.
+        page_kind = classify_kind(title, page_url)
 
         if specific:
             out.docs.append(DiscoveredDoc(
-                url=seed, kind=DocKind.EXAM_PAGE, title=title,
+                url=page_url, kind=DocKind.EXAM_PAGE, title=title,
                 relevance=Relevance.DIRECT,
-                matched=[w for w in words if w in f'{title} {seed}'.lower()]))
+                matched=[w for w in words if alias_in(w, f'{title} {page_url}'.lower())]))
 
         for text, href in html_links(page, r'.*'):
             if not href or href in seen_urls:
                 continue
             link_host = (urlparse(href).hostname or '').replace('www.', '')
-            # Stay on the authority's own estate. A link off-site may be the application
+            # Stay on the authority's own estate (its registered domain, so a sibling host
+            # such as its apply portal counts). A link off-site may be the application
             # portal, which is allowed only where the authority itself points at it.
-            same_estate = link_host == host or link_host.endswith('.' + host)
+            same_estate = on_estate(link_host, host)
             rel, matched, foreign = gate(text, href, exam_words=words,
                                          page_is_exam_specific=specific,
                                          sibling_exam_words=sibling_exam_words)
             kind = classify_kind(text, href)
+            if kind is DocKind.UNKNOWN and rel is Relevance.DIRECT and page_kind not in (
+                    DocKind.UNKNOWN, DocKind.EXAM_PAGE):
+                kind = page_kind
             doc = DiscoveredDoc(url=href, kind=kind, title=text.strip()[:160],
-                                relevance=rel, matched=matched, found_on=seed,
+                                relevance=rel, matched=matched, found_on=page_url,
                                 foreign_words=foreign)
+            if (same_estate and kind in _LISTING_KINDS and not doc.is_pdf
+                    and not foreign and href not in listing_candidates):
+                listing_candidates.append(href)
             if kind is DocKind.UNKNOWN and rel is not Relevance.DIRECT:
                 continue                       # navigation chrome, not a document
             if not same_estate and kind is not DocKind.APPLICATION_PORTAL:
@@ -247,6 +266,20 @@ def discover(resolved: ResolvedExam, *, exam_id: str, max_pages: int = 6,
                 out.rejected.append(doc)
                 continue
             out.docs.append(doc)
+
+    for seed in seeds[:max_pages]:
+        if seed in seen_urls:
+            continue
+        crawl(seed)
+
+    # One level further: an authority's *listing* pages. A site's notification list, results
+    # list or key list is reached from its navigation, is one page for every exam it runs,
+    # and is where the exam's own documents are actually linked. Crawling only the seeds
+    # never reached them. The pages are on the authority's estate and of a known kind; every
+    # link found on them still passes the same gate, and a listing page is never
+    # exam-specific, so nothing inherits from it -- only a link naming this exam is kept.
+    for page_url in [u for u in listing_candidates if u not in seen_urls][:max_pages]:
+        crawl(page_url)
 
     _search_for_missing_kinds(out, resolved, words, host, sibling_exam_words)
     _dedupe(out)
@@ -278,7 +311,10 @@ def _search_for_missing_kinds(out: SourceSet, resolved: ResolvedExam, words: lis
     """
     from .search import SearchUnavailable, search as web_search
 
-    have = {d.kind for d in out.docs}
+    # A kind is "had" only by a document that names this exam. An inherited navigation link
+    # ("Notifications for All Recruitments") is a list of every exam's documents, and letting
+    # it satisfy the kind suppressed the one search that would have found this exam's own.
+    have = {d.kind for d in out.docs if d.relevance is Relevance.DIRECT or d.is_pdf}
     for kind, phrase in _KIND_QUERIES:
         if kind in have:
             continue
@@ -292,7 +328,7 @@ def _search_for_missing_kinds(out: SourceSet, resolved: ResolvedExam, words: lis
             return
         for h in hits:
             hit_host = (h.host or '').replace('www.', '')
-            if not (hit_host == host or hit_host.endswith('.' + host)):
+            if not on_estate(hit_host, host):
                 continue                       # someone else writing about this exam
             path = urlparse(h.url).path
             rel, matched, foreign = gate(f'{h.title} {path}', h.url, exam_words=words,

@@ -19,7 +19,7 @@ from urllib.parse import urlparse
 
 from ..exam_authoring import extract as X
 from ..exam_authoring.record import Citation, ExamRecord, Field, Status as RecordStatus
-from ..exam_authoring.sources import FetchError, load_html, load_pdf
+from ..exam_authoring.sources import FetchError, load_document, load_html, load_pdf, same_estate
 from . import admit_card as D_ADMIT
 from . import application as D_APPLICATION
 from . import compat as COMPAT
@@ -37,7 +37,7 @@ from .gate import BuildState
 from .identity import ExamIdentity, IdentityCheck, IdentityVerdict, field_is_attributable, verify as verify_identity
 from .manifest import SourceManifest, content_hash, from_source_set, to_source_set
 from .resolve import Authority, ResolvedExam, resolve, stable_exam_id
-from .schema import SourceDocument, SourceKind
+from .schema import SourceDocument, SourceKind, Status as SchemaStatus
 
 
 def _today() -> str:
@@ -61,13 +61,50 @@ class BuildResult:
     changed_sources: list[str] = dc_field(default_factory=list)
     #: Semantic 17-section completeness evaluation with failure-state separation.
     completeness: ExamCompletenessReport | None = None
+    #: What the completeness evaluation was told, kept so it can be re-run after a review.
+    reacquisition_attempts: int = 0
+    searched_not_found: frozenset = frozenset()
 
 
 def _load(doc: DiscoveredDoc):
-    """Fetch a discovered document as something the extractors can read."""
+    """Fetch a discovered document as something the extractors can read.
+
+    The address decides only when it is explicit; otherwise the bytes do, because a PDF
+    served from an extension-less viewer route is still a PDF.
+    """
     if doc.is_pdf:
         return load_pdf(doc.url)
-    return load_html(doc.url)
+    return load_document(doc.url)
+
+
+def _load_order(docs: list[DiscoveredDoc]) -> list[DiscoveredDoc]:
+    """Most exam-specific first: a link that names this exam by more of its aliases (a
+    compound one such as "group i" counts double, since it is what tells siblings apart),
+    DIRECT before INHERITED, a document of a known kind before an unclassified page. Stable,
+    so crawl order still decides between equals."""
+    def key(d: DiscoveredDoc):
+        specificity = sum(2 if ' ' in m else 1 for m in (d.matched or []))
+        return (-specificity,
+                0 if d.relevance is Relevance.DIRECT else 1,
+                1 if d.kind is DocKind.UNKNOWN else 0)
+    return sorted(docs, key=key)
+
+
+def _reclassify_from_content(doc: DiscoveredDoc, document, rec: ExamRecord) -> None:
+    """A document whose link said nothing about its kind is classified by its own opening.
+
+    A listing row reads "02/2024 - GROUP-I SERVICES" and links a file whose first line is
+    "NOTIFICATION NO. 02/2024" -- the document knows what it is even when the link did not.
+    Only an UNKNOWN kind is ever changed, and the change is logged.
+    """
+    if doc.kind is not DocKind.UNKNOWN:
+        return
+    text = document.all_text() if hasattr(document, 'all_text') else ''
+    head = ' '.join((text or '').split())[:600]
+    kind = classify_kind(head, '')
+    if kind is not DocKind.UNKNOWN:
+        rec.note(f'{doc.url} classified as {kind.value} from its own opening text')
+        doc.kind = kind
 
 
 def _semantic_read(field_name: str, sources, loaded: dict, rec: ExamRecord,
@@ -162,8 +199,11 @@ def _dispatch_domain_extraction(
     """Dispatches extraction of one contract field to the canonical domain reader or legacy extractor."""
     candidate_docs = [d for d in sources.docs if d.kind in cf.sources and d.url in loaded]
 
-    # 1. Semantic read: reads verbatim fact from document text
-    got = _semantic_read(cf.name, sources, loaded, rec, identity, target)
+    # 1. Semantic read: reads verbatim fact from document text. Not for the age limits: the
+    # semantic reader returns one band, and a notice that states its limits per post has no
+    # single band -- the scope-aware domain reader below decides that, and only where it
+    # finds nothing is the semantic reading used.
+    got = None if cf.name == 'ageLimits' else _semantic_read(cf.name, sources, loaded, rec, identity, target)
     if got is not None and getattr(got, 'ok', False):
         return got
 
@@ -424,14 +464,22 @@ def _dispatch_domain_extraction(
                                      exam_id=rec.exam_id)
             try:
                 vacs = D_ELIGIBILITY.extract_vacancies(src_doc, text, posts=[])
-                cnts = [v.count.value for v in vacs if v.count.has_value]
+                with_value = [v for v in vacs if v.count.has_value]
+                cnts = [v.count.value for v in with_value]
                 if cnts:
-                    total = sum(cnts)
-                    ev = vacs[0].count.evidence[0] if vacs[0].count.evidence else None
-                    excerpt = ev.span if ev else str(total)
+                    ev = with_value[0].count.evidence[0] if with_value[0].count.evidence else None
                     cite = Citation(document_title=doc.title, url=doc.url, page=1, clause='Vacancies',
-                                    excerpt=excerpt, verified_date=_today())
-                    return Field.found('vacancies', total, cite)
+                                    excerpt=(ev.span if ev else str(cnts[0])), verified_date=_today())
+                    if len(set(cnts)) == 1:
+                        return Field.found('vacancies', cnts[0], cite)
+                    # Several figures (a total, per-post or per-category counts, a figure in a
+                    # note). Adding them up is arithmetic the authority did not print, and
+                    # picking one is a guess; a person chooses, with every figure in front of them.
+                    return Field.needs_review(
+                        'vacancies', max(cnts),
+                        f'the document states {len(set(cnts))} different vacancy figures '
+                        f'({", ".join(str(c) for c in sorted(set(cnts), reverse=True)[:8])}); '
+                        f'the total is not asserted from them', cite)
             except Exception as exc:
                 rec.note(f'extract_vacancies failed on {doc.url}: {exc!r}')
 
@@ -459,18 +507,33 @@ def _dispatch_domain_extraction(
                                      exam_id=rec.exam_id)
             try:
                 outcome = D_ELIGIBILITY.extract_eligibility(src_doc, text, exam_id=rec.exam_id)
-                if outcome.eligibility.age_rules:
-                    rule = next((r for r in outcome.eligibility.age_rules if r.is_global),
-                                outcome.eligibility.age_rules[0])
-                    if rule.minimum_age.has_value and rule.maximum_age.has_value:
-                        val = {'minAge': int(rule.minimum_age.value),
-                               'maxAge': int(rule.maximum_age.value),
-                               'asOn': ''}
-                        ev = rule.minimum_age.evidence[0] if rule.minimum_age.evidence else None
-                        excerpt = ev.span if ev else str(val)
+                rules = outcome.eligibility.age_rules
+                if rules:
+                    # A notice may state its limits in several clauses -- a minimum in one,
+                    # a maximum in another, each scoped to a list of posts. One band exists
+                    # only if every clause agrees; several minima or maxima are post-scoped
+                    # limits, and collapsing them into one band would assert a rule the
+                    # authority did not print for any post.
+                    scoped = [r for r in rules if r.is_global] or rules
+                    mins = sorted({int(r.minimum_age.value) for r in scoped if r.minimum_age.has_value})
+                    maxs = sorted({int(r.maximum_age.value) for r in scoped if r.maximum_age.has_value})
+                    cutoffs = [r.cutoff_date.value for r in scoped if r.cutoff_date.has_value]
+                    first = next((r for r in scoped if r.minimum_age.has_value or r.maximum_age.has_value), None)
+                    ev = None
+                    if first is not None:
+                        facts = first.minimum_age if first.minimum_age.has_value else first.maximum_age
+                        ev = facts.evidence[0] if facts.evidence else None
+                    if mins and maxs:
+                        val = {'minAge': mins[0], 'maxAge': maxs[-1], 'asOn': str(cutoffs[0]) if cutoffs else ''}
                         cite = Citation(document_title=doc.title, url=doc.url, page=1, clause='Age Limits',
-                                        excerpt=excerpt, verified_date=_today())
-                        return Field.found('ageLimits', val, cite)
+                                        excerpt=(ev.span if ev else str(val)), verified_date=_today())
+                        if len(mins) == 1 and len(maxs) == 1:
+                            return Field.found('ageLimits', val, cite)
+                        return Field.needs_review(
+                            'ageLimits', {**val, 'minima': mins, 'maxima': maxs},
+                            f'the document states post-scoped age limits (minimum {"/".join(map(str, mins))}, '
+                            f'maximum {"/".join(map(str, maxs))} years); no single band applies to every post',
+                            cite)
             except Exception as exc:
                 rec.note(f'extract_eligibility (age) failed on {doc.url}: {exc!r}')
 
@@ -653,7 +716,7 @@ def _dispatch_domain_extraction(
                                      exam_id=rec.exam_id)
             try:
                 portal = D_APPLICATION.extract_portal(src_doc, text, authority_domain=resolved.authority.domain)
-                if portal and portal.has_value and portal.status is Status.VERIFIED:
+                if portal and portal.has_value and portal.status is SchemaStatus.VERIFIED:
                     ev = portal.evidence[0] if portal.evidence else None
                     excerpt = ev.span if ev else portal.value
                     cite = Citation(document_title=doc.title, url=doc.url, page=1, clause='Application Portal',
@@ -942,9 +1005,9 @@ def _targeted_reacquire(
                 continue
             seen_urls.add(h_url)
 
-            # Restrict strictly to authority domain
+            # Restrict strictly to the authority's own estate (its registered domain)
             h_host = (urlparse(h_url).hostname or '').replace('www.', '').lower()
-            if not (h_host == host or h_host.endswith('.' + host)):
+            if not same_estate(h_host, host):
                 continue
 
             doc_kind = classify_kind(h_title, h_url)
@@ -1017,9 +1080,6 @@ def build(exam_query: str = '', *, year: str = '',
         siblings = [w for w in (sibling_exam_words or []) if w not in own]
         sources = discover(resolved, exam_id=exam_id, sibling_exam_words=siblings)
 
-    available = {d.kind for d in sources.docs}
-    coverage = coverage_from(available)
-
     rec = ExamRecord(
         exam_id=exam_id,
         code=exam_id.replace('exam-', '').upper().replace('-', '_'),
@@ -1037,11 +1097,14 @@ def build(exam_query: str = '', *, year: str = '',
                  f'exam on the same site — the isolation gate working, not an error.')
 
     # Read each document once, then let every contract field that names its kind try it.
+    # Only `max_docs` are read, so the ones that name this exam most specifically go first:
+    # a site's listing pages and its other recruitments' notices came before the exam's own
+    # notification in crawl order, and the cap then left that notification unread.
     loaded: dict[str, object] = {}
     hashes: dict[str, str] = {}
     changed: list[str] = []
     prior = {s.url: s.content_hash for s in (replay.sources if replay else [])}
-    for doc in sources.docs[:max_docs]:
+    for doc in _load_order(sources.docs)[:max_docs]:
         try:
             document = _load(doc)
         except FetchError as exc:
@@ -1050,11 +1113,17 @@ def build(exam_query: str = '', *, year: str = '',
             rec.note(sources.infrastructure_note)
             continue
         loaded[doc.url] = document
+        _reclassify_from_content(doc, document, rec)
         raw = getattr(document, 'raw', b'') or (document.all_text() or '').encode('utf-8')
         hashes[doc.url] = content_hash(raw)
         if prior.get(doc.url) and prior[doc.url] != hashes[doc.url]:
             changed.append(doc.url)
             rec.note(f'source changed since the manifest was captured: {doc.url}')
+
+    # Coverage is computed after loading, so a document that only its own text could
+    # classify counts for the kind it turned out to be.
+    available = {d.kind for d in sources.docs}
+    coverage = coverage_from(available)
 
     # Content identity check
     target = ExamIdentity(exam_id=exam_id, query=resolved.query,
@@ -1162,4 +1231,5 @@ def build(exam_query: str = '', *, year: str = '',
         identity={u: c.verdict.value for u, c in identity.items()}, hashes=hashes)
     return BuildResult(resolved=resolved, sources=sources, coverage=coverage, record=rec,
                        build_state=state, identity=identity, manifest=snapshot,
-                       changed_sources=changed, completeness=completeness_report)
+                       changed_sources=changed, completeness=completeness_report,
+                       reacquisition_attempts=reacquire_attempts, searched_not_found=searched_not_found)

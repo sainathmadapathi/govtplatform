@@ -231,6 +231,12 @@ def _eligibility_highlights(rec: ExamRecord) -> list[dict]:
                        if v.get('bornNotEarlierThan') else '.'))
         elif isinstance(v, dict) and v.get('text'):
             body = str(v['text'])[:400]
+        elif name == 'fee' and isinstance(v, dict) and (v.get('amounts') or v.get('amount')):
+            # The fee as the notice printed it; the reader's structure is not a sentence.
+            amounts = [str(a) for a in (v.get('amounts') or [v.get('amount')]) if a not in (None, '')]
+            body = 'Rs. ' + ' / Rs. '.join(dict.fromkeys(amounts)) + ' as printed in the notice; the evidence span carries the wording.'
+        elif isinstance(v, dict):
+            body = str(f.citation.excerpt or '')[:400] if f.citation and getattr(f.citation, 'excerpt', '') else str(v)[:400]
         else:
             body = str(v)[:400]
         cards.append({'title': title, 'body': body, 'provenance': _prov(rec, f, name.lower()) or {}})
@@ -709,6 +715,8 @@ class EngineBuildResult:
     gate: dict = dc_field(default_factory=dict)
     materialization: dict = dc_field(default_factory=dict)
     registry: dict = dc_field(default_factory=dict)
+    #: A person's field-level decisions, when any were given (review.py).
+    reviews: dict = dc_field(default_factory=dict)
     exam: Optional[dict] = None
     orchestration: Optional[OrchestrationResult] = None
 
@@ -745,7 +753,8 @@ class EngineBuildResult:
 def build_exam(exam_query: str, year: str | int = '', *, registry: Optional[ExamRegistry] = None,
                search_fn: Optional[Callable] = None, use_llm: bool = False, provider=None, cache=None,
                siblings: Optional[list] = None, max_docs: int = 8,
-               data_ts: str = P.DATA_TS) -> EngineBuildResult:
+               data_ts: str = P.DATA_TS, reviews: Optional[list] = None,
+               replay=None) -> EngineBuildResult:
     """The single generic engine entry point: name + cycle in, a registered runtime Exam out.
 
         build_exam("SSC CGL", 2027)  ·  build_exam("RRB NTPC", 2027)  ·  build_exam("Any Unknown Board Exam", 2028)
@@ -758,9 +767,10 @@ def build_exam(exam_query: str, year: str | int = '', *, registry: Optional[Exam
     year = str(year or '')
     res = orchestrate(exam_query, year=year, dry_run=True, use_llm=use_llm, provider=provider,
                       cache=cache, siblings=siblings, max_docs=max_docs, data_ts=data_ts,
-                      search_fn=search_fn)
+                      search_fn=search_fn, reviews=reviews, replay=replay)
     out = EngineBuildResult(query=exam_query, year=year, state=EngineState.BLOCKED_BY_GATE,
                             reason=res.reason, orchestration=res)
+    out.reviews = dict(res.reviews or {})
 
     if res.build is not None:
         br, rec = res.build, res.build.record

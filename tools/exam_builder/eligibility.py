@@ -124,13 +124,14 @@ _AGE_BAND = re.compile(
     r'\b(?:not\s+(?:be\s+)?(?:less|below|under)\s+than|minimum\s+(?:age\s+)?(?:of\s+)?|'
     # "must have attained the age of 21 years", but never "must *not* have attained".
     r'at\s+least|(?<!not\s)(?<!not\s\s)have\s+attained\s+the\s+age\s+of)'
-    r'\s*(\d{1,2})\s*(?:years?|yrs?)?', re.I)
+    # "Minimum Age (18 years)": the figure may sit in brackets after its label.
+    r'\s*\(?\s*(\d{1,2})\s*(?:years?|yrs?)?', re.I)
 _AGE_MAX = re.compile(
     r'\b(?:not\s+(?:be\s+)?(?:more|above|over|exceed(?:ing)?)\s+than|maximum\s+(?:age\s+)?'
     r'(?:of\s+)?|upper\s+age\s+limit\s*(?:is|of|:)?|'
     # "must not have attained the age of 32 years" -- the formal phrasing, and the negative
     # is matched here so that the minimum pattern below cannot claim it.
-    r'not\s+(?:have\s+)?attained\s+the\s+age\s+of)\s*(\d{1,2})\s*(?:years?|yrs?)?', re.I)
+    r'not\s+(?:have\s+)?attained\s+the\s+age\s+of)\s*\(?\s*(\d{1,2})\s*(?:years?|yrs?)?', re.I)
 # The second form is a table cell: "18-30 years", with none of the sentence wording.
 _AGE_RANGE = re.compile(
     r'\b(?:between|from)\s*(\d{1,2})\s*(?:years?|yrs?)?\s*(?:and|to|-|–)\s*(\d{1,2})\s*'
@@ -154,6 +155,14 @@ _CUTOFF = re.compile(
 _IS_AGE = re.compile(r'\bage\b|\bborn\b|\bdate\s+of\s+birth\b|\bdob\b', re.I)
 _NOT_AGE = re.compile(
     r'\bexperience\b|\bvalidity\b|\bcourse\b|\bduration\s+of\s+the\s+exam', re.I)
+#: "raised the maximum age limit from 44 years to 46 years" narrates a *change* to a limit;
+#: it is not a band. Read as one, it became a minimum of 44, which no notice ever stated.
+_AGE_CHANGE = re.compile(
+    r'\b(?:raised|revised|enhanced|increased|reduced|lowered|extended)\b[^.;]{0,80}?'
+    r'\bfrom\s+\d{1,2}\s*(?:years?|yrs?)?\s+to\s+\d{1,2}\s*(?:years?|yrs?)|'
+    # The verb may sit in an earlier fragment of the same sentence: "age limit from 44
+    # years to 46 years" is the tail of "raised the maximum age limit from ...".
+    r'\blimit\s+from\s+\d{1,2}\s*(?:years?|yrs?)\s+to\s+\d{1,2}\s*(?:years?|yrs?)', re.I)
 
 
 def extract_age_rules(doc: SourceDocument, text: str, *,
@@ -166,7 +175,7 @@ def extract_age_rules(doc: SourceDocument, text: str, *,
     """
     rules: list[AgeRule] = []
     for passage in statements(text):
-        if _NOT_AGE.search(passage):
+        if _NOT_AGE.search(passage) or _AGE_CHANGE.search(passage):
             continue
 
         minimum = maximum = None
@@ -526,9 +535,11 @@ def extract_requirements(doc: SourceDocument, text: str, *,
 # ==================================================================== vacancies
 # Four and five figures are ordinary recruitment numbers. The old pattern capped the
 # run at three digits before a word boundary, so 1200 could not match at all.
+#: A count is never a clause number: "13.1 Vacancies:" read as one vacancy, because the "1"
+#: after the dot sits on a word boundary. Both figures refuse a digit or a dot before them.
 _VACANCY = re.compile(
-    r'\b(?:number\s+of\s+vacanc\w+|vacanc\w+)\b[^.;\n]{0,60}?\b(\d[\d,]{0,8}\d|\d)\b|'
-    r'\b(\d[\d,]{0,8}\d|\d)\s+vacanc\w+', re.I)
+    r'\b(?:number\s+of\s+vacanc\w+|vacanc\w+)\b[^.;\n]{0,60}?(?<![\d.])\b(\d[\d,]{0,8}\d|\d)\b|'
+    r'(?<![\d.])\b(\d[\d,]{0,8}\d|\d)\s+vacanc\w+', re.I)
 
 _TENTATIVE = re.compile(
     r'\btentativ\w+\b|\bprovisional\w*\b|\bapproximate\w*\b|\bliable\s+to\s+(?:change|'
