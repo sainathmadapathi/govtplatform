@@ -142,7 +142,12 @@ import {
   ConversationTurn,
   MultiTierResultEntry,
   ExamAdmitCardEvent,
-  ExamResultDeclaration
+  ExamResultDeclaration,
+  DiscoveryProfile,
+  DiscoveryProfileField,
+  DiscoveryResult,
+  DiscoveryExamResult,
+  DiscoveryVerdict
 } from './types';
 import {
   ALL_EXAMS,
@@ -183,6 +188,8 @@ import {
   resourceLiveService,
   syllabusLiveService,
   calculateDetailedAge,
+  discoverExams,
+  discoveryProfileFromUserProfile,
   evaluateCandidateEligibility,
   evaluateEligibility,
   examDayChecklistStatus,
@@ -834,9 +841,216 @@ export const MyExams: React.FC<MyExamsProps> = ({ exams = ALL_EXAMS, trackedExam
 // ==========================================================================
 // ExamFinder.tsx
 // ==========================================================================
+// ==========================================================================
+// ExamDiscovery.tsx — "Tell us a little about yourself" → "See exams you may be eligible for"
+// ==========================================================================
+// The smallest UI over `discoverExams`. It collects only the fields an existing eligibility
+// rule consumes, asks for a further field only when the engine reports it is needed, shows the
+// engine's verdicts in student language, and hands over to the exam's own workspace. It decides
+// nothing itself: no ranking, no hiding, no "no suitable exams".
+
+/** Student-facing wording for each verdict. Engine states never reach the screen as enum text. */
+export const DISCOVERY_VERDICT_LABELS: Record<DiscoveryVerdict, { title: string; hint: string; color: string; bg: string }> = {
+  ELIGIBLE: { title: 'You meet the published rules we could check', hint: 'Every post passed the age and qualification rules in this exam\'s verified record.', color: 'var(--emerald)', bg: 'var(--emerald-soft)' },
+  CONDITIONAL: { title: 'Eligible for some posts', hint: 'Some posts pass the published rules and some do not — open "Why?" to see which.', color: 'var(--primary)', bg: 'var(--primary-soft)' },
+  INSUFFICIENT_INFORMATION: { title: 'One more answer needed', hint: 'A rule this exam publishes needs something you have not told us yet. Nothing was assumed.', color: 'var(--amber)', bg: 'var(--amber-soft)' },
+  INELIGIBLE: { title: 'Not eligible on the published rules', hint: 'A rule in this exam\'s verified record is not met. The reason names it.', color: 'var(--rose)', bg: 'var(--rose-soft)' },
+  RULES_NOT_AVAILABLE: { title: 'Eligibility rules not yet available', hint: 'GovOS does not yet hold this exam\'s post-level rules in verified form, so it cannot say either way.', color: 'var(--text-muted)', bg: 'var(--surface-2)' }
+};
+
+const DISCOVERY_VERDICT_ORDER: DiscoveryVerdict[] = ['ELIGIBLE', 'CONDITIONAL', 'INSUFFICIENT_INFORMATION', 'RULES_NOT_AVAILABLE', 'INELIGIBLE'];
+
+/** How each follow-up field is asked, and which rule needs it — so the student can see why. */
+const DISCOVERY_FOLLOW_UPS: Record<Exclude<DiscoveryProfileField, 'dateOfBirth' | 'category' | 'degree' | 'branch'>, { label: string; why: string }> = {
+  statisticsInDegree: { label: 'Did you study Statistics as a subject in your degree?', why: 'Some posts require Statistics in the degree.' },
+  mathsIn12thWith60Percent: { label: 'Did you score 60% or more in Mathematics in Class 12?', why: 'Some posts accept 60% in Class 12 Mathematics as an alternative.' },
+  physicalFitnessDeclared: { label: 'Can you meet the physical standards published for enforcement posts?', why: 'Some posts have physical measurements and tests.' },
+  colorBlind: { label: 'Are you colour-blind?', why: 'Some enforcement posts do not permit colour blindness.' }
+};
+
+interface ExamDiscoveryProps {
+  exams: Exam[];
+  onSelectExam: (exam: Exam) => void;
+  onOpenProvenanceModal?: (provenance: DataProvenance) => void;
+}
+
+export const ExamDiscovery: React.FC<ExamDiscoveryProps> = ({ exams, onSelectExam, onOpenProvenanceModal }) => {
+  const [profile, setProfile] = useState<DiscoveryProfile>(() => discoveryProfileFromUserProfile(storageService.getProfile()));
+  const [result, setResult] = useState<DiscoveryResult | null>(null);
+  const [openWhy, setOpenWhy] = useState<string | null>(null);
+
+  const set = <K extends keyof DiscoveryProfile>(key: K, value: DiscoveryProfile[K]) =>
+    setProfile(prev => ({ ...prev, [key]: value }));
+  const run = () => { setResult(discoverExams(profile, exams)); setOpenWhy(null); };
+
+  const followUps = (result?.missingFields || []).filter((f): f is keyof typeof DISCOVERY_FOLLOW_UPS => f in DISCOVERY_FOLLOW_UPS);
+  const grouped = DISCOVERY_VERDICT_ORDER
+    .map(v => ({ verdict: v, items: (result?.exams || []).filter(e => e.verdict === v) }))
+    .filter(g => g.items.length > 0);
+
+  const selectStyle: React.CSSProperties = { width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border-color)', background: '#fff', color: 'var(--text-primary)', fontSize: '0.9rem' };
+  const labelStyle: React.CSSProperties = { display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '6px' };
+
+  const yesNo = (field: keyof typeof DISCOVERY_FOLLOW_UPS) => (
+    <div key={field}>
+      <label style={labelStyle}>{DISCOVERY_FOLLOW_UPS[field].label}</label>
+      <select style={selectStyle} value={profile[field] === undefined ? '' : profile[field] ? 'yes' : 'no'}
+        onChange={e => set(field, e.target.value === '' ? undefined : e.target.value === 'yes')}>
+        <option value="">Not answered</option>
+        <option value="yes">Yes</option>
+        <option value="no">No</option>
+      </select>
+      <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '4px' }}>Why we ask: {DISCOVERY_FOLLOW_UPS[field].why}</div>
+    </div>
+  );
+
+  return (
+    <section id="exam-discovery" className="glass-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+      <div>
+        <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 4px' }}>Tell us a little about yourself</h3>
+        <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', margin: 0 }}>
+          Three facts, each used by a published eligibility rule. GovOS checks them against every exam it holds and tells you why each result is what it is.
+        </p>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: '14px' }}>
+        <div>
+          <label style={labelStyle}>Date of birth</label>
+          <input type="date" style={selectStyle} value={profile.dateOfBirth || ''} onChange={e => set('dateOfBirth', e.target.value || undefined)} />
+          <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '4px' }}>Why we ask: your age on each exam's own cut-off date is checked against each post's limit.</div>
+        </div>
+        <div>
+          <label style={labelStyle}>Category</label>
+          <select style={selectStyle} value={profile.category || ''} onChange={e => set('category', (e.target.value || undefined) as DiscoveryProfile['category'])}>
+            <option value="">Not sure yet</option>
+            {(['GENERAL', 'EWS', 'OBC', 'SC', 'ST', 'PwBD'] as const).map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '4px' }}>Why we ask: only for the age relaxation an authority itself publishes for that category.</div>
+        </div>
+        <div>
+          <label style={labelStyle}>Highest qualification</label>
+          <select style={selectStyle} value={profile.degree || ''} onChange={e => set('degree', e.target.value || undefined)}>
+            <option value="">Not answered</option>
+            <option value="Below Class 12">Below Class 12</option>
+            <option value="Class 12 (Intermediate)">Class 12 (Intermediate)</option>
+            <option value="Final year of a Bachelor's degree">Final year of a bachelor's degree</option>
+            <option value="Bachelor's degree">Bachelor's degree or higher</option>
+          </select>
+          <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '4px' }}>Why we ask: every post here requires a bachelor's degree, or its final year.</div>
+        </div>
+      </div>
+
+      {followUps.length > 0 && (
+        <div style={{ background: 'var(--amber-soft)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '14px' }}>
+          <div style={{ fontSize: '0.86rem', fontWeight: 700, color: 'var(--amber)', marginBottom: '10px' }}>
+            A few posts need one more answer. You can leave any of these unanswered — those posts will simply stay undecided.
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(260px, 100%), 1fr))', gap: '14px' }}>
+            {followUps.map(yesNo)}
+          </div>
+        </div>
+      )}
+
+      <div>
+        <button className="btn-primary" onClick={run} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+          <Search size={16} /> {result ? 'Check again' : 'See exams you may be eligible for'}
+        </button>
+      </div>
+
+      {result && result.exams.length === 0 && (
+        <div style={{ fontSize: '0.88rem', color: 'var(--text-muted)' }}>
+          No exam records are loaded right now, so there is nothing to check against. This is not a statement about your eligibility.
+        </div>
+      )}
+
+      {result && result.exams.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+            Checked {result.universe.total} exam{result.universe.total === 1 ? '' : 's'} GovOS currently holds. Results are grouped, not ranked.
+          </div>
+          {grouped.map(g => {
+            const meta = DISCOVERY_VERDICT_LABELS[g.verdict];
+            return (
+              <div key={g.verdict}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginBottom: '8px', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '0.95rem', fontWeight: 800, color: meta.color }}>{meta.title}</span>
+                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{meta.hint}</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {g.items.map(item => {
+                    const exam = exams.find(e => e.id === item.examId);
+                    const isOpen = openWhy === item.examId;
+                    return (
+                      <div key={item.examId} style={{ border: '1px solid var(--border-color)', borderLeft: `4px solid ${meta.color}`, borderRadius: '12px', padding: '14px', background: '#fff' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '0.98rem' }}>{item.examTitle}</div>
+                            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                              {item.authorityName}{item.cycle ? ` · ${item.cycle} cycle` : ''}
+                              {item.counts.total > 0 && ` · ${item.counts.eligible} of ${item.counts.total} posts pass the rules checked`}
+                            </div>
+                          </div>
+                          <button className="btn-secondary" style={{ flexShrink: 0 }} onClick={() => setOpenWhy(isOpen ? null : item.examId)}>
+                            {isOpen ? 'Hide' : 'Why?'}
+                          </button>
+                          {exam && (
+                            <button className="btn-primary" style={{ flexShrink: 0 }} onClick={() => onSelectExam(exam)}>
+                              Open exam <ArrowRight size={14} />
+                            </button>
+                          )}
+                        </div>
+
+                        {isOpen && (
+                          <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
+                              {item.summary.map((s, i) => <li key={i}>{s}</li>)}
+                            </ul>
+                            {item.posts.map(p => {
+                              const pm = DISCOVERY_VERDICT_LABELS[p.verdict];
+                              return (
+                                <div key={p.postId} style={{ background: 'var(--surface-2)', borderRadius: '10px', padding: '10px 12px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                    <span style={{ fontWeight: 700, fontSize: '0.86rem', color: 'var(--text-primary)' }}>{p.postName}</span>
+                                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: pm.color, background: pm.bg, borderRadius: '999px', padding: '2px 8px' }}>{pm.title}</span>
+                                  </div>
+                                  <ul style={{ margin: '6px 0 0', paddingLeft: '18px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                    {p.reasons.map((r, i) => (
+                                      <li key={i} style={{ marginBottom: '4px' }}>
+                                        <span style={{ fontWeight: 700 }}>{r.rule === 'AGE' ? 'Age' : r.rule === 'QUALIFICATION' ? 'Qualification' : 'Physical'}: </span>
+                                        {r.text}
+                                        {onOpenProvenanceModal && r.provenance.map(prov => (
+                                          <button key={prov.id} onClick={() => onOpenProvenanceModal(prov)}
+                                            style={{ marginLeft: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--primary)', background: 'none', border: '1px solid var(--border-color)', borderRadius: '999px', padding: '1px 8px', cursor: 'pointer' }}>
+                                            Sourced clause
+                                          </button>
+                                        ))}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+};
+
+
 interface ExamFinderProps {
   /** The exam universe to discover over (authored ∪ runtime registry). Defaults to the authored register. */
   exams?: Exam[];
+  /** Opens the provenance modal from a discovery reason's "Sourced clause" button. */
+  onOpenProvenanceModal?: (provenance: DataProvenance) => void;
   /** Lets the feature cards open a tab (and a section) — the same navigate() every button uses. */
   onNavigate?: (tab: GovOSTab, section?: number) => void;
   onSelectExam: (exam: Exam) => void;
@@ -847,6 +1061,7 @@ interface ExamFinderProps {
 
 export const ExamFinder: React.FC<ExamFinderProps> = ({
   exams = ALL_EXAMS,
+  onOpenProvenanceModal,
   onNavigate,
   onSelectExam,
   onNavigateEligibility,
@@ -1245,6 +1460,9 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
           </div>
         </section>
 
+        {/* Naive-student discovery: the exams the student can consider, and why */}
+        <ExamDiscovery exams={exams} onSelectExam={onSelectExam} onOpenProvenanceModal={onOpenProvenanceModal} />
+
         {/* 4 Feature Action Cards */}
         <div className="feature-grid-4">
           {[
@@ -1255,7 +1473,7 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
               borderColor: 'rgba(16, 185, 129, 0.15)',
               iconBg: '#d1fae5',
               icon: <Search size={20} color="#059669" />,
-              onClick: () => onNavigateEligibility()
+              onClick: () => document.getElementById('exam-discovery')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
             },
             {
               title: 'Track Important Dates',

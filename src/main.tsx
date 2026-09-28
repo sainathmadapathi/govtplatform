@@ -301,6 +301,7 @@ export const App: React.FC = () => {
         {activeTab === 'FINDER' && (
           <ExamFinder
             exams={examUniverse}
+            onOpenProvenanceModal={handleOpenProvenance}
             onNavigate={navigate}
             onSelectExam={handleSelectExam}
             onNavigateEligibility={() => setActiveTab('ELIGIBILITY')}

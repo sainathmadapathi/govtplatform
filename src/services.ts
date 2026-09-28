@@ -42,7 +42,16 @@ import {
   AgeRelaxationEntry,
   ExamFactOverlay,
   ExamFactOverlayKind,
-  ExamOverlayScope
+  ExamOverlayScope,
+  DiscoveryProfile,
+  DiscoveryProfileField,
+  DiscoveryRule,
+  DiscoveryReason,
+  DiscoveryPostResult,
+  DiscoveryPostVerdict,
+  DiscoveryExamResult,
+  DiscoveryVerdict,
+  DiscoveryResult
 } from './types';
 
 
@@ -2930,4 +2939,308 @@ export function applyExamOverlays(exam: Exam, overlays: ExamFactOverlay[]): Exam
 
   return projected;
 }
+
+
+// ==========================================================================
+// DISCOVERY ENGINE (begin) — naive-student exam discovery
+// ==========================================================================
+//
+// `discoverExams(profile, exams)` answers "which government exams can I consider, and why?"
+// for a student who may know nothing yet. It is a pure, deterministic projection of the
+// EXISTING eligibility engine over the exam universe (authored ∪ published runtime exams):
+//
+//   * `evaluatePostEligibility` is the only authority on age, qualification and physical
+//     outcomes. This block never re-implements a rule; it decides which of the engine's
+//     outcomes may be *asserted* given what the student actually supplied.
+//   * A profile field the engine needs and the student has not given makes that rule UNKNOWN
+//     (INSUFFICIENT_INFORMATION), never INELIGIBLE. Whether a missing field matters is found by
+//     asking the engine itself — running it once per possible value and seeing whether the
+//     outcome changes — rather than by keeping a second copy of its rules here.
+//   * A rule the exam's verified record does not carry (no age limit, no crucial date, no
+//     posts) is RULES_NOT_AVAILABLE, a fact about the record, never about the student.
+//   * Every reason is the engine's own wording or a statement of what is absent, and carries
+//     the record's provenance. Nothing is ranked, scored or recommended; results are in the
+//     universe's own order. Nothing here names an exam, an authority or a post id.
+// ==========================================================================
+
+const DISCOVERY_CATEGORIES: UserProfile['category'][] = ['GENERAL', 'OBC', 'SC', 'ST', 'PwBD', 'EWS'];
+
+/**
+ * The `UserProfile` handed to the engine. Fields the student has not given receive a neutral
+ * placeholder ONLY so the engine's input type is satisfied; every outcome that depends on a
+ * placeholder is masked as UNKNOWN by the caller and never read as a verdict.
+ */
+function discoveryEngineInput(p: DiscoveryProfile, overrides: Partial<UserProfile> = {}): UserProfile {
+  return {
+    dateOfBirth: p.dateOfBirth || '',
+    degree: p.degree || '',
+    branch: p.branch || '',
+    mathsIn12thWith60Percent: p.mathsIn12thWith60Percent,
+    statisticsInDegree: p.statisticsInDegree,
+    percentage: 0,
+    category: p.category || 'GENERAL',
+    gender: 'Other',
+    domicileState: '',
+    nationality: '',
+    physicalFitnessDeclared: p.physicalFitnessDeclared,
+    colorBlind: p.colorBlind,
+    ...overrides
+  };
+}
+
+/** The engine joins its per-rule sentences with ' • '; this reads them back by rule. */
+function discoverySplitReasons(verdict: PostVerdict): Record<DiscoveryRule, string[]> {
+  const out: Record<DiscoveryRule, string[]> = { AGE: [], QUALIFICATION: [], PHYSICAL: [] };
+  for (const seg of verdict.reason.split(' • ')) {
+    const s = seg.trim();
+    if (!s) continue;
+    if (/^(age|underage)/i.test(s)) out.AGE.push(s);
+    else if (/^(physical|medical)/i.test(s)) out.PHYSICAL.push(s);
+    else out.QUALIFICATION.push(s);
+  }
+  return out;
+}
+
+function discoveryHasValue(v: unknown): boolean {
+  return v !== undefined && v !== null && v !== '';
+}
+
+/**
+ * Does the engine's outcome for `rule` depend on `field`, given everything else the student
+ * gave? Answered by running the engine with each possible value of the field. If every run
+ * agrees, the field is not needed for this post and the shared outcome is returned; if they
+ * disagree, the rule cannot be asserted without the field.
+ */
+function discoveryProbe(
+  run: (overrides: Partial<UserProfile>) => PostVerdict,
+  field: DiscoveryProfileField,
+  values: unknown[],
+  read: (v: PostVerdict) => string
+): { settled: boolean; verdict: PostVerdict } {
+  const runs = values.map(val => run({ [field]: val } as Partial<UserProfile>));
+  const first = read(runs[0]);
+  return { settled: runs.every(r => read(r) === first), verdict: runs[0] };
+}
+
+function discoveryPost(exam: Exam, post: PostRequirement, profile: DiscoveryProfile, crucialDate: string): DiscoveryPostResult {
+  const run = (overrides: Partial<UserProfile> = {}) =>
+    evaluatePostEligibility(post, discoveryEngineInput(profile, overrides), crucialDate || '0000-00-00', exam);
+  const reasons: DiscoveryReason[] = [];
+  const cite = (...p: (DataProvenance | undefined | null)[]) => p.filter((x): x is DataProvenance => !!x && !!x.id);
+  let engineVerdict: PostVerdict | null = null;
+
+  // ---- AGE: the post's own limit, reckoned on the exam's own crucial date, relaxed only by the
+  // ---- exam's own published entry for the student's category.
+  const ageRulePublished = post.maxAge > 0 && !!crucialDate;
+  if (!ageRulePublished) {
+    reasons.push({
+      rule: 'AGE', outcome: 'UNKNOWN', missingFields: [], ruleNotPublished: true,
+      text: !crucialDate
+        ? `${exam.authorityName}'s record for this cycle carries no date on which age is reckoned, so the age rule cannot be applied.`
+        : `The verified record carries no upper age limit for ${post.postName}, so the age rule cannot be applied.`,
+      provenance: cite(post.provenance)
+    });
+  } else if (!discoveryHasValue(profile.dateOfBirth)) {
+    reasons.push({
+      rule: 'AGE', outcome: 'UNKNOWN', missingFields: ['dateOfBirth'],
+      text: `${post.postName}: age must be ${post.minAge}–${post.maxAge} years as on ${crucialDate}; your date of birth is needed to check it.`,
+      provenance: cite(post.provenance)
+    });
+  } else {
+    let v: PostVerdict;
+    let categoryNeeded = false;
+    if (!discoveryHasValue(profile.category)) {
+      const probe = discoveryProbe(run, 'category', DISCOVERY_CATEGORIES, r => r.ageStatus);
+      categoryNeeded = !probe.settled;
+      v = probe.verdict;
+    } else {
+      v = run();
+    }
+    engineVerdict = v;
+    const relax = discoveryHasValue(profile.category) ? findAgeRelaxation(exam, profile.category as string, post.id) : null;
+    if (categoryNeeded) {
+      reasons.push({
+        rule: 'AGE', outcome: 'UNKNOWN', missingFields: ['category'],
+        text: `${post.postName}: whether your age (${v.calculatedAge} as on ${crucialDate}) is within the limit depends on the age relaxation ${exam.authorityName} publishes for your category; your category is needed.`,
+        provenance: cite(post.provenance, ...(exam.ageRelaxations || []).map(e => e.provenance))
+      });
+    } else {
+      reasons.push({
+        rule: 'AGE', outcome: v.ageStatus === 'OK' ? 'PASS' : 'FAIL', missingFields: [],
+        text: discoverySplitReasons(v).AGE.join(' ') +
+          (discoveryHasValue(profile.category) ? '' : ' (The outcome is the same for every category, so your category was not needed here.)'),
+        provenance: cite(post.provenance, relax?.provenance)
+      });
+    }
+  }
+
+  // ---- QUALIFICATION: the engine's degree check, plus any special qualification it applies to
+  // ---- this post. Which optional fields matter is asked of the engine, not assumed.
+  if (!discoveryHasValue(profile.degree)) {
+    reasons.push({
+      rule: 'QUALIFICATION', outcome: 'UNKNOWN', missingFields: ['degree'],
+      text: `${post.postName}: your educational qualification is needed to check the degree requirement${post.specialQualification ? ` (${post.specialQualification})` : ''}.`,
+      provenance: cite(post.provenance)
+    });
+  } else {
+    const missing: DiscoveryProfileField[] = [];
+    let v = run();
+    for (const f of ['statisticsInDegree', 'mathsIn12thWith60Percent'] as const) {
+      if (discoveryHasValue(profile[f])) continue;
+      const probe = discoveryProbe(run, f, [true, false], r => r.qualStatus);
+      if (!probe.settled) missing.push(f);
+    }
+    // The engine reads a statistics branch as an alternative to the statistics answer, so the
+    // branch is only asked for when the student has not answered the statistics question at all.
+    if (!discoveryHasValue(profile.branch) && !discoveryHasValue(profile.statisticsInDegree)) {
+      const probe = discoveryProbe(run, 'branch', ['statistics', ''], r => r.qualStatus);
+      if (!probe.settled) missing.push('branch');
+    }
+    engineVerdict = engineVerdict || v;
+    if (missing.length) {
+      reasons.push({
+        rule: 'QUALIFICATION', outcome: 'UNKNOWN', missingFields: missing,
+        text: `${post.postName}: ${post.specialQualification || 'a special qualification'} — the answer depends on ${missing.join(', ')}, which you have not given.`,
+        provenance: cite(post.provenance)
+      });
+    } else {
+      reasons.push({
+        rule: 'QUALIFICATION', outcome: v.qualStatus === 'OK' ? 'PASS' : 'FAIL', missingFields: [],
+        text: discoverySplitReasons(v).QUALIFICATION.join(' '),
+        provenance: cite(post.provenance)
+      });
+    }
+  }
+
+  // ---- PHYSICAL: only where the record says the post has physical standards.
+  if (post.physicalRequired) {
+    const missing: DiscoveryProfileField[] = [];
+    for (const f of ['physicalFitnessDeclared', 'colorBlind'] as const) {
+      if (discoveryHasValue(profile[f])) continue;
+      const probe = discoveryProbe(run, f, [true, false], r => r.physicalStatus);
+      if (!probe.settled) missing.push(f);
+    }
+    const v = run();
+    engineVerdict = engineVerdict || v;
+    if (missing.length) {
+      reasons.push({
+        rule: 'PHYSICAL', outcome: 'UNKNOWN', missingFields: missing,
+        text: `${post.postName} has physical standards (${post.physicalNote || 'as published'}); ${missing.join(' and ')} needed to check them.`,
+        provenance: cite(post.provenance)
+      });
+    } else {
+      reasons.push({
+        rule: 'PHYSICAL', outcome: v.physicalStatus === 'OK' ? 'PASS' : 'FAIL', missingFields: [],
+        text: discoverySplitReasons(v).PHYSICAL.join(' ') || `Physical standards (${post.physicalNote || 'as published'}): your declaration satisfies them.`,
+        provenance: cite(post.provenance)
+      });
+    }
+  }
+
+  // A known failure is decisive whatever else is unknown. Otherwise a rule the record lacks
+  // cannot be resolved by the student, so it outranks a missing field; only a post every rule
+  // of which passed is ELIGIBLE.
+  let verdict: DiscoveryPostVerdict;
+  if (reasons.some(r => r.outcome === 'FAIL')) verdict = 'INELIGIBLE';
+  else if (reasons.some(r => r.ruleNotPublished)) verdict = 'RULES_NOT_AVAILABLE';
+  else if (reasons.some(r => r.missingFields.length > 0)) verdict = 'INSUFFICIENT_INFORMATION';
+  else verdict = 'ELIGIBLE';
+
+  return {
+    postId: post.id, postName: post.postName, department: post.department,
+    verdict, reasons, provenance: post.provenance,
+    engineVerdict: verdict === 'ELIGIBLE' || verdict === 'INELIGIBLE' ? engineVerdict : null
+  };
+}
+
+function discoveryExam(exam: Exam, profile: DiscoveryProfile): DiscoveryExamResult {
+  const crucialDate = exam.crucialEligibilityDate || '';
+  const cycle = getExamCycle(exam);
+  const posts = (exam.posts || []).map(p => discoveryPost(exam, p, profile, crucialDate));
+
+  const counts = {
+    eligible: posts.filter(p => p.verdict === 'ELIGIBLE').length,
+    ineligible: posts.filter(p => p.verdict === 'INELIGIBLE').length,
+    insufficient: posts.filter(p => p.verdict === 'INSUFFICIENT_INFORMATION').length,
+    rulesNotAvailable: posts.filter(p => p.verdict === 'RULES_NOT_AVAILABLE').length,
+    total: posts.length
+  };
+
+  let verdict: DiscoveryVerdict;
+  if (counts.total === 0) verdict = 'RULES_NOT_AVAILABLE';
+  else if (counts.eligible === counts.total) verdict = 'ELIGIBLE';
+  else if (counts.eligible > 0) verdict = 'CONDITIONAL';
+  else if (counts.insufficient > 0) verdict = 'INSUFFICIENT_INFORMATION';
+  else if (counts.rulesNotAvailable > 0) verdict = 'RULES_NOT_AVAILABLE';
+  else verdict = 'INELIGIBLE';
+
+  const missingFields = Array.from(new Set(posts.flatMap(p => p.reasons.flatMap(r => r.missingFields)))) as DiscoveryProfileField[];
+  const provenanceRefs: DataProvenance[] = [];
+  const seen = new Set<string>();
+  for (const p of posts) for (const r of p.reasons) for (const prov of r.provenance) {
+    if (!seen.has(prov.id)) { seen.add(prov.id); provenanceRefs.push(prov); }
+  }
+
+  const summary: string[] = [];
+  if (counts.total === 0) {
+    summary.push(`${exam.title}: the verified record for cycle ${cycle || '(unknown)'} carries no post-level eligibility rules, so no verdict can be given yet.`);
+  } else {
+    summary.push(crucialDate
+      ? `${exam.title}: age is reckoned as on ${crucialDate}.`
+      : `${exam.title}: the record carries no date on which age is reckoned.`);
+    if (discoveryHasValue(profile.category)) {
+      const relax = findAgeRelaxation(exam, profile.category as string);
+      summary.push(relax
+        ? `Age relaxation for ${profile.category}: ${relax.years !== undefined ? `+${relax.years} years` : relax.maximumAge !== undefined ? `upper limit ${relax.maximumAge} years` : 'stated without a figure'} — ${relax.provenance.documentTitle}.`
+        : `No age relaxation for ${profile.category} is recorded from ${exam.authorityName}'s own documents, so none has been applied.`);
+    }
+    summary.push(`${counts.eligible} of ${counts.total} posts: eligible on the rules checked` +
+      (counts.ineligible ? `; ${counts.ineligible} not eligible` : '') +
+      (counts.insufficient ? `; ${counts.insufficient} need more information` : '') +
+      (counts.rulesNotAvailable ? `; ${counts.rulesNotAvailable} have rules not yet in the record` : '') + '.');
+  }
+
+  return {
+    examId: exam.id, examTitle: exam.title, authorityName: exam.authorityName,
+    cycle, origin: exam.origin === 'MACHINE_ACQUIRED' ? 'MACHINE_ACQUIRED' : 'AUTHORED',
+    crucialDate, verdict, posts, summary, missingFields, provenanceRefs, counts
+  };
+}
+
+/**
+ * Which exams can this student consider, and why — over the whole universe handed in
+ * (`getExamUniverse(authoredRegister, registryExams)`), in that order, with no ranking.
+ * Pure: same inputs, same output; reads no storage, no clock, no network.
+ */
+export function discoverExams(profile: DiscoveryProfile, exams: Exam[]): DiscoveryResult {
+  const results = exams.map(e => discoveryExam(e, profile));
+  return {
+    profile: { ...profile },
+    exams: results,
+    universe: {
+      authored: exams.filter(e => e.origin !== 'MACHINE_ACQUIRED').length,
+      machineAcquired: exams.filter(e => e.origin === 'MACHINE_ACQUIRED').length,
+      total: exams.length
+    },
+    missingFields: Array.from(new Set(results.flatMap(r => r.missingFields))) as DiscoveryProfileField[]
+  };
+}
+
+/** The discovery inputs a saved candidate profile already answers, so the student is not asked twice. */
+export function discoveryProfileFromUserProfile(p: UserProfile | null | undefined): DiscoveryProfile {
+  if (!p) return {};
+  const out: DiscoveryProfile = {};
+  if (p.dateOfBirth) out.dateOfBirth = p.dateOfBirth;
+  if (p.category) out.category = p.category;
+  if (p.degree) out.degree = p.degree;
+  if (p.branch) out.branch = p.branch;
+  if (p.statisticsInDegree !== undefined) out.statisticsInDegree = p.statisticsInDegree;
+  if (p.mathsIn12thWith60Percent !== undefined) out.mathsIn12thWith60Percent = p.mathsIn12thWith60Percent;
+  if (p.physicalFitnessDeclared !== undefined) out.physicalFitnessDeclared = p.physicalFitnessDeclared;
+  if (p.colorBlind !== undefined) out.colorBlind = p.colorBlind;
+  return out;
+}
+// ==========================================================================
+// DISCOVERY ENGINE (end)
+// ==========================================================================
 

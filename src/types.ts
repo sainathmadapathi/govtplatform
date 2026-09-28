@@ -1487,3 +1487,115 @@ export interface ExamFactOverlay {
   retired: boolean;
 }
 
+
+// ==========================================================================
+// Naive-student discovery — the typed result of `discoverExams(profile, exams)`
+// ==========================================================================
+//
+// A student who knows only "I want to write a government exam" asks two things: which exams
+// can I consider given what is actually true about me, and why is each one shown. The answer
+// is a projection of the EXISTING eligibility engine (`evaluatePostEligibility`) over the whole
+// exam universe. Nothing here is a second rule system: every verdict below is that engine's
+// verdict, and every reason names the exam's own verified data.
+
+/**
+ * The profile fields discovery accepts — only those an existing eligibility rule consumes.
+ * Each is optional because a naive student may not know it yet: a missing field that a rule
+ * needs is reported as INSUFFICIENT_INFORMATION, never guessed.
+ *
+ *   dateOfBirth               age as on the exam's crucial date vs. each post's minAge/maxAge
+ *   category                  the exam's own published age relaxation for that category
+ *   degree                    the engine's bachelor's-degree check (final-year is accepted)
+ *   branch / statisticsInDegree / mathsIn12thWith60Percent
+ *                             a post's special qualification, where the engine checks one
+ *   physicalFitnessDeclared / colorBlind
+ *                             posts with physical standards (`PostRequirement.physicalRequired`)
+ */
+export type DiscoveryProfileField =
+  | 'dateOfBirth' | 'category' | 'degree'
+  | 'branch' | 'statisticsInDegree' | 'mathsIn12thWith60Percent'
+  | 'physicalFitnessDeclared' | 'colorBlind';
+
+export interface DiscoveryProfile {
+  dateOfBirth?: string;
+  category?: UserProfile['category'];
+  degree?: string;
+  branch?: string;
+  statisticsInDegree?: boolean;
+  mathsIn12thWith60Percent?: boolean;
+  physicalFitnessDeclared?: boolean;
+  colorBlind?: boolean;
+}
+
+/**
+ * Exam-level verdicts. The first three are the existing engine's own statuses. The last two are
+ * honest states the engine cannot express on its own:
+ *   INSUFFICIENT_INFORMATION  a rule the exam publishes needs a profile field the student has not
+ *                             given; nothing was assumed in its place
+ *   RULES_NOT_AVAILABLE       the exam's verified record carries no post-level eligibility rules
+ *                             (the authority may not have published them, or they have not been
+ *                             read yet) — never rendered as "you are not eligible"
+ */
+export type DiscoveryVerdict =
+  | 'ELIGIBLE' | 'CONDITIONAL' | 'INELIGIBLE' | 'INSUFFICIENT_INFORMATION' | 'RULES_NOT_AVAILABLE';
+
+export type DiscoveryPostVerdict = 'ELIGIBLE' | 'INELIGIBLE' | 'INSUFFICIENT_INFORMATION' | 'RULES_NOT_AVAILABLE';
+
+export type DiscoveryRule = 'AGE' | 'QUALIFICATION' | 'PHYSICAL';
+
+/** One rule's outcome for one post, in the exam's own terms, with the evidence it rests on. */
+export interface DiscoveryReason {
+  rule: DiscoveryRule;
+  /** PASS/FAIL are the engine's outcome; UNKNOWN means a needed input or a needed rule is absent. */
+  outcome: 'PASS' | 'FAIL' | 'UNKNOWN';
+  /** The engine's own wording for this rule, or a statement of what is missing. Never invented. */
+  text: string;
+  /** Profile fields this rule needs and the student has not supplied. */
+  missingFields: DiscoveryProfileField[];
+  /** True when the exam's record has no verified rule of this kind for the post. */
+  ruleNotPublished?: boolean;
+  /** The verified data this outcome rests on (the post's clause, a published relaxation). */
+  provenance: DataProvenance[];
+}
+
+export interface DiscoveryPostResult {
+  postId: string;
+  postName: string;
+  department: string;
+  verdict: DiscoveryPostVerdict;
+  reasons: DiscoveryReason[];
+  /** The post's own provenance, as authored or materialized. */
+  provenance: DataProvenance;
+  /** The existing engine's verdict this result was projected from; null where a needed input was absent. */
+  engineVerdict: PostVerdict | null;
+}
+
+export interface DiscoveryExamResult {
+  examId: string;
+  examTitle: string;
+  authorityName: string;
+  /** The cycle actually evaluated (`getExamCycle`). No other cycle's rules are consulted. */
+  cycle: string;
+  origin: 'AUTHORED' | 'MACHINE_ACQUIRED';
+  /** The date age is reckoned on, from the exam's own record; '' when the record has none. */
+  crucialDate: string;
+  verdict: DiscoveryVerdict;
+  posts: DiscoveryPostResult[];
+  /** Exam-level statements (why the verdict is what it is), each grounded in the record. */
+  summary: string[];
+  /** Union of the profile fields the exam's rules need and the student has not supplied. */
+  missingFields: DiscoveryProfileField[];
+  /** Every provenance the reasons cite, de-duplicated by id, so the UI can open "Sourced Clause". */
+  provenanceRefs: DataProvenance[];
+  counts: { eligible: number; ineligible: number; insufficient: number; rulesNotAvailable: number; total: number };
+}
+
+export interface DiscoveryResult {
+  profile: DiscoveryProfile;
+  /** In the universe's own order — discovery ranks nothing. */
+  exams: DiscoveryExamResult[];
+  universe: { authored: number; machineAcquired: number; total: number };
+  /** Every field any exam asked for and the student has not given, so the UI can ask once. */
+  missingFields: DiscoveryProfileField[];
+}
+
