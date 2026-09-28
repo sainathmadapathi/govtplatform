@@ -123,9 +123,22 @@ class TestRealWorldRematerialization(unittest.TestCase):
         self.assertEqual(elig['state'], 'NEEDS_REVIEW')
 
     def test_derived_sections_say_not_generated(self):
-        for num in (7, 17):
-            st = next(v for v in self.exam['sectionStates'].values() if v['sectionNum'] == num)
-            self.assertEqual(st['state'], 'NOT_YET_GENERATED', num)
+        # Changed expectation: section 07 used to report NOT_YET_GENERATED because nothing
+        # generated study guidance. The materializer now carries a deterministic study order
+        # over the verified syllabus (GOVOS_GUIDANCE), so the roadmap is supported and projected
+        # -- and it may contain nothing but the record's own syllabus topics. Mock Tests has
+        # no verified question source and must still say so.
+        mock = next(v for v in self.exam['sectionStates'].values() if v['sectionNum'] == 17)
+        self.assertEqual(mock['state'], 'NOT_YET_GENERATED')
+        road = next(v for v in self.exam['sectionStates'].values() if v['sectionNum'] == 7)
+        self.assertEqual(road['state'], 'SUPPORTED_AND_PROJECTED')
+        guidance = self.exam['studyGuidance']
+        self.assertEqual(guidance['source'], 'GOVOS_GUIDANCE')
+        self.assertEqual(guidance['generatedBy'], 'deterministic')
+        topics = {t['topicName'] for t in self.exam['syllabus']}
+        self.assertTrue(guidance['steps'])
+        self.assertTrue(all(s['topicName'] in topics for s in guidance['steps']))
+        self.assertNotIn('durationWeeks', json.dumps(guidance))
 
     def test_improvement_over_the_stored_runtime(self):
         before = self.fx['runtimeBeforeSummary']

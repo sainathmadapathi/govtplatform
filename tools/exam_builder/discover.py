@@ -57,9 +57,14 @@ _KIND_PATTERNS: list[tuple[DocKind, str]] = [
     (DocKind.ADMIT_CARD, r'admit\s*-?\s*card|hall\s*ticket|call\s*letter|e-?admit|intimation\s+slip'),
     (DocKind.CUTOFF, r'cut\s*-?\s*off|qualifying\s+marks|minimum\s+marks'),
     (DocKind.QUESTION_PAPER, r'question\s*paper|previous\s*year|\bpyq\b|\bqp[-_ ]|papers?\s+held'),
-    (DocKind.RESULT, r'\bresults?\b|merit\s+list|short\s*-?\s*list|written\s+result|recommend'),
+    # A selection notification and a call to certificate verification are stages of the
+    # result: the first declares who is selected, the second who is shortlisted for it.
+    (DocKind.RESULT, r'\bresults?\b|merit\s+list|short\s*-?\s*list|written\s+result|recommend|'
+                     r'(?:provisional|final)\s+selection|selection\s+(?:list|notification)|'
+                     r'verification\s+of\s+certificates|certificates?\s+verification'),
     (DocKind.SYLLABUS, r'syllabus|scheme\s+of\s+exam|course\s+content'),
-    (DocKind.EXAM_PATTERN, r'exam(ination)?\s+pattern|scheme\s+and\s+syllabus|marking\s+scheme'),
+    (DocKind.EXAM_PATTERN, r'exam(ination)?\s+pattern|pattern\s+of\s+exam\w*|scheme\s+and\s+syllabus|'
+                           r'marking\s+scheme'),
     (DocKind.CALENDAR, r'calendar|exam\s+schedule|date\s*sheet|time\s*table|programme'),
     (DocKind.APPLICATION_PORTAL, r'apply\s*online|online\s+application|registration|one\s*time\s*reg|\botr\b'),
     (DocKind.NOTIFICATION, r'notification|notice|advertisement|\badvt\b|employment\s+news|recruitment\s+for'),

@@ -460,12 +460,39 @@ def extract_syllabus(doc: SourceDocument, text: str, *, exam_id: str,
             root.status = Status.NEEDS_REVIEW
         syllabus.roots.append(root)
 
+    _make_ids_unique(syllabus.roots)
     if syllabus.roots:
         note = ('read from the authority’s own document; hierarchy is the document’s '
                 'own numbering or headings')
         syllabus.source_note = Fact.verified(note, syllabus.roots[0].evidence[0]) \
             if syllabus.roots[0].evidence else Fact.needs_review(note, 'no verbatim heading')
     return syllabus
+
+
+def _make_ids_unique(roots: list) -> None:
+    """Give every node an id no other node in the syllabus carries.
+
+    A clause id is built from the clause's own number, and a document that numbers each
+    paper's syllabus from "1." again produces the same number under every paper. Two nodes
+    sharing an id are one node to anything keyed on it, so the later ones could be dropped
+    on display. The first node keeps its id, so a syllabus whose ids were already unique is
+    unchanged; a repeat is qualified by its parent's id, the position the document gave it.
+    """
+    seen: set = set()
+
+    def visit(node, parent_id: str) -> None:
+        if node.id in seen:
+            base = f'{parent_id}-{node.id.rsplit("-", 1)[-1]}' if parent_id else node.id
+            candidate, n = base, 2
+            while candidate in seen:
+                candidate, n = f'{base}-{n}', n + 1
+            node.id = candidate
+        seen.add(node.id)
+        for child in node.children:
+            visit(child, node.id)
+
+    for root in roots:
+        visit(root, '')
 
 
 def _entry_count(nodes: list) -> int:

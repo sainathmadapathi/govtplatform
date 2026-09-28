@@ -308,7 +308,10 @@ class TestPhase3Completion(unittest.TestCase):
             'application': 'VERIFIED_AVAILABLE', 'pattern': 'VERIFIED_AVAILABLE', 'syllabus': 'VERIFIED_AVAILABLE',
             'admit-card': 'VERIFIED_AVAILABLE', 'corrigenda': 'VERIFIED_AVAILABLE', 'resources': 'VERIFIED_AVAILABLE',
             'official-links': 'VERIFIED_AVAILABLE',
-            'roadmap': 'NOT_YET_GENERATED', 'mock-tests': 'NOT_YET_GENERATED',
+            # Changed expectation: the roadmap is now a deterministic study order over the
+            # verified syllabus (GOVOS_GUIDANCE, `studyGuidance`), so it is supported and
+            # projected. Mock tests still have no verified question source.
+            'roadmap': 'SUPPORTED_AND_PROJECTED', 'mock-tests': 'NOT_YET_GENERATED',
             'exam-day': 'SOURCE_NOT_FOUND_AFTER_SEARCH', 'faqs': 'SOURCE_NOT_FOUND_AFTER_SEARCH',
             'pyqs': 'NOT_YET_PUBLISHED', 'results': 'NOT_YET_PUBLISHED', 'cutoffs': 'NOT_YET_PUBLISHED',
         }

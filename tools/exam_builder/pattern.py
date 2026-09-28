@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import re
 
-from .evidence import Evidence, EvidenceStatus
+from .evidence import Evidence, EvidenceStatus, normalise_ws
 from .schema import (CategoryMinimum, DurationVariant, ExamPattern, Fact, NegativeMarking,
                      PatternLevel, PatternNode, QualifyingRule, SourceDocument,
                      SourceEvidence, Status)
@@ -975,8 +975,115 @@ def _hold_figures(node: PatternNode, why: str) -> None:
                 fact.note = why
 
 
+#: The tail of a scheme row: its duration and its marks, as two bare figures. "2 ½ 150",
+#: "3 150". The fraction is the document's own glyph.
+_ROW_TAIL = re.compile(r'(?:^|\s)(?P<a>\d{1,3}(?:\s*(?:½|1/2)|\.\d)?)\s+(?P<b>\d{1,4})\s*$')
+_TOTAL_MARKS = re.compile(r'^\s*total\s*(?:marks)?\s*[:\-–—]?\s*(?P<n>\d{2,5})\s*$', re.I)
+
+
+def _hours_to_minutes(token: str) -> int | None:
+    t = token.replace(' ', '')
+    half = t.endswith('½') or t.endswith('1/2')
+    t = t.replace('½', '').replace('1/2', '')
+    try:
+        hours = float(t)
+    except ValueError:
+        return None
+    return int(round((hours + (0.5 if half else 0)) * 60))
+
+
+def _segmented_stages(cur: _Cursor, doc: SourceDocument, text: str, span: tuple[int, int], *,
+                      prefix: str) -> list[PatternNode]:
+    """Stages read from one scheme table whose own row headings name the stages.
+
+    The header must declare a duration column and a marks column, in an order; each row of a
+    stage ends on the line whose tail is those two figures in that order; the stage's own
+    total is the table's "TOTAL MARKS" line where it follows the stage's rows. Every row of
+    every stage must read this way -- if any stage yields no row, nothing is returned and the
+    heading stays a heading under review.
+    """
+    from .tables import ColumnKind as _CK, _columns_in
+    start, end = span
+    lines = [l.rstrip() for l in cur.lines[start:end]]
+    heads = [i for i, l in enumerate(lines)
+             if _ROW_STAGE.match(l.strip()) and len(l.split()) <= 8 and not _IS_STATEMENT.search(l)]
+    if len(heads) < 2:
+        return []
+    header_text = ' '.join(l.strip() for l in lines[:heads[0]])
+    columns = [c.kind for c in _columns_in(header_text)]
+    if _CK.DURATION not in columns or _CK.MARKS not in columns:
+        return []
+    duration_first = columns.index(_CK.DURATION) < columns.index(_CK.MARKS)
+    in_hours = bool(re.search(r'\bhours?\b|\bhrs?\b', header_text, re.I))
+    if not in_hours:
+        return []
+
+    stages: list[PatternNode] = []
+    for n, head in enumerate(heads):
+        stop = heads[n + 1] if n + 1 < len(heads) else len(lines)
+        name = normalise_ws(lines[head])
+        stage_id = f'{prefix}-{_slug(name)}'
+        stage = PatternNode(id=stage_id, level=PatternLevel.STAGE, level_label='Stage',
+                            name=name, order=n + 1)
+        ev = _evidence(name, doc, text, reading=f'a stage named in the scheme table: {name}')
+        if ev is None:
+            return []
+        stage.evidence, stage.status = [ev], Status.VERIFIED
+        buffer: list[str] = []
+        for raw in lines[head + 1:stop]:
+            line = raw.strip()
+            if not line:
+                continue
+            total = _TOTAL_MARKS.match(line)
+            if total and stage.children:
+                stage.marks = _fact(float(total.group('n')), line, doc, text,
+                                    reading=f'total marks printed for {name}')
+                break
+            buffer.append(line)
+            tail = _ROW_TAIL.search(line)
+            if not tail:
+                continue
+            row = normalise_ws(' '.join(buffer))
+            buffer = []
+            a, b = tail.group('a'), tail.group('b')
+            duration_token, marks_token = (a, b) if duration_first else (b, a)
+            minutes = _hours_to_minutes(duration_token)
+            body = row[:len(row) - len(tail.group(0).strip())].strip()
+            paper_name = re.split(r'\s(?:It\s+will\b|1\.\s)', body, maxsplit=1)[0].strip(' .:-–—')
+            if minutes is None or not paper_name:
+                return []
+            questions = re.search(r'\b(\d{1,4})\s+questions\b', body, re.I)
+            if questions:
+                paper_name = paper_name[:paper_name.lower().rfind(questions.group(0).lower())].strip() or paper_name
+            code_m = _STAGE_LABELLED.search(paper_name)
+            paper = PatternNode(id=f'{stage_id}-{_slug(paper_name)}', level=PatternLevel.PAPER,
+                                level_label='Paper', name=paper_name,
+                                code=code_m.group(0).strip() if code_m and code_m.group('label').lower() == 'paper' else '',
+                                order=len(stage.children) + 1)
+            pev = _evidence(row, doc, text, reading=f'a row of the scheme table: {paper_name}')
+            if pev is None:
+                return []
+            paper.evidence, paper.status = [pev], Status.VERIFIED
+            paper.marks = Fact.verified(float(marks_token), pev)
+            paper.duration_minutes = Fact.verified(minutes, pev)
+            if questions:
+                paper.questions = Fact.verified(int(questions.group(1)), pev)
+            qtype = re.search(r'\((objective|descriptive|conventional)\s+type\)', body, re.I)
+            if qtype:
+                paper.question_type = Fact.verified(qtype.group(1).title(), pev)
+            if re.search(r'\bqualifying\b', paper_name, re.I):
+                paper.qualifying = Fact.verified(
+                    QualifyingRule(as_printed=paper_name, is_qualifying_only=True), pev)
+            stage.children.append(paper)
+        if not stage.children:
+            return []
+        stages.append(stage)
+    return stages
+
+
 def _classify_scheme_containers(pattern: ExamPattern, cur: _Cursor,
-                                containers: dict[str, tuple[int, int]]) -> None:
+                                containers: dict[str, tuple[int, int]],
+                                doc: SourceDocument | None = None, text: str = '') -> None:
     """A scheme heading whose table names several stages is a heading over them.
 
     "SCHEME OF EXAMINATION" over a table with a "Preliminary Test" row block and a
@@ -985,18 +1092,31 @@ def _classify_scheme_containers(pattern: ExamPattern, cur: _Cursor,
     node is kept as a HEADING with everything read under it, and every figure in it is held
     for review: a total across two stages is nobody's total.
     """
+    replaced: list = []
     for node in pattern.stages:
         span = containers.get(node.id)
         if span is None:
+            replaced.append(node)
             continue
         named = _stages_named_in(cur, *span)
         if len(named) < 2:
+            replaced.append(node)
+            continue
+        # The table names its stages in its own rows. Where every stage's rows can be read
+        # from the table's declared columns, the heading gives way to those stages.
+        stages = _segmented_stages(cur, doc, text, span, prefix=node.id)
+        if stages:
+            for i, st in enumerate(stages, start=len(replaced) + 1):
+                st.order = i
+            replaced.extend(stages)
             continue
         node.level = PatternLevel.HEADING
         node.level_label = 'Heading'
         node.status = Status.NEEDS_REVIEW
         _hold_figures(node, 'read from a table that spans several stages '
                             f'({", ".join(sorted(named))}); not attributed to one stage')
+        replaced.append(node)
+    pattern.stages[:] = replaced
 
 
 def _hold_figures_of_unsure_rows(pattern: ExamPattern) -> None:
@@ -1149,7 +1269,7 @@ def extract_pattern(doc: SourceDocument, text: str, *, exam_id: str,
     _fold_restated_stages(pattern)
     _apply_merit_statements(pattern, doc, text)
     _push_down_stage_rules(pattern)
-    _classify_scheme_containers(pattern, cur, containers)
+    _classify_scheme_containers(pattern, cur, containers, doc, text)
     _hold_figures_of_unsure_rows(pattern)
     return pattern
 

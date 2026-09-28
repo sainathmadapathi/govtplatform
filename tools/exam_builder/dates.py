@@ -130,6 +130,48 @@ def read_dates(text: str) -> list[ReadDate]:
     return out
 
 
+#: The words that make a date part of a document reference: "Notification No. 02/2024,
+#: Dt. 19/02/2024", "G.O.Ms.No.29, dated 08-02-2024", "vide Memo No. 12 dated ...". Such a
+#: date says when a document was issued, not when anything happens.
+_CITATION_BEFORE = re.compile(
+    r'(?:notification|notice|advt|advertisement|g\.?\s?o\.?(?:\s*\(?\w+\)?)?|memo|letter|circular|'
+    r'order|proceedings?|rc|lr)\.?\s*(?:ms\.?\s*|rt\.?\s*)?(?:no|number)\.?\s*[:.]?\s*[\w/()\-]{1,20}'
+    r'[\s,]*(?:\(?\s*dated|dt)\.?\s*[:.\-]?\s*$', re.I)
+
+
+#: An earlier document's issue date, named in reference to it: "In continuation to the
+#: notification of certificates verification issued on 09/04/2031". Without the reference
+#: marker, "Notification published on X" is the event itself and is not a citation.
+_ISSUED_BEFORE = re.compile(r'(?:in\s+continuation|with\s+reference|further\s+to|\bvide\b|\bas\s+per\b|'
+                            r'\breferred)[^.]{0,90}\b(?:issued|published|released)\s+(?:on|dated)\s*$',
+                            re.I)
+
+
+def _cited(text: str, start: int) -> bool:
+    before = text[max(0, start - 70):start]
+    if re.search(r'(?:^|[\s(,])(?:dt|dated)\.?\s*[:.\-]?\s*$', before, re.I):
+        # "Dt. 19/02/2031", "dated 08-02-2031": the date a document carries, not an event.
+        return True
+    return bool(_CITATION_BEFORE.search(before)
+                or _ISSUED_BEFORE.search(text[max(0, start - 180):start]))
+
+
+def _uncited_dates(text: str) -> list[ReadDate]:
+    # A date listed with a cited one ("issued on 09/04/2031, 24/04/2031 & 06/06/2031") is
+    # cited too: the list is one reference.
+    out: list[ReadDate] = []
+    previous: ReadDate | None = None
+    previous_cited = False
+    for d in read_dates(text):
+        joined = previous is not None and re.fullmatch(
+            r'[\s,&]*(?:and\s*)?', text[previous.end:d.start], re.I)
+        cited = _cited(text, d.start) or bool(joined and previous_cited)
+        if not cited:
+            out.append(d)
+        previous, previous_cited = d, cited
+    return out
+
+
 # ===================================================================== events
 @dataclass(frozen=True)
 class EventCue:
@@ -189,7 +231,9 @@ EVENT_CUES: tuple[EventCue, ...] = (
               r'\b(?:submission|registration)\s+(?:window\s+)?(?:starts?|opens?|begins?|commences?|ends?|closes?)\b'),
              against=(r'\bfee\b.{0,20}\bpayment\b',)),
     EventCue('ADMIT_CARD',
-             (r'(?:e-?\s?)?admit\s+cards?', r'call\s+letters?', r'hall\s+tickets?'),
+             # "Hall Ticket Numbers" is how candidates are listed, not an admit-card event.
+             (r'(?:e-?\s?)?admit\s+cards?', r'call\s+letters?',
+              r'hall\s+tickets?(?!\s+(?:no|nos|numbers?)\b)'),
              against=(r'\bcity\s+intimation\b',)),
     EventCue('CITY_INTIMATION',
              (r'city\s+intimation', r'intimation\s+of\s+(?:exam\w*\s+)?city',
@@ -197,7 +241,13 @@ EVENT_CUES: tuple[EventCue, ...] = (
     EventCue('ANSWER_KEY',
              (r'answer\s+keys?', r'tentative\s+keys?', r'provisional\s+keys?')),
     EventCue('RESULT',
-             (r'\bresults?\b', r'declaration\s+of\s+result', r'merit\s+list')),
+             (r'\bresults?\b', r'declaration\s+of\s+result', r'merit\s+list',
+              r'(?:general\s+)?ranking\s+list', r'\brank\s+list')),
+    # Choosing posts and zones after the written stage: "web options", "option entry",
+    # "exercise of options". A milestone of its own, not a verification and not a result.
+    EventCue('OPTION_ENTRY',
+             (r'\bweb[\s-]*options?\b', r'\boption\s+entry\b', r'\bexercis\w*\s+(?:of\s+)?options?\b',
+              r'\bchoice\s+filling\b')),
     EventCue('INTERVIEW',
              (r'\binterviews?\b', r'personality\s+test', r'viva[\s-]?voce')),
     EventCue('SKILL_TEST',
@@ -205,10 +255,12 @@ EVENT_CUES: tuple[EventCue, ...] = (
               r'computer\s+(?:knowledge|proficiency)\s+test', r'\bdest\b')),
     EventCue('PHYSICAL_TEST',
              (r'physical\s+(?:efficiency|standard|measurement)\s+test',
-              r'\bpet\b', r'\bpst\b', r'physical\s+test')),
+              r'\bpet\b', r'\bpst\b', r'physical\s+test',
+              r'medical\s+(?:examination|board|test)\b')),
     EventCue('DOCUMENT_VERIFICATION',
              (r'document\s+verification', r'verification\s+of\s+documents?',
-              r'scrutiny\s+of\s+documents?')),
+              r'scrutiny\s+of\s+documents?', r'verification\s+of\s+certificates?',
+              r'certificates?\s+verification')),
     EventCue('EXAM',
              # A bounded gap: an authority names *which* examination before saying
              # what happens to it -- "the examination for Tier I will be held".
@@ -228,7 +280,9 @@ EVENT_CUES: tuple[EventCue, ...] = (
               r'exam(?:ination)?\s+scheduled\s+(?:for|on|to\s+be\s+held)',
               r'exam(?:ination)?[^.]{0,60}\b(?:has|have|stands?)\s+been\s+'
               r'(?:postponed|cancell?ed|rescheduled|deferred|preponed)',
-              r'exam(?:ination)?[^.]{0,40}\bwill\s+now\s+be\s+held'),
+              r'exam(?:ination)?[^.]{0,40}\bwill\s+now\s+be\s+held',
+              # What already happened: "on the basis of Mains examinations held from X to Y".
+              r'exam(?:ination)?s?\s+(?:was\s+|were\s+)?held\s+(?:from|on|between)\b'),
              against=(r'\badmit\s+card\b', r'\banswer\s+key\b', r'\bresult\b',
                       r'\bfee\b', r'\bapplication\s+form\b')),
     EventCue('NOTIFICATION',
@@ -239,9 +293,13 @@ EVENT_CUES: tuple[EventCue, ...] = (
 )
 
 #: Words that say a stated date is not final. An authority's own hedge, not our doubt.
+#: "Provisional" hedges a date only where it qualifies one ("provisional schedule", "dates are
+#: provisional"); a "PROVISIONAL LIST OF HALL TICKET NUMBERS" beside a date says the list may
+#: change, not the day.
 _TENTATIVE = re.compile(
-    r'\btentativ\w+\b|\bprovisional\w*\b|\blikely\b|\bexpected\b|\bsubject\s+to\s+change\b|'
-    r'\bmay\s+(?:be\s+)?(?:change|vary)\b|\bindicative\b', re.I)
+    r'\btentativ\w+\b|\bprovisional(?:ly)?\s+(?:date|dates|schedule|scheduled|calendar|time\s*table)\b|'
+    r'\b(?:date|dates|schedule)\s+(?:is|are)\s+provisional\b|\blikely\b|\bexpected\b|'
+    r'\bsubject\s+to\s+change\b|\bmay\s+(?:be\s+)?(?:change|vary)\b|\bindicative\b', re.I)
 
 #: What an authority says when it moves or drops an event.
 _LIFECYCLE = (
@@ -292,7 +350,7 @@ _STAGE_REF = re.compile(
 #: noun of an examination has to follow it.
 _STAGE_NAME = re.compile(
     r'\b(preliminary\s+(?:written\s+)?(?:test|exam(?:ination)?|stage)|prelims?\b(?:\s+exam(?:ination)?)?|'
-    r'screening\s+test|main\s+(?:written\s+)?(?:exam(?:ination)?|test|stage)|mains\b|'
+    r'screening\s+test|main\s*\(?\s*(?:written\s*|conventional\s*)?\)?\s*(?:exam(?:ination)?|test|stage)|mains\b|'
     # The noun first: "Dates of Online Examination – Preliminary (tentative)".
     r'(?:exam(?:ination)?|test)\s*[-–—:(]\s*(?:preliminary|prelims?|mains?)\b)', re.I)
 
@@ -415,7 +473,62 @@ def _nearest_cue(context: str, passage: str) -> EventCue | None:
                     # / "Online Applications 14/03/2024") reaches into the date line. It is
                     # still this line's label, and it outranks a cue on the line *after*.
                     overlapping = cue
-    return best[1] if best else (overlapping or fallback)
+    if best or overlapping:
+        return best[1] if best else overlapping
+    # Only a cue *after* the date line. That is a table whose label sits below its date --
+    # unless the line above never finished its sentence, in which case the date belongs to
+    # that sentence and the sentence pass reads it with its grammar.
+    return None if _mid_sentence(context, at) else fallback
+
+
+#: A colon that introduces a value rather than ending a sentence: "... dated:" / "19/02/2031".
+_VALUE_COLON = re.compile(r'\b(?:dated|dt|on|from|to|no|nos|number|date|w\.e\.f)\.?\s*:\s*$', re.I)
+
+
+def _ends_sentence(text: str) -> bool:
+    text = (text or '').rstrip()
+    if _VALUE_COLON.search(text):
+        return False
+    return bool(re.search(r'[.:;!?)]\s*$', text))
+
+
+def _mid_sentence(context: str, at: int) -> bool:
+    before = context[:at].rstrip() if at > 0 else ''
+    return bool(before) and not _ends_sentence(before)
+
+
+def _without_dates(text: str) -> str:
+    out = text or ''
+    for d in sorted(read_dates(out), key=lambda d: -d.start):
+        out = out[:d.start] + ' ' + out[d.end:]
+    return out
+
+
+def _cue_beside_dates(passage: str) -> EventCue | None:
+    """The event this passage's dates belong to.
+
+    A passage may carry two events' words -- "picked up for Certificate Verification on the
+    basis of Mains examinations held from X to Y" -- and the dates belong to the one whose
+    wording ends nearest before them. Where no cue precedes the first date, list order
+    decides, as before.
+    """
+    matching = [c for c in EVENT_CUES if c.matches(passage)]
+    if len(matching) < 2:
+        return matching[0] if matching else None
+    low = passage.lower()
+    firsts = [d for d in read_dates(passage) if not _cited(passage, d.start)]
+    if not firsts:
+        return matching[0]
+    at = firsts[0].start
+    best: tuple[int, int, EventCue] | None = None
+    for rank, cue in enumerate(matching):
+        for anchor in cue.anchors:
+            for m in re.finditer(anchor, low):
+                if m.end() <= at + 1:
+                    key = (at - m.end(), rank)
+                    if best is None or key < best[:2]:
+                        best = (key[0], key[1], cue)
+    return best[2] if best else matching[0]
 
 
 def read_statement(passage: str, *, context: str = '', lead: str = '') -> DateReading | None:
@@ -430,7 +543,7 @@ def read_statement(passage: str, *, context: str = '', lead: str = '') -> DateRe
     # The passage first: a table row names its own event, and classifying it by its
     # neighbours read "Date of examination" as an application window because the row above
     # it mentioned applications.
-    cue = next((c for c in EVENT_CUES if c.matches(passage)), None)
+    cue = _cue_beside_dates(passage)
     haystack = passage
     stated = passage
     if cue is None and context:
@@ -448,7 +561,17 @@ def read_statement(passage: str, *, context: str = '', lead: str = '') -> DateRe
     # dates stand postponed" is a statement about its neighbours by design.
     wider = context or passage
 
-    dates = read_dates(passage) or read_dates(haystack)
+    # Citations are judged with the end of the line above in view, and a list of dates is one
+    # reference: "issued on 09/04/2031, 20/04/2031 &" / "22/04/2031 the following ...".
+    tail = normalise_ws(lead)[-160:] + ' ' if lead else ''
+    kept = {d.start - len(tail) for d in _uncited_dates(tail + passage) if d.start >= len(tail)}
+    own = read_dates(passage)
+    if own:
+        # The line's own dates decide. Where every one of them is a citation, the line states
+        # no event date, and the neighbours' dates are not borrowed to give it one.
+        dates = [d for d in own if d.start in kept]
+    else:
+        dates = _uncited_dates(haystack)
     state = MilestoneState.ANNOUNCED
     for candidate_state, pattern in _LIFECYCLE:
         if pattern.search(wider):
@@ -463,7 +586,13 @@ def read_statement(passage: str, *, context: str = '', lead: str = '') -> DateRe
     # A stage is read only from the statement itself (and its label line), never from a
     # neighbour after it: the line below a Preliminary schedule is often the Main one.
     stage = _STAGE_REF.search(stated) or _STAGE_NAME.search(stated)
-    cycle_match = _CYCLE.search(passage) or _CYCLE.search(haystack)
+    if not stage and lead and stated.lstrip().startswith('('):
+        # "... on the basis of the Main" / "(Written) Examination held from X": the stage's
+        # name began on the line above and its bracket continues it.
+        stage = _STAGE_NAME.search(normalise_ws(lead)[-40:] + ' ' + stated[:80])
+    # A cycle label is a year written as a label ("the examination for 2031"), never the year
+    # inside a date: a notice for one cycle dates its later milestones in the next year.
+    cycle_match = _CYCLE.search(_without_dates(passage)) or _CYCLE.search(_without_dates(haystack))
     precision = dates[0].precision if dates else DatePrecision.UNSPECIFIED
     is_range = bool(len(dates) >= 2 and (_RANGE.search(stated) or _OPEN_THEN_CLOSE.search(stated)))
     # One application date stated as the opening of the window is the opening, not the
@@ -519,9 +648,14 @@ def extract_milestones(doc: SourceDocument, text: str, *, exam_id: str,
         if not read_dates(passage) and not _AWAITED.search(passage):
             continue
         nxt = parts[index + 1] if index + 1 < len(parts) else ''
-        if (len(read_dates(passage)) == 1 and re.search(r'\bfrom\b', passage, re.I)
-                and not _CLOSES.search(passage[read_dates(passage)[0].end:])
-                and re.match(r'\s*(?:to|till|up\s*to|upto)\b', nxt, re.I) and read_dates(nxt)):
+        joins = (len(read_dates(passage)) == 1 and re.search(r'\bfrom\b', passage, re.I)
+                 and ((not _CLOSES.search(passage[read_dates(passage)[0].end:])
+                       and re.match(r'\s*(?:to|till|up\s*to|upto)\b', nxt, re.I))
+                      # "... held from 21/10/2031 to" / "27/10/2031 for the recruitment ..."
+                      or (re.search(r'\b(?:to|till|up\s*to|upto|and)\s*$', passage, re.I)
+                          and read_dates(nxt) and read_dates(nxt)[0].start < 3))
+                 and read_dates(nxt))
+        if joins:
             # A window broken over two lines: "... From: 23/03/2031 at 10:00 A.M." /
             # "To: 27/03/2031 at 5:00 P.M." is one statement with two ends.
             passage = f'{passage} {nxt}'
@@ -592,7 +726,11 @@ def extract_milestones(doc: SourceDocument, text: str, *, exam_id: str,
                     f'inferred')
 
         out.append(Milestone(
-            id=f'date-{exam_id}-{_slug(kind)}-{_slug(reading.label)[:16]}',
+            # A recurring event (a verification spell, a medical board day) is one event per
+            # date: its rows share a label, and an id without the date made two days one event
+            # stated twice -- a conflict that was not there.
+            id=(f'date-{exam_id}-{_slug(kind)}-{_slug(reading.label)[:16]}'
+                + (f'-{reading.dates[0].iso}' if kind in _RECURRING_KINDS and reading.dates else '')),
             label=reading.label,
             kind=kind,
             scope=scope,
@@ -605,6 +743,184 @@ def extract_milestones(doc: SourceDocument, text: str, *, exam_id: str,
             alternatives=alternatives,
             status=status,
             note=note))
+    taken = {(m.kind, m.effective_date or '') for m in out}
+    taken |= {(m.kind, m.starts_at.value) for m in out if m.starts_at.has_value}
+    taken |= {(m.kind, m.ends_at.value) for m in out if m.ends_at.has_value}
+    taken |= {(m.kind, a.value) for m in out for a in m.alternatives if a.has_value}
+    placed = [(f.value, f.evidence[0].span) for m in out
+              for f in (m.starts_at, m.ends_at, *m.alternatives) if f.has_value and f.evidence]
+    out.extend(_sentence_milestones(doc, text, exam_id=exam_id, cycle=cycle, taken=taken,
+                                    placed=placed))
+    return out
+
+
+# ================================================================ sentences
+_LIST_START = re.compile(r'^\s*(?:\(?\d{1,2}\)|\d{1,2}[.)]|\(?[ivx]{1,4}\)|[a-z]\))\s')
+_NEW_PREDICATE = re.compile(r'\b(?:scheduled|to\s+be\s+held|will\s+be\s+held|would\s+be\s+held|'
+                            r'held\s+on|shall\s+be\s+held)\b', re.I)
+_FOLLOWING_DATE = re.compile(r'\b(?:on\s+the\s+)?(?:following|below|under)[\s-]*(?:mentioned\s+)?dates?\s*[.:]?\s*$', re.I)
+
+
+def _paragraph_sentences(text: str) -> list[str]:
+    """Sentences, rejoined across the line breaks a PDF puts inside them.
+
+    A line is joined to the one before unless that one ended a sentence, the line opens a
+    list item, or the line is a bare number (a roll of hall-ticket numbers is not prose).
+    """
+    paragraphs: list[str] = []
+    current = ''
+    for raw in (text or '').replace('\r', '').split('\n'):
+        line = raw.strip()
+        if not line or re.fullmatch(r'[\d\s]+', line):
+            if current:
+                paragraphs.append(current)
+                current = ''
+            continue
+        if current and not _ends_sentence(current.rstrip(')')) and not _LIST_START.match(line):
+            current = f'{current} {line}'
+        else:
+            if current:
+                paragraphs.append(current)
+            current = line
+    if current:
+        paragraphs.append(current)
+    out: list[str] = []
+    for para in paragraphs:
+        out.extend(p.strip() for p in re.split(r'(?<=[.;])\s+(?=[A-Z(])', para) if p.strip())
+    return out
+
+
+def _sentence_milestones(doc: SourceDocument, text: str, *, exam_id: str, cycle: str,
+                         taken: set, placed: list | None = None) -> list[Milestone]:
+    """Milestones whose statement runs across lines, or that share a sentence with another.
+
+    "... picked up for Certificate Verification on the basis of Mains examinations held
+    from X to Y ..., scheduled to be held on A, B & C" is one sentence with two events.
+    Each group of dates goes to the event whose words precede it; a new predicate
+    ("scheduled to be held on") after an event already given its dates goes back to the
+    sentence's first event still without dates -- the sentence's subject. Nothing already
+    read by the line pass is read again.
+    """
+    sentences = _paragraph_sentences(text)
+    single_lines = {normalise_ws(l) for l in (text or '').replace('\r', '').split('\n') if l.strip()}
+    # The dates the line pass placed, with the statement it placed them from. A date is not
+    # read again from a sentence containing that same statement; another event on the same
+    # day, stated elsewhere, is still its own milestone.
+    used = [(iso, normalise_ws(span)) for iso, span in (placed or [])]
+    out: list[Milestone] = []
+    for n, sentence in enumerate(sentences):
+        kinds_here = {c.kind for c in EVENT_CUES if c.matches(sentence)}
+        if normalise_ws(sentence) in single_lines and len(kinds_here) < 2:
+            # One line, one event: the line pass has read it already.
+            continue
+        dates = _uncited_dates(sentence)
+        if not dates and _FOLLOWING_DATE.search(sentence) and n + 1 < len(sentences):
+            nxt = sentences[n + 1]
+            nd = _uncited_dates(nxt)
+            if nd and nd[0].start <= 2:
+                sentence = f'{sentence} {nxt}'
+                dates = _uncited_dates(sentence)
+        # A running footer inside a sentence the PDF broke across a page is removed, not
+        # read as a reason to drop the sentence.
+        sentence = re.sub(r'\bpage\s*\d+\s*of\s*\d+\b', ' ', sentence, flags=re.I)
+        dates = _uncited_dates(sentence)
+        if not dates or _FURNITURE.search(sentence):
+            continue
+        low = sentence.lower()
+        hits = []
+        for cue in EVENT_CUES:
+            if not cue.matches(sentence):
+                continue
+            for anchor in cue.anchors:
+                for m in re.finditer(anchor, low):
+                    hits.append((m.start(), m.end(), cue))
+        if not hits:
+            continue
+        hits.sort(key=lambda h: (h[0], -h[1]))
+        bound: dict[int, list[ReadDate]] = {}
+        last_end: dict[int, int] = {}
+        previous: tuple[ReadDate, int] | None = None
+        for d in dates:
+            if previous is not None and re.fullmatch(r'[\s,&]*(?:and\s*)?',
+                                                     sentence[previous[0].end:d.start], re.I):
+                # "14/04/2032, 15/04/2032 & 17/04/2032": a listed day of the same event.
+                bound[previous[1]].append(d)
+                last_end[previous[1]] = d.end
+                previous = (d, previous[1])
+                continue
+            before = [i for i, h in enumerate(hits) if h[1] <= d.start]
+            if not before:
+                continue
+            i = before[-1]
+            if i in bound and _NEW_PREDICATE.search(sentence[last_end[i]:d.start]):
+                # The new predicate's subject is the event the dated one qualifies: "picked up
+                # for Certificate Verification on the basis of Mains examinations held from X
+                # to Y, scheduled to be held on Z" -- the unbound event nearest before it.
+                free = [j for j in before if j < i and j not in bound
+                        and hits[j][2].kind != hits[i][2].kind]
+                if not free:
+                    continue
+                i = free[-1]
+            bound.setdefault(i, []).append(d)
+            last_end[i] = d.end
+            previous = (d, i)
+        for i, ds in bound.items():
+            start, end, cue = hits[i]
+            if cycle:
+                try:
+                    wanted = int(cycle)
+                    ds = [d for d in ds if wanted - 1 <= int(d.iso[:4]) <= wanted + 2]
+                except ValueError:
+                    pass
+            # Additive only: a date the line pass already placed is not read again, under
+            # any kind.
+            flat_sentence = normalise_ws(sentence)
+            ds = [d for d in ds if not any(iso == d.iso and span and span in flat_sentence
+                                           for iso, span in used)]
+            if not ds:
+                continue
+            key = (cue.kind, ds[0].iso)
+            if key in taken:
+                continue
+            clause = sentence[start:ds[-1].end]
+            span = normalise_ws(sentence) if len(sentence) <= 900 else normalise_ws(clause)
+            ev = _evidence(span, doc, text, reading=f'{cue.kind}: {sentence[start:end]}')
+            if ev is None and span != normalise_ws(clause):
+                # The sentence as rejoined may not be verbatim (a footer removed from inside
+                # it); the clause from the event's words to its date is.
+                span = normalise_ws(clause)
+                ev = _evidence(span, doc, text, reading=f'{cue.kind}: {sentence[start:end]}')
+            if ev is None:
+                continue
+            taken.add(key)
+            lead_words = ' '.join(sentence[:ds[0].start].split()[-5:])
+            label = normalise_ws(f'{sentence[start:end].strip()} - {lead_words}')[:90]
+            stage = _STAGE_REF.search(clause) or _STAGE_NAME.search(clause)
+            stage_ref = normalise_ws(stage.group(1)) if stage else ''
+            ranged = len(ds) >= 2 and re.search(r'\bfrom\b', sentence[start:ds[0].start], re.I) \
+                and re.search(r'\b(?:to|till|up\s*to)\b', sentence[ds[0].end:ds[1].start], re.I)
+            spread = len(ds) >= 2
+            starts = Fact.verified(ds[0].iso, ev) if spread or ranged else Fact()
+            ends = Fact.verified(ds[-1].iso, ev)
+            precision = ds[0].precision
+            status, note = Status.VERIFIED, ''
+            if precision is not DatePrecision.DAY:
+                status = Status.NEEDS_REVIEW
+                note = (f'the authority stated this to the nearest {precision.value.lower()}; '
+                        f'no day was printed and none is inferred')
+            if spread and not ranged:
+                note = (note + ' ' if note else '') + (
+                    'held on the listed days ' + ', '.join(d.text for d in ds))
+            out.append(Milestone(
+                id=f'date-{exam_id}-{_slug(cue.kind)}-{ds[0].iso}',
+                label=label, kind=cue.kind,
+                scope=Scope([ScopeRef(ScopeKind.STAGE, _slug(stage_ref), stage_ref)]) if stage_ref else Scope(),
+                cycle=cycle, starts_at=starts, ends_at=ends, precision=precision,
+                state=MilestoneState.ANNOUNCED,
+                # The event's own clause, not the sentence: "the provisional selection list is
+                # drawn on ... and General Ranking List hosted on X" does not hedge X.
+                is_tentative=bool(_TENTATIVE.search(clause)) or None,
+                status=status, note=note))
     return out
 
 
@@ -616,9 +932,18 @@ def _same_event(a: Milestone, b: Milestone) -> bool:
     "Paper II on the 5th" from looking like a contradiction -- they are two events, not one
     event stated twice.
     """
+    if a.kind in _RECURRING_KINDS and a.id != b.id:
+        # Certificate verification, a medical board, an option round: an authority holds
+        # these in spells, each announced in its own notice. Two spells on two dates are
+        # two events, not one event stated twice -- only the same statement is the same event.
+        return False
     return (a.kind == b.kind
             and str(a.scope) == str(b.scope)
             and (a.cycle or '') == (b.cycle or ''))
+
+
+#: Events an authority holds more than once in a cycle, each spell announced separately.
+_RECURRING_KINDS = frozenset({'DOCUMENT_VERIFICATION', 'PHYSICAL_TEST', 'OPTION_ENTRY', 'INTERVIEW'})
 
 
 #: Source kinds that carry later news than a notification, in the order the brief sets out.

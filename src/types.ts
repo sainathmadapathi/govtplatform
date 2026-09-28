@@ -1111,6 +1111,18 @@ export interface Exam {
   patternTree?: ExamPatternNode[];
   syllabus: SyllabusTopic[];
   /**
+   * GOVOS_GUIDANCE for a machine-acquired exam: a suggested order over its verified syllabus
+   * topics, built deterministically by the exam builder. It carries no durations and no topic
+   * that is not in the syllabus, and it is never an official statement.
+   */
+  studyGuidance?: {
+    source: string;
+    generatedBy: string;
+    disclaimer: string;
+    basis?: string;
+    steps: { topicId: string; topicName: string; subject: string; rationale: string }[];
+  };
+  /**
    * The syllabus as its authority published it, read by the exam builder from that
    * authority's own documents. Absent where no official syllabus has been read — which for
    * some exams is because the authority publishes none, and the section says which.

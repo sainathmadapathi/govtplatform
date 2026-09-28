@@ -240,6 +240,39 @@ def _printed_amount(value) -> str:
     return str(int(number)) if number.is_integer() else repr(number)
 
 
+def _post_item(p, document) -> dict:
+    """One post as the record stores it: every fact its own table rows printed, each value
+    from a verified span, and the span and page the post was read from."""
+    import re as _re
+    item = {'id': p.id, 'postName': p.name,
+            'classification': p.classification.value if p.classification.has_value else '',
+            'department': p.department.value if p.department.has_value else '',
+            'payLevel': p.pay.value if p.pay.has_value else ''}
+    if p.code:
+        item['postCode'] = p.code
+    counts = [v.count.value for v in p.vacancies if v.count.has_value]
+    if len(counts) == 1:
+        item['vacancies'] = int(counts[0])
+    if p.age_band.has_value:
+        m = _re.search(r'(\d{1,2})\s*(?:[-–—]|to)\s*(\d{1,2})', str(p.age_band.value))
+        if m:
+            item['minAge'], item['maxAge'] = int(m.group(1)), int(m.group(2))
+    if p.qualification and p.qualification[0].requirement.has_value:
+        item['qualification'] = str(p.qualification[0].requirement.value)
+    physical = [str(f.value) for f in p.other_requirements if f.note == 'physical requirement']
+    other = [str(f.value) for f in p.other_requirements if f.note != 'physical requirement']
+    if physical:
+        item['physicalRequirements'] = physical
+    if other:
+        item['conditions'] = other
+    if p.evidence:
+        item['evidenceSpan'] = p.evidence[0].span
+        item['page'] = _page_of(document, p.evidence[0].span)
+    if p.status is SchemaStatus.NEEDS_REVIEW:
+        item['status'] = 'NEEDS_REVIEW'
+    return item
+
+
 def _post_name(item) -> str:
     if isinstance(item, dict):
         return str(item.get('postName') or item.get('name') or '').strip()
@@ -288,6 +321,31 @@ def _vet_posts(got: Field, rec: ExamRecord, loaded: dict | None = None) -> Field
     rec.note(f'posts: removed {len(verdict.documents)} document name(s) from the post list: '
              f'{", ".join(verdict.documents[:4])}')
     return Field(name='posts', status=got.status, value=kept, citation=got.citation, note=got.note)
+
+
+def record_search_outcomes(rec: ExamRecord, searched: dict[str, str]) -> frozenset:
+    """Record, for fields still without a reading, that the authority's own listings were
+    searched for them and held nothing for this recruitment.
+
+    `searched` maps a field to the listings that were searched, in words. A field that was
+    NOT_PUBLISHED only because no document of its kind turned up, or NOT_EXTRACTED, becomes
+    NOT_EXTRACTED with that search named: "we searched and did not find it" is a gap of ours,
+    never a statement that the authority published nothing. A field with a reading is left
+    alone. Returns the fields to report as SOURCE_NOT_FOUND_AFTER_SEARCH.
+    """
+    found: set[str] = set()
+    for name, where in searched.items():
+        f = rec.fields.get(name)
+        if f is not None and f.status in (RecordStatus.FOUND, RecordStatus.NEEDS_REVIEW):
+            continue
+        if f is not None and f.status is RecordStatus.NOT_PUBLISHED and 'No document of kind' not in (f.note or ''):
+            # A NOT_PUBLISHED established by the authority's own statement stands.
+            continue
+        rec.set(Field(name=name, status=RecordStatus.NOT_EXTRACTED,
+                      note=(f'searched {where}; nothing for this recruitment was found there. '
+                            f'This is not a statement that the authority never published it.')))
+        found.add(name)
+    return frozenset(found)
 
 
 def enforce_semantic_states(rec: ExamRecord) -> list[str]:
@@ -639,13 +697,15 @@ def _dispatch_domain_extraction_raw(
             try:
                 posts = D_ELIGIBILITY.extract_posts(src_doc, text, exam_id=rec.exam_id)
                 if posts:
-                    posts_list = [{'id': p.id, 'postName': p.name,
-                                   'classification': p.classification.value if p.classification.has_value else '',
-                                   'department': p.department.value if p.department.has_value else '',
-                                   'payLevel': p.pay.value if p.pay.has_value else ''} for p in posts]
+                    D_ELIGIBILITY.post_code_clauses(
+                        src_doc, text, posts,
+                        heading=re.compile(r'physical\s+(?:requirements?|standards?)\s*:', re.I))
+                    D_ELIGIBILITY.post_scoped_sentences(src_doc, text, posts)
+                    posts_list = [_post_item(p, document) for p in posts]
                     ev = posts[0].evidence[0] if posts[0].evidence else None
                     excerpt = ev.span if ev else posts[0].name
-                    cite = Citation(document_title=doc.title, url=doc.url, page=1, clause='Posts',
+                    cite = Citation(document_title=doc.title, url=doc.url,
+                                    page=_page_of(document, excerpt), clause='Posts',
                                     excerpt=excerpt, verified_date=_today())
                     return Field.found('posts', posts_list, cite)
             except Exception as exc:
@@ -692,6 +752,12 @@ def _dispatch_domain_extraction_raw(
             src_doc = SourceDocument(id=doc.url, url=doc.url, kind=SourceKind.OTHER_OFFICIAL,
                                      title=doc.title, authority=resolved.authority.name,
                                      exam_id=rec.exam_id)
+            total = D_ELIGIBILITY.printed_vacancy_total(src_doc, text)
+            if total is not None and total.count.evidence:
+                ev = total.count.evidence[0]
+                cite = Citation(document_title=doc.title, url=doc.url, page=_page_of(document, ev.span),
+                                clause='Vacancies', excerpt=ev.span, verified_date=_today())
+                return Field.found('vacancies', total.count.value, cite)
             try:
                 vacs = D_ELIGIBILITY.extract_vacancies(src_doc, text, posts=[])
                 with_value = [v for v in vacs if v.count.has_value]
@@ -896,6 +962,10 @@ def _dispatch_domain_extraction_raw(
         return Field.not_extracted('admitCard', resolved.authority.domain, 'admitCard')
 
     elif cf.name == 'results':
+        # A cycle declares many results -- a ranking list, calls to verification, a selection
+        # -- each in its own notice. Every result document of the cycle is read, and each
+        # declaration keeps the notice it came from; the first one found is not the answer.
+        collected, first = [], None
         for doc in candidate_docs:
             document = loaded[doc.url]
             text = document.all_text() if hasattr(document, 'all_text') else ''
@@ -904,16 +974,31 @@ def _dispatch_domain_extraction_raw(
                                      exam_id=rec.exam_id)
             try:
                 decls = D_RESULTS.read_notice(src_doc, text, exam_id=rec.exam_id,
+                                              headline=doc.title,
                                               authority_domain=resolved.authority.domain,
                                               cycle=resolved.year)
-                if decls:
-                    proj = COMPAT.result_declarations(decls, exam_id=rec.exam_id)
-                    cite = Citation(document_title=doc.title, url=doc.url, page=1,
-                                    clause='Results', excerpt=decls[0].label,
-                                    verified_date=_today())
-                    return Field.found('results', proj, cite)
+                for d in decls:
+                    if (not d.published_at.has_value and not d.qualified_count.has_value
+                            and getattr(d.qualification, 'value', d.qualification) == 'UNSTATED'):
+                        # A companion document of a stage (its verification material, a
+                        # break-up of vacancies) names the stage but declares nothing: no
+                        # date, no count, no outcome. It stays a source, not a declaration.
+                        rec.note(f'results: {doc.title[:80]} declares nothing of its own; kept as a source only')
+                        continue
+                    if d.document_url.status is not SchemaStatus.VERIFIED:
+                        d.document_url = __import__('tools.exam_builder.schema', fromlist=['Fact']).Fact.verified(
+                            doc.url, d.evidence[0]) if d.evidence else d.document_url
+                    if all(x.id != d.id for x in collected):
+                        collected.append(d)
+                        first = first or (doc, d)
             except Exception as exc:
                 rec.note(f'results.read_notice failed on {doc.url}: {exc!r}')
+        if collected:
+            proj = COMPAT.result_declarations(collected, exam_id=rec.exam_id)
+            doc, d0 = first
+            cite = Citation(document_title=doc.title, url=doc.url, page=1,
+                            clause='Results', excerpt=d0.label, verified_date=_today())
+            return Field.found('results', proj, cite)
 
         return Field.not_extracted('results', resolved.authority.domain, 'results')
 

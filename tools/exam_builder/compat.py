@@ -291,6 +291,8 @@ _KIND_TO_LEGACY_TYPE = {
     'PHYSICAL_TEST': 'INTERVIEW',
     'DOCUMENT_VERIFICATION': 'INTERVIEW',
     'EXAM': 'EXAM_TIER1',
+    # No member of the closed union names it; OTHER carries it under the authority's label.
+    'OPTION_ENTRY': 'OTHER',
 }
 
 
@@ -372,6 +374,12 @@ def important_dates(milestones, *, exam_id: str, timezone: str = 'IST') -> list[
         if effective is None and not superseded:
             continue
         shown = effective or (milestone.ends_at.value or milestone.starts_at.value)
+        if (milestone.kind in ('EXAM', 'DOCUMENT_VERIFICATION', 'PHYSICAL_TEST', 'INTERVIEW',
+                               'SKILL_TEST') and not superseded and milestone.starts_at.has_value
+                and milestone.ends_at.has_value):
+            # An examination held over several days begins on its first day; the window is
+            # in the label and the evidence. Its last day read as "the exam date".
+            shown = milestone.starts_at.value
         if not shown:
             continue
         from .schema import ScopeKind
@@ -379,7 +387,9 @@ def important_dates(milestones, *, exam_id: str, timezone: str = 'IST') -> list[
         stage_refs = stage_scopes[0].label if stage_scopes else ''
         # Two statements of one date ("Applications from 23/02 to 14/03" and "Online
         # applications 14/03 at 5 PM") are one milestone on the timeline, not two.
-        row_key = (legacy_date_type(milestone.kind, stage_label=stage_refs), str(shown))
+        # The event's own kind is part of the key: a medical board and a certificate
+        # verification on the same day share a legacy type but are two milestones.
+        row_key = (legacy_date_type(milestone.kind, stage_label=stage_refs), str(shown), milestone.kind)
         if row_key in emitted and not superseded:
             continue
         emitted.add(row_key)
@@ -402,7 +412,7 @@ def important_dates(milestones, *, exam_id: str, timezone: str = 'IST') -> list[
                 and milestone.starts_at.has_value and milestone.ends_at.has_value
                 and str(milestone.starts_at.value) != str(milestone.ends_at.value)):
             opened = str(milestone.starts_at.value)
-            open_key = ('APPLICATION_OPEN', opened)
+            open_key = ('APPLICATION_OPEN', opened, milestone.kind)
             open_prov = to_legacy_provenance(
                 milestone.starts_at, prov_id=f'prov-{milestone.id}-open', superseded=superseded)
             if open_key not in emitted and open_prov is not None:
@@ -647,11 +657,26 @@ def syllabus_tree(syllabus, *, exam_id: str, max_nodes: int = 4000) -> list:
     from .schema import Fact, Status as _Status
 
     counter = [0]
+    seen: set = set()
 
-    def project(node) -> dict:
+    def unique_id(node, parent_id: str) -> str:
+        # A record stored before extraction made ids unique may still repeat one (each
+        # paper's clauses numbered from "1." again). The UI keys on the id, so a repeat is
+        # qualified by its parent here too, by the same rule syllabus._make_ids_unique uses.
+        node_id = node.id
+        if node_id in seen and parent_id:
+            base = f'{parent_id}-{node_id.rsplit("-", 1)[-1]}'
+            node_id, n = base, 2
+            while node_id in seen:
+                node_id, n = f'{base}-{n}', n + 1
+        seen.add(node_id)
+        return node_id
+
+    def project(node, parent_id: str = '') -> dict:
         counter[0] += 1
+        node_id = unique_id(node, parent_id)
         out: dict = {
-            'id': node.id,
+            'id': node_id,
             'title': node.title,
             'levelLabel': node.level_label or '',
             'order': node.order,
@@ -667,14 +692,14 @@ def syllabus_tree(syllabus, *, exam_id: str, max_nodes: int = 4000) -> list:
                            status=node.status if node.status.carries_value
                            else _Status.NEEDS_REVIEW,
                            evidence=list(node.evidence))
-            provenance = to_legacy_provenance(carrier, prov_id=f'prov-{node.id}')
+            provenance = to_legacy_provenance(carrier, prov_id=f'prov-{node_id}')
             if provenance is not None:
                 out['provenance'] = provenance
         children = []
         for child in node.children:
             if counter[0] >= max_nodes:
                 break
-            children.append(project(child))
+            children.append(project(child, node_id))
         if children:
             out['children'] = children
         return out

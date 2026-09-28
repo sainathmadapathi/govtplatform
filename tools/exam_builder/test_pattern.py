@@ -513,13 +513,37 @@ TOTAL MARKS: 300
 
 
 def test_x_a_scheme_heading_over_several_stages_is_a_heading() -> None:
+    # Changed expectation: this test first asserted that such a table stays a HEADING, which
+    # recorded the reader's earlier inability rather than a rule. Every figure below is
+    # printed in the fixture; the rule that remains is the one in the next test -- a table
+    # whose own header does not declare its duration and marks columns is never split.
     pattern = read(ONE_TABLE_TWO_STAGES)
     stages = [s for s in pattern.stages if s.level is PatternLevel.STAGE]
-    check('X: no stage is invented from the heading', stages, [])
+    check('X: the stages the table names are read', [s.name for s in stages],
+          ['Preliminary Test', 'Written Examination (Main)'])
+    check('X: the heading is not itself a stage',
+          any('SCHEME' in s.name.upper() for s in pattern.stages), False)
+    pre, main = stages
+    check('X: the preliminary paper, as printed',
+          [(c.questions.value, c.duration_minutes.value, c.marks.value) for c in pre.children],
+          [(120, 150, 120.0)])
+    check('X: the main papers, as printed',
+          [(c.code, c.duration_minutes.value, c.marks.value) for c in main.children],
+          [('Paper-I', 180, 150.0), ('Paper-II', 180, 150.0)])
+    check('X: the stage total is the printed total', main.marks.value, 300.0)
+    check('X: no year inside a topic list is read as marks',
+          any(c.marks.value == 1801.0 for c in main.children), False)
+
+
+def test_x_an_unreadable_multi_stage_table_stays_a_heading() -> None:
+    text = ONE_TABLE_TWO_STAGES.replace('SUBJECT DURATION\n(HOURS)\nMAXIMUM\nMARKS\n', 'SUBJECT\n')
+    pattern = read(text)
+    check('X: without declared columns no stage is invented',
+          [s for s in pattern.stages if s.level is PatternLevel.STAGE], [])
     heading = next((s for s in pattern.stages if 'SCHEME' in s.name.upper()), None)
-    check('X: the heading is kept, as a heading', heading.level if heading else None,
-          PatternLevel.HEADING)
-    check('X: and held for review', heading.status if heading else None, Status.NEEDS_REVIEW)
+    if heading is not None:
+        check('X: a heading that remains is a heading under review',
+              (heading.level, heading.status), (PatternLevel.HEADING, Status.NEEDS_REVIEW))
     verified = [(n.name, f) for n in pattern.walk() for f in ('questions', 'marks', 'duration_minutes')
                 if getattr(n, f).has_value and getattr(n, f).status is Status.VERIFIED]
     check('X: no figure read from the flattened table is published as verified', verified, [])
@@ -596,6 +620,7 @@ def main() -> int:
                test_w_one_exam_s_pattern_cannot_reach_another,
                test_merged_cells_are_held_for_review_not_guessed,
                test_x_a_scheme_heading_over_several_stages_is_a_heading,
+               test_x_an_unreadable_multi_stage_table_stays_a_heading,
                test_x_a_heading_over_labelled_stages_stays_out,
                test_x_a_wrapped_heading_tail_is_not_a_stage,
                test_x_a_stage_named_inside_the_syllabus_is_not_a_stage,

@@ -179,9 +179,20 @@ def extract_age_rules(doc: SourceDocument, text: str, *,
     presented as the authority's would be exactly the invention this refuses.
     """
     rules: list[AgeRule] = []
+    # The date age is reckoned on, where the notice states it on its own for every post:
+    # "The age is reckoned as on 01/07/2031". Collected here, applied below.
+    reckoned: list[tuple[str, SourceEvidence]] = []
     for passage in statements(text):
         if _NOT_AGE.search(passage) or _AGE_CHANGE.search(passage):
             continue
+        standalone = _CUTOFF.search(passage)
+        if (standalone and _IS_AGE.search(passage) and not _AGE_RANGE.search(passage)
+                and not _AGE_BAND.search(passage)):
+            found = _iso_dates(passage[standalone.end():standalone.end() + 45])
+            if found:
+                cev = _evidence(passage, doc, text, reading='the date age is reckoned on')
+                if cev is not None:
+                    reckoned.append((found[0], cev))
 
         minimum = maximum = None
         band = _AGE_RANGE.search(passage)
@@ -240,6 +251,13 @@ def extract_age_rules(doc: SourceDocument, text: str, *,
         if any(f.has_value for f in (rule.minimum_age, rule.maximum_age,
                                      rule.born_not_earlier_than, rule.born_not_later_than)):
             rules.append(rule)
+    # One reckoning date for the whole notice governs every rule that states none. Two
+    # different dates are not reconciled here; neither is applied.
+    if len({d for d, _ in reckoned}) == 1:
+        date, cev = reckoned[0]
+        for rule in rules:
+            if not rule.cutoff_date.has_value:
+                rule.cutoff_date = Fact.verified(date, cev)
     return rules
 
 
@@ -857,15 +875,60 @@ def vet_post_names(names: list[str]) -> tuple[list[str], list[str]]:
     return posts, documents
 
 
+#: A band in a column the header already calls Age: "18-46", with no "years" beside it.
+_AGE_CELL = re.compile(r'^\s*(\d{1,2})\s*(?:[-–—]|to)\s*(\d{1,2})\s*(?:years?|yrs?)?\s*$', re.I)
+
+
+#: A grid's numbers spilled into a name cell: "Deputy Collector ... MZ1 6 2 2 1 1 1". A name
+#: carrying three or more bare numbers or dashes is a row of a different table, not a name.
+_SPILLED_CELLS = re.compile(
+    r'(?:(?:^|\s)(?:\d{1,4}|[-–—])(?=\s|$)){3,}'
+    # ... or another column's value: an age band, a pay figure, a period of years.
+    r'|\b\d{1,2}\s*[-–—]\s*\d{1,2}\b|\b\d{1,3}(?:,\d{2,3})+\b|\b\d{1,2}\s*(?:years?|yrs?)\b', re.I)
+
+
+_POST_TABLE_COLUMNS = frozenset({ColumnKind.VACANCY, ColumnKind.PAY, ColumnKind.AGE,
+                                 ColumnKind.QUALIFICATION, ColumnKind.CLASSIFICATION})
+
+
+def _name_key(name: str) -> str:
+    return re.sub(r'[^a-z0-9]', '', (name or '').lower())
+
+
+def _names_agree(a: str, b: str) -> bool:
+    """Do two tables name the same post? Word overlap on the significant words, so wrapping,
+    punctuation and a bracket that one table closes and the other does not do not matter."""
+    words = lambda n: {w for w in re.findall(r'[a-z]{3,}', n.lower())} - {'the', 'and', 'for', 'including'}
+    wa, wb = words(a), words(b)
+    if not wa or not wb:
+        return False
+    return len(wa & wb) / min(len(wa), len(wb)) >= 0.6
+
+
+def _post_code(row, table) -> str:
+    """The row's serial, where the table's own header calls that column a code."""
+    serial = next((c for c in table.columns if c.kind is ColumnKind.SERIAL), None)
+    if serial is None or not re.search(r'\bcode\b', serial.label or '', re.I):
+        return ''
+    digits = re.sub(r'\D', '', row.ordinal or '')
+    return digits.zfill(2) if digits else ''
+
+
 def extract_posts(doc: SourceDocument, text: str, *, exam_id: str) -> list[Post]:
     """Posts, from tables reconstructed out of the flattened document.
 
     Every field comes from the row's own cells, so a post's age is the age its row printed
     rather than the nearest age in the document. A row the reconstruction refused produces
     no post at all -- a post that does not exist is one a candidate may apply for.
+
+    A notice often states its posts in one table and something else about the same posts in
+    another (a qualification table, keyed by the same post codes). Such a row is joined to the
+    post it describes only where both the code and the name agree; it never creates a second
+    post, and a row that agrees on one but not the other is left out rather than joined.
     """
     out: list[Post] = []
     seen: set[str] = set()
+    by_code: dict[str, Post] = {}
 
     # Grids first, then lists: an authority that publishes a grid has said more
     # about each post, so its rows are the better reading where both exist.
@@ -873,53 +936,230 @@ def extract_posts(doc: SourceDocument, text: str, *, exam_id: str) -> list[Post]
         # A checklist of documents to bring is not the list of posts recruited to.
         if _NOT_A_POST_TABLE.search(table.heading or ''):
             continue
+        if (ColumnKind.NAME not in table.kinds and table.columns
+                and not set(table.kinds) & _POST_TABLE_COLUMNS):
+            # A list headed only "Department" (districts, offices, centres) names places, not
+            # posts: a post table carries a count, pay, age, qualification or class beside it.
+            continue
         for row in table.rows:
             if not row.reconstructed:
+                # A row the columns could not be read from may still be a known post's row
+                # in a second table; only its remainder after the full name is taken.
+                _join_by_known_name(by_code.get(_post_code(row, table)), row, table, doc, text)
                 continue
             name = normalise_ws(row.cells.get(ColumnKind.NAME, ''))
             if not name:
                 # Some tables name the post in the column an authority headed
                 # "Service" or "Cadre"; that is still the thing being recruited to.
                 name = normalise_ws(row.cells.get(ColumnKind.DEPARTMENT, ''))
-            if len(name) < 4 or name.lower() in seen:
+            if (ColumnKind.VACANCY in table.kinds
+                    and not normalise_ws(row.cells.get(ColumnKind.VACANCY, ''))):
+                trailing = re.match(r'^(.*\D)\s+(\d{1,5})$', name)
+                if trailing:
+                    # The table has a count column this row left empty, and the name ends in
+                    # a bare count: the count's cell ran into the name's.
+                    name = trailing.group(1).strip()
+                    row.cells[ColumnKind.VACANCY] = trailing.group(2)
+            if len(name) < 4 or _SPILLED_CELLS.search(name):
                 continue
             if is_document_not_post(name):
                 continue
+            code = _post_code(row, table)
             ev = _evidence(row.span, doc, text, reading=f'post: {name[:60]}')
             if ev is None:
+                continue
+
+            existing = by_code.get(code) if code else None
+            if existing is None:
+                existing = next((p for p in out if _name_key(p.name) == _name_key(name)), None)
+            if existing is not None:
+                if not _names_agree(existing.name, name):
+                    continue
+                # The same post, described by another table. Where the table carries text
+                # beside the name, the name's own boundary is the known full name, not the
+                # cell split: a wrapped name ("Municipal Commissioner -" / "Grade-II (...)")
+                # otherwise spills its second line into the next column.
+                if not _join_by_known_name(existing, row, table, doc, text):
+                    _add_row_facts(existing, row, ev, table)
+                continue
+            if name.lower() in seen:
                 continue
             seen.add(name.lower())
 
             post = Post(id=f'post-{exam_id}-{_slug(name)}', name=name, evidence=[ev],
                         status=Status.NEEDS_REVIEW if row.note else Status.VERIFIED,
-                        note=row.note)
-
-            department = normalise_ws(row.cells.get(ColumnKind.DEPARTMENT, ''))
-            if department and department != name:
-                post.department = Fact.verified(department, ev)
-            classification = normalise_ws(row.cells.get(ColumnKind.CLASSIFICATION, ''))
-            if classification:
-                post.classification = Fact.verified(classification, ev)
-
-            # A pay level the rows do not repeat may be stated in the heading above them,
-            # where it governs every row of that section.
-            pay = normalise_ws(row.cells.get(ColumnKind.PAY, '')) or normalise_ws(
-                str(table.heading_values.get(ColumnKind.PAY, '')))
-            if pay:
-                post.pay = Fact.verified(pay, ev)
-
-            vacancy = normalise_ws(row.cells.get(ColumnKind.VACANCY, ''))
-            if vacancy.isdigit():
-                post.vacancies.append(VacancyCount(count=Fact.verified(int(vacancy), ev)))
-
-            qualification = normalise_ws(row.cells.get(ColumnKind.QUALIFICATION, ''))
-            if qualification:
-                post.qualification.append(QualificationRule(
-                    scope=Scope([ScopeRef(ScopeKind.POST, post.id, post.name)]),
-                    requirement=Fact.verified(qualification[:400], ev)))
-
+                        note=row.note, code=code)
+            _add_row_facts(post, row, ev, table)
+            if code:
+                by_code[code] = post
             out.append(post)
     return out[:80]
+
+
+def _tokens(text: str) -> list[str]:
+    return re.findall(r'[a-z0-9]+', (text or '').lower())
+
+
+def _join_by_known_name(post: Post | None, row, table, doc: SourceDocument, text: str) -> bool:
+    """Take a qualification from a row whose post is already known by code.
+
+    The row's text must begin with the post's full name, word for word (punctuation aside);
+    what follows the name is the qualification. Anything less than the whole name matching is
+    refused -- the boundary would be a guess. Returns True where a qualification was taken.
+    """
+    if post is None or post.qualification:
+        return False
+    if not any(c.kind is ColumnKind.QUALIFICATION for c in table.columns):
+        return False
+    raw = normalise_ws(' '.join(row.raw_cells or [])) if getattr(row, 'raw_cells', None) else ''
+    if not raw:
+        return False
+    want = _tokens(post.name)
+    words = list(re.finditer(r'[A-Za-z0-9]+', raw))
+    if len(words) <= len(want) or [w.group(0).lower() for w in words[:len(want)]] != want:
+        return False
+    remainder = raw[words[len(want) - 1].end():].lstrip(' )]}.,;:-–—')
+    if len(remainder) < 15:
+        return False
+    ev = _evidence(row.span, doc, text, reading=f'qualification for {post.name[:50]}')
+    if ev is None:
+        return False
+    post.qualification.append(QualificationRule(
+        scope=Scope([ScopeRef(ScopeKind.POST, post.id, post.name)]),
+        requirement=Fact.verified(remainder[:600], ev)))
+    return True
+
+
+def _add_row_facts(post: Post, row, ev, table) -> None:
+    """The cells of one row, onto the post it describes. A fact already held is kept."""
+    name = post.name
+    department = normalise_ws(row.cells.get(ColumnKind.DEPARTMENT, ''))
+    if department and department != name and not post.department.has_value:
+        post.department = Fact.verified(department, ev)
+    classification = normalise_ws(row.cells.get(ColumnKind.CLASSIFICATION, ''))
+    if classification and not post.classification.has_value:
+        post.classification = Fact.verified(classification, ev)
+    # A pay level the rows do not repeat may be stated in the heading above them,
+    # where it governs every row of that section.
+    pay = normalise_ws(row.cells.get(ColumnKind.PAY, '')) or normalise_ws(
+        str(table.heading_values.get(ColumnKind.PAY, '')))
+    if pay and not post.pay.has_value:
+        post.pay = Fact.verified(pay, ev)
+    vacancy = normalise_ws(row.cells.get(ColumnKind.VACANCY, ''))
+    if vacancy.isdigit() and not post.vacancies:
+        post.vacancies.append(VacancyCount(count=Fact.verified(int(vacancy), ev)))
+    age = normalise_ws(row.cells.get(ColumnKind.AGE, ''))
+    if age and (_AGE_RANGE.search(age) or _AGE_CELL.match(age)) and not post.age_band.has_value:
+        post.age_band = Fact.verified(age, ev)
+    qualification = normalise_ws(row.cells.get(ColumnKind.QUALIFICATION, ''))
+    if qualification and not post.qualification:
+        post.qualification.append(QualificationRule(
+            scope=Scope([ScopeRef(ScopeKind.POST, post.id, post.name)]),
+            requirement=Fact.verified(qualification[:600], ev)))
+
+
+#: "For Post Code Nos. 02 & 09:", "For PC. No. 07", "Post Code No.07 -". The codes a clause is
+#: scoped to, in the authority's own numbering.
+_CODE_SCOPE = re.compile(
+    r'\bfor\s+(?:post\s+code|p\.?\s*c\.?)\s*(?:no|nos)\.?\s*'
+    r'(?P<codes>\d{1,3}(?:\s*(?:,|&|and|to)\s*\d{1,3})*)\s*[:\-–—]?', re.I)
+
+
+def _codes_in(expr: str) -> list[str]:
+    codes: list[str] = []
+    for a, b in re.findall(r'(\d{1,3})\s*to\s*(\d{1,3})', expr, re.I):
+        codes += [str(n).zfill(2) for n in range(int(a), int(b) + 1)]
+    for n in re.findall(r'\d{1,3}', re.sub(r'\d{1,3}\s*to\s*\d{1,3}', ' ', expr, flags=re.I)):
+        codes.append(n.zfill(2))
+    return list(dict.fromkeys(codes))
+
+
+def post_code_clauses(doc: SourceDocument, text: str, posts: list[Post], *,
+                      heading: re.Pattern) -> None:
+    """Clauses a notice scopes to posts by their codes, attached to those posts.
+
+    Only inside the section whose heading matches `heading` (e.g. physical requirements), and
+    only for posts that carry a code the table printed. The clause is kept as printed, up to
+    the next code-scoped clause or the next section, and becomes an `other_requirements` fact
+    of each post it names.
+    """
+    coded = {p.code: p for p in posts if p.code}
+    if not coded:
+        return
+    flat = text or ''
+    for section in heading.finditer(flat):
+        body = flat[section.end():section.end() + 6000]
+        stop = re.search(r'\n\s*PARA[\s\-–—]*\d|\n\s*\d{1,2}\.\d{1,2}\.?\s+[A-Z]', body)
+        body = body[:stop.start()] if stop else body
+        scopes = list(_CODE_SCOPE.finditer(body))
+        for i, m in enumerate(scopes):
+            clause_end = scopes[i + 1].start() if i + 1 < len(scopes) else len(body)
+            clause = normalise_ws(body[m.start():clause_end])
+            first = re.split(r'(?<=[.;])\s+(?=[A-Z])', clause)[0]
+            span = normalise_ws(first)[:500]
+            ev = _evidence(span, doc, text, reading='a clause scoped to post codes')
+            if ev is None:
+                continue
+            for code in _codes_in(m.group('codes')):
+                post = coded.get(code)
+                if post is not None:
+                    fact = Fact.verified(span, ev)
+                    fact.note = 'physical requirement'
+                    post.other_requirements.append(fact)
+
+
+def post_scoped_sentences(doc: SourceDocument, text: str, posts: list[Post]) -> None:
+    """Sentences anywhere in the notice that name posts by code ("for PC.No.07 Men only are
+    eligible"), attached to those posts as printed. The physical-requirement clauses, read by
+    `post_code_clauses`, are left to it; this is every other code-scoped statement."""
+    coded = {p.code: p for p in posts if p.code}
+    if not coded:
+        return
+    flat = normalise_ws(text or '')
+    held = {f.value for p in posts for f in p.other_requirements}
+    for m in _CODE_SCOPE.finditer(flat):
+        start = max(flat.rfind('. ', 0, m.start()) + 2, flat.rfind(': ', 0, m.start()) + 2, 0)
+        end_dot = flat.find('. ', m.end())
+        end = end_dot + 1 if end_dot != -1 else len(flat)
+        sentence = flat[start:end].strip()
+        if len(sentence) > 320 or any(sentence in h or h in sentence for h in held):
+            continue
+        ev = _evidence(sentence, doc, text, reading='a statement scoped to post codes')
+        if ev is None:
+            continue
+        for code in _codes_in(m.group('codes')):
+            post = coded.get(code)
+            if post is not None and not any(f.value == sentence for f in post.other_requirements):
+                fact = Fact.verified(sentence, ev)
+                fact.note = 'post-scoped statement'
+                post.other_requirements.append(fact)
+
+
+def printed_vacancy_total(doc: SourceDocument, text: str) -> VacancyCount | None:
+    """The total a post table prints on its own totals line, where its rows add up to it.
+
+    The figure is the authority's ("TOTAL 563"); the rows' own counts summing to it is the
+    check that the line belongs to this table's vacancy column. Where they do not agree, or
+    any row's count is missing, nothing is returned -- a total is never computed here.
+    """
+    for table in reconstruct(text):
+        if ColumnKind.VACANCY not in table.kinds or not table.total_line:
+            continue
+        m = re.search(r'(\d[\d,]*)\s*$', table.total_line)
+        if not m:
+            continue
+        printed = int(m.group(1).replace(',', ''))
+        counts = [normalise_ws(r.cells.get(ColumnKind.VACANCY, '')) for r in table.rows]
+        if not counts or any(not c.isdigit() for c in counts) or not all(r.reconstructed for r in table.rows):
+            continue
+        if sum(int(c) for c in counts) != printed:
+            continue
+        ev = _evidence(table.total_line, doc, text, reading=f'total vacancies printed: {printed}')
+        if ev is None:
+            continue
+        return VacancyCount(count=Fact.verified(printed, ev),
+                            qualifier='printed total; the rows of the post table add up to it')
+    return None
 
 
 def post_age_rules(doc: SourceDocument, text: str, posts: list[Post]) -> list[AgeRule]:
@@ -939,14 +1179,20 @@ def post_age_rules(doc: SourceDocument, text: str, posts: list[Post]) -> list[Ag
                 continue
             name = normalise_ws(row.cells.get(ColumnKind.NAME, '')) or normalise_ws(
                 row.cells.get(ColumnKind.DEPARTMENT, ''))
-            post = next((p for p in posts if p.name.lower() == name.lower()), None)
+            post = next((p for p in posts if p.name.lower() == name.lower()), None) or next(
+                (p for p in posts if _name_key(p.name) == _name_key(name)), None)
             if post is None:
                 continue
             parsed = _AGE_RANGE.search(band)
-            if not parsed:
+            cell = _AGE_CELL.match(band)
+            if not parsed and not cell:
                 continue
-            pair = ((parsed.group(1), parsed.group(2)) if parsed.group(1)
-                    else (parsed.group(3), parsed.group(4)))
+            if parsed:
+                pair = ((parsed.group(1), parsed.group(2)) if parsed.group(1)
+                        else (parsed.group(3), parsed.group(4)))
+            else:
+                # The column is headed Age, so a bare band in it is an age band.
+                pair = (cell.group(1), cell.group(2))
             ev = _evidence(row.span, doc, text, reading=f'age for {post.name[:50]}')
             if ev is None:
                 continue

@@ -150,6 +150,20 @@ def validate_runtime_exam(exam: Any) -> list[str]:
         # an empty classification is the honest value, never a gap to be filled in.
         if not isinstance(p, dict) or not p.get('postName') or not isinstance(p.get('classification'), str):
             errors.append('every post must carry postName and a classification string (empty where none was printed)')
+    # The UI keys every card on its id; two items sharing one are one item to it, and the later
+    # may silently not render. That is a loss after the projection check, so it is refused here.
+    for key in ('dates', 'posts', 'resultDeclarations', 'admitCardEvents', 'syllabusTree'):
+        ids: list = []
+        stack = list(exam.get(key) or [])
+        while stack:
+            item = stack.pop()
+            if isinstance(item, dict):
+                if item.get('id'):
+                    ids.append(item['id'])
+                stack.extend(item.get('children') or [])
+        repeated = sorted({i for i in ids if ids.count(i) > 1})
+        if repeated:
+            errors.append(f'{key} carries repeated ids {repeated[:5]}; every item must be addressable on its own')
     rg = exam.get('globalRuleGroup')
     if isinstance(rg, dict):
         if rg.get('operator') not in ('AND', 'OR') or not isinstance(rg.get('rules'), list) or not rg.get('id'):
@@ -362,13 +376,37 @@ def _posts(rec: ExamRecord) -> tuple[list[dict], list[str], list[dict]]:
             continue
         if not cls:
             no_group.append(name)
-        rows.append({
+        extra = item if isinstance(item, dict) else {}
+        # A post's own row states its own age band; the exam-wide band applies only where
+        # the notice prints one for every post.
+        own_lo, own_hi = extra.get('minAge'), extra.get('maxAge')
+        pay_text = pay_level
+        is_scale = bool(re.search(r'\d[\d,]{3,}\s*[-–—]\s*\d[\d,]{3,}', pay_text))
+        row = {
             'id': f'post-{rec.exam_id}-{i}', 'postName': re.sub(_GROUP_TAIL_RX, '', name).strip(),
             'department': department or rec.authority_name,
-            'payLevel': pay_level, 'payScale': '', 'classification': cls,
-            'minAge': lo, 'maxAge': hi,
-            'provenance': prov,
-        })
+            'payLevel': '' if is_scale else pay_level, 'payScale': pay_text if is_scale else '',
+            'classification': cls,
+            'minAge': int(own_lo) if isinstance(own_lo, (int, float)) else lo,
+            'maxAge': int(own_hi) if isinstance(own_hi, (int, float)) else hi,
+            # Each post cites the row it was read from; the field's citation is the fallback.
+            'provenance': (dict(prov, id=f"{prov.get('id', 'prov')}-{i}",
+                                excerptText=_clean(extra['evidenceSpan'], 600),
+                                **({'pageNumber': extra['page']} if extra.get('page') else {}))
+                           if extra.get('evidenceSpan') else prov),
+        }
+        if extra.get('postCode'):
+            row['postCode'] = str(extra['postCode'])
+        if isinstance(extra.get('vacancies'), int):
+            row['vacancies'] = extra['vacancies']
+        if extra.get('qualification'):
+            row['specialQualification'] = _clean(extra['qualification'], 600)
+        if extra.get('physicalRequirements'):
+            row['physicalRequired'] = True
+            row['physicalNote'] = _clean(' '.join(extra['physicalRequirements']), 900)
+        if extra.get('conditions'):
+            row['postConditions'] = [_clean(c, 320) for c in extra['conditions']]
+        rows.append(row)
     return rows, no_group, held
 
 
@@ -464,6 +502,33 @@ def _resources(rec: ExamRecord) -> list[dict]:
             'description': 'The portal the notice sends candidates to.',
             'linkVerifiedDate': '', 'provenance': _prov(rec, rec.get('applicationPortal'), 'portal') or {},
         })
+    # Every result or verification notice the record cites is an official document of this
+    # recruitment, identity-checked when it was read. Listed as a link under the title the
+    # authority gave it, newest first; nothing is stored.
+    results = rec.get('results')
+    if results and results.usable and isinstance(results.value, list):
+        seen_urls = {i['url'] for i in items}
+        notices = [r for r in results.value if isinstance(r, dict) and str(r.get('documentUrl') or '').startswith('http')]
+        notices.sort(key=lambda r: str(r.get('declaredAt') or ''), reverse=True)
+        for i, r in enumerate(notices[:20]):
+            url = str(r['documentUrl'])
+            if url in seen_urls:
+                continue
+            seen_urls.add(url)
+            title = _clean(r.get('sourceLabel') or r.get('label') or 'Official notice', 200)
+            when = str(r.get('declaredAt') or '')
+            items.append({
+                'id': f'res-{rec.exam_id}-notice-{i}', 'title': title,
+                'subject': 'Official Notices', 'author': rec.authority_name, 'type': 'OFFICIAL_PDF',
+                'resourceFormat': 'DIRECT_PDF', 'url': url, 'directPdfUrl': url,
+                'officialTag': f'{rec.code} — OFFICIAL NOTICE' + (f' ({when})' if when else ''),
+                'isEssential': r.get('kind') in ('SELECTION', 'FINAL_RESULT'),
+                'recommendedFor': 'The authority’s own notice for this stage of the recruitment.',
+                'description': 'Issued by the authority for this recruitment' + (f' on {when}.' if when else '.'),
+                'linkVerifiedDate': results.citation.verified_date if results.citation else '',
+                'provenance': dict(_prov(rec, results, f'result-notice-{i}') or {},
+                                   officialUrl=url, documentTitle=title),
+            })
     papers = rec.get('officialPapers')
     if papers and papers.usable and isinstance(papers.value, dict):
         for i, (label, url) in enumerate(sorted(papers.value.items())[:12]):
@@ -862,7 +927,36 @@ def _syllabus_tree(rec: ExamRecord) -> list[dict]:
     f = rec.get('syllabus')
     if not (f and f.usable and isinstance(f.value, list)):
         return []
-    return json.loads(json.dumps([n for n in f.value if isinstance(n, dict) and n.get('title')], default=str))
+    tree = json.loads(json.dumps([n for n in f.value if isinstance(n, dict) and n.get('title')], default=str))
+    _unique_node_ids(tree)
+    return tree
+
+
+def _unique_node_ids(tree: list[dict]) -> None:
+    """Qualify a repeated node id by its parent's, as `syllabus._make_ids_unique` does.
+
+    A record stored before extraction made ids unique can repeat one (each paper's clauses
+    numbered from "1." again). The first node keeps its id; content is never touched."""
+    seen: set = set()
+
+    def visit(node: dict, parent_id: str) -> None:
+        node_id = str(node.get('id') or '')
+        if node_id and node_id in seen and parent_id:
+            base = f'{parent_id}-{node_id.rsplit("-", 1)[-1]}'
+            node_id, n = base, 2
+            while node_id in seen:
+                node_id, n = f'{base}-{n}', n + 1
+            node['id'] = node_id
+            if isinstance(node.get('provenance'), dict):
+                node['provenance']['id'] = f'prov-{node_id}'
+        seen.add(node_id)
+        for child in node.get('children') or []:
+            if isinstance(child, dict):
+                visit(child, node_id)
+
+    for root in tree:
+        if isinstance(root, dict):
+            visit(root, '')
 
 
 def _slugify(text: str) -> str:
@@ -1022,6 +1116,33 @@ def _result_next_steps(rec: ExamRecord) -> list[dict]:
     return out
 
 
+class _NoModel:
+    """Materialization never calls a model: the guidance it carries is the deterministic order
+    over verified topics, so a registration cannot depend on, or be changed by, a model reply."""
+    name = 'none'
+
+    def is_enabled(self) -> bool:
+        return False
+
+
+def _study_guidance(rec: ExamRecord, syllabus: list[dict]) -> Optional[dict]:
+    """GOVOS_GUIDANCE: a suggested order over the exam's verified syllabus topics, and nothing
+    else -- no durations, no daily hours, no topic that is not in the syllabus. Absent where
+    the syllabus is not verified."""
+    f = rec.get('syllabus')
+    if not (f and f.ok and syllabus):
+        return None
+    from .verification.roadmap_guidance import generate
+    g = generate(rec.exam_id, syllabus, authority=rec.authority_name, exam_label=rec.title,
+                 provider=_NoModel())
+    if not g.available:
+        return None
+    out = g.as_dict()
+    out['basis'] = ('Ordered from the ' + str(len(syllabus)) + ' syllabus topics read from '
+                    + rec.authority_name + "'s own documents; no topic is added.")
+    return out
+
+
 def _cutoffs(rec: ExamRecord) -> list[dict]:
     """Cut-offs exactly as a reader recorded them: year, stage, category, post, value, type.
 
@@ -1140,7 +1261,8 @@ def stages_from_pattern(tree: list[dict]) -> list[dict]:
 #: would carry it. The canonical report can say such a section is derivable ("supported and
 #: projected"); if the runtime carries nothing for it, the student must be told it has not been
 #: generated -- never that it exists.
-_DERIVED_SECTION_CONTENT = {'roadmap': 'roadmapTracks', 'mock-tests': 'practiceQuestions'}
+_DERIVED_SECTION_CONTENT = {'roadmap': ('roadmapTracks', 'studyGuidance'),
+                            'mock-tests': ('practiceQuestions',)}
 
 
 def _section_states(report: Optional[ExamCompletenessReport], held: Optional[dict] = None,
@@ -1167,7 +1289,7 @@ def _section_states(report: Optional[ExamCompletenessReport], held: Optional[dic
         # A derived section is GovOS's to generate, so it is never "not published by the
         # authority": with no content it is NOT_YET_GENERATED, and where its input (the pattern)
         # is not verified the summary says that is why.
-        if key and runtime is not None and not runtime.get(key) and state in (
+        if key and runtime is not None and not any(runtime.get(k) for k in key) and state in (
                 'SUPPORTED_AND_PROJECTED', 'RUNTIME_DERIVED', 'NOT_YET_PUBLISHED'):
             waiting = not runtime.get('patternTree')
             state = 'NOT_YET_GENERATED'
@@ -1234,6 +1356,9 @@ def materialize_exam(rec: ExamRecord, *, cycle: str = '',
         'origin': 'MACHINE_ACQUIRED',
         'cycle': cycle,
     }
+    guidance = _study_guidance(rec, exam['syllabus'])
+    if guidance:
+        exam['studyGuidance'] = guidance
     for key, value in (('patternTree', pattern_tree), ('syllabusTree', syllabus_tree),
                        ('examDayChecklist', _exam_day(rec)), ('admitCardEvents', _admit_card_events(rec)),
                        ('officialPapers', _official_papers(rec)), ('answerKeys', _answer_keys(rec)),
@@ -1336,6 +1461,23 @@ class ExamRegistry:
             PRIMARY KEY (exam_id, cycle)
         )'''
 
+    #: Every version a re-registration replaced, kept whole: what candidates were shown, the
+    #: canonical record it came from, and when it stopped being current. Nothing is deleted.
+    HISTORY_DDL = '''
+        CREATE TABLE IF NOT EXISTS exam_registry_history (
+            exam_id TEXT NOT NULL,
+            cycle TEXT NOT NULL,
+            version INTEGER NOT NULL,
+            gate_decision TEXT NOT NULL,
+            exam_json TEXT NOT NULL,
+            record_json TEXT NOT NULL,
+            completeness_json TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            superseded_at TEXT NOT NULL,
+            PRIMARY KEY (exam_id, cycle, version)
+        )'''
+
     def __init__(self, db_path: str = 'govos.db'):
         self.db_path = db_path
         self._is_memory = (db_path == ':memory:' or 'mode=memory' in db_path)
@@ -1359,8 +1501,22 @@ class ExamRegistry:
     def _init_db(self) -> None:
         c = self._conn()
         c.execute(self.DDL)
+        c.execute(self.HISTORY_DDL)
         c.commit()
         self._release(c)
+
+    # -- history ----------------------------------------------------------------------------
+    def history(self, exam_id: str, cycle: str) -> list[dict]:
+        """Every superseded version of one exam and cycle, oldest first."""
+        c = self._conn()
+        rows = c.execute('SELECT * FROM exam_registry_history WHERE exam_id = ? AND cycle = ? '
+                         'ORDER BY version', (exam_id, cycle)).fetchall()
+        self._release(c)
+        return [{'version': r['version'], 'gateDecision': r['gate_decision'],
+                 'exam': json.loads(r['exam_json']), 'record': json.loads(r['record_json']),
+                 'completeness': json.loads(r['completeness_json']) if r['completeness_json'] else None,
+                 'createdAt': r['created_at'], 'updatedAt': r['updated_at'],
+                 'supersededAt': r['superseded_at']} for r in rows]
 
     # -- write ------------------------------------------------------------------------------
     def register(self, rec: ExamRecord, *, gate: GateReport, exam: dict,
@@ -1388,10 +1544,20 @@ class ExamRegistry:
             raise RegistryRejected('a runtime exam must declare its cycle/year for cycle isolation')
         now = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
         c = self._conn()
-        row = c.execute('SELECT version, created_at FROM exam_registry WHERE exam_id = ? AND cycle = ?',
+        row = c.execute('SELECT * FROM exam_registry WHERE exam_id = ? AND cycle = ?',
                         (rec.exam_id, cycle)).fetchone()
         version = (row['version'] + 1) if row else 1
         created = row['created_at'] if row else now
+        if row is not None:
+            # The version being replaced is archived first, in the same transaction, so a
+            # re-registration can never lose what candidates were shown before.
+            c.execute('''INSERT OR IGNORE INTO exam_registry_history
+                         (exam_id, cycle, version, gate_decision, exam_json, record_json,
+                          completeness_json, created_at, updated_at, superseded_at)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                      (row['exam_id'], row['cycle'], row['version'], row['gate_decision'],
+                       row['exam_json'], row['record_json'], row['completeness_json'],
+                       row['created_at'], row['updated_at'], now))
         c.execute('''INSERT OR REPLACE INTO exam_registry
                      (exam_id, cycle, authority_name, authority_domain, official_name, version,
                       gate_decision, published, exam_json, record_json, completeness_json,

@@ -86,8 +86,11 @@ def deterministic_sequence(topics: list) -> list:
         if t['subject'] not in subjects:
             subjects.append(t['subject'])
     subj_rank = {s: i for i, s in enumerate(subjects)}
+    position = {id(t): i for i, t in enumerate(norm)}
+    # Where nothing else distinguishes two topics, the syllabus's own order stands: it is the
+    # authority's sequence, and an alphabetical one is nobody's.
     ordered = sorted(norm, key=lambda t: (not t['high_yield'], subj_rank.get(t['subject'], 99),
-                                          -t['weightage'], t['name']))
+                                          -t['weightage'], position[id(t)]))
     return [RoadmapStep(topic_id=t['id'], topic_name=t['name'], subject=t['subject'],
                         rationale='High-yield; scheduled early.' if t['high_yield']
                         else 'Scheduled by weightage within its subject.') for t in ordered]

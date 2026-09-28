@@ -93,7 +93,10 @@ _TITLE_RX = re.compile(
     # recruitment "GROUP-I SERVICES (GENERAL RECRUITMENT)" and "GROUP – I SERVICES", and a
     # run that stopped at "(" or "–" could not read either title at all.
     r'((?:(?:[A-Z(][\w&().\'–—-]*|[–—-])\s+){1,9}'
-    r'(?i:Examination|Exam|Recruitment|Test|Services\s+Examination)'
+    r'(?i:Examination|Exam|Recruitment|Test|Services\s+Examination|'
+    # "GROUP-I SERVICES NOTIFICATION NO.02/2024": a service group titled by the notice
+    # that recruits to it. The notice number beside it carries the cycle.
+    r'Services(?=\s*[,\-–—]?\s*(?i:notification)\s*(?i:no)))'
     # ... but not where the anchor is the *start* of the leading form. Without
     # this, "Mumbai-400021 Recruitment" consumed the word that
     # "Recruitment of Assistant Administrative Officers (AAO)" needed, and an
@@ -111,6 +114,8 @@ _TITLE_RX = re.compile(
 
 #: A year written beside an exam name, in any of the usual shapes.
 _YEAR_RX = re.compile(r'\b(20\d{2})\b')
+#: A full calendar date, whose year is not a cycle label.
+_FULL_DATE = re.compile(r'\b\d{1,2}[./-]\d{1,2}[./-](?:19|20)\d{2}\b')
 
 #: How much of a document is its title block: the heading, the notice number and the
 #: opening paragraph. A rival examination named within it makes the document ambiguous; one
@@ -144,12 +149,15 @@ def exam_references(text: str, *, limit: int = 400) -> list[ExamReference]:
             # SERVICES". The notice number and dateline are the document's own statement of
             # its cycle, and reading no year there let a previous cycle's notice pass as the
             # current one. The nearest year on either side, within a short window, is taken.
-            tail = flat[m.end():m.end() + 24]
+            # A year inside a full date ("held from 12/10/2031") says when something happened,
+            # not which cycle a title names; only a year written as a label or a notice number
+            # ("NO. 04/2022") counts.
+            tail = _FULL_DATE.sub(' ', flat[m.end():m.end() + 24])
             ym2 = _YEAR_RX.search(tail)
             if ym2:
                 year = ym2.group(1)
             else:
-                before = flat[max(0, m.start() - 48):m.start()]
+                before = _FULL_DATE.sub(' ', flat[max(0, m.start() - 48):m.start()])
                 years_before = _YEAR_RX.findall(before)
                 if years_before:
                     year = years_before[-1]
@@ -325,6 +333,18 @@ def verify(text: str, target: ExamIdentity, *, source_url: str = '',
                 IdentityVerdict.AMBIGUOUS, evidence=ev,
                 reasons=['the phrase that would establish identity could not be verified '
                          'verbatim in the document'])
+
+    head = normalise_ws(text)[:_TITLE_BLOCK_CHARS].lower()
+    if (wrong_year and any(r.text.lower() in head for r in wrong_year)
+            and not any(r.year and r.text.lower() in head for r in matching)):
+        # The title block names this examination for another cycle, and names it for this
+        # cycle nowhere: a yearless mention in the body cannot outvote the document's own title.
+        return IdentityCheck(
+            IdentityVerdict.MISMATCH,
+            competing=[r.text for r in wrong_year[:3]],
+            reasons=[f'the document’s title block names this examination for '
+                     f'{", ".join(sorted({r.year for r in wrong_year}))}, not '
+                     f'{target.year or "the requested year"}'])
 
     if matching and not other:
         return IdentityCheck(IdentityVerdict.MATCH, evidence=ev,

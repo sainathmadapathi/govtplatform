@@ -1111,6 +1111,11 @@ class Post:
     evidence: list[SourceEvidence] = dc_field(default_factory=list)
     status: Status = Status.NOT_EXTRACTED
     note: str = ''
+    #: The authority's own code for the post, where its table heads the serial column as a
+    #: code ("Post code No."). A bare row number is not a code and is never recorded here.
+    code: str = ''
+    #: The age band this post's own row printed ("18-46"), as printed.
+    age_band: Fact[str] = dc_field(default_factory=Fact)
 
 
 @dataclass

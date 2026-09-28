@@ -76,7 +76,11 @@ CONTRACT: tuple[ContractField, ...] = (
                   purpose='Any cap on attempts, and relaxations.'),
 
     # -- Dates ------------------------------------------------------------------------
-    ContractField('dates', 'Dates', (DocKind.EXAM_PAGE, DocKind.NOTIFICATION),
+    # Lifecycle notices -- a result, a shortlist for verification, an admit-card or calendar
+    # notice, a corrigendum -- announce milestones too ("the Mains held from X to Y",
+    # "verification of certificates on Z"), and the timeline is every milestone announced.
+    ContractField('dates', 'Dates', (DocKind.EXAM_PAGE, DocKind.NOTIFICATION, DocKind.RESULT,
+                                     DocKind.ADMIT_CARD, DocKind.CALENDAR, DocKind.CORRIGENDUM),
                   extractor='dates_from_rows',
                   purpose='Every milestone the authority has announced.', required=True),
     ContractField('corrigenda', 'Timeline', (DocKind.CORRIGENDUM,),

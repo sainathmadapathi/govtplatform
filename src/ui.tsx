@@ -8160,6 +8160,33 @@ export const PreparationPlanner: React.FC<PreparationPlannerProps> = ({ exam }) 
     setCompletedGoals(storageService.toggleRoadmapGoal(exam.id, goalKey));
   };
 
+  // No authored track, but a study order over the verified syllabus: shown as what it is --
+  // GovOS guidance with no durations -- grouped by the syllabus's own papers.
+  if (!currentTrack && (exam.studyGuidance?.steps?.length ?? 0) > 0) {
+    const g = exam.studyGuidance!;
+    const groups: { subject: string; topics: string[] }[] = [];
+    g.steps.forEach(st => {
+      const last = groups[groups.length - 1];
+      if (last && last.subject === st.subject) last.topics.push(st.topicName);
+      else groups.push({ subject: st.subject || 'Syllabus', topics: [st.topicName] });
+    });
+    return (
+      <div className="glass-card animate-fade-in" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <span className="badge badge-pending" style={{ alignSelf: 'flex-start' }}>GOVOS STUDY GUIDANCE — NOT AN OFFICIAL STATEMENT</span>
+        <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>A suggested study order for {exam.title}</h3>
+        <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>{g.disclaimer} {g.basis || ''} No durations or daily hours are suggested: {exam.authorityName} publishes none, and GovOS does not invent them.</p>
+        <ol style={{ margin: 0, paddingLeft: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {groups.map((grp, i) => (
+            <li key={i} style={{ color: 'var(--text-primary)' }}>
+              <div style={{ fontWeight: 700, fontSize: '0.92rem' }}>{grp.subject}</div>
+              <div style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{grp.topics.join(' · ')}</div>
+            </li>
+          ))}
+        </ol>
+      </div>
+    );
+  }
+
   // No track on record: GovOS has generated no study guidance for this exam, and none is
   // borrowed from another exam. Said plainly, with what does exist -- never a crash.
   if (!currentTrack) {
