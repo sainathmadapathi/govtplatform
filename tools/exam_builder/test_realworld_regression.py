@@ -75,7 +75,15 @@ class TestRealWorldRematerialization(unittest.TestCase):
         self.assertEqual(e['title'], 'TGPSC Group-I Services')
         self.assertEqual(e['authorityName'], 'Telangana Public Service Commission')
         self.assertEqual(e['cycle'], '2024')
-        self.assertEqual(g['officialPortal'], 'https://www.tspsc.gov.in')
+        # Changed expectation: the notice prints https://www.tspsc.gov.in, the Commission's
+        # address before it was renamed, and that host no longer resolves (DNS failure, checked
+        # 2026-09-28). Linking it sent candidates to a dead address; CLAUDE.md's rule is that a
+        # link failing from the candidate's network is replaced, never kept. The runtime now
+        # links the authority's own site, and the printed address is kept -- in the canonical
+        # record and quoted on the official-links card -- rather than lost.
+        self.assertEqual(g['officialPortal'], 'https://websitenew.tgpsc.gov.in')
+        self.assertEqual(self.rec.value('applicationPortal'), 'https://www.tspsc.gov.in')
+        self.assertTrue(any('https://www.tspsc.gov.in' in l.get('note', '') for l in e['officialLinks']))
         self.assertEqual(len(g['otrSteps'][0]['instructions']), 8)
         self.assertGreater(len(g['requiredDocuments']), 0)
         self.assertEqual(len(g['photoRules']['rules']), 2, 'the notice’s own photo sentences, not a blank placeholder')

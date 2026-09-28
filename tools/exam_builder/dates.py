@@ -228,8 +228,12 @@ EVENT_CUES: tuple[EventCue, ...] = (
               r'\bapply\s+(?:online\s+)?(?:from|between)\b',
               r'\b(?:online\s+)?applications?\s+(?:window\s+|process\s+|portal\s+)?'
               r'(?:starts?|opens?|begins?|commences?|closes?|ends?)\b',
-              r'\b(?:submission|registration)\s+(?:window\s+)?(?:starts?|opens?|begins?|commences?|ends?|closes?)\b'),
-             against=(r'\bfee\b.{0,20}\bpayment\b',)),
+              r'\b(?:submission|registration)\s+(?:window\s+)?(?:starts?|opens?|begins?|commences?|ends?|closes?)\b',
+              # A recruitment listing's row: "Start Date: X End Date Y". Only the pair, and
+              # only bare: a lone "end date" says nothing about what ends.
+              r'\bstart\s+date\b\s*:?\s*[^\n]{0,40}?\bend\s+date\b'),
+             against=(r'\bfee\b.{0,20}\bpayment\b',
+                      r'\b(?:start|end)\s+date\s+of\s+(?:the\s+)?(?:exam\w*|test|fee|payment)\b')),
     EventCue('ADMIT_CARD',
              # "Hall Ticket Numbers" is how candidates are listed, not an admit-card event.
              (r'(?:e-?\s?)?admit\s+cards?', r'call\s+letters?',
@@ -430,6 +434,13 @@ def _label_for(passage: str, kind: str) -> str:
             # at the date read would leave "May/" and hide that the month is not settled.
             head = text[:dates[0].end].strip(' :|-–—\t')
         head = re.sub(r'^\d{1,2}(?:\.\d{1,2})*\s*[.)]?\s*', '', head).strip()
+        if '|' in head:
+            # A listing row: the first cells name the recruitment, the last one labels the
+            # date. "02/2024 - GROUP-I SERVICES | Start Date" labels nothing as a whole.
+            head = head.split('|')[-1].strip(' :-–—')
+            if re.fullmatch(r'start\s+date', head, re.I) and re.search(r'\bend\s+date\b', text, re.I):
+                # The row's two labels, as it prints them: the window's rows carry both.
+                head = 'Start Date / End Date'
         # "Applications From: X To: Y" labels a window, and the window's two rows (opening,
         # closing) each carry the label; a dangling "From" would describe only one of them.
         bare = re.sub(r'\s*\b(?:from|between)\s*[:\-–—]?\s*$', '', head, flags=re.I).strip()
@@ -937,9 +948,13 @@ def _same_event(a: Milestone, b: Milestone) -> bool:
         # these in spells, each announced in its own notice. Two spells on two dates are
         # two events, not one event stated twice -- only the same statement is the same event.
         return False
+    # A statement with no cycle label belongs to the cycle of the record it was read into --
+    # every document here passed the identity gate for one exam and one cycle. Two different
+    # labels are two cycles; one label and none are one cycle stated twice. Requiring equality
+    # kept a listing row ("07/2031 - …") and the notice it revises in separate buckets.
     return (a.kind == b.kind
             and str(a.scope) == str(b.scope)
-            and (a.cycle or '') == (b.cycle or ''))
+            and (not a.cycle or not b.cycle or a.cycle == b.cycle))
 
 
 #: Events an authority holds more than once in a cycle, each spell announced separately.
@@ -954,6 +969,41 @@ _AUTHORITY_ORDER = {
     'APPLICATION_PAGE': 3,
     'OTHER_OFFICIAL': 4,
 }
+
+
+#: Windows an authority extends after printing its notice. For these the authority's own
+#: later page outranks the notice PDF -- but only as an extension. An examination date is
+#: deliberately not here: two official documents naming two examination dates with neither
+#: saying it corrects the other stay a disagreement (test H), and a rescheduling that says
+#: so is already handled as a revision.
+_EXTENDABLE_KINDS = frozenset({'APPLICATION_WINDOW', 'FEE_PAYMENT_END', 'CORRECTION_WINDOW'})
+
+
+def _later_word(bucket):
+    """The (document, milestone) that governs an extended window, or None.
+
+    Only where the higher-ranked sources -- a corrigendum or the authority's examination
+    page -- agree on one date among themselves, every other statement comes from a printed
+    notice or below, and the higher-ranked date is *later* than each printed one: that is an
+    extension. A page closing a window earlier than the notice is not how a window moves, so
+    it stays a disagreement for a person to resolve, as does anything else.
+    """
+    if not bucket or bucket[0][1].kind not in _EXTENDABLE_KINDS:
+        return None
+    rank = lambda d: _AUTHORITY_ORDER.get(getattr(d.kind, 'value', str(d.kind)), 9)
+    notice = _AUTHORITY_ORDER['NOTIFICATION']
+    best = min(rank(d) for d, _m in bucket)
+    if best >= notice:
+        return None
+    top = [(d, m) for d, m in bucket if rank(d) == best and m.effective_date is not None]
+    if not top or len({m.effective_date for _d, m in top}) != 1:
+        return None
+    if any(notice > rank(d) > best for d, _m in bucket):
+        return None
+    governing = top[0][1].effective_date
+    if any(m.effective_date and m.effective_date > governing for d, m in bucket if rank(d) > best):
+        return None
+    return top[0]
 
 
 def reconcile(groups: list[tuple[SourceDocument, list[Milestone]]]) -> list[Milestone]:
@@ -1025,6 +1075,33 @@ def reconcile(groups: list[tuple[SourceDocument, list[Milestone]]]) -> list[Mile
                     f'{newer.state.value.lower()}')
                 out.append(older)
             newer.supersedes = bucket[0][1].id if bucket[0][1] is not newer else ''
+            newer.revision_source_id = newer_doc.id
+            out.append(newer)
+            continue
+
+        governing = _later_word(bucket)
+        if governing is not None:
+            newer_doc, newer = governing
+            for doc, older in bucket:
+                if older is newer or older.effective_date == newer.effective_date:
+                    continue
+                printed = older.effective_date
+                older.superseded_by = newer.id
+                older.note = (older.note + ' ' if older.note else '') + (
+                    f'the notice printed {printed}; the authority’s own '
+                    f'{newer_doc.kind.value.replace("_", " ").lower()} states '
+                    f'{newer.effective_date}, and that later word governs. The printed value '
+                    f'is kept as superseded, not overwritten')
+                newer.supersedes = older.id
+                if (older.starts_at.has_value and newer.starts_at.has_value
+                        and older.starts_at.value == newer.starts_at.value):
+                    # The window was extended, not re-opened: the opening is still the
+                    # notice's own statement, so it stays the primary source and the later
+                    # page corroborates it.
+                    known = {(e.source_id, e.span_digest) for e in older.starts_at.evidence}
+                    newer.starts_at.evidence = list(older.starts_at.evidence) + [
+                        e for e in newer.starts_at.evidence if (e.source_id, e.span_digest) not in known]
+                out.append(older)
             newer.revision_source_id = newer_doc.id
             out.append(newer)
             continue

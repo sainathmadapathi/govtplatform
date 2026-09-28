@@ -301,9 +301,16 @@ def _corrigendums(rec: ExamRecord) -> list[dict]:
                 'id': str(c.get('id') or f'corr-{rec.exam_id}-{i}'),
                 'title': str(c.get('title') or f"Corrigendum: {c.get('affectedField', 'revision')}"),
                 'noticeNumber': str(c.get('sourceTitle') or c.get('noticeNumber') or ''),
-                'publishedDate': str(c.get('publishedDate') or c.get('effectiveDate') or '')[:10],
+                # A revision whose source prints no date of its own carries publishedDate ''
+                # on purpose: its effective date is when the change applies, not when it was
+                # announced, and reporting one as the other would date an announcement.
+                'publishedDate': str(c['publishedDate'] if 'publishedDate' in c
+                                     else c.get('effectiveDate') or '')[:10],
                 'effectiveDate': str(c.get('effectiveDate') or '')[:10],
-                'summary': str(c.get('evidenceSpan') or c.get('note') or ''),
+                # Both: the quoted statements, then what kind of record this is -- a revision
+                # read from a later official statement must say it is not a corrigendum notice.
+                'summary': ' '.join(p for p in (str(c.get('evidenceSpan') or ''), str(c.get('note') or ''))
+                                    if p),
                 'pdfUrl': str(c.get('sourceUrl') or ''),
                 'status': 'SUPERSEDED' if str(c.get('status', '')).upper() == 'SUPERSEDED' else 'ACTIVE',
                 'diffSummary': (f"{c.get('affectedField', 'value')}: {old} → {new}" if (old or new)
@@ -491,15 +498,16 @@ def _resources(rec: ExamRecord) -> list[dict]:
             'linkVerifiedDate': notice_field.citation.verified_date,
             'provenance': _prov(rec, notice_field, 'notice') or {},
         })
-    portal = rec.value('applicationPortal')
-    if portal and isinstance(portal, str) and portal.startswith('http'):
+    printed = rec.value('applicationPortal')
+    portal, portal_note = _portal_link(rec)
+    if printed and isinstance(printed, str) and printed.startswith('http'):
         items.append({
             'id': f'res-{rec.exam_id}-portal', 'title': f'{rec.authority_name} — Online Application Portal',
             'subject': 'Official Portal', 'author': rec.authority_name, 'type': 'OFFICIAL_PORTAL',
             'resourceFormat': 'EXTERNAL_PORTAL', 'url': portal, 'isEssential': True,
             'officialTag': f'{rec.code} — APPLY HERE',
             'recommendedFor': 'Where the authority takes the application.',
-            'description': 'The portal the notice sends candidates to.',
+            'description': portal_note or 'The portal the notice sends candidates to.',
             'linkVerifiedDate': '', 'provenance': _prov(rec, rec.get('applicationPortal'), 'portal') or {},
         })
     # Every result or verification notice the record cites is an official document of this
@@ -527,6 +535,33 @@ def _resources(rec: ExamRecord) -> list[dict]:
                 'description': 'Issued by the authority for this recruitment' + (f' on {when}.' if when else '.'),
                 'linkVerifiedDate': results.citation.verified_date if results.citation else '',
                 'provenance': dict(_prov(rec, results, f'result-notice-{i}') or {},
+                                   officialUrl=url, documentTitle=title),
+            })
+    # Every other document of this recruitment the build read and identity-matched: a schedule
+    # that fed only the timeline is still the authority's own notice a candidate may need.
+    official = rec.get('officialSources')
+    if official and official.usable and isinstance(official.value, list):
+        seen_urls = {i['url'] for i in items}
+        for i, s in enumerate(official.value):
+            if not isinstance(s, dict) or s.get('identity') != 'MATCH':
+                continue
+            url = str(s.get('url') or '')
+            if not url.startswith('http') or url in seen_urls:
+                continue
+            seen_urls.add(url)
+            title = _clean(s.get('title') or 'Official notice', 200)
+            is_pdf = s.get('kind') != 'EXAM_PAGE'
+            items.append({
+                'id': f'res-{rec.exam_id}-source-{i}', 'title': title,
+                'subject': 'Official Notices', 'author': rec.authority_name,
+                'type': 'OFFICIAL_PDF' if is_pdf else 'OFFICIAL_PORTAL',
+                'resourceFormat': 'DIRECT_PDF' if is_pdf else 'EXTERNAL_PORTAL', 'url': url,
+                **({'directPdfUrl': url} if is_pdf else {}),
+                'officialTag': f'{rec.code} — OFFICIAL SOURCE',
+                'recommendedFor': 'A document this record was read from.',
+                'description': 'Issued by the authority for this recruitment; identity-checked when read.',
+                'linkVerifiedDate': official.citation.verified_date if official.citation else '',
+                'provenance': dict(_prov(rec, official, f'source-{i}') or {},
                                    officialUrl=url, documentTitle=title),
             })
     papers = rec.get('officialPapers')
@@ -662,8 +697,31 @@ def _fee_details(rec: ExamRecord) -> Optional[dict]:
     return out
 
 
+def _portal_link(rec: ExamRecord) -> tuple[str, str]:
+    """(the portal address to link, a note), with the notice's own address kept in the note.
+
+    A notice prints the portal as it stood when the notice was issued. An authority that has
+    since been renamed or moved leaves that address on another registered domain, where it may
+    no longer answer -- a state commission's former domain stopped resolving after it was
+    renamed. A link off the authority's own estate is
+    therefore not published as its portal; the authority's own site is linked instead and the
+    printed address is quoted, so nothing the notice said is hidden.
+    """
+    from urllib.parse import urlsplit
+    from ..exam_authoring.sources import same_estate
+    printed = rec.value('applicationPortal')
+    own = rec.official_domain
+    if not (isinstance(printed, str) and printed.startswith('http')):
+        return own, ''
+    if same_estate(urlsplit(printed).hostname or '', urlsplit(own).hostname or ''):
+        return printed, ''
+    return own, (f'The notice names {printed} as the application portal. That address is not on '
+                 f'the authority’s current domain ({own}), so the authority’s own site is linked '
+                 f'instead.')
+
+
 def _application_guide(rec: ExamRecord) -> dict:
-    portal = rec.value('applicationPortal') or rec.official_domain
+    portal = _portal_link(rec)[0]
     how = rec.get('howToApply')
     steps: list[dict] = []
     if how and how.usable:
@@ -1385,10 +1443,27 @@ def materialize_exam(rec: ExamRecord, *, cycle: str = '',
 def _official_links(rec: ExamRecord) -> list[dict]:
     links = [{'title': f'{rec.authority_name} — official website', 'url': rec.official_domain,
               'note': 'The authority’s own site.'}]
-    portal = rec.value('applicationPortal')
-    if isinstance(portal, str) and portal.startswith('http') and portal.rstrip('/') != rec.official_domain.rstrip('/'):
+    portal, portal_note = _portal_link(rec)
+    if portal.startswith('http') and portal.rstrip('/') != rec.official_domain.rstrip('/'):
         links.append({'title': 'Online application portal', 'url': portal,
                       'note': 'Where the notice sends candidates to apply.'})
+    elif portal_note:
+        # The printed portal is off the authority's estate; the site link above serves, and
+        # the notice's own address is still stated where a candidate will look for it.
+        links.append({'title': 'Application portal named in the notice', 'url': portal,
+                      'note': portal_note})
+    # The authority's own page for this recruitment, where the build found one and its own
+    # text identified it as this exam (a listing page contributes only its matching row).
+    official = rec.get('officialSources')
+    if official and official.usable and isinstance(official.value, list):
+        seen = {l['url'] for l in links}
+        for s in official.value:
+            url = str((s or {}).get('url') or '')
+            if (isinstance(s, dict) and s.get('kind') == 'EXAM_PAGE' and s.get('identity') == 'MATCH'
+                    and url.startswith('http') and url not in seen):
+                seen.add(url)
+                links.append({'title': _clean(s.get('title') or 'Examination page', 120), 'url': url,
+                              'note': 'The authority’s own page listing this recruitment and its dates.'})
     return links
 
 

@@ -581,6 +581,19 @@ def test_x_an_interview_heading_alone_is_still_a_stage() -> None:
           [s.level for s in pattern.stages if 'Interview' in s.name], [PatternLevel.STAGE])
 
 
+def test_x_a_statement_verb_is_matched_as_a_word() -> None:
+    # The pattern once held a literal backspace where \b belonged, so it never matched
+    # anything and a sentence could be read as a table header. It must match a verb as a
+    # word, and not the letters of one inside a column name ("This", "Distribution").
+    from .pattern import _SENTENCE_VERB
+    check('X: a sentence carries a statement verb',
+          bool(_SENTENCE_VERB.search('The Examination will consist of two papers')), True)
+    check('X: a header names columns and carries none',
+          bool(_SENTENCE_VERB.search('Subject No. of Questions Maximum Marks Time allowed')), False)
+    check('X: a verb inside another word is not a verb',
+          bool(_SENTENCE_VERB.search('Distribution of Marks This Paper')), False)
+
+
 def test_no_exam_is_named_in_the_extractor() -> None:
     import io
     import re
@@ -625,6 +638,7 @@ def main() -> int:
                test_x_a_wrapped_heading_tail_is_not_a_stage,
                test_x_a_stage_named_inside_the_syllabus_is_not_a_stage,
                test_x_an_interview_heading_alone_is_still_a_stage,
+               test_x_a_statement_verb_is_matched_as_a_word,
                test_no_exam_is_named_in_the_extractor):
         fn()
     if _FAILURES:

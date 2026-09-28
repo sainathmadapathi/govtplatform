@@ -293,5 +293,207 @@ class TestSyllabusIdentity(unittest.TestCase):
         self.assertTrue(any('repeated ids' in e for e in validate_runtime_exam(exam)))
 
 
+#: A commission's page listing every recruitment, as its table flattens.
+LISTING_HTML = """<table>
+<tr><td>07/2031 - DIVISION-II SERVICES</td><td>Start Date: 01/02/2031 End Date 20/02/2031 05:00 PM Exam Date</td></tr>
+<tr><td>04/2027 - DIVISION-II SERVICES</td><td>Start Date: 02/05/2027 End Date 31/05/2027 05:00 PM Exam Date</td></tr>
+<tr><td>09/2031 - DIVISION-III SERVICES</td><td>Start Date: 24/01/2031 End Date 23/02/2031 05:00 PM Exam Date</td></tr>
+</table>"""
+
+NOTICE_WINDOW = """EXAMPLE PUBLIC SERVICE COMMISSION
+NOTIFICATION NO. 07/2031 DIVISION-II SERVICES
+1.2. Chronology of Events
+Date of Submission of Online Applications From: 01/02/2031 To:18/02/2031
+Last Date & Time for receipt of Online Applications 18/02/2031 at 5:00 PM
+"""
+
+TARGET = ExamIdentity(exam_id='exam-x', query='EPSC Division-II Services',
+                      official_name='EPSC Division-II Services', year='2031',
+                      authority_name='Example Public Service Commission')
+
+
+def _listing_doc():
+    from ..exam_authoring.sources import Document
+    d = Document(url='https://psc.example/directRecruitment', kind='HTML', fetched_at='2031-03-01',
+                 raw=LISTING_HTML.encode(), text=' '.join(LISTING_HTML.split()))
+    d.html = LISTING_HTML
+    return d
+
+
+class TestRecruitmentListing(unittest.TestCase):
+    """A listing page names every recruitment; only this exam's row may supply facts."""
+
+    def test_a_listing_row_names_its_recruitment_by_notice_number(self):
+        own = '07/2031 - DIVISION-II SERVICES | Start Date: 01/02/2031 End Date 20/02/2031'
+        self.assertEqual(verify(own, TARGET).verdict, IdentityVerdict.MATCH)
+        other_cycle = '04/2027 - DIVISION-II SERVICES | Start Date: 02/05/2027'
+        self.assertEqual(verify(other_cycle, TARGET).verdict, IdentityVerdict.MISMATCH)
+        other_exam = '09/2031 - DIVISION-III SERVICES | Start Date: 24/01/2031'
+        self.assertEqual(verify(other_exam, TARGET).verdict, IdentityVerdict.MISMATCH)
+
+    def test_only_the_exam_s_own_row_is_kept(self):
+        from .build import _listing_entry
+        entry = _listing_entry(_listing_doc(), TARGET)
+        self.assertIsNotNone(entry)
+        self.assertIn('07/2031', entry.text)
+        self.assertNotIn('04/2027', entry.text)
+        self.assertNotIn('DIVISION-III', entry.text)
+        self.assertEqual(entry.html, '', 'the kept row is not read as a label/value table')
+
+    def test_start_and_end_labels_are_the_application_window(self):
+        d = doc('listing')
+        got = extract_milestones(d, '07/2031 - DIVISION-II SERVICES | Start Date: 01/02/2031 '
+                                    'End Date 20/02/2031 05:00 PM Exam Date', exam_id='exam-x')
+        self.assertEqual([(m.kind, m.starts_at.value, m.ends_at.value) for m in got],
+                         [('APPLICATION_WINDOW', '2031-02-01', '2031-02-20')],
+                         'an empty "Exam Date" label after the window claims no date')
+        self.assertEqual(got[0].label, 'Start Date / End Date')
+
+    def test_a_lone_end_date_or_an_exam_s_start_date_is_not_a_window(self):
+        d = doc('n')
+        got = extract_milestones(d, 'Start date of examination: 10/05/2031. End date of examination: '
+                                    '12/05/2031.', exam_id='exam-x')
+        self.assertFalse(any(m.kind == 'APPLICATION_WINDOW' for m in got))
+
+
+class TestLaterOfficialWord(unittest.TestCase):
+    """For an event an authority can move, its own later page outranks the printed notice."""
+
+    def groups(self, page_kind):
+        from .schema import SourceDocument as SD
+        notice = doc('notice')
+        page = SD(id='page', url='https://psc.example/directRecruitment', kind=page_kind,
+                  title='Notifications for All Recruitments', authority='Example PSC', exam_id='exam-x')
+        row = '07/2031 - DIVISION-II SERVICES | Start Date: 01/02/2031 End Date 20/02/2031 05:00 PM'
+        return [(notice, extract_milestones(notice, NOTICE_WINDOW, exam_id='exam-x')),
+                (page, extract_milestones(page, row, exam_id='exam-x'))]
+
+    def test_the_exam_page_supersedes_and_the_printed_date_is_kept(self):
+        rows = important_dates(reconcile(self.groups(SourceKind.EXAM_PAGE)), exam_id='exam-x')
+        close = [(r['dateTimeStr'][:10], r['status']) for r in rows if r['type'] == 'APPLICATION_CLOSE']
+        self.assertIn(('2031-02-20', 'AVAILABLE'), close)
+        self.assertIn(('2031-02-18', 'SUPERSEDED'), close, 'the printed date is struck through, not lost')
+        self.assertTrue(all(r.get('supersededBy') for r in rows if r['status'] == 'SUPERSEDED'))
+        opening = [r for r in rows if r['type'] == 'APPLICATION_OPEN']
+        self.assertEqual(len(opening), 1)
+        self.assertIn('Online Applications From: 01/02/2031', opening[0]['provenance']['excerptText'],
+                      'an extended window was not re-opened: its opening stays the notice’s statement')
+        self.assertNotIn('Start Date', opening[0]['provenance']['excerptText'])
+
+    def test_two_sources_of_equal_rank_are_still_a_disagreement(self):
+        rows = important_dates(reconcile(self.groups(SourceKind.NOTIFICATION)), exam_id='exam-x')
+        close = [r for r in rows if r['type'] == 'APPLICATION_CLOSE']
+        self.assertFalse(any(r['status'] == 'SUPERSEDED' for r in close))
+        self.assertTrue(all(r['isTentative'] for r in close), 'held for review, neither chosen')
+
+    def test_a_page_closing_earlier_than_the_notice_is_not_an_extension(self):
+        from .schema import SourceDocument as SD
+        notice, page = doc('notice'), SD(id='page', url='https://psc.example/list', kind=SourceKind.EXAM_PAGE,
+                                         title='Listing', authority='Example PSC', exam_id='exam-x')
+        row = '07/2031 - DIVISION-II SERVICES | Start Date: 01/02/2031 End Date 15/02/2031 05:00 PM'
+        rows = important_dates(reconcile([(notice, extract_milestones(notice, NOTICE_WINDOW, exam_id='exam-x')),
+                                          (page, extract_milestones(page, row, exam_id='exam-x'))]),
+                               exam_id='exam-x')
+        self.assertFalse(any(r['status'] == 'SUPERSEDED' for r in rows), 'held for review, not chosen')
+
+    def test_an_examination_date_is_not_decided_by_rank(self):
+        from .schema import SourceDocument as SD
+        notice, page = doc('notice'), SD(id='page', url='https://psc.example/list', kind=SourceKind.EXAM_PAGE,
+                                         title='Listing', authority='Example PSC', exam_id='exam-x')
+        rows = important_dates(reconcile([
+            (notice, extract_milestones(notice, 'The examination will be held on 15/05/2031.', exam_id='exam-x')),
+            (page, extract_milestones(page, 'The examination will be held on 20/05/2031.', exam_id='exam-x'))]),
+            exam_id='exam-x')
+        self.assertFalse(any(r['status'] == 'SUPERSEDED' for r in rows))
+
+    def test_one_revision_entry_per_change_and_no_invented_publication_date(self):
+        from .build import record_date_revisions
+        rows = important_dates(reconcile(self.groups(SourceKind.EXAM_PAGE)), exam_id='exam-x')
+        rec = ExamRecord(exam_id='exam-x', code='X', title='Division-II', authority_name='Example PSC',
+                         official_domain='https://psc.example')
+        from ..exam_authoring.record import Citation
+        rec.set(Field.found('dates', rows, Citation(document_title='t', url='u', page=1, clause='c',
+                                                     excerpt='e', verified_date='2031-03-01')))
+        self.assertEqual(record_date_revisions(rec), 1, 'two printings of one deadline are one change')
+        entry = rec.fields['corrigenda'].value[0]
+        self.assertEqual((entry['oldValue'], entry['newValue'], entry['publishedDate']),
+                         ('2031-02-18', '2031-02-20', ''))
+        self.assertIn('No separate corrigendum notice', entry['note'])
+
+
+class TestPatternStatementsReachTheirStage(unittest.TestCase):
+    """A rule stated pages away from the scheme table attaches to the stage it names."""
+
+    STATEMENTS = """
+1.6. The Preliminary Test will be held in OMR Based offline mode / Computer Based Recruitment Test (CBRT) mode.
+12.1 The Preliminary Test will be conducted in English & Hindi.
+12.2 The Main Examination will be conducted in English, Hindi & Marathi.
+15.1 The marks secured in the Preliminary Test will not be counted for Ranking.
+"""
+
+    def read(self):
+        from .pattern import extract_pattern
+        # The stages-in-one-table scheme the pattern tests already use, with the rules an
+        # authority states elsewhere in the notice.
+        from .test_pattern import ONE_TABLE_TWO_STAGES
+        return extract_pattern(doc('scheme'), self.STATEMENTS + ONE_TABLE_TWO_STAGES,
+                               exam_id='exam-x')
+
+    def test_the_screening_rule_reaches_the_split_stage(self):
+        prelim = [s for s in self.read().stages if 'Preliminary' in s.name]
+        self.assertTrue(prelim and prelim[0].qualifying.has_value)
+        self.assertFalse(prelim[0].qualifying.value.counts_towards_merit)
+
+    def test_each_stage_gets_the_language_sentence_naming_it(self):
+        by_name = {s.name: s for s in self.read().stages}
+        langs = {n: (s.languages.value if s.languages.has_value else None) for n, s in by_name.items()}
+        self.assertIn(['English', 'Hindi'], langs.values())
+        self.assertIn(['English', 'Hindi', 'Marathi'], langs.values())
+
+    def test_a_mode_of_examination_is_not_a_language(self):
+        for stage in self.read().stages:
+            if stage.languages.has_value:
+                self.assertFalse(any('mode' in l.lower() or 'omr' in l.lower() for l in stage.languages.value))
+
+
+class TestPortalOnTheAuthoritysEstate(unittest.TestCase):
+    """A notice's portal off the authority's current domain is quoted, not linked."""
+
+    def rec(self, portal):
+        from ..exam_authoring.record import Citation
+        r = ExamRecord(exam_id='exam-x', code='X', title='Division-II', authority_name='Example PSC',
+                       official_domain='https://www.newpsc.gov.in')
+        r.set(Field.found('applicationPortal', portal, Citation(
+            document_title='n', url='u', page=1, clause='c', excerpt=portal, verified_date='2031-03-01')))
+        return r
+
+    def test_a_former_domain_is_quoted_and_the_authority_s_own_site_linked(self):
+        from .materialize import _portal_link
+        url, note = _portal_link(self.rec('https://www.oldpsc.gov.in'))
+        self.assertEqual(url, 'https://www.newpsc.gov.in')
+        self.assertIn('https://www.oldpsc.gov.in', note)
+
+    def test_a_portal_on_the_authority_s_estate_is_linked_as_printed(self):
+        from .materialize import _portal_link
+        self.assertEqual(_portal_link(self.rec('https://apply.newpsc.gov.in/otr')),
+                         ('https://apply.newpsc.gov.in/otr', ''))
+
+
+class TestAdmitCardRuleIsQuotedWhole(unittest.TestCase):
+
+    def test_a_capitalised_noun_after_the_is_not_a_cell_seam(self):
+        from .admit_card import _RELATIVE_RULE, _rule_text
+        text = ('Downloading of Hall Tickets From 7 days prior to the Examination and up to 4 hours '
+                'before the commencement of Examination. Schedule of Preliminary Test')
+        self.assertEqual(_rule_text(_RELATIVE_RULE.search(text).group(0)),
+                         '7 days prior to the Examination and up to 4 hours before the '
+                         'commencement of Examination')
+
+    def test_a_real_seam_still_ends_the_rule(self):
+        from .admit_card import _RELATIVE_RULE, _rule_text
+        text = '7 days before examination Dates of Online Examination - Preliminary 03.10.2031'
+        self.assertEqual(_rule_text(_RELATIVE_RULE.search(text).group(0)), '7 days before examination')
+
+
 if __name__ == '__main__':
     unittest.main()

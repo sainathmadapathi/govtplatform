@@ -1270,6 +1270,13 @@ def extract_pattern(doc: SourceDocument, text: str, *, exam_id: str,
     _apply_merit_statements(pattern, doc, text)
     _push_down_stage_rules(pattern)
     _classify_scheme_containers(pattern, cur, containers, doc, text)
+    if containers:
+        # A scheme table read as several stages makes new stage and paper nodes, and the
+        # authority's merit statements ("the marks secured in the Preliminary Test will not
+        # be counted for Ranking") must reach them too, not only the heading they replaced.
+        _apply_merit_statements(pattern, doc, text, only_unset=True)
+        _push_down_stage_rules(pattern)
+    _apply_language_statements(pattern, doc, text)
     _hold_figures_of_unsure_rows(pattern)
     return pattern
 
@@ -1315,12 +1322,14 @@ def _distance_in(flat: str, node, where: int) -> int:
     return 10 ** 9
 
 
-def _apply_merit_statements(pattern: ExamPattern, doc: SourceDocument, text: str) -> None:
+def _apply_merit_statements(pattern: ExamPattern, doc: SourceDocument, text: str, *,
+                            only_unset: bool = False) -> None:
     """Attach each merit statement to the node it names, by that node's own words.
 
     A sentence that names no node is left alone. It is real and it is about something, but
     guessing which paper it governs would be inventing the most consequential field in the
-    pattern -- whether the marks count.
+    pattern -- whether the marks count. With `only_unset`, a node that already carries a
+    qualifying reading keeps it: a second pass fills gaps, it does not re-read.
     """
     flat = ' '.join((text or '').split())
     nodes = list(pattern.walk())
@@ -1378,6 +1387,8 @@ def _apply_merit_statements(pattern: ExamPattern, doc: SourceDocument, text: str
                 best, score, distance = node, hits, gap
         if best is None or score < 1:
             continue
+        if only_unset and best.qualifying.has_value:
+            continue
         existing = best.qualifying.value if best.qualifying.has_value else None
         rule = QualifyingRule(
             as_printed=sentence[:300], is_qualifying_only=True, counts_towards_merit=False,
@@ -1387,6 +1398,45 @@ def _apply_merit_statements(pattern: ExamPattern, doc: SourceDocument, text: str
         best.qualifying = _fact(rule, sentence, doc, text,
                                 reading=f'{best.name}: the authority states its marks are '
                                         f'not counted towards the merit')
+
+
+#: A sentence stating the language a stage is conducted in, wherever the document puts it.
+_LANGUAGE_SENTENCE = re.compile(
+    r'[^.\n]{0,160}?\b(?:will|shall)\s+be\s+(?:set|conducted|held)\s+(?:only\s+)?in\s+'
+    r'([^.;\n]{4,80})\.', re.I)
+
+
+def _apply_language_statements(pattern: ExamPattern, doc: SourceDocument, text: str) -> None:
+    """Attach "The Main Examination will be conducted in English, Telugu & Urdu" to that stage.
+
+    An authority states the medium where it explains the stage, often pages from the scheme
+    table, so the stage's own region never sees it. Only a sentence naming exactly one stage,
+    by that stage's distinguishing words, is attached; only a stage with no medium of its own
+    receives it; and the words must name languages, as the in-region reading requires.
+    """
+    flat = ' '.join((text or '').split())
+    for match in _LANGUAGE_SENTENCE.finditer(flat):
+        sentence = match.group(0).strip()
+        languages = match.group(1).strip()
+        if (any(ch.isdigit() for ch in languages) or not _LANGUAGE_CELL.search(languages)
+                or len(languages) > 70
+                # "conducted in OMR based offline mode / CBRT" is how, not in what language.
+                or _MODE.search(languages) or re.search(r'\bmode\b', languages, re.I)):
+            continue
+        lowered = set(re.split(r'[^a-z]+', sentence.lower()))
+        named = []
+        for stage in pattern.stages:
+            marks = {w for w in re.split(r'[^a-z]+', (stage.name or '').lower())
+                     if len(w) > 3 and w not in _GENERIC_NODE_WORDS}
+            if marks and marks <= lowered:
+                named.append(stage)
+        if len(named) != 1 or named[0].languages.has_value:
+            continue
+        parts = [p.strip(' .') for p in re.split(r'\s*(?:and|&|/|,)\s*', languages)
+                 if 2 < len(p.strip()) < 40]
+        if parts:
+            named[0].languages = _fact(parts, sentence, doc, text,
+                                       reading=f'{named[0].name}: conducted in {languages}')
 
 
 def _fold_restated_stages(pattern: ExamPattern) -> None:
@@ -1528,9 +1578,9 @@ def _restates(outer: str, inner: str) -> bool:
 #: and carry a maximum of 400 marks" declares paper, questions, marks and subject between
 #: them, and was read as a five-column header.
 _SENTENCE_VERB = re.compile(
-    r"""(?:will|shall|may|must|should|would|can|could|is|are|was|were|be|been|being|
+    r"""\b(?:will|shall|may|must|should|would|can|could|is|are|was|were|be|been|being|
         has|have|had|consist|consists|include|includes|comprise|comprises|carry|carries|
-        means|denotes|conducted)""", re.I | re.X)
+        means|denotes|conducted)\b""", re.I | re.X)
 
 
 def _extend_past_rows(cur: _Cursor, regions: list, position: int,

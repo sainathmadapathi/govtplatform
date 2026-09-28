@@ -176,7 +176,24 @@ def exam_references(text: str, *, limit: int = 400) -> list[ExamReference]:
                                           tokens=distinctive_words(candidate), group=group)
             if len(seen) >= limit:
                 return list(seen.values())
+    # A commission's listing names a recruitment by its notice number first:
+    # "02/2024 - GROUP-I SERVICES". The trailing forms above need the noun before the
+    # number, so a listing row named no examination at all and could never vouch for itself.
+    for m in _NUMBERED_TITLE.finditer(flat):
+        group += 1
+        candidate = normalise_ws(m.group(2))
+        key = candidate.lower()
+        if len(candidate) >= 12 and key not in seen and len(seen) < limit:
+            seen[key] = ExamReference(text=candidate, year=m.group(1),
+                                      tokens=distinctive_words(candidate), group=group)
     return list(seen.values())
+
+
+#: "NN/YYYY - TITLE SERVICES": a notice number, a dash, then the recruitment's title in
+#: capitals ending in the service or post noun. The notice number carries the cycle.
+_NUMBERED_TITLE = re.compile(
+    r'\b\d{1,3}/(20\d{2})\s*[-–—]\s*'
+    r'((?:[A-Z(][A-Z0-9&().\'–—-]*\s+){0,8}?(?:SERVICES|POSTS?)\b)')
 
 
 #: Words that describe a *part* of an exam rather than a different exam. "Combined Graduate

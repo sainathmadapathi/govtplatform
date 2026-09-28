@@ -17864,6 +17864,29 @@ const UnavailablePracticeEngine: React.FC<{
           ? ', and the official papers and answer keys the authority published, listed below with their exact identity.'
           : '. No official question paper or answer key is on record for this exam.'}
       </div>
+      {/* What any mock for this exam would have to follow, read only from the verified pattern.
+          Nothing is filled in: a figure the authority did not print is said to be unstated. */}
+      {scope === 'MOCKS' && exam.stages.some(st => st.sections.length > 0) && (
+        <div style={{ padding: '14px 16px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)' }}>
+          <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '8px' }}>
+            A mock for this exam must follow — from the verified pattern
+          </div>
+          {exam.stages.map(st => (
+            <div key={st.id} style={{ marginBottom: '8px' }}>
+              <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.9rem' }}>
+                {st.stageName}{st.qualifyingNature ? ` — ${st.qualifyingNature}` : ''}
+              </div>
+              {st.sections.map((sec, i) => (
+                <div key={i} style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', paddingLeft: '10px' }}>
+                  {sec.sectionName}: {sec.questions ? `${sec.questions} questions · ` : ''}{sec.marks ? `${sec.marks} marks · ` : ''}
+                  {sec.durationMinutes ? `${sec.durationMinutes} min · ` : ''}
+                  negative marking {sec.negativeMarking || st.negativeMarking || 'not stated in the notice'}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
       {/* The authority's own papers and keys, bound to their exact paper identity. Both render
           nothing when the record has none. */}
       <OfficialPaperCatalogue exam={exam} onOpenProvenanceModal={onOpenProvenanceModal} />
@@ -19708,7 +19731,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                 ? exam.officialLinks
                 : [{ title: exam.authorityName, url: exam.officialDomain, note: exam.officialDomain.replace(/^https?:\/\//, '') }]
               ).map(link => (
-                <a key={link.url} href={link.url} target="_blank" rel="noreferrer" className="glass-card" style={{ padding: '18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <a key={`${link.title}|${link.url}`} href={link.url} target="_blank" rel="noreferrer" className="glass-card" style={{ padding: '18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div>
                     <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>{link.title}</h4>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{link.note}</div>
@@ -19737,7 +19760,9 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
               <div key={corr.id} style={{ padding: '20px', borderRadius: 'var(--radius-md)', background: 'rgba(245, 158, 11, 0.06)', border: '1px solid rgba(245, 158, 11, 0.3)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
                   <span className="badge badge-changed">{corr.status}</span>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Published: {corr.publishedDate}</span>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                    {corr.publishedDate ? `Published: ${corr.publishedDate}` : 'Publication date not printed by the authority'}
+                  </span>
                 </div>
                 <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#af5109', margin: 0 }}>{corr.title}</h4>
                 <div style={{ fontSize: '0.82rem', color: '#92400e', fontWeight: 600 }}>Notice Ref: {corr.noticeNumber}</div>

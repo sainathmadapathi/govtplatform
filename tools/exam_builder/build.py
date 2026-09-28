@@ -108,6 +108,135 @@ def _reclassify_from_content(doc: DiscoveredDoc, document, rec: ExamRecord) -> N
         doc.kind = kind
 
 
+#: A discovered document's kind as the reconciler ranks it.
+_SOURCE_KIND = {
+    DocKind.EXAM_PAGE: SourceKind.EXAM_PAGE,
+    DocKind.NOTIFICATION: SourceKind.NOTIFICATION,
+    DocKind.CORRIGENDUM: SourceKind.CORRIGENDUM,
+    DocKind.RESULT: SourceKind.RESULT,
+    DocKind.ADMIT_CARD: SourceKind.ADMIT_CARD_NOTICE,
+    DocKind.APPLICATION_PORTAL: SourceKind.APPLICATION_PAGE,
+}
+
+
+def record_official_sources(rec: ExamRecord, sources: SourceSet, loaded: dict,
+                            identity: dict) -> int:
+    """Every document read whose own text identified it as this exam, with its title.
+
+    The contract names this field ("every document this record was read from") but only the
+    bare URLs were kept, so a notice that fed only the timeline -- a medical-board schedule,
+    a vacancy break-up -- never reached the candidate's library. Only a MATCH is listed: a
+    page that merely mentions this exam among others is not this exam's document.
+    """
+    items = []
+    for doc in sources.docs:
+        check = identity.get(doc.url)
+        if doc.url not in loaded or check is None or check.verdict is not IdentityVerdict.MATCH:
+            continue
+        items.append({'url': doc.url, 'title': normalise_ws(doc.title or '')[:220],
+                      'kind': doc.kind.value, 'identity': check.verdict.value})
+    if not items:
+        return 0
+    cite = Citation(document_title=f'{rec.authority_name} — documents read for this exam',
+                    url=rec.official_domain, page=1, clause='Official sources',
+                    excerpt='; '.join(i['title'] for i in items[:6])[:400],
+                    verified_date=_today())
+    rec.set(Field.found('officialSources', items, cite))
+    return len(items)
+
+
+def record_date_revisions(rec: ExamRecord) -> int:
+    """Every superseded date becomes one entry in the exam's revision history, old to new.
+
+    Reconciliation keeps a printed date that a later official statement replaced, struck
+    through, and links it to the row that replaced it. That change is a revision whether or
+    not the authority issued a separate corrigendum notice, and a candidate who remembers the
+    printed date needs to see it was moved and by what. Each entry quotes both statements and
+    names both documents; where no corrigendum notice exists, the entry says so rather than
+    being titled as one. Returns the number of entries recorded.
+    """
+    dates = rec.get('dates')
+    if not (dates and dates.usable and isinstance(dates.value, list)):
+        return 0
+    rows = [r for r in dates.value if isinstance(r, dict)]
+    by_id = {r.get('id'): r for r in rows}
+    # One change is one entry, however many times the notice printed the value it replaced
+    # ("Applications From X To 14/03" and "Last Date … 14/03 at 5:00 PM" are one deadline).
+    replaced: dict[str, list[dict]] = {}
+    for row in rows:
+        if row.get('status') == 'SUPERSEDED' and row.get('supersededBy') in by_id:
+            replaced.setdefault(row['supersededBy'], []).append(row)
+    entries: list[dict] = []
+    for newer_id, olds in replaced.items():
+        newer = by_id[newer_id]
+        new_p = newer.get('provenance') or {}
+        new_d = str(newer.get('dateTimeStr', ''))[:10]
+        old_dates = sorted({str(r.get('dateTimeStr', ''))[:10] for r in olds})
+        printed = ' '.join(
+            f'Printed in "{(r.get("provenance") or {}).get("documentTitle", "")}": '
+            f'"{(r.get("provenance") or {}).get("excerptText", "")}".' for r in olds)
+        what = str(newer.get('type') or 'date').replace('_', ' ').lower()
+        entries.append({
+            'id': f'rev-{newer_id}',
+            'title': f'{what.capitalize()} revised: {", ".join(old_dates)} → {new_d}',
+            'sourceTitle': str(new_p.get('documentTitle') or ''),
+            'publishedDate': '',
+            'effectiveDate': new_d,
+            'evidenceSpan': (f'{printed} Stated later in "{new_p.get("documentTitle", "")}": '
+                             f'"{new_p.get("excerptText", "")}".'),
+            'sourceUrl': str(new_p.get('officialUrl') or ''),
+            'oldSourceUrls': sorted({str((r.get('provenance') or {}).get('officialUrl') or '')
+                                     for r in olds}),
+            'status': 'ACTIVE',
+            'affectedField': f'dates · {what}',
+            'oldValue': ', '.join(old_dates),
+            'newValue': new_d,
+            'note': ('No separate corrigendum notice was found; the change is recorded from the '
+                     'authority’s own later statement, which does not print the date it was made.'),
+        })
+    if not entries:
+        return 0
+    existing = rec.get('corrigenda')
+    if existing and existing.usable and isinstance(existing.value, list):
+        known = {e.get('id') for e in existing.value if isinstance(e, dict)}
+        existing.value.extend(e for e in entries if e['id'] not in known)
+        return len(entries)
+    cite = Citation(document_title=entries[0]['sourceTitle'], url=entries[0]['sourceUrl'], page=1,
+                    clause='Revision recorded from a later official statement',
+                    excerpt=entries[0]['evidenceSpan'][:400], verified_date=_today())
+    field = Field.found('corrigenda', entries, cite)
+    field.note = ('revisions read from later official statements that replace a printed date; '
+                  'no corrigendum notice document was found for this exam')
+    rec.set(field)
+    return len(entries)
+
+
+def _listing_entry(document, target: ExamIdentity):
+    """The part of a many-recruitment listing page that names this exam, or None.
+
+    A commission lists every recruitment on one page ("02/2024 - GROUP-I SERVICES | Start
+    Date: … End Date …"). The page as a whole names eighty examinations and vouches for none,
+    yet its row for this one is the authority's own later word on that recruitment's window.
+    Only rows whose own text identifies this exam are kept; every other row is dropped before
+    any extractor sees the page. None when no row matches, or when every row does (then the
+    page was never a listing).
+    """
+    from ..exam_authoring.sources import Document, html_rows
+    if getattr(document, 'kind', '') != 'HTML' or not getattr(document, 'html', ''):
+        return None
+    rows = html_rows(document)
+    own = [r for r in rows
+           if verify_identity(' | '.join(r), target).verdict is IdentityVerdict.MATCH]
+    if not own or len(own) == len(rows):
+        return None
+    entry = Document(url=document.url, kind='HTML', fetched_at=document.fetched_at,
+                     raw=document.raw, text='\n'.join(' | '.join(r) for r in own))
+    # No table markup: the entry is one recruitment's row, not a label/value table, and a
+    # table reader would read its title cell as a label.
+    entry.html = ''
+    return entry
+
+
 def _semantic_read(field_name: str, sources, loaded: dict, rec: ExamRecord,
                    identity: dict | None = None, target=None):
     """Try every loaded document for one field, semantically.
@@ -495,7 +624,10 @@ def _dispatch_domain_extraction_raw(
                 try:
                     title = f'{rec.title} — {doc.kind.value.replace("_", " ").title()}'
                     got = X.dates_from_rows(document, html_rows(document), title)
-                    if got is not None and got.ok:
+                    # A table whose every date is unlabelled (OTHER) is not a timeline; taking
+                    # it here would replace every milestone the other documents state.
+                    if got is not None and got.ok and any(
+                            d.get('type') != 'OTHER' for d in (got.value or [])):
                         return got
                 except Exception as exc:
                     rec.note(f'dates_from_rows failed on {doc.url}: {exc!r}')
@@ -507,7 +639,11 @@ def _dispatch_domain_extraction_raw(
             text = document.all_text() if hasattr(document, 'all_text') else ''
             if not text:
                 continue
-            src_doc = SourceDocument(id=doc.url, url=doc.url, kind=SourceKind.OTHER_OFFICIAL,
+            # The document's role travels with its dates: reconciliation lets an examination
+            # page or a corrigendum outrank a printed notice, and cannot if every source is
+            # labelled alike.
+            src_doc = SourceDocument(id=doc.url, url=doc.url, kind=_SOURCE_KIND.get(
+                                         doc.kind, SourceKind.OTHER_OFFICIAL),
                                      title=doc.title, authority=resolved.authority.name,
                                      exam_id=rec.exam_id)
             try:
@@ -1473,6 +1609,14 @@ def build(exam_query: str = '', *, year: str = '',
             continue
         text = document.all_text() if hasattr(document, 'all_text') else ''
         check = verify_identity(text, target, source_url=doc.url, document_title=doc.title)
+        if check.verdict is not IdentityVerdict.MATCH:
+            entry = _listing_entry(document, target)
+            if entry is not None:
+                loaded[doc.url] = entry
+                check = verify_identity(entry.text, target, source_url=doc.url,
+                                        document_title=doc.title)
+                rec.note(f'{doc.url} lists many recruitments; only its row(s) naming this exam '
+                         f'were kept ({len(entry.text)} chars)')
         identity[doc.url] = check
         if check.verdict is IdentityVerdict.MISMATCH:
             loaded.pop(doc.url, None)
@@ -1548,6 +1692,11 @@ def build(exam_query: str = '', *, year: str = '',
                             if got is not None:
                                 rec.set(got)
 
+    record_official_sources(rec, sources, loaded, identity)
+    revisions = record_date_revisions(rec)
+    if revisions:
+        rec.note(f'{revisions} date revision(s) recorded in the revision history from later '
+                 f'official statements')
     enforce_semantic_states(rec)
 
     # A field that was searched for on the authority's own domain and is still unread has been

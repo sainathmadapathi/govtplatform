@@ -438,6 +438,11 @@ def important_dates(milestones, *, exam_id: str, timezone: str = 'IST') -> list[
             'status': status,
             'provenance': provenance,
         }
+        if superseded and milestone.superseded_by:
+            # Which row replaced it, so the revision can be told as one change, old to new.
+            row['supersededBy'] = milestone.superseded_by
+            if milestone.note:
+                row['supersessionNote'] = milestone.note
         # Which stage an examination date belongs to is its own fact: STATED where the
         # evidence names the stage, NEEDS_REVIEW where it does not -- the type alone cannot
         # say which, because the union has no member for "an examination, stage unnamed".
