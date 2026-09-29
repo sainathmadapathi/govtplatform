@@ -45,6 +45,8 @@ from .gate import GateReport
 from .orchestrate import OrchestrationResult, OrchestrationState, orchestrate
 from .overlay import get_exam_cycle
 from .render import target_in_register
+from .runtime_evidence import (derive_pattern_evidence, evidence_problems, fact_provenance,
+                               is_provenance, link_revisions, stamp_exam)
 
 MATERIALIZER_VERSION = 'materialize-2'
 
@@ -175,6 +177,9 @@ def validate_runtime_exam(exam: Any) -> list[str]:
         for k in ('officialPortal', 'otrSteps', 'photoRules', 'signatureRules', 'certificateRules', 'rejectionPitfalls'):
             if k not in ag:
                 errors.append(f'applicationGuide is missing {k!r}')
+    # Every piece of evidence the exam carries must identify itself, say what kind it is, and
+    # never claim official verification without a source a candidate can open.
+    errors += evidence_problems(exam)[:20]
     return errors
 
 
@@ -316,8 +321,13 @@ def _vacancy_breakups(rec: ExamRecord) -> list[dict]:
 def _dates(rec: ExamRecord) -> list[dict]:
     f = rec.get('dates')
     out: list[dict] = []
+    replaced: dict[str, str] = {}
     if f and f.usable and isinstance(f.value, list):
         prov = _prov(rec, f, 'date')
+        # Which row replaced which, as reconciliation recorded it: the evidence of both sides
+        # is linked below so the page can show the old statement beside the new.
+        replaced = {str(d['id']): str(d['supersededBy']) for d in f.value
+                    if isinstance(d, dict) and d.get('id') and d.get('supersededBy')}
         # A row whose label matched no known milestone is not emitted: the union has no OTHER,
         # and forcing it into the nearest member would invent a milestone (same rule as emit).
         for i, d in enumerate(x for x in f.value if isinstance(x, dict) and x.get('type') in _DATE_TYPES):
@@ -343,6 +353,10 @@ def _dates(rec: ExamRecord) -> list[dict]:
             'isTentative': False, 'status': 'SUPERSEDED',
             'provenance': _prov(rec, sup, 'lastdate-superseded') or {},
         })
+        governing = [d for d in out if d['type'] == 'APPLICATION_CLOSE' and d['status'] == 'AVAILABLE']
+        if len(governing) == 1:
+            replaced[out[-1]['id']] = governing[0]['id']
+    link_revisions(out, replaced)
     return out
 
 
@@ -356,8 +370,20 @@ def _corrigendums(rec: ExamRecord) -> list[dict]:
             if not isinstance(c, dict):
                 continue
             old, new = c.get('oldValue', ''), c.get('newValue', '')
+            # The revision's own evidence: the statement that made the change, in the document
+            # that made it. A revision recorded from reconciled dates is given the reconciled
+            # date's evidence (old and new linked) once the dates exist; see _corrigendum_evidence.
+            base = _prov(rec, corr, f'corr-{i}') or {}
+            own = dict(base, **{k: v for k, v in (
+                ('documentTitle', str(c.get('sourceTitle') or '')),
+                ('officialUrl', str(c.get('sourceUrl') or '')),
+                ('excerptText', _clean(c.get('evidenceSpan') or '', 600))) if v}) if base else {}
+            if own and own.get('officialUrl') != base.get('officialUrl'):
+                # The field's page is its first entry's; this entry cites another document.
+                own['pageNumber'] = None
             out.append({
                 'id': str(c.get('id') or f'corr-{rec.exam_id}-{i}'),
+                **({'provenance': own} if own else {}),
                 'title': str(c.get('title') or f"Corrigendum: {c.get('affectedField', 'revision')}"),
                 'noticeNumber': str(c.get('sourceTitle') or c.get('noticeNumber') or ''),
                 # A revision whose source prints no date of its own carries publishedDate ''
@@ -929,6 +955,11 @@ _PATTERN_PASSTHROUGH = ('questionType', 'sectionalTiming', 'marksPerQuestion', '
                         'negativeFractionOfMarks', 'durationVariants', 'derived', 'underReview')
 
 
+#: Derived figures computed from the node's own printed figures (as opposed to a rule stated
+#: for its stage and carried down to it).
+_FROM_OWN_FIGURES = frozenset({'marksPerQuestion', 'negativeMarkPerWrong'})
+
+
 def _pattern_node(n: dict, prov: dict, withheld: Optional[list] = None) -> Optional[dict]:
     """One extracted pattern node -> ExamPatternNode. Only what the reader printed is carried;
     a value it did not read is omitted, not guessed. A node whose name is only a cell seam
@@ -994,7 +1025,21 @@ def _pattern_node(n: dict, prov: dict, withheld: Optional[list] = None) -> Optio
                                                 'minimumMarks', 'minimumPercent', 'byCategory') if k in q}
     for k in _PATTERN_PASSTHROUGH:
         if n.get(k) not in (None, '', [], {}):
+            if unreliable and k in _FROM_OWN_FIGURES and k in (n.get('derived') or []):
+                # Computed from this node's own figures, which were just withheld: a quotient of
+                # two figures nobody could vouch for is not a figure either.
+                if withheld is not None:
+                    withheld.append({'node': name, 'fields': [k], 'values': {k: n[k]},
+                                     'reason': 'computed from figures of this node that were withheld'})
+                continue
             node[k] = n[k]
+    if isinstance(node.get('derived'), list):
+        # Name only the derived figures actually published on this node.
+        kept = [k for k in node['derived'] if k in node]
+        if kept:
+            node['derived'] = kept
+        else:
+            node.pop('derived')
     if n.get('note'):
         node['note'] = str(n['note'])
     children = n.get('children')
@@ -1533,6 +1578,7 @@ def materialize_exam(rec: ExamRecord, *, cycle: str = '',
         held['examPattern'] = {'reason': 'figures the reader could not tie to a column were withheld; '
                                          'the stages, papers and subjects are published',
                                'items': pattern_withheld, 'partial': True}
+    _attach_evidence(rec, exam, vac)
     exam['sectionStates'] = _section_states(completeness, held, exam)
     exam['materialization'] = {
         'version': MATERIALIZER_VERSION,
@@ -1544,18 +1590,48 @@ def materialize_exam(rec: ExamRecord, *, cycle: str = '',
     return exam
 
 
+def _attach_evidence(rec: ExamRecord, exam: dict, vac: Optional[Field]) -> None:
+    """Evidence for every published fact that has a source (see runtime_evidence).
+
+    Scalar facts get their field's citation under `factEvidence`; a revision recorded from
+    reconciled dates carries that date's evidence, old and new linked; a derived pattern figure
+    names its inputs; and every provenance is stamped with its identity, authority and type."""
+    facts: dict = {}
+    for name, present, field in (
+            ('vacanciesTotal', bool(exam.get('vacanciesTotal')), vac),
+            ('crucialEligibilityDate', bool(exam.get('crucialEligibilityDate')), rec.get('ageLimits'))):
+        p = fact_provenance(present, _prov(rec, field, f'fact-{name}') if field and field.usable else None)
+        if p:
+            facts[name] = p
+    if facts:
+        exam['factEvidence'] = facts
+    dates = {str(d.get('id')): d for d in exam.get('dates') or []}
+    for c in exam.get('corrigendums') or []:
+        newer = dates.get(str(c.get('id', ''))[len('rev-'):]) if str(c.get('id', '')).startswith('rev-') else None
+        if newer and is_provenance(newer.get('provenance')):
+            c['provenance'] = dict(newer['provenance'])
+    derive_pattern_evidence(exam.get('patternTree') or [])
+    stamp_exam(exam)
+
+
 def _official_links(rec: ExamRecord) -> list[dict]:
+    # The authority's own site is where it was resolved to, not a statement in a document, so it
+    # carries no evidence record. A portal carries the notice clause that names it; an exam page
+    # is its own evidence, identified as this exam by its own text.
     links = [{'title': f'{rec.authority_name} — official website', 'url': rec.official_domain,
               'note': 'The authority’s own site.'}]
     portal, portal_note = _portal_link(rec)
+    portal_field = rec.get('applicationPortal')
+    portal_prov = _prov(rec, portal_field, 'portal') if portal_field and portal_field.ok else None
     if portal.startswith('http') and portal.rstrip('/') != rec.official_domain.rstrip('/'):
         links.append({'title': 'Online application portal', 'url': portal,
-                      'note': 'Where the notice sends candidates to apply.'})
+                      'note': 'Where the notice sends candidates to apply.',
+                      **({'provenance': portal_prov} if portal_prov else {})})
     elif portal_note:
         # The printed portal is off the authority's estate; the site link above serves, and
         # the notice's own address is still stated where a candidate will look for it.
         links.append({'title': 'Application portal named in the notice', 'url': portal,
-                      'note': portal_note})
+                      'note': portal_note, **({'provenance': portal_prov} if portal_prov else {})})
     # The authority's own page for this recruitment, where the build found one and its own
     # text identified it as this exam (a listing page contributes only its matching row).
     official = rec.get('officialSources')
@@ -1571,8 +1647,15 @@ def _official_links(rec: ExamRecord) -> list[dict]:
                         if s.get('kind') == 'EXAM_PAGE' else
                         'The authority’s own hall-ticket service; this recruitment is among those it serves. '
                         'Each candidate’s hall ticket is served through it, not published as a file.')
-                links.append({'title': _clean(s.get('title') or 'Examination page', 120), 'url': url,
-                              'note': note})
+                title = _clean(s.get('title') or 'Examination page', 120)
+                links.append({'title': title, 'url': url, 'note': note, 'provenance': {
+                    'id': f'prov-{rec.exam_id}-link-{len(links)}', 'documentTitle': title,
+                    'officialUrl': url, 'pageNumber': None,
+                    'clauseNumber': 'The authority’s own page, identified as this recruitment by its own text',
+                    'publishedDate': '', 'verifiedDate': official.citation.verified_date if official.citation else '',
+                    'verifiedBy': 'GovOS exam builder — read from the source',
+                    'taxonomyType': 'FACT', 'verificationLevel': 'OFFICIALLY_VERIFIED',
+                    'excerptText': title}})
     return links
 
 

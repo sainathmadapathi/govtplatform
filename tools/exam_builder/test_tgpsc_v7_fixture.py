@@ -11,6 +11,16 @@ re-materializes the record offline and holds the engine to it:
   * the source-exhausted gaps stay honest -- still unavailable, still carrying the searches that
     were made, never filled in.
 
+Two digests are frozen. `runtimeDigest` is the whole runtime; `factDigest` is the runtime with
+the evidence metadata removed (runtime_evidence.strip_evidence_metadata), so a change to how
+evidence is presented can be re-frozen without it ever hiding a change to a fact.
+
+Re-frozen on 2026-09-29 when evidence was attached to every published fact: the only fact-level
+differences from v7 were four evidence records that did not exist before (the corrigendum and
+three official links); no value, page, clause or excerpt changed. Re-frozen the same day for one
+more provenance correction: 113 provenance records gave the day GovOS read the notice
+(2026-09-28) as its publishedDate; a read date is not a publication date, and they now carry ''.
+
 The record is TGPSC's; the code under test names no exam. If a digest changes on purpose, re-freeze:
     python -m tools.exam_builder.test_tgpsc_v7_fixture --refreeze
 and say in the commit what changed and why.
@@ -26,6 +36,7 @@ import sys
 import unittest
 
 from . import materialize as M
+from .runtime_evidence import evidence_id, evidence_problems, strip_evidence_metadata
 
 FIXTURE = os.path.join(os.path.dirname(__file__), 'fixtures', 'tgpsc_group_i_2024_v7.json')
 
@@ -85,6 +96,13 @@ class TestTgpscV7Frozen(unittest.TestCase):
         changed = sorted(k for k in want if got[k] != want[k])
         self.assertEqual(changed, [], 'the engine now produces a different runtime for the frozen v7 '
                                       'record in these keys; re-freeze only if that is intended')
+
+    def test_the_facts_are_the_frozen_ones(self):
+        # The runtime without its evidence metadata: what a candidate is told, as opposed to how
+        # its source is shown. This digest changes only when a fact changes.
+        got = runtime_digest(strip_evidence_metadata(self.exam))
+        changed = sorted(k for k in self.fx['factDigest'] if got.get(k) != self.fx['factDigest'][k])
+        self.assertEqual(changed, [], 'a published fact changed')
 
     def test_the_runtime_does_not_depend_on_field_order(self):
         # The same canonical record must give the same runtime however it was serialized. The
@@ -162,6 +180,41 @@ class TestTgpscV7Frozen(unittest.TestCase):
             self.assertNotIn('tspsc.gov.in', link['url'])
         self.assertEqual(self.exam['applicationGuide']['officialPortal'], 'https://websitenew.tgpsc.gov.in')
 
+    # ------------------------------------------------------------------ evidence
+    def test_every_fact_carries_complete_evidence(self):
+        self.assertEqual(evidence_problems(self.exam), [])
+
+    def test_the_vacancy_total_cites_its_own_printed_total(self):
+        ev = self.exam['factEvidence']['vacanciesTotal']
+        self.assertEqual((ev['excerptText'], str(ev['pageNumber']), ev['clauseNumber'], ev['evidenceType']),
+                         ('TOTAL 563', '3', 'Vacancies', 'DIRECT'))
+        self.assertEqual(ev['authorityName'], 'Telangana Public Service Commission')
+        # The same evidence identity as the canonical record's own citation of the fact.
+        c = self.fields['vacancies']['citation']
+        self.assertEqual(ev['evidenceId'], evidence_id({'officialUrl': c['url'], 'pageNumber': c['page'],
+                                                        'clauseNumber': c['clause'], 'excerptText': c['excerpt']}))
+
+    def test_different_facts_keep_different_evidence(self):
+        posts = {p['provenance']['evidenceId'] for p in self.exam['posts']}
+        self.assertEqual(len(posts), len(self.exam['posts']), 'each post cites its own row')
+        self.assertNotIn(self.exam['factEvidence']['vacanciesTotal']['evidenceId'], posts)
+
+    def test_the_reconciled_deadline_shows_both_statements(self):
+        gov = next(d for d in self.exam['dates'] if d['type'] == 'APPLICATION_CLOSE' and d['status'] == 'AVAILABLE')
+        p = gov['provenance']
+        self.assertEqual(p['evidenceType'], 'RECONCILED')
+        self.assertEqual(len(p['supersedes']), 2)
+        for old in (d for d in self.exam['dates'] if d['status'] == 'SUPERSEDED'):
+            self.assertEqual(old['supersededBy'], gov['id'])
+            self.assertEqual(old['provenance']['supersededBy']['evidenceId'], p['evidenceId'])
+        (corr,) = self.exam['corrigendums']
+        self.assertEqual(corr['provenance']['evidenceId'], p['evidenceId'])
+
+    def test_the_homepage_carries_no_invented_evidence(self):
+        home = self.exam['officialLinks'][0]
+        self.assertNotIn('provenance', home, 'the resolved homepage is not a statement in a document')
+        self.assertTrue(all(l.get('provenance') for l in self.exam['officialLinks'][1:]))
+
     # ------------------------------------------------------------------ source-exhausted gaps
     def test_unavailable_fields_stay_unavailable_with_their_searches(self):
         for name in ('answerKeys', 'officialPapers', 'cutoffs', 'attempts'):
@@ -186,6 +239,7 @@ def _refreeze() -> None:
     out = _rematerialize(fx)
     assert out.state is M.EngineState.REGISTERED, out.reason
     fx['runtimeDigest'] = runtime_digest(out.exam)
+    fx['factDigest'] = runtime_digest(strip_evidence_metadata(out.exam))
     with open(FIXTURE, 'w', encoding='utf-8') as fh:
         json.dump(fx, fh, indent=1, ensure_ascii=False, sort_keys=True)
     print('re-froze', len(fx['runtimeDigest']), 'runtime keys')

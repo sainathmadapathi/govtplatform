@@ -16,7 +16,23 @@ export interface DataProvenance {
   taxonomyType: DataTaxonomyType;
   verificationLevel: VerificationLevel;
   excerptText?: string; // Direct quoted legal text from official gazette
+  /** Identity of what this cites (URL, page, clause, words); the same evidence keeps it from the
+   *  canonical record to the page. Set by the exam builder; authored records may omit it. */
+  evidenceId?: string;
+  /** DIRECT: the value is in the cited words. RECONCILED: a later official statement replaced
+   *  an earlier one (see supersedes / supersededBy). DERIVED: GovOS computed it (see derivation). */
+  evidenceType?: EvidenceType;
+  /** The authority that published the cited document. */
+  authorityName?: string;
+  /** On a governing statement: the earlier statements it replaced. */
+  supersedes?: DataProvenance[];
+  /** On a replaced statement: the statement that governs in its place. */
+  supersededBy?: DataProvenance;
+  /** On a derived value: how GovOS computed it, and the evidence of every input. */
+  derivation?: { method: string; inputs: DataProvenance[] };
 }
+
+export type EvidenceType = 'DIRECT' | 'RECONCILED' | 'DERIVED';
 
 export interface CorrigendumNotice {
   id: string;
@@ -28,6 +44,8 @@ export interface CorrigendumNotice {
   pdfUrl: string;
   status: 'ACTIVE' | 'SUPERSEDED';
   diffSummary: string;
+  /** The statement that made the change, with the statement it replaced linked. */
+  provenance?: DataProvenance;
 }
 
 export interface ImportantDate {
@@ -40,6 +58,8 @@ export interface ImportantDate {
   isTentative: boolean;
   status: 'AVAILABLE' | 'NOT_YET_ANNOUNCED' | 'SUPERSEDED';
   provenance: DataProvenance;
+  /** On a superseded date: the id of the date that governs in its place. */
+  supersededBy?: string;
   /**
    * Examination dates only, set by the exam builder. STATED: the date's own evidence names its
    * stage ("Schedule of Main Examination"), and `type` is that stage's tier. NEEDS_REVIEW: the
@@ -235,6 +255,8 @@ export interface ExamPatternNode {
   durationVariants?: { minutes?: number; asPrinted?: string; appliesTo?: string }[];
   /** Field names on this node that GovOS computed rather than read. */
   derived?: string[];
+  /** For each derived field, the DERIVED evidence naming its inputs. */
+  derivedEvidence?: Record<string, DataProvenance>;
   /** Field names read but not established; the UI says so rather than showing them plain. */
   underReview?: string[];
   note?: string;
@@ -1121,6 +1143,9 @@ export interface Exam {
   isDemoData: boolean;
   overviewDescription: string;
   vacanciesTotal?: string;
+  /** Evidence for this record's scalar facts (vacanciesTotal, crucialEligibilityDate), keyed by
+   *  field name. A fact with no entry has no cited source and shows no Evidence action. */
+  factEvidence?: Partial<Record<'vacanciesTotal' | 'crucialEligibilityDate', DataProvenance>>;
   posts: PostRequirement[];
   dates: ImportantDate[];
   globalRuleGroup: RuleGroup;
@@ -1191,7 +1216,7 @@ export interface Exam {
   /** The eligibility cards shown in section 03 — each exam states its own rules, cited. */
   eligibilityHighlights?: { title: string; body: string; provenance: DataProvenance }[];
   /** The portals listed in section 12 — the authority's own, plus the ones its notice sends candidates to. */
-  officialLinks?: { title: string; url: string; note: string }[];
+  officialLinks?: { title: string; url: string; note: string; provenance?: DataProvenance }[];
   /** One line naming the document and section the syllabus was read from. */
   syllabusSourceNote?: string;
   /**

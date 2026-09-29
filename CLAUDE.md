@@ -93,6 +93,43 @@ data object carries one; the UI surfaces it as a "Sourced Clause" button wired t
 `onOpenProvenanceModal`, threaded down from `main.tsx`. Superseded dates render
 struck-through with a corrigendum badge. **This provenance chain is the product's core idea.**
 
+### Evidence: "where did GovOS get this?", the same way for every fact
+Every cited value exposes one **Evidence** action (`EvidenceButton`, `ui.tsx`) that opens one
+panel (`EvidencePanel`, mounted by `main.tsx` in place of the old citation modal). All 28 former
+"Sourced Clause"/"Provenance"/"Source" buttons were replaced by it, and it was added where facts
+had none: the overview's headline facts, corrigenda, official links, admit-card events, exam-day
+items, syllabus topics, application steps/rules/exemptions, and each derived pattern figure.
+
+- **Three kinds, stated on the provenance.** `DataProvenance.evidenceType`: `DIRECT` (the value is
+  in the quoted words), `RECONCILED` (a later official statement replaced an earlier one —
+  `supersedes` on the governing statement, `supersededBy` on the replaced, both shown), `DERIVED`
+  (GovOS computed it — `derivation.method` and every input's evidence). Authored records that
+  predate the field are typed from what they carry (`evidenceKind`), never assumed to be quotes.
+- **Nothing is filled in.** The old modal printed "Page 1" for a missing page, "Section 1.1" for a
+  missing clause, and **ssc.gov.in** as the source link of any exam without a URL. The panel shows
+  only what the provenance states. A provenance with neither a URL nor words renders **no**
+  Evidence action; one claiming OFFICIALLY_VERIFIED without a URL and a page or excerpt is shown
+  as "Source incomplete — not presented as verified" (and the builder downgrades it).
+- **Identity survives the pipeline.** `tools/exam_builder/runtime_evidence.py` stamps every runtime
+  provenance with `evidenceId` = hash of (URL, page, clause, excerpt), plus `authorityName` and the
+  type; the page renders it as `data-evidence-id`. Same words on the same page, same id, from the
+  canonical citation to the button; different words, different id. `validate_runtime_exam` now
+  refuses evidence that is unidentified, untyped, derived without inputs, reconciled without its
+  other side, or "verified" without a source.
+- **Scalar facts have their own evidence** in `Exam.factEvidence` (`vacanciesTotal`,
+  `crucialEligibilityDate`). The overview used to cite `posts[0]` for the whole profile.
+- **The homepage link carries no evidence** — it is where the authority was resolved to, not a
+  statement in a document. Portal links cite the notice clause naming them; exam pages cite
+  themselves.
+- **A read date is not a publication date.** `Citation.to_provenance` used to fill `publishedDate`
+  with the day GovOS read the document, so the panel said a 2024 notice was "published" in 2026.
+
+Checks: `test_runtime_evidence` (the rules, on an invented authority), `test_tgpsc_v7_fixture`
+(now freezes a second digest, `factDigest`, over the runtime with evidence metadata stripped — a
+change to how evidence is shown can never hide a changed fact), and the scratchpad
+`evidence_ui_test.tsx` (every section of SSC and TGPSC renders only its own exam's evidence; the
+Direct/Reconciled/Derived panels; missing evidence is never a button or "verified").
+
 ### `src/data.ts`
 - `SSC_CGL_EXAM` (18 posts, 9 dates incl. one superseded, 3 stages, ~21 syllabus topics,
   3 roadmap tracks, 38 resources, 6 FAQs, admit-card details, full application guide),

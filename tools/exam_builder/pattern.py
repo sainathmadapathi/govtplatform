@@ -244,11 +244,25 @@ def read_negative_marking(passage: str) -> NegativeMarking | None:
     return NegativeMarking(as_printed=_sentence_around(text, _NEG_CUE.search(text).start()))
 
 
+#: Where a sentence ends: a full stop or semicolon with space (or the text's end) after it. A
+#: stop inside "13.8.2" or "0.50" ends nothing, and after "i.e."/"Rs." the sentence goes on.
+_SENTENCE_END = re.compile(r'(?<!\bi\.e)(?<!\be\.g)(?<!\bRs)(?<!\bNo)(?<!\bviz)[.;](?=\s|$)')
+#: A clause number opening the sentence is the clause's, not part of what it says; nor is the
+#: page furniture a flattened PDF puts in front of it ("Page 29 of 132 13.9.8 There will be").
+#: Case-sensitive on purpose: "0.25 marks will be deducted" opens on its figure, not a clause.
+_LEADING_CLAUSE = re.compile(r'^(?:[Pp]age\s+\d+\s+of\s+\d+\s+)*\(?\d+(?:\.\d+)*[.)]?\s+(?=[A-Z(])|'
+                             r'^(?:[Pp]age\s+\d+\s+of\s+\d+\s+)+')
+
+
 def _sentence_around(text: str, index: int, width: int = 220) -> str:
-    start = max((text.rfind(c, 0, index) for c in '.;'), default=-1)
-    end = text.find('.', index)
-    out = text[start + 1: end + 1 if end != -1 else min(len(text), index + width)]
-    return out.strip()[:300]
+    """The sentence containing `index`. "13.8.2 There will be negative marking of 0.50 marks
+    for each wrong answer." used to come back as "2 There will be negative marking of 0.":
+    every full stop was an end, the ones inside a clause number and a decimal included."""
+    before = [m.end() for m in _SENTENCE_END.finditer(text, 0, index)]
+    start = before[-1] if before else 0
+    after = _SENTENCE_END.search(text, index)
+    end = after.end() if after else min(len(text), index + width)
+    return _LEADING_CLAUSE.sub('', text[start:end].strip())[:300]
 
 
 # ================================================================== qualifying

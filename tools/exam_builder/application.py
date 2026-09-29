@@ -44,10 +44,22 @@ _FIELD_CUE = re.compile(
     r'(?=\s*(?:\bin\b|\bas\b|\bfrom\b|\band\b|\bor\b|\bwith\b|,|\.|;|:|$))', re.I)
 
 #: A sentence that asks the candidate to supply a *document* rather than a value.
+#: The name starts on a word. Without the boundary, a name longer than the cap was shortened
+#: from the front a letter at a time: "submit requisite certificate ..." read "equisite
+#: certificate", and "submit details of the own scribe" read "ails of the own scribe".
 _DOCUMENT_CUE = re.compile(
     r'\b(upload|attach|enclose|submit|produce|furnish)\b[^.;:]{0,30}?'
-    r'(?P<name>(?:scanned\s+)?(?:copy\s+of\s+)?[A-Za-z][A-Za-z /&\'\-]{2,48}?)'
+    r'(?<![A-Za-z])(?P<name>(?:scanned\s+)?(?:copy\s+of\s+)?[A-Za-z][A-Za-z /&\'\-]{2,60}?)'
     r'(?=\s*(?:\bin\b|\bas\b|\bwith\b|\band\b|,|\.|;|:|$))', re.I)
+
+#: What a document requirement names: a document. Plain English words for papers, images and
+#: proofs a candidate produces; no authority's own form names.
+_DOCUMENT_NOUN = re.compile(
+    r'\b(?:certificates?|documents?|cop(?:y|ies)|photo(?:graph)?s?|signatures?|thumb\s+impressions?|'
+    r'proofs?|cards?|mark\s*-?\s*sheets?|marksheets?|affidavits?|declarations?|undertakings?|'
+    r'testimonials?|no\s+objection|noc|degrees?|diplomas?|passports?|identity|letters?|receipts?|'
+    r'challans?|sheets?|scans?|licen[cs]es?|gazette|images?|photocop(?:y|ies)|deeds?|indemnity|bonds?|'
+    r'print\s*-?\s*outs?|printouts?)\b', re.I)
 
 #: Words for the application itself. "Submit the form" is the act of applying, not a
 #: document to produce, and reading it as one invented an upload nobody asked for. These are
@@ -334,6 +346,10 @@ def extract_documents(doc: SourceDocument, text: str, body: str,
         for m in _DOCUMENT_CUE.finditer(sentence):
             name = _clean_label(m.group('name'))
             if len(name) < 3 or name.lower() in seen or name.lower() in _NOT_A_DOCUMENT:
+                continue
+            if not _DOCUMENT_NOUN.search(name):
+                # "submit online application much before the closing date", "submit online
+                # representations", "click the Submit button": the verb, not a document.
                 continue
             ev = _evidence(sentence, doc, text, reading=f'document: {name}')
             if ev is None:

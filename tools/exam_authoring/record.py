@@ -52,7 +52,10 @@ class Citation:
             'officialUrl': self.url,
             'pageNumber': self.page,
             'clauseNumber': self.clause or 'Whole document',
-            'publishedDate': published or self.verified_date,
+            # Only a date the document states for itself. The day GovOS read it is verifiedDate;
+            # written here too, the Evidence panel told candidates a 2024 notice was
+            # "published" on the day it was read.
+            'publishedDate': published or '',
             'verifiedDate': self.verified_date,
             'verifiedBy': f'GovOS exam-authoring pipeline — read from the source on {self.verified_date}',
             'taxonomyType': taxonomy,

@@ -107,6 +107,7 @@ import {
   ApplicationSimulatorField,
   CandidateNotification,
   DataProvenance,
+  EvidenceType,
   EligibilityDiagnostic,
   Exam,
   ExamDayChecklistItem,
@@ -203,6 +204,187 @@ import {
   SIGNAL_STRENGTH_MULTIPLIER,
   RECOMMENDATION_HALF_LIFE_HOURS
 } from './services';
+
+// ==========================================================================
+// Evidence.tsx — "where did GovOS get this?", the same way for every fact
+// ==========================================================================
+/**
+ * One action and one panel for every cited fact on every exam. Both read only the provenance
+ * they are handed: no exam, authority or document is ever supplied from elsewhere. A missing
+ * page is not "page 1", a missing clause is not "Section 1.1", a missing link is not some
+ * authority's portal, and a provenance that cannot point a candidate at a source renders no
+ * Evidence action at all rather than an empty one.
+ */
+export type EvidenceKind = EvidenceType | 'INTERPRETATION';
+
+/** A source a candidate can open, or the words themselves. */
+export const provenanceHasEvidence = (p?: DataProvenance | null): p is DataProvenance =>
+  !!p && (/^https?:\/\//.test(p.officialUrl || '') || !!(p.excerptText || '').trim());
+
+/** Official verification needs a source to open and a place in it (a page or the words). */
+export const provenanceIsVerified = (p?: DataProvenance | null): boolean =>
+  !!p && p.verificationLevel === 'OFFICIALLY_VERIFIED' && /^https?:\/\//.test(p.officialUrl || '')
+  && (!!p.pageNumber || !!(p.excerptText || '').trim());
+
+/** What kind of evidence this is: the builder states it; an authored record's is read from the
+ *  links and taxonomy it already carries, never assumed to be a quotation. */
+export const evidenceKind = (p: DataProvenance): EvidenceKind => {
+  if (p.evidenceType) return p.evidenceType;
+  if (p.derivation) return 'DERIVED';
+  if ((p.supersedes && p.supersedes.length) || p.supersededBy) return 'RECONCILED';
+  return p.taxonomyType === 'FACT' ? 'DIRECT' : 'INTERPRETATION';
+};
+
+const EVIDENCE_KIND_TEXT: Record<EvidenceKind, { label: string; means: string; color: string; bg: string }> = {
+  DIRECT: { label: 'Direct', means: 'The value appears in the official words quoted below.', color: 'var(--emerald)', bg: 'var(--emerald-soft)' },
+  RECONCILED: { label: 'Reconciled', means: 'A later official statement replaced an earlier one. Both are shown, and the later one governs.', color: 'var(--amber)', bg: 'var(--amber-soft)' },
+  DERIVED: { label: 'Derived', means: 'GovOS calculated this from the official figures listed below. It is not printed as such.', color: 'var(--primary)', bg: 'var(--primary-soft)' },
+  INTERPRETATION: { label: 'GovOS interpretation', means: 'GovOS wording based on the source below, not a quotation from it.', color: 'var(--text-secondary)', bg: 'var(--surface-3)' },
+};
+
+export interface EvidenceButtonProps {
+  provenance?: DataProvenance | null;
+  onOpen?: (p: DataProvenance) => void;
+  /** Visible text; defaults to "Evidence". */
+  label?: string;
+  compact?: boolean;
+  style?: React.CSSProperties;
+}
+
+/** The single Evidence action. Renders nothing where there is no evidence to show. */
+export const EvidenceButton: React.FC<EvidenceButtonProps> = ({ provenance, onOpen, label, compact, style }) => {
+  if (!onOpen || !provenanceHasEvidence(provenance)) return null;
+  const kind = evidenceKind(provenance);
+  return (
+    <button
+      type="button"
+      className="btn btn-outline evidence-btn"
+      data-evidence-id={provenance.evidenceId || provenance.id}
+      data-evidence-type={kind}
+      onClick={() => onOpen(provenance)}
+      title={`Evidence: ${provenance.documentTitle}${provenance.pageNumber ? `, page ${provenance.pageNumber}` : ''}`}
+      aria-label={`Evidence for this value: ${provenance.documentTitle}`}
+      style={{ fontSize: compact ? '0.68rem' : '0.72rem', padding: compact ? '2px 7px' : '3px 9px', display: 'inline-flex', alignItems: 'center', gap: '5px', flexShrink: 0, ...style }}
+    >
+      <Eye size={compact ? 11 : 12} /> {label || 'Evidence'}
+    </button>
+  );
+};
+
+const EvidenceSourceLine: React.FC<{ p: DataProvenance }> = ({ p }) => (
+  <div style={{ padding: '10px 12px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.84rem' }}>
+    <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{p.documentTitle}</div>
+    <div style={{ color: 'var(--text-secondary)' }}>
+      {[p.pageNumber ? `Page ${p.pageNumber}` : '', p.clauseNumber || ''].filter(Boolean).join(' · ')}
+    </div>
+    {p.excerptText && <div style={{ fontStyle: 'italic', color: 'var(--text-primary)' }}>“{p.excerptText}”</div>}
+    {/^https?:\/\//.test(p.officialUrl || '') && (
+      <a href={p.officialUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+        Open this source <ExternalLink size={12} />
+      </a>
+    )}
+  </div>
+);
+
+export interface EvidencePanelProps {
+  provenance: DataProvenance;
+  onClose: () => void;
+}
+
+/** The Evidence panel: everything the provenance states, and nothing it does not. */
+export const EvidencePanel: React.FC<EvidencePanelProps> = ({ provenance: p, onClose }) => {
+  const kind = evidenceKind(p);
+  const kindText = EVIDENCE_KIND_TEXT[kind];
+  const verified = provenanceIsVerified(p);
+  const status = p.verificationLevel === 'SUPERSEDED' || p.supersededBy
+    ? { text: 'Superseded statement', color: 'var(--amber)' }
+    : verified ? { text: 'Officially verified', color: 'var(--emerald)' }
+      : p.verificationLevel === 'OFFICIALLY_VERIFIED'
+        // Darker than --rose, which misses 4.5:1 on every panel tint.
+        ? { text: 'Source incomplete — not presented as verified', color: '#b71f1f' }
+        : { text: 'Under verification', color: 'var(--amber)' };
+  const row = (label: string, value?: React.ReactNode) => value ? (
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 110px) minmax(0, 1fr)', gap: '10px', fontSize: '0.9rem' }}>
+      <span style={{ color: 'var(--text-secondary)' }}>{label}</span>
+      <span style={{ color: 'var(--text-primary)', fontWeight: 600, overflowWrap: 'anywhere' }}>{value}</span>
+    </div>
+  ) : null;
+  const hasUrl = /^https?:\/\//.test(p.officialUrl || '');
+  return (
+    <div className="evidence-panel" data-evidence-id={p.evidenceId || p.id} data-evidence-type={kind} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <Eye size={22} color="var(--primary)" />
+          <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0 }}>Evidence</h3>
+        </div>
+        <button onClick={onClose} aria-label="Close evidence" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+          <X size={22} />
+        </button>
+      </div>
+
+      <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', background: kindText.bg, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '8px' }}>
+          <span style={{ fontWeight: 800, color: kindText.color }}>Type: {kindText.label}</span>
+          <span style={{ fontWeight: 700, fontSize: '0.8rem', color: status.color }}>{status.text}</span>
+        </div>
+        <span style={{ fontSize: '0.84rem', color: 'var(--text-primary)' }}>{kindText.means}</span>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        {row('Authority', p.authorityName)}
+        {row('Document', p.documentTitle)}
+        {row('Page', p.pageNumber ? String(p.pageNumber) : undefined)}
+        {row('Clause', p.clauseNumber)}
+        {row('Published', p.publishedDate)}
+        {row('Checked on', p.verifiedDate)}
+      </div>
+
+      {p.excerptText && (
+        <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: 'var(--surface-3)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <span style={{ fontSize: '0.76rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Quote size={13} /> Supporting text
+          </span>
+          <div style={{ fontSize: '0.9rem', color: 'var(--text-primary)', lineHeight: 1.5, fontStyle: 'italic' }}>“{p.excerptText}”</div>
+        </div>
+      )}
+
+      {kind === 'DERIVED' && p.derivation && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <span style={{ fontSize: '0.86rem', color: 'var(--text-primary)' }}><strong>How GovOS computed it:</strong> {p.derivation.method}.</span>
+          <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)' }}>From these official sources</span>
+          {p.derivation.inputs.map((inp, i) => <EvidenceSourceLine key={inp.evidenceId || i} p={inp} />)}
+        </div>
+      )}
+
+      {p.supersedes && p.supersedes.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)' }}>This replaces the earlier official statement{p.supersedes.length > 1 ? 's' : ''}</span>
+          {p.supersedes.map((old, i) => <EvidenceSourceLine key={old.evidenceId || i} p={old} />)}
+        </div>
+      )}
+
+      {p.supersededBy && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Replaced by this later official statement, which governs</span>
+          <EvidenceSourceLine p={p.supersededBy} />
+        </div>
+      )}
+
+      {p.evidenceId && (
+        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Evidence ID {p.evidenceId}</div>
+      )}
+
+      <div style={{ paddingTop: '12px', borderTop: '1px solid var(--border-color)', display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: '10px' }}>
+        <button className="btn btn-secondary" onClick={onClose}>Close</button>
+        {hasUrl && (
+          <a href={p.officialUrl} target="_blank" rel="noreferrer" className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+            Open Official Source <ExternalLink size={15} />
+          </a>
+        )}
+      </div>
+    </div>
+  );
+};
 
 // ==========================================================================
 // Header.tsx
@@ -1020,10 +1202,7 @@ export const ExamDiscovery: React.FC<ExamDiscoveryProps> = ({ exams, onSelectExa
                                         <span style={{ fontWeight: 700 }}>{r.rule === 'AGE' ? 'Age' : r.rule === 'QUALIFICATION' ? 'Qualification' : 'Physical'}: </span>
                                         {r.text}
                                         {onOpenProvenanceModal && r.provenance.map(prov => (
-                                          <button key={prov.id} onClick={() => onOpenProvenanceModal(prov)}
-                                            style={{ marginLeft: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--primary)', background: 'none', border: '1px solid var(--border-color)', borderRadius: '999px', padding: '1px 8px', cursor: 'pointer' }}>
-                                            Sourced clause
-                                          </button>
+                                          <EvidenceButton key={prov.id} provenance={prov} onOpen={onOpenProvenanceModal} />
                                         ))}
                                       </li>
                                     ))}
@@ -1050,7 +1229,7 @@ export const ExamDiscovery: React.FC<ExamDiscoveryProps> = ({ exams, onSelectExa
 interface ExamFinderProps {
   /** The exam universe to discover over (authored ∪ runtime registry). Defaults to the authored register. */
   exams?: Exam[];
-  /** Opens the provenance modal from a discovery reason's "Sourced clause" button. */
+  /** Opens the Evidence panel from a discovery reason's Evidence button. */
   onOpenProvenanceModal?: (provenance: DataProvenance) => void;
   /** Lets the feature cards open a tab (and a section) — the same navigate() every button uses. */
   onNavigate?: (tab: GovOSTab, section?: number) => void;
@@ -2754,13 +2933,7 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
                       ? `(with +${relaxation} yrs ${profile.category}, per ${relaxationEntry.provenance.documentTitle})`
                       : `(no ${profile.category} relaxation is recorded for this exam, so none is applied)`}</span>
                     {pReq?.provenance && (
-                      <button 
-                        onClick={() => onOpenProvenanceModal(pReq.provenance)}
-                        className="btn btn-outline" 
-                        style={{ fontSize: '0.7rem', padding: '2px 6px' }}
-                      >
-                        <ShieldCheck size={11} /> {post.officialClause}
-                      </button>
+                      <EvidenceButton provenance={pReq.provenance} onOpen={onOpenProvenanceModal} label={post.officialClause} />
                     )}
                   </div>
                 </div>
@@ -4042,8 +4215,8 @@ const PLATFORM_MAP: { keys: string[]; answer: string; action: AssistantAction }[
     action: { label: 'Open Compare Exams', tab: 'COMPARE' }
   },
   {
-    keys: ['wrong', 'incorrect information', 'report', 'mistake', 'outdated', 'trust', 'provenance', 'how do you verify', 'source of this'],
-    answer: 'Every fact in GovOS carries its source. The "Sourced Clause" button next to a field opens the document title, page, clause, publication and verification dates, and the quoted text.\n\nIf something looks wrong, use the report button on that field — reports are queued and shown in the **Trust Panel**, which also runs live searches restricted to official government domains. Nothing from a live search is treated as verified until a human promotes it.',
+    keys: ['wrong', 'incorrect information', 'report', 'mistake', 'outdated', 'trust', 'provenance', 'how do you verify', 'source of this', 'evidence', 'where did this come from', 'where does this come from'],
+    answer: 'Every sourced fact in GovOS carries its evidence. The **Evidence** button next to a value opens the authority, the document, the page and clause, and the exact words it was read from, with a link to the official source. It also says what kind of evidence it is: Direct (the value is in those words), Reconciled (a later official statement replaced an earlier one — both are shown) or Derived (GovOS calculated it, and the figures it used are listed). A value with no Evidence button has no cited source, and is never shown as verified.\n\nIf something looks wrong, use the report button on that field — reports are queued and shown in the **Trust Panel**, which also runs live searches restricted to official government domains. Nothing from a live search is treated as verified until a human promotes it.',
     action: { label: 'Open the Trust Panel', tab: 'ADMIN' }
   },
   {
@@ -4936,9 +5109,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal,
                     Citation: {msg.citation.documentTitle} (Page {msg.citation.pageNumber}, {msg.citation.clauseNumber})
                   </span>
                   {msg.citation.provenance && (
-                    <button className="btn btn-outline" onClick={() => msg.citation?.provenance && onOpenProvenanceModal(msg.citation.provenance)} style={{ fontSize: '0.7rem', padding: '2px 8px' }}>
-                      <FileText size={12} /> Cite Clause
-                    </button>
+                    <EvidenceButton provenance={msg.citation.provenance} onOpen={onOpenProvenanceModal} />
                   )}
                 </div>
               )}
@@ -8697,14 +8868,7 @@ export const PostStudyPathEngine: React.FC<PostStudyPathEngineProps> = ({
                     </button>
 
                     {onOpenProvenanceModal && (
-                      <button
-                        onClick={() => onOpenProvenanceModal(mod.provenance)}
-                        className="btn btn-outline"
-                        style={{ padding: '3px 8px', fontSize: '0.72rem' }}
-                        title="View Gazette Clause Citation"
-                      >
-                        Clause Citation
-                      </button>
+                      <EvidenceButton provenance={mod.provenance} onOpen={onOpenProvenanceModal} />
                     )}
                   </div>
                 </div>
@@ -8796,13 +8960,7 @@ export const PostStudyPathEngine: React.FC<PostStudyPathEngineProps> = ({
                     </button>
 
                     {onOpenProvenanceModal && (
-                      <button
-                        onClick={() => onOpenProvenanceModal(mod.provenance)}
-                        className="btn btn-outline"
-                        style={{ padding: '3px 8px', fontSize: '0.72rem' }}
-                      >
-                        Clause Citation
-                      </button>
+                      <EvidenceButton provenance={mod.provenance} onOpen={onOpenProvenanceModal} />
                     )}
                   </div>
                 </div>
@@ -11114,13 +11272,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                                   Open source <ExternalLink size={11} />
                                 </a>
                               )}
-                              <button
-                                onClick={() => onOpenProvenanceModal(q.provenance)}
-                                className="btn btn-outline"
-                                style={{ fontSize: '0.74rem', padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
-                              >
-                                <ShieldCheck size={11} /> Provenance
-                              </button>
+                              <EvidenceButton provenance={q.provenance} onOpen={onOpenProvenanceModal} />
                             </div>
                           </div>
                         )}
@@ -12680,9 +12832,7 @@ export const ExamApplicationSimulator: React.FC<ExamApplicationSimulatorProps> =
           <a href={spec.portalUrl} target="_blank" rel="noopener noreferrer" className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             Open the real portal <ExternalLink size={15} />
           </a>
-          <button onClick={() => onOpenProvenanceModal(spec.provenance)} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <ShieldCheck size={15} /> Sourced clause
-          </button>
+          <EvidenceButton provenance={spec.provenance} onOpen={onOpenProvenanceModal} />
         </div>
       </div>
     );
@@ -12693,13 +12843,7 @@ export const ExamApplicationSimulator: React.FC<ExamApplicationSimulatorProps> =
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
       <div className="glass-card" style={{ padding: '18px 20px', background: 'var(--primary-soft)', border: '1px solid rgba(47, 107, 255, 0.28)' }}>
         <div style={{ fontSize: '0.88rem', color: 'var(--text-primary)', lineHeight: 1.6 }}>{spec.modelledOnNote}</div>
-        <button
-          onClick={() => onOpenProvenanceModal(spec.provenance)}
-          className="btn btn-secondary"
-          style={{ marginTop: '12px', fontSize: '0.78rem', padding: '6px 12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-        >
-          <ShieldCheck size={13} /> {spec.sourceDocumentTitle}
-        </button>
+        <EvidenceButton provenance={spec.provenance} onOpen={onOpenProvenanceModal} label={spec.sourceDocumentTitle} />
       </div>
 
       {/* The portal's own cards, as its own stepper */}
@@ -12863,16 +13007,21 @@ export const ExamApplicationSimulator: React.FC<ExamApplicationSimulatorProps> =
 // ==========================================================================
 // ApplicationGuide.tsx
 // ==========================================================================
+type ApplicationGuideTab = 'OTR_STEPS' | 'DOCUMENTS_FEE' | 'PHOTO_SIGNATURE' | 'CERTIFICATES' | 'PITFALLS';
+
 interface ApplicationGuideProps {
   guide: ApplicationGuideData;
   examId: string;
   onOpenProvenanceModal: (provenance: DataProvenance) => void;
+  /** Open on a given tab (a deep link into, say, documents and fee). */
+  initialTab?: ApplicationGuideTab;
 }
 
 export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
   guide,
   examId,
-  onOpenProvenanceModal
+  onOpenProvenanceModal,
+  initialTab
 }) => {
   // The form simulator and the ssc.nic.in notice describe SSC's portal only.
   const isSscPortal = /ssc\.gov\.in/.test(guide.officialPortal);
@@ -12885,7 +13034,7 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
     || !!guide.fee || guide.photoRules.rules.length > 0 || guide.signatureRules.rules.length > 0;
   const [applicationMode, setApplicationMode] = useState<'PRACTICE_SIMULATOR' | 'INSTRUCTIONS'>(
     hasSimulator && !hasOfficialInstructions ? 'PRACTICE_SIMULATOR' : 'INSTRUCTIONS');
-  const [activeTab, setActiveTab] = useState<'OTR_STEPS' | 'DOCUMENTS_FEE' | 'PHOTO_SIGNATURE' | 'CERTIFICATES' | 'PITFALLS'>('OTR_STEPS');
+  const [activeTab, setActiveTab] = useState<ApplicationGuideTab>(initialTab || 'OTR_STEPS');
   const hasDocumentsOrFee = (guide.requiredDocuments?.length ?? 0) > 0 || !!guide.fee;
   const [expandedStep, setExpandedStep] = useState<number>(1);
   const [selectedCertCategory, setSelectedCertCategory] = useState<string>('OBC_NCL');
@@ -12952,8 +13101,9 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
       {/* Header Banner */}
       <div className="glass-card" style={{ padding: '24px', background: 'linear-gradient(135deg, var(--surface-2) 0%, #ffffff 100%)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+          <div style={{ minWidth: 0 }}>
+            {/* Wraps: a long portal host ("websitenew.tgpsc.gov.in") pushed a phone page sideways. */}
+            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
               <span className="badge badge-verified">
                 <ShieldCheck size={14} /> 100% OFFICIAL APPLICATION PROTOCOL
               </span>
@@ -13120,7 +13270,13 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
                         {step.title}
                       </span>
                     </div>
-                    {isExpanded ? <ChevronDown size={20} color="var(--text-secondary)" /> : <ChevronRight size={20} color="var(--text-secondary)" />}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      {/* The header toggles the step; opening the evidence must not. */}
+                      <span onClick={(ev) => ev.stopPropagation()} style={{ display: 'inline-flex' }}>
+                        <EvidenceButton provenance={step.provenance} onOpen={onOpenProvenanceModal} />
+                      </span>
+                      {isExpanded ? <ChevronDown size={20} color="var(--text-secondary)" /> : <ChevronRight size={20} color="var(--text-secondary)" />}
+                    </div>
                   </div>
 
                   {isExpanded && (
@@ -13179,7 +13335,7 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
                 <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Application fee</h3>
                 {guide.fee.provenance && (
-                  <button className="btn btn-outline" onClick={() => onOpenProvenanceModal(guide.fee!.provenance!)} style={{ fontSize: '0.75rem', padding: '4px 10px' }}>Sourced Clause</button>
+                  <EvidenceButton provenance={guide.fee!.provenance!} onOpen={onOpenProvenanceModal} />
                 )}
               </div>
               {guide.fee.rules.some(r => r.feeType) ? (
@@ -13202,7 +13358,7 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
                 <div>
                   <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '4px' }}>Exemptions the notice states</div>
                   <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                    {guide.fee.exemptions.map((ex, i) => <li key={i}>{ex.category || 'Exemption stated'}{ex.exemptedFeeType ? ` (from the ${ex.exemptedFeeType === 'EXAMINATION' ? 'examination' : ex.exemptedFeeType === 'APPLICATION_PROCESSING' ? 'application processing' : 'total'} fee)` : ''}{ex.statedAs ? ` — “${ex.statedAs}”` : ''}</li>)}
+                    {guide.fee.exemptions.map((ex, i) => <li key={i}>{ex.category || 'Exemption stated'}{ex.exemptedFeeType ? ` (from the ${ex.exemptedFeeType === 'EXAMINATION' ? 'examination' : ex.exemptedFeeType === 'APPLICATION_PROCESSING' ? 'application processing' : 'total'} fee)` : ''}{ex.statedAs ? ` — “${ex.statedAs}”` : ''} <EvidenceButton provenance={ex.provenance} onOpen={onOpenProvenanceModal} compact style={{ marginLeft: '6px' }} /></li>)}
                   </ul>
                 </div>
               ) : (
@@ -13222,7 +13378,7 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
                       <span>{doc.name}{doc.specifications.length > 0 ? ` — ${doc.specifications.join('; ')}` : ''}</span>
                     </span>
                     {doc.provenance && (
-                      <button className="btn btn-outline" onClick={() => onOpenProvenanceModal(doc.provenance!)} style={{ fontSize: '0.72rem', padding: '3px 8px', flexShrink: 0 }}>Source</button>
+                      <EvidenceButton provenance={doc.provenance!} onOpen={onOpenProvenanceModal} />
                     )}
                   </li>
                 ))}
@@ -13251,6 +13407,7 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
                 <span className="badge badge-verified" style={{ fontSize: '0.75rem', marginTop: '2px' }}>
                   AS THIS EXAM&apos;S NOTICE SPECIFIES IT
                 </span>
+                <div style={{ marginTop: '6px' }}><EvidenceButton provenance={guide.photoRules.provenance} onOpen={onOpenProvenanceModal} /></div>
               </div>
             </div>
 
@@ -13294,6 +13451,7 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
                     {guide.signatureRules.dimensions}
                   </span>
                 )}
+                <div style={{ marginTop: '6px' }}><EvidenceButton provenance={guide.signatureRules.provenance} onOpen={onOpenProvenanceModal} /></div>
               </div>
             </div>
 
@@ -13530,11 +13688,13 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
 interface AdmitCardSectionProps {
   exam: Exam;
   onNavigateChecklist?: () => void;
+  onOpenProvenanceModal?: (p: DataProvenance) => void;
 }
 
 export const AdmitCardSection: React.FC<AdmitCardSectionProps> = ({
   exam,
-  onNavigateChecklist
+  onNavigateChecklist,
+  onOpenProvenanceModal
 }) => {
   const [selectedRegion, setSelectedRegion] = useState<string>('NR');
 
@@ -13787,6 +13947,7 @@ export const AdmitCardSection: React.FC<AdmitCardSectionProps> = ({
                     The authority publishes no direct link; it is served after sign-in.
                   </span>
                 )}
+                <EvidenceButton provenance={e.provenance} onOpen={onOpenProvenanceModal} />
               </div>
             </div>
           ))}
@@ -14006,9 +14167,10 @@ export const AdmitCardSection: React.FC<AdmitCardSectionProps> = ({
 // ==========================================================================
 interface ExamDayChecklistSectionProps {
   exam: Exam;
+  onOpenProvenanceModal?: (p: DataProvenance) => void;
 }
 
-export const ExamDayChecklistSection: React.FC<ExamDayChecklistSectionProps> = ({ exam }) => {
+export const ExamDayChecklistSection: React.FC<ExamDayChecklistSectionProps> = ({ exam, onOpenProvenanceModal }) => {
   const storageKey = `govos_checklist_${exam.id}`;
 
   // Section 12 renders ONLY the exam's own authored exam-day instructions. It holds no
@@ -14210,6 +14372,10 @@ export const ExamDayChecklistSection: React.FC<ExamDayChecklistSectionProps> = (
                           <FileText size={12} /> Source: {item.provenance.documentTitle}
                         </a>
                       )}
+                      {/* The row toggles the checkbox; opening the evidence must not. */}
+                      <span onClick={(ev) => ev.stopPropagation()} style={{ display: 'inline-flex', marginTop: '6px', marginLeft: '8px' }}>
+                        <EvidenceButton provenance={item.provenance} onOpen={onOpenProvenanceModal} compact />
+                      </span>
                     </div>
                   </div>
                 );
@@ -14947,9 +15113,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>The authority publishes no direct link; it is served after sign-in.</span>
         ) : null}
         {d.provenance && onOpenProvenanceModal && (
-          <button className="btn btn-secondary" onClick={() => onOpenProvenanceModal(d.provenance!)} style={{ fontSize: '0.72rem', padding: '5px 10px', display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <ShieldCheck size={12} /> Sourced Clause
-          </button>
+          <EvidenceButton provenance={d.provenance!} onOpen={onOpenProvenanceModal} />
         )}
       </div>
     </div>
@@ -15018,9 +15182,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px', flexWrap: 'wrap' }}>
                   {step.basis && <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>{step.basis}</span>}
                   {step.provenance && onOpenProvenanceModal && (
-                    <button onClick={() => onOpenProvenanceModal(step.provenance!)} className="btn btn-outline" style={{ fontSize: '0.7rem', padding: '2px 8px' }}>
-                      <ShieldCheck size={11} /> Sourced Clause
-                    </button>
+                    <EvidenceButton provenance={step.provenance!} onOpen={onOpenProvenanceModal} />
                   )}
                 </div>
               </div>
@@ -16563,7 +16725,7 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
           </div>
         )}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: 'auto', paddingTop: '10px', borderTop: '1px solid var(--surface-2)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px', marginTop: 'auto', paddingTop: '10px', borderTop: '1px solid var(--surface-2)' }}>
           {action.href ? (
             <a href={action.href} target="_blank" rel="noreferrer" className="btn btn-emerald" style={{ fontSize: '0.8rem', padding: '7px 14px', display: 'inline-flex', alignItems: 'center', gap: '6px', flex: 1, justifyContent: 'center' }}>
               {action.label} <ExternalLink size={13} />
@@ -16595,9 +16757,7 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
             </button>
           )}
           {r.provenance && (
-            <button onClick={() => onOpenProvenanceModal(r.provenance!)} title="View source verification" aria-label="View source verification" style={{ ...iconButtonStyle, color: '#137638' }}>
-              <ShieldCheck size={14} />
-            </button>
+            <EvidenceButton provenance={r.provenance!} onOpen={onOpenProvenanceModal} />
           )}
         </div>
       </div>
@@ -16904,6 +17064,12 @@ const PracticeShell: React.FC<{
   </div>
 );
 
+/** A pattern figure's name in words, for the Derived evidence action. */
+const PATTERN_FIELD_WORDS: Record<string, string> = {
+  marksPerQuestion: 'marks per question', questions: 'the question count', marks: 'the marks',
+  durationMinutes: 'the duration', negativeMarking: 'negative marking', negativeMarkPerWrong: 'the penalty',
+};
+
 /** One exam's own pattern, read from its own stages. Nothing is assumed about any other exam. */
 /**
  * One node of an exam's published structure, and its children beneath it.
@@ -17004,15 +17170,15 @@ const PatternNodeCard: React.FC<{
         </div>
       )}
 
-      {node.provenance && (
-        <button
-          onClick={() => onOpenProvenanceModal(node.provenance as DataProvenance)}
-          className="btn btn-secondary"
-          style={{ fontSize: '0.74rem', padding: '5px 10px', alignSelf: 'flex-start' }}
-        >
-          Sourced Clause
-        </button>
-      )}
+      {/* What was printed opens the node's own evidence; each figure GovOS computed opens a
+          Derived record naming the figures it was computed from. */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+        <EvidenceButton provenance={node.provenance as DataProvenance | undefined} onOpen={onOpenProvenanceModal} />
+        {Object.entries(node.derivedEvidence || {}).map(([field, prov]) => (
+          <EvidenceButton key={field} provenance={prov} onOpen={onOpenProvenanceModal}
+            label={`How ${PATTERN_FIELD_WORDS[field] || field} was computed`} />
+        ))}
+      </div>
 
       {node.children && node.children.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '2px' }}>
@@ -17092,13 +17258,7 @@ const SyllabusNodeCard: React.FC<{
           )}
         </div>
         {node.provenance && (
-          <button
-            onClick={() => onOpenProvenanceModal(node.provenance as DataProvenance)}
-            className="btn btn-secondary"
-            style={{ fontSize: '0.68rem', padding: '4px 9px', flexShrink: 0 }}
-          >
-            Sourced Clause
-          </button>
+          <EvidenceButton provenance={node.provenance as DataProvenance} onOpen={onOpenProvenanceModal} />
         )}
       </div>
       {open && kids.length > 0 && (
@@ -17262,9 +17422,7 @@ const AnswerKeyPanel: React.FC<{
                     </a>
                   )}
                   {key.provenance && (
-                    <button onClick={() => onOpenProvenanceModal(key.provenance as DataProvenance)} className="btn btn-secondary" style={{ fontSize: '0.74rem', padding: '5px 10px' }}>
-                      Sourced Clause
-                    </button>
+                    <EvidenceButton provenance={key.provenance as DataProvenance} onOpen={onOpenProvenanceModal} />
                   )}
                 </div>
               </div>
@@ -17340,9 +17498,7 @@ const OfficialPaperCatalogue: React.FC<{
                 </a>
               )}
               {paper.provenance && (
-                <button onClick={() => onOpenProvenanceModal(paper.provenance as DataProvenance)} className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '5px 11px' }}>
-                  Sourced Clause
-                </button>
+                <EvidenceButton provenance={paper.provenance as DataProvenance} onOpen={onOpenProvenanceModal} />
               )}
             </div>
           </div>
@@ -17380,9 +17536,7 @@ const OfficialPapersPanel: React.FC<{ exam: Exam; onOpenProvenanceModal: (p: Dat
                 <ExternalLink size={13} /> Open the paper
               </a>
               {p.provenance && (
-                <button className="btn btn-outline" onClick={() => onOpenProvenanceModal(p.provenance!)} style={{ fontSize: '0.78rem', padding: '7px 12px' }}>
-                  Sourced clause
-                </button>
+                <EvidenceButton provenance={p.provenance!} onOpen={onOpenProvenanceModal} />
               )}
             </div>
           </div>
@@ -17552,9 +17706,7 @@ const UpscEssayPractice: React.FC<{ exam: Exam; onOpenProvenanceModal: (p: DataP
             Cancel
           </button>
           {active.provenance && (
-            <button className="btn btn-outline" onClick={() => onOpenProvenanceModal(active.provenance)} style={{ fontSize: '0.8rem', padding: '8px 14px' }}>
-              Sourced clause
-            </button>
+            <EvidenceButton provenance={active.provenance} onOpen={onOpenProvenanceModal} />
           )}
         </div>
       </div>
@@ -17595,7 +17747,7 @@ const UpscEssayPractice: React.FC<{ exam: Exam; onOpenProvenanceModal: (p: DataP
         </div>
       ))}
       <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-        Read from UPSC's own PDF by OCR and marked under verification — open the Sourced clause on any
+        Read from UPSC's own PDF by OCR and marked under verification — open the Evidence on any
         question to check it against the page it came from.
       </div>
     </div>
@@ -19017,16 +19169,30 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
               <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                 01 — Official Exam Profile{exam.posts.length > 0 ? ` & All ${exam.posts.length} Posts Breakdown` : ''}
               </h3>
-              {exam.posts[0] && (
-                <button className="btn btn-outline" onClick={() => onOpenProvenanceModal(exam.posts[0].provenance)} style={{ fontSize: '0.75rem', padding: '4px 10px' }}>
-                  <ShieldCheck size={14} /> Provenance Citation
-                </button>
-              )}
             </div>
 
             <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
               {exam.overviewDescription}
             </p>
+
+            {/* Each headline fact beside its own evidence. The overview used to cite the first
+                post's row for the whole profile; a total is not a post. */}
+            {(exam.vacanciesTotal || exam.crucialEligibilityDate) && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(240px, 100%), 1fr))', gap: '12px' }}>
+                {([
+                  ['Vacancies', exam.vacanciesTotal, exam.factEvidence?.vacanciesTotal],
+                  ['Age reckoned on', exam.crucialEligibilityDate, exam.factEvidence?.crucialEligibilityDate],
+                ] as [string, string | undefined, DataProvenance | undefined][]).filter(([, value]) => !!value).map(([label, value, prov]) => (
+                  <div key={label} className="overview-fact" style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>{label}</div>
+                      <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)' }}>{value}</div>
+                    </div>
+                    <EvidenceButton provenance={prov} onOpen={onOpenProvenanceModal} />
+                  </div>
+                ))}
+              </div>
+            )}
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: '16px' }}>
               {exam.posts.map(p => (
@@ -19067,13 +19233,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                   )}
 
                   <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--surface-2)', paddingTop: '8px' }}>
-                    <button 
-                      className="btn btn-outline" 
-                      onClick={() => onOpenProvenanceModal(p.provenance)}
-                      style={{ fontSize: '0.7rem', padding: '2px 8px' }}
-                    >
-                      <ShieldCheck size={12} /> Sourced Clause
-                    </button>
+                    <EvidenceButton provenance={p.provenance} onOpen={onOpenProvenanceModal} />
                   </div>
                 </div>
               ))}
@@ -19139,9 +19299,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                       Result Next Steps →
                     </button>
                   )}
-                  <button className="btn btn-outline" onClick={() => onOpenProvenanceModal(d.provenance)} style={{ fontSize: '0.75rem', padding: '4px 10px' }}>
-                    <ShieldCheck size={13} /> Sourced Clause
-                  </button>
+                  <EvidenceButton provenance={d.provenance} onOpen={onOpenProvenanceModal} />
                 </div>
               </div>
             );
@@ -19254,9 +19412,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                   <div key={card.title} style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: palette.bg, border: `1px solid ${palette.border}`, display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <h4 style={{ fontSize: '1rem', fontWeight: 700, color: palette.color, margin: 0 }}>{card.title}</h4>
                     <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.55 }}>{card.body}</p>
-                    <button onClick={() => onOpenProvenanceModal(card.provenance)} className="btn btn-outline" style={{ alignSelf: 'flex-start', fontSize: '0.7rem', padding: '2px 8px' }}>
-                      <ShieldCheck size={11} /> Sourced Clause
-                    </button>
+                    <EvidenceButton provenance={card.provenance} onOpen={onOpenProvenanceModal} />
                   </div>
                 );
               })}
@@ -19290,9 +19446,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
-                    <button onClick={() => onOpenProvenanceModal(table.provenance)} className="btn btn-outline" style={{ fontSize: '0.7rem', padding: '2px 8px' }}>
-                      <ShieldCheck size={11} /> Sourced Clause
-                    </button>
+                    <EvidenceButton provenance={table.provenance} onOpen={onOpenProvenanceModal} />
                     <a href={table.documentUrl} target="_blank" rel="noreferrer" className="btn btn-outline" style={{ fontSize: '0.7rem', padding: '2px 8px' }}>
                       <ExternalLink size={11} /> Open the document
                     </a>
@@ -19345,7 +19499,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                     <li key={i}>
                       {r.category}: {r.years !== undefined ? `+${r.years} years` : r.maximumAge !== undefined ? `upper limit ${r.maximumAge} years` : 'stated without a figure'}{r.condition ? ` — ${r.condition}` : ''}
                       {r.status === 'NEEDS_REVIEW' && ' (under review)'}
-                      <button className="btn btn-outline" onClick={() => onOpenProvenanceModal(r.provenance)} style={{ fontSize: '0.7rem', padding: '1px 7px', marginLeft: '8px' }}>Source</button>
+                      <EvidenceButton provenance={r.provenance} onOpen={onOpenProvenanceModal} />
                     </li>
                   ))}
                 </ul>
@@ -19615,6 +19769,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                               {topic.revision.noticeUrl && <ExternalLink size={10} />}
                             </a>
                           )}
+                          <EvidenceButton provenance={topic.officialProvenance} onOpen={onOpenProvenanceModal} compact />
                         </div>
                       </div>
 
@@ -19718,9 +19873,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                       <td style={{ padding: '12px' }}>{c.post || 'All posts (as recorded)'}</td>
                       <td style={{ padding: '12px', fontWeight: 700, color: 'var(--emerald)', fontFamily: 'var(--font-mono)' }}>{c.value ?? c.tier1Cutoff}{c.cutoffType ? ` (${c.cutoffType})` : ''}</td>
                       <td style={{ padding: '12px' }}>
-                        <button onClick={() => onOpenProvenanceModal(c.provenance)} className="btn btn-outline" style={{ fontSize: '0.7rem', padding: '2px 8px' }}>
-                          <ShieldCheck size={11} /> Source
-                        </button>
+                        <EvidenceButton provenance={c.provenance} onOpen={onOpenProvenanceModal} />
                       </td>
                     </tr>
                   ))}
@@ -19748,9 +19901,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                       <td style={{ padding: '12px', fontWeight: 700, color: 'var(--emerald)', fontFamily: 'var(--font-mono)' }}>{c.tier1Cutoff}</td>
                       <td style={{ padding: '12px', fontWeight: 700, color: 'var(--primary)', fontFamily: 'var(--font-mono)' }}>{c.tier2Cutoff || 'N/A'}</td>
                       <td style={{ padding: '12px' }}>
-                        <button onClick={() => onOpenProvenanceModal(c.provenance)} className="btn btn-outline" style={{ fontSize: '0.7rem', padding: '2px 8px' }}>
-                          <ShieldCheck size={11} /> Official PDF
-                        </button>
+                        <EvidenceButton provenance={c.provenance} onOpen={onOpenProvenanceModal} />
                       </td>
                     </tr>
                   ))}
@@ -19798,9 +19949,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                   {faq.answer}
                 </p>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
-                  <button onClick={() => onOpenProvenanceModal(faq.provenance)} className="btn btn-outline" style={{ fontSize: '0.7rem', padding: '2px 8px' }}>
-                    <ShieldCheck size={11} /> View Source Document
-                  </button>
+                  <EvidenceButton provenance={faq.provenance} onOpen={onOpenProvenanceModal} />
                 </div>
               </div>
             ))}
@@ -19817,14 +19966,22 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
               {(exam.officialLinks && exam.officialLinks.length > 0
                 ? exam.officialLinks
                 : [{ title: exam.authorityName, url: exam.officialDomain, note: exam.officialDomain.replace(/^https?:\/\//, '') }]
-              ).map(link => (
-                <a key={`${link.title}|${link.url}`} href={link.url} target="_blank" rel="noreferrer" className="glass-card" style={{ padding: '18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div>
-                    <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>{link.title}</h4>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{link.note}</div>
-                  </div>
-                  <ExternalLink size={18} color="var(--primary)" />
-                </a>
+              ).map((link: { title: string; url: string; note: string; provenance?: DataProvenance }) => (
+                // The card is a link, so its Evidence action sits beside it, not inside it.
+                <div key={`${link.title}|${link.url}`} className="glass-card" style={{ padding: '18px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <a href={link.url} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', textDecoration: 'none' }}>
+                    <div style={{ minWidth: 0 }}>
+                      <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>{link.title}</h4>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{link.note}</div>
+                    </div>
+                    <ExternalLink size={18} color="var(--primary)" style={{ flexShrink: 0 }} />
+                  </a>
+                  {link.provenance && (
+                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                      <EvidenceButton provenance={link.provenance} onOpen={onOpenProvenanceModal} />
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
           </div>
@@ -19854,10 +20011,13 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                 <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#af5109', margin: 0 }}>{corr.title}</h4>
                 <div style={{ fontSize: '0.82rem', color: '#92400e', fontWeight: 600 }}>Notice Ref: {corr.noticeNumber}</div>
                 <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: 0 }}>{corr.summary}</p>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
-                  <a href={corr.pdfUrl} target="_blank" rel="noreferrer" className="btn btn-outline" style={{ fontSize: '0.8rem', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Download size={14} /> Open Official Notices Portal
-                  </a>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', flexWrap: 'wrap', gap: '8px', marginTop: '4px' }}>
+                  <EvidenceButton provenance={corr.provenance} onOpen={onOpenProvenanceModal} />
+                  {/^https?:\/\//.test(corr.pdfUrl || '') && (
+                    <a href={corr.pdfUrl} target="_blank" rel="noreferrer" className="btn btn-outline" style={{ fontSize: '0.8rem', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Download size={14} /> Open the notice
+                    </a>
+                  )}
                 </div>
               </div>
             ))}
@@ -19869,6 +20029,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
           <AdmitCardSection 
             exam={exam}
             onNavigateChecklist={() => setActiveSection(15)}
+            onOpenProvenanceModal={onOpenProvenanceModal}
           />
         )}
 
@@ -19876,6 +20037,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
         {activeSection === 15 && (
           <ExamDayChecklistSection 
             exam={exam}
+            onOpenProvenanceModal={onOpenProvenanceModal}
           />
         )}
 

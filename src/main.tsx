@@ -42,6 +42,7 @@ import {
   EligibilityCalculator,
   ExamCalendar,
   ExamCompare,
+  EvidencePanel,
   ExamDetailView,
   ExamFinder,
   Header,
@@ -413,94 +414,11 @@ export const App: React.FC = () => {
         />
       )}
 
-      {/* Field Provenance & Gazette Citation Modal */}
+      {/* Evidence: one panel for every cited fact on every exam */}
       {provenanceModalData && (
         <div className="modal-overlay" onClick={() => setProvenanceModalData(null)}>
           <div className="modal-content animate-fade-in" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '640px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <ShieldCheck size={26} color="var(--emerald)" />
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 800 }}>Field Provenance & Gazette Citation</h3>
-              </div>
-              <button 
-                onClick={() => setProvenanceModalData(null)}
-                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
-              >
-                <X size={22} />
-              </button>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', fontSize: '0.95rem' }}>
-              <div style={{ padding: '12px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span className="badge badge-verified">
-                  {provenanceModalData.verificationLevel}
-                </span>
-                <span className={`taxonomy-tag taxonomy-${provenanceModalData.taxonomyType.toLowerCase()}`}>
-                  TAXONOMY: {provenanceModalData.taxonomyType}
-                </span>
-              </div>
-
-              <div>
-                <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Source Document Title:</span>
-                <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>{provenanceModalData.documentTitle}</div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-                <div>
-                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Official Page Number:</span>
-                  <div style={{ fontWeight: 700, color: 'var(--primary)', fontFamily: 'var(--font-mono)' }}>Page {provenanceModalData.pageNumber || '1'}</div>
-                </div>
-
-                <div>
-                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Clause / Section Reference:</span>
-                  <div style={{ fontWeight: 700, color: 'var(--primary)', fontFamily: 'var(--font-mono)' }}>{provenanceModalData.clauseNumber || 'Section 1.1'}</div>
-                </div>
-              </div>
-
-              {/* Direct Quoted Excerpt from Official Gazette */}
-              {provenanceModalData.excerptText && (
-                <div style={{ padding: '14px', borderRadius: 'var(--radius-md)', background: 'var(--surface-3)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#2563eb', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Quote size={14} /> Official Gazette Legal Excerpt
-                  </span>
-                  <div style={{ fontSize: '0.88rem', color: '#334155', lineHeight: 1.5, fontStyle: 'italic' }}>
-                    "{provenanceModalData.excerptText}"
-                  </div>
-                </div>
-              )}
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-                <div>
-                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Official Publication Date:</span>
-                  <div>{provenanceModalData.publishedDate}</div>
-                </div>
-
-                <div>
-                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>GovOS Audit Timestamp:</span>
-                  <div>{provenanceModalData.verifiedDate}</div>
-                </div>
-              </div>
-
-              <div>
-                <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Audited & Verified By:</span>
-                <div style={{ fontWeight: 600, color: 'var(--emerald)' }}>{provenanceModalData.verifiedBy}</div>
-              </div>
-
-              <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                <button className="btn btn-secondary" onClick={() => setProvenanceModalData(null)}>
-                  Close Audit
-                </button>
-                <a 
-                  href={provenanceModalData.officialUrl || 'https://ssc.gov.in'} 
-                  target="_blank" 
-                  rel="noreferrer" 
-                  className="btn btn-emerald" 
-                  style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}
-                >
-                  Open Official Notices Portal <ExternalLink size={16} />
-                </a>
-              </div>
-            </div>
+            <EvidencePanel provenance={provenanceModalData} onClose={() => setProvenanceModalData(null)} />
           </div>
         </div>
       )}
