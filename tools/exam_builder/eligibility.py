@@ -170,6 +170,15 @@ _AGE_CHANGE = re.compile(
     r'\blimit\s+from\s+\d{1,2}\s*(?:years?|yrs?)\s+to\s+\d{1,2}\s*(?:years?|yrs?)', re.I)
 
 
+#: The ages a person applying for a post can be. A figure outside them is a period of time --
+#: a debarment, a length of service, an experience requirement -- printed with "years".
+_APPLICANT_AGE = (14, 70)
+
+
+def _plausible_age_band(low: int, high: int) -> bool:
+    return _APPLICANT_AGE[0] <= low < high <= _APPLICANT_AGE[1]
+
+
 def extract_age_rules(doc: SourceDocument, text: str, *,
                       posts: list[Post] | None = None) -> list[AgeRule]:
     """Age bands, date-of-birth windows and the date age is reckoned on.
@@ -196,6 +205,13 @@ def extract_age_rules(doc: SourceDocument, text: str, *,
 
         minimum = maximum = None
         band = _AGE_RANGE.search(passage)
+        if band:
+            pair = ((band.group(1), band.group(2)) if band.group(1)
+                    else (band.group(3), band.group(4)))
+            if not _plausible_age_band(int(pair[0]), int(pair[1])):
+                # "03-05 years" in a table of debarment periods is a length of time, not the
+                # age of a person applying for a job.
+                band = None
         # A band *is* an age statement, whether or not the sentence says "age": "not less
         # than 21 years and not more than 30 years" says nothing else. Experience is
         # excluded above, which is what makes reading it this way safe.
@@ -203,13 +219,15 @@ def extract_age_rules(doc: SourceDocument, text: str, *,
         if not _IS_AGE.search(passage) and not states_a_band:
             continue
         if band:
-            pair = ((band.group(1), band.group(2)) if band.group(1)
-                    else (band.group(3), band.group(4)))
             minimum, maximum = int(pair[0]), int(pair[1])
         else:
             lo, hi = _AGE_BAND.search(passage), _AGE_MAX.search(passage)
             minimum = int(lo.group(1)) if lo else None
             maximum = int(hi.group(1)) if hi else None
+            if minimum is not None and not _plausible_age_band(minimum, minimum + 1):
+                minimum = None
+            if maximum is not None and not _plausible_age_band(maximum - 1, maximum):
+                maximum = None
 
         earliest = _DOB_EARLIEST.search(passage)
         latest = _DOB_LATEST.search(passage)
@@ -914,7 +932,41 @@ def _post_code(row, table) -> str:
     return digits.zfill(2) if digits else ''
 
 
-def extract_posts(doc: SourceDocument, text: str, *, exam_id: str) -> list[Post]:
+def _states_otherwise(post: Post, row, table) -> bool:
+    """Does this row print a value its namesake already holds differently?
+
+    Two rows of one notice can share a post name and be two posts: "Assistant / Assistant
+    Section Officer" at Pay Level-7 and again at Pay Level-6. Joined by name, the second was
+    folded into the first and its pay level lost. A second table describing the same post
+    prints the same values, or none."""
+    printed = (
+        (post.pay, normalise_ws(row.cells.get(ColumnKind.PAY, ''))
+         or normalise_ws(str(table.heading_values.get(ColumnKind.PAY, '')))),
+        (post.classification, normalise_ws(row.cells.get(ColumnKind.CLASSIFICATION, ''))),
+        (post.age_band, normalise_ws(row.cells.get(ColumnKind.AGE, ''))),
+        (post.department, normalise_ws(row.cells.get(ColumnKind.DEPARTMENT, ''))),
+    )
+    return any(held.has_value and value and _name_key(str(held.value)) != _name_key(value)
+               for held, value in printed)
+
+
+def _name_only(row) -> str:
+    """The post name of a row that printed nothing else, or ''.
+
+    Such a row is a post the table lists whose other cells are empty where it stands (a cell
+    merged with a neighbouring row, often across a page break). Its values are not in its row,
+    so it is not published -- but it is reported, not dropped in silence."""
+    cells = [normalise_ws(c) for c in (getattr(row, 'raw_cells', None) or []) if normalise_ws(c)]
+    if len(cells) != 1 or not row.ordinal:
+        return ''
+    name = cells[0]
+    if len(name) < 4 or re.search(r'\d', name) or is_document_not_post(name):
+        return ''
+    return name
+
+
+def extract_posts(doc: SourceDocument, text: str, *, exam_id: str,
+                  held: list | None = None) -> list[Post]:
     """Posts, from tables reconstructed out of the flattened document.
 
     Every field comes from the row's own cells, so a post's age is the age its row printed
@@ -925,6 +977,9 @@ def extract_posts(doc: SourceDocument, text: str, *, exam_id: str) -> list[Post]
     another (a qualification table, keyed by the same post codes). Such a row is joined to the
     post it describes only where both the code and the name agree; it never creates a second
     post, and a row that agrees on one but not the other is left out rather than joined.
+
+    `held`, when given, receives (ordinal, name, table heading) for each row that names a
+    post and prints nothing else about it.
     """
     out: list[Post] = []
     seen: set[str] = set()
@@ -945,7 +1000,10 @@ def extract_posts(doc: SourceDocument, text: str, *, exam_id: str) -> list[Post]
             if not row.reconstructed:
                 # A row the columns could not be read from may still be a known post's row
                 # in a second table; only its remainder after the full name is taken.
-                _join_by_known_name(by_code.get(_post_code(row, table)), row, table, doc, text)
+                joined = _join_by_known_name(by_code.get(_post_code(row, table)), row, table, doc, text)
+                lone = '' if joined or ColumnKind.NAME not in table.kinds else _name_only(row)
+                if lone and held is not None:
+                    held.append((row.ordinal.strip(' .'), lone, normalise_ws(table.heading)[:80]))
                 continue
             name = normalise_ws(row.cells.get(ColumnKind.NAME, ''))
             if not name:
@@ -970,8 +1028,11 @@ def extract_posts(doc: SourceDocument, text: str, *, exam_id: str) -> list[Post]
                 continue
 
             existing = by_code.get(code) if code else None
+            namesake = False
             if existing is None:
                 existing = next((p for p in out if _name_key(p.name) == _name_key(name)), None)
+                if existing is not None and _states_otherwise(existing, row, table):
+                    existing, namesake = None, True
             if existing is not None:
                 if not _names_agree(existing.name, name):
                     continue
@@ -982,11 +1043,15 @@ def extract_posts(doc: SourceDocument, text: str, *, exam_id: str) -> list[Post]
                 if not _join_by_known_name(existing, row, table, doc, text):
                     _add_row_facts(existing, row, ev, table)
                 continue
-            if name.lower() in seen:
+            if name.lower() in seen and not namesake:
                 continue
             seen.add(name.lower())
 
-            post = Post(id=f'post-{exam_id}-{_slug(name)}', name=name, evidence=[ev],
+            post_id = f'post-{exam_id}-{_slug(name)}'
+            if any(p.id == post_id for p in out):
+                # A namesake post: numbered in the order the notice lists it.
+                post_id = f'{post_id}-{sum(1 for p in out if p.id.startswith(post_id)) + 1}'
+            post = Post(id=post_id, name=name, evidence=[ev],
                         status=Status.NEEDS_REVIEW if row.note else Status.VERIFIED,
                         note=row.note, code=code)
             _add_row_facts(post, row, ev, table)

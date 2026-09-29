@@ -258,6 +258,22 @@ def _prov(rec: ExamRecord, f: Field, suffix: str) -> Optional[dict]:
     return f.citation.to_provenance(prov_id=f'prov-{rec.exam_id}-{suffix}', level=f.verification_level)
 
 
+def _vacancy_count(value) -> tuple[str, bool]:
+    """(the count as a candidate reads it, whether the source called it approximate).
+
+    A vacancy figure arrives as a bare number from a printed total, or as {count,
+    isApproximate} from a sentence ("There are approx. 12,256 vacancies"). Stringifying the
+    second put "{'count': '12256', ...}" in front of candidates, and the overview called every
+    figure "approximately", including one read from a table's printed TOTAL."""
+    if isinstance(value, dict):
+        count = str(value.get('count') or '').replace(',', '').strip()
+        return (count if count.isdigit() else '', bool(value.get('isApproximate')))
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return str(int(value)), False
+    text = str(value or '').replace(',', '').strip()
+    return (text if text.isdigit() else '', False)
+
+
 def _vacancy_breakups(rec: ExamRecord) -> list[dict]:
     """Each verified break-up table, as the authority printed its columns, rows tied to posts.
 
@@ -510,7 +526,12 @@ def _notice_url(rec: ExamRecord) -> tuple[str, Optional[Field]]:
     lives on every citation it produced."""
     counts: dict[str, int] = {}
     holder: dict[str, Field] = {}
-    for name, f in rec.fields.items():
+    # Fields are visited by name, not in the order they were set: the same canonical record
+    # must give the same runtime however it was serialized. Visiting in insertion order made
+    # the notice's provenance whichever field a build happened to set first, and a record
+    # re-saved with sorted keys changed what a candidate saw.
+    for name in sorted(rec.fields):
+        f = rec.fields[name]
         if name in ('officialName', 'authority'):
             continue
         if f.usable and f.citation and getattr(f.citation, 'url', ''):
@@ -520,7 +541,8 @@ def _notice_url(rec: ExamRecord) -> tuple[str, Optional[Field]]:
                 holder.setdefault(u, f)
     if not counts:
         return '', None
-    best = max(counts, key=lambda u: counts[u])
+    # The most-cited document; a tie goes to the address itself, never to visiting order.
+    best = min(counts, key=lambda u: (-counts[u], u))
     return best, holder[best]
 
 
@@ -539,7 +561,13 @@ def _resources(rec: ExamRecord) -> list[dict]:
             'recommendedFor': 'The rules themselves, from the authority that wrote them.',
             'description': 'The examination notice this record was read from.',
             'linkVerifiedDate': notice_field.citation.verified_date,
-            'provenance': _prov(rec, notice_field, 'notice') or {},
+            # The notice cited as a document, not through one fact read from it: another
+            # field's excerpt ("Hall Tickets") says nothing about the notice as a whole.
+            'provenance': dict(_prov(rec, notice_field, 'notice') or {},
+                               documentTitle=notice_field.citation.document_title,
+                               officialUrl=notice_url, pageNumber=1,
+                               clauseNumber='Examination notice',
+                               excerptText=notice_field.citation.document_title),
         })
     printed = rec.value('applicationPortal')
     portal, portal_note = _portal_link(rec)
@@ -803,9 +831,13 @@ def _application_guide(rec: ExamRecord) -> dict:
 
 def _overview(rec: ExamRecord) -> str:
     bits = [f'{rec.title}, conducted by {rec.authority_name}.']
-    if rec.value('vacancies'):
-        bits.append(f"The notice states approximately {rec.value('vacancies')} vacancies.")
-    close = next((d for d in (rec.value('dates') or []) if isinstance(d, dict) and d.get('type') == 'APPLICATION_CLOSE'), None)
+    count, approximate = _vacancy_count(rec.value('vacancies'))
+    if count:
+        bits.append(f"The notice states {'approximately ' if approximate else ''}{count} vacancies.")
+    # The close that governs: never a superseded one, never one held for review.
+    close = next((d for d in (rec.value('dates') or []) if isinstance(d, dict)
+                  and d.get('type') == 'APPLICATION_CLOSE' and d.get('status') != 'SUPERSEDED'
+                  and not d.get('isTentative')), None)
     if close:
         bits.append(f"Applications close {close.get('dateTimeStr', '')}.")
     bits.append('Read from the authority’s own documents by the GovOS universal engine; sections with '
@@ -911,7 +943,12 @@ def _pattern_node(n: dict, prov: dict, withheld: Optional[list] = None) -> Optio
                              'reason': 'the node name is a cell seam of a flattened table, not a stage, paper or subject'})
         return None
     label = str(n.get('levelLabel') or n.get('level') or '')
-    level = label.upper() if label.upper() in _PATTERN_LEVELS else 'OTHER'
+    # The structural level decides what a node is; the label is only the authority's word for
+    # it. Reading the level from the label made one authority's "Tier" stages OTHER, so its
+    # exam had no stages at all -- because another authority happens to say "Stage".
+    structural = str(n.get('level') or '').upper()
+    level = (structural if structural in _PATTERN_LEVELS
+             else label.upper() if label.upper() in _PATTERN_LEVELS else 'OTHER')
     node: dict = {'id': str(n.get('id') or ''), 'level': level, 'levelLabel': label or None,
                   'name': name, 'status': str(n.get('status') or 'VERIFIED'),
                   'provenance': n.get('provenance') or prov}
@@ -1449,7 +1486,7 @@ def materialize_exam(rec: ExamRecord, *, cycle: str = '',
     vac = rec.get('vacancies')
     vacancies_total = ''
     if vac and vac.ok and vac.value not in (None, ''):
-        vacancies_total = str(vac.value)
+        vacancies_total = _vacancy_count(vac.value)[0]
     elif vac and vac.status is Status.NEEDS_REVIEW and vac.value not in (None, ''):
         held['vacancies'] = {'reason': vac.note or 'the vacancy figure is not established', 'items': [vac.value]}
 

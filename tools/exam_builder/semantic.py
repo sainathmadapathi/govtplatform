@@ -42,10 +42,21 @@ def passages(text: str, *, window: int = 320, stride: int = 160) -> list[tuple[i
         return []
     out: list[tuple[int, str]] = []
     for start in range(0, max(1, len(flat)), stride):
-        chunk = flat[start:start + window]
+        # A window never begins or ends inside a token. "There are approx.12,256 vacancies"
+        # cut at "approx.12,2" was read as 122 vacancies, and the truncated span is still a
+        # verbatim substring of the document, so no later check could catch it. The windows
+        # overlap, so the partial token dropped here is whole in the neighbouring window.
+        begin, end = start, min(len(flat), start + window)
+        if begin > 0 and not flat[begin - 1].isspace():
+            nxt = flat.find(' ', begin, end)
+            begin = nxt + 1 if nxt != -1 else begin
+        if end < len(flat) and not flat[end].isspace():
+            nxt = flat.find(' ', end, end + 60)
+            end = nxt if nxt != -1 else end
+        chunk = flat[begin:end]
         if len(chunk) < 40 and out:
             break
-        out.append((start, chunk))
+        out.append((begin, chunk))
     return out
 
 
@@ -181,10 +192,34 @@ def _age(passage: str):
     return None
 
 
+#: A count is the number bound to the noun: "approx.12,256 vacancies", "563 posts",
+#: "vacancies: 45", "number of vacancies is 120". Any number merely near the word -- "the
+#: vacancies will be filled as per Rule-22" -- is a clause, not a count.
+#: ("3.1 Tentative vacancies" is clause 3.1, not one vacancy: a number after "digit." is part
+#: of a clause or a decimal.)
+_COUNT_BEFORE = re.compile(r'(?<![\w,/-])(?<!\d\.)(\d{1,3}(?:,\d{2,3})+|\d{1,7})(?!\.\d)\s*(?:\([^)]{0,30}\)\s*)?'
+                           r'(?:\w+\s+){0,2}?(?:vacanc\w*|posts)\b', re.I)
+_COUNT_AFTER = re.compile(r'\b(?:vacanc\w*|number\s+of\s+posts)\s*(?:is|are|:|-|–|=|of)\s*'
+                          r'(?:approx\w*\.?\s*|about\s+)?(\d{1,3}(?:,\d{2,3})+|\d{1,7})\b(?![/-]\d)', re.I)
+#: The total said in so many words: "The number of vacancies to be filled through the
+#: examination is expected to be approximately 933". Read before any bound count, because the
+#: same sentence often goes on to name a part of it ("which include 33 Vacancies reserved").
+_COUNT_STATED = re.compile(r'\bnumber\s+of\s+(?:vacanc\w*|posts)\b[^.\d]{0,80}?\b(?:is|are|will\s+be|:|=)\s*'
+                           r'(?:(?:expected|likely|estimated)\s+to\s+be\s+)?(?:approx\w*\.?\s*|about\s+)?'
+                           r'(\d{1,3}(?:,\d{2,3})+|\d{1,7})\b(?![/-]\d)', re.I)
+#: "which include 33 Vacancies reserved for ..." -- a part of the total, never the total.
+_PART_OF = re.compile(r'(?:includ\w*|of\s+which|out\s+of\s+which|among\s+(?:them|which))\s*$', re.I)
+
+
+def _bound_count(passage: str):
+    for m in _COUNT_BEFORE.finditer(passage):
+        if not _PART_OF.search(passage[max(0, m.start() - 30):m.start()]):
+            return m
+    return None
+
+
 def _vacancies(passage: str):
-    m = re.search(r'(?:number of\s+)?(?:vacanc|post)\w*\D{0,80}?([\d,]{2,7})', passage, re.I)
-    if not m:
-        m = re.search(r'([\d,]{2,7})\s*(?:vacanc|post)\w*', passage, re.I)
+    m = _COUNT_STATED.search(passage) or _bound_count(passage) or _COUNT_AFTER.search(passage)
     if not m:
         return None
     n = m.group(1).replace(',', '')

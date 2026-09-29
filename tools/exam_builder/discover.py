@@ -52,7 +52,14 @@ class DocKind(str, Enum):
 #: one. "Answer key" must beat "key", and "corrigendum to the notification" must be read as
 #: a corrigendum rather than as the notification it amends.
 _KIND_PATTERNS: list[tuple[DocKind, str]] = [
-    (DocKind.CORRIGENDUM, r'corrigend|addend|amendment|errata|revised\s+(notice|notif)'),
+    # A notice that re-opens an application window or extends a date amends the notice's own
+    # schedule, whatever it is titled: "Reopening of Online Applications Form Window",
+    # "Extension of last date". Read as the notice or as the application portal, its later
+    # dates could never outrank the dates it changed.
+    (DocKind.CORRIGENDUM, r'corrigend|addend|amendment|errata|revised\s+(notice|notif)|'
+                          r're-?open(?:ing|ed|s)?(?![a-z])|'
+                          r'extension\s+of\s+(?:the\s+)?(?:last\s+date|closing\s+date|dates?|'
+                          r'(?:application\s+)?window)|(?:last|closing)\s+date\s+(?:is\s+)?extended'),
     (DocKind.ANSWER_KEY, r'answer\s*-?\s*key|final\s+key|tentative\s+key|response\s+sheet'),
     (DocKind.ADMIT_CARD, r'admit\s*-?\s*card|hall\s*ticket|call\s*letter|e-?admit|intimation\s+slip'),
     (DocKind.CUTOFF, r'cut\s*-?\s*off|qualifying\s+marks|minimum\s+marks'),

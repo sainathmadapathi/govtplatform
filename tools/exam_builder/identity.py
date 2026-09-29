@@ -50,10 +50,34 @@ class ExamIdentity:
     authority_name: str = ''
     stage: str = ''
     paper: str = ''
+    #: The authority's own site. Its host labels ("ssc", "tgpsc") name the authority, and so
+    #: every exam it conducts -- never one exam in particular.
+    authority_domain: str = ''
 
     @property
     def aliases(self) -> list[str]:
         return exam_aliases(self.query, self.official_name)
+
+    @property
+    def authority_aliases(self) -> set[str]:
+        """The aliases that name the authority rather than the exam.
+
+        "SSC CGL" yields the aliases ssc and cgl, and a document saying "SSC Examination"
+        carries ssc -- as does every notice for CHSL, MTS and JE. An authority's own name
+        cannot tell its exams apart, so it never identifies one of them on its own."""
+        out: set[str] = set()
+        words = [w for w in re.findall(r'[A-Za-z]+', self.authority_name or '')
+                 if w.lower() not in _ACRONYM_SKIP]
+        if len(words) >= 2:
+            out.add(''.join(w[0].lower() for w in words))
+        host = re.sub(r'^https?://', '', (self.authority_domain or '').lower()).split('/')[0]
+        out |= {label for label in host.split('.')
+                if label and label not in _HOST_GENERIC and not label.isdigit()}
+        return out
+
+
+#: Host labels that belong to no authority in particular.
+_HOST_GENERIC = frozenset({'www', 'gov', 'nic', 'in', 'org', 'com', 'net', 'ac', 'edu', 'co'})
 
 
 @dataclass
@@ -92,7 +116,10 @@ _TITLE_RX = re.compile(
     # A token may open with a bracket, and a bare dash is a token: authorities title a
     # recruitment "GROUP-I SERVICES (GENERAL RECRUITMENT)" and "GROUP – I SERVICES", and a
     # run that stopped at "(" or "–" could not read either title at all.
-    r'((?:(?:[A-Z(][\w&().\'–—-]*|[–—-])\s+){1,9}'
+    # "+" belongs to a bracketed qualifier: "Combined Higher Secondary (10+2) Level
+    # Examination" broke at the "+" and was read as "Level Examination", a phrase that names
+    # no exam -- so the document's own title went unseen.
+    r'((?:(?:[A-Z(][\w&().\'–—+-]*|[–—-])\s+){1,9}'
     r'(?i:Examination|Exam|Recruitment|Test|Services\s+Examination|'
     # "GROUP-I SERVICES NOTIFICATION NO.02/2024": a service group titled by the notice
     # that recruits to it. The notice number beside it carries the cycle.
@@ -270,16 +297,21 @@ def _identifies(ref: ExamReference, target: ExamIdentity) -> bool:
         elif ref_tokens & heads:
             return False
 
+    # Only the exam's own aliases establish identity. The authority's name is carried by
+    # every exam it conducts ("SSC Examination" is in CHSL's notices as much as CGL's), so it
+    # never identifies one of them -- unless the request named nothing but the authority.
+    naming = (alias_set - target.authority_aliases) or alias_set
+
     # Symmetric match: the reference's own initials against the target's aliases. This is
     # what lets "Combined Graduate Level Examination" answer to "CGL".
-    if _acronyms_of(ref.text) & alias_set:
+    if _acronyms_of(ref.text) & naming:
         return True
 
-    overlap = alias_set & ref_tokens
+    overlap = naming & ref_tokens
     if not overlap:
         # The acronym form may sit inside a single token ("CGLE", "CGL-2026").
         joined = ' '.join(ref.tokens)
-        return any(alias_in(a, joined) for a in alias_set if len(a) >= 4)
+        return any(alias_in(a, joined) for a in naming if len(a) >= 4)
 
     # A bracketed tail -- "(AAO)", "(General Recruitment)" -- qualifies the name; it is not
     # another exam's word. Overlap and acronyms above still see it, so a user who typed the

@@ -12,6 +12,8 @@ Run: python -m tools.exam_builder.test_build
 """
 from __future__ import annotations
 
+import re
+
 from ..exam_authoring.record import Status
 from ..exam_authoring.sources import Document
 from . import build as B
@@ -27,8 +29,14 @@ def check(label: str, got, want) -> None:
 
 
 #: A notice carrying an age clause and a fee clause, and nothing else the contract wants.
+#: It names its examination, as every real notice does. (Changed 2026-09-29: it used to name
+#: none, which only worked while a document that could not be identified still supplied
+#: exam-specific facts. It no longer can -- an unnamed corrigendum supplied one exam's
+#: deadline to another -- so a notice naming no exam now supplies no age, fee or date.
+#: test_an_unnamed_notice_supplies_no_exam_fact below holds that rule.)
 NOTICE_TEXT = """
-NOTICE OF EXAMINATION. Candidates are required to apply online by using the website
+NOTICE OF EXAMINATION: Combined Graduate Level Examination, 2026.
+Candidates are required to apply online by using the website
 https://ssconline.gov.in.
 2. Age Limits: A candidate must have attained the age of 18 years and must not have attained
 the age of 32 years on the 1st of August, 2026 i.e., the candidate must have been born not
@@ -61,7 +69,10 @@ def _fixtures():
             seed_urls=[page_url])
 
     def fake_load_html(url, **kw):
-        doc = Document(url=url, kind='HTML', fetched_at='2026-09-17', text='')
+        # The page's text is its rendered HTML, as sources.load_html gives it. (It was '',
+        # which no real load produces, and which left the page with nothing to identify it by.)
+        text = ' '.join(re.sub(r'<[^>]+>', ' ', EXAM_PAGE_HTML).split())
+        doc = Document(url=url, kind='HTML', fetched_at='2026-09-17', text=text)
         doc.html = EXAM_PAGE_HTML
         return doc
 
@@ -141,6 +152,28 @@ def test_routing() -> None:
           syl.status if syl else None, Status.NOT_EXTRACTED)
 
 
+def test_an_unnamed_notice_supplies_no_exam_fact() -> None:
+    """A document whose content names no examination cannot say whose ages it states."""
+    global NOTICE_TEXT
+    page_url, notice_url, fake_resolve, fake_load_html, fake_load, no_search = _fixtures()
+    named, NOTICE_TEXT = NOTICE_TEXT, NOTICE_TEXT.replace(
+        'NOTICE OF EXAMINATION: Combined Graduate Level Examination, 2026.', 'NOTICE OF EXAMINATION.')
+    saved = (B.resolve, D.load_html, B._load, D._search_for_missing_kinds)
+    B.resolve, D.load_html, B._load, D._search_for_missing_kinds = (
+        fake_resolve, fake_load_html, fake_load, no_search)
+    try:
+        rec = B.build('SSC CGL 2026').record
+    finally:
+        B.resolve, D.load_html, B._load, D._search_for_missing_kinds = saved
+        NOTICE_TEXT = named
+    for name in ('ageLimits', 'fee'):
+        f = rec.fields.get(name)
+        check(f'{name} not taken from an unnamed notice', bool(f and f.usable), False)
+    # The page does name the exam, so its own table still dates it.
+    dates = rec.fields.get('dates')
+    check('the exam page still supplies its dates', dates.status if dates else None, Status.FOUND)
+
+
 def test_two_exams_never_share_an_id() -> None:
     """The id is what every isolation guarantee keys on, so a shared id is a shared record.
 
@@ -179,6 +212,7 @@ def test_two_exams_never_share_an_id() -> None:
 
 def main() -> int:
     test_routing()
+    test_an_unnamed_notice_supplies_no_exam_fact()
     test_two_exams_never_share_an_id()
     if _FAILURES:
         print(f'{len(_FAILURES)} FAILURE(S):')

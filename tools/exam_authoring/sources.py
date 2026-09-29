@@ -167,6 +167,15 @@ def fetch(url: str, *, use_cache: bool = True, max_age_hours: int = 24) -> bytes
     raise FetchError(f'{url} could not be fetched after {_RETRIES} attempts: {last!r}')
 
 
+def pdf_text(text: str) -> str:
+    """A page's text with the printed hyphen restored where the extractor marked one.
+
+    pdfium returns U+FFFE (a noncharacter) for a hyphen that ended a printed line, and a
+    soft hyphen as U+00AD; "De-industrialization" came through as "De\\ufffeindustrialization"
+    and reached a candidate's syllabus that way. The table reader already restored these."""
+    return text.replace('\ufffe', '-').replace('\u00ad', '-')
+
+
 def load_pdf(url: str, **kw) -> Document:
     """A PDF as per-page text. A scanned PDF is reported as scanned, never as empty."""
     import pypdfium2 as pdfium
@@ -178,7 +187,7 @@ def load_pdf(url: str, **kw) -> Document:
     pages = []
     for i in range(len(doc)):
         try:
-            pages.append(doc[i].get_textpage().get_text_range())
+            pages.append(pdf_text(doc[i].get_textpage().get_text_range()))
         except Exception:
             pages.append('')
     # A notice with almost no extractable text is a scan. Saying so is the honest outcome:

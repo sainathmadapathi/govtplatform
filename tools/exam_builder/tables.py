@@ -709,9 +709,30 @@ def _heading_values(above: str, columns: list[Column]) -> dict:
     return out
 
 
-def blocks_continue(lines: list[str], index: int) -> bool:
-    """Does the row start at `index` belong to the table above (a bare serial always has)?"""
-    return bool(_ORDINAL.match(lines[index].strip()))
+def blocks_continue(lines: list[str], index: int, heading: str = '', previous: str = '') -> bool:
+    """Does the row start at `index` belong to the table above?
+
+    A bare serial on its own line always has. A serial followed by the row's text ("1 Auditor
+    Offices under C&AG Group "C" 18-27 years") has too, when its section heading is the next
+    sibling of the heading above -- "2.4 Pay Level-5" after "2.3 Pay Level-6" is the same
+    table's layout under a new sub-heading. Without this, one notice's last two sections of
+    posts were never read."""
+    if _ORDINAL.match(lines[index].strip()):
+        return True
+    return bool(_LEADING_ORDINAL.match(lines[index].strip()) and _is_next_sibling(heading, previous))
+
+
+_SECTION_NUMBER = re.compile(r'^\s*(\d+(?:\.\d+)+)\.?\s')
+
+
+def _is_next_sibling(heading: str, previous: str) -> bool:
+    """"2.4 ..." follows "2.3 ...": same parent, the next number."""
+    a, b = _SECTION_NUMBER.match(heading or ''), _SECTION_NUMBER.match(previous or '')
+    if not (a and b):
+        return False
+    here, before = a.group(1).split('.'), b.group(1).split('.')
+    return (len(here) == len(before) and here[:-1] == before[:-1]
+            and int(here[-1]) == int(before[-1]) + 1)
 
 
 def reconstruct(text: str, *, max_tables: int = 40) -> list[Table]:
@@ -738,7 +759,8 @@ def reconstruct(text: str, *, max_tables: int = 40) -> list[Table]:
             heading = first
             index, first = _next_nonblank(lines, index + 1)
 
-        if _starts_row(first) and columns and blocks_continue(lines, index):
+        previous = tables[-1].heading if tables else ''
+        if _starts_row(first) and columns and blocks_continue(lines, index, heading, previous):
             # A section continuing the table above it: rows, no header of its own.
             start = index
         else:

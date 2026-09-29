@@ -190,7 +190,26 @@ def record_vacancy_breakups(rec: ExamRecord, sources: SourceSet, loaded: dict,
     return len(found)
 
 
-def record_date_revisions(rec: ExamRecord) -> int:
+#: A notice's own dateline, on a line of its own: "Dated: 23.06.2026". A body reference such as
+#: "the Notice ... dated 21.05.2026 shall remain unchanged" names another document's date.
+_DATELINE = re.compile(r'(?im)^\s*dated\s*[:\-–]\s*(\d{1,2})[./-](\d{1,2})[./-](\d{4})\s*$')
+
+
+def _amending_notice(url: str, sources, loaded) -> tuple[bool, str]:
+    """Is the document at `url` an amending notice, and the date it prints for itself ('' if none)."""
+    doc = next((d for d in (getattr(sources, 'docs', None) or []) if d.url == url), None)
+    if doc is None or doc.kind is not DocKind.CORRIGENDUM:
+        return False, ''
+    document = (loaded or {}).get(url)
+    text = document.all_text() if hasattr(document, 'all_text') else ''
+    lines = _DATELINE.findall(text or '')
+    if len(lines) != 1:
+        return True, ''                      # none, or several: not one date to state
+    d, m, y = lines[0]
+    return True, f'{y}-{int(m):02d}-{int(d):02d}'
+
+
+def record_date_revisions(rec: ExamRecord, sources=None, loaded: dict | None = None) -> int:
     """Every superseded date becomes one entry in the exam's revision history, old to new.
 
     Reconciliation keeps a printed date that a later official statement replaced, struck
@@ -221,11 +240,23 @@ def record_date_revisions(rec: ExamRecord) -> int:
             f'Printed in "{(r.get("provenance") or {}).get("documentTitle", "")}": '
             f'"{(r.get("provenance") or {}).get("excerptText", "")}".' for r in olds)
         what = str(newer.get('type') or 'date').replace('_', ' ').lower()
+        if what == 'other':
+            # An untyped event is named by the notice's own label for it, not "Other".
+            what = normalise_ws(str(olds[0].get('label') or 'date')).rstrip(' :-–').lower()[:80]
+        amending, dated = _amending_notice(str(new_p.get('officialUrl') or ''), sources, loaded)
+        if amending:
+            # The later statement is itself a notice amending the schedule; say so, and give
+            # the date it prints for itself only where it prints exactly one.
+            note = ('Recorded from the authority’s own later notice amending the schedule'
+                    + (f', dated {dated}.' if dated else ', which prints no date of its own.'))
+        else:
+            note = ('No separate corrigendum notice was found; the change is recorded from the '
+                    'authority’s own later statement, which does not print the date it was made.')
         entries.append({
             'id': f'rev-{newer_id}',
             'title': f'{what.capitalize()} revised: {", ".join(old_dates)} → {new_d}',
             'sourceTitle': str(new_p.get('documentTitle') or ''),
-            'publishedDate': '',
+            'publishedDate': dated,
             'effectiveDate': new_d,
             'evidenceSpan': (f'{printed} Stated later in "{new_p.get("documentTitle", "")}": '
                              f'"{new_p.get("excerptText", "")}".'),
@@ -236,8 +267,7 @@ def record_date_revisions(rec: ExamRecord) -> int:
             'affectedField': f'dates · {what}',
             'oldValue': ', '.join(old_dates),
             'newValue': new_d,
-            'note': ('No separate corrigendum notice was found; the change is recorded from the '
-                     'authority’s own later statement, which does not print the date it was made.'),
+            'note': note,
         })
     if not entries:
         return 0
@@ -250,8 +280,10 @@ def record_date_revisions(rec: ExamRecord) -> int:
                     clause='Revision recorded from a later official statement',
                     excerpt=entries[0]['evidenceSpan'][:400], verified_date=_today())
     field = Field.found('corrigenda', entries, cite)
+    amended = any(e['note'].startswith('Recorded from the authority’s own later notice') for e in entries)
     field.note = ('revisions read from later official statements that replace a printed date; '
-                  'no corrigendum notice document was found for this exam')
+                  + ('the authority’s own amending notice is cited on each entry it made' if amended
+                     else 'no corrigendum notice document was found for this exam'))
     rec.set(field)
     return len(entries)
 
@@ -645,6 +677,32 @@ def _type_fee_components(got: Field, loaded: dict, rec: ExamRecord, resolved) ->
     return Field(name='fee', status=got.status, value=value, citation=got.citation, note=got.note)
 
 
+def _states_something(field_name: str, value) -> bool:
+    """Does a semantic reading carry the substance of its field, or only a sentence near it?
+
+    A pattern read as {"papers": [], "negativeMarking": "..."} names no stage and no paper:
+    one sentence about wrong answers. Accepted, it pre-empted the scheme reader that builds
+    the real stage and paper tree, and the section had nothing to show."""
+    if field_name == 'examPattern' and isinstance(value, dict):
+        return bool(value.get('papers'))
+    return True
+
+
+#: Fields whose facts belong to the authority rather than to one of its exams. A page that
+#: names no examination (the portal, the photo-upload rules, the exam-day instructions, the
+#: commission's FAQ) states them for every exam it conducts.
+_AUTHORITY_WIDE = frozenset({'applicationPortal', 'howToApply', 'photoSignatureGuidelines',
+                             'examDayChecklist', 'faqs'})
+
+
+def _facts_view(field_name: str, loaded: dict, identity: dict | None) -> dict:
+    """The documents a field's domain reader may take facts from."""
+    if identity is None or field_name in _AUTHORITY_WIDE:
+        return loaded
+    return {url: doc for url, doc in loaded.items()
+            if identity.get(url) is not None and identity[url].verdict is IdentityVerdict.MATCH}
+
+
 def _dispatch_domain_extraction_raw(
     cf,
     sources: SourceSet,
@@ -655,14 +713,19 @@ def _dispatch_domain_extraction_raw(
     target: ExamIdentity | None = None
 ) -> Field:
     """Dispatches extraction of one contract field to the canonical domain reader or legacy extractor."""
-    candidate_docs = [d for d in sources.docs if d.kind in cf.sources and d.url in loaded]
+    # A fact about this exam comes only from a document that identifies itself as this exam.
+    # AMBIGUOUS is not a weak yes: an undated corrigendum that names no examination supplied
+    # "application close revised to 20" to one exam from another's notice. An authority-wide
+    # field (its portal, its photo rules) may still come from a page that names no exam.
+    facts = _facts_view(cf.name, loaded, identity)
+    candidate_docs = [d for d in sources.docs if d.kind in cf.sources and d.url in facts]
 
     # 1. Semantic read: reads verbatim fact from document text. Not for the age limits: the
     # semantic reader returns one band, and a notice that states its limits per post has no
     # single band -- the scope-aware domain reader below decides that, and only where it
     # finds nothing is the semantic reading used.
     got = None if cf.name == 'ageLimits' else _semantic_read(cf.name, sources, loaded, rec, identity, target)
-    if got is not None and getattr(got, 'ok', False):
+    if got is not None and getattr(got, 'ok', False) and _states_something(cf.name, got.value):
         return got
 
     # 2. Domain-specific readers
@@ -882,7 +945,8 @@ def _dispatch_domain_extraction_raw(
                                      title=doc.title, authority=resolved.authority.name,
                                      exam_id=rec.exam_id)
             try:
-                posts = D_ELIGIBILITY.extract_posts(src_doc, text, exam_id=rec.exam_id)
+                held: list = []
+                posts = D_ELIGIBILITY.extract_posts(src_doc, text, exam_id=rec.exam_id, held=held)
                 if posts:
                     D_ELIGIBILITY.post_code_clauses(
                         src_doc, text, posts,
@@ -894,7 +958,15 @@ def _dispatch_domain_extraction_raw(
                     cite = Citation(document_title=doc.title, url=doc.url,
                                     page=_page_of(document, excerpt), clause='Posts',
                                     excerpt=excerpt, verified_date=_today())
-                    return Field.found('posts', posts_list, cite)
+                    found = Field.found('posts', posts_list, cite)
+                    if held:
+                        # Listed posts whose rows print nothing but the name: said, not published.
+                        found.note = (
+                            f'{len(held)} row(s) of the posts table print only a post name and '
+                            f'nothing else in their own row, so they are not published as posts: '
+                            + '; '.join(f'row {o} "{n}" under "{h}"' for o, n, h in held))
+                        rec.note(f'posts: {found.note}')
+                    return found
             except Exception as exc:
                 rec.note(f'extract_posts failed on {doc.url}: {exc!r}')
 
@@ -1714,7 +1786,8 @@ def build(exam_query: str = '', *, year: str = '',
     # Content identity check
     target = ExamIdentity(exam_id=exam_id, query=resolved.query,
                           official_name=resolved.official_name, year=resolved.year,
-                          authority_name=resolved.authority.name)
+                          authority_name=resolved.authority.name,
+                          authority_domain=resolved.authority.domain)
     identity: dict[str, IdentityCheck] = {}
     for doc in list(sources.docs):
         document = loaded.get(doc.url)
@@ -1809,7 +1882,7 @@ def build(exam_query: str = '', *, year: str = '',
     breakups = record_vacancy_breakups(rec, sources, loaded, identity)
     if breakups:
         rec.note(f'{breakups} vacancy break-up table(s) read from ruled grids and verified')
-    revisions = record_date_revisions(rec)
+    revisions = record_date_revisions(rec, sources, loaded)
     if revisions:
         rec.note(f'{revisions} date revision(s) recorded in the revision history from later '
                  f'official statements')

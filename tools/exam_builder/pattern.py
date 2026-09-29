@@ -129,6 +129,7 @@ _CLAUSE_PROSE = re.compile(r'^\s*(?:\d+(?:\.\d+)+|\([ivxlmcd]+\)|\([a-z]\))\s+\S
 _ROW_LABEL = re.compile(
     r"""^\s*(?:
         \(?(?P<num>\d{1,3})\s*[.)]?\s+(?=\S)                      # 1 English Language
+        (?!(?:hours?|hrs?|minutes?|mins?)\b)                     # but "(2 hours" is a time
       | (?P<letter>[A-H])\s*[.):]\s*(?=\S|$)                      # A. General Intelligence
       | (?P<label>section|paper|part|phase|session|tier|stage|module|group)
         \s*[-–—:\s]?\s*(?P<ord>[IVXL]{1,4}|\d{1,2}|[A-H])\b
@@ -605,7 +606,11 @@ def _read_table_rows(cur: _Cursor, doc: SourceDocument, columns: list, start: in
 
         name = _row_name(raw, label)
         node_level, node_label = (level, level_label)
-        by_label = _node_level(columns, label)
+        # A row that names its own level ("Session-I" in a table whose column says Paper) is
+        # that level: the label is the row's word for itself, the column only the table's.
+        own = next(((lv, word.title()) for word, lv in _LEVEL_WORDS
+                    if re.match(rf'\s*{word}\b', label or '', re.I)), None)
+        by_label = own or _node_level(columns, label)
         if by_label[0] is not level and label:
             node_level, node_label = by_label
         node = PatternNode(
@@ -884,6 +889,11 @@ def _stage_regions(cur: _Cursor) -> list[tuple[int, str, str]]:
         scheme = _SCHEME_HEADING.search(line)
         if not (labelled or named or scheme):
             continue
+        if labelled and _ROW_LEADING_ORDINAL.match(line[:labelled.start()]):
+            # "II Paper-I:" is a flattened table row -- the first column's value, then the
+            # next column's own label -- not a heading: a heading punctuates its enumerator
+            # ("II.", "(ii)", "13.9"). Read as one, it cut a stage's table in two.
+            continue
         # A heading names its subject at the start; prose mentions it anywhere. Without
         # this, "list of Examination centres for the Online Preliminary Examination" was
         # read as a stage of the examination.
@@ -906,6 +916,9 @@ def _stage_regions(cur: _Cursor) -> list[tuple[int, str, str]]:
                       ('named' if named else 'scheme')))
     return found
 
+
+#: A bare Roman ordinal, unpunctuated, before a line's stage label: a row's first cell.
+_ROW_LEADING_ORDINAL = re.compile(r'^\s*[IVXL]{1,5}\s+$')
 
 _DANGLING = re.compile(
     r'\b(?:for|of|in|to|and|or|the|a|an|with|by|from|as|on|at|regarding|relating|under)\s*$',

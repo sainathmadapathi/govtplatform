@@ -153,7 +153,10 @@ def _cited(text: str, start: int) -> bool:
         # "Dt. 19/02/2031", "dated 08-02-2031": the date a document carries, not an event.
         return True
     return bool(_CITATION_BEFORE.search(before)
-                or _ISSUED_BEFORE.search(text[max(0, start - 180):start]))
+                or _ISSUED_BEFORE.search(text[max(0, start - 180):start])
+                # Nor is the end of a period counted from an event ("within one year from the
+                # closing date ... i.e. 22-06-2027"): that is a condition's deadline.
+                or _ends_a_period(text[max(0, start - 160):start]))
 
 
 def _uncited_dates(text: str) -> list[ReadDate]:
@@ -208,7 +211,10 @@ EVENT_CUES: tuple[EventCue, ...] = (
              (r'(?:last\s+date|closing\s+date)[^.]{0,40}\b(?:fee|payment)\b',
               r'\bfee\s+payment\b[^.]{0,30}\b(?:last|upto|up\s+to|till)\b',
               r'payment\s+of\s+(?:the\s+)?(?:application\s+|examination\s+)?fee[^.]{0,30}'
-              r'\b(?:last|upto|up\s+to|till|by)\b')),
+              r'\b(?:last|upto|up\s+to|till|by)\b'),
+             # "Last date for Online Registration & Online Payment" closes the application;
+             # the payment is part of it, not a deadline of its own.
+             against=(r'\b(?:registration|applications?)\s*(?:&|and|/|\+)\s*(?:online\s+)?(?:fee\s+)?payment\b',)),
     EventCue('APPLICATION_WINDOW',
              (r'(?:submission|receipt|filing)\s+of\s+(?:the\s+)?(?:online\s+)?applications?',
               r'online\s+applications?\s+(?:can|may|shall|will)\s+be\s+(?:submitted|filled)',
@@ -220,6 +226,7 @@ EVENT_CUES: tuple[EventCue, ...] = (
               r'submit\w*\s+(?:the\s+)?(?:online\s+)?applications?\b',
               r'\bfil(?:l|ing)\w*\s+(?:up\s+)?(?:the\s+)?(?:online\s+)?applications?\b',
               r'last\s+date[^.]{0,40}\bapplication', r'closing\s+date[^.]{0,30}\bapplication',
+              r'last\s+date[^.]{0,30}\bregistration\b',
               # A window stated as a pair of ends rather than as an act of applying:
               # "Applications From X To Y", "Apply online from X to Y", "Applications are
               # invited from X up to Y", "Online application starts X and closes Y".
@@ -315,6 +322,33 @@ _LIFECYCLE = (
      re.compile(r'\brescheduled\b|\brevised\b|\bpreponed\b|\bnew\s+date\b|'
                 r'\brevised\s+schedule\b|\bin\s+supersession\b|\bnow\s+be\s+held\b', re.I)),
 )
+
+#: How an authority revises an application window in the statement that gives the new dates:
+#: "re-open the window ... from 23.06.2026 to 25.06.2026", "the new closing date i.e.
+#: 25.06.2026", "extended up to". Read from the statement itself, never its neighbours: the
+#: same notice restates the original window ("was kept open from X to Y") one sentence earlier,
+#: and that restatement is history, not the revision.
+_WINDOW_REVISION = re.compile(
+    r'\bre-?open(?:ed|ing|s)?\b[^.]{0,60}\b(?:window|applications?|portal|registration)\b|'
+    r'\bnew\s+(?:closing|last)\s+date\b|'
+    r'\b(?:last\s+date|closing\s+date|window|period)\b[^.]{0,50}\bextended\b|'
+    r'\bextended\s+(?:up\s*to|upto|till|until)\b', re.I)
+
+#: The end of a period counted from an event is not the event: "within one year from the
+#: closing date for receipt of application i.e. 22-06-2027" is when an eligibility condition
+#: must be met, and binding it to "closing date" showed applications closing a year late.
+_PERIOD_END = re.compile(
+    r'\b(?:one|two|three|four|five|six|seven|ten|twelve|\d{1,3})\s+(?:years?|months?|weeks?|days?)\s+'
+    # The event the period is counted from is named between "from" and the date. "for two
+    # days i.e. from 23.06.2026 to 25.06.2026" names none: there the date *starts* a window.
+    r'(?:from|after)\s+(?:the\s+)?[A-Za-z][^.]{3,90}$', re.I)
+#: "i.e." and "viz." carry full stops inside a clause; they are not the end of a sentence.
+_ABBREVIATION = re.compile(r'\b(?:i\.\s?e|e\.\s?g|viz|approx)\.', re.I)
+
+
+def _ends_a_period(before: str) -> bool:
+    """Is the date that follows `before` the end of a period counted from some event?"""
+    return bool(_PERIOD_END.search(_ABBREVIATION.sub(' ', before)))
 
 #: Stated as existing, with no date. A real thing to show, and not an absence.
 _AWAITED = re.compile(
@@ -580,7 +614,11 @@ def read_statement(passage: str, *, context: str = '', lead: str = '') -> DateRe
     if own:
         # The line's own dates decide. Where every one of them is a citation, the line states
         # no event date, and the neighbours' dates are not borrowed to give it one.
-        dates = [d for d in own if d.start in kept]
+        dates = [d for d in own if d.start in kept
+                 and not _ends_a_period(passage[max(0, d.start - 160):d.start])]
+        if not dates and any(d.start in kept for d in own):
+            # Every date the line states ends a period; it names no event of its own.
+            return None
     else:
         dates = _uncited_dates(haystack)
     state = MilestoneState.ANNOUNCED
@@ -588,6 +626,8 @@ def read_statement(passage: str, *, context: str = '', lead: str = '') -> DateRe
         if pattern.search(wider):
             state = candidate_state
             break
+    if state is MilestoneState.ANNOUNCED and _WINDOW_REVISION.search(stated):
+        state = MilestoneState.RESCHEDULED
     if not dates:
         if state is MilestoneState.ANNOUNCED and not _AWAITED.search(wider):
             return None
@@ -664,7 +704,13 @@ def extract_milestones(doc: SourceDocument, text: str, *, exam_id: str,
                        and re.match(r'\s*(?:to|till|up\s*to|upto)\b', nxt, re.I))
                       # "... held from 21/10/2031 to" / "27/10/2031 for the recruitment ..."
                       or (re.search(r'\b(?:to|till|up\s*to|upto|and)\s*$', passage, re.I)
-                          and read_dates(nxt) and read_dates(nxt)[0].start < 3))
+                          and read_dates(nxt) and read_dates(nxt)[0].start < 3)
+                      # A time annotation cut by the line break: "from 23.06.2026 (23:00" /
+                      # "hours) to 25.06.2026 (23:00 hours)". The bracket the line leaves open
+                      # is closed by the next, which then carries the window's other end.
+                      or (passage[read_dates(passage)[0].end:].count('(')
+                          > passage[read_dates(passage)[0].end:].count(')')
+                          and re.match(r'[^()\n]{0,25}\)\s*(?:to|till|up\s*to|upto)\b', nxt.strip(), re.I)))
                  and read_dates(nxt))
         if joins:
             # A window broken over two lines: "... From: 23/03/2031 at 10:00 A.M." /
@@ -1006,6 +1052,35 @@ def _later_word(bucket):
     return top[0]
 
 
+def _merge_evidence(keeper: Milestone, other: Milestone) -> None:
+    """Add another statement's evidence to the keeper's, without repeating a span."""
+    for fact_name in ('starts_at', 'ends_at'):
+        target = getattr(keeper, fact_name)
+        known = {(e.source_id, e.span_digest) for e in target.evidence}
+        for ev in getattr(other, fact_name).evidence:
+            if (ev.source_id, ev.span_digest) not in known:
+                target.evidence.append(ev)
+
+
+def _collapse_same_statement(bucket):
+    """One milestone per statement: the same sentence read from two copies of one document.
+
+    An authority can serve one file under two names, and each copy yields the same milestone
+    with the same id. Agreeing, they merged as corroboration; once a revision entered the
+    bucket, both copies were kept as superseded rows with one id, which a candidate's page
+    cannot tell apart. Merged here first, evidence from both copies kept."""
+    seen: dict = {}
+    out = []
+    for doc, milestone in bucket:
+        key = (milestone.id, milestone.effective_date, milestone.state)
+        if key in seen:
+            _merge_evidence(seen[key], milestone)
+            continue
+        seen[key] = milestone
+        out.append((doc, milestone))
+    return out
+
+
 def reconcile(groups: list[tuple[SourceDocument, list[Milestone]]]) -> list[Milestone]:
     """One timeline from several documents, keeping every version of every event.
 
@@ -1028,6 +1103,7 @@ def reconcile(groups: list[tuple[SourceDocument, list[Milestone]]]) -> list[Mile
 
     out: list[Milestone] = []
     for bucket in buckets:
+        bucket = _collapse_same_statement(bucket)
         if len(bucket) == 1:
             out.append(bucket[0][1])
             continue
@@ -1068,6 +1144,11 @@ def reconcile(groups: list[tuple[SourceDocument, list[Milestone]]]) -> list[Mile
             newer_doc, newer = revising[0]
             for doc, older in bucket:
                 if older is newer:
+                    continue
+                if older.effective_date == newer.effective_date:
+                    # States the revised date too: corroboration of the revision, not a
+                    # version it replaced.
+                    _merge_evidence(newer, older)
                     continue
                 older.superseded_by = newer.id
                 older.note = (older.note + ' ' if older.note else '') + (

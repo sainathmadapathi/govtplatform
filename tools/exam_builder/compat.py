@@ -280,7 +280,9 @@ _KIND_TO_LEGACY_TYPE = {
     'APPLICATION_WINDOW': 'APPLICATION_CLOSE',
     'APPLICATION_START': 'APPLICATION_OPEN',
     'APPLICATION_END': 'APPLICATION_CLOSE',
-    'FEE_PAYMENT_END': 'APPLICATION_CLOSE',
+    # A fee deadline is not the application close. Typed as one, it was read as "applications
+    # close" wherever the timeline looks for that; OTHER keeps it, under its own label.
+    'FEE_PAYMENT_END': 'OTHER',
     'CORRECTION_WINDOW': 'CORRECTION_WINDOW',
     'ADMIT_CARD': 'ADMIT_CARD',
     'CITY_INTIMATION': 'ADMIT_CARD',
