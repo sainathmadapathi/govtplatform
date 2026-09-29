@@ -395,6 +395,9 @@ def how_to_apply(doc: Document, doc_title: str) -> Field:
     return Field.not_extracted('howToApply', doc.url, '"How to Apply" section')
 
 
+_WELL_FORMED_HOST = re.compile(r'(?i)^(?:[a-z0-9-]+\.)+[a-z]{2,24}(?::\d+)?$')
+
+
 def admit_card(doc: Document, doc_title: str) -> Field:
     # The heading first. "admit card" alone also appears mid-sentence ("Mere issue of
     # e-Admit Card to the candidate will not imply..."), which says nothing about when or
@@ -408,9 +411,14 @@ def admit_card(doc: Document, doc_title: str) -> Field:
                 continue
             body = _clean(m.group(0))
             portal = re.search(r'(https?://[\w./-]+)', body)
+            portal_url = portal.group(1).rstrip('.]') if portal else ''
+            if portal_url and not _WELL_FORMED_HOST.match(portal_url.split('/')[2]):
+                # A scan's text layer damages addresses ("http://hpsp.gov.inlen-us/"); a host
+                # that is not a well-formed domain is not offered as a link. The words stay.
+                portal_url = ''
             return Field.found('admitCard', {
                 'text': body[:500],
-                'portalUrl': portal.group(1).rstrip('.]') if portal else '',
+                'portalUrl': portal_url,
             }, cite(doc, doc_title, page_no, 'Issuance of e-Admit Card', body))
     return Field.not_extracted('admitCard', doc.url, 'admit-card clause')
 

@@ -69,6 +69,12 @@ export interface ImportantDate {
   stageAssociation?: 'STATED' | 'NEEDS_REVIEW';
   /** The authority's own words for the stage, where the evidence named one. */
   stageLabel?: string;
+  /**
+   * A date the authority printed without a day ("May/June 2024", "August-September, 2026"),
+   * shown exactly as printed. `dateTimeStr` then holds the last day of that range and is used
+   * only to order the timeline; it is never displayed and never counted down to.
+   */
+  displayWhen?: string;
 }
 
 export interface PostRequirement {
@@ -99,6 +105,8 @@ export interface PostRequirement {
   minAge: number;
   maxAge: number;
   specialQualification?: string;
+  /** Conditions the notice attaches to this post, in its own words (a machine-read exam's rows). */
+  postConditions?: string[];
   physicalRequired?: boolean;
   physicalNote?: string;
   colorBlindnessAllowed?: boolean;

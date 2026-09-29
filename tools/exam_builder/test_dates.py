@@ -471,3 +471,62 @@ def main() -> int:
 
 if __name__ == '__main__':
     raise SystemExit(main())
+
+
+import unittest as _unittest
+
+
+class TestFlattenedTwoColumnSchedule(_unittest.TestCase):
+    """A two-column schedule that extraction printed column by column: every label, then every
+    date. The dates are the rows' in order; they must not all go to the last label."""
+
+    TEXT = ('The tentative Schedule for the conduct of Examinations for the above posts is as under:-\n'
+            '(i) Preliminary Examination\n'
+            '(ii) Main Written Examination\n'
+            '(iii) Personality Test/ Viva- Voce\n'
+            '- 26.04.2031\n'
+            '- 27.06.2031 to 29.06.2031\n'
+            '- August / September,2031\n'
+            'In case of a change, the schedule will be notified on the website.\n')
+
+    def test_each_label_takes_its_own_row(self):
+        items = milestones(self.TEXT, cycle='2031')
+        got = sorted((m.kind, m.starts_at.value or m.ends_at.value) for m in items)
+        self.assertEqual(got, [('EXAM', '2031-04-26'), ('EXAM', '2031-06-27'), ('INTERVIEW', '2031-09-01')])
+        interview = next(m for m in items if m.kind == 'INTERVIEW')
+        self.assertIsNone(interview.ends_at.value if interview.starts_at.has_value else None)
+        self.assertEqual(interview.precision, DatePrecision.MONTH)
+        # The table's heading says it is tentative; every row carries that.
+        self.assertTrue(all(m.is_tentative for m in items))
+
+    def test_the_evidence_is_the_table_as_printed(self):
+        for m in milestones(self.TEXT, cycle='2031'):
+            ev = (m.starts_at.evidence or m.ends_at.evidence)[0]
+            self.assertTrue(ev.is_verbatim)
+            self.assertIn('(i) Preliminary Examination', ev.span)
+            self.assertIn('- August / September,2031', ev.span)
+
+    def test_an_unequal_run_is_left_alone(self):
+        from .dates import pair_label_columns
+        parts = ['(i) Preliminary Examination', '(ii) Main Examination', '- 26.04.2031']
+        self.assertEqual(pair_label_columns(parts), parts)
+
+
+class TestARestatedRowIsNotReadAgain(_unittest.TestCase):
+    """A notice states its opening date twice. The second statement is dropped as a repeat by
+    the line reader -- and must not then be read again, without its reading, as a closing date."""
+
+    def test_an_opening_stated_twice_never_becomes_a_close(self):
+        text = ('a) Opening date for submission of online applications: 06.02.2031\n'
+                'b) Closing date for the submission of online applications: 26.02.2031 upto 05:00 PM\n'
+                'Some other clause.\n'
+                'Item (s) Timeline\n'
+                'Date of publication 30.01.2031\n'
+                'Opening date for submission of online applications 06.02.2031\n'
+                'Closing date for submission of online applications 26.02.2031\n'
+                '(upto 05:00 PM)\n'
+                'Category wise break-up of the posts are as under:-\n')
+        items = milestones(text, cycle='2031')
+        closes = sorted({m.ends_at.value for m in items
+                         if m.kind in ('APPLICATION_WINDOW',) and m.ends_at.has_value})
+        self.assertEqual(closes, ['2031-02-26'])

@@ -45,6 +45,7 @@ from .gate import GateReport
 from .orchestrate import OrchestrationResult, OrchestrationState, orchestrate
 from .overlay import get_exam_cycle
 from .render import target_in_register
+from .runtime_simulator import build_simulator
 from .runtime_evidence import (derive_pattern_evidence, evidence_problems, fact_provenance,
                                is_provenance, link_revisions, stamp_exam)
 
@@ -343,6 +344,8 @@ def _dates(rec: ExamRecord) -> list[dict]:
                                else (prov or {})),
                 # Which stage an examination date belongs to, and whether its evidence said so.
                 **{k: d[k] for k in ('stageAssociation', 'stageLabel') if d.get(k)},
+                # A date the authority printed at month precision ("May/June 2024"), as printed.
+                **({'displayWhen': str(d['displayWhen'])} if d.get('displayWhen') else {}),
             })
     sup = rec.get('lastDateSuperseded')
     if sup and sup.usable and isinstance(sup.value, dict):
@@ -476,7 +479,9 @@ def _posts(rec: ExamRecord) -> tuple[list[dict], list[str], list[dict]]:
         is_scale = bool(re.search(r'\d[\d,]{3,}\s*[-–—]\s*\d[\d,]{3,}', pay_text))
         row = {
             'id': f'post-{rec.exam_id}-{i}', 'postName': re.sub(_GROUP_TAIL_RX, '', name).strip(),
-            'department': department or rec.authority_name,
+            # The post's own department as read; never the recruiting authority's name, which
+            # is not the department a candidate would serve in.
+            'department': department,
             'payLevel': '' if is_scale else pay_level, 'payScale': pay_text if is_scale else '',
             'classification': cls,
             'minAge': int(own_lo) if isinstance(own_lo, (int, float)) else lo,
@@ -647,7 +652,9 @@ def _resources(rec: ExamRecord) -> list[dict]:
                 continue
             seen_urls.add(url)
             title = _clean(s.get('title') or 'Official notice', 200)
-            is_pdf = s.get('kind') != 'EXAM_PAGE'
+            # A document is a file; a service page (a hall-ticket lookup) is not, whatever
+            # kind of source it was read as.
+            is_pdf = s.get('kind') != 'EXAM_PAGE' and bool(re.search(r'\.pdf$|/preview/', url, re.I))
             items.append({
                 'id': f'res-{rec.exam_id}-source-{i}', 'title': title,
                 'subject': 'Official Notices', 'author': rec.authority_name,
@@ -735,7 +742,8 @@ def _required_documents(rec: ExamRecord) -> list[dict]:
                     'required': bool(d.get('required', True)),
                     'specifications': [_clean(s, 200) for s in (d.get('specifications') or []) if _clean(s)],
                     'provenance': dict(prov, id=f"{prov.get('id', 'prov')}-{i}",
-                                       **({'excerptText': _clean(d.get('evidenceSpan'))} if d.get('evidenceSpan') else {}))}
+                                       **({'excerptText': _clean(d.get('evidenceSpan'))} if d.get('evidenceSpan') else {}),
+                                       **({'pageNumber': d['page']} if d.get('page') else {}))}
         else:
             name = _clean(d, 200)
             if not name or _garbage_name(name):
@@ -865,7 +873,9 @@ def _overview(rec: ExamRecord) -> str:
                   and d.get('type') == 'APPLICATION_CLOSE' and d.get('status') != 'SUPERSEDED'
                   and not d.get('isTentative')), None)
     if close:
-        bits.append(f"Applications close {close.get('dateTimeStr', '')}.")
+        # A midnight time is where no time was read, not a time the authority printed.
+        when = close.get('displayWhen') or re.sub(r'\s+00:00(?::00)?$', '', close.get('dateTimeStr', ''))
+        bits.append(f"Applications close {when}.")
     bits.append('Read from the authority’s own documents by the GovOS universal engine; sections with '
                 'no sourced data are shown as unauthored rather than filled in.')
     return ' '.join(bits)
@@ -909,6 +919,8 @@ def _exam_day(rec: ExamRecord) -> list[dict]:
         item_prov['id'] = f'{prov.get("id", "prov")}-{i}'
         if it.get('excerpt'):
             item_prov['excerptText'] = str(it['excerpt'])[:600]
+        if it.get('page'):
+            item_prov['pageNumber'] = it['page']
         cat = str(it.get('category') or 'CENTRE_INSTRUCTIONS')
         out.append({'id': f'examday-{rec.exam_id}-{i}',
                     'category': cat if cat in _EXAM_DAY_CATEGORIES else 'CENTRE_INSTRUCTIONS',
@@ -1198,14 +1210,34 @@ def flat_syllabus_from_tree(tree: list[dict]) -> list[dict]:
     for root in tree:
         if not isinstance(root, dict):
             continue
-        subject = _subject_label(root.get('title'))
         children = [c for c in (root.get('children') or []) if isinstance(c, dict)]
+        if children and _BARE_SYLLABUS_TITLE.match(str(root.get('title') or '')):
+            # A root that is only the word "Syllabus" names no subject. Its parts do: each
+            # paper, or each paper of a stage. Taking the root's word made every topic of one
+            # exam's syllabus a topic of "SYLLABUS" -- one branch on the tree map, and bare
+            # "Section-I" topics that had lost the paper they belong to.
+            for part in children:
+                grand = [g for g in (part.get('children') or []) if isinstance(g, dict)]
+                papers = grand if part.get('levelLabel') == 'Stage' and grand else [part]
+                for paper in papers:
+                    subject = _subject_label(paper.get('title'))
+                    kids = [k for k in (paper.get('children') or []) if isinstance(k, dict)]
+                    if not kids:
+                        add(paper, subject, [])
+                    for k in kids:
+                        walk(k, subject)
+            continue
+        subject = _subject_label(root.get('title'))
         if not children:
             add(root, subject, [])
         else:
             for c in children:
                 walk(c, subject)
     return topics[:200]
+
+
+#: A syllabus root whose title is only the word for a syllabus.
+_BARE_SYLLABUS_TITLE = re.compile(r'^\s*(?:detailed\s+)?(?:syllabus|syllabi)\s*[:.]?\s*$', re.I)
 
 
 # ------------------------------------------------------------------ lifecycle projections
@@ -1611,6 +1643,10 @@ def _attach_evidence(rec: ExamRecord, exam: dict, vac: Optional[Field]) -> None:
         if newer and is_provenance(newer.get('provenance')):
             c['provenance'] = dict(newer['provenance'])
     derive_pattern_evidence(exam.get('patternTree') or [])
+    # The practice form, from the same record: every check it runs is a fact above, cited.
+    simulator = build_simulator(exam)
+    if simulator and isinstance(exam.get('applicationGuide'), dict):
+        exam['applicationGuide']['simulator'] = simulator
     stamp_exam(exam)
 
 

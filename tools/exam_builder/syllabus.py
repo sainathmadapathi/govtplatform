@@ -138,6 +138,11 @@ def _syllabus_regions(cur: _Cursor) -> list[tuple[int, int, str]]:
             continue
         if not _SYLLABUS_HEADING.search(line):
             continue
+        if _in_annexure_list(cur.lines, index):
+            # "Annexure-II Scheme and Syllabus." between "Annexure-I Breakup of Vacancies."
+            # and "Annexure-III List of Communities." is a table of contents naming the
+            # syllabus, not the syllabus; read as one, the headings after it became a root.
+            continue
         # A heading is marked, numbered, or simply a short line whose subject is the
         # syllabus. The third case is a real one -- "Syllabus for the Examination" carries
         # no colon, no number and no capitals, and it is still the heading.
@@ -157,13 +162,43 @@ def _syllabus_regions(cur: _Cursor) -> list[tuple[int, int, str]]:
         if end - index > 2:
             regions.append((index, end, line))
 
-    # A region wholly inside another is that one's subsection, not a region of its own.
+    # A region wholly inside another is that one's subsection, not a region of its own --
+    # except under a "Scheme and Syllabus" heading, which prints the scheme first (a table of
+    # papers, durations and marks) and then the syllabus under its own heading. There the
+    # syllabus starts at the inner heading: read from the outer one, the scheme table's rows
+    # ("3 150" / "Paper-II – History, Culture and Geography") became syllabus topics.
     out: list[tuple[int, int, str]] = []
     for region in regions:
-        if any(other[0] < region[0] and region[1] <= other[1] for other in regions):
+        outer = next((o for o in regions if o[0] < region[0] and region[1] <= o[1]), None)
+        if outer is not None and not (_SCHEME.search(outer[2]) and _BARE_SYLLABUS.match(region[2])):
+            continue
+        inner = [r for r in regions if region[0] < r[0] and r[1] <= region[1]]
+        if _SCHEME.search(region[2]) and any(_BARE_SYLLABUS.match(r[2]) for r in inner):
             continue
         out.append(region)
     return out
+
+
+#: A heading that announces the scheme of examination before its syllabus.
+_SCHEME = re.compile(r'\bscheme\b', re.I)
+#: A heading that is the syllabus and nothing else: "SYLLABUS", "Detailed Syllabus", "Syllabi".
+_BARE_SYLLABUS = re.compile(r'^\s*(?:detailed\s+)?(?:syllabus|syllabi)\s*[:.]?\s*$', re.I)
+#: A reference to an annexure by number and title, as a list of annexures prints it.
+_ANNEXURE_REFERENCE = re.compile(r'^\s*(?:annexure|appendix)\s*[-–]?\s*[IVXL0-9]+\b\s*[-–:.]?\s*\S', re.I)
+
+
+def _in_annexure_list(lines: list[str], index: int) -> bool:
+    """Is this line one entry of a list of annexures (a table of contents)?"""
+    if not _ANNEXURE_REFERENCE.match(lines[index]):
+        return False
+    neighbours = []
+    for step in (-1, 1):
+        k = index + step
+        while 0 <= k < len(lines) and not lines[k].strip():
+            k += step
+        if 0 <= k < len(lines):
+            neighbours.append(lines[k])
+    return any(_ANNEXURE_REFERENCE.match(n) for n in neighbours)
 
 
 def _region_end(cur: _Cursor, start: int, *, opening_depth: int = 0,
@@ -413,6 +448,222 @@ def _read_headings_and_bullets(cur: _Cursor, doc: SourceDocument, start: int, en
     return roots
 
 
+# ===================================================================== outline
+#: A numbered entry of a list: "1. Current Affairs", "10.Policies of Telangana State." (no
+#: space after the stop, as printed). The entry starts with a letter or a bracket, so "13.10
+#: Indicative Syllabus" -- a clause number -- is not read as entry 13.
+_OUTLINE_ITEM = re.compile(r'^\s*(?P<n>\d{1,2})\s*\.\s*(?P<rest>[A-Za-z(“"\'‘].*)$')
+#: A heading numbered in Roman: "I. History and Culture of India, with special reference to…".
+_ROMAN_HEADING = re.compile(r'^\s*(?P<ord>[IVX]{1,4})\s*\.\s+(?P<rest>[A-Z].*)$')
+#: A line that is only a page number.
+_PAGE_NUMBER = re.compile(r'^\s*\d{1,3}\s*$')
+#: A line in brackets under a heading: "(PRELIMINARY TEST)", "(X CLASS STANDARD)", or a
+#: bracketed instruction such as "(Candidate should write three Essays …)".
+_BRACKETED = re.compile(r'^\s*\(.*\)?\s*$')
+#: Words naming a stage of the examination, in ordinary English.
+_STAGE_WORDS = re.compile(r'\b(?:preliminary|prelims?|main|mains|written\s+examination|screening|'
+                          r'interview|personality\s+test)\b', re.I)
+_OUTLINE_LABELS = ('paper', 'section', 'part', 'unit', 'module')
+
+
+def _read_outline(cur: _Cursor, doc: SourceDocument, start: int, end: int, *,
+                  prefix: str, root_scope: Scope) -> list[SyllabusNode]:
+    """A syllabus written as headings with numbered lists that restart under each heading.
+
+    The commonest shape of all, and neither of the other two readings: the numbers do not
+    carry the hierarchy ("1." restarts under every paper), and the entries are numbered
+    rather than bulleted. "GENERAL STUDIES AND MENTAL ABILITY (PRELIMINARY TEST)" / "1.
+    Current Affairs …"; "Written Examination (Main)" / "PAPER-II: HISTORY, CULTURE AND
+    GEOGRAPHY" / "I. History and Culture of India …" / "1. Early Indian Civilizations …".
+
+    A heading is recognised by what it is, never by where it happens to fall:
+      * a labelled level with an ordinal ("PAPER-II: …", "Section-I");
+      * a Roman-numbered heading ("II. History and Cultural Heritage of Telangana.");
+      * a short title line that a numbered list restarting at 1 follows, or that another
+        heading follows -- the latter being a stage when its words name one.
+    A heading's bracketed line is its note. A number that does not continue its list is
+    part of the entry before it. Headings are ranked stage > paper > section > entry; a
+    heading nothing sits under is dropped, since it headed nothing.
+    """
+    lines: list[tuple[int, str]] = []
+    open_bracket = False
+    for index in range(start, min(end, len(cur.lines))):
+        line = cur.lines[index].strip()
+        if not line or _FURNITURE.match(line) or _PAGE_NUMBER.match(line):
+            continue
+        if open_bracket and lines:
+            # A bracketed note wrapped across lines ("(Candidate should write three Essays,
+            # selecting one from each" / "Section contains three Questions …)") is one note;
+            # its second line read as a heading and took the paper's sections from it.
+            lines[-1] = (lines[-1][0], f'{lines[-1][1]} {line}')
+        else:
+            lines.append((index, line))
+        opened = lines[-1][1]
+        open_bracket = opened.startswith('(') and opened.count('(') > opened.count(')')
+
+    def next_kind(k: int, depth: int = 0) -> str:
+        """What the next non-bracketed line is: an entry starting a list, a heading, or text.
+        A short title line that itself heads a list is a heading too, one level deep: "Written
+        Examination (Main)" is followed by "General English (Qualifying Test)", which is
+        followed by "1. Spotting Errors"."""
+        for j in range(k + 1, min(k + 4, len(lines))):
+            text = lines[j][1]
+            if _BRACKETED.match(text) and text.startswith('('):
+                continue
+            item = _OUTLINE_ITEM.match(text)
+            if item:
+                return 'first' if item.group('n') == '1' else 'item'
+            if _labelled(text) or _ROMAN_HEADING.match(text):
+                return 'heading'
+            if depth == 0 and _short_title(text) and next_kind(j, depth + 1) in ('first', 'heading'):
+                return 'heading'
+            return 'text'
+        return 'end'
+
+    def _short_title(text: str) -> bool:
+        return (len(text.split()) <= 10 and text[:1].isupper() and not text.endswith((',', ';', '-', '–'))
+                and not _IS_STATEMENT.search(text) and not _OUTLINE_ITEM.match(text))
+
+    def _labelled(text: str):
+        head = _LEVEL_HEADING.match(text)
+        if (head and (head.group('label') or '').lower() in _OUTLINE_LABELS and head.group('ord')
+                and len(text) < 110 and not _IS_STATEMENT.search(text[:60])):
+            return head
+        return None
+
+    def title_line(k: int, previous: str) -> bool:
+        text = lines[k][1]
+        if len(text.split()) > 10 or text.endswith((',', ';', '-', '–')) or not text[:1].isupper():
+            return False
+        if _IS_STATEMENT.search(text) or _OUTLINE_ITEM.match(text):
+            return False
+        # The line before must have ended, or be a heading line itself (short, in capitals:
+        # "GROUP-I SERVICES" above "GENERAL STUDIES AND MENTAL ABILITY"): an entry's wrapped
+        # tail is not a heading.
+        letters = [c for c in previous if c.isalpha()]
+        above_is_heading = (bool(letters) and len(previous.split()) <= 8
+                            and sum(c.isupper() for c in letters) / len(letters) > 0.8)
+        if previous and not previous.endswith(('.', ':', ')')) and not _labelled(previous) \
+                and not _BRACKETED.match(previous) and not title_before.get(k - 1) \
+                and not above_is_heading:
+            return False
+        return next_kind(k) in ('first', 'heading')
+
+    roots: list[SyllabusNode] = []
+    stack: list[tuple[int, SyllabusNode]] = []   # (rank, node); rank 0 stage … 3 entry
+    title_before: dict[int, bool] = {}
+    expected: dict[int, int] = {}                # id(parent) -> next entry number
+    entry: list = [None, []]                     # [node, lines]
+
+    def evidence_for(node: SyllabusNode, index: int, reading: str) -> None:
+        ev = _evidence(cur.lines[index].strip(), doc, cur.text, reading=reading)
+        node.evidence = [ev] if ev else []
+        node.status = Status.VERIFIED if ev else Status.NEEDS_REVIEW
+
+    def close_entry() -> None:
+        node, parts = entry
+        if node is not None:
+            title, body = _split_title(' '.join(parts))
+            node.title = title[:160] or node.title
+            if body:
+                node.note = body[:600]
+        entry[0], entry[1] = None, []
+
+    def attach(node: SyllabusNode, rank: int) -> None:
+        while stack and stack[-1][0] >= rank:
+            stack.pop()
+        parent = stack[-1][1] if stack else None
+        node.scope = _scope_of(node.title, parent.scope if parent else root_scope)
+        siblings = parent.children if parent else roots
+        node.order = len(siblings) + 1
+        siblings.append(node)
+        if rank < 3:
+            stack.append((rank, node))
+
+    k = 0
+    while k < len(lines):
+        index, text = lines[k]
+        previous = lines[k - 1][1] if k else ''
+        labelled = _labelled(text)
+        roman = _ROMAN_HEADING.match(text)
+        item = _OUTLINE_ITEM.match(text)
+        parent = stack[-1][1] if stack else None
+
+        if item and parent is not None and int(item.group('n')) == expected.get(id(parent), 1):
+            close_entry()
+            node = SyllabusNode(id=f'{prefix}-{_slug(parent.title)[:18]}-{item.group("n")}',
+                                title=item.group('rest')[:160], level_label='Topic', order=1)
+            evidence_for(node, index, f'a syllabus entry under {parent.title[:40]}')
+            attach(node, 3)
+            expected[id(parent)] = int(item.group('n')) + 1
+            entry[0], entry[1] = node, [item.group('rest')]
+            k += 1
+            continue
+
+        if labelled or roman or title_line(k, previous):
+            close_entry()
+            # A heading may wrap: take the lines up to the list it heads.
+            parts, j = [text], k + 1
+            while j < len(lines) and not _OUTLINE_ITEM.match(lines[j][1]) \
+                    and not _labelled(lines[j][1]) and not _ROMAN_HEADING.match(lines[j][1]) \
+                    and not parts[-1].endswith(('.', ')')) and len(parts) < 3 \
+                    and not (_BRACKETED.match(lines[j][1]) and lines[j][1].startswith('(')) \
+                    and not (_short_title(lines[j][1]) and next_kind(j) in ('first', 'heading')):
+                parts.append(lines[j][1])
+                j += 1
+            notes = []
+            while j < len(lines) and lines[j][1].startswith('(') and _BRACKETED.match(lines[j][1]):
+                notes.append(lines[j][1])
+                j += 1
+            heading = ' '.join(parts).strip(' .:')
+            if labelled:
+                label = labelled.group('label').title()
+                rank = 1 if label == 'Paper' else 2
+            elif roman:
+                # The whole wrapped title, not its first line: "… Modern Period (1757" / "to
+                # 1947 A.D.)".
+                label, rank = 'Subject', 2
+                heading = _ROMAN_HEADING.match(heading).group('rest').strip(' .:')
+            else:
+                is_stage = bool(_STAGE_WORDS.search(heading)) and next_kind(j - 1) == 'heading'
+                label, rank = ('Stage', 0) if is_stage else ('Subject', 1)
+                if notes and not is_stage:
+                    heading = f'{heading} {notes[0]}' if len(notes[0]) < 40 else heading
+            node = SyllabusNode(id=f'{prefix}-{_slug(heading)[:40]}', title=heading[:160],
+                                level_label=label, order=1)
+            if notes:
+                node.note = ' '.join(notes)[:600]
+            evidence_for(node, index, f'a syllabus heading: {heading[:50]}')
+            attach(node, rank)
+            title_before[j - 1] = True
+            k = j
+            continue
+
+        if entry[0] is not None:
+            entry[1].append(text)          # an entry wrapped onto the next line
+        k += 1
+    close_entry()
+
+    # A heading nothing sits under headed nothing -- a service name printed above the
+    # syllabus ("GROUP-I SERVICES") -- unless it is a labelled paper, whose empty syllabus
+    # is itself a fact ("a title is not its contents").
+    def prune(nodes: list) -> list:
+        kept = []
+        for n in nodes:
+            n.children = prune(n.children)
+            if n.children or n.level_label in ('Topic', 'Paper'):
+                kept.append(n)
+        for i, n in enumerate(kept, start=1):
+            n.order = i
+        return kept
+
+    return prune(roots)
+
+
+def _depth(nodes: list) -> int:
+    return 1 + max((_depth(n.children) for n in nodes), default=0) if nodes else 0
+
+
 # ===================================================================== extraction
 def extract_syllabus(doc: SourceDocument, text: str, *, exam_id: str,
                      cycle: str = '') -> Syllabus:
@@ -445,6 +696,14 @@ def extract_syllabus(doc: SourceDocument, text: str, *, exam_id: str,
         children = (clause_nodes
                     if _entry_count(clause_nodes) >= _entry_count(bullet_nodes)
                     else bullet_nodes)
+        # The outline reading is preferred only where it holds the document's hierarchy the
+        # others flattened, at the same coverage: deeper, and at least 90% of the entries.
+        # One authority's syllabus -- papers, sections, numbered lists restarting under each
+        # -- came out as 124 siblings, and its tree map and study order with it.
+        outline = _read_outline(cur, doc, start + 1, end, prefix=prefix, root_scope=scope)
+        if (outline and _depth(outline) > _depth(children)
+                and _entry_count(outline) >= 0.9 * _entry_count(children)):
+            children = outline
         if not children:
             continue
 

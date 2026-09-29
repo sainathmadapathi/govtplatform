@@ -20,6 +20,13 @@ differences from v7 were four evidence records that did not exist before (the co
 three official links); no value, page, clause or excerpt changed. Re-frozen the same day for one
 more provenance correction: 113 provenance records gave the day GovOS read the notice
 (2026-09-28) as its publishedDate; a read date is not a publication date, and they now carry ''.
+Re-frozen again the same day, for two additions and no changed fact: the practice application
+form built from the record's own rules (applicationGuide.simulator), and the study order's
+reason, which said "Scheduled by weightage" for an authority that publishes no weightage.
+Re-frozen once more after the candidate-truth audit, for two changes and no other: a post whose
+department the notice does not print now shows none (all 18 had shown the Commission's own name),
+and the hall-ticket search page is typed as a service page, not a PDF. Undoing exactly those two on
+the new runtime reproduces the previous digest.
 
 The record is TGPSC's; the code under test names no exam. If a digest changes on purpose, re-freeze:
     python -m tools.exam_builder.test_tgpsc_v7_fixture --refreeze

@@ -266,6 +266,10 @@ def _pattern(passage: str):
             r'(paper[\s\-]*(?:[IVX]+|\d)|tier[\s\-]*(?:[IVX]+|\d)|stage[\s\-]*(?:[IVX]+|\d))'
             r'([^\n]{0,120}?)'
             r'(?:(\d{2,4})\s*(?:marks|mks))', passage, re.I):
+        if re.search(r'\btotal\b\s*[:\-–]?\s*$', m.group(2), re.I):
+            # "Paper-I : General Studies : Total 200 Marks": the figure is the stage's total,
+            # printed where a flattened table put it, not this paper's marks.
+            continue
         row = {'label': normalise_ws(m.group(1)), 'name': normalise_ws(m.group(2)).strip(' -:—'),
                'marks': int(m.group(3))}
         dur = re.search(r'(\d{1,3})\s*(hours?|hrs?|minutes?|mins?)',
@@ -341,7 +345,9 @@ SPECS: tuple[FieldSpec, ...] = (
                      r'matriculation', r'10\+2', r'intermediate'),
             supporting=(r'qualification', r'recognis\w+|recogniz\w+', r'universit\w+',
                         r'must\s+(?:hold|possess|have)', r'eligib\w+'),
-            against=(r'degree of difficulty', r'degrees celsius'),
+            # A clause about fake or unrecognised institutions says which degrees do not
+            # count; it names degrees and eligibility without stating the requirement.
+            against=(r'degree of difficulty', r'degrees celsius', r'\bfake\b', r'\bbogus\b'),
         ),
         normalise=_qualification),
     FieldSpec(

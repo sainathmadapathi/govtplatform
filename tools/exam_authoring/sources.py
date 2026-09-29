@@ -176,6 +176,25 @@ def pdf_text(text: str) -> str:
     return text.replace('\ufffe', '-').replace('\u00ad', '-')
 
 
+_LATIN_WORD = re.compile(r'[A-Za-z]{3,}')
+_VOWEL = re.compile(r'[aeiouyAEIOUY]')
+
+
+def unreadable_text(text: str) -> bool:
+    """True for a page whose Latin letters form no words.
+
+    Among mixed- and lower-case words of three letters or more (all-capital acronyms such as
+    OBC or UR are left out), real English almost always has a vowel: across 1,245 pages of
+    official notices the highest vowel-less share was 0.154. Legacy-font Hindi and garbage OCR
+    layers ran from 0.22 to 0.43. A page is judged only when it has 40 such words, so a short
+    page or a page in its own script (Devanagari, Telugu) is never touched.
+    """
+    words = [w for w in _LATIN_WORD.findall(text or '') if not w.isupper()]
+    if len(words) < 40:
+        return False
+    return sum(1 for w in words if not _VOWEL.search(w)) / len(words) > 0.2
+
+
 def load_pdf(url: str, **kw) -> Document:
     """A PDF as per-page text. A scanned PDF is reported as scanned, never as empty."""
     import pypdfium2 as pdfium
@@ -190,6 +209,11 @@ def load_pdf(url: str, **kw) -> Document:
             pages.append(pdf_text(doc[i].get_textpage().get_text_range()))
         except Exception:
             pages.append('')
+    # A text layer can exist and still not be text: a notice typed in a legacy (non-Unicode)
+    # Hindi font, or a bad OCR layer, extracts as Latin letters that form no words ("qrqr ftdr
+    # sH"). Readers took such pages at face value and "read" FAQ questions out of them. A page
+    # like that is read as having no text, the same as a scan.
+    pages = ['' if unreadable_text(p) else p for p in pages]
     # A notice with almost no extractable text is a scan. Saying so is the honest outcome:
     # the alternative is an extractor reporting "field not found" for a document it simply
     # could not read, which reads as "the authority did not publish it".

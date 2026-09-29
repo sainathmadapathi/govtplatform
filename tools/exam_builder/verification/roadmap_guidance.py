@@ -91,9 +91,12 @@ def deterministic_sequence(topics: list) -> list:
     # authority's sequence, and an alphabetical one is nobody's.
     ordered = sorted(norm, key=lambda t: (not t['high_yield'], subj_rank.get(t['subject'], 99),
                                           -t['weightage'], position[id(t)]))
+    # The reason given is the one that decided the order. Where the authority published no
+    # weightage, nothing was weighed: saying "by weightage" was a reason that did not happen.
     return [RoadmapStep(topic_id=t['id'], topic_name=t['name'], subject=t['subject'],
                         rationale='High-yield; scheduled early.' if t['high_yield']
-                        else 'Scheduled by weightage within its subject.') for t in ordered]
+                        else 'Scheduled by weightage within its subject.' if t['weightage'] > 0
+                        else 'In the order the official syllabus lists it.') for t in ordered]
 
 
 def _disclaimer(authority: str) -> str:

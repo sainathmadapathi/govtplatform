@@ -130,9 +130,47 @@ change to how evidence is shown can never hide a changed fact), and the scratchp
 `evidence_ui_test.tsx` (every section of SSC and TGPSC renders only its own exam's evidence; the
 Direct/Reconciled/Derived panels; missing evidence is never a button or "verified").
 
+### A machine-read exam, looked at as a candidate would
+Four candidate-facing gaps on TGPSC, each fixed for every machine-read exam:
+
+- **Syllabus: headings with numbered lists that restart.** `syllabus._read_outline` is a third
+  reading beside clause numbering and bullets: stage / paper / section / Roman-numbered unit
+  headings over "1. … 2. …" lists that restart under each heading (a number that does not continue
+  its list is text; "10.Policies" with no space is still entry 10). It is used only where it keeps
+  a hierarchy the others flattened at ≥90% of their entries. Two region rules came with it: a
+  "Scheme and Syllabus" heading prints the scheme table first, so the syllabus starts at its own
+  inner "SYLLABUS" heading (the table's rows were read as topics); and a line in a list of
+  annexures ("Annexure-II Scheme and Syllabus.") is a table of contents, not a heading. TGPSC went
+  from 124 siblings under one heading to Preliminary → Main → General English + Papers I–VI →
+  Sections → topics; nine other state-PSC notices improved the same way. UPSC CDS prints capital
+  headings over prose paragraphs, which no reading handles yet: it reads nothing rather than the
+  scheme rows it used to.
+- **Flat projection.** `flat_syllabus_from_tree`: a root titled only "Syllabus" names no subject,
+  so its papers (or a stage's papers) are the subjects. A named root ("Indicative Syllabus
+  (Tier-I)") projects as before.
+- **Study roadmap.** `SyllabusRoadmap` (ui.tsx) renders a machine exam's study guidance as the
+  exam's own stages, each with its official schedule in the authority's words, each paper a card
+  with a topic checklist and progress. No durations or hours — none are published. The study
+  order's reason no longer says "by weightage" where no weightage exists.
+- **Practice application form.** `runtime_simulator.build_simulator` builds an
+  `ApplicationSimulatorSpec` from the record: the window from the earliest opening the authority
+  ever printed to the governing close (a re-opening adds days — an application in the original
+  window was not late), date of birth against every post's band at once (too young for all is a
+  fault; older than all is a warning naming the printed relaxations), and a fee exemption claimed
+  with no exempt category. Every check quotes and cites its statement; a record with nothing to
+  check gets no form. The existing `ExamApplicationSimulator` renders it unchanged.
+- **Tree map.** Opens every subject only up to `TREE_OPEN_ALL_UP_TO` (24) topics — above that, the
+  first subject only, so it starts legible (TGPSC fitted at 58% with all open). The "T1+T2" chip is
+  SSC's tier vocabulary and appears only for an exam whose own stages are named tiers.
+  `examDisplayCode` / `examInitials`: a machine exam's `code` is an id built from its domain
+  ("WEBSITENEW_TGPSC…"), so displays use its title.
+- **PYQs are not taken from arbitrary websites.** TGPSC's live site publishes no Group-I 02/2024
+  paper or key (`/oldquestionp.jsp`, `/keys` checked); the section's "searched, not found" state is
+  the truth. A coaching site's copy has no provenance and may carry wrong answers.
+
 ### `src/data.ts`
-- `SSC_CGL_EXAM` (18 posts, 9 dates incl. one superseded, 3 stages, ~21 syllabus topics,
-  3 roadmap tracks, 38 resources, 6 FAQs, admit-card details, full application guide),
+- `SSC_CGL_EXAM` (40 posts, 12 dates incl. four superseded, 4 stages, 22 syllabus topics,
+  3 roadmap tracks, 38 resources, 6 FAQs, admit-card events, full application guide),
   `UPSC_CSE_EXAM`, `IBPS_PO_EXAM`, `APPSC_*`, `ALL_EXAMS`. **SSC CGL and UPSC CSE are the
   two authored exams**; IBPS and APPSC are skeletons. Never fill a thin exam with material
   derived from another exam — author it from that authority's own documents, as UPSC was.
@@ -1413,12 +1451,34 @@ Remaining by design, not defects:
 - **Section 15** uses component-local content. `ExamDayChecklistItem` and
   `ResultNextStepStage` exist on `Exam` as optional fields for when per-exam data is
   authored; until then the generic CBT content shows for every exam.
-- **SSC CGL 2026 dates in `data.ts` contradict the official record.** A live research run on
-  2026-09-09 surfaced SSC's real notice (`ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/`
-  `CGLE_Reopen_23062026.pdf`): notification published 21.05.2026, applications 21.05–22.06.2026
-  (28 lakh+ applicants), then a reopening. The platform shows a 10-08-2026 notification, an
-  Aug–Sept window and a corrigendum to 27-09-2026. Not changed — the user decides; use the Trust
-  Panel's Live Source Research quick check to re-verify before editing.
+- **SSC CGL 2026 is read from SSC's own documents (candidate-truth audit, 2026-09-29).** Every
+  provenance in the record quotes the document and page it cites, built with `sscNotice()` /
+  `sscDocument()` at the top of the SSC block; `sscReplaced(newer, older)` links a later SSC
+  statement to the one it replaced, so the Evidence panel shows both. The sources: the Notice of
+  Examination (21.05.2026, 132 pp.), the re-opening notice (23.06.2026: close 25.06, fee 26.06,
+  correction 01-03.07.2026), the schedule notice (12.09.2026: Tier-I 30.09-30.10.2026), the city /
+  admission-certificate notice (21.09.2026: a release *rule*, 2/3 days before each candidate's own
+  date, no date), the tentative vacancy list (24.09.2026: 10,731 in 59 rows, reconciled to its
+  printed total), and the CGLE 2025 result write-up, its corrigendum (14.01.2026) and the FRTA
+  write-up for cut-offs. The record used to carry a 10-08-2026 notification, a 27-09-2026 close,
+  two corrigenda SSC never issued, 17,727 vacancies, an 18-10-2026 admit card and exact Tier-I/II
+  dates, all cited to a "Gazette Notification.pdf" at the homepage; 2022-2024 cut-offs cited to a
+  2026 notice that prints none; and twelve template-cycled practice papers titled as SSC shifts
+  under "Cryptographically Verified with RTI Shift Keys". All of that is gone. **When SSC publishes
+  a later notice, read it and record it as a revision; the brief's own values can be out of date
+  too** (the audit brief said "Aug-Sep 2026" and "~12,256"; SSC had since published both changes).
+- **A date printed without a day or as a range is shown as printed.** `ImportantDate.displayWhen`
+  ("May/June 2024", "30-09-2026 to 30-10-2026") is what the tiles, timeline, calendar and chat
+  show (`shownWhen()` in `ui.tsx`); `dateTimeStr` then holds the range's last day, only for
+  ordering, and is never counted down to. TGPSC's header used to show "2024-06-01" for "May/June".
+- **TGPSC's registry record was corrected at data level (v13), not rebuilt.** 145 citation pages
+  were moved to the page their excerpt is printed on (syllabus in document order from p.27), plus
+  the 5:00 PM close, the edit-window opening, the held Mains range superseding the tentative one,
+  certificate verification and medical board no longer typed INTERVIEW, the OTR portal read from
+  the Commission's own home page, and the notice's own clauses for General English minimum marks,
+  fee mode/refund/04-2022, PH exemption, 95% local reservation, centres and the 16.6 gadget ban.
+  The builder's readers do not track pages, so **a rebuild of TGPSC from source would bring the
+  page errors back**, and the corrections would have to be applied again to the new record.
 - **Government hosts are intermittent from Indian networks; links must open for the candidate.**
   `ncert.nic.in` timed out in the user's own browser (ERR_CONNECTION_TIMED_OUT) even though it
   answered Tavily, so every NCERT link now points at a host that answers: the question

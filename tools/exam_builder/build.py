@@ -381,6 +381,123 @@ def _page_of(document, span: str) -> int:
     return 1
 
 
+# ------------------------------------------------------------------ page placement
+# The pattern and syllabus readers read a PDF as one joined text (`document.all_text()`), and
+# their evidence is made with `page=1` (pattern._evidence), so every node used to cite page 1.
+# The loaded document still holds its pages; these put each span back on the page it is printed
+# on. A span found on one page takes that page; a span printed on several (a heading repeated
+# in a scheme table and in the syllabus) takes the first of them at or after the previous
+# node's page, since a reader returns its nodes in document order. A span found nowhere, or
+# too short to place, keeps what the reader gave it.
+def _span_pages(norm_pages: list, span: str) -> list:
+    needle = re.sub(r'[^a-z0-9]', '', (span or '').lower())
+    if len(needle) < 8:
+        return []
+    return [i for i, page in enumerate(norm_pages, start=1) if needle in page]
+
+
+def _place_tree_pages(roots, document) -> Optional[int]:
+    """Set each node's evidence page from the document's own pages; the first placed page."""
+    from collections import Counter
+    from dataclasses import fields as dc_fields
+    from .schema import Fact as SchemaFact
+    pages = getattr(document, 'pages', None) or []
+    if len(pages) < 2:
+        return None
+    norm_pages = [re.sub(r'[^a-z0-9]', '', (p or '').lower()) for p in pages]
+    ordered, owner, spans = [], [], []          # evidence in document order; its node; node -> [start, end)
+
+    def walk(node):
+        start = len(ordered)
+        own = list(getattr(node, 'evidence', None) or [])
+        for f in dc_fields(node):
+            value = getattr(node, f.name, None)
+            if isinstance(value, SchemaFact):
+                own.extend(value.evidence or [])
+        for ev in own:
+            ordered.append(ev)
+            owner.append(len(spans))
+        me = len(spans)
+        spans.append([start, None])
+        for child in getattr(node, 'children', None) or []:
+            walk(child)
+        spans[me][1] = len(ordered)
+
+    for root in roots or []:
+        walk(root)
+    candidates = [_span_pages(norm_pages, ev.span) for ev in ordered]
+    unique = [c[0] for c in candidates if len(c) == 1]
+    if not unique:
+        return None
+    cursor, first = min(unique), None
+    for i, (ev, cands) in enumerate(zip(ordered, candidates)):
+        if len(cands) == 1:
+            ev.page = cands[0]
+            cursor = max(cursor, cands[0])
+        elif cands:
+            # A repeated heading belongs where the rest of its own node is printed.
+            start, end = spans[owner[i]]
+            pool = Counter(c[0] for k, c in enumerate(candidates[start:end], start=start)
+                           if k != i and len(c) == 1 and c[0] in cands)
+            later = [p for p in cands if p >= cursor]
+            if pool:
+                ev.page = pool.most_common(1)[0][0]
+            elif later:
+                ev.page = cursor = later[0]
+            else:
+                # Printed only before the cursor: the nearest such page still prints it.
+                ev.page = max(cands)
+        else:
+            continue
+        first = first or ev.page
+    return first
+
+
+def _place_citation_page(got: Field, loaded: dict) -> Field:
+    """A field citation made with page 1 takes the page its excerpt is printed on, where that
+    is one page only; an excerpt printed on several pages is left for a person to place."""
+    cite = got.citation if got else None
+    if not cite or (cite.page not in (None, 1)) or not cite.url:
+        return got
+    document = loaded.get(cite.url)
+    pages = getattr(document, 'pages', None) or []
+    if len(pages) < 2:
+        return got
+    norm_pages = [re.sub(r'[^a-z0-9]', '', (p or '').lower()) for p in pages]
+    hits = _span_pages(norm_pages, cite.excerpt)
+    if len(hits) == 1:
+        cite.page = hits[0]
+    # Items read with their own span (a document, a fee component) carry their own page, which
+    # materialize already prefers to the field's.
+    if isinstance(got.value, list):
+        for item in got.value:
+            if isinstance(item, dict) and item.get('evidenceSpan') and not item.get('page'):
+                item_hits = _span_pages(norm_pages, item['evidenceSpan'])
+                if len(item_hits) == 1:
+                    item['page'] = item_hits[0]
+    return got
+
+
+def _unread_by_us(name: str, docs, loaded: dict) -> Optional[Field]:
+    """NOT_EXTRACTED when none of the documents offered for a field had readable text.
+
+    A scanned notice with no text layer says nothing to this reader, so "the authority
+    published none" would be a claim made out of GovOS's own gap. None when any text was read.
+    """
+    for doc in docs:
+        document = loaded.get(doc.url)
+        if document is not None and hasattr(document, 'all_text') and document.all_text().strip():
+            return None
+    what = (f'{len(docs)} document(s) were offered for {name} and none had a readable text layer '
+            f'(scanned images)' if docs else
+            # Nothing reached this reader: no document of a kind that states it, or none the
+            # identity check could establish as this exam's own. Not a statement about scans.
+            f'no document established as this exam\'s own was available to read for {name}')
+    return Field(name=name, status=RecordStatus.NOT_EXTRACTED,
+                 note=f'{what}; nothing could be read, which is a gap here, not a statement that the '
+                      f'authority published none.')
+
+
 def _extract_html_tables(html: str) -> list[list[list[str]]]:
     """Extracts tables from HTML with rows and cells."""
     table_rx = re.compile(r'<table[^>]*>(.*?)</table>', re.S | re.I)
@@ -623,6 +740,7 @@ def _dispatch_domain_extraction(
 ) -> Field:
     """Dispatch one contract field, then vet the reading where a generic test applies."""
     got = _dispatch_domain_extraction_raw(cf, sources, loaded, rec, resolved, identity, target)
+    got = _place_citation_page(got, loaded)
     if cf.name == 'posts':
         got = _vet_posts(got, rec, loaded)
     if cf.name == 'fee':
@@ -847,9 +965,10 @@ def _dispatch_domain_extraction_raw(
             try:
                 pat = D_PATTERN.extract_pattern(src_doc, text, exam_id=rec.exam_id, cycle=resolved.year)
                 if pat and pat.stages:
+                    first_page = _place_tree_pages(pat.stages, document)
                     tree = COMPAT.pattern_tree(pat, exam_id=rec.exam_id)
                     if tree:
-                        cite = Citation(document_title=doc.title, url=doc.url, page=1,
+                        cite = Citation(document_title=doc.title, url=doc.url, page=first_page or 1,
                                         clause='Exam Pattern',
                                         excerpt=getattr(pat.stages[0], 'name', 'Pattern') or 'Scheme',
                                         verified_date=_today())
@@ -892,9 +1011,10 @@ def _dispatch_domain_extraction_raw(
             try:
                 syl = D_SYLLABUS.extract_syllabus(src_doc, text, exam_id=rec.exam_id, cycle=resolved.year)
                 if syl and syl.roots:
+                    first_page = _place_tree_pages(syl.roots, document)
                     tree = COMPAT.syllabus_tree(syl, exam_id=rec.exam_id)
                     if tree:
-                        cite = Citation(document_title=doc.title, url=doc.url, page=1,
+                        cite = Citation(document_title=doc.title, url=doc.url, page=first_page or 1,
                                         clause='Syllabus', excerpt=syl.roots[0].title or 'Syllabus',
                                         verified_date=_today())
                         return Field.found('syllabus', tree, cite)
@@ -1437,7 +1557,7 @@ def _dispatch_domain_extraction_raw(
                                        'status': 'NEEDS_REVIEW'}],
                     'the document states a fee exemption, but the group it applies to could not be '
                     'read with confidence; the sentence is kept for a person to confirm', cite)
-        return Field.not_published('feeExemptions', 'No fee exemptions published in official document')
+        return _unread_by_us('feeExemptions', candidate_docs, loaded) or Field.not_published('feeExemptions', 'No fee exemptions published in official document')
 
     elif cf.name == 'requiredDocuments':
         for doc in candidate_docs:
@@ -1458,7 +1578,7 @@ def _dispatch_domain_extraction_raw(
             except Exception as exc:
                 rec.note(f'extract_required_documents failed on {doc.url}: {exc!r}')
 
-        return Field.not_published('requiredDocuments', 'No specific upload documents announced in notice')
+        return _unread_by_us('requiredDocuments', candidate_docs, loaded) or Field.not_published('requiredDocuments', 'No specific upload documents announced in notice')
 
     elif cf.name == 'photoSignatureGuidelines':
         for doc in candidate_docs:
@@ -1480,7 +1600,7 @@ def _dispatch_domain_extraction_raw(
             except Exception as exc:
                 rec.note(f'extract_photo_signature_guidelines failed on {doc.url}: {exc!r}')
 
-        return Field.not_published('photoSignatureGuidelines', 'No distinct photograph/signature guidelines published')
+        return _unread_by_us('photoSignatureGuidelines', candidate_docs, loaded) or Field.not_published('photoSignatureGuidelines', 'No distinct photograph/signature guidelines published')
 
     elif cf.name == 'faqs':
         # An FAQ document for this exam first; failing that, the notice's own procedure

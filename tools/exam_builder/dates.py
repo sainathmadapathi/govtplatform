@@ -423,6 +423,48 @@ def statements(text: str) -> list[str]:
     return parts
 
 
+_ENUMERATED = re.compile(r'^\s*(?:\(?\d{1,2}\)|\d{1,2}[.)]|\(?[ivx]{1,4}\)|\(?[a-h]\))\s+\S')
+_VALUE_CELL = re.compile(r'^\s*[-–:]\s*\S')
+
+
+def pair_label_columns(parts: list[str], blocks: dict | None = None) -> list[str]:
+    """Rejoin a two-column table that extraction printed column by column.
+
+    "(i) Preliminary Examination / (ii) Main Written Examination / (iii) Personality Test"
+    followed by "- 26.04.2026 / - 27.06.2026 to 29.06.2026 / - August / September,2026" is
+    three rows, not one label owning three dates. Only an exact match is rejoined: a run of
+    enumerated labels carrying no date, then the same number of dash-led cells that each
+    carry one. Anything else is left as it was.
+
+    A rejoined row is not a span of the document, so ``blocks`` (where given) maps each
+    rejoined row's index to the table as printed -- what its evidence quotes -- and to the
+    lines introducing the table, which name what the rows are ("The tentative Schedule for
+    the conduct of Examinations ... is as under:-") where a row's own label may not.
+    """
+    out: list[str] = []
+    i = 0
+    while i < len(parts):
+        j = i
+        while j < len(parts) and _ENUMERATED.match(parts[j]) and not read_dates(parts[j]):
+            j += 1
+        n = j - i
+        values = parts[j:j + n]
+        if (n >= 2 and len(values) == n
+                and all(_VALUE_CELL.match(v) and read_dates(v) for v in values)
+                and (j + n >= len(parts) or not _VALUE_CELL.match(parts[j + n]))):
+            printed = ' '.join(parts[i:j + n])
+            heading = ' '.join(parts[max(0, i - 3):i])
+            for label, value in zip(parts[i:j], values):
+                if blocks is not None:
+                    blocks[len(out)] = (printed, heading)
+                out.append(f'{label} {value}')
+            i = j + n
+            continue
+        out.append(parts[i])
+        i += 1
+    return out
+
+
 def _window(parts: list[str], index: int, before: int = 1, after: int = 1) -> str:
     """A statement plus its neighbours.
 
@@ -688,11 +730,13 @@ def extract_milestones(doc: SourceDocument, text: str, *, exam_id: str,
     A statement with no date and no hedge is skipped rather than recorded as unknown: a
     notice mentions examinations constantly and only some of those mentions are milestones.
     """
-    parts = statements(text)
+    blocks: dict[int, str] = {}
+    parts = pair_label_columns(statements(text), blocks)
     out: list[Milestone] = []
     seen: set[tuple[str, str, str]] = set()
 
     consumed: set[int] = set()
+    restated: list[tuple[str, str]] = []
     for index, passage in enumerate(parts):
         if index in consumed:
             continue
@@ -717,8 +761,13 @@ def extract_milestones(doc: SourceDocument, text: str, *, exam_id: str,
             # "To: 27/03/2031 at 5:00 P.M." is one statement with two ends.
             passage = f'{passage} {nxt}'
             consumed.add(index + 1)
-        reading = read_statement(passage, context=_window(parts, index),
-                                 lead=parts[index - 1] if index else '')
+        printed, heading = blocks.get(index, ('', ''))
+        if printed:
+            # A rejoined row: its neighbours are the other rows, its context the table's heading.
+            reading = read_statement(passage, context=f'{heading} {passage}')
+        else:
+            reading = read_statement(passage, context=_window(parts, index),
+                                     lead=parts[index - 1] if index else '')
         if reading is None:
             continue
         if _FURNITURE.search(passage):
@@ -743,7 +792,7 @@ def extract_milestones(doc: SourceDocument, text: str, *, exam_id: str,
             # date's year catches a rule citation that borrowed the cycle's number.
             continue
 
-        ev = _evidence(reading.span, doc, text,
+        ev = _evidence(printed or reading.span, doc, text,
                        reading=f'{reading.kind}: {reading.label}')
         if ev is None:
             continue
@@ -752,6 +801,9 @@ def extract_milestones(doc: SourceDocument, text: str, *, exam_id: str,
         key = (kind, reading.dates[0].iso if reading.dates else '',
                reading.stage_ref.lower())
         if key in seen:
+            # Stated again elsewhere in the document. The statement is still read: the
+            # sentence pass must not take its dates a second time without its reading.
+            restated.extend((d.iso, ev.span) for d in reading.dates)
             continue
         seen.add(key)
 
@@ -806,6 +858,7 @@ def extract_milestones(doc: SourceDocument, text: str, *, exam_id: str,
     taken |= {(m.kind, a.value) for m in out for a in m.alternatives if a.has_value}
     placed = [(f.value, f.evidence[0].span) for m in out
               for f in (m.starts_at, m.ends_at, *m.alternatives) if f.has_value and f.evidence]
+    placed += restated
     out.extend(_sentence_milestones(doc, text, exam_id=exam_id, cycle=cycle, taken=taken,
                                     placed=placed))
     return out
@@ -826,8 +879,7 @@ def _paragraph_sentences(text: str) -> list[str]:
     """
     paragraphs: list[str] = []
     current = ''
-    for raw in (text or '').replace('\r', '').split('\n'):
-        line = raw.strip()
+    for line in pair_label_columns([raw.strip() for raw in (text or '').replace('\r', '').split('\n')]):
         if not line or re.fullmatch(r'[\d\s]+', line):
             if current:
                 paragraphs.append(current)

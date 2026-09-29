@@ -279,12 +279,16 @@ export function evaluatePostEligibility(
         reasons.push(`JSO Criteria Satisfied: ${hasMaths ? '60%+ in 12th Maths' : 'Statistics in Degree'} verified`);
       }
     } else if (post.id === 'post-stat-inv') {
-      const hasStatsDegree = profile.statisticsInDegree === true || (profile.branch || '').toLowerCase().includes('stat');
-      if (!hasStatsDegree) {
+      // SSC CGL 2026 notice, Para 8.3.1: a Bachelor degree in any of these subjects.
+      const branch = (profile.branch || '').toLowerCase();
+      const SI_SUBJECTS = ['stat', 'math', 'economic', 'demograph', 'population', 'operation research', 'information technology',
+        'computer', 'data science', 'artificial intelligence'];
+      const hasQualifyingDegree = profile.statisticsInDegree === true || SI_SUBJECTS.some(sub => branch.includes(sub));
+      if (!hasQualifyingDegree) {
         qualStatus = 'DISQUALIFIED';
-        reasons.push(`Statistical Investigator Gr II: Requires Statistics as a subject in all 3 years of Degree`);
+        reasons.push(`Statistical Investigator Gr II: requires a Bachelor degree in Statistics, Mathematics, Economics, Demography, Population Studies, Operation Research, IT, Computer Science/Engineering/Technology/Application, Data Science or AI (Para 8.3.1)`);
       } else {
-        reasons.push(`Statistical Criteria Satisfied: Statistics in all semesters verified`);
+        reasons.push(`Statistical Investigator Gr II: degree subject is among those listed in Para 8.3.1`);
       }
     } else {
       reasons.push(`Essential Qualification: Bachelor's Degree verified`);
@@ -1077,7 +1081,7 @@ class StorageService {
               actionType: 'EXAM_DETAIL',
               actionPayload: { section: 4 },
               priority: 'HIGH',
-              createdAt: '2026-09-20 10:00:00',
+              createdAt: new Date(Date.parse(d.dateTimeStr.replace(' ', 'T')) - 7 * 864e5).toISOString().slice(0, 19).replace('T', ' '),
               scheduledDateStr: d.dateTimeStr,
               isRead: false
             });
@@ -1140,7 +1144,7 @@ class StorageService {
               actionType: 'EXAM_DETAIL',
               actionPayload: { section: 4 },
               priority: 'CRITICAL',
-              createdAt: '2026-09-27 12:00:00',
+              createdAt: `${d.dateTimeStr.slice(0, 10)} 00:00:00`,
               scheduledDateStr: d.dateTimeStr,
               isRead: false
             });
@@ -1199,7 +1203,10 @@ class StorageService {
             examTitle: exam.title,
             eventType: 'EXAM_DATE',
             title: `🎯 Exam Day Announcement: ${exam.title}`,
-            message: `The Computer Based Test commences on ${d.dateTimeStr}. Remember to carry your original Photo ID, two passport photos, and printed Admit Card.`,
+            message: d.displayWhen
+              // Printed without a day: say so, and do not name one.
+              ? `${d.label}: ${d.displayWhen}${d.isTentative ? ' (tentative)' : ''}. No exact date has been announced yet; GovOS will show it when ${exam.authorityName} publishes it.`
+              : `The Computer Based Test commences on ${d.dateTimeStr}. Remember to carry your original Photo ID, two passport photos, and printed Admit Card.`,
             channelsDelivered: channels,
             actionType: 'EXAM_DETAIL',
             actionPayload: { section: 5 },
