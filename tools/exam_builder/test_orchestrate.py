@@ -157,11 +157,21 @@ class TestOrchestration(unittest.TestCase):
 
     # --- 7: source identity mismatch -> gate blocks -----------------------------------------
     def test_7_source_identity_mismatch(self):
-        ident = {'https://ssc.gov.in/other': IdentityCheck(IdentityVerdict.MISMATCH)}
+        # The record's fields cite <domain>/notice; a MISMATCH verdict on that very source is
+        # contamination and blocks. A MISMATCH on a source nothing cites (it was excluded from
+        # extraction) is retained for audit and does not block.
+        rec = _rec()
+        cited = rec.fields['dates'].citation.url
+        ident = {cited: IdentityCheck(IdentityVerdict.MISMATCH)}
         patch_build(self, lambda *a, **k: _build(_rec(), identity=ident))
         r = O.orchestrate('SSC CGL 2026')
         self.assertEqual(r.state, O.OrchestrationState.BLOCKED_BY_GATE)
         self.assertTrue(any('another exam' in str(b) for b in r.gate.blockers))
+        quiet = {'https://ssc.gov.in/other': IdentityCheck(IdentityVerdict.MISMATCH)}
+        patch_build(self, lambda *a, **k: _build(_rec(), identity=quiet))
+        r2 = O.orchestrate('SSC CGL 2026')
+        self.assertEqual(r2.state, O.OrchestrationState.STAGED)
+        self.assertTrue(any('retained for audit' in n for n in r2.gate.notes))
 
     # --- 8: cycle mismatch surfaces as a resolution mismatch (build raises LookupError) ------
     def test_8_cycle_mismatch(self):

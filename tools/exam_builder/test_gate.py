@@ -82,10 +82,20 @@ def test_needs_review_blocks_its_field() -> None:
 
 
 def test_mismatched_source_blocks() -> None:
-    r = evaluate(_record(), identity_by_source={
-        'https://x.invalid/other-exam.pdf': IdentityVerdict.MISMATCH})
-    check('a source belonging to another exam blocks', r.decision, GateDecision.BLOCK)
+    """A MISMATCH source blocks when a field cites it -- that is contamination. One that was
+    excluded from extraction and cited by nothing is retained for audit and blocks nothing:
+    a site's navigation pages name every exam the authority runs."""
+    other = 'https://x.invalid/other-exam.pdf'
+    rec = _record()
+    rec.set(Field.found('fee', '100', Citation(document_title='other', url=other, page=1,
+                                                excerpt='...', verified_date='2026-09-17')))
+    r = evaluate(rec, identity_by_source={other: IdentityVerdict.MISMATCH})
+    check('a cited source belonging to another exam blocks', r.decision, GateDecision.BLOCK)
     check('and is named', any('another exam' in b.reason for b in r.blockers), True)
+    quiet = evaluate(_record(), identity_by_source={other: IdentityVerdict.MISMATCH})
+    check('an uncited mismatched source does not block', quiet.decision, GateDecision.PASS)
+    check('but is recorded as retained for audit',
+          any('retained for audit' in n and other in n for n in quiet.notes), True)
 
 
 def test_infrastructure_failure_blocks_and_is_not_a_finding() -> None:

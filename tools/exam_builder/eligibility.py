@@ -27,6 +27,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from .units import sentence_end
 from .evidence import Evidence, EvidenceStatus, normalise_ws
 from .tables import ColumnKind, reconstruct, reconstruct_lists
 from .schema import (AgeRelaxation, AgeRule, Eligibility, Fact, Post, QualificationRule,
@@ -47,7 +48,12 @@ _CATEGORY = re.compile(
     r'other\s+backward\s+class(?:es)?(?:\s*\(?non[- ]creamy\s+layer\)?)?|'
     r'economically\s+weaker\s+sections?|scheduled\s+castes?|scheduled\s+tribes?|'
     r'ex-?servicemen|serving\s+defence\s+personnel|widows?|divorced\s+women|'
-    r'departmental\s+candidates?|transgender|pwbd|pwd|obc|ews|esm|sc\s*/\s*st|sc|st)\b',
+    r'departmental\s+candidates?|transgender|pwbd|pwd|obc|ews|esm|sc\s*/\s*st|sc|st|'
+    # The older and state-level names for the same groups, and the groups state notices
+    # relax the age for most often. Vocabulary about people, not about any authority.
+    r'physically\s+(?:handicapped|challenged)(?:\s+persons?)?|persons?\s+with\s+disabilit(?:y|ies)|'
+    r'differently[\s-]abled|(?:state|central)\s+government\s+employees|'
+    r'government\s+(?:employees|servants)|n\.\s?c\.\s?c|ncc|bcs?)\b',
     re.I)
 
 _YEARS = re.compile(r'\b(\d{1,2})\s*(?:\(\s*\w+\s*\))?\s*(?:years?|yrs?)\b', re.I)
@@ -124,13 +130,14 @@ _AGE_BAND = re.compile(
     r'\b(?:not\s+(?:be\s+)?(?:less|below|under)\s+than|minimum\s+(?:age\s+)?(?:of\s+)?|'
     # "must have attained the age of 21 years", but never "must *not* have attained".
     r'at\s+least|(?<!not\s)(?<!not\s\s)have\s+attained\s+the\s+age\s+of)'
-    r'\s*(\d{1,2})\s*(?:years?|yrs?)?', re.I)
+    # "Minimum Age (18 years)": the figure may sit in brackets after its label.
+    r'\s*\(?\s*(\d{1,2})\s*(?:years?|yrs?)?', re.I)
 _AGE_MAX = re.compile(
     r'\b(?:not\s+(?:be\s+)?(?:more|above|over|exceed(?:ing)?)\s+than|maximum\s+(?:age\s+)?'
     r'(?:of\s+)?|upper\s+age\s+limit\s*(?:is|of|:)?|'
     # "must not have attained the age of 32 years" -- the formal phrasing, and the negative
     # is matched here so that the minimum pattern below cannot claim it.
-    r'not\s+(?:have\s+)?attained\s+the\s+age\s+of)\s*(\d{1,2})\s*(?:years?|yrs?)?', re.I)
+    r'not\s+(?:have\s+)?attained\s+the\s+age\s+of)\s*\(?\s*(\d{1,2})\s*(?:years?|yrs?)?', re.I)
 # The second form is a table cell: "18-30 years", with none of the sentence wording.
 _AGE_RANGE = re.compile(
     r'\b(?:between|from)\s*(\d{1,2})\s*(?:years?|yrs?)?\s*(?:and|to|-|–)\s*(\d{1,2})\s*'
@@ -154,6 +161,23 @@ _CUTOFF = re.compile(
 _IS_AGE = re.compile(r'\bage\b|\bborn\b|\bdate\s+of\s+birth\b|\bdob\b', re.I)
 _NOT_AGE = re.compile(
     r'\bexperience\b|\bvalidity\b|\bcourse\b|\bduration\s+of\s+the\s+exam', re.I)
+#: "raised the maximum age limit from 44 years to 46 years" narrates a *change* to a limit;
+#: it is not a band. Read as one, it became a minimum of 44, which no notice ever stated.
+_AGE_CHANGE = re.compile(
+    r'\b(?:raised|revised|enhanced|increased|reduced|lowered|extended)\b[^.;]{0,80}?'
+    r'\bfrom\s+\d{1,2}\s*(?:years?|yrs?)?\s+to\s+\d{1,2}\s*(?:years?|yrs?)|'
+    # The verb may sit in an earlier fragment of the same sentence: "age limit from 44
+    # years to 46 years" is the tail of "raised the maximum age limit from ...".
+    r'\blimit\s+from\s+\d{1,2}\s*(?:years?|yrs?)\s+to\s+\d{1,2}\s*(?:years?|yrs?)', re.I)
+
+
+#: The ages a person applying for a post can be. A figure outside them is a period of time --
+#: a debarment, a length of service, an experience requirement -- printed with "years".
+_APPLICANT_AGE = (14, 70)
+
+
+def _plausible_age_band(low: int, high: int) -> bool:
+    return _APPLICANT_AGE[0] <= low < high <= _APPLICANT_AGE[1]
 
 
 def extract_age_rules(doc: SourceDocument, text: str, *,
@@ -165,12 +189,30 @@ def extract_age_rules(doc: SourceDocument, text: str, *,
     presented as the authority's would be exactly the invention this refuses.
     """
     rules: list[AgeRule] = []
+    # The date age is reckoned on, where the notice states it on its own for every post:
+    # "The age is reckoned as on 01/07/2031". Collected here, applied below.
+    reckoned: list[tuple[str, SourceEvidence]] = []
     for passage in statements(text):
-        if _NOT_AGE.search(passage):
+        if _NOT_AGE.search(passage) or _AGE_CHANGE.search(passage):
             continue
+        standalone = _CUTOFF.search(passage)
+        if (standalone and _IS_AGE.search(passage) and not _AGE_RANGE.search(passage)
+                and not _AGE_BAND.search(passage)):
+            found = _iso_dates(passage[standalone.end():standalone.end() + 45])
+            if found:
+                cev = _evidence(passage, doc, text, reading='the date age is reckoned on')
+                if cev is not None:
+                    reckoned.append((found[0], cev))
 
         minimum = maximum = None
         band = _AGE_RANGE.search(passage)
+        if band:
+            pair = ((band.group(1), band.group(2)) if band.group(1)
+                    else (band.group(3), band.group(4)))
+            if not _plausible_age_band(int(pair[0]), int(pair[1])):
+                # "03-05 years" in a table of debarment periods is a length of time, not the
+                # age of a person applying for a job.
+                band = None
         # A band *is* an age statement, whether or not the sentence says "age": "not less
         # than 21 years and not more than 30 years" says nothing else. Experience is
         # excluded above, which is what makes reading it this way safe.
@@ -178,13 +220,15 @@ def extract_age_rules(doc: SourceDocument, text: str, *,
         if not _IS_AGE.search(passage) and not states_a_band:
             continue
         if band:
-            pair = ((band.group(1), band.group(2)) if band.group(1)
-                    else (band.group(3), band.group(4)))
             minimum, maximum = int(pair[0]), int(pair[1])
         else:
             lo, hi = _AGE_BAND.search(passage), _AGE_MAX.search(passage)
             minimum = int(lo.group(1)) if lo else None
             maximum = int(hi.group(1)) if hi else None
+            if minimum is not None and not _plausible_age_band(minimum, minimum + 1):
+                minimum = None
+            if maximum is not None and not _plausible_age_band(maximum - 1, maximum):
+                maximum = None
 
         earliest = _DOB_EARLIEST.search(passage)
         latest = _DOB_LATEST.search(passage)
@@ -226,6 +270,13 @@ def extract_age_rules(doc: SourceDocument, text: str, *,
         if any(f.has_value for f in (rule.minimum_age, rule.maximum_age,
                                      rule.born_not_earlier_than, rule.born_not_later_than)):
             rules.append(rule)
+    # One reckoning date for the whole notice governs every rule that states none. Two
+    # different dates are not reconciled here; neither is applied.
+    if len({d for d, _ in reckoned}) == 1:
+        date, cev = reckoned[0]
+        for rule in rules:
+            if not rule.cutoff_date.has_value:
+                rule.cutoff_date = Fact.verified(date, cev)
     return rules
 
 
@@ -288,6 +339,13 @@ def extract_relaxation_rows(doc: SourceDocument, text: str) -> list[AgeRelaxatio
             years = int(m.group('years'))
             if len(category) < 2 or not _CATEGORY.search(category):
                 continue
+            if category.count('(') != category.count(')'):
+                # The tail of a cell the PDF wrapped ("Instructor in N.C.C.)"), not a group.
+                continue
+            if _FIGURE_QUALIFIER.match(region[m.end():m.end() + 40].lstrip()):
+                # "3 Years & length of service": a qualified figure is the numbered-row
+                # reader's to keep with its condition, not a plain row's to publish bare.
+                continue
             # A row is a short label plus a figure. A sentence that happens to end in
             # "N years" is not a row.
             if len(category.split()) > 6:
@@ -307,6 +365,91 @@ def extract_relaxation_rows(doc: SourceDocument, text: str) -> list[AgeRelaxatio
     return out
 
 
+#: A numbered row of a relaxation table: "4. SC/ST/BCs & EWS 5 Years".
+#: The serial may carry a dot or not ("4." / "4"), and may stand alone on its line with the
+#: cell text on the next -- so a row is recognised by its number continuing the sequence.
+_ITEM_START = re.compile(r'^\s*(\d{1,2})\s*[.)]?(?:\s+\S.*)?\s*$')
+#: Where a relaxation table stops: a note, the next clause, a page break.
+_TABLE_END = re.compile(r'^\s*(?:note\b|n\.\s?b\.|\d{1,2}\.\d{1,2}\b|para\b|=====)', re.I)
+#: A printed figure that is the most a group can get, or a figure with a part the candidate's
+#: own record decides ("3 years & length of service rendered"). Kept as printed and held for
+#: review: adding the bare number to an age limit would state a rule the notice did not.
+_FIGURE_QUALIFIER = re.compile(r'^(?:&|and\b|plus\b|\+|based\b|depending\b|in\s+addition\b|'
+                               r'subject\b|equal\s+to\b|after\s+deduct\w*)', re.I)
+
+
+def _group_key(label: str) -> str:
+    # One group however the table decorated it: "Ex-Servicemen (ESM)" and "Ex-Servicemen".
+    return re.sub(r'[^a-z0-9]', '', re.sub(r'\([^()]*\)', '', label.lower()))
+_ITEM_FIGURE = re.compile(r'(?P<upto>\b(?:up\s*to|upto|maximum\s+of|not\s+exceeding)\s+)?'
+                          r'(?P<n>\d{1,2})\s*(?:years?|yrs?)\b', re.I)
+
+
+def extract_relaxation_items(doc: SourceDocument, text: str) -> list[AgeRelaxation]:
+    """Numbered rows of a relaxation table whose cells the PDF wrapped over several lines.
+
+    "1. State Government / Employees / (Employees of ... not eligible). / Up to 5
+    Years based on the length of / regular service." is one row: a group, an exclusion and a
+    figure that depends on service. The row is reassembled from its number to the next
+    number, the group is what precedes the figure, and anything that qualifies the figure is
+    kept with it as the condition. A plain figure is VERIFIED; a qualified one is kept as
+    printed and NEEDS_REVIEW, so it is shown to the candidate and never added to a limit.
+    """
+    out: list[AgeRelaxation] = []
+    seen: set[str] = set()
+    for region in _relaxation_regions(text):
+        items: list[list[str]] = []
+        for line in region.split('\n'):
+            start = _ITEM_START.match(line)
+            if start and int(start.group(1)) == len(items) + 1:
+                items.append([line.strip()])
+            elif items:
+                if _TABLE_END.match(line):
+                    break
+                if line.strip() and not line.strip().isdigit():   # a page number is not a cell
+                    items[-1].append(line.strip())
+        for lines in items:
+            row = normalise_ws(' '.join(lines))
+            body = re.sub(r'^\d{1,2}\s*[.)]?\s*', '', row)
+            m = _ITEM_FIGURE.search(body)
+            if not m:
+                continue
+            head = body[:m.start()].strip(' .-:')
+            exclusion = re.search(r'\(([^()]{3,160})\)\s*\.?$', head)
+            category = normalise_ws(head[:exclusion.start()] if exclusion else head).strip(' .-')
+            # Serials the flattened table left in front of the cell ("2 3 1. State ...").
+            category = re.sub(r'^(?:\d{1,2}\s*[.)]?\s+)+', '', category).strip(' .-')
+            if not category or not _CATEGORY.search(category) or len(category.split()) > 8:
+                continue
+            key = category.lower()
+            if key in seen:
+                continue
+            ev = _evidence(row, doc, text, reading=f'age relaxation: {category}')
+            if ev is None:
+                continue
+            seen.add(key)
+            rest = normalise_ws(body[m.end():])
+            qualified = bool(m.group('upto')) or bool(rest and _FIGURE_QUALIFIER.match(rest))
+            relaxation = AgeRelaxation(
+                category_label=category,
+                scope=Scope([ScopeRef(ScopeKind.CATEGORY, _slug(category), category)]))
+            if qualified:
+                relaxation.years = Fact.needs_review(
+                    float(m.group('n')),
+                    'the notice qualifies this figure (a maximum, or a part that depends on the '
+                    "candidate's own service); it is shown as printed and not added to the limit", ev)
+            else:
+                relaxation.years = Fact.verified(float(m.group('n')), ev)
+            printed = normalise_ws(body[m.start():])
+            if exclusion or qualified:
+                condition = printed if qualified else ''
+                if exclusion:
+                    condition = normalise_ws(f'{condition} ({exclusion.group(1)})')
+                relaxation.conditions = Fact.verified(condition.strip(), ev)
+            out.append(relaxation)
+    return out
+
+
 def extract_relaxations(doc: SourceDocument, text: str, *,
                         posts: list[Post] | None = None) -> list[AgeRelaxation]:
     """Per-category age relaxation, exactly as the authority states it.
@@ -322,6 +465,10 @@ def extract_relaxations(doc: SourceDocument, text: str, *,
     # Tables first: that is how authorities actually publish this, and a row carries the
     # category and the figure together.
     out: list[AgeRelaxation] = extract_relaxation_rows(doc, text)
+    tabled = {_group_key(r.category_label) for r in out}
+    # Numbered rows whose cells wrapped over several lines, for the groups a one-line row
+    # did not already carry.
+    out += [r for r in extract_relaxation_items(doc, text) if _group_key(r.category_label) not in tabled]
     seen: set[tuple[str, str]] = {(r.category_label.lower(),
                                    f'[{int(r.years.value)}]False') for r in out
                                   if r.years.has_value}
@@ -395,7 +542,14 @@ def extract_relaxations(doc: SourceDocument, text: str, *,
                 relaxation.conditions = Fact.verified(
                     normalise_ws(condition.group(1)), ev)
             out.append(relaxation)
-    return out
+    # A group the table gives a figure for is not also listed as "stated without a figure"
+    # because a later sentence mentions its relaxation in words.
+    def norm(label: str) -> str:
+        return re.sub(r'[^a-z0-9]', '', label.lower())
+    figured = {norm(r.category_label) for r in out
+               if r.years.has_value or r.absolute_maximum.has_value}
+    return [r for r in out if r.years.has_value or r.absolute_maximum.has_value
+            or r.years.status is Status.NOT_PUBLISHED or norm(r.category_label) not in figured]
 
 
 # =============================================================== qualification
@@ -444,7 +598,7 @@ def extract_qualifications(doc: SourceDocument, text: str, *,
 
         rule = QualificationRule(
             scope=scope,
-            requirement=Fact.verified(normalise_ws(passage)[:400], ev),
+            requirement=Fact.verified(normalise_ws(passage), ev),
             is_essential=True if re.search(r'\bessential\b|\bmust\b|\bshall\s+(?:hold|'
                                            r'possess|have)\b', passage, re.I) else None)
         as_on = _AS_ON.search(passage)
@@ -516,7 +670,7 @@ def extract_requirements(doc: SourceDocument, text: str, *,
 
             out.append(Requirement(
                 kind=kind, scope=scope,
-                statement=Fact.verified(normalise_ws(passage)[:400], ev),
+                statement=Fact.verified(normalise_ws(passage), ev),
                 is_essential=True if re.search(r'\bessential\b|\bmust\b|\bshall\b',
                                                passage, re.I) else None))
             break
@@ -526,9 +680,11 @@ def extract_requirements(doc: SourceDocument, text: str, *,
 # ==================================================================== vacancies
 # Four and five figures are ordinary recruitment numbers. The old pattern capped the
 # run at three digits before a word boundary, so 1200 could not match at all.
+#: A count is never a clause number: "13.1 Vacancies:" read as one vacancy, because the "1"
+#: after the dot sits on a word boundary. Both figures refuse a digit or a dot before them.
 _VACANCY = re.compile(
-    r'\b(?:number\s+of\s+vacanc\w+|vacanc\w+)\b[^.;\n]{0,60}?\b(\d[\d,]{0,8}\d|\d)\b|'
-    r'\b(\d[\d,]{0,8}\d|\d)\s+vacanc\w+', re.I)
+    r'\b(?:number\s+of\s+vacanc\w+|vacanc\w+)\b[^.;\n]{0,60}?(?<![\d.])\b(\d[\d,]{0,8}\d|\d)\b|'
+    r'(?<![\d.])\b(\d[\d,]{0,8}\d|\d)\s+vacanc\w+', re.I)
 
 _TENTATIVE = re.compile(
     r'\btentativ\w+\b|\bprovisional\w*\b|\bapproximate\w*\b|\bliable\s+to\s+(?:change|'
@@ -600,65 +756,478 @@ _POST_CUE = re.compile(
 
 _PAY_LEVEL = re.compile(r'\b(?:pay\s+level|level)\s*[-–—:]?\s*(\d{1,2})\b', re.I)
 
+#: A table that lists what a candidate must *bring*, not what they are recruited *to*. A
+#: notice's "documents to be produced / uploaded" checklist reconstructs like a post table
+#: (one item per row), and its rows became posts named "PDF Application form", "Hall Ticket",
+#: "Non-Creamy Layer Certificate". Its heading, and its own row text, give it away.
+_NOT_A_POST_TABLE = re.compile(
+    r'documents?\s+to\s+be\s+(?:produced|uploaded|submitted|kept)|list\s+of\s+documents|'
+    r'certificates?\s+to\s+be|documents?\s+required|self[\s-]?declaration|check\s*list|'
+    r'instructions?\s+to\s+(?:the\s+)?(?:candidates?|applicants?)', re.I)
 
-def extract_posts(doc: SourceDocument, text: str, *, exam_id: str) -> list[Post]:
+#: A single row that is plainly a document/credential, not a post, even with no telltale
+#: table heading (an application form, a hall ticket, a named certificate).
+_DOCUMENT_ROW = re.compile(
+    r'^(?:pdf\b|application\s+form|hall\s+ticket|proof\s+of\b|'
+    r's\.?\s?s\.?\s?c\b|cbse|icse|declaration\b|no[\s-]?objection|non[\s-]?creamy|'
+    r'(?:community|nativity|caste|income|study|service|character|medical|disability|'
+    r'sports?|discharge|date\s+of\s+birth)\b[^.]{0,40}\bcertificate|certificate\b)', re.I)
+
+
+#: A word that names a thing a candidate *submits*, never a thing a candidate is recruited to.
+#: Used on whole names, so "Photographer" (a post) does not match "photograph".
+_DOCUMENT_WORD = re.compile(
+    r'\b(?:certificates?|declaration|affidavit|undertaking|hall\s*tickets?|admit\s*cards?|'
+    r'application\s+forms?|photographs?|signatures?|proof\s+of|marks?\s*(?:sheets?|memos?)|'
+    r'testimonials?)\b', re.I)
+
+
+def is_document_not_post(name: str) -> bool:
+    """Is this candidate post name plainly a document or credential rather than a post?
+
+    One test for every path that produces post candidates (the table reader, the semantic
+    reader, a legacy extractor, a stored record being re-materialized), so a document list
+    can never reach a candidate as a list of posts whichever reader happened to produce it."""
+    n = normalise_ws(name or '')
+    return bool(n) and bool(_DOCUMENT_ROW.match(n) or _DOCUMENT_WORD.search(n))
+
+
+#: What a post is called, as distinct from a document: the head nouns of public-service
+#: designations. Ordinary English for jobs and ranks; no authority's post list.
+_POST_NOUN = re.compile(
+    r'\b(?:officers?|assistants?|inspectors?|commissioners?|collectors?|superintendents?|'
+    r'clerks?|engineers?|managers?|registrars?|directors?|secretar(?:y|ies)|auditors?|'
+    r'accountants?|analysts?|investigators?|lecturers?|teachers?|professors?|constables?|'
+    r'stenographers?|typists?|translators?|librarians?|executives?|controllers?|examiners?|'
+    r'surveyors?|overseers?|supervisors?|wardens?|jailors?|pharmacists?|nurses?|'
+    r'scientists?|statisticians?|draughtsm[ae]n|operators?|attendants?|drivers?)\b', re.I)
+
+#: The neighbourhood of a table of posts: its headers name what a post table holds.
+_POST_TABLE_CONTEXT = re.compile(
+    r'\bname\s+of\s+(?:the\s+)?(?:posts?|services?)\b|\bpost\s+code\b|\bno\.?\s+of\s+(?:posts|vacancies)\b|'
+    r'\bvacanc\w+\b|\bscale\s+of\s+pay\b|\bpay\s+(?:level|scale|band|matrix)\b|\bcadre\b|'
+    r'\beducational\s+qualifications?\b', re.I)
+
+#: The neighbourhood of a checklist: what a candidate is told to do with the items.
+_DOCUMENT_CONTEXT = re.compile(
+    r'\b(?:upload\w*|enclos\w*|attach\w*|furnish\w*|to\s+be\s+(?:produced|submitted)|'
+    r'must\s+be\s+(?:produced|submitted)|at\s+the\s+time\s+of\s+(?:certificate\s+)?verification)\b|'
+    + _NOT_A_POST_TABLE.pattern, re.I)
+
+
+@dataclass
+class PostVerdict:
+    """What a list of post candidates is, and what each candidate is."""
+
+    #: POSTS | DOCUMENTS | MIXED | AMBIGUOUS
+    kind: str
+    posts: list[str]
+    documents: list[str]
+    ambiguous: list[str]
+    reasons: list[str]
+
+
+def classify_post_candidates(names: list[str], *, context: str = '') -> PostVerdict:
+    """Decide whether a reader's post candidates are posts, from several signals at once.
+
+    Each candidate is weighed on its own words (a document's name -- "certificate", "hall
+    ticket", "proof of" -- against a designation's head noun -- "officer", "inspector") and
+    on its neighbourhood (a checklist says upload / enclose / produce at verification; a post
+    table's headers say name of the post / post code / vacancies / scale of pay). A candidate
+    whose signals point one way is that; one whose signals tie is ambiguous.
+
+    The list as a whole:
+      * all posts (or posts plus candidates nothing speaks against)   -> POSTS
+      * documents and nothing else                                   -> DOCUMENTS
+      * documents and posts, every candidate decided                 -> MIXED
+      * documents alongside candidates that could not be decided     -> AMBIGUOUS
+    A caller publishes posts only for POSTS and MIXED; the others are held for review.
+    """
+    doc_ctx = bool(_DOCUMENT_CONTEXT.search(context or ''))
+    post_ctx = bool(_POST_TABLE_CONTEXT.search(context or ''))
+    posts, documents, ambiguous, reasons = [], [], [], []
+    for raw in names:
+        name = normalise_ws(raw or '')
+        if not name:
+            continue
+        own_d = 2 if is_document_not_post(name) else 0
+        own_p = 2 if _POST_NOUN.search(name) else 0
+        d = own_d + (1 if doc_ctx else 0)
+        p = own_p + (1 if post_ctx else 0)
+        if not own_d and not own_p and not post_ctx:
+            # Nothing in the name speaks either way, and no post table surrounds it: the
+            # neighbourhood alone does not turn a name into a document.
+            ambiguous.append(name)
+        elif d > p:
+            documents.append(name)
+        elif p > d:
+            posts.append(name)
+        else:
+            ambiguous.append(name)
+    if doc_ctx:
+        reasons.append('the surrounding text tells candidates to produce or upload the items')
+    if post_ctx:
+        reasons.append('the surrounding text carries post-table headers')
+    if documents and not posts and not ambiguous:
+        kind = 'DOCUMENTS'
+    elif documents and ambiguous:
+        kind = 'AMBIGUOUS'
+    elif documents and posts:
+        kind = 'MIXED'
+    elif ambiguous and doc_ctx and not posts:
+        # Nothing names a post, and the neighbourhood is a checklist.
+        kind = 'AMBIGUOUS'
+    else:
+        # Posts, or candidates from a post reader with nothing speaking against them --
+        # which is what every post list without a designation noun used to be.
+        kind = 'POSTS'
+        posts, ambiguous = posts + ambiguous, []
+    return PostVerdict(kind=kind, posts=posts, documents=documents, ambiguous=ambiguous,
+                       reasons=reasons)
+
+
+def vet_post_names(names: list[str]) -> tuple[list[str], list[str]]:
+    """Split candidate post names into (posts, documents)."""
+    posts, documents = [], []
+    for n in names:
+        (documents if is_document_not_post(n) else posts).append(n)
+    return posts, documents
+
+
+#: A band in a column the header already calls Age: "18-46", with no "years" beside it.
+_AGE_CELL = re.compile(r'^\s*(\d{1,2})\s*(?:[-–—]|to)\s*(\d{1,2})\s*(?:years?|yrs?)?\s*$', re.I)
+
+
+#: A grid's numbers spilled into a name cell: "Deputy Collector ... MZ1 6 2 2 1 1 1". A name
+#: carrying three or more bare numbers or dashes is a row of a different table, not a name.
+_SPILLED_CELLS = re.compile(
+    r'(?:(?:^|\s)(?:\d{1,4}|[-–—])(?=\s|$)){3,}'
+    # ... or another column's value: an age band, a pay figure, a period of years.
+    r'|\b\d{1,2}\s*[-–—]\s*\d{1,2}\b|\b\d{1,3}(?:,\d{2,3})+\b|\b\d{1,2}\s*(?:years?|yrs?)\b', re.I)
+
+
+_POST_TABLE_COLUMNS = frozenset({ColumnKind.VACANCY, ColumnKind.PAY, ColumnKind.AGE,
+                                 ColumnKind.QUALIFICATION, ColumnKind.CLASSIFICATION})
+
+
+def _name_key(name: str) -> str:
+    return re.sub(r'[^a-z0-9]', '', (name or '').lower())
+
+
+def _names_agree(a: str, b: str) -> bool:
+    """Do two tables name the same post? Word overlap on the significant words, so wrapping,
+    punctuation and a bracket that one table closes and the other does not do not matter."""
+    words = lambda n: {w for w in re.findall(r'[a-z]{3,}', n.lower())} - {'the', 'and', 'for', 'including'}
+    wa, wb = words(a), words(b)
+    if not wa or not wb:
+        return False
+    return len(wa & wb) / min(len(wa), len(wb)) >= 0.6
+
+
+def _post_code(row, table) -> str:
+    """The row's serial, where the table's own header calls that column a code."""
+    serial = next((c for c in table.columns if c.kind is ColumnKind.SERIAL), None)
+    if serial is None or not re.search(r'\bcode\b', serial.label or '', re.I):
+        return ''
+    digits = re.sub(r'\D', '', row.ordinal or '')
+    return digits.zfill(2) if digits else ''
+
+
+def _states_otherwise(post: Post, row, table) -> bool:
+    """Does this row print a value its namesake already holds differently?
+
+    Two rows of one notice can share a post name and be two posts: "Assistant / Assistant
+    Section Officer" at Pay Level-7 and again at Pay Level-6. Joined by name, the second was
+    folded into the first and its pay level lost. A second table describing the same post
+    prints the same values, or none."""
+    printed = (
+        (post.pay, normalise_ws(row.cells.get(ColumnKind.PAY, ''))
+         or normalise_ws(str(table.heading_values.get(ColumnKind.PAY, '')))),
+        (post.classification, normalise_ws(row.cells.get(ColumnKind.CLASSIFICATION, ''))),
+        (post.age_band, normalise_ws(row.cells.get(ColumnKind.AGE, ''))),
+        (post.department, normalise_ws(row.cells.get(ColumnKind.DEPARTMENT, ''))),
+    )
+    return any(held.has_value and value and _name_key(str(held.value)) != _name_key(value)
+               for held, value in printed)
+
+
+def _name_only(row) -> str:
+    """The post name of a row that printed nothing else, or ''.
+
+    Such a row is a post the table lists whose other cells are empty where it stands (a cell
+    merged with a neighbouring row, often across a page break). Its values are not in its row,
+    so it is not published -- but it is reported, not dropped in silence."""
+    cells = [normalise_ws(c) for c in (getattr(row, 'raw_cells', None) or []) if normalise_ws(c)]
+    if len(cells) != 1 or not row.ordinal:
+        return ''
+    name = cells[0]
+    if len(name) < 4 or re.search(r'\d', name) or is_document_not_post(name):
+        return ''
+    return name
+
+
+def extract_posts(doc: SourceDocument, text: str, *, exam_id: str,
+                  held: list | None = None) -> list[Post]:
     """Posts, from tables reconstructed out of the flattened document.
 
     Every field comes from the row's own cells, so a post's age is the age its row printed
     rather than the nearest age in the document. A row the reconstruction refused produces
     no post at all -- a post that does not exist is one a candidate may apply for.
+
+    A notice often states its posts in one table and something else about the same posts in
+    another (a qualification table, keyed by the same post codes). Such a row is joined to the
+    post it describes only where both the code and the name agree; it never creates a second
+    post, and a row that agrees on one but not the other is left out rather than joined.
+
+    `held`, when given, receives (ordinal, name, table heading) for each row that names a
+    post and prints nothing else about it.
     """
     out: list[Post] = []
     seen: set[str] = set()
+    by_code: dict[str, Post] = {}
 
     # Grids first, then lists: an authority that publishes a grid has said more
     # about each post, so its rows are the better reading where both exist.
     for table in reconstruct(text) + reconstruct_lists(text):
+        # A checklist of documents to bring is not the list of posts recruited to.
+        if _NOT_A_POST_TABLE.search(table.heading or ''):
+            continue
+        if (ColumnKind.NAME not in table.kinds and table.columns
+                and not set(table.kinds) & _POST_TABLE_COLUMNS):
+            # A list headed only "Department" (districts, offices, centres) names places, not
+            # posts: a post table carries a count, pay, age, qualification or class beside it.
+            continue
         for row in table.rows:
             if not row.reconstructed:
+                # A row the columns could not be read from may still be a known post's row
+                # in a second table; only its remainder after the full name is taken.
+                joined = _join_by_known_name(by_code.get(_post_code(row, table)), row, table, doc, text)
+                lone = '' if joined or ColumnKind.NAME not in table.kinds else _name_only(row)
+                if lone and held is not None:
+                    held.append((row.ordinal.strip(' .'), lone, normalise_ws(table.heading)[:80]))
                 continue
             name = normalise_ws(row.cells.get(ColumnKind.NAME, ''))
             if not name:
                 # Some tables name the post in the column an authority headed
                 # "Service" or "Cadre"; that is still the thing being recruited to.
                 name = normalise_ws(row.cells.get(ColumnKind.DEPARTMENT, ''))
-            if len(name) < 4 or name.lower() in seen:
+            if (ColumnKind.VACANCY in table.kinds
+                    and not normalise_ws(row.cells.get(ColumnKind.VACANCY, ''))):
+                trailing = re.match(r'^(.*\D)\s+(\d{1,5})$', name)
+                if trailing:
+                    # The table has a count column this row left empty, and the name ends in
+                    # a bare count: the count's cell ran into the name's.
+                    name = trailing.group(1).strip()
+                    row.cells[ColumnKind.VACANCY] = trailing.group(2)
+            if len(name) < 4 or _SPILLED_CELLS.search(name):
                 continue
+            if is_document_not_post(name):
+                continue
+            code = _post_code(row, table)
             ev = _evidence(row.span, doc, text, reading=f'post: {name[:60]}')
             if ev is None:
                 continue
+
+            existing = by_code.get(code) if code else None
+            namesake = False
+            if existing is None:
+                existing = next((p for p in out if _name_key(p.name) == _name_key(name)), None)
+                if existing is not None and _states_otherwise(existing, row, table):
+                    existing, namesake = None, True
+            if existing is not None:
+                if not _names_agree(existing.name, name):
+                    continue
+                # The same post, described by another table. Where the table carries text
+                # beside the name, the name's own boundary is the known full name, not the
+                # cell split: a wrapped name ("Municipal Commissioner -" / "Grade-II (...)")
+                # otherwise spills its second line into the next column.
+                if not _join_by_known_name(existing, row, table, doc, text):
+                    _add_row_facts(existing, row, ev, table)
+                continue
+            if name.lower() in seen and not namesake:
+                continue
             seen.add(name.lower())
 
-            post = Post(id=f'post-{exam_id}-{_slug(name)}', name=name, evidence=[ev],
+            post_id = f'post-{exam_id}-{_slug(name)}'
+            if any(p.id == post_id for p in out):
+                # A namesake post: numbered in the order the notice lists it.
+                post_id = f'{post_id}-{sum(1 for p in out if p.id.startswith(post_id)) + 1}'
+            post = Post(id=post_id, name=name, evidence=[ev],
                         status=Status.NEEDS_REVIEW if row.note else Status.VERIFIED,
-                        note=row.note)
-
-            department = normalise_ws(row.cells.get(ColumnKind.DEPARTMENT, ''))
-            if department and department != name:
-                post.department = Fact.verified(department, ev)
-            classification = normalise_ws(row.cells.get(ColumnKind.CLASSIFICATION, ''))
-            if classification:
-                post.classification = Fact.verified(classification, ev)
-
-            # A pay level the rows do not repeat may be stated in the heading above them,
-            # where it governs every row of that section.
-            pay = normalise_ws(row.cells.get(ColumnKind.PAY, '')) or normalise_ws(
-                str(table.heading_values.get(ColumnKind.PAY, '')))
-            if pay:
-                post.pay = Fact.verified(pay, ev)
-
-            vacancy = normalise_ws(row.cells.get(ColumnKind.VACANCY, ''))
-            if vacancy.isdigit():
-                post.vacancies.append(VacancyCount(count=Fact.verified(int(vacancy), ev)))
-
-            qualification = normalise_ws(row.cells.get(ColumnKind.QUALIFICATION, ''))
-            if qualification:
-                post.qualification.append(QualificationRule(
-                    scope=Scope([ScopeRef(ScopeKind.POST, post.id, post.name)]),
-                    requirement=Fact.verified(qualification[:400], ev)))
-
+                        note=row.note, code=code)
+            _add_row_facts(post, row, ev, table)
+            if code:
+                by_code[code] = post
             out.append(post)
     return out[:80]
+
+
+def _tokens(text: str) -> list[str]:
+    return re.findall(r'[a-z0-9]+', (text or '').lower())
+
+
+def _join_by_known_name(post: Post | None, row, table, doc: SourceDocument, text: str) -> bool:
+    """Take a qualification from a row whose post is already known by code.
+
+    The row's text must begin with the post's full name, word for word (punctuation aside);
+    what follows the name is the qualification. Anything less than the whole name matching is
+    refused -- the boundary would be a guess. Returns True where a qualification was taken.
+    """
+    if post is None or post.qualification:
+        return False
+    if not any(c.kind is ColumnKind.QUALIFICATION for c in table.columns):
+        return False
+    raw = normalise_ws(' '.join(row.raw_cells or [])) if getattr(row, 'raw_cells', None) else ''
+    if not raw:
+        return False
+    want = _tokens(post.name)
+    words = list(re.finditer(r'[A-Za-z0-9]+', raw))
+    if len(words) <= len(want) or [w.group(0).lower() for w in words[:len(want)]] != want:
+        return False
+    remainder = raw[words[len(want) - 1].end():].lstrip(' )]}.,;:-–—')
+    if len(remainder) < 15:
+        return False
+    ev = _evidence(row.span, doc, text, reading=f'qualification for {post.name[:50]}')
+    if ev is None:
+        return False
+    post.qualification.append(QualificationRule(
+        scope=Scope([ScopeRef(ScopeKind.POST, post.id, post.name)]),
+        requirement=Fact.verified(remainder, ev)))
+    return True
+
+
+def _add_row_facts(post: Post, row, ev, table) -> None:
+    """The cells of one row, onto the post it describes. A fact already held is kept."""
+    name = post.name
+    department = normalise_ws(row.cells.get(ColumnKind.DEPARTMENT, ''))
+    if department and department != name and not post.department.has_value:
+        post.department = Fact.verified(department, ev)
+    classification = normalise_ws(row.cells.get(ColumnKind.CLASSIFICATION, ''))
+    if classification and not post.classification.has_value:
+        post.classification = Fact.verified(classification, ev)
+    # A pay level the rows do not repeat may be stated in the heading above them,
+    # where it governs every row of that section.
+    pay = normalise_ws(row.cells.get(ColumnKind.PAY, '')) or normalise_ws(
+        str(table.heading_values.get(ColumnKind.PAY, '')))
+    if pay and not post.pay.has_value:
+        post.pay = Fact.verified(pay, ev)
+    vacancy = normalise_ws(row.cells.get(ColumnKind.VACANCY, ''))
+    if vacancy.isdigit() and not post.vacancies:
+        post.vacancies.append(VacancyCount(count=Fact.verified(int(vacancy), ev)))
+    age = normalise_ws(row.cells.get(ColumnKind.AGE, ''))
+    if age and (_AGE_RANGE.search(age) or _AGE_CELL.match(age)) and not post.age_band.has_value:
+        post.age_band = Fact.verified(age, ev)
+    qualification = normalise_ws(row.cells.get(ColumnKind.QUALIFICATION, ''))
+    if qualification and not post.qualification:
+        post.qualification.append(QualificationRule(
+            scope=Scope([ScopeRef(ScopeKind.POST, post.id, post.name)]),
+            requirement=Fact.verified(qualification, ev)))
+
+
+#: "For Post Code Nos. 02 & 09:", "For PC. No. 07", "Post Code No.07 -". The codes a clause is
+#: scoped to, in the authority's own numbering.
+_CODE_SCOPE = re.compile(
+    r'\bfor\s+(?:post\s+code|p\.?\s*c\.?)\s*(?:no|nos)\.?\s*'
+    r'(?P<codes>\d{1,3}(?:\s*(?:,|&|and|to)\s*\d{1,3})*)\s*[:\-–—]?', re.I)
+
+
+def _codes_in(expr: str) -> list[str]:
+    codes: list[str] = []
+    for a, b in re.findall(r'(\d{1,3})\s*to\s*(\d{1,3})', expr, re.I):
+        codes += [str(n).zfill(2) for n in range(int(a), int(b) + 1)]
+    for n in re.findall(r'\d{1,3}', re.sub(r'\d{1,3}\s*to\s*\d{1,3}', ' ', expr, flags=re.I)):
+        codes.append(n.zfill(2))
+    return list(dict.fromkeys(codes))
+
+
+def post_code_clauses(doc: SourceDocument, text: str, posts: list[Post], *,
+                      heading: re.Pattern) -> None:
+    """Clauses a notice scopes to posts by their codes, attached to those posts.
+
+    Only inside the section whose heading matches `heading` (e.g. physical requirements), and
+    only for posts that carry a code the table printed. The clause is kept as printed, up to
+    the next code-scoped clause or the next section, and becomes an `other_requirements` fact
+    of each post it names.
+    """
+    coded = {p.code: p for p in posts if p.code}
+    if not coded:
+        return
+    flat = text or ''
+    for section in heading.finditer(flat):
+        body = flat[section.end():section.end() + 6000]
+        stop = re.search(r'\n\s*PARA[\s\-–—]*\d|\n\s*\d{1,2}\.\d{1,2}\.?\s+[A-Z]', body)
+        body = body[:stop.start()] if stop else body
+        scopes = list(_CODE_SCOPE.finditer(body))
+        for i, m in enumerate(scopes):
+            clause_end = scopes[i + 1].start() if i + 1 < len(scopes) else len(body)
+            clause = normalise_ws(body[m.start():clause_end])
+            # The requirement is the clause's first sentence, whole. Where no sentence end is
+            # printed, the clause itself -- bounded by the next post-code scope -- is the unit.
+            end = sentence_end(clause, 0)
+            span = clause[:end] if end is not None else clause
+            ev = _evidence(span, doc, text, reading='a clause scoped to post codes')
+            if ev is None:
+                continue
+            for code in _codes_in(m.group('codes')):
+                post = coded.get(code)
+                if post is not None:
+                    fact = Fact.verified(span, ev)
+                    fact.note = 'physical requirement'
+                    post.other_requirements.append(fact)
+
+
+def post_scoped_sentences(doc: SourceDocument, text: str, posts: list[Post]) -> None:
+    """Sentences anywhere in the notice that name posts by code ("for PC.No.07 Men only are
+    eligible"), attached to those posts as printed. The physical-requirement clauses, read by
+    `post_code_clauses`, are left to it; this is every other code-scoped statement."""
+    coded = {p.code: p for p in posts if p.code}
+    if not coded:
+        return
+    flat = normalise_ws(text or '')
+    held = {f.value for p in posts for f in p.other_requirements}
+    for m in _CODE_SCOPE.finditer(flat):
+        start = max(flat.rfind('. ', 0, m.start()) + 2, flat.rfind(': ', 0, m.start()) + 2, 0)
+        end_dot = flat.find('. ', m.end())
+        end = end_dot + 1 if end_dot != -1 else len(flat)
+        sentence = flat[start:end].strip()
+        if len(sentence) > 320 or any(sentence in h or h in sentence for h in held):
+            continue
+        ev = _evidence(sentence, doc, text, reading='a statement scoped to post codes')
+        if ev is None:
+            continue
+        for code in _codes_in(m.group('codes')):
+            post = coded.get(code)
+            if post is not None and not any(f.value == sentence for f in post.other_requirements):
+                fact = Fact.verified(sentence, ev)
+                fact.note = 'post-scoped statement'
+                post.other_requirements.append(fact)
+
+
+def printed_vacancy_total(doc: SourceDocument, text: str) -> VacancyCount | None:
+    """The total a post table prints on its own totals line, where its rows add up to it.
+
+    The figure is the authority's ("TOTAL 563"); the rows' own counts summing to it is the
+    check that the line belongs to this table's vacancy column. Where they do not agree, or
+    any row's count is missing, nothing is returned -- a total is never computed here.
+    """
+    for table in reconstruct(text):
+        if ColumnKind.VACANCY not in table.kinds or not table.total_line:
+            continue
+        m = re.search(r'(\d[\d,]*)\s*$', table.total_line)
+        if not m:
+            continue
+        printed = int(m.group(1).replace(',', ''))
+        counts = [normalise_ws(r.cells.get(ColumnKind.VACANCY, '')) for r in table.rows]
+        if not counts or any(not c.isdigit() for c in counts) or not all(r.reconstructed for r in table.rows):
+            continue
+        if sum(int(c) for c in counts) != printed:
+            continue
+        ev = _evidence(table.total_line, doc, text, reading=f'total vacancies printed: {printed}')
+        if ev is None:
+            continue
+        return VacancyCount(count=Fact.verified(printed, ev),
+                            qualifier='printed total; the rows of the post table add up to it')
+    return None
 
 
 def post_age_rules(doc: SourceDocument, text: str, posts: list[Post]) -> list[AgeRule]:
@@ -678,14 +1247,20 @@ def post_age_rules(doc: SourceDocument, text: str, posts: list[Post]) -> list[Ag
                 continue
             name = normalise_ws(row.cells.get(ColumnKind.NAME, '')) or normalise_ws(
                 row.cells.get(ColumnKind.DEPARTMENT, ''))
-            post = next((p for p in posts if p.name.lower() == name.lower()), None)
+            post = next((p for p in posts if p.name.lower() == name.lower()), None) or next(
+                (p for p in posts if _name_key(p.name) == _name_key(name)), None)
             if post is None:
                 continue
             parsed = _AGE_RANGE.search(band)
-            if not parsed:
+            cell = _AGE_CELL.match(band)
+            if not parsed and not cell:
                 continue
-            pair = ((parsed.group(1), parsed.group(2)) if parsed.group(1)
-                    else (parsed.group(3), parsed.group(4)))
+            if parsed:
+                pair = ((parsed.group(1), parsed.group(2)) if parsed.group(1)
+                        else (parsed.group(3), parsed.group(4)))
+            else:
+                # The column is headed Age, so a bare band in it is an age band.
+                pair = (cell.group(1), cell.group(2))
             ev = _evidence(row.span, doc, text, reading=f'age for {post.name[:50]}')
             if ev is None:
                 continue

@@ -99,7 +99,7 @@ _RELEASE_CUE = re.compile(
 _RELATIVE_RULE = re.compile(
     r'(?<![\d/])(?:\d{1,3}\s*[/\u2013-]\s*)?\d{1,3}\s*(?:\(\s*\w+\s*\)\s*)?'
     r'(?:days?|weeks?)\s+'
-    r'(?:before|prior\s+to|in\s+advance\s+of)\b[^.;]{0,60}', re.I)
+    r'(?:before|prior\s+to|in\s+advance\s+of)\b[^.;]{0,120}', re.I)
 
 #: What a candidate signs in with. Each is an ordinary phrase; none is invented for them.
 _CREDENTIAL_CUES: tuple[tuple[str, re.Pattern], ...] = (
@@ -296,18 +296,35 @@ def _dated_fact(reading: str, at: int, text: str, doc: SourceDocument,
 _CELL_SEAM = re.compile(r'(?<=[a-z,)])\s+(?=[A-Z])')
 
 
+#: Words a table cell never ends on. "7 days prior to the Examination" capitalises the noun
+#: after "the"; that is prose, not two cells, and cutting there quoted the Commission as
+#: saying "7 days prior to the".
+_OPEN_ENDED = frozenset({'the', 'a', 'an', 'of', 'to', 'and', 'or', 'in', 'on', 'for', 'by',
+                         'from', 'at', 'with', 'before', 'after', 'prior', 'than'})
+
+
 def _rule_text(raw: str) -> str:
     """A rule as the authority wrote it, ending where its own sentence ends."""
-    return _CELL_SEAM.split(normalise_ws(raw), 1)[0].strip(' ,-')
+    text = normalise_ws(raw)
+    for seam in _CELL_SEAM.finditer(text):
+        before = re.findall(r'[A-Za-z]+', text[:seam.start()])
+        if before and before[-1].lower() in _OPEN_ENDED:
+            continue
+        return text[:seam.start()].strip(' ,-')
+    return text.strip(' ,-')
 
 
 def _rule_fact(at: int, text: str, doc: SourceDocument):
     """A relative release rule near a cue, kept in the authority's own words."""
-    window = text[at:at + 220]
+    window = text[at:at + 320]
     m = _RELATIVE_RULE.search(window)
     if not m:
         return None
-    phrase = _rule_text(m.group(0))
+    raw = m.group(0)
+    if m.end() < len(window) and window[m.end()].isalnum():
+        # The rule ran past what the pattern holds; a half word is not the authority's.
+        raw = raw.rsplit(' ', 1)[0]
+    phrase = _rule_text(raw)
     ev = _evidence(_near(text, at, 240), doc, text,
                    reading=f'release rule: {phrase}')
     if ev is None:

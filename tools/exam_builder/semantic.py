@@ -27,6 +27,7 @@ from dataclasses import dataclass, field as dc_field
 from typing import Callable, Iterable
 
 from .evidence import Evidence, Extracted, normalise_ws, verified_or_none
+from .units import next_structural_boundary, sentence_end, sentence_start
 
 # --------------------------------------------------------------------------- passages
 
@@ -42,10 +43,21 @@ def passages(text: str, *, window: int = 320, stride: int = 160) -> list[tuple[i
         return []
     out: list[tuple[int, str]] = []
     for start in range(0, max(1, len(flat)), stride):
-        chunk = flat[start:start + window]
+        # A window never begins or ends inside a token. "There are approx.12,256 vacancies"
+        # cut at "approx.12,2" was read as 122 vacancies, and the truncated span is still a
+        # verbatim substring of the document, so no later check could catch it. The windows
+        # overlap, so the partial token dropped here is whole in the neighbouring window.
+        begin, end = start, min(len(flat), start + window)
+        if begin > 0 and not flat[begin - 1].isspace():
+            nxt = flat.find(' ', begin, end)
+            begin = nxt + 1 if nxt != -1 else begin
+        if end < len(flat) and not flat[end].isspace():
+            nxt = flat.find(' ', end, end + 60)
+            end = nxt if nxt != -1 else end
+        chunk = flat[begin:end]
         if len(chunk) < 40 and out:
             break
-        out.append((start, chunk))
+        out.append((begin, chunk))
     return out
 
 
@@ -91,6 +103,10 @@ class FieldSpec:
     #: The narrowest sentence carrying the value becomes the evidence span.
     evidence_from: Callable[[str, object], str] | None = None
     purpose: str = ''
+    #: 'sentence' when the value's `text` quotes one sentence of the document. The passage it was
+    #: read from is a search window, not a boundary: the text runs to the sentence's own end in
+    #: the whole document, and a sentence whose end cannot be found is not read at all.
+    unit: str = ''
 
 
 # ------------------------------------------------------------------------ normalisers
@@ -181,10 +197,34 @@ def _age(passage: str):
     return None
 
 
+#: A count is the number bound to the noun: "approx.12,256 vacancies", "563 posts",
+#: "vacancies: 45", "number of vacancies is 120". Any number merely near the word -- "the
+#: vacancies will be filled as per Rule-22" -- is a clause, not a count.
+#: ("3.1 Tentative vacancies" is clause 3.1, not one vacancy: a number after "digit." is part
+#: of a clause or a decimal.)
+_COUNT_BEFORE = re.compile(r'(?<![\w,/-])(?<!\d\.)(\d{1,3}(?:,\d{2,3})+|\d{1,7})(?!\.\d)\s*(?:\([^)]{0,30}\)\s*)?'
+                           r'(?:\w+\s+){0,2}?(?:vacanc\w*|posts)\b', re.I)
+_COUNT_AFTER = re.compile(r'\b(?:vacanc\w*|number\s+of\s+posts)\s*(?:is|are|:|-|–|=|of)\s*'
+                          r'(?:approx\w*\.?\s*|about\s+)?(\d{1,3}(?:,\d{2,3})+|\d{1,7})\b(?![/-]\d)', re.I)
+#: The total said in so many words: "The number of vacancies to be filled through the
+#: examination is expected to be approximately 933". Read before any bound count, because the
+#: same sentence often goes on to name a part of it ("which include 33 Vacancies reserved").
+_COUNT_STATED = re.compile(r'\bnumber\s+of\s+(?:vacanc\w*|posts)\b[^.\d]{0,80}?\b(?:is|are|will\s+be|:|=)\s*'
+                           r'(?:(?:expected|likely|estimated)\s+to\s+be\s+)?(?:approx\w*\.?\s*|about\s+)?'
+                           r'(\d{1,3}(?:,\d{2,3})+|\d{1,7})\b(?![/-]\d)', re.I)
+#: "which include 33 Vacancies reserved for ..." -- a part of the total, never the total.
+_PART_OF = re.compile(r'(?:includ\w*|of\s+which|out\s+of\s+which|among\s+(?:them|which))\s*$', re.I)
+
+
+def _bound_count(passage: str):
+    for m in _COUNT_BEFORE.finditer(passage):
+        if not _PART_OF.search(passage[max(0, m.start() - 30):m.start()]):
+            return m
+    return None
+
+
 def _vacancies(passage: str):
-    m = re.search(r'(?:number of\s+)?(?:vacanc|post)\w*\D{0,80}?([\d,]{2,7})', passage, re.I)
-    if not m:
-        m = re.search(r'([\d,]{2,7})\s*(?:vacanc|post)\w*', passage, re.I)
+    m = _COUNT_STATED.search(passage) or _bound_count(passage) or _COUNT_AFTER.search(passage)
     if not m:
         return None
     n = m.group(1).replace(',', '')
@@ -209,19 +249,35 @@ def _attempts(passage: str):
     return {'limited': True, 'count': int(m.group(2))}
 
 
+def _qualification_levels(text: str) -> list[str]:
+    return sorted({w.lower() for w in re.findall(
+        r"\b(bachelor'?s?|master'?s?|graduat\w+|post[- ]graduat\w+|degree|diploma|"
+        r"matriculation|10\+2|intermediate|doctorate|ph\.?d)\b", text, re.I)})
+
+
 def _qualification(passage: str):
-    m = re.search(r"((?:must|should|shall)\s+(?:hold|possess|have)\b.{0,320}|"
+    # From the requirement's first word to its sentence end within what was read; `extract`
+    # re-reads the sentence to its own end in the whole document (the spec's unit), so the
+    # passage's width never decides where the requirement stops.
+    m = re.search(r"((?:must|should|shall)\s+(?:hold|possess|have)\b.*|"
                   r"\b(?:bachelor'?s?|graduat\w+|master'?s?|degree|diploma|"
-                  r"matriculation|10\+2|intermediate)\b.{0,300})", passage, re.I | re.S)
+                  r"matriculation|10\+2|intermediate)\b.*)", passage, re.I | re.S)
     if not m:
         return None
     text = normalise_ws(m.group(1))
-    levels = sorted({w.lower() for w in re.findall(
-        r"\b(bachelor'?s?|master'?s?|graduat\w+|post[- ]graduat\w+|degree|diploma|"
-        r"matriculation|10\+2|intermediate|doctorate|ph\.?d)\b", text, re.I)})
+    end = sentence_end(text, 0)
+    if end is not None:
+        text = text[:end]
+    levels = _qualification_levels(text)
     if not levels:
         return None
-    return {'text': text[:400], 'levels': levels}
+    out = {'text': text, 'levels': levels}
+    if not re.match(r'(?:must|should|shall)\s', text, re.I):
+        # Matched on the degree word inside a sentence ("... and the degree must have been
+        # obtained ..."): the requirement is the whole sentence, so `extract` reads it from the
+        # sentence's own start. Never published; removed there.
+        out['_starts_inside_sentence'] = True
+    return out
 
 
 def _pattern(passage: str):
@@ -231,6 +287,10 @@ def _pattern(passage: str):
             r'(paper[\s\-]*(?:[IVX]+|\d)|tier[\s\-]*(?:[IVX]+|\d)|stage[\s\-]*(?:[IVX]+|\d))'
             r'([^\n]{0,120}?)'
             r'(?:(\d{2,4})\s*(?:marks|mks))', passage, re.I):
+        if re.search(r'\btotal\b\s*[:\-–]?\s*$', m.group(2), re.I):
+            # "Paper-I : General Studies : Total 200 Marks": the figure is the stage's total,
+            # printed where a flattened table put it, not this paper's marks.
+            continue
         row = {'label': normalise_ws(m.group(1)), 'name': normalise_ws(m.group(2)).strip(' -:—'),
                'marks': int(m.group(3))}
         dur = re.search(r'(\d{1,3})\s*(hours?|hrs?|minutes?|mins?)',
@@ -306,9 +366,11 @@ SPECS: tuple[FieldSpec, ...] = (
                      r'matriculation', r'10\+2', r'intermediate'),
             supporting=(r'qualification', r'recognis\w+|recogniz\w+', r'universit\w+',
                         r'must\s+(?:hold|possess|have)', r'eligib\w+'),
-            against=(r'degree of difficulty', r'degrees celsius'),
+            # A clause about fake or unrecognised institutions says which degrees do not
+            # count; it names degrees and eligibility without stating the requirement.
+            against=(r'degree of difficulty', r'degrees celsius', r'\bfake\b', r'\bbogus\b'),
         ),
-        normalise=_qualification),
+        normalise=_qualification, unit='sentence'),
     FieldSpec(
         name='examPattern',
         purpose='Papers, marks, questions, duration and negative marking.',
@@ -338,20 +400,28 @@ def extract(field_name: str, document_text: str, *, source_url: str,
     if spec is None or not document_text:
         return None
 
-    scored: list[tuple[float, list[str], str]] = []
-    for _, chunk in passages(document_text):
+    scored: list[tuple[float, list[str], str, int]] = []
+    for offset, chunk in passages(document_text):
         score, cues = spec.cues.score(chunk)
         if score >= min_confidence:
-            scored.append((score, cues, chunk))
+            scored.append((score, cues, chunk, offset))
     scored.sort(key=lambda t: -t[0])
+    flat = normalise_ws(document_text) if spec.unit else ''
 
-    for score, cues, chunk in scored[:25]:
+    for score, cues, chunk, offset in scored[:25]:
         value = spec.normalise(chunk)
         if value is None:
             continue
-        # The evidence is the narrowest sentence that still carries the value, so a
-        # reviewer sees the claim rather than a paragraph around it.
-        span = _narrowest_span(chunk, spec, value)
+        if spec.unit == 'sentence':
+            value = _whole_sentence(value, chunk, offset, flat, spec)
+            if value is None:
+                continue
+            # The value is the sentence, verbatim, and so is its evidence.
+            span = value['text']
+        else:
+            # The evidence is the narrowest sentence that still carries the value, so a
+            # reviewer sees the claim rather than a paragraph around it.
+            span = _narrowest_span(chunk, spec, value)
         ev = Evidence(span=span, source_url=source_url, document_title=document_title,
                       page=(page_of(span) if page_of else 1),
                       reading=f'{field_name} = {value}')
@@ -361,6 +431,40 @@ def extract(field_name: str, document_text: str, *, source_url: str,
         if ok is not None:
             return ok
     return None
+
+
+def _whole_sentence(value: object, chunk: str, offset: int, flat: str, spec: FieldSpec):
+    """The value with its `text` ending where its sentence ends in the whole document.
+
+    A passage is a fixed-width window, so a requirement that begins near its right edge was cut
+    wherever the window stopped ("... under a Central Act, Provincial Act or a"). The text is found
+    in the document at the passage's own offset and read to its sentence end. When no sentence end
+    follows before the next clause or heading, the reading is not complete and is dropped: nothing
+    is supplied for the part that could not be read.
+    """
+    if not isinstance(value, dict) or not value.get('text'):
+        return None
+    head = normalise_ws(value['text'])[:60]
+    local = chunk.find(head)
+    if local < 0:
+        return None
+    start = offset + local
+    if flat[start:start + len(head)] != head:
+        start = flat.find(head, max(0, offset - 5))
+        if start < 0:
+            return None
+    end = sentence_end(flat, start, next_structural_boundary(flat, start + 1))
+    if end is None:
+        return None
+    whole = dict(value)
+    if whole.pop('_starts_inside_sentence', False):
+        start = sentence_start(flat, start)
+    whole['text'] = flat[start:end]
+    if spec.name == 'qualification':
+        whole['levels'] = _qualification_levels(whole['text'])
+        if not whole['levels']:
+            return None
+    return whole
 
 
 def _narrowest_span(chunk: str, spec: FieldSpec, value: object) -> str:

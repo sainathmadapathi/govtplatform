@@ -410,6 +410,9 @@ class PatternLevel(str, Enum):
     SECTION = 'SECTION'
     PART = 'PART'
     OTHER = 'OTHER'
+    #: A heading over the structure -- "Scheme of Examination" over a table that holds
+    #: several stages -- kept with what was read under it, never presented as a stage.
+    HEADING = 'HEADING'
 
 
 @dataclass
@@ -970,6 +973,13 @@ class FeeRule:
     is_exempt: Fact[bool] = dc_field(default_factory=Fact)
     accepted_modes: Fact[list] = dc_field(default_factory=Fact)
     note: str = ''
+    #: Which fee this is, where the document names it: APPLICATION_PROCESSING, EXAMINATION or
+    #: TOTAL. Empty where the document says only "the fee". For an exemption, the fee the
+    #: exemption lifts.
+    fee_type: str = ''
+    #: The group an exemption is for, in the document's own words, where no category from
+    #: the reservation vocabulary names it ("unemployed candidates").
+    stated_group: str = ''
 
 
 # ================================================================== milestones
@@ -1101,6 +1111,11 @@ class Post:
     evidence: list[SourceEvidence] = dc_field(default_factory=list)
     status: Status = Status.NOT_EXTRACTED
     note: str = ''
+    #: The authority's own code for the post, where its table heads the serial column as a
+    #: code ("Post code No."). A bare row number is not a code and is never recorded here.
+    code: str = ''
+    #: The age band this post's own row printed ("18-46"), as printed.
+    age_band: Fact[str] = dc_field(default_factory=Fact)
 
 
 @dataclass

@@ -49,7 +49,10 @@ __all__ = ['read_notice', 'read_row', 'read_rows', 'classify_label', 'may_supply
 _KIND_CUES: tuple[tuple[ResultKind, re.Pattern], ...] = (
     (ResultKind.DV_SHORTLIST, re.compile(
         r'\bdocument\s+verification\b[^.;]{0,30}\b(?:short[\s\-]?list|list|call)\w*'
-        r'|\bshort[\s\-]?listed\b[^.;]{0,30}\bdocument\s+verification\b', re.I)),
+        r'|\bshort[\s\-]?listed\b[^.;]{0,30}\bdocument\s+verification\b'
+        # "Verification of Certificates", "Certificate Verification": the same stage under
+        # the name many state commissions use, announced as a call to it.
+        r'|\bverification\s+of\s+certificates?\b|\bcertificates?\s+verification\b', re.I)),
     (ResultKind.INTERVIEW_SHORTLIST, re.compile(
         r'\b(?:interview|personality\s+test)\b[^.;]{0,30}\bshort[\s\-]?list\w*'
         r'|\bshort[\s\-]?listed\b[^.;]{0,30}\b(?:interview|personality\s+test)\b', re.I)),
@@ -59,6 +62,7 @@ _KIND_CUES: tuple[tuple[ResultKind, re.Pattern], ...] = (
         r'\brecommend(?:ation|ed)\b|\bcandidates?\s+recommended\b', re.I)),
     (ResultKind.SELECTION, re.compile(
         r'\bselection\s+list\b|\bselected\s+candidates?\b|\bfinal\s+selection\b'
+        r'|\bprovisional(?:ly)?\s+selecti?(?:on|ed)\b|\bselection\s+notification\b'
         r'|\bappointment\b', re.I)),
     (ResultKind.SCORECARD, re.compile(
         r'\bscore\s*cards?\b|\bresponse\s+sheets?\b', re.I)),
@@ -92,10 +96,11 @@ _QUALIFICATION_CUES: tuple[tuple[QualificationState, re.Pattern], ...] = (
 #: The stage a cleared candidate advances to: "short-listing for Tier-II", "qualified for the
 #: Main Examination". The stage it *names as the destination* is the next stage.
 _NEXT_STAGE_CUE = re.compile(
-    r'\b(?:short[\s\-]?list\w*|qualif\w+|admission|appear\w+)\b[^.;]{0,40}?'
+    r'\b(?:short[\s\-]?list\w*|qualif\w+|admission|appear\w+|sent|called|referred)\b[^.;]{0,40}?'
     r'\b(?:for|to|in)\s+(?:appearing\s+in\s+|the\s+)?'
     r'((?:tier|phase|stage)[\s\-]*[IVX0-9]+|main\w*|interview|personality\s+test'
-    r'|document\s+verification|skill\s+test)', re.I)
+    r'|document\s+verification|skill\s+test|medical\s+(?:examination|board)'
+    r'|verification\s+of\s+certificates?)', re.I)
 
 #: A count of those who cleared: "13,343 candidates", "declaration of final result of 219".
 _COUNT_CUE = re.compile(
@@ -145,8 +150,18 @@ def _qualification(text: str) -> QualificationState:
     return QualificationState.UNSTATED
 
 
-def _next_stage(text: str, doc: SourceDocument):
-    m = _NEXT_STAGE_CUE.search(text)
+def _next_stage(text: str, doc: SourceDocument, *, own: str = ''):
+    # The first destination that is not the declaration's own stage: a call to verification
+    # says candidates are "called for Verification of Certificates" and, later, "would be sent
+    # for Medical Examination" -- only the second is where they go next.
+    own_words = {w for w in re.findall(r'[a-z]{4,}', (own or '').lower())}
+    m = None
+    for cand in _NEXT_STAGE_CUE.finditer(text):
+        dest = {w for w in re.findall(r'[a-z]{4,}', cand.group(1).lower())}
+        if own_words and dest and dest <= own_words | {'certificate', 'certificates'}:
+            continue
+        m = cand
+        break
     if not m:
         return Fact.not_extracted('the source states no next stage'), ''
     phrase = normalise_ws(m.group(0))
@@ -162,6 +177,20 @@ def _count(text: str, doc: SourceDocument):
     m = _COUNT_CUE.search(text)
     if not m:
         return Fact.not_extracted('the source states no count of cleared candidates')
+    values = set()
+    for mm in _COUNT_CUE.finditer(text):
+        raw_all = next((g for g in mm.groups() if g), '')
+        try:
+            values.add(int(raw_all.replace(',', '')))
+        except ValueError:
+            pass
+    if len(values) > 1:
+        # A day-wise schedule prints a total per session ("(TOTAL: 140 Candidates)" for each
+        # day); any one of them read as the shortlist would understate it, and adding them up
+        # is arithmetic the notice did not print.
+        return Fact.not_extracted(
+            f'the notice prints {len(values)} different candidate totals '
+            f'({", ".join(str(v) for v in sorted(values)[:6])}); none is asserted as the count')
     raw = next(g for g in m.groups() if g)
     try:
         value = int(raw.replace(',', ''))
@@ -212,6 +241,24 @@ def _new(exam_id: str, kind: ResultKind, scope: Scope, cycle: str, key: str) -> 
 
 
 # =============================================================== prose notices
+_DATE_LINE = re.compile(r'(?:^|\s)Date\s*[:.]\s*(?=\d)', re.I)
+
+
+def _dated_notice(body: str, dates: list, doc: SourceDocument):
+    """The date a notice carries as its own ("Date: 24/09/2031." above the signature), which
+    is the date the declaration it makes was issued."""
+    # Only the date standing at the signature: a schedule table prints "Date : X" for every
+    # session, and those are events, not the notice's own date.
+    for m in _DATE_LINE.finditer(body):
+        for d in dates:
+            if 0 <= d.start - m.end() <= 3 and _SIGNED_AFTER.search(body[d.end:d.end + 80]):
+                return _dated('notice dated', d.start - 1, body, dates=[d], doc=doc, window=3)
+    return None, None
+
+
+_SIGNED_AFTER = re.compile(r'\b(?:secretary|sd\s*/-|signed|controller\s+of\s+exam\w*|chairman)\b', re.I)
+
+
 def _declaration_date(body: str, dates: list, doc: SourceDocument):
     """The date the notice says the result was declared, found from its own cue.
 
@@ -251,7 +298,14 @@ def read_notice(doc: SourceDocument, text: str, *, exam_id: str, headline: str =
 
     out: list[ResultDeclaration] = []
     seen: set = set()
+    # What the notice *is* is in its own title: a notice titled "Verification of
+    # Certificates" that mentions "final selection" in passing is a call to verification,
+    # not a selection. Only where the title names no result does the body decide.
+    title = normalise_ws(headline) if headline else body[:400]
+    titled = next((k for k, pat in _KIND_CUES if pat.search(title)), None)
     for kind, pattern in _KIND_CUES:
+        if titled is not None and kind is not titled:
+            continue
         m = pattern.search(body)
         if not m:
             continue
@@ -260,6 +314,8 @@ def read_notice(doc: SourceDocument, text: str, *, exam_id: str, headline: str =
         if not scope.refs:
             scope = headline_scope if headline_scope.refs else document_scope
         declared, used = _declaration_date(body, live, doc)
+        if declared is None:
+            declared, used = _dated_notice(body, dates, doc)
         key = (kind, scope.refs[0].ref if scope.refs else '',
                declared.value if declared else '')
         if key in seen:
@@ -278,7 +334,7 @@ def read_notice(doc: SourceDocument, text: str, *, exam_id: str, headline: str =
             event.published_precision = (used.precision.value if used else 'DAY')
         event.qualification = _qualification(body)
         event.qualified_count = _count(body, doc)
-        event.next_step, event.next_stage_ref = _next_stage(body, doc)
+        event.next_step, event.next_stage_ref = _next_stage(body, doc, own=normalise_ws(m.group(0)))
         event.evidence = [e for f in (declared, event.next_step) if f for e in f.evidence]
         if ev is not None and ev not in event.evidence:
             event.evidence.insert(0, ev)
@@ -420,13 +476,96 @@ def describe(events: list) -> dict:
     }
 
 
+def _stage_words(name: str) -> set:
+    low = (name or '').lower()
+    words = set()
+    if re.search(r'\bprelim', low):
+        words.add('prelim')
+    if re.search(r'\bmains?\b|\bmain\s*\(', low):
+        words.add('main')
+    for m in re.finditer(r'\b(?:tier|phase|stage)[\s\-]*([ivx]+|\d+)\b', low):
+        words.add(m.group(1))
+    if re.search(r'interview|personality|viva', low):
+        words.add('interview')
+    return words
+
+
+def _following_stage(stage_name: str, names: list[str]) -> str:
+    """The stage after this one in the exam's own pattern, or '' where the pattern does not
+    place it. Matched on stage words (preliminary, main, a tier number), never guessed."""
+    mine = _stage_words(stage_name)
+    if not mine:
+        return ''
+    for i, name in enumerate(names):
+        if mine & _stage_words(name):
+            return names[i + 1] if i + 1 < len(names) else ''
+    return ''
+
+
+#: "The number of candidates to be admitted to the Written (Main) Examination ... would be
+#: Fifty (50) times ..." -- how an authority moves candidates from one stage to the next.
+_ADMISSION_RULE = re.compile(
+    r'(?:the\s+)?number\s+of\s+candidates\s+to\s+be\s+(?:admitted|called|shortlisted|selected)\s+'
+    r'(?:to|for)\s+(?:the\s+)?(?P<stage>[^.]{3,120}?)\s+(?:would|will|shall)\s+be\s+(?P<rule>[^.]{3,260})\.',
+    re.I)
+
+_STAGE_GENERIC = frozenset({'exam', 'examination', 'test', 'type', 'the', 'stage', 'written',
+                            'objective', 'conventional'})
+
+
+def _stage_marks(name: str) -> set:
+    return {w for w in re.findall(r'[a-z]{4,}', (name or '').lower())} - _STAGE_GENERIC
+
+
+def admission_rules(text: str, stages: list[dict] | None, *, document_title: str = '',
+                    document_url: str = '', page_of=None) -> list[dict]:
+    """The authority's own rule for how many candidates reach a stage, tied to that stage.
+
+    Only a sentence naming a stage of this exam's own pattern is kept, and the stage before it
+    in that pattern is the one it follows from; the sentence is quoted, not paraphrased, so the
+    step is the authority's statement and not GovOS guidance."""
+    names = [str(st.get('stageName') or st.get('name') or '') for st in (stages or [])
+             if isinstance(st, dict) and st.get('level') in (None, 'STAGE')]
+    names = [n for n in names if n]
+    flat = ' '.join((text or '').split())
+    out: list[dict] = []
+    seen: set = set()
+    for m in _ADMISSION_RULE.finditer(flat):
+        phrase = set(re.findall(r'[a-z]{4,}', m.group('stage').lower()))
+        hits = [i for i, n in enumerate(names) if _stage_marks(n) and _stage_marks(n) <= phrase]
+        if len(hits) != 1 or hits[0] == 0:
+            continue
+        target, source = names[hits[0]], names[hits[0] - 1]
+        sentence = m.group(0).strip()
+        if (source, target) in seen:
+            continue
+        seen.add((source, target))
+        out.append({
+            'isDerived': False,
+            'source': 'OFFICIAL_RULE',
+            'fromStage': source,
+            'nextStage': target,
+            'action': f'From {source} to {target}: as the notice states it',
+            'guidance': sentence,
+            'evidenceSpan': sentence,
+            'documentTitle': document_title,
+            'documentUrl': document_url,
+            'page': page_of(sentence) if page_of else 1,
+        })
+    return out
+
+
 def derive_next_steps(results_facts: list[dict], stages: list[dict] | None = None) -> list[dict]:
-    """Derives structured next-step guidance from verified results declarations and exam pattern.
+    """Next-step guidance from a declared result and the exam's own pattern -- nothing else.
 
     Crucial GovOS Contract:
       - Next steps are DERIVED guidance from official lifecycle facts, NEVER fabricated official facts.
       - Each item is explicitly flagged with `isDerived: True` and `source: 'DERIVED_FROM_LIFECYCLE'`.
-      - If no result is declared or the lifecycle does not establish a next step, returns honest empty state.
+      - A step comes from the notice's own statement of the next stage, or from the stage the
+        exam's own pattern places after this one. Where neither says, no step is produced:
+        a generic flow ("Mains, then Personality Test") would state a stage some exams do
+        not have.
+      - If no result is declared, the honest awaiting state is returned.
     """
     if not results_facts:
         return [{
@@ -438,66 +577,45 @@ def derive_next_steps(results_facts: list[dict], stages: list[dict] | None = Non
             'nextStage': '',
         }]
 
+    names: list[str] = []
+    for st in stages or []:
+        if not isinstance(st, dict):
+            continue
+        if st.get('level') not in (None, 'STAGE'):
+            continue
+        name = st.get('stageName') or st.get('name') or ''
+        if name:
+            names.append(str(name))
+
     next_steps: list[dict] = []
+    seen: set = set()
     for res in results_facts:
         stage_name = (res.get('stageName') or res.get('label') or '').strip()
-        next_stage_hint = res.get('nextStage') or res.get('next_stage')
-        if next_stage_hint:
-            next_steps.append({
+        official = res.get('nextStep') or res.get('nextStage') or res.get('next_stage')
+        if official:
+            step = {
                 'isDerived': True,
                 'source': 'DERIVED_FROM_LIFECYCLE',
                 'fromStage': stage_name,
-                'nextStage': next_stage_hint,
-                'action': f"Prepare for {next_stage_hint}",
-                'guidance': f"Candidates shortlisted in {stage_name} proceed to {next_stage_hint} as stated in official notice.",
-            })
-            continue
-
-        stage_lower = stage_name.lower()
-        if any(w in stage_lower for w in ('prelim', 'tier 1', 'tier-i', 'tier-1', 'stage 1', 'stage-i')):
-            next_steps.append({
-                'isDerived': True,
-                'source': 'DERIVED_FROM_LIFECYCLE',
-                'fromStage': stage_name or 'Preliminary Examination',
-                'nextStage': 'Mains Examination / Tier-II',
-                'action': 'Prepare for Mains Examination',
-                'guidance': 'Candidates shortlisted in Preliminary examination advance to the Mains / Tier-II stage as per the official examination pattern.',
-            })
-        elif any(w in stage_lower for w in ('main', 'tier 2', 'tier-ii', 'tier-2', 'stage 2', 'stage-ii')):
-            next_steps.append({
-                'isDerived': True,
-                'source': 'DERIVED_FROM_LIFECYCLE',
-                'fromStage': stage_name or 'Mains Examination',
-                'nextStage': 'Personality Test / Document Verification',
-                'action': 'Prepare for Personality Test / Document Verification',
-                'guidance': 'Candidates qualifying in the Mains stage are called for Document Verification and Personality Test / Interview.',
-            })
-        elif any(w in stage_lower for w in ('interview', 'personality', 'dv', 'doc')):
-            next_steps.append({
-                'isDerived': True,
-                'source': 'DERIVED_FROM_LIFECYCLE',
-                'fromStage': stage_name or 'Interview / Document Verification',
-                'nextStage': 'Final Merit List & Selection',
-                'action': 'Await Final Selection & Recommendation',
-                'guidance': 'Final merit list and recommendations for appointment are published following interview / document verification.',
-            })
-        elif any(w in stage_lower for w in ('final', 'selection', 'recommend')):
-            next_steps.append({
-                'isDerived': True,
-                'source': 'DERIVED_FROM_LIFECYCLE',
-                'fromStage': stage_name or 'Final Result',
-                'nextStage': 'Appointment & Joining Process',
-                'action': 'Complete Joining & Medical Formalities',
-                'guidance': 'Recommended candidates undergo medical examination and receive cadre allocation/appointment orders from the respective ministry or department.',
-            })
+                'nextStage': str(official),
+                'action': f"Next: {official}",
+                'guidance': f"The notice for {stage_name} states the next step: {official}.",
+            }
         else:
-            next_steps.append({
+            following = _following_stage(res.get('stageLabel') or stage_name, names)
+            if not following:
+                continue
+            step = {
                 'isDerived': True,
                 'source': 'DERIVED_FROM_LIFECYCLE',
-                'fromStage': stage_name or 'Examination Stage',
-                'nextStage': 'Subsequent Stage',
-                'action': 'Proceed to Next Stage in Examination Scheme',
-                'guidance': f'Cleared candidates in {stage_name} advance according to the official scheme of examination.',
-            })
-
+                'fromStage': stage_name,
+                'nextStage': following,
+                'action': f"Prepare for {following}",
+                'guidance': f"In this exam's scheme, {following} follows {stage_name}.",
+            }
+        key = (step['fromStage'].lower(), step['nextStage'].lower())
+        if key in seen:
+            continue
+        seen.add(key)
+        next_steps.append(step)
     return next_steps

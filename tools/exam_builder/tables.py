@@ -80,7 +80,7 @@ _HEADER_CUES: tuple[tuple[ColumnKind, str], ...] = (
                         r'\bsr\.?\s*no\.?(?!\s*of\b)|\bcode\s*no\.?\b|'
                         r'\bno\.(?!\s*of\b)'),
     (ColumnKind.QUALIFICATION, r'\b(?:educational|essential|minimum|academic)\s+'
-                               r'qualification\b|\bqualification\b|\beligibility\b'),
+                               r'qualifications?\b|\bqualifications?\b|\beligibility\b'),
     (ColumnKind.CLASSIFICATION, r'\bclassification\b|\bgroup\s+of\s+post\b|\bpost\s+group\b|'
                                 r'\bcategory\s+of\s+post\b'),
     # Specific before generic: "Name of Service" names the post, and the department
@@ -107,19 +107,55 @@ _VALUE_SHAPES: dict[ColumnKind, re.Pattern] = {
     ColumnKind.AGE: re.compile(r'\b\d{1,2}\s*(?:[-–—]|to)\s*\d{1,2}\s*(?:years?|yrs?)?\b|'
                                r'\bnot\s+exceeding\s+\d{1,2}\b', re.I),
     ColumnKind.PAY: re.compile(r'\b(?:pay\s+)?level[\s-]*\d{1,2}\b|₹\s*[\d,]+|'
-                               r'\brs\.?\s*[\d,]+', re.I),
+                               r'\brs\.?\s*[\d,]+|'
+                               # A scale printed as a range with no currency word:
+                               # "58,850-1,37,050/-". Thousands separators on both ends are
+                               # what distinguish it from an age band or a date range.
+                               r'\b\d{1,3}(?:,\d{2,3})+\s*[-–—]\s*\d{1,3}(?:,\d{2,3})+(?:\s*/-)?', re.I),
     ColumnKind.VACANCY: re.compile(r'^\s*\d{1,5}\s*$'),
     ColumnKind.CLASSIFICATION: re.compile(
         r'\bgroup\s*[-–—]?\s*[\'"‘’“”]?[a-d][\'"‘’“”]?|\bgazetted\b|'
         r'\bnon[- ]?ministerial\b|\bministerial\b', re.I),
 }
 
+#: Columns whose cells are always recognisable on sight; a cell of another shape in one of
+#: them is a misreading.
+_SHAPE_REQUIRED = frozenset({ColumnKind.VACANCY, ColumnKind.AGE})
+
 #: A numbered section heading: "2.1 Pay Level-8 (Rs 47600 to 151100):". It introduces a
 #: table and states something about it, but names none of its columns.
-_SECTION_HEADING = re.compile(r'^\s*\d+(?:\.\d+)*\s+\S.*[:：]\s*$')
+#: "1.15. The details ... as follows:-" too: a trailing dot on the clause number and a
+#: dash after the colon are both common, and missing either read the heading into the header.
+_SECTION_HEADING = re.compile(r'^\s*\d+(?:\.\d+)*\.?\s+\S.*[:：]\s*[-–—]?\s*$')
 
 #: A line that is only an ordinal: "1", "2.", "01", "(i)", "iii.".
 _ORDINAL = re.compile(r'^\s*\(?\s*(?:\d{1,3}|[ivxlIVXL]{1,5})\s*[.)]?\s*$')
+
+#: A serial printed on the same line as the row's first cell: "01 Deputy Collector [Civil".
+#: The cell must begin with a letter or a bracket, so "3 150" (a duration and a mark) is
+#: never read as a serial; and like a bare ordinal it opens a row only where it continues
+#: the sequence.
+_LEADING_ORDINAL = re.compile(r'^\s*(\d{1,3})\s*[.)]?\s+([A-Za-z(\[].*)$')
+
+#: The line a table's totals sit on. It ends the rows: running on read the notes below the
+#: table into the last row.
+_TOTAL_LINE = re.compile(r'^\s*(?:grand\s+)?total\b', re.I)
+
+
+#: A finished sentence of prose: long, and ending in a full stop. A header cell is short and
+#: a header does not end a sentence; the sentence above a table ("... does not fulfil the
+#: Educational Qualifications requirement.") read into its header as a column.
+_PROSE_LINE = re.compile(r'^.{50,}[a-z)]\.\s*$')
+
+
+#: What column headings never contain: "dated", a "Dt." dateline, a G.O. reference. (A bare date
+#: can be a heading's own: "Age as on 01/07/2031".)
+_PROSE_IN_HEADER = re.compile(r'\bdated\b|\bdt\.\s*[:\-]?\s*\d|\bg\.\s?o\.', re.I)
+
+
+def _starts_row(line: str) -> bool:
+    text = line.strip()
+    return bool(_ORDINAL.match(text) or _LEADING_ORDINAL.match(text))
 
 #: Page furniture inside a table. A running footer is not a row.
 _FURNITURE = re.compile(
@@ -156,6 +192,8 @@ class Table:
     #: level the column does not repeat.
     heading: str = ''
     heading_values: dict = dc_field(default_factory=dict)
+    #: The table's own totals line, as printed ("TOTAL 563"), where one ends its rows.
+    total_line: str = ''
 
     @property
     def kinds(self) -> list[ColumnKind]:
@@ -271,6 +309,11 @@ def reconstruct_lists(text: str, *, max_lists: int = 12) -> list[Table]:
 
 
 # ------------------------------------------------------------------ headers
+#: The end of a phrase that continues a column heading: "... as specified in the", "... of the".
+_INSIDE_A_PHRASE = re.compile(r'\b(?:as\s+specified\s+in|as\s+per|specified\s+in|under|'
+                              r'rules\s+of|in\s+the|of\s+the)\s+(?:the\s+)?$', re.I)
+
+
 def _columns_in(text: str) -> list[Column]:
     """The columns a header line names, in the order it names them.
 
@@ -283,6 +326,11 @@ def _columns_in(text: str) -> list[Column]:
     for kind, pattern in _HEADER_CUES:
         for m in re.finditer(pattern, text, re.I):
             if any(m.start() < end and start < m.end() for start, end in taken):
+                continue
+            if _INSIDE_A_PHRASE.search(text[max(0, m.start() - 30):m.start()]):
+                # "Educational Qualifications as specified in the Service Rules of the
+                # department": "Service" and "department" are words of the qualification
+                # column's own heading, not columns of their own.
                 continue
             taken.append(m.span())
             found.append((m.start(), kind, m.group(0).strip()))
@@ -314,10 +362,12 @@ def find_header(lines: list[str], *, start: int = 0,
             # A heading states a value for the table below it; it does not name columns,
             # and joining from one read its "Pay Level" as a column of its own.
             continue
+        if _PROSE_LINE.match(lines[i].strip()):
+            continue
         joined = ''
         best: tuple[int, list[Column]] | None = None
         for j in range(i, min(i + lookahead, len(lines))):
-            if _SECTION_HEADING.match(lines[j].strip()):
+            if _SECTION_HEADING.match(lines[j].strip()) or _PROSE_LINE.match(lines[j].strip()):
                 # A heading interrupts a header rather than continuing it. Joining across
                 # one read the heading's "Pay Level" as the table's first column.
                 joined = ''
@@ -331,11 +381,39 @@ def find_header(lines: list[str], *, start: int = 0,
                 break
         if best is None:
             continue
+        if _PROSE_IN_HEADER.search(' '.join(lines[k] for k in range(i, best[0] + 1))):
+            # A G.O. citation or a dated sentence that happens to contain "Department" and
+            # "No." is prose above a table, not the names of its columns.
+            continue
+        # A header wrapped into more short lines than the look-ahead holds ("Age as on" /
+        # "01/07/2024" / "Min. Max." / "Scale of" / "Pay" / "Rs.") keeps growing, one short
+        # fragment at a time, until its first row. Only fragments: a sentence is not a
+        # header cell, and a row start ends the header.
+        end = best[0]
+        # From the line after the last heading inside the window, as the join above does:
+        # a heading's words ("the details of vacancies") are not the header's columns.
+        first = i
+        for k in range(i, end + 1):
+            if _SECTION_HEADING.match(lines[k].strip()) or _PROSE_LINE.match(lines[k].strip()):
+                first = k + 1
+        extended = ' '.join(lines[k] for k in range(first, end + 1))
+        for k in range(end + 1, min(end + 9, len(lines))):
+            fragment = lines[k].strip()
+            if not fragment:
+                continue
+            if _starts_row(fragment) or len(fragment) > 40 or _SECTION_HEADING.match(fragment):
+                break
+            extended += ' ' + fragment
+            end = k
+        if end != best[0]:
+            grown = _columns_in(extended)
+            if len(grown) >= len(best[1]):
+                best = (end, grown)
         # A header is followed by its first row. Without this, a paragraph that happens to
         # mention posts and ministries was read as a two-column header.
         nxt = next((lines[k].strip() for k in range(best[0] + 1, len(lines))
                     if lines[k].strip()), '')
-        if not _ORDINAL.match(nxt):
+        if not _starts_row(nxt):
             continue
         return best
     return None
@@ -444,10 +522,20 @@ def _row_blocks(lines: list[str], start: int, header_lines: list | None = None) 
             break
         if _FURNITURE.match(stripped):
             continue
+        if current_ordinal and _TOTAL_LINE.match(stripped):
+            break
         if _ORDINAL.match(stripped) and continues_the_sequence(stripped):
             if current_ordinal:
                 blocks.append((current_ordinal, current))
             current_ordinal, current = stripped, []
+            continue
+        leading = _LEADING_ORDINAL.match(stripped)
+        if leading and continues_the_sequence(leading.group(1)):
+            if current_ordinal:
+                blocks.append((current_ordinal, current))
+            # The rest of the line is the row's first cell, wrapped as the PDF wrapped it.
+            rest = lines[index][lines[index].index(leading.group(2)):]
+            current_ordinal, current = leading.group(1), [rest]
             continue
         if current_ordinal:
             current.append(lines[index])
@@ -477,16 +565,27 @@ def _assign(cells: list[str], columns: list[Column]) -> tuple[dict, bool, str]:
         assigned = {c.kind: cells[i] for i, c in enumerate(data_columns)}
         # A recognisable value sitting in the wrong column means the reading is wrong,
         # whatever the counts say.
+        misplaced_kind = None
         for kind, shape in _VALUE_SHAPES.items():
             if kind not in assigned:
                 continue
             misplaced = [c for k, c in assigned.items()
                          if k is not kind and shape.match(c)]
             if shape.search(assigned[kind]) is None and misplaced:
-                return {}, False, (
-                    f'the {kind.value.lower()} column does not hold a '
-                    f'{kind.value.lower()} value, but another column does')
-        return assigned, True, ''
+                misplaced_kind = kind
+                break
+            if (kind in _SHAPE_REQUIRED and assigned[kind].strip()
+                    and shape.search(assigned[kind]) is None):
+                # A count, age or pay column holding text of another shape ("Assistant
+                # Auditor, Pay and Accounts Officer" under "Vacancies") means the cells did
+                # not fall one per column, whatever the counts say.
+                misplaced_kind = kind
+                break
+        if misplaced_kind is None:
+            return assigned, True, ''
+        # The cells did not fall one per column (a name wrapped into three lines makes
+        # three cells). The positional reading is refused, and the value-driven readings
+        # below get their turn; if they cannot place the row either, it is refused.
 
     # Counts differ. Where every recognisable value can be placed and exactly one
     # unrecognisable column remains, the rest of the text belongs to it.
@@ -514,6 +613,10 @@ def _assign(cells: list[str], columns: list[Column]) -> tuple[dict, bool, str]:
         f'{len(cells)} cell(s) were recovered for {len(data_columns)} column(s), and the '
         f'values do not identify which is which; the row is kept unassigned rather than '
         f'guessed')
+
+
+#: Columns that hold one whole number and nothing else.
+_WHOLE_NUMBER_COLUMNS = frozenset({ColumnKind.VACANCY, ColumnKind.QUESTIONS})
 
 
 def _split_on_values(joined: str, data_columns: list[Column]) -> tuple[dict, str]:
@@ -554,6 +657,15 @@ def _split_on_values(joined: str, data_columns: list[Column]) -> tuple[dict, str
         if preceding:
             if len(preceding) == 1:
                 assigned[preceding[0].kind] = before
+            elif (len(preceding) == 2 and preceding[1].kind in _WHOLE_NUMBER_COLUMNS
+                  and preceding[0].kind not in _VALUE_SHAPES
+                  and re.search(r'\s(\d{1,5})$', before)):
+                # "Deputy Collector [...] 45" then "18-46": the header puts a count column
+                # between the name and the age, and the text before the age ends in exactly
+                # one whole number. That number is the count; the rest is the name.
+                m_count = re.search(r'\s(\d{1,5})$', before)
+                assigned[preceding[0].kind] = before[:m_count.start()].strip()
+                assigned[preceding[1].kind] = m_count.group(1)
             elif before:
                 # Several columns, one run of text, nothing to divide it on.
                 assigned[preceding[0].kind] = before
@@ -597,6 +709,32 @@ def _heading_values(above: str, columns: list[Column]) -> dict:
     return out
 
 
+def blocks_continue(lines: list[str], index: int, heading: str = '', previous: str = '') -> bool:
+    """Does the row start at `index` belong to the table above?
+
+    A bare serial on its own line always has. A serial followed by the row's text ("1 Auditor
+    Offices under C&AG Group "C" 18-27 years") has too, when its section heading is the next
+    sibling of the heading above -- "2.4 Pay Level-5" after "2.3 Pay Level-6" is the same
+    table's layout under a new sub-heading. Without this, one notice's last two sections of
+    posts were never read."""
+    if _ORDINAL.match(lines[index].strip()):
+        return True
+    return bool(_LEADING_ORDINAL.match(lines[index].strip()) and _is_next_sibling(heading, previous))
+
+
+_SECTION_NUMBER = re.compile(r'^\s*(\d+(?:\.\d+)+)\.?\s')
+
+
+def _is_next_sibling(heading: str, previous: str) -> bool:
+    """"2.4 ..." follows "2.3 ...": same parent, the next number."""
+    a, b = _SECTION_NUMBER.match(heading or ''), _SECTION_NUMBER.match(previous or '')
+    if not (a and b):
+        return False
+    here, before = a.group(1).split('.'), b.group(1).split('.')
+    return (len(here) == len(before) and here[:-1] == before[:-1]
+            and int(here[-1]) == int(before[-1]) + 1)
+
+
 def reconstruct(text: str, *, max_tables: int = 40) -> list[Table]:
     """Every table this document contains, as far as the structure can be recovered.
 
@@ -621,7 +759,8 @@ def reconstruct(text: str, *, max_tables: int = 40) -> list[Table]:
             heading = first
             index, first = _next_nonblank(lines, index + 1)
 
-        if _ORDINAL.match(first) and columns:
+        previous = tables[-1].heading if tables else ''
+        if _starts_row(first) and columns and blocks_continue(lines, index, heading, previous):
             # A section continuing the table above it: rows, no header of its own.
             start = index
         else:
@@ -641,6 +780,8 @@ def reconstruct(text: str, *, max_tables: int = 40) -> list[Table]:
         table.heading_values = _heading_values(heading, columns)
 
         blocks, stopped = _row_blocks(lines, start, header_text)
+        if stopped < len(lines) and _TOTAL_LINE.match(lines[stopped].strip()):
+            table.total_line = lines[stopped].strip()
         if not blocks:
             cursor = max(start, index + 1, stopped)
             continue

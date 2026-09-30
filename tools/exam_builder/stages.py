@@ -46,6 +46,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 from .semantic import CueSet
+from .units import next_structural_boundary, unit_end
 
 
 class Structure(str, Enum):
@@ -448,6 +449,51 @@ def _support(candidates: list[StageCandidate]) -> float:
     return strength + 0.15 * min(len(candidates), 8) / 8 + 0.25 * acting
 
 
+def _whole_steps(steps: list[StageCandidate], region_offset: int, region: str, text: str,
+                 segment) -> list[StageCandidate]:
+    """Each step ending where the document ends it.
+
+    The region is a search window of REGION_LENGTH characters, not a boundary of anything the
+    authority wrote. Two things used to leak out of that:
+
+    * the step that runs to the window's edge was cut there ("District Centres once chos"). Its
+      real end is the next marker of the same structure, so the same segmenter is run from that
+      step's own start over the rest of the document; if no later marker exists, the step ends at
+      its last sentence before the next heading, and a step with no sentence end in view is left
+      out rather than published cut;
+    * a step's body ran on past a higher-level heading of the document ("... will be entertained.
+      PARA- 9: SCHEME OF EXAMINATION ...") when the next marker lay beyond it. A heading ends
+      every step above it.
+    """
+    window_cut = region_offset + len(region) < len(text)
+    out: list[StageCandidate] = []
+    for step in steps:
+        body = step.body
+        runs_to_edge = window_cut and region[step.offset:].strip() == body.strip()
+        if runs_to_edge:
+            start = region_offset + step.offset
+            again = segment(text[start:])
+            if len(again) >= 2 and again[0].offset == 0 and again[0].title == step.title:
+                body = again[0].body
+            else:
+                # A numbered step ends at the next number; a titled section holds numbered
+                # clauses of its own and ends only at the next heading.
+                flat_end = unit_end(text, start, clauses=step.structure is Structure.NUMBERED_CLAUSE)
+                if flat_end is None:
+                    continue
+                body = text[start:flat_end].strip()
+        stop = next_structural_boundary(body, 1, clauses=False)
+        if stop < len(body):
+            body = body[:stop].rstrip()
+        if len(body) < 25:
+            continue
+        if body != step.body:
+            step = StageCandidate(title=step.title, body=body, structure=step.structure,
+                                  offset=step.offset, action_cues=_actions_in(body))
+        out.append(step)
+    return out
+
+
 def discover_stages(text: str) -> list[StageCandidate]:
     """The steps this document describes, or none.
 
@@ -475,7 +521,8 @@ def discover_stages(text: str) -> list[StageCandidate]:
             support = _support(acting)
             if support > best_support:
                 acting.sort(key=lambda c: c.offset)
-                best, best_support = acting, support
+                best = _whole_steps(acting, _offset, region, text, segment)
+                best_support = support
             break          # the strongest structure this region actually used
     for order, candidate in enumerate(best, start=1):
         candidate.order = order

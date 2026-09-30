@@ -151,7 +151,9 @@ def to_legacy_provenance(fact: Fact, *, prov_id: str, taxonomy: str = 'FACT',
         'verifiedBy': 'GovOS exam builder — read from the source',
         'taxonomyType': taxonomy,
         'verificationLevel': verification_level_for(fact.status, superseded=superseded),
-        'excerptText': (ev.span or '')[:600],
+        # The evidence carries the whole span it verified: a published value longer than a
+        # fixed excerpt would otherwise cite words that stop before the value does.
+        'excerptText': ev.span or '',
     }
 
 
@@ -280,7 +282,9 @@ _KIND_TO_LEGACY_TYPE = {
     'APPLICATION_WINDOW': 'APPLICATION_CLOSE',
     'APPLICATION_START': 'APPLICATION_OPEN',
     'APPLICATION_END': 'APPLICATION_CLOSE',
-    'FEE_PAYMENT_END': 'APPLICATION_CLOSE',
+    # A fee deadline is not the application close. Typed as one, it was read as "applications
+    # close" wherever the timeline looks for that; OTHER keeps it, under its own label.
+    'FEE_PAYMENT_END': 'OTHER',
     'CORRECTION_WINDOW': 'CORRECTION_WINDOW',
     'ADMIT_CARD': 'ADMIT_CARD',
     'CITY_INTIMATION': 'ADMIT_CARD',
@@ -291,7 +295,33 @@ _KIND_TO_LEGACY_TYPE = {
     'PHYSICAL_TEST': 'INTERVIEW',
     'DOCUMENT_VERIFICATION': 'INTERVIEW',
     'EXAM': 'EXAM_TIER1',
+    # No member of the closed union names it; OTHER carries it under the authority's label.
+    'OPTION_ENTRY': 'OTHER',
 }
+
+
+#: A stage label that names the first stage of an examination, in words or by number.
+_FIRST_STAGE = re.compile(
+    r'\b(?:preliminary|prelims?|screening)\b|'
+    r'\b(?:tier|phase|stage)\s*[-–—:]?\s*(?:1|i|a|one|first)\b', re.I)
+#: A stage label that names a stage after the first.
+_LATER_STAGE = re.compile(
+    r'\bmains?\b|'
+    r'\b(?:tier|phase|stage)\s*[-–—:]?\s*(?:[2-9]|ii|iii|iv|v|b|c|d|two|three|second|third)\b', re.I)
+
+
+def exam_stage_of(stage_label: str) -> str:
+    """FIRST, LATER or '' -- which stage an examination date's own label names.
+
+    Only stage vocabulary counts. A paper, part, session or shift number says which paper of
+    *some* stage is sat that day, not which stage; and a date with no label names none.
+    """
+    label = stage_label or ''
+    if _LATER_STAGE.search(label):
+        return 'LATER'
+    if _FIRST_STAGE.search(label):
+        return 'FIRST'
+    return ''
 
 
 def legacy_date_type(kind: str, *, stage_label: str = '') -> str:
@@ -299,14 +329,30 @@ def legacy_date_type(kind: str, *, stage_label: str = '') -> str:
 
     Lossy by construction, and the loss is recorded rather than hidden: the milestone's own
     `kind` and label carry the authority's meaning, and the label is what the timeline
-    actually shows. A stage-scoped examination maps onto the second tier where the authority
-    numbered it beyond the first, which is the most the closed union can express.
+    actually shows. An examination whose stage is named maps onto the tier that stage is; a
+    later stage is never mapped onto the first merely because it is an examination date.
+    Where no stage is named the row keeps the historical first-tier type, and
+    `exam_stage_association` marks that association NEEDS_REVIEW.
     """
     mapped = _KIND_TO_LEGACY_TYPE.get(kind, 'NOTIFICATION')
     if kind == 'EXAM' and stage_label:
+        stage = exam_stage_of(stage_label)
+        if stage == 'LATER':
+            return 'EXAM_TIER2'
+        if stage == 'FIRST':
+            return 'EXAM_TIER1'
+        # A paper-numbered row, as before: "Paper II" sits after "Paper I".
         if re.search(r'\b(?:2|ii|b)\b', stage_label, re.I):
             return 'EXAM_TIER2'
     return mapped
+
+
+def exam_stage_association(kind: str, stage_label: str = '') -> str:
+    """'STATED' where an examination date's stage is named by its own evidence, otherwise
+    'NEEDS_REVIEW'; '' for a milestone that is not an examination."""
+    if kind != 'EXAM':
+        return ''
+    return 'STATED' if exam_stage_of(stage_label) else 'NEEDS_REVIEW'
 
 
 def important_dates(milestones, *, exam_id: str, timezone: str = 'IST') -> list[dict]:
@@ -325,36 +371,91 @@ def important_dates(milestones, *, exam_id: str, timezone: str = 'IST') -> list[
     from .schema import DatePrecision, MilestoneState, Status as _Status
 
     rows: list[dict] = []
+    emitted: set[tuple[str, str]] = set()
     for index, milestone in enumerate(milestones):
         effective = milestone.effective_date
         superseded = milestone.is_superseded
         if effective is None and not superseded:
             continue
         shown = effective or (milestone.ends_at.value or milestone.starts_at.value)
+        if (milestone.kind in ('EXAM', 'DOCUMENT_VERIFICATION', 'PHYSICAL_TEST', 'INTERVIEW',
+                               'SKILL_TEST') and not superseded and milestone.starts_at.has_value
+                and milestone.ends_at.has_value):
+            # An examination held over several days begins on its first day; the window is
+            # in the label and the evidence. Its last day read as "the exam date".
+            shown = milestone.starts_at.value
         if not shown:
             continue
+        from .schema import ScopeKind
+        stage_scopes = milestone.scope.of(ScopeKind.STAGE)
+        stage_refs = stage_scopes[0].label if stage_scopes else ''
+        # Two statements of one date ("Applications from 23/02 to 14/03" and "Online
+        # applications 14/03 at 5 PM") are one milestone on the timeline, not two.
+        # The event's own kind is part of the key: a medical board and a certificate
+        # verification on the same day share a legacy type but are two milestones.
+        row_key = (legacy_date_type(milestone.kind, stage_label=stage_refs), str(shown), milestone.kind)
+        if row_key in emitted and not superseded:
+            continue
+        emitted.add(row_key)
 
         fact = milestone.ends_at if milestone.ends_at.has_value else milestone.starts_at
         provenance = to_legacy_provenance(
             fact, prov_id=f'prov-{milestone.id}', superseded=superseded)
         if provenance is None:
             continue
+        tentative = bool(milestone.is_tentative
+                         or milestone.precision is not DatePrecision.DAY
+                         or milestone.status is _Status.NEEDS_REVIEW)
+        status = 'SUPERSEDED' if superseded else 'AVAILABLE'
 
-        from .schema import ScopeKind
-        stage_scopes = milestone.scope.of(ScopeKind.STAGE)
-        stage_refs = stage_scopes[0].label if stage_scopes else ''
-        rows.append({
+        # A window's opening is a date of its own. "Applications From 23/02 To 14/03" used to
+        # become one APPLICATION_CLOSE row, and the opening -- in the very same evidence span
+        # -- was lost. The opening row cites the same span, which contains both ends.
+        if (_KIND_TO_LEGACY_TYPE.get(milestone.kind) == 'APPLICATION_CLOSE'
+                and milestone.kind != 'APPLICATION_END'
+                and milestone.starts_at.has_value and milestone.ends_at.has_value
+                and str(milestone.starts_at.value) != str(milestone.ends_at.value)):
+            opened = str(milestone.starts_at.value)
+            open_key = ('APPLICATION_OPEN', opened, milestone.kind)
+            open_prov = to_legacy_provenance(
+                milestone.starts_at, prov_id=f'prov-{milestone.id}-open', superseded=superseded)
+            if open_key not in emitted and open_prov is not None:
+                emitted.add(open_key)
+                rows.append({
+                    'id': f'{milestone.id or f"date-{exam_id}-{index}"}-open',
+                    'type': 'APPLICATION_OPEN',
+                    'label': milestone.label,
+                    'dateTimeStr': f'{opened} 00:00:00',
+                    'timezone': timezone,
+                    'isTentative': tentative,
+                    'status': status,
+                    'provenance': open_prov,
+                })
+
+        row = {
             'id': milestone.id or f'date-{exam_id}-{index}',
             'type': legacy_date_type(milestone.kind, stage_label=stage_refs),
             'label': milestone.label,
             'dateTimeStr': f'{shown} 00:00:00',
             'timezone': timezone,
-            'isTentative': bool(milestone.is_tentative
-                                or milestone.precision is not DatePrecision.DAY
-                                or milestone.status is _Status.NEEDS_REVIEW),
-            'status': 'SUPERSEDED' if superseded else 'AVAILABLE',
+            'isTentative': tentative,
+            'status': status,
             'provenance': provenance,
-        })
+        }
+        if superseded and milestone.superseded_by:
+            # Which row replaced it, so the revision can be told as one change, old to new.
+            row['supersededBy'] = milestone.superseded_by
+            if milestone.note:
+                row['supersessionNote'] = milestone.note
+        # Which stage an examination date belongs to is its own fact: STATED where the
+        # evidence names the stage, NEEDS_REVIEW where it does not -- the type alone cannot
+        # say which, because the union has no member for "an examination, stage unnamed".
+        association = exam_stage_association(milestone.kind, stage_refs)
+        if association:
+            row['stageAssociation'] = association
+            if stage_refs:
+                row['stageLabel'] = stage_refs
+        rows.append(row)
     return rows
 
 
@@ -565,11 +666,26 @@ def syllabus_tree(syllabus, *, exam_id: str, max_nodes: int = 4000) -> list:
     from .schema import Fact, Status as _Status
 
     counter = [0]
+    seen: set = set()
 
-    def project(node) -> dict:
+    def unique_id(node, parent_id: str) -> str:
+        # A record stored before extraction made ids unique may still repeat one (each
+        # paper's clauses numbered from "1." again). The UI keys on the id, so a repeat is
+        # qualified by its parent here too, by the same rule syllabus._make_ids_unique uses.
+        node_id = node.id
+        if node_id in seen and parent_id:
+            base = f'{parent_id}-{node_id.rsplit("-", 1)[-1]}'
+            node_id, n = base, 2
+            while node_id in seen:
+                node_id, n = f'{base}-{n}', n + 1
+        seen.add(node_id)
+        return node_id
+
+    def project(node, parent_id: str = '') -> dict:
         counter[0] += 1
+        node_id = unique_id(node, parent_id)
         out: dict = {
-            'id': node.id,
+            'id': node_id,
             'title': node.title,
             'levelLabel': node.level_label or '',
             'order': node.order,
@@ -585,14 +701,14 @@ def syllabus_tree(syllabus, *, exam_id: str, max_nodes: int = 4000) -> list:
                            status=node.status if node.status.carries_value
                            else _Status.NEEDS_REVIEW,
                            evidence=list(node.evidence))
-            provenance = to_legacy_provenance(carrier, prov_id=f'prov-{node.id}')
+            provenance = to_legacy_provenance(carrier, prov_id=f'prov-{node_id}')
             if provenance is not None:
                 out['provenance'] = provenance
         children = []
         for child in node.children:
             if counter[0] >= max_nodes:
                 break
-            children.append(project(child))
+            children.append(project(child, node_id))
         if children:
             out['children'] = children
         return out

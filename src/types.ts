@@ -16,7 +16,23 @@ export interface DataProvenance {
   taxonomyType: DataTaxonomyType;
   verificationLevel: VerificationLevel;
   excerptText?: string; // Direct quoted legal text from official gazette
+  /** Identity of what this cites (URL, page, clause, words); the same evidence keeps it from the
+   *  canonical record to the page. Set by the exam builder; authored records may omit it. */
+  evidenceId?: string;
+  /** DIRECT: the value is in the cited words. RECONCILED: a later official statement replaced
+   *  an earlier one (see supersedes / supersededBy). DERIVED: GovOS computed it (see derivation). */
+  evidenceType?: EvidenceType;
+  /** The authority that published the cited document. */
+  authorityName?: string;
+  /** On a governing statement: the earlier statements it replaced. */
+  supersedes?: DataProvenance[];
+  /** On a replaced statement: the statement that governs in its place. */
+  supersededBy?: DataProvenance;
+  /** On a derived value: how GovOS computed it, and the evidence of every input. */
+  derivation?: { method: string; inputs: DataProvenance[] };
 }
+
+export type EvidenceType = 'DIRECT' | 'RECONCILED' | 'DERIVED';
 
 export interface CorrigendumNotice {
   id: string;
@@ -28,17 +44,37 @@ export interface CorrigendumNotice {
   pdfUrl: string;
   status: 'ACTIVE' | 'SUPERSEDED';
   diffSummary: string;
+  /** The statement that made the change, with the statement it replaced linked. */
+  provenance?: DataProvenance;
 }
 
 export interface ImportantDate {
   id: string;
-  type: 'NOTIFICATION' | 'APPLICATION_OPEN' | 'APPLICATION_CLOSE' | 'CORRECTION_WINDOW' | 'ADMIT_CARD' | 'EXAM_TIER1' | 'EXAM_TIER2' | 'ANSWER_KEY' | 'RESULT' | 'INTERVIEW';
+  /** OTHER: a milestone the notice printed under a label no specific member names. */
+  type: 'NOTIFICATION' | 'APPLICATION_OPEN' | 'APPLICATION_CLOSE' | 'CORRECTION_WINDOW' | 'ADMIT_CARD' | 'EXAM_TIER1' | 'EXAM_TIER2' | 'ANSWER_KEY' | 'RESULT' | 'INTERVIEW' | 'OTHER';
   label: string;
   dateTimeStr: string;
   timezone: string;
   isTentative: boolean;
   status: 'AVAILABLE' | 'NOT_YET_ANNOUNCED' | 'SUPERSEDED';
   provenance: DataProvenance;
+  /** On a superseded date: the id of the date that governs in its place. */
+  supersededBy?: string;
+  /**
+   * Examination dates only, set by the exam builder. STATED: the date's own evidence names its
+   * stage ("Schedule of Main Examination"), and `type` is that stage's tier. NEEDS_REVIEW: the
+   * evidence names no stage, so `type` is only the historical EXAM_TIER1 bucket and must not be
+   * presented as "the first stage". Absent on authored records, whose types a person assigned.
+   */
+  stageAssociation?: 'STATED' | 'NEEDS_REVIEW';
+  /** The authority's own words for the stage, where the evidence named one. */
+  stageLabel?: string;
+  /**
+   * A date the authority printed without a day ("May/June 2024", "August-September, 2026"),
+   * shown exactly as printed. `dateTimeStr` then holds the last day of that range and is used
+   * only to order the timeline; it is never displayed and never counted down to.
+   */
+  displayWhen?: string;
 }
 
 export interface PostRequirement {
@@ -69,6 +105,8 @@ export interface PostRequirement {
   minAge: number;
   maxAge: number;
   specialQualification?: string;
+  /** Conditions the notice attaches to this post, in its own words (a machine-read exam's rows). */
+  postConditions?: string[];
   physicalRequired?: boolean;
   physicalNote?: string;
   colorBlindnessAllowed?: boolean;
@@ -225,6 +263,8 @@ export interface ExamPatternNode {
   durationVariants?: { minutes?: number; asPrinted?: string; appliesTo?: string }[];
   /** Field names on this node that GovOS computed rather than read. */
   derived?: string[];
+  /** For each derived field, the DERIVED evidence naming its inputs. */
+  derivedEvidence?: Record<string, DataProvenance>;
   /** Field names read but not established; the UI says so rather than showing them plain. */
   underReview?: string[];
   note?: string;
@@ -248,6 +288,14 @@ export interface ExamStage {
   negativeMarking: string;
   mode: string;
   qualifyingNature: string;
+  /**
+   * Figures the source did not state. A machine-acquired exam's stages are projected from
+   * its pattern tree; a figure the tree does not carry is 0 here *and* named in this list, so
+   * a consumer prints "not stated" instead of "0 marks".
+   */
+  unstatedFields?: string[];
+  /** 'patternTree' when this stage is a compatibility projection of the authoritative tree. */
+  derivedFrom?: string;
   sections: {
     sectionName: string;
     modules: string[];
@@ -318,7 +366,16 @@ export interface PracticeQuestion {
 export interface CutoffEntry {
   year: number;
   category: string;
-  tier1Cutoff: number;
+  /** The first stage's cut-off, where the source labels it so (authored SSC-style tables). */
+  tier1Cutoff?: number;
+  /**
+   * A cut-off in its own terms, for any exam: the figure, the stage it belongs to, the post
+   * and the kind of cut-off, exactly as recorded. Never relabelled as a Tier-1 figure.
+   */
+  value?: number;
+  stage?: string;
+  post?: string;
+  cutoffType?: string;
   tier2Cutoff?: number;
   postsEligible?: string;
   provenance: DataProvenance;
@@ -642,6 +699,7 @@ export interface OTRStep {
   instructions: string[];
   mandatoryFields: string[];
   commonMistakesToAvoid: string[];
+  provenance?: DataProvenance;
 }
 
 export interface DocumentSpecification {
@@ -651,6 +709,8 @@ export interface DocumentSpecification {
   fileSize: string;
   rules: string[];
   sampleDescription: string;
+  /** Where the rules above were read, for a machine-acquired exam. */
+  provenance?: DataProvenance;
 }
 
 export interface CertificateValidityRule {
@@ -804,6 +864,31 @@ export interface ApplicationGuideData {
     consequence: string;
     prevention: string;
   }[];
+  /** The documents the notice lists, by name, each cited. Not certificate-validity rules. */
+  requiredDocuments?: ApplicationRequiredDocument[];
+  /** The fee as the notice printed it, with the exemptions it stated. */
+  fee?: ApplicationFeeDetails;
+}
+
+export interface ApplicationRequiredDocument {
+  id: string;
+  name: string;
+  required: boolean;
+  specifications: string[];
+  provenance?: DataProvenance;
+}
+
+export interface ApplicationFeeDetails {
+  /** Amounts exactly as printed (strings, so no rounding or currency is assumed). */
+  amounts: string[];
+  /** A rule with `feeType` is one named fee the notice printed (application processing,
+   * examination, total), with its own sentence in `statedAs`. */
+  rules: { scope: string; amount: string; isExempt: boolean; feeType?: string; statedAs?: string }[];
+  acceptedModes: string[];
+  /** `exemptedFeeType`: which fee the exemption lifts, where the notice names it. */
+  exemptions: { category: string; statedAs: string; exemptedFeeType?: string; provenance?: DataProvenance }[];
+  statedAs?: string;
+  provenance?: DataProvenance;
 }
 
 export interface RoadmapPhase {
@@ -993,6 +1078,13 @@ export interface ResultNextStepStage {
   headline: string;
   summary: string;
   actions: ResultActionOption[];
+  /** True for GovOS guidance derived from official facts — never an official statement. */
+  isGuidance?: boolean;
+  /** What the guidance was derived from, in words. */
+  basis?: string;
+  fromStage?: string;
+  nextStage?: string;
+  provenance?: DataProvenance;
   contingencyPlan?: {
     summary: string;
     alternativeExams: string[];
@@ -1020,6 +1112,28 @@ export type ExamCategoryTag =
   | 'RAILWAYS'
   | 'DEFENCE';
 
+export interface VacancyBreakupTable {
+  id: string;
+  documentTitle: string;
+  documentUrl: string;
+  pages: number[];
+  /** The arithmetic the table reconciled against its own printed totals. */
+  checks: string[];
+  /** Each counting column's header path, as printed ("OC / MZ1 / UR"). */
+  columns: string[];
+  rows: {
+    postId: string;
+    postCode: string;
+    printedName: string;
+    zone: string;
+    counts: { fresh: number; carriedForward: number }[];
+    postTotal?: number;
+    page?: number;
+  }[];
+  tableTotal?: number;
+  provenance: DataProvenance;
+}
+
 export interface Exam {
   id: string;
   code: string;
@@ -1037,6 +1151,9 @@ export interface Exam {
   isDemoData: boolean;
   overviewDescription: string;
   vacanciesTotal?: string;
+  /** Evidence for this record's scalar facts (vacanciesTotal, crucialEligibilityDate), keyed by
+   *  field name. A fact with no entry has no cited source and shows no Evidence action. */
+  factEvidence?: Partial<Record<'vacanciesTotal' | 'crucialEligibilityDate', DataProvenance>>;
   posts: PostRequirement[];
   dates: ImportantDate[];
   globalRuleGroup: RuleGroup;
@@ -1048,6 +1165,24 @@ export interface Exam {
    */
   patternTree?: ExamPatternNode[];
   syllabus: SyllabusTopic[];
+  /**
+   * GOVOS_GUIDANCE for a machine-acquired exam: a suggested order over its verified syllabus
+   * topics, built deterministically by the exam builder. It carries no durations and no topic
+   * that is not in the syllabus, and it is never an official statement.
+   */
+  studyGuidance?: {
+    source: string;
+    generatedBy: string;
+    disclaimer: string;
+    basis?: string;
+    steps: { topicId: string; topicName: string; subject: string; rationale: string }[];
+  };
+  /**
+   * Vacancy break-ups the authority printed as ruled tables, read from the drawn grid by the
+   * exam builder. A table is present only when its own printed totals reconciled and every
+   * row joined one post; its columns are the table's own header paths, as printed.
+   */
+  vacancyBreakups?: VacancyBreakupTable[];
   /**
    * The syllabus as its authority published it, read by the exam builder from that
    * authority's own documents. Absent where no official syllabus has been read — which for
@@ -1089,7 +1224,7 @@ export interface Exam {
   /** The eligibility cards shown in section 03 — each exam states its own rules, cited. */
   eligibilityHighlights?: { title: string; body: string; provenance: DataProvenance }[];
   /** The portals listed in section 12 — the authority's own, plus the ones its notice sends candidates to. */
-  officialLinks?: { title: string; url: string; note: string }[];
+  officialLinks?: { title: string; url: string; note: string; provenance?: DataProvenance }[];
   /** One line naming the document and section the syllabus was read from. */
   syllabusSourceNote?: string;
   /**
@@ -1110,6 +1245,15 @@ export interface Exam {
    * absence from an unpublished one; it is never rendered as raw enum text.
    */
   sectionStates?: Record<string, { state: string; nature: string; studentStatusSummary: string; sectionNum: number; isApplicable: boolean }>;
+  /**
+   * The materializer's ledger for a machine-acquired exam: what it held back from display and
+   * why (e.g. a document list read where posts were expected). Audit data; never a fact.
+   */
+  materialization?: {
+    version?: string;
+    postsWithoutPrintedGroup?: string[];
+    heldForReview?: Record<string, { reason: string; partial?: boolean; items?: unknown[] }>;
+  };
 }
 
 export interface UserProfile {
@@ -1133,7 +1277,8 @@ export interface PostVerdict {
   department: string;
   payLevel: string;
   eligible: boolean;
-  ageStatus: 'OK' | 'EXCEEDED' | 'UNDERAGE';
+  /** UNKNOWN: the record carries no age limit for this post, or no date to reckon age on. */
+  ageStatus: 'OK' | 'EXCEEDED' | 'UNDERAGE' | 'UNKNOWN';
   calculatedAge: number;
   maxPermissibleAge: number;
   qualStatus: 'OK' | 'DISQUALIFIED';
@@ -1144,7 +1289,11 @@ export interface PostVerdict {
 
 export interface EligibilityDiagnostic {
   isEligible: boolean;
-  status: 'ELIGIBLE' | 'CONDITIONAL' | 'INELIGIBLE';
+  /**
+   * NOT_EVALUABLE: the record lacks what a verdict needs (no posts, no published age limit,
+   * or no crucial date). Never shown as eligible or ineligible.
+   */
+  status: 'ELIGIBLE' | 'CONDITIONAL' | 'INELIGIBLE' | 'NOT_EVALUABLE';
   calculatedAgeOnCutoff: {
     years: number;
     months: number;

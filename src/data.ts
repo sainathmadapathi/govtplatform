@@ -79,83 +79,105 @@ const pendingSource = (
 // ==========================================================================
 // examsData.ts
 // ==========================================================================
-const sscProvenanceOverview: DataProvenance = {
-  id: 'prov-ssc-01',
-  documentTitle: 'SSC CGL 2026 Official Gazette Notification.pdf',
-  officialUrl: 'https://ssc.gov.in',
-  pageNumber: 1,
-  clauseNumber: 'Section 1.1 (Scheme of Examination)',
-  publishedDate: '2026-08-10',
-  verifiedDate: '2026-08-11',
-  verifiedBy: 'Senior Verification Officer #104',
-  taxonomyType: 'FACT',
-  verificationLevel: 'OFFICIALLY_VERIFIED',
-  excerptText: 'The Staff Selection Commission will hold Combined Graduate Level Examination, 2026 for filling up of various Group ‘B’ and Group ‘C’ posts in different Ministries/ Departments/ Organizations of Government of India.'
-};
+// ---------------------------------------------------------------- SSC CGL 2026 evidence
+// Every provenance below quotes the SSC document and page it cites; each quote was checked
+// against the PDF on 2026-09-29. There is no whole-record provenance: a fact cites the clause
+// it came from. The earlier constants cited a "Gazette Notification.pdf" and a "Corrigendum
+// Notice #02.pdf" that SSC never published, with its homepage as the link.
+const SSC_CHECK = '2026-09-29';
+export const SSC_NOTICE_URL = 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf';
+const SSC_NOTICE_TITLE = 'SSC — Notice of Examination: Combined Graduate Level Examination, 2026 (F. No. HQ-C11018/1/2026-C-1, 21.05.2026)';
+const SSC_BOARD = 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/';
+const sscNotice = (id: string, clauseNumber: string, pageNumber: number, excerptText: string, taxonomyType: DataProvenance['taxonomyType'] = 'FACT'): DataProvenance => ({
+  id, documentTitle: SSC_NOTICE_TITLE, officialUrl: SSC_NOTICE_URL, pageNumber, clauseNumber,
+  publishedDate: '2026-05-21', verifiedDate: SSC_CHECK,
+  verifiedBy: `GovOS verifier — quoted from the notice PDF on ${SSC_CHECK}`,
+  taxonomyType, verificationLevel: 'OFFICIALLY_VERIFIED', excerptText, authorityName: 'Staff Selection Commission'
+});
+const sscDocument = (id: string, documentTitle: string, file: string, publishedDate: string, pageNumber: number, clauseNumber: string, excerptText: string): DataProvenance => ({
+  id, documentTitle, officialUrl: SSC_BOARD + file, pageNumber, clauseNumber, publishedDate,
+  verifiedDate: SSC_CHECK, verifiedBy: `GovOS verifier — quoted from the PDF on ${SSC_CHECK}`,
+  taxonomyType: 'FACT', verificationLevel: 'OFFICIALLY_VERIFIED', excerptText, authorityName: 'Staff Selection Commission'
+});
+/** A later official statement that replaced an earlier one; both stay visible. */
+const sscReplaced = (newer: DataProvenance, older: DataProvenance): [DataProvenance, DataProvenance] => [
+  { ...newer, evidenceType: 'RECONCILED', supersedes: [{ ...older, verificationLevel: 'SUPERSEDED', evidenceType: 'RECONCILED' }] },
+  { ...older, verificationLevel: 'SUPERSEDED', evidenceType: 'RECONCILED', supersededBy: { ...newer, evidenceType: 'RECONCILED' } }
+];
 
-const sscProvenanceEligibility: DataProvenance = {
-  id: 'prov-ssc-02',
-  documentTitle: 'SSC CGL 2026 Official Gazette Notification.pdf',
-  officialUrl: 'https://ssc.gov.in',
-  pageNumber: 12,
-  clauseNumber: 'Section 3.1 & Annexure-VII (Age Limits & Qualifications)',
-  publishedDate: '2026-08-10',
-  verifiedDate: '2026-08-11',
-  verifiedBy: 'Senior Verification Officer #104',
-  taxonomyType: 'FACT',
-  verificationLevel: 'OFFICIALLY_VERIFIED',
-  excerptText: 'Crucial date for age calculation is fixed as 01-08-2026. Essential Educational Qualifications (as on 01-08-2026): Bachelor’s Degree from a recognized University or equivalent.'
-};
-
-const sscProvenanceSyllabus: DataProvenance = {
-  id: 'prov-ssc-syl',
-  documentTitle: 'SSC CGL 2026 Official Gazette Notification.pdf',
-  officialUrl: 'https://ssc.gov.in',
-  pageNumber: 18,
-  clauseNumber: 'Section 13.2 to 13.7 (Detailed Syllabus)',
-  publishedDate: '2026-08-10',
-  verifiedDate: '2026-08-11',
-  verifiedBy: 'Senior Verification Officer #104',
-  taxonomyType: 'FACT',
-  verificationLevel: 'OFFICIALLY_VERIFIED',
-  excerptText: 'Tier-1 will consist of Objective Multiple Choice questions. Tier-2 Paper-I is compulsory for all posts and consists of Section-I, Section-II and Section-III (Computer Knowledge & DEST).'
-};
-
-const sscProvenanceCorrigendum: DataProvenance = {
-  id: 'prov-ssc-03',
-  documentTitle: 'SSC CGL 2026 Corrigendum Notice #02.pdf',
-  officialUrl: 'https://ssc.gov.in',
-  pageNumber: 1,
-  clauseNumber: 'Clause 2 (Extended Application Window)',
-  publishedDate: '2026-08-22',
-  verifiedDate: '2026-08-22',
-  verifiedBy: 'Senior Verification Officer #104',
-  taxonomyType: 'FACT',
-  verificationLevel: 'OFFICIALLY_VERIFIED',
-  excerptText: 'Closing date for receipt of online applications is extended up to 27-09-2026 (23:59 hours). Last date and time for making online fee payment is 28-09-2026 (23:59 hours).'
-};
-
+const sscP_notified: DataProvenance = sscNotice('prov-ssc-notified', 'Cover page', 1, '(To be uploaded on the website of the Commission; i.e. https://ssc.gov.in on 21-05-2026)');
+const sscP_window: DataProvenance = sscNotice('prov-ssc-window', 'Schedule on the cover page', 1, 'Dates for submission of online applications 21.05.2026 to 22.06.2026');
+const sscP_close_notice_src: DataProvenance = sscNotice('prov-ssc-close-notice', 'Schedule on the cover page', 1, 'Last date and time for receipt of online applications 22.06.2026 (23:00 hours)');
+const sscP_fee_notice_src: DataProvenance = sscNotice('prov-ssc-fee-notice', 'Schedule on the cover page', 1, 'Last date and time for making online fee payment 23.06.2026 (23:00 hours)');
+const sscP_correction_notice_src: DataProvenance = sscNotice('prov-ssc-correction-notice', 'Schedule on the cover page', 1, 'Window for Application Form Correction including online payment. 29.06.2026 to 01.07.2026 (23:00 hours)');
+const sscP_tier1_tentative_src: DataProvenance = sscNotice('prov-ssc-tier1-tentative', 'Schedule on the cover page', 1, 'Tentative Schedule of Tier-I (Computer Based Examination) August-September, 2026');
+const sscP_tier2_tentative: DataProvenance = sscNotice('prov-ssc-tier2-tentative', 'Schedule on the cover page', 1, 'Tentative Schedule of Tier-II (Computer Based Examination) December, 2026');
+const sscP_vacancy_notice_src: DataProvenance = sscNotice('prov-ssc-vacancy-notice', 'Para 3.1 — Tentative vacancies', 5, 'There are approx.12,256 vacancies.');
+const sscP_age: DataProvenance = sscNotice('prov-ssc-age', 'Para 5 — Age limit (as on 01-08-2026)', 6, '5. Age limit (As on 01-08-2026): 5.1 Requirement of age for various posts is as follows');
+const sscP_nationality: DataProvenance = sscNotice('prov-ssc-nationality', 'Para 4.1 — Nationality/Citizenship', 6, '4.1 A candidate must be either: 4.1.1 a citizen of India, or 4.1.2 a subject of Nepal, or 4.1.3 a subject of Bhutan');
+const sscP_degree: DataProvenance = sscNotice('prov-ssc-degree', 'Para 8.4 — All other posts', 16, '8.4 All other Posts: 8.4.1 Bachelor’s Degree from a recognized University or equivalent.');
+const sscP_final_year: DataProvenance = sscNotice('prov-ssc-final-year', 'Para 8.5', 16, '8.5 The candidates who have appeared in their final year of their graduation can also apply, however they must possess Essential qualification as on 01.08.2026.');
+const sscP_jso: DataProvenance = sscNotice('prov-ssc-jso', 'Para 8.2 — Junior Statistical Officer', 16, '8.2.1 Bachelor’s Degree in any subject from a recognized University or Institute with at least 60% Marks in Mathematics at 12th standard level; Or Bachelor’s Degree in any subject with Statistics as one of the subjects at degree level.');
+const sscP_si: DataProvenance = sscNotice('prov-ssc-si', 'Para 8.3 — Statistical Investigator Grade-II', 16, '8.3.1 Bachelor degree in Statistics or Mathematics or Economics or Demography or Population Studies or Operation Research or Information Technology or Computer Science or Computer Engineering or Computer Technology or Computer Application or Data Science or Artificial Intelligence from a recognized University or recognized Institute.');
+const sscP_aao: DataProvenance = sscNotice('prov-ssc-aao', 'Para 8.1 — Assistant Audit Officer / Assistant Accounts Officer', 14, '8.1.1.1 Essential Qualifications: Bachelor’s Degree from a recognized University or Institute. 8.1.1.2 Desirable Qualifications: Chartered Accountant or Cost & Management Accountant or Company Secretary or Masters in');
+const sscP_aao_state: DataProvenance = sscNotice('prov-ssc-aao-state', 'Para 8.1.2 — Assistant Audit Officer (State Cadre)', 15, 'ii. Proficiency in the Regional/official language of the State, i.e. ability to read, write, speak and understand the language with proficiency at matriculation level.');
+const sscP_category_crucial: DataProvenance = sscNotice('prov-ssc-category-crucial', 'Para 6.4', 11, '6.4 Crucial date for claim of SC/ST/OBC/PwBD/ESM status or any other benefit, viz., fee concession, reservation, age-relaxation, etc., where not specified otherwise, will be the closing date for receipt of online applications.');
+const sscP_ews: DataProvenance = sscNotice('prov-ssc-ews', 'Para 6.4 — EWS', 11, 'must ensure that he possesses the Income & Asset certificate valid for the Financial Year 2026-2027 issued on the basis of Income for the Financial Year 2025-2026');
+const sscP_obc: DataProvenance = sscNotice('prov-ssc-obc', 'Para 6.5 — OBC', 11, '6.5 A person seeking appointment on the basis of reservation to OBC must ensure that he does not fall in creamy layer on the crucial date i.e. the closing date of application.');
+const sscP_obc_note: DataProvenance = sscNotice('prov-ssc-obc-note', 'Para 6.5 — Note', 11, 'NOTE: The Commission will not insist on candidates producing OBC certificate issued within crucial/cut-off date.');
+const sscP_fee: DataProvenance = sscNotice('prov-ssc-fee', 'Para 10.1–10.2 — Application fee', 19, '10.1 Fee payable: ₹100/- (Rs one hundred only). 10.2 Women candidates and candidates belonging to Scheduled Castes (SC), Scheduled Tribes (ST), Persons with Benchmark Disabilities (PwBD) and Ex-servicemen (ESM) eligible for reservation are exempted from payment of fee.');
+const sscP_fee_modes: DataProvenance = sscNotice('prov-ssc-fee-modes', 'Para 10.3', 20, '10.3 Fee can be paid online through BHIM UPI, Net Banking or by using Visa, Mastercard, Maestro, or RuPay Debit cards.');
+const sscP_centres: DataProvenance = sscNotice('prov-ssc-centres', 'Para 12.2 — Centres of examination', 23, '12.2 A candidate has to give option for three centres, in the order of priority, within the same Region.');
+const sscP_scheme: DataProvenance = sscNotice('prov-ssc-scheme', 'Para 13.1 — Scheme of the examination', 24, '13.1 The Computer Based Examination will be conducted in two tiers as indicated below: 13.1.1 Tier-I 13.1.2 Tier-II');
+const sscP_neg_t1: DataProvenance = sscNotice('prov-ssc-neg-t1', 'Para 13.8.2', 25, '13.8.2 There will be negative marking of 0.50 marks for each wrong answer.');
+const sscP_neg_t2: DataProvenance = sscNotice('prov-ssc-neg-t2', 'Para 13.9.8', 29, '13.9.8 There will be negative marking of 1 mark for each wrong answer in Section-I, Section-II and Section-III of Paper-I and of 0.50 marks for each wrong answer in Paper-II and Paper-III.');
+const sscP_papers_for: DataProvenance = sscNotice('prov-ssc-papers-for', 'Para 13.9.2–13.9.3', 27, '13.9.2 Paper-I is compulsory for all the posts. 13.9.3 Paper-II will be for only those candidates who have applied and shortlisted for the posts of Junior Statistical Officer (JSO)');
+const sscP_dest: DataProvenance = sscNotice('prov-ssc-dest', 'Para 13.9.10 — Data Entry Speed Test', 29, '13.9.10.1 Section-IV of Paper-I will include conducting of a Data Entry Speed Test (DEST) for a duration of 15 minutes in Session-II on the same day. 13.9.10.2 The “Data Entry Speed Test” (DEST) Skill Test will be conducted for a passage of about 2000 (two thousand) key depressions for a duration of 15 (fifteen) minutes.');
+const sscP_dest_qualifying: DataProvenance = sscNotice('prov-ssc-dest-qualifying', 'Para 13.9.10.3', 29, '13.9.10.3 DEST will be mandatory for all the posts; however, it will be qualifying in nature.');
+const sscP_ckt_qualifying: DataProvenance = sscNotice('prov-ssc-ckt-qualifying', 'Para 13.9.9', 29, '13.9.9 Section-III of Paper-I i.e. Computer Knowledge Test: a. Section-III is mandatory for all posts but qualifying in nature.');
+const sscP_qualifying: DataProvenance = sscNotice('prov-ssc-qualifying', 'Para 16.1 — Minimum qualifying marks', 41, '16.1 Minimum qualifying marks in Tier-I; Section-I, Section-II & Section-III of Paper-I of Tier-II, Paper-II & Paper-III of Tier-II Examination are as follows: 16.1.1 UR : 30% 16.1.2 OBC/ EWS : 25% 16.1.3 All other categories : 20%');
+const sscP_dest_errors: DataProvenance = sscNotice('prov-ssc-dest-errors', 'Para 16.2 — DEST error limits', 41, '16.2 Maximum percentage of errors allowed (i.e. minimum qualifying standards) in Section-IV of Paper-I of Tier-II Examination i.e. DEST are as follows: 16.2.1 UR : 20% 16.2.2 OBC/ EWS : 25% 16.2.3 All other categories : 30%');
+const sscP_merit: DataProvenance = sscNotice('prov-ssc-merit', 'Para 16.10–16.11', 42, '16.10 Merit list (FRTA/Final Selection) will be prepared on the basis of overall performance of candidates in Tier-II Examination only.');
+const sscP_physical_a: DataProvenance = sscNotice('prov-ssc-physical-a', 'Annexure-XV A', 116, 'A. Physical standards for the post of Inspector (Central Excise/Examiner/Preventive Officer), Inspector & Sub-Inspector in Central Bureau of Narcotics (CBN): Male Candidates: i. Physical Standards: Height 157.5 cm. Chest 81 cm (fully expanded with a minimum expansion of 5 cm.)');
+const sscP_physical_b: DataProvenance = sscNotice('prov-ssc-physical-b', 'Annexure-XV B', 117, 'B. Physical standards for the Post of Sub- Inspector in Central Bureau of Investigation: a) Height For men - 165 cm. For women - 150 cm.');
+const sscP_physical_c: DataProvenance = sscNotice('prov-ssc-physical-c', 'Annexure-XV C', 117, 'C. Physical standards for the Post of Sub-Inspector in National Investigation Agency: a) Height For men - 170 cms. For women - 150 cms.');
+const sscP_physical_d: DataProvenance = sscNotice('prov-ssc-physical-d', 'Annexure-XV D', 117, 'D. Physical standards for the Post of Sub-Inspector/ Junior Intelligence Officer in Narcotics Control Bureau, Ministry of Home Affairs: a) Height For men - 165 cm. For women - 152 cm.');
+const sscP_reopen_window_src: DataProvenance = sscDocument('prov-ssc-reopen-window', 'SSC Important Notice — Reopening of Online Applications Form Window, CGL 2026 (F. No. HQ-C11018/1/2026-C-1, 23.06.2026)', 'CGLE_Reopen_23062026.pdf', '2026-06-23', 1, 'Para 3', 'the Commission has decided to re-open the window for submission of online applications for the Combined Graduate Level Examination, 2026 for two days i.e. from 23.06.2026 (23:00 hours) to 25.06.2026 (23:00 hours).');
+const sscP_reopen_fee_src: DataProvenance = sscDocument('prov-ssc-reopen-fee', 'SSC Important Notice — Reopening of Online Applications Form Window, CGL 2026 (F. No. HQ-C11018/1/2026-C-1, 23.06.2026)', 'CGLE_Reopen_23062026.pdf', '2026-06-23', 1, 'Para 4', 'The last date for making the online fee payment will be 26.06.2026 (23:00 hours).');
+const sscP_reopen_correction_src: DataProvenance = sscDocument('prov-ssc-reopen-correction', 'SSC Important Notice — Reopening of Online Applications Form Window, CGL 2026 (F. No. HQ-C11018/1/2026-C-1, 23.06.2026)', 'CGLE_Reopen_23062026.pdf', '2026-06-23', 1, 'Para 4', 'Accordingly, the ‘Window for Application Form Correction’ will now be opened from 01.07.2026 to 03.07.2026 (23:00 hours).');
+const sscP_reopen_crucial: DataProvenance = sscDocument('prov-ssc-reopen-crucial', 'SSC Important Notice — Reopening of Online Applications Form Window, CGL 2026 (F. No. HQ-C11018/1/2026-C-1, 23.06.2026)', 'CGLE_Reopen_23062026.pdf', '2026-06-23', 1, 'Para 4', 'The relevant part in the Notice of Examination where the closing date was treated as a crucial date for ascertaining eligibility will now be as per the new closing date i.e. 25.06.2026.');
+const sscP_tier1_schedule_src: DataProvenance = sscDocument('prov-ssc-tier1-schedule', 'SSC Important Notice — Schedule of Examination (F.No. HQ-EC033/7/2025-EC, 12.09.2026)', 'Important%20Notice%202026_cgle_2026_12092026.pdf', '2026-09-12', 1, 'Schedule table', 'Combined Graduate Level Examination, 2026 Tier-I (CBE) 30th September, 2026 to 30th October, 2026');
+const sscP_city: DataProvenance = sscDocument('prov-ssc-city', 'SSC — Information regarding the city of examination and Admission Certificate, CGL 2026 (Tier-I) (21.09.2026)', 'cgle_2026_city_live_21092026.pdf', '2026-09-21', 1, 'Para 1', 'The candidates of Tier-I of Combined Graduate level Examination, 2026 will be able to view their examination city details by logging in through the designated login module on the website of the Commission (https://ssc.gov.in/).');
+const sscP_admission: DataProvenance = sscDocument('prov-ssc-admission', 'SSC — Information regarding the city of examination and Admission Certificate, CGL 2026 (Tier-I) (21.09.2026)', 'cgle_2026_city_live_21092026.pdf', '2026-09-21', 1, 'Para 2', 'The ‘Admission Certificate’ for the said examinations will tentatively be available for download prior to two/three (02/03) days of respective date of examination.');
+const sscP_vacancy_list_src: DataProvenance = sscDocument('prov-ssc-vacancy-list', 'SSC — Tentative Vacancy of Combined Graduate Level Examination, 2026 as on 24.09.2026', 'Tentative_vacancy_CGLE2026_24092026.pdf', '2026-09-24', 3, 'Printed total row of the table', '4412 1715 804 2772 1028 10731');
+const [sscP_reopen_window, sscP_close_notice] = sscReplaced(sscP_reopen_window_src, sscP_close_notice_src);
+const [sscP_reopen_fee, sscP_fee_notice] = sscReplaced(sscP_reopen_fee_src, sscP_fee_notice_src);
+const [sscP_reopen_correction, sscP_correction_notice] = sscReplaced(sscP_reopen_correction_src, sscP_correction_notice_src);
+const [sscP_tier1_schedule, sscP_tier1_tentative] = sscReplaced(sscP_tier1_schedule_src, sscP_tier1_tentative_src);
+const [sscP_vacancy_list, sscP_vacancy_notice] = sscReplaced(sscP_vacancy_list_src, sscP_vacancy_notice_src);
+/** SSC publishes no topic weightage. These figures are GovOS's own and their basis is not
+ *  documented, so they are shown as unverified guidance, never as an official figure. */
 const sscProvenanceWeightage: DataProvenance = {
   id: 'prov-ssc-weightage',
-  documentTitle: 'GovOS Verified PYQ Shift Blueprint (2021-2025 Tier-1 & Tier-2)',
-  officialUrl: 'https://ssc.gov.in',
-  publishedDate: '2026-08-14',
-  verifiedDate: '2026-08-14',
-  verifiedBy: 'GovOS Research Directorate',
+  documentTitle: 'GovOS estimate — not published by SSC',
+  officialUrl: '',
+  publishedDate: '',
+  verifiedDate: '',
+  verifiedBy: 'Not verified: GovOS has no documented basis for these percentages',
   taxonomyType: 'RECOMMENDATION',
-  verificationLevel: 'OFFICIALLY_VERIFIED',
-  excerptText: 'Topic weightage percentages aggregated across 120+ official TCS shift question papers from SSC CGL 2021 to 2025.'
+  verificationLevel: 'UNDER_VERIFICATION',
+  excerptText: 'SSC does not publish how many questions come from each topic. The weightage and question counts shown here are a GovOS estimate with no documented source; treat them as rough guidance only. The official syllabus (Para 13.10 and 13.11 of the notice) lists the topics without weights.'
 };
 
 const sscSyllabusSource: Omit<DataProvenance, 'id' | 'clauseNumber' | 'excerptText'> = {
-  documentTitle: 'Staff Selection Commission — Notice_of_adv_cgl_2026.pdf',
-  officialUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
-  pageNumber: 1,
-  publishedDate: '',
-  verifiedDate: '2026-09-22',
-  verifiedBy: 'GovOS exam builder — read from the authority’s own document, hierarchy as it printed it',
+  documentTitle: SSC_NOTICE_TITLE,
+  officialUrl: SSC_NOTICE_URL,
+  publishedDate: '2026-05-21',
+  verifiedDate: SSC_CHECK,
+  verifiedBy: 'GovOS verifier — each node checked against the page it cites on 2026-09-29',
   taxonomyType: 'FACT',
-  verificationLevel: 'OFFICIALLY_VERIFIED'
+  verificationLevel: 'OFFICIALLY_VERIFIED',
+  authorityName: 'Staff Selection Commission'
 };
 
 export const SSC_CGL_EXAM: Exam = {
@@ -171,8 +193,9 @@ export const SSC_CGL_EXAM: Exam = {
   isGoldenJourney: true,
   isDemoData: false,
   overviewDescription:
-    'The SSC CGL Examination is the highest-volume graduate recruitment examination conducted by the Government of India for recruitment to prestigious Group B (Gazetted & Non-Gazetted) and Group C posts in Central Ministries, Departments, Intelligence Bureau, CBI, CAG, CBIC, and CBDT.',
-  vacanciesTotal: '17,727 (Tentative Pan-India Vacancies)',
+    'The SSC CGL Examination is a graduate-level recruitment examination conducted by the Staff Selection Commission for recruitment to Group B (Gazetted & Non-Gazetted) and Group C posts in Central Ministries, Departments, Intelligence Bureau, CBI, CAG, CBIC, and CBDT.',
+  vacanciesTotal: '10,731 (tentative, as on 24.09.2026)',
+  factEvidence: { vacanciesTotal: sscP_vacancy_list, crucialEligibilityDate: sscP_age },
 
   // Exhaustive Post Breakdown across Pay Level 4 to Pay Level 8
   ageRelaxations: [
@@ -287,60 +310,127 @@ export const SSC_CGL_EXAM: Exam = {
   ],
   posts: [
     {
+      id: 'post-aao-central',
+      postName: 'Assistant Audit Officer (Central Cadre)',
+      department: 'Indian Audit & Accounts Department under O/o Comptroller and Auditor General of India (C&AG)',
+      payLevel: 'Pay Level 8',
+      payScale: '₹47,600 – ₹1,51,100',
+      classification: 'Group “B” Gazetted (Non-Ministerial)',
+      minAge: 18,
+      maxAge: 30,
+      specialQualification: 'Essential: a Bachelor’s Degree from a recognized University or Institute. Desirable: Chartered Accountant, Cost & Management Accountant, Company Secretary, or Masters in Commerce, Business Studies, Business Administration (Finance) or Business Economics. Direct recruits must pass the Subordinate Audit/ Accounts Service Examination during probation (Para 8.1.1).',
+      provenance: sscNotice('prov-post-aao-central', 'Para 2.1 Pay Level-8 (₹ 47600 to 151100)', 2, '1 Assistant Audit Officer (Central Cadre) Indian Audit & Accounts Department under O/o Comptroller and Auditor General of India (C&AG) Group “B” Gazetted (Non-Ministerial) 18-30 years')
+    },
+    {
+      id: 'post-aao-state',
+      postName: 'Assistant Audit Officer (State Cadre)',
+      department: 'Indian Audit & Accounts Department under O/o Comptroller and Auditor General of India (C&AG)',
+      payLevel: 'Pay Level 8',
+      payScale: '₹47,600 – ₹1,51,100',
+      classification: 'Group “B” Gazetted (Non-Ministerial)',
+      minAge: 18,
+      maxAge: 30,
+      specialQualification: 'Essential: a Bachelor’s Degree, and proficiency in the Regional/official language of the State at matriculation level, with a certificate from a recognised State/Central Board. Desirable: CA, CMA, CS, or Masters in Commerce, Business Studies, Business Administration (Finance) or Business Economics (Para 8.1.2–8.1.3).',
+      provenance: sscNotice('prov-post-aao-state', 'Para 2.1 Pay Level-8 (₹ 47600 to 151100)', 2, '2. Assistant Audit Officer (State Cadre) Indian Audit & Accounts Department under O/o Comptroller and Auditor General of India (C&AG) Group “B” Gazetted (Non-Ministerial) 18-30 years')
+    },
+    {
+      id: 'post-aaco-state',
+      postName: 'Assistant Accounts Officer (State Cadre)',
+      department: 'Indian Audit & Accounts Department under O/o Comptroller and Auditor General of India (C&AG)',
+      payLevel: 'Pay Level 8',
+      payScale: '₹47,600 – ₹1,51,100',
+      classification: 'Group “B” Gazetted (Non-Ministerial)',
+      minAge: 18,
+      maxAge: 30,
+      specialQualification: 'Essential: a Bachelor’s Degree, and proficiency in the Regional/official language of the State at matriculation level, with a certificate from a recognised State/Central Board. Desirable: CA, CMA, CS, or Masters in Commerce, Business Studies, Business Administration (Finance) or Business Economics (Para 8.1.2–8.1.3).',
+      provenance: sscNotice('prov-post-aaco-state', 'Para 2.1 Pay Level-8 (₹ 47600 to 151100)', 2, '3. Assistant Accounts Officer (State Cadre) Indian Audit & Accounts Department under O/o Comptroller and Auditor General of India (C&AG) Group “B” Gazetted (Non-Ministerial) 18-30 years')
+    },
+    {
       id: 'post-aso-css',
-      postName: 'Assistant Section Officer (ASO) - CSS',
-      department: 'Central Secretariat Service (CSS)',
+      postName: 'Assistant Section Officer — Central Secretariat Service',
+      department: 'Central Secretariat Service',
       ministry: 'Ministry of Personnel, Public Grievances and Pensions',
       payLevel: 'Pay Level 7',
       payScale: '₹44,900 – ₹1,42,400',
       gradePay: 4600,
-      classification: 'Group B (Non-Gazetted)',
+      classification: 'Group “B”',
       minAge: 20,
       maxAge: 30,
-      natureOfWork: 'Policy drafting, file management, and secretarial administration in Central Government Ministries in New Delhi.',
-      provenance: sscProvenanceEligibility
-    },
-    {
-      id: 'post-aso-mea',
-      postName: 'Assistant Section Officer (ASO) - MEA',
-      department: 'Ministry of External Affairs (MEA)',
-      ministry: 'Ministry of External Affairs',
-      payLevel: 'Pay Level 7',
-      payScale: '₹44,900 – ₹1,42,400',
-      gradePay: 4600,
-      classification: 'Group B (Non-Gazetted)',
-      minAge: 20,
-      maxAge: 30,
-      natureOfWork: 'Diplomatic documentation, passport & consular operations, and foreign mission postings.',
-      provenance: sscProvenanceEligibility
+      provenance: sscNotice('prov-post-aso-css', 'Para 2.2 Pay Level-7 (₹ 44900 to 142400)', 2, '1 Assistant Section Officer Central Secretariat Service Group “B” 20-30 years')
     },
     {
       id: 'post-aso-ib',
-      postName: 'Assistant Section Officer (ASO) - IB',
-      department: 'Intelligence Bureau (IB)',
+      postName: 'Assistant Section Officer — Intelligence Bureau',
+      department: 'Intelligence Bureau',
       ministry: 'Ministry of Home Affairs',
       payLevel: 'Pay Level 7',
       payScale: '₹44,900 – ₹1,42,400',
       gradePay: 4600,
-      classification: 'Group B (Non-Gazetted)',
+      classification: 'Group “B”',
       minAge: 18,
       maxAge: 30,
-      natureOfWork: 'Intelligence analysis, national security administrative support, and confidential dossiers.',
-      provenance: sscProvenanceEligibility
+      provenance: sscNotice('prov-post-aso-ib', 'Para 2.2 Pay Level-7 (₹ 44900 to 142400)', 2, '2 Assistant Section Officer Intelligence Bureau Group “B” 18-30 years')
     },
     {
       id: 'post-aso-railways',
-      postName: 'Assistant Section Officer (ASO) - Railways',
-      department: 'Ministry of Railways (Railway Board)',
+      postName: 'Assistant Section Officer — Ministry of Railways',
+      department: 'Ministry of Railways',
       ministry: 'Ministry of Railways',
       payLevel: 'Pay Level 7',
       payScale: '₹44,900 – ₹1,42,400',
       gradePay: 4600,
-      classification: 'Group B (Non-Gazetted)',
+      classification: 'Group “B”',
       minAge: 20,
       maxAge: 30,
-      natureOfWork: 'Rail Bhavan administration, railway policy implementation, and tender handling.',
-      provenance: sscProvenanceEligibility
+      provenance: sscNotice('prov-post-aso-railways', 'Para 2.2 Pay Level-7 (₹ 44900 to 142400)', 2, '3 Assistant Section Officer Ministry of Railways Group “B” 20-30 years')
+    },
+    {
+      id: 'post-aso-mea',
+      postName: 'Assistant Section Officer — Ministry of External Affairs',
+      department: 'Ministry of External Affairs',
+      ministry: 'Ministry of External Affairs',
+      payLevel: 'Pay Level 7',
+      payScale: '₹44,900 – ₹1,42,400',
+      gradePay: 4600,
+      classification: 'Group “B”',
+      minAge: 20,
+      maxAge: 30,
+      provenance: sscNotice('prov-post-aso-mea', 'Para 2.2 Pay Level-7 (₹ 44900 to 142400)', 2, '4 Assistant Section Officer Ministry of External Affairs Group “B” 20-30 years')
+    },
+    {
+      id: 'post-aso-afhq',
+      postName: 'Assistant Section Officer — AFHQ',
+      department: 'AFHQ',
+      ministry: 'Ministry of Defence',
+      payLevel: 'Pay Level 7',
+      payScale: '₹44,900 – ₹1,42,400',
+      classification: 'Group “B”',
+      minAge: 20,
+      maxAge: 30,
+      provenance: sscNotice('prov-post-aso-afhq', 'Para 2.2 Pay Level-7 (₹ 44900 to 142400)', 2, '5 Assistant Section Officer AFHQ Group “B” 20-30 years')
+    },
+    {
+      id: 'post-aso-meity',
+      postName: 'Assistant Section Officer — Ministry of Electronics and Information Technology',
+      department: 'Ministry of Electronics and Information Technology',
+      ministry: 'Ministry of Electronics and Information Technology',
+      payLevel: 'Pay Level 7',
+      payScale: '₹44,900 – ₹1,42,400',
+      classification: 'Group “B”',
+      minAge: 18,
+      maxAge: 30,
+      provenance: sscNotice('prov-post-aso-meity', 'Para 2.2 Pay Level-7 (₹ 44900 to 142400)', 2, '6 Assistant Section Officer Ministry of Electronics and Information Technology Group “B” 18-30 years')
+    },
+    {
+      id: 'post-aso-other-l7',
+      postName: 'Assistant / Assistant Section Officer (Pay Level 7)',
+      department: 'Other Ministries/ Departments/ Organizations',
+      payLevel: 'Pay Level 7',
+      payScale: '₹44,900 – ₹1,42,400',
+      classification: 'Group “B”',
+      minAge: 18,
+      maxAge: 30,
+      provenance: sscNotice('prov-post-aso-other-l7', 'Para 2.2 Pay Level-7 (₹ 44900 to 142400)', 2, '7 Assistant / Assistant Section Officer Other Ministries/ Departments/ Organizations Group “B” 18-30 years')
     },
     {
       id: 'post-iti',
@@ -350,335 +440,522 @@ export const SSC_CGL_EXAM: Exam = {
       payLevel: 'Pay Level 7',
       payScale: '₹44,900 – ₹1,42,400',
       gradePay: 4600,
-      classification: 'Group B (Non-Gazetted)',
+      classification: 'Group “B”',
       minAge: 18,
       maxAge: 30,
-      natureOfWork: 'Direct tax assessments, corporate audits, search & seizure operations, and tax recovery.',
-      provenance: sscProvenanceEligibility
+      provenance: sscNotice('prov-post-iti', 'Para 2.2 Pay Level-7 (₹ 44900 to 142400)', 2, '8 Inspector of Income Tax Central Board of Direct Taxes (CBDT) Group “B” 18-30 years')
     },
     {
       id: 'post-excise',
-      postName: 'Inspector (Central Excise / GST)',
-      department: 'Central Board of Indirect Taxes & Customs (CBIC)',
+      postName: 'Inspector (Central Excise)',
+      department: 'Central Board of Indirect Taxes and Customs (CBIC)',
       ministry: 'Ministry of Finance',
       payLevel: 'Pay Level 7',
       payScale: '₹44,900 – ₹1,42,400',
       gradePay: 4600,
-      classification: 'Group B (Non-Gazetted)',
+      classification: 'Group “B”',
       minAge: 18,
       maxAge: 30,
       physicalRequired: true,
-      physicalNote: 'Male: Height 157.5 cm, Chest 81 cm (5cm expansion), Walking 1600m in 15 mins, Cycling 8km in 30 mins. Female: Height 152 cm, Weight 48 kg.',
+      physicalNote: 'Annexure-XV A — Men: height 157.5 cm; chest 81 cm fully expanded, minimum expansion 5 cm; walking 1600 m in 15 minutes; cycling 8 km in 30 minutes. Women: height 152 cm; weight 48 kg; walking 1 km in 20 minutes; cycling 3 km in 25 minutes. Height relaxable for Garhwalis, Assamese, Gorkhas and members of Scheduled Tribes.',
       colorBlindnessAllowed: false,
-      natureOfWork: 'GST audits, factory inspections, anti-evasion raids, and indirect tax collection.',
-      provenance: sscProvenanceEligibility
+      provenance: sscNotice('prov-post-excise', 'Para 2.2 Pay Level-7 (₹ 44900 to 142400)', 2, '9 Inspector, (Central Excise) Central Board of Indirect Taxes and Customs (CBIC) Group “B” 18-30 years')
     },
     {
       id: 'post-preventive-officer',
       postName: 'Inspector (Preventive Officer)',
-      department: 'Central Board of Indirect Taxes & Customs (Customs Ports)',
+      department: 'Central Board of Indirect Taxes and Customs (CBIC)',
       ministry: 'Ministry of Finance',
       payLevel: 'Pay Level 7',
       payScale: '₹44,900 – ₹1,42,400',
       gradePay: 4600,
-      classification: 'Group B (Non-Gazetted)',
+      classification: 'Group “B”',
       minAge: 18,
       maxAge: 30,
       physicalRequired: true,
-      physicalNote: 'Uniformed post. Mandatory physical test and maritime customs patrol eligibility.',
+      physicalNote: 'Annexure-XV A — Men: height 157.5 cm; chest 81 cm fully expanded, minimum expansion 5 cm; walking 1600 m in 15 minutes; cycling 8 km in 30 minutes. Women: height 152 cm; weight 48 kg; walking 1 km in 20 minutes; cycling 3 km in 25 minutes. Height relaxable for Garhwalis, Assamese, Gorkhas and members of Scheduled Tribes.',
       colorBlindnessAllowed: false,
-      natureOfWork: 'Port customs security, anti-smuggling vigilance at seaports and airports, cargo clearance.',
-      provenance: sscProvenanceEligibility
+      provenance: sscNotice('prov-post-preventive-officer', 'Para 2.2 Pay Level-7 (₹ 44900 to 142400) — rows 9–11 share the department, Group and age printed against row 9 (p.2)', 3, '10 Inspector (Preventive Officer) 11 Inspector (Examiner)')
     },
     {
       id: 'post-examiner',
       postName: 'Inspector (Examiner)',
-      department: 'Central Board of Indirect Taxes & Customs (Customs Houses)',
+      department: 'Central Board of Indirect Taxes and Customs (CBIC)',
       ministry: 'Ministry of Finance',
       payLevel: 'Pay Level 7',
       payScale: '₹44,900 – ₹1,42,400',
       gradePay: 4600,
-      classification: 'Group B (Non-Gazetted)',
+      classification: 'Group “B”',
       minAge: 18,
       maxAge: 30,
       physicalRequired: true,
+      physicalNote: 'Annexure-XV A — Men: height 157.5 cm; chest 81 cm fully expanded, minimum expansion 5 cm; walking 1600 m in 15 minutes; cycling 8 km in 30 minutes. Women: height 152 cm; weight 48 kg; walking 1 km in 20 minutes; cycling 3 km in 25 minutes. Height relaxable for Garhwalis, Assamese, Gorkhas and members of Scheduled Tribes.',
       colorBlindnessAllowed: false,
-      natureOfWork: 'Assessment of imported/exported cargo, tariff classifications, and valuation of container shipments.',
-      provenance: sscProvenanceEligibility
+      provenance: sscNotice('prov-post-examiner', 'Para 2.2 Pay Level-7 (₹ 44900 to 142400) — rows 9–11 share the department, Group and age printed against row 9 (p.2)', 3, '10 Inspector (Preventive Officer) 11 Inspector (Examiner)')
+    },
+    {
+      id: 'post-aeo-ed',
+      postName: 'Assistant Enforcement Officer',
+      department: 'Directorate of Enforcement (ED), Department of Revenue',
+      ministry: 'Ministry of Finance',
+      payLevel: 'Pay Level 7',
+      payScale: '₹44,900 – ₹1,42,400',
+      classification: 'Group “B”',
+      minAge: 18,
+      maxAge: 30,
+      provenance: sscNotice('prov-post-aeo-ed', 'Para 2.2 Pay Level-7 (₹ 44900 to 142400)', 3, '12 Assistant Enforcement Officer Directorate of Enforcement (ED), Department of Revenue Group “B” 18-30 years')
     },
     {
       id: 'post-si-cbi',
-      postName: 'Sub-Inspector (CBI)',
-      department: 'Central Bureau of Investigation (CBI)',
+      postName: 'Sub Inspector — Central Bureau of Investigation',
+      department: 'Central Bureau of Investigation',
       ministry: 'Department of Personnel and Training',
       payLevel: 'Pay Level 7',
       payScale: '₹44,900 – ₹1,42,400',
       gradePay: 4600,
-      classification: 'Group B (Non-Gazetted)',
+      classification: 'Group “B”',
       minAge: 20,
       maxAge: 30,
       physicalRequired: true,
-      physicalNote: 'Male: Height 165 cm, Chest 76 cm. Female: Height 150 cm. Vision: 6/6 and 6/9 with/without glasses.',
-      natureOfWork: 'Anti-corruption investigations, economic offense inquiries, interrogations, and court evidence presentation.',
-      provenance: sscProvenanceEligibility
+      physicalNote: 'Annexure-XV B — Height: men 165 cm, women 150 cm (relaxable 5 cm for hillsmen and tribals). Chest (men): 76 cm with expansion. Vision (with or without glasses): distant 6/6 in one eye and 6/9 in the other; near 0.6 and 0.8.',
+      provenance: sscNotice('prov-post-si-cbi', 'Para 2.2 Pay Level-7 (₹ 44900 to 142400)', 3, '13 Sub Inspector Central Bureau of Investigation Group “B” 20-30 years')
+    },
+    {
+      id: 'post-inspector-posts',
+      postName: 'Inspector Posts',
+      department: 'Department of Posts, Ministry of Communications',
+      ministry: 'Ministry of Communications',
+      payLevel: 'Pay Level 7',
+      payScale: '₹44,900 – ₹1,42,400',
+      classification: 'Group “B”',
+      minAge: 18,
+      maxAge: 30,
+      provenance: sscNotice('prov-post-inspector-posts', 'Para 2.2 Pay Level-7 (₹ 44900 to 142400)', 3, '14 Inspector Posts Department of Posts, Ministry of Communications Group “B” 18-30 years')
+    },
+    {
+      id: 'post-inspector-cbn',
+      postName: 'Inspector — Central Bureau of Narcotics',
+      department: 'Central Bureau of Narcotics, Ministry of Finance',
+      ministry: 'Ministry of Finance',
+      payLevel: 'Pay Level 7',
+      payScale: '₹44,900 – ₹1,42,400',
+      classification: 'Group “B”',
+      minAge: 18,
+      maxAge: 30,
+      physicalRequired: true,
+      physicalNote: 'Annexure-XV A — Men: height 157.5 cm; chest 81 cm fully expanded, minimum expansion 5 cm; walking 1600 m in 15 minutes; cycling 8 km in 30 minutes. Women: height 152 cm; weight 48 kg; walking 1 km in 20 minutes; cycling 3 km in 25 minutes. Height relaxable for Garhwalis, Assamese, Gorkhas and members of Scheduled Tribes.',
+      provenance: sscNotice('prov-post-inspector-cbn', 'Para 2.2 Pay Level-7 (₹ 44900 to 142400)', 3, '15 Inspector Central Bureau of Narcotics, Ministry of Finance Group “B” 18-30 years')
+    },
+    {
+      id: 'post-aso-other-l6',
+      postName: 'Assistant / Assistant Section Officer (Pay Level 6)',
+      department: 'Other Ministries/ Departments/ Organizations',
+      payLevel: 'Pay Level 6',
+      payScale: '₹35,400 – ₹1,12,400',
+      classification: 'Group “B”',
+      minAge: 18,
+      maxAge: 30,
+      provenance: sscNotice('prov-post-aso-other-l6', 'Para 2.3 Pay Level-6 (₹ 35400 to 112400)', 3, '1 Assistant / Assistant Section Officer Other Ministries/ Departments/ Organizations Group “B” 18-30 years')
+    },
+    {
+      id: 'post-executive-assistant-cbic',
+      postName: 'Executive Assistant',
+      department: 'Central Board of Indirect Taxes and Customs (CBIC)',
+      ministry: 'Ministry of Finance',
+      payLevel: 'Pay Level 6',
+      payScale: '₹35,400 – ₹1,12,400',
+      classification: 'Group “B”',
+      minAge: 18,
+      maxAge: 30,
+      provenance: sscNotice('prov-post-executive-assistant-cbic', 'Para 2.3 Pay Level-6 (₹ 35400 to 112400)', 3, '2 Executive Assistant Central Board of Indirect Taxes and Customs (CBIC) Group “B” 18-30 years')
+    },
+    {
+      id: 'post-research-assistant-nhrc',
+      postName: 'Research Assistant',
+      department: 'National Human Rights Commission (NHRC)',
+      payLevel: 'Pay Level 6',
+      payScale: '₹35,400 – ₹1,12,400',
+      classification: 'Group “B”',
+      minAge: 18,
+      maxAge: 30,
+      provenance: sscNotice('prov-post-research-assistant-nhrc', 'Para 2.3 Pay Level-6 (₹ 35400 to 112400)', 3, '3 Research Assistant National Human Rights Commission (NHRC) Group “B” 18-30 years')
+    },
+    {
+      id: 'post-divisional-accountant',
+      postName: 'Divisional Accountant',
+      department: 'Offices under C&AG',
+      payLevel: 'Pay Level 6',
+      payScale: '₹35,400 – ₹1,12,400',
+      classification: 'Group “B”',
+      minAge: 18,
+      maxAge: 30,
+      provenance: sscNotice('prov-post-divisional-accountant', 'Para 2.3 Pay Level-6 (₹ 35400 to 112400)', 3, '4 Divisional Accountant Offices under C&AG Group “B” 18-30 years')
     },
     {
       id: 'post-si-nia',
-      postName: 'Sub-Inspector (NIA)',
+      postName: 'Sub Inspector — National Investigation Agency',
       department: 'National Investigation Agency (NIA)',
       ministry: 'Ministry of Home Affairs',
       payLevel: 'Pay Level 6',
       payScale: '₹35,400 – ₹1,12,400',
       gradePay: 4200,
-      classification: 'Group B (Non-Gazetted)',
+      classification: 'Group “B”',
       minAge: 18,
       maxAge: 30,
       physicalRequired: true,
-      natureOfWork: 'Counter-terrorism investigations, specialized field forensics, and intelligence gathering.',
-      provenance: sscProvenanceEligibility
+      physicalNote: 'Annexure-XV C — Height: men 170 cm, women 150 cm (relaxable 5 cm for hillsmen and tribals). Chest (men): 76 cm with expansion. Vision (with or without glasses): distant 6/6 in one eye and 6/9 in the other; near 0.6 and 0.8.',
+      provenance: sscNotice('prov-post-si-nia', 'Para 2.3 Pay Level-6 (₹ 35400 to 112400)', 3, '5 Sub Inspector National Investigation Agency (NIA) Group “B” 18-30 years')
+    },
+    {
+      id: 'post-si-jio-ncb',
+      postName: 'Sub-Inspector/ Junior Intelligence Officer',
+      department: 'Narcotics Control Bureau (MHA)',
+      ministry: 'Ministry of Home Affairs',
+      payLevel: 'Pay Level 6',
+      payScale: '₹35,400 – ₹1,12,400',
+      classification: 'Group “B”',
+      minAge: 18,
+      maxAge: 30,
+      physicalRequired: true,
+      physicalNote: 'Annexure-XV D — Height: men 165 cm, women 152 cm (relaxation as listed in the Annexure). Chest (men): 76 cm unexpanded with 5 cm expansion. Vision (with or without glasses): distant 6/6 in one eye and 6/9 in the other; near 0.6 and 0.8.',
+      provenance: sscNotice('prov-post-si-jio-ncb', 'Para 2.3 Pay Level-6 (₹ 35400 to 112400)', 3, '6 Sub-Inspector/ Junior Intelligence Officer Narcotics Control Bureau (MHA) Group “B” 18-30 years')
     },
     {
       id: 'post-jso',
-      postName: 'Junior Statistical Officer (JSO)',
-      department: 'Ministry of Statistics & Programme Implementation (MoSPI)',
+      postName: 'Junior Statistical Officer',
+      department: 'Ministry of Statistics & Programme Implementation',
       ministry: 'Ministry of Statistics & Programme Implementation',
       payLevel: 'Pay Level 6',
       payScale: '₹35,400 – ₹1,12,400',
       gradePay: 4200,
-      classification: 'Group B (Non-Gazetted)',
+      classification: 'Group “B”',
       minAge: 18,
       maxAge: 32,
-      specialQualification:
-        "Bachelor's Degree with minimum 60% in Mathematics at 12th standard OR Bachelor's Degree in any discipline with Statistics as one of the subjects at degree level.",
-      natureOfWork: 'National sample surveys, economic census data collection, statistical tabulation, and indices computing.',
-      provenance: sscProvenanceEligibility
+      specialQualification: 'Bachelor’s Degree in any subject with at least 60% marks in Mathematics at 12th standard level; or a Bachelor’s Degree in any subject with Statistics as one of the subjects at degree level (Para 8.2.1).',
+      provenance: sscNotice('prov-post-jso', 'Para 2.3 Pay Level-6 (₹ 35400 to 112400)', 3, '7 Junior Statistical Officer Ministry of Statistics & Programme Implementation. Group “B” 18-32 years')
     },
     {
       id: 'post-stat-inv',
       postName: 'Statistical Investigator Grade-II',
-      department: 'Registrar General of India (RGI)',
+      department: 'Office of the Registrar General and Census Commissioner of India',
       ministry: 'Ministry of Home Affairs',
       payLevel: 'Pay Level 6',
       payScale: '₹35,400 – ₹1,12,400',
       gradePay: 4200,
-      classification: 'Group B (Non-Gazetted)',
+      classification: 'Group “B”',
       minAge: 18,
       maxAge: 30,
-      specialQualification:
-        "Bachelor's Degree with Statistics as one of the subjects in ALL THREE YEARS / all semesters of degree course.",
-      natureOfWork: 'Decennial population census analysis, vital statistics registration, and demographic modeling.',
-      provenance: sscProvenanceEligibility
+      specialQualification: 'Bachelor degree in Statistics, Mathematics, Economics, Demography, Population Studies, Operation Research, Information Technology, Computer Science, Computer Engineering, Computer Technology, Computer Application, Data Science or Artificial Intelligence (Para 8.3.1).',
+      provenance: sscNotice('prov-post-stat-inv', 'Para 2.3 Pay Level-6 (₹ 35400 to 112400)', 3, '8 Statistical Investigator Grade-II Ministry of Home Affairs Group “B” 18-30 years')
+    },
+    {
+      id: 'post-office-superintendent-cbdt',
+      postName: 'Office Superintendent',
+      department: 'Central Board of Direct Taxes (CBDT)',
+      ministry: 'Ministry of Finance',
+      payLevel: 'Pay Level 6',
+      payScale: '₹35,400 – ₹1,12,400',
+      classification: 'Group “B”',
+      minAge: 18,
+      maxAge: 30,
+      provenance: sscNotice('prov-post-office-superintendent-cbdt', 'Para 2.3 Pay Level-6 (₹ 35400 to 112400)', 3, '9 Office Superintendent Central Board of Direct Taxes (CBDT) Group “B” 18-30 years')
+    },
+    {
+      id: 'post-section-head-dgft',
+      postName: 'Section Head',
+      department: 'Director General of Foreign Trade',
+      ministry: 'Ministry of Commerce and Industry',
+      payLevel: 'Pay Level 6',
+      payScale: '₹35,400 – ₹1,12,400',
+      classification: 'Group “B”',
+      minAge: 18,
+      maxAge: 30,
+      provenance: sscNotice('prov-post-section-head-dgft', 'Para 2.3 Pay Level-6 (₹ 35400 to 112400)', 3, '10 Section Head Director General of Foreign Trade Group “B” 18-30 years')
     },
     {
       id: 'post-auditor-cag',
-      postName: 'Auditor (Offices under C&AG)',
-      department: 'Comptroller & Auditor General of India (C&AG)',
-      ministry: 'Autonomous Constitutional Authority',
+      postName: 'Auditor — Offices under C&AG',
+      department: 'Offices under C&AG',
       payLevel: 'Pay Level 5',
       payScale: '₹29,200 – ₹92,300',
       gradePay: 2800,
-      classification: 'Group C',
+      classification: 'Group “C”',
       minAge: 18,
       maxAge: 27,
-      natureOfWork: 'Auditing state and central government expenditures, receipts, and public sector undertakings.',
-      provenance: sscProvenanceEligibility
+      provenance: sscNotice('prov-post-auditor-cag', 'Para 2.4 Pay Level-5 (₹ 29200 to 92300)', 3, '1 Auditor Offices under C&AG Group “C” 18-27 years')
     },
     {
       id: 'post-auditor-cgda',
-      postName: 'Auditor (Offices under CGDA)',
-      department: 'Controller General of Defence Accounts (CGDA)',
+      postName: 'Auditor — Offices under CGDA',
+      department: 'Offices under CGDA',
       ministry: 'Ministry of Defence',
       payLevel: 'Pay Level 5',
       payScale: '₹29,200 – ₹92,300',
       gradePay: 2800,
-      classification: 'Group C',
+      classification: 'Group “C”',
       minAge: 18,
       maxAge: 27,
-      natureOfWork: 'Defence expenditure audit, armed forces pension verification, and procurement billing audits.',
-      provenance: sscProvenanceEligibility
+      provenance: sscNotice('prov-post-auditor-cgda', 'Para 2.4 Pay Level-5 (₹ 29200 to 92300)', 3, '2 Auditor Offices under CGDA Group “C” 18-27 years')
+    },
+    {
+      id: 'post-auditor-other',
+      postName: 'Auditor — Other Ministry/ Departments',
+      department: 'Other Ministry/ Departments',
+      payLevel: 'Pay Level 5',
+      payScale: '₹29,200 – ₹92,300',
+      classification: 'Group “C”',
+      minAge: 18,
+      maxAge: 27,
+      provenance: sscNotice('prov-post-auditor-other', 'Para 2.4 Pay Level-5 (₹ 29200 to 92300)', 4, '3 Auditor Other Ministry/ Departments Group “C” 18-27 years')
+    },
+    {
+      id: 'post-accountant-cag-office',
+      postName: 'Accountant — Offices under C&AG',
+      department: 'Offices under C&AG',
+      payLevel: 'Pay Level 5',
+      payScale: '₹29,200 – ₹92,300',
+      classification: 'Group “C”',
+      minAge: 18,
+      maxAge: 27,
+      provenance: sscNotice('prov-post-accountant-cag-office', 'Para 2.4 Pay Level-5 (₹ 29200 to 92300)', 4, '4 Accountant Offices under C&AG Group “C” 18-27 years')
+    },
+    {
+      id: 'post-accountant-cga',
+      postName: 'Accountant — Controller General of Accounts',
+      department: 'Controller General of Accounts',
+      ministry: 'Ministry of Finance',
+      payLevel: 'Pay Level 5',
+      payScale: '₹29,200 – ₹92,300',
+      classification: 'Group “C”',
+      minAge: 18,
+      maxAge: 27,
+      provenance: sscNotice('prov-post-accountant-cga', 'Para 2.4 Pay Level-5 (₹ 29200 to 92300)', 4, '5 Accountant Controller General of Accounts Group “C” 18-27 years')
     },
     {
       id: 'post-accountant-cag',
-      postName: 'Accountant / Junior Accountant',
-      department: 'Offices under CGA / C&AG / Ministries',
-      ministry: 'Ministry of Finance & Constitutional Bodies',
+      postName: 'Accountant/ Junior Accountant — Other Ministry/ Departments',
+      department: 'Other Ministry/ Departments',
       payLevel: 'Pay Level 5',
       payScale: '₹29,200 – ₹92,300',
       gradePay: 2800,
-      classification: 'Group C',
+      classification: 'Group “C”',
       minAge: 18,
       maxAge: 27,
-      natureOfWork: 'Maintaining central government ledgers, financial reconciliations, and payroll processing.',
-      provenance: sscProvenanceEligibility
+      provenance: sscNotice('prov-post-accountant-cag', 'Para 2.4 Pay Level-5 (₹ 29200 to 92300)', 4, '6 Accountant/ Junior Accountant Other Ministry/ Departments Group “C” 18-27 years')
     },
     {
-      id: 'post-tax-assistant-cbdt',
-      postName: 'Tax Assistant (CBDT)',
-      department: 'Central Board of Direct Taxes',
-      ministry: 'Ministry of Finance',
+      id: 'post-postal-assistant',
+      postName: 'Postal Assistant/ Sorting Assistant',
+      department: 'Department of Posts, Ministry of Communications',
+      ministry: 'Ministry of Communications',
       payLevel: 'Pay Level 4',
       payScale: '₹25,500 – ₹81,100',
-      gradePay: 2400,
-      classification: 'Group C',
+      classification: 'Group “C”',
       minAge: 18,
       maxAge: 27,
-      natureOfWork: 'Data entry of ITR returns, scrutiny processing, tax refund dispatch, and clerical support.',
-      provenance: sscProvenanceEligibility
-    },
-    {
-      id: 'post-tax-assistant-cbic',
-      postName: 'Tax Assistant (CBIC)',
-      department: 'Central Board of Indirect Taxes & Customs',
-      ministry: 'Ministry of Finance',
-      payLevel: 'Pay Level 4',
-      payScale: '₹25,500 – ₹81,100',
-      gradePay: 2400,
-      classification: 'Group C',
-      minAge: 18,
-      maxAge: 27,
-      natureOfWork: 'GST invoice reconciliation, export drawback data entry, and customs documentation processing.',
-      provenance: sscProvenanceEligibility
+      provenance: sscNotice('prov-post-postal-assistant', 'Para 2.5 Pay Level-4 (₹ 25500 to 81100)', 4, '1 Postal Assistant/ Sorting Assistant Department of Posts, Ministry of Communications Group “C” 18-27 years')
     },
     {
       id: 'post-ssa-dopt',
-      postName: 'Senior Secretariat Assistant / UDC',
-      department: 'Central Government Offices / DoP&T Cadres',
-      ministry: 'Various Ministries',
+      postName: 'Senior Secretariat Assistant/ Upper Division Clerk',
+      department: 'Central Govt. Offices/ Ministries other than CSCS cadres',
       payLevel: 'Pay Level 4',
       payScale: '₹25,500 – ₹81,100',
       gradePay: 2400,
-      classification: 'Group C',
+      classification: 'Group “C”',
       minAge: 18,
       maxAge: 27,
-      natureOfWork: 'Drafting notes, docketing correspondence, and managing ministry files.',
-      provenance: sscProvenanceEligibility
+      provenance: sscNotice('prov-post-ssa-dopt', 'Para 2.5 Pay Level-4 (₹ 25500 to 81100)', 4, '2 Senior Secretariat Assistant/ Upper Division Clerks Central Govt. Offices/ Ministries other than CSCS cadres. Group “C” 18-27 years')
+    },
+    {
+      id: 'post-saa-mes',
+      postName: 'Senior Administrative Assistant',
+      department: 'Military Engineering Services, Ministry of Defence',
+      ministry: 'Ministry of Defence',
+      payLevel: 'Pay Level 4',
+      payScale: '₹25,500 – ₹81,100',
+      classification: 'Group “C”',
+      minAge: 18,
+      maxAge: 27,
+      provenance: sscNotice('prov-post-saa-mes', 'Para 2.5 Pay Level-4 (₹ 25500 to 81100)', 4, '3 Senior Administrative Assistant Military Engineering Services, Ministry of Defence Group “C” 18-27 years')
+    },
+    {
+      id: 'post-tax-assistant-cbdt',
+      postName: 'Tax Assistant — CBDT',
+      department: 'Central Board of Direct Taxes (CBDT)',
+      ministry: 'Ministry of Finance',
+      payLevel: 'Pay Level 4',
+      payScale: '₹25,500 – ₹81,100',
+      gradePay: 2400,
+      classification: 'Group “C”',
+      minAge: 18,
+      maxAge: 27,
+      provenance: sscNotice('prov-post-tax-assistant-cbdt', 'Para 2.5 Pay Level-4 (₹ 25500 to 81100)', 4, '4 Tax Assistant Central Board of Direct Taxes (CBDT) Group “C” 18-27 years')
+    },
+    {
+      id: 'post-tax-assistant-cbic',
+      postName: 'Tax Assistant — CBIC',
+      department: 'Central Board of Indirect Taxes and Customs (CBIC)',
+      ministry: 'Ministry of Finance',
+      payLevel: 'Pay Level 4',
+      payScale: '₹25,500 – ₹81,100',
+      gradePay: 2400,
+      classification: 'Group “C”',
+      minAge: 18,
+      maxAge: 27,
+      provenance: sscNotice('prov-post-tax-assistant-cbic', 'Para 2.5 Pay Level-4 (₹ 25500 to 81100)', 4, '5 Tax Assistant Central Board of Indirect Taxes and Customs (CBIC) Group “C” 18-27 years')
+    },
+    {
+      id: 'post-si-cbn',
+      postName: 'Sub-Inspector — Central Bureau of Narcotics',
+      department: 'Central Bureau of Narcotics, Ministry of Finance',
+      ministry: 'Ministry of Finance',
+      payLevel: 'Pay Level 4',
+      payScale: '₹25,500 – ₹81,100',
+      classification: 'Group “C”',
+      minAge: 18,
+      maxAge: 27,
+      physicalRequired: true,
+      physicalNote: 'Annexure-XV A — Men: height 157.5 cm; chest 81 cm fully expanded, minimum expansion 5 cm; walking 1600 m in 15 minutes; Women: height 152 cm; weight 48 kg; walking 1 km in 20 minutes. Height relaxable for Garhwalis, Assamese, Gorkhas and members of Scheduled Tribes. Cycling does not apply to the Sub-Inspector in CBN.',
+      provenance: sscNotice('prov-post-si-cbn', 'Para 2.5 Pay Level-4 (₹ 25500 to 81100)', 4, '6 Sub-Inspector Central Bureau of Narcotics, Ministry of Finance Group “C” 18-27 years')
     }
   ],
 
   // Important Dates with Corrigendum Status
+  // Only what SSC has published. The admission certificate, answer keys, results and the
+  // exact Tier-II dates are not announced; the admit-card section states the release rule.
   dates: [
     {
       id: 'date-notif',
       type: 'NOTIFICATION',
-      label: 'Official Notification Release',
-      dateTimeStr: '2026-08-10 10:00:00',
-      timezone: 'Asia/Kolkata (IST)',
+      label: 'Notice of Examination published',
+      dateTimeStr: '2026-05-21 00:00:00',
+      timezone: 'IST',
       isTentative: false,
       status: 'AVAILABLE',
-      provenance: sscProvenanceOverview
+      displayWhen: '21-05-2026',
+      provenance: sscP_notified
     },
     {
       id: 'date-open',
       type: 'APPLICATION_OPEN',
-      label: 'Online Application Portal Opens',
-      dateTimeStr: '2026-08-10 10:00:00',
-      timezone: 'Asia/Kolkata (IST)',
+      label: 'Online applications open',
+      dateTimeStr: '2026-05-21 00:00:00',
+      timezone: 'IST',
       isTentative: false,
       status: 'AVAILABLE',
-      provenance: sscProvenanceOverview
+      displayWhen: '21-05-2026',
+      provenance: sscP_window
     },
     {
       id: 'date-close-orig',
       type: 'APPLICATION_CLOSE',
-      label: 'Original Application Deadline (Superseded)',
-      dateTimeStr: '2026-09-20 23:59:00',
-      timezone: 'Asia/Kolkata (IST)',
+      label: 'Last date for online applications (as first notified)',
+      dateTimeStr: '2026-06-22 23:00:00',
+      timezone: 'IST',
       isTentative: false,
       status: 'SUPERSEDED',
-      provenance: sscProvenanceOverview
+      supersededBy: 'date-close-reopen',
+      provenance: sscP_close_notice
     },
     {
-      id: 'date-close-corr',
-      type: 'APPLICATION_CLOSE',
-      label: 'Extended Application Deadline (Corrigendum #02)',
-      dateTimeStr: '2026-09-27 23:59:00',
-      timezone: 'Asia/Kolkata (IST)',
-      isTentative: false,
-      status: 'AVAILABLE',
-      provenance: sscProvenanceCorrigendum
-    },
-    {
-      id: 'date-correction-window',
-      type: 'CORRECTION_WINDOW',
-      label: 'Application Form Correction & Payment Window',
-      dateTimeStr: '2026-10-01 10:00:00',
-      timezone: 'Asia/Kolkata (IST)',
-      isTentative: false,
-      status: 'AVAILABLE',
-      provenance: sscProvenanceCorrigendum
-    },
-    {
-      id: 'date-admit',
-      type: 'ADMIT_CARD',
-      label: 'Tier 1 City Intimation Slip & Admit Card Release',
-      dateTimeStr: '2026-10-18 10:00:00',
-      timezone: 'Asia/Kolkata (IST)',
-      isTentative: true,
-      status: 'AVAILABLE',
-      provenance: sscProvenanceOverview
-    },
-    {
-      id: 'date-tier1',
-      type: 'EXAM_TIER1',
-      label: 'Tier 1 Computer Based Examination (CBR)',
-      dateTimeStr: '2026-11-05 09:00:00',
-      timezone: 'Asia/Kolkata (IST)',
-      isTentative: false,
-      status: 'AVAILABLE',
-      provenance: sscProvenanceOverview
-    },
-    {
-      id: 'date-anskey',
-      type: 'ANSWER_KEY',
-      label: 'Tier 1 Tentative Answer Key & Challenge Window',
-      dateTimeStr: '2026-11-20 18:00:00',
-      timezone: 'Asia/Kolkata (IST)',
-      isTentative: true,
-      status: 'AVAILABLE',
-      provenance: sscProvenanceOverview
-    },
-    {
-      id: 'date-result',
-      type: 'RESULT',
-      label: 'Tier 1 Official Result & Cut-off Marks Declaration',
-      dateTimeStr: '2026-12-15 17:00:00',
-      timezone: 'Asia/Kolkata (IST)',
-      isTentative: true,
-      status: 'AVAILABLE',
-      provenance: sscProvenanceOverview
-    },
-    {
-      id: 'date-tier2',
-      type: 'EXAM_TIER2',
-      label: 'Tier 2 Computer Based Examination (CBR)',
-      dateTimeStr: '2027-02-15 09:00:00',
-      timezone: 'Asia/Kolkata (IST)',
-      isTentative: true,
-      status: 'AVAILABLE',
-      provenance: sscProvenanceOverview
-    },
-    {
-      id: 'date-ssc-fee-payment-close',
-      type: 'APPLICATION_CLOSE',
-      label: 'Last date and time for making online fee payment',
+      id: 'date-reopen',
+      type: 'OTHER',
+      label: 'Application window re-opened for two days',
       dateTimeStr: '2026-06-23 23:00:00',
       timezone: 'IST',
       isTentative: false,
       status: 'AVAILABLE',
-      provenance: {
-        id: 'prov-ssc-fee-payment-last-date',
-        documentTitle: 'Notice of Examination — Combined Graduate Level Examination, 2026',
-        officialUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
-        pageNumber: 1,
-        clauseNumber: 'Important Dates',
-        publishedDate: '2026-05-21',
-        verifiedDate: '2026-09-20',
-        verifiedBy: 'GovOS exam builder — extracted from the Commission’s own notice and verified verbatim',
-        taxonomyType: 'FACT',
-        verificationLevel: 'OFFICIALLY_VERIFIED',
-        excerptText: 'Last date and time for making online fee payment 23.06.2026 (23:00 hours)'
-      }
+      provenance: sscP_reopen_window
     },
+    {
+      id: 'date-fee-orig',
+      type: 'OTHER',
+      label: 'Last date for online fee payment (as first notified)',
+      dateTimeStr: '2026-06-23 23:00:00',
+      timezone: 'IST',
+      isTentative: false,
+      status: 'SUPERSEDED',
+      supersededBy: 'date-fee',
+      provenance: sscP_fee_notice
+    },
+    {
+      id: 'date-close-reopen',
+      type: 'APPLICATION_CLOSE',
+      label: 'Last date for online applications (after the re-opening)',
+      dateTimeStr: '2026-06-25 23:00:00',
+      timezone: 'IST',
+      isTentative: false,
+      status: 'AVAILABLE',
+      provenance: sscP_reopen_window
+    },
+    {
+      id: 'date-fee',
+      type: 'OTHER',
+      label: 'Last date for online fee payment (after the re-opening)',
+      dateTimeStr: '2026-06-26 23:00:00',
+      timezone: 'IST',
+      isTentative: false,
+      status: 'AVAILABLE',
+      provenance: sscP_reopen_fee
+    },
+    {
+      id: 'date-correction-orig',
+      type: 'CORRECTION_WINDOW',
+      label: 'Application form correction window (as first notified)',
+      dateTimeStr: '2026-07-01 23:00:00',
+      timezone: 'IST',
+      isTentative: false,
+      status: 'SUPERSEDED',
+      displayWhen: '29-06-2026 to 01-07-2026 (23:00)',
+      supersededBy: 'date-correction',
+      provenance: sscP_correction_notice
+    },
+    {
+      id: 'date-correction',
+      type: 'CORRECTION_WINDOW',
+      label: 'Application form correction window (after the re-opening)',
+      dateTimeStr: '2026-07-03 23:00:00',
+      timezone: 'IST',
+      isTentative: false,
+      status: 'AVAILABLE',
+      displayWhen: '01-07-2026 to 03-07-2026 (23:00)',
+      provenance: sscP_reopen_correction
+    },
+    {
+      id: 'date-tier1-tentative',
+      type: 'EXAM_TIER1',
+      label: 'Tier-I (Computer Based Examination) — tentative schedule in the notice',
+      dateTimeStr: '2026-09-30 23:59:00',
+      timezone: 'IST',
+      isTentative: true,
+      status: 'SUPERSEDED',
+      displayWhen: 'August-September, 2026',
+      supersededBy: 'date-tier1',
+      provenance: sscP_tier1_tentative
+    },
+    {
+      id: 'date-tier1',
+      type: 'EXAM_TIER1',
+      label: 'Tier-I (Computer Based Examination)',
+      dateTimeStr: '2026-10-30 23:59:00',
+      timezone: 'IST',
+      isTentative: false,
+      status: 'AVAILABLE',
+      displayWhen: '30-09-2026 to 30-10-2026',
+      provenance: sscP_tier1_schedule
+    },
+    {
+      id: 'date-tier2',
+      type: 'EXAM_TIER2',
+      label: 'Tier-II (Computer Based Examination) — tentative schedule',
+      dateTimeStr: '2026-12-31 23:59:00',
+      timezone: 'IST',
+      isTentative: true,
+      status: 'AVAILABLE',
+      displayWhen: 'December, 2026',
+      provenance: sscP_tier2_tentative
+    }
   ],
 
   globalRuleGroup: {
@@ -691,7 +968,7 @@ export const SSC_CGL_EXAM: Exam = {
         operator: '>=',
         ruleValue: 18,
         category: 'GENERAL',
-        provenance: sscProvenanceEligibility
+        provenance: sscP_age
       },
       {
         id: 'rule-ssc-deg',
@@ -699,7 +976,7 @@ export const SSC_CGL_EXAM: Exam = {
         operator: '=',
         ruleValue: ['Bachelor Degree', 'Graduation', 'B.E', 'B.Tech', 'B.Sc', 'B.Com', 'B.A', 'BBA', 'BCA'],
         category: 'GENERAL',
-        provenance: sscProvenanceEligibility
+        provenance: sscP_degree
       },
       {
         id: 'rule-ssc-nat',
@@ -707,512 +984,373 @@ export const SSC_CGL_EXAM: Exam = {
         operator: '=',
         ruleValue: ['Indian', 'Citizen of India', 'Subject of Nepal', 'Subject of Bhutan'],
         category: 'GENERAL',
-        provenance: sscProvenanceEligibility
+        provenance: sscP_nationality
       }
     ]
   },
 
   // Full 2-Tier Exam Pattern & Stages
   patternTree: [
-    {
-      id: 'stage-scheme-of-tier-i-examination',
-      level: 'STAGE',
-      levelLabel: 'Tier',
-      name: 'Scheme of Tier-I Examination',
-      code: 'Tier-I',
-      order: 1,
-      status: 'VERIFIED',
-      questions: 100,
-      derived: [
-        'questions',
-        'marks'
-      ],
-      marks: 200.0,
-      negativeMarking: '2 There will be negative marking of 0.',
-      negativeMarkPerWrong: 0.5,
-      languages: [
-        'English',
-        'Hindi except for English Comprehension'
-      ],
-      questionType: 'Objective Type',
-      sectionalTiming: true,
-      provenance: {
-        id: 'prov-stage-scheme-of-tier-i-examination',
-        documentTitle: 'Staff Selection Commission — Notice_of_adv_cgl_2026.pdf',
-        officialUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
-        pageNumber: 1,
-        clauseNumber: 'pattern',
-        publishedDate: '2026-09-20T14:18:33',
-        verifiedDate: '2026-09-20T14:18:33',
-        verifiedBy: 'GovOS exam builder — read from the source',
-        taxonomyType: 'FACT',
-        verificationLevel: 'OFFICIALLY_VERIFIED',
-        excerptText: '13.8 Scheme of Tier-I Examination:'
-      },
-      children: [
-        {
-          id: 'stage-scheme-of-tier-i-examination-general-intelligence-and-reasoning',
-          level: 'SUBJECT',
-          levelLabel: 'Subject',
-          name: 'General Intelligence and Reasoning',
-          code: 'A',
-          order: 1,
-          status: 'NEEDS_REVIEW',
-          questions: 25,
-          marks: 50.0,
-          durationMinutes: 60,
-          marksPerQuestion: 2.0,
-          derived: [
-            'marksPerQuestion',
-            'negativeMarking'
-          ],
-          negativeMarking: '2 There will be negative marking of 0.',
-          negativeMarkPerWrong: 0.5,
-          durationVariants: [
-            {
-              minutes: 20,
-              asPrinted: '20 minutes',
-              appliesTo: 'for the candidates eligible for scribe as per Para-7.1, 7.2 and 7.3'
-            }
-          ],
-          note: 'the row states 4 figures where its table declares 2 numeric columns, so the pairing is not established',
-          provenance: {
-            id: 'prov-stage-scheme-of-tier-i-examination-general-intelligence-and-reasoning',
-            documentTitle: 'Staff Selection Commission — Notice_of_adv_cgl_2026.pdf',
-            officialUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
-            pageNumber: 1,
-            clauseNumber: 'pattern',
-            publishedDate: '2026-09-20T14:18:33',
-            verifiedDate: '2026-09-20T14:18:33',
-            verifiedBy: 'GovOS exam builder — read from the source',
-            taxonomyType: 'FACT',
-            verificationLevel: 'UNDER_VERIFICATION',
-            excerptText: 'A. General Intelligence and Reasoning 25 50 1 hour (with sectional timer of 15 minutes for each subject) (1 hour and 20 minutes (with sectional timer of 15+5=20 minutes for each subject) for the candidates eligible for scribe as per Para-7.1, 7.2 and 7.3)'
-          }
-        },
-        {
-          id: 'stage-scheme-of-tier-i-examination-general-awareness',
-          level: 'SUBJECT',
-          levelLabel: 'Subject',
-          name: 'General Awareness',
-          code: 'B',
-          order: 2,
-          status: 'VERIFIED',
-          questions: 25,
-          marks: 50.0,
-          marksPerQuestion: 2.0,
-          derived: [
-            'marksPerQuestion',
-            'negativeMarking'
-          ],
-          negativeMarking: '2 There will be negative marking of 0.',
-          negativeMarkPerWrong: 0.5,
-          provenance: {
-            id: 'prov-stage-scheme-of-tier-i-examination-general-awareness',
-            documentTitle: 'Staff Selection Commission — Notice_of_adv_cgl_2026.pdf',
-            officialUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
-            pageNumber: 1,
-            clauseNumber: 'pattern',
-            publishedDate: '2026-09-20T14:18:33',
-            verifiedDate: '2026-09-20T14:18:33',
-            verifiedBy: 'GovOS exam builder — read from the source',
-            taxonomyType: 'FACT',
-            verificationLevel: 'OFFICIALLY_VERIFIED',
-            excerptText: 'B. General Awareness 25 50'
-          }
-        },
-        {
-          id: 'stage-scheme-of-tier-i-examination-quantitative-aptitude',
-          level: 'SUBJECT',
-          levelLabel: 'Subject',
-          name: 'Quantitative Aptitude',
-          code: 'C',
-          order: 3,
-          status: 'VERIFIED',
-          questions: 25,
-          marks: 50.0,
-          marksPerQuestion: 2.0,
-          derived: [
-            'marksPerQuestion',
-            'negativeMarking'
-          ],
-          negativeMarking: '2 There will be negative marking of 0.',
-          negativeMarkPerWrong: 0.5,
-          provenance: {
-            id: 'prov-stage-scheme-of-tier-i-examination-quantitative-aptitude',
-            documentTitle: 'Staff Selection Commission — Notice_of_adv_cgl_2026.pdf',
-            officialUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
-            pageNumber: 1,
-            clauseNumber: 'pattern',
-            publishedDate: '2026-09-20T14:18:33',
-            verifiedDate: '2026-09-20T14:18:33',
-            verifiedBy: 'GovOS exam builder — read from the source',
-            taxonomyType: 'FACT',
-            verificationLevel: 'OFFICIALLY_VERIFIED',
-            excerptText: 'C. Quantitative Aptitude 25 50'
-          }
-        },
-        {
-          id: 'stage-scheme-of-tier-i-examination-english-comprehension',
-          level: 'SUBJECT',
-          levelLabel: 'Subject',
-          name: 'English Comprehension',
-          code: 'D',
-          order: 4,
-          status: 'VERIFIED',
-          questions: 25,
-          marks: 50.0,
-          marksPerQuestion: 2.0,
-          derived: [
-            'marksPerQuestion',
-            'negativeMarking'
-          ],
-          negativeMarking: '2 There will be negative marking of 0.',
-          negativeMarkPerWrong: 0.5,
-          provenance: {
-            id: 'prov-stage-scheme-of-tier-i-examination-english-comprehension',
-            documentTitle: 'Staff Selection Commission — Notice_of_adv_cgl_2026.pdf',
-            officialUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
-            pageNumber: 1,
-            clauseNumber: 'pattern',
-            publishedDate: '2026-09-20T14:18:33',
-            verifiedDate: '2026-09-20T14:18:33',
-            verifiedBy: 'GovOS exam builder — read from the source',
-            taxonomyType: 'FACT',
-            verificationLevel: 'OFFICIALLY_VERIFIED',
-            excerptText: 'D. English Comprehension 25 50'
-          }
-        }
-      ]
-    },
-    {
-      id: 'stage-scheme-of-tier-ii-examination',
-      level: 'STAGE',
-      levelLabel: 'Tier',
-      name: 'Scheme of Tier-II Examination',
-      code: 'Tier-II',
-      order: 2,
-      status: 'VERIFIED',
-      mode: 'Computer Based Examination',
-      sectionalTiming: true,
-      provenance: {
-        id: 'prov-stage-scheme-of-tier-ii-examination',
-        documentTitle: 'Staff Selection Commission — Notice_of_adv_cgl_2026.pdf',
-        officialUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
-        pageNumber: 1,
-        clauseNumber: 'pattern',
-        publishedDate: '2026-09-20T14:18:33',
-        verifiedDate: '2026-09-20T14:18:33',
-        verifiedBy: 'GovOS exam builder — read from the source',
-        taxonomyType: 'FACT',
-        verificationLevel: 'OFFICIALLY_VERIFIED',
-        excerptText: '13.9 Scheme of Tier-II Examination:'
-      },
-      children: [
-        {
-          id: 'stage-scheme-of-tier-ii-examination-mathematical-abilities',
-          level: 'PAPER',
-          levelLabel: 'Paper',
-          name: 'Mathematical Abilities',
-          code: 'A',
-          order: 1,
-          status: 'VERIFIED',
-          provenance: {
-            id: 'prov-stage-scheme-of-tier-ii-examination-mathematical-abilities',
-            documentTitle: 'Staff Selection Commission — Notice_of_adv_cgl_2026.pdf',
-            officialUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
-            pageNumber: 1,
-            clauseNumber: 'pattern',
-            publishedDate: '2026-09-20T14:18:33',
-            verifiedDate: '2026-09-20T14:18:33',
-            verifiedBy: 'GovOS exam builder — read from the source',
-            taxonomyType: 'FACT',
-            verificationLevel: 'OFFICIALLY_VERIFIED',
-            excerptText: 'A: Mathematical Abilities'
-          }
-        },
-        {
-          id: 'stage-scheme-of-tier-ii-examination-reasoning-and-general-intelligence',
-          level: 'PAPER',
-          levelLabel: 'Paper',
-          name: 'Reasoning and General Intelligence',
-          code: 'B',
-          order: 2,
-          status: 'NEEDS_REVIEW',
-          note: 'the row states a total across parts its table does not separate, so no figure in it can be attributed to this part on its own',
-          provenance: {
-            id: 'prov-stage-scheme-of-tier-ii-examination-reasoning-and-general-intelligence',
-            documentTitle: 'Staff Selection Commission — Notice_of_adv_cgl_2026.pdf',
-            officialUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
-            pageNumber: 1,
-            clauseNumber: 'pattern',
-            publishedDate: '2026-09-20T14:18:33',
-            verifiedDate: '2026-09-20T14:18:33',
-            verifiedBy: 'GovOS exam builder — read from the source',
-            taxonomyType: 'FACT',
-            verificationLevel: 'UNDER_VERIFICATION',
-            excerptText: 'B: Reasoning and General Intelligence. 30 30 Total = 60 60*3 = 180 1 hour (with sectional timer of 30 minutes for each subject) (1 hours and 20 minutes (with sectional timer of 30+10=40 minutes for each subject) for the candidates eligible for scribe as per Para-7.1, 7.2 and 7.3)'
-          }
-        },
-        {
-          id: 'stage-scheme-of-tier-ii-examination-a-english-language-and-comprehension-b-gener',
-          level: 'PAPER',
-          levelLabel: 'Paper',
-          name: 'A: English Language and Comprehension B: General Awareness',
-          code: 'Section-II',
-          order: 3,
-          status: 'NEEDS_REVIEW',
-          note: 'the row states a total across parts its table does not separate, so no figure in it can be attributed to this part on its own',
-          provenance: {
-            id: 'prov-stage-scheme-of-tier-ii-examination-a-english-language-and-comprehension-b-gener',
-            documentTitle: 'Staff Selection Commission — Notice_of_adv_cgl_2026.pdf',
-            officialUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
-            pageNumber: 1,
-            clauseNumber: 'pattern',
-            publishedDate: '2026-09-20T14:18:33',
-            verifiedDate: '2026-09-20T14:18:33',
-            verifiedBy: 'GovOS exam builder — read from the source',
-            taxonomyType: 'FACT',
-            verificationLevel: 'UNDER_VERIFICATION',
-            excerptText: 'Section-II: A: English Language and Comprehension B: General Awareness 45 25 Total = 70 70*3 = 210 1 hour (with sectional timer of 40 minutes for Subject A i.e. English Language & Comprehension and 20 minutes for Subject B i.e. General Awareness) (1 hours and 20 minutes(with sectional timer of 40+15=55 minutes for Subject A i.e. English Language & Comprehension and 20+5=25 minutes for Subject B i.e. General Awareness) for the candidates eligible for scribe as per Para-7.1, 7.2 and 7.3)'
-          }
-        },
-        {
-          id: 'stage-scheme-of-tier-ii-examination-computer-knowledge-test',
-          level: 'PAPER',
-          levelLabel: 'Paper',
-          name: 'Computer Knowledge Test',
-          code: 'Section-III',
-          order: 4,
-          status: 'NEEDS_REVIEW',
-          questions: 20,
-          underReview: [
-            'questions',
-            'marks',
-            'durationMinutes',
-            'marksPerQuestion'
-          ],
-          marks: 60.0,
-          durationMinutes: 15,
-          marksPerQuestion: 3.0,
-          negativeMarking: '8 There will be negative marking of 1 mark for each wrong answer in Section-I, Section-II and Section-III of Paper-I and of 0.',
-          negativeMarkPerWrong: 1.0,
-          qualifying: {
-            asPrinted: 'Section-III is mandatory for all posts but qualifying in nature',
-            qualifyingOnly: true,
-            countsTowardsMerit: false
-          },
-          questionType: 'Data Entry'
-        },
-        {
-          id: 'stage-scheme-of-tier-ii-examination-data-entry-speed-test-one-data-entry-task-ca',
-          level: 'PAPER',
-          levelLabel: 'Paper',
-          name: 'Data Entry Speed Test One Data Entry Task - candidates eligible for scribe as per Para-7.1',
-          code: 'Section-IV',
-          order: 5,
-          status: 'VERIFIED',
-          questionType: 'Data Entry',
-          provenance: {
-            id: 'prov-stage-scheme-of-tier-ii-examination-data-entry-speed-test-one-data-entry-task-ca',
-            documentTitle: 'Staff Selection Commission — Notice_of_adv_cgl_2026.pdf',
-            officialUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
-            pageNumber: 1,
-            clauseNumber: 'pattern',
-            publishedDate: '2026-09-20T14:18:33',
-            verifiedDate: '2026-09-20T14:18:33',
-            verifiedBy: 'GovOS exam builder — read from the source',
-            taxonomyType: 'FACT',
-            verificationLevel: 'OFFICIALLY_VERIFIED',
-            excerptText: 'Section-IV: Data Entry Speed Test One Data Entry Task - candidates eligible for scribe as per Para-7.1, 7.2 and 7.3)'
-          }
-        },
-        {
-          id: 'stage-scheme-of-tier-ii-examination-statistics',
-          level: 'PAPER',
-          levelLabel: 'Paper',
-          name: 'Statistics',
-          code: 'Paper-II',
-          order: 6,
-          status: 'VERIFIED',
-          questions: 100,
-          marks: 200.0,
-          durationMinutes: 120,
-          marksPerQuestion: 2.0,
-          durationVariants: [
-            {
-              minutes: 160,
-              asPrinted: '2 hours and 40 minutes',
-              appliesTo: 'for the candidates eligible for scribe as per Para-7.1, 7.2 and 7.3'
-            }
-          ],
-          provenance: {
-            id: 'prov-stage-scheme-of-tier-ii-examination-statistics',
-            documentTitle: 'Staff Selection Commission — Notice_of_adv_cgl_2026.pdf',
-            officialUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
-            pageNumber: 1,
-            clauseNumber: 'pattern',
-            publishedDate: '2026-09-20T14:18:33',
-            verifiedDate: '2026-09-20T14:18:33',
-            verifiedBy: 'GovOS exam builder — read from the source',
-            taxonomyType: 'FACT',
-            verificationLevel: 'OFFICIALLY_VERIFIED',
-            excerptText: 'Paper-II Statistics 100 100*2 = 200 2 hours (2 hours and 40 minutes for the candidates eligible for scribe as per Para-7.1, 7.2 and 7.3)'
-          }
-        },
-        {
-          id: 'stage-scheme-of-tier-ii-examination-general-studies',
-          level: 'PAPER',
-          levelLabel: 'Paper',
-          name: 'General Studies',
-          code: 'Paper-III',
-          order: 7,
-          status: 'VERIFIED',
-          questions: 100,
-          marks: 200.0,
-          durationMinutes: 120,
-          marksPerQuestion: 2.0,
-          durationVariants: [
-            {
-              minutes: 160,
-              asPrinted: '2 hours and 40 minutes',
-              appliesTo: 'for the candidates eligible for scribe as per Para-7.1, 7.2 and 7.3'
-            }
-          ],
-          provenance: {
-            id: 'prov-stage-scheme-of-tier-ii-examination-general-studies',
-            documentTitle: 'Staff Selection Commission — Notice_of_adv_cgl_2026.pdf',
-            officialUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
-            pageNumber: 1,
-            clauseNumber: 'pattern',
-            publishedDate: '2026-09-20T14:18:33',
-            verifiedDate: '2026-09-20T14:18:33',
-            verifiedBy: 'GovOS exam builder — read from the source',
-            taxonomyType: 'FACT',
-            verificationLevel: 'OFFICIALLY_VERIFIED',
-            excerptText: 'Paper-III General Studies (Finance and Economics) 100 100*2 = 200 2 hours (2 hours and 40 minutes for the candidates eligible for scribe as per Para-7.1, 7.2 and 7.3)'
-          }
-        }
-      ]
-    }
+{
+id: 'ssc-tier-1',
+level: 'STAGE',
+levelLabel: 'Tier',
+name: 'Tier-I (Computer Based Examination)',
+code: 'Tier-I',
+order: 1,
+status: 'VERIFIED',
+questions: 100,
+marks: 200,
+durationMinutes: 60,
+derived: ['questions', 'marks'],
+durationVariants: [{ minutes: 80, asPrinted: '1 hour and 20 minutes (with sectional timer of 15+5=20 minutes for each subject)', appliesTo: 'for the candidates eligible for scribe as per Para-7.1, 7.2 and 7.3' }],
+negativeMarking: 'There will be negative marking of 0.50 marks for each wrong answer (Para 13.8.2).',
+negativeMarkPerWrong: 0.5,
+languages: ['English', 'Hindi (English Comprehension in English only)'],
+questionType: 'Objective Type, Multiple choice',
+sectionalTiming: true,
+qualifying: { asPrinted: 'Minimum qualifying marks (Para 16.1): UR 30%, OBC/EWS 25%, all other categories 20%. Tier-I shortlists candidates for Tier-II; the merit list is prepared on Tier-II only (Para 16.10).', countsTowardsMerit: false },
+provenance: sscNotice('prov-pattern-ssc-tier-1', 'Para 13.8 — Scheme of Tier-I', 25, '13.8 Scheme of Tier-I Examination: Tier Subject Number of Questions Maximum Marks Time allowed'),
+children: [
+{
+id: 'ssc-t1-a',
+level: 'SUBJECT',
+levelLabel: 'Subject',
+name: 'General Intelligence and Reasoning',
+code: 'A',
+order: 1,
+status: 'VERIFIED',
+questions: 25,
+marks: 50,
+durationMinutes: 15,
+marksPerQuestion: 2,
+derived: ['marksPerQuestion'],
+negativeMarking: 'There will be negative marking of 0.50 marks for each wrong answer (Para 13.8.2).',
+negativeMarkPerWrong: 0.5,
+note: '15 minutes is the sectional timer printed for each subject.',
+provenance: sscNotice('prov-pattern-ssc-t1-a', 'Para 13.8 — Scheme of Tier-I', 25, 'A. General Intelligence and Reasoning 25 50 1 hour (with sectional timer of 15 minutes for each subject)')
+},
+{
+id: 'ssc-t1-b',
+level: 'SUBJECT',
+levelLabel: 'Subject',
+name: 'General Awareness',
+code: 'B',
+order: 2,
+status: 'VERIFIED',
+questions: 25,
+marks: 50,
+durationMinutes: 15,
+marksPerQuestion: 2,
+derived: ['marksPerQuestion'],
+negativeMarking: 'There will be negative marking of 0.50 marks for each wrong answer (Para 13.8.2).',
+negativeMarkPerWrong: 0.5,
+note: '15 minutes is the sectional timer printed for each subject.',
+provenance: sscNotice('prov-pattern-ssc-t1-b', 'Para 13.8 — Scheme of Tier-I', 25, 'B. General Awareness 25 50')
+},
+{
+id: 'ssc-t1-c',
+level: 'SUBJECT',
+levelLabel: 'Subject',
+name: 'Quantitative Aptitude',
+code: 'C',
+order: 3,
+status: 'VERIFIED',
+questions: 25,
+marks: 50,
+durationMinutes: 15,
+marksPerQuestion: 2,
+derived: ['marksPerQuestion'],
+negativeMarking: 'There will be negative marking of 0.50 marks for each wrong answer (Para 13.8.2).',
+negativeMarkPerWrong: 0.5,
+note: '15 minutes is the sectional timer printed for each subject.',
+provenance: sscNotice('prov-pattern-ssc-t1-c', 'Para 13.8 — Scheme of Tier-I', 25, 'C. Quantitative Aptitude 25 50')
+},
+{
+id: 'ssc-t1-d',
+level: 'SUBJECT',
+levelLabel: 'Subject',
+name: 'English Comprehension',
+code: 'D',
+order: 4,
+status: 'VERIFIED',
+questions: 25,
+marks: 50,
+durationMinutes: 15,
+marksPerQuestion: 2,
+derived: ['marksPerQuestion'],
+negativeMarking: 'There will be negative marking of 0.50 marks for each wrong answer (Para 13.8.2).',
+negativeMarkPerWrong: 0.5,
+note: '15 minutes is the sectional timer printed for each subject.',
+provenance: sscNotice('prov-pattern-ssc-t1-d', 'Para 13.8 — Scheme of Tier-I', 25, 'D. English Comprehension 25 50')
+}
+]
+},
+{
+id: 'ssc-tier-2',
+level: 'STAGE',
+levelLabel: 'Tier',
+name: 'Tier-II (Computer Based Examination)',
+code: 'Tier-II',
+order: 2,
+status: 'VERIFIED',
+note: 'Paper-I, Paper-II and Paper-III are held in separate shift(s)/ day(s) (Para 13.9.1). Paper-I is compulsory for all posts (Para 13.9.2).',
+questionType: 'Objective Type, Multiple choice (except Section-IV of Paper-I)',
+languages: ['English', 'Hindi (English Language and Comprehension in English only)'],
+provenance: sscNotice('prov-pattern-ssc-tier-2', 'Para 13.9 — Scheme of Tier-II', 25, '13.9 Scheme of Tier-II Examination: Tier Paper Session Subject Number of Questions Maximum Marks Time allowed'),
+children: [
+{
+id: 'ssc-t2-p1',
+level: 'PAPER',
+levelLabel: 'Paper',
+name: 'Paper-I (compulsory for all posts)',
+code: 'Paper-I',
+order: 1,
+status: 'VERIFIED',
+note: 'Session-I (2 hours 15 minutes): Sections I, II and III. Session-II (15 minutes): Section-IV. It is mandatory to qualify every Section of Paper-I separately (Para 13.9.6).',
+negativeMarking: 'There will be negative marking of 1 mark for each wrong answer in Section-I, Section-II and Section-III of Paper-I (Para 13.9.8).',
+negativeMarkPerWrong: 1,
+provenance: sscNotice('prov-pattern-ssc-t2-p1', 'Para 13.9.5', 28, '13.9.5.1 Session-I will include conducting of Section-I, Section-II and Section-III. Therefore, duration of Session-I will be 2 hours and 15 minutes.'),
+children: [
+{
+id: 'ssc-t2-p1-s1',
+level: 'SECTION',
+levelLabel: 'Section',
+name: 'Mathematical Abilities; Reasoning and General Intelligence',
+code: 'Section-I',
+order: 1,
+status: 'VERIFIED',
+questions: 60,
+marks: 180,
+durationMinutes: 60,
+marksPerQuestion: 3,
+negativeMarking: 'There will be negative marking of 1 mark for each wrong answer in Section-I, Section-II and Section-III of Paper-I (Para 13.9.8).',
+negativeMarkPerWrong: 1,
+durationVariants: [{ minutes: 80, asPrinted: '1 hours and 20 minutes (with sectional timer of 30+10=40 minutes for each subject)', appliesTo: 'for the candidates eligible for scribe as per Para-7.1, 7.2 and 7.3' }],
+provenance: sscNotice('prov-pattern-ssc-t2-p1-s1', 'Para 13.9 — Scheme of Tier-II, Paper-I Session-I', 25, 'Section-I: A: Mathematical Abilities B: Reasoning and General Intelligence. 30 30 Total = 60 60*3 = 180 1 hour (with sectional timer of 30 minutes for each subject)'),
+children: [
+{
+id: 'ssc-t2-p1-s1-a',
+level: 'PART',
+levelLabel: 'Part',
+name: 'Mathematical Abilities',
+code: 'A',
+order: 1,
+status: 'VERIFIED',
+questions: 30,
+marks: 90,
+durationMinutes: 30,
+marksPerQuestion: 3,
+derived: ['marks'],
+provenance: sscNotice('prov-pattern-ssc-t2-p1-s1-a', 'Para 13.9', 25, 'Section-I: A: Mathematical Abilities B: Reasoning and General Intelligence. 30 30')
+},
+{
+id: 'ssc-t2-p1-s1-b',
+level: 'PART',
+levelLabel: 'Part',
+name: 'Reasoning and General Intelligence',
+code: 'B',
+order: 2,
+status: 'VERIFIED',
+questions: 30,
+marks: 90,
+durationMinutes: 30,
+marksPerQuestion: 3,
+derived: ['marks'],
+provenance: sscNotice('prov-pattern-ssc-t2-p1-s1-b', 'Para 13.9', 25, 'Section-I: A: Mathematical Abilities B: Reasoning and General Intelligence. 30 30')
+}
+]
+},
+{
+id: 'ssc-t2-p1-s2',
+level: 'SECTION',
+levelLabel: 'Section',
+name: 'English Language and Comprehension; General Awareness',
+code: 'Section-II',
+order: 2,
+status: 'VERIFIED',
+questions: 70,
+marks: 210,
+durationMinutes: 60,
+marksPerQuestion: 3,
+negativeMarking: 'There will be negative marking of 1 mark for each wrong answer in Section-I, Section-II and Section-III of Paper-I (Para 13.9.8).',
+negativeMarkPerWrong: 1,
+durationVariants: [{ minutes: 80, asPrinted: '1 hours and 20 minutes (with sectional timer of 40+15=55 minutes for Subject A and 20+5=25 minutes for Subject B)', appliesTo: 'for the candidates eligible for scribe as per Para-7.1, 7.2 and 7.3' }],
+provenance: sscNotice('prov-pattern-ssc-t2-p1-s2', 'Para 13.9 — Scheme of Tier-II, Paper-I Session-I', 26, 'Section-II: A: English Language and Comprehension B: General Awareness 45 25 Total = 70 70*3 = 210 1 hour (with sectional timer of 40 minutes for Subject A i.e. English Language & Comprehension and 20 minutes for Subject B i.e. General Awareness)'),
+children: [
+{
+id: 'ssc-t2-p1-s2-a',
+level: 'PART',
+levelLabel: 'Part',
+name: 'English Language and Comprehension',
+code: 'A',
+order: 1,
+status: 'VERIFIED',
+questions: 45,
+marks: 135,
+durationMinutes: 40,
+marksPerQuestion: 3,
+derived: ['marks'],
+provenance: sscNotice('prov-pattern-ssc-t2-p1-s2-a', 'Para 13.9', 26, 'Section-II: A: English Language and Comprehension B: General Awareness 45 25')
+},
+{
+id: 'ssc-t2-p1-s2-b',
+level: 'PART',
+levelLabel: 'Part',
+name: 'General Awareness',
+code: 'B',
+order: 2,
+status: 'VERIFIED',
+questions: 25,
+marks: 75,
+durationMinutes: 20,
+marksPerQuestion: 3,
+derived: ['marks'],
+provenance: sscNotice('prov-pattern-ssc-t2-p1-s2-b', 'Para 13.9', 26, 'Section-II: A: English Language and Comprehension B: General Awareness 45 25')
+}
+]
+},
+{
+id: 'ssc-t2-p1-s3',
+level: 'SECTION',
+levelLabel: 'Section',
+name: 'Computer Knowledge Test',
+code: 'Section-III',
+order: 3,
+status: 'VERIFIED',
+questions: 20,
+marks: 60,
+durationMinutes: 15,
+marksPerQuestion: 3,
+negativeMarking: 'There will be negative marking of 1 mark for each wrong answer in Section-I, Section-II and Section-III of Paper-I (Para 13.9.8).',
+negativeMarkPerWrong: 1,
+qualifying: { asPrinted: 'Section-III is mandatory for all posts but qualifying in nature (Para 13.9.9). Minimum qualifying marks (Para 16.1): UR 30%, OBC/EWS 25%, all other categories 20%.', qualifyingOnly: true, countsTowardsMerit: false },
+provenance: sscNotice('prov-pattern-ssc-t2-p1-s3', 'Para 13.9 — Scheme of Tier-II, Paper-I Session-I', 26, 'Section-III: Computer Knowledge Test 20 20*3 = 60 15 Minutes (For Section-III & IV each)')
+},
+{
+id: 'ssc-t2-p1-s4',
+level: 'SECTION',
+levelLabel: 'Section',
+name: 'Data Entry Speed Test (DEST)',
+code: 'Section-IV',
+order: 4,
+status: 'VERIFIED',
+durationMinutes: 15,
+note: 'One data entry task of about 2000 key depressions in 15 minutes, in Session-II on the same day as Session-I (Para 13.9.10.1–13.9.10.2).',
+qualifying: { asPrinted: 'DEST will be mandatory for all the posts; however, it will be qualifying in nature (Para 13.9.10.3). Maximum errors allowed (Para 16.2): UR 20%, OBC/EWS 25%, all other categories 30%.', qualifyingOnly: true, countsTowardsMerit: false },
+provenance: sscNotice('prov-pattern-ssc-t2-p1-s4', 'Para 13.9 — Scheme of Tier-II, Paper-I Session-II', 27, 'Session-II (15 minutes) Section-IV: Data Entry Speed Test One Data Entry Task')
+}
+]
+},
+{
+id: 'ssc-t2-p2',
+level: 'PAPER',
+levelLabel: 'Paper',
+name: 'Statistics',
+code: 'Paper-II',
+order: 2,
+status: 'VERIFIED',
+questions: 100,
+marks: 200,
+durationMinutes: 120,
+marksPerQuestion: 2,
+negativeMarking: 'There will be negative marking of 0.50 marks for each wrong answer in Paper-II and Paper-III (Para 13.9.8).',
+negativeMarkPerWrong: 0.5,
+durationVariants: [{ minutes: 160, asPrinted: '2 hours and 40 minutes', appliesTo: 'for the candidates eligible for scribe as per Para-7.1, 7.2 and 7.3' }],
+note: 'Only for candidates who applied for and are shortlisted for Junior Statistical Officer and Statistical Investigator Grade-II (Para 13.9.3).',
+provenance: sscNotice('prov-pattern-ssc-t2-p2', 'Para 13.9 — Scheme of Tier-II', 27, 'Paper-II Statistics 100 100*2 = 200 2 hours (2 hours and 40 minutes for the candidates eligible for scribe as per Para-7.1, 7.2 and 7.3)')
+},
+{
+id: 'ssc-t2-p3',
+level: 'PAPER',
+levelLabel: 'Paper',
+name: 'General Studies (Finance and Economics)',
+code: 'Paper-III',
+order: 3,
+status: 'VERIFIED',
+questions: 100,
+marks: 200,
+durationMinutes: 120,
+marksPerQuestion: 2,
+negativeMarking: 'There will be negative marking of 0.50 marks for each wrong answer in Paper-II and Paper-III (Para 13.9.8).',
+negativeMarkPerWrong: 0.5,
+durationVariants: [{ minutes: 160, asPrinted: '2 hours and 40 minutes', appliesTo: 'for the candidates eligible for scribe as per Para-7.1, 7.2 and 7.3' }],
+note: 'Only for candidates shortlisted in Tier-I for Assistant Audit Officer / Assistant Accounts Officer (Para 13.9.3).',
+provenance: sscNotice('prov-pattern-ssc-t2-p3', 'Para 13.9 — Scheme of Tier-II', 27, 'Paper-III General Studies (Finance and Economics) 100 100*2 = 200 2 hours (2 hours and 40 minutes for the candidates eligible for scribe as per Para-7.1, 7.2 and 7.3)')
+}
+]
+}
   ],
   stages: [
     {
       id: 'stage-tier1',
       stageNumber: 1,
-      stageName: 'Tier-1: Computer Based Examination (Objective MCQ)',
+      stageName: 'Tier-I: Computer Based Examination',
       tier: 'TIER_1',
       durationMinutes: 60,
       totalQuestions: 100,
       totalMarks: 200,
-      negativeMarking: '-0.50 marks per wrong answer',
-      mode: 'Computer Based Test (CBT Online)',
-      qualifyingNature: 'Qualifying in nature for shortlisting to Tier-2. Marks normalized using official formula.',
+      negativeMarking: '-0.50 marks per wrong answer (Para 13.8.2)',
+      mode: 'Computer Based Examination',
+      qualifyingNature: 'Shortlists candidates for Tier-II. Minimum qualifying marks: UR 30%, OBC/EWS 25%, all other categories 20% (Para 16.1). The merit list is prepared on Tier-II only (Para 16.10). Marks of multi-shift sittings are normalized (Para 13.2).',
       sections: [
-        {
-          sectionName: 'General Intelligence & Reasoning',
-          modules: ['Verbal & Non-Verbal Reasoning', 'Analogies', 'Number Series', 'Coding-Decoding', 'Venn Diagrams'],
-          questions: 25,
-          marks: 50,
-          durationMinutes: 15,
-          negativeMarking: '-0.50'
-        },
-        {
-          sectionName: 'General Awareness',
-          modules: ['History', 'Polity & Constitution', 'Geography', 'Economy', 'General Science', 'Current Affairs'],
-          questions: 25,
-          marks: 50,
-          durationMinutes: 15,
-          negativeMarking: '-0.50'
-        },
-        {
-          sectionName: 'Quantitative Aptitude',
-          modules: ['Arithmetic', 'Algebra', 'Geometry', 'Mensuration', 'Trigonometry', 'Data Interpretation'],
-          questions: 25,
-          marks: 50,
-          durationMinutes: 15,
-          negativeMarking: '-0.50'
-        },
-        {
-          sectionName: 'English Comprehension',
-          modules: ['Spotting Error', 'Fill in Blanks', 'Cloze Test', 'Reading Comprehension', 'Idioms & Phrases'],
-          questions: 25,
-          marks: 50,
-          durationMinutes: 15,
-          negativeMarking: '-0.50'
-        }
+        { sectionName: 'A. General Intelligence and Reasoning', modules: ['Analogies, classification and series (semantic, symbolic/number, figural)', 'Coding & de-coding', 'Space orientation and visualization', 'Venn diagrams', 'Drawing inferences', 'Critical thinking, emotional and social intelligence'], questions: 25, marks: 50, durationMinutes: 15, negativeMarking: '-0.50' },
+        { sectionName: 'B. General Awareness', modules: ['Current events', 'History', 'Culture', 'Geography', 'Economic scene', 'General policy & scientific research'], questions: 25, marks: 50, durationMinutes: 15, negativeMarking: '-0.50' },
+        { sectionName: 'C. Quantitative Aptitude', modules: ['Number system and arithmetic operations', 'Algebra and elementary surds', 'Geometry and mensuration', 'Trigonometry, heights and distances', 'Histogram, frequency polygon, bar diagram and pie chart'], questions: 25, marks: 50, durationMinutes: 15, negativeMarking: '-0.50' },
+        { sectionName: 'D. English Comprehension', modules: ['Understanding of correct English', 'Basic comprehension', 'Writing ability'], questions: 25, marks: 50, durationMinutes: 15, negativeMarking: '-0.50' }
       ],
-      provenance: sscProvenanceOverview
+      provenance: sscNotice('prov-stage-tier1', 'Para 13.8 — Scheme of Tier-I', 25, '13.8 Scheme of Tier-I Examination: Tier Subject Number of Questions Maximum Marks Time allowed')
     },
     {
       id: 'stage-tier2-p1',
       stageNumber: 2,
-      stageName: 'Tier-2 Paper-I (Compulsory for All Posts)',
+      stageName: 'Tier-II: Paper-I (compulsory for all posts)',
       tier: 'TIER_2',
-      durationMinutes: 135,
+      durationMinutes: 150,
       totalQuestions: 150,
-      totalMarks: 390,
-      negativeMarking: '-1.00 mark per wrong answer in Sections I & II',
-      mode: 'Computer Based Test (CBT Online)',
-      qualifyingNature: 'Final Merit Score computed from 390 marks (Section I + Section II). Section III & DEST are qualifying.',
+      totalMarks: 450,
+      negativeMarking: '-1 mark per wrong answer in Sections I, II and III (Para 13.9.8)',
+      mode: 'Computer Based Examination',
+      qualifyingNature: 'Two sessions on one day: Session-I (2 h 15 min) holds Sections I–III, Session-II (15 min) holds Section-IV, the Data Entry Speed Test. Merit counts Section-I and Section-II (390 of the 450 marks); Section-III (Computer Knowledge Test) and Section-IV (DEST) are qualifying. Every Section must be qualified separately (Para 13.9.6).',
       sections: [
-        {
-          sectionName: 'Section I: Mathematical Abilities & Reasoning',
-          modules: ['Mathematical Abilities (30 Qs - 90 Marks)', 'Reasoning & General Intelligence (30 Qs - 90 Marks)'],
-          questions: 60,
-          marks: 180,
-          durationMinutes: 60,
-          negativeMarking: '-1.00'
-        },
-        {
-          sectionName: 'Section II: English Language & General Awareness',
-          modules: ['English Language & Comprehension (45 Qs - 135 Marks)', 'General Awareness (25 Qs - 75 Marks)'],
-          questions: 70,
-          marks: 210,
-          durationMinutes: 60,
-          negativeMarking: '-1.00'
-        },
-        {
-          sectionName: 'Section III Module 1: Computer Knowledge Test',
-          modules: ['Computer Basics, Software, Internet, Networking & Cyber Security (20 Qs - 60 Marks)'],
-          questions: 20,
-          marks: 60,
-          durationMinutes: 15,
-          negativeMarking: '-1.00 (Qualifying Nature)'
-        },
-        {
-          sectionName: 'Section III Module 2: Data Entry Speed Test (DEST)',
-          modules: ['Typing Test: 2000 key depressions over 15 minutes (~27 WPM speed on English keyboard)'],
-          questions: 1,
-          marks: 0,
-          durationMinutes: 15,
-          negativeMarking: 'Qualifying Nature with permissible error %'
-        }
+        { sectionName: 'Section-I: A. Mathematical Abilities, B. Reasoning and General Intelligence', modules: ['Mathematical Abilities (30 questions, 90 marks)', 'Reasoning and General Intelligence (30 questions, 90 marks)'], questions: 60, marks: 180, durationMinutes: 60, negativeMarking: '-1' },
+        { sectionName: 'Section-II: A. English Language and Comprehension, B. General Awareness', modules: ['English Language and Comprehension (45 questions, 135 marks, 40 minutes)', 'General Awareness (25 questions, 75 marks, 20 minutes)'], questions: 70, marks: 210, durationMinutes: 60, negativeMarking: '-1' },
+        { sectionName: 'Section-III: Computer Knowledge Test (qualifying)', modules: ['Computer basics, software, internet and e-mail, networking and cyber security (Para 13.11.5)'], questions: 20, marks: 60, durationMinutes: 15, negativeMarking: '-1' },
+        { sectionName: 'Section-IV: Data Entry Speed Test (Session-II, qualifying)', modules: ['One data entry task: about 2000 key depressions in 15 minutes (Para 13.9.10.2)'], questions: 0, marks: 0, durationMinutes: 15, negativeMarking: 'None — qualifying on the percentage of errors: UR 20%, OBC/EWS 25%, others 30% (Para 16.2)' }
       ],
-      provenance: sscProvenanceOverview
+      provenance: sscNotice('prov-stage-tier2-p1', 'Para 13.9 and 13.9.5 — Paper-I', 28, '13.9.5.1 Session-I will include conducting of Section-I, Section-II and Section-III. Therefore, duration of Session-I will be 2 hours and 15 minutes.')
     },
     {
       id: 'stage-tier2-p2',
       stageNumber: 3,
-      stageName: 'Tier-2 Paper-II: Statistics (Only for JSO / Stat Investigator)',
+      stageName: 'Tier-II: Paper-II, Statistics (JSO and Statistical Investigator Grade-II only)',
       tier: 'TIER_2',
       durationMinutes: 120,
       totalQuestions: 100,
       totalMarks: 200,
-      negativeMarking: '-0.50 marks per wrong answer',
-      mode: 'Computer Based Test (CBT Online)',
-      qualifyingNature: 'Added to Paper-1 score solely for calculating JSO / Statistical Investigator rank merit.',
+      negativeMarking: '-0.50 marks per wrong answer (Para 13.9.8)',
+      mode: 'Computer Based Examination',
+      qualifyingNature: 'Only for candidates shortlisted for Junior Statistical Officer and Statistical Investigator Grade-II (Para 13.9.3). Their merit is Paper-I (Sections I and II) plus Paper-II (Para 16.11.1).',
       sections: [
-        {
-          sectionName: 'Statistics Domain Knowledge',
-          modules: ['Probability, Random Variables, Sampling Theory, Statistical Inference, ANOVA, Time Series, Index Numbers'],
-          questions: 100,
-          marks: 200,
-          durationMinutes: 120,
-          negativeMarking: '-0.50'
-        }
+        { sectionName: 'Statistics', modules: ['Collection, classification and presentation of data', 'Central tendency, dispersion, moments', 'Correlation and regression', 'Probability and distributions', 'Sampling, inference, ANOVA', 'Time series, index numbers (Para 13.11.6)'], questions: 100, marks: 200, durationMinutes: 120, negativeMarking: '-0.50' }
       ],
-      provenance: sscProvenanceOverview
+      provenance: sscNotice('prov-stage-tier2-p2', 'Para 13.9 — Scheme of Tier-II', 27, 'Paper-II Statistics 100 100*2 = 200 2 hours')
+    },
+    {
+      id: 'stage-tier2-p3',
+      stageNumber: 4,
+      stageName: 'Tier-II: Paper-III, General Studies (Finance and Economics) (AAO / AAcO only)',
+      tier: 'TIER_2',
+      durationMinutes: 120,
+      totalQuestions: 100,
+      totalMarks: 200,
+      negativeMarking: '-0.50 marks per wrong answer (Para 13.9.8)',
+      mode: 'Computer Based Examination',
+      qualifyingNature: 'Only for candidates shortlisted in Tier-I for Assistant Audit Officer / Assistant Accounts Officer (Para 13.9.3). Their merit is Paper-I (Sections I and II) plus Paper-III (Para 16.11.2).',
+      sections: [
+        { sectionName: 'General Studies (Finance and Economics)', modules: ['Part A: Finance and Accounts (80 marks)', 'Part B: Economics and Governance (120 marks) (Para 13.11.7)'], questions: 100, marks: 200, durationMinutes: 120, negativeMarking: '-0.50' }
+      ],
+      provenance: sscNotice('prov-stage-tier2-p3', 'Para 13.9 — Scheme of Tier-II', 27, 'Paper-III General Studies (Finance and Economics) 100 100*2 = 200 2 hours')
     }
   ],
 
@@ -1223,7 +1361,7 @@ export const SSC_CGL_EXAM: Exam = {
       title: 'Indicative Syllabus (Tier-I)',
       levelLabel: 'Syllabus',
       scope: [{ kind: 'STAGE', label: 'Tier-I' }],
-      provenance: { ...sscSyllabusSource, id: 'prov-syl-13-10-indicative-syllabus--root', clauseNumber: 'pattern', excerptText: '13.10 Indicative Syllabus (Tier-I):' },
+      provenance: { ...sscSyllabusSource, id: 'prov-syl-13-10-indicative-syllabus--root', pageNumber: 30, clauseNumber: 'Para 13.10', excerptText: '13.10 Indicative Syllabus (Tier-I):' },
       children: [
 {
           id: 'syl-13-10-indicative-syllabus--13-10-1',
@@ -1231,7 +1369,7 @@ export const SSC_CGL_EXAM: Exam = {
           levelLabel: 'Subject',
           note: 'It would include questions of both verbal and non-verbal type. This component may include questions on analogies, similarities and differences, space visualization, spatial orientation, problem solving, analysis, judgment, decision making, visual memory, discrimination, observation, relationship concepts, arithmetical reasoning and figural classification, arithmetic number series, non-verbal serie',
           scope: [{ kind: 'STAGE', label: 'Tier-I' }],
-          provenance: { ...sscSyllabusSource, id: 'prov-syl-13-10-indicative-syllabus--13-10-1', clauseNumber: 'pattern', excerptText: '13.10.1 General Intelligence & Reasoning: It would include' }
+          provenance: { ...sscSyllabusSource, id: 'prov-syl-13-10-indicative-syllabus--13-10-1', pageNumber: 30, clauseNumber: 'Para 13.10.1', excerptText: '13.10.1 General Intelligence & Reasoning: It would include' }
         },
 {
           id: 'syl-13-10-indicative-syllabus--13-10-2',
@@ -1239,7 +1377,7 @@ export const SSC_CGL_EXAM: Exam = {
           levelLabel: 'Subject',
           note: 'Questions in this component will be aimed at testing the candidates‟ general awareness of the environment around him and its application to society. Questions will also be designed to test knowledge of current events and of such matters of every day observations and experience in their scientific aspect as may be expected of any educated person. The test will also include questions relating to Ind',
           scope: [{ kind: 'STAGE', label: 'Tier-I' }],
-          provenance: { ...sscSyllabusSource, id: 'prov-syl-13-10-indicative-syllabus--13-10-2', clauseNumber: 'pattern', excerptText: '13.10.2 General Awareness: Questions in this component will be' }
+          provenance: { ...sscSyllabusSource, id: 'prov-syl-13-10-indicative-syllabus--13-10-2', pageNumber: 30, clauseNumber: 'Para 13.10.2', excerptText: '13.10.2 General Awareness: Questions in this component will be' }
         },
 {
           id: 'syl-13-10-indicative-syllabus--13-10-3',
@@ -1247,7 +1385,7 @@ export const SSC_CGL_EXAM: Exam = {
           levelLabel: 'Subject',
           note: 'The questions will be designed to test the ability of appropriate use of numbers and number sense of the candidate. The scope of the test will be computation of whole numbers, decimals, fractions and relationships between numbers, Percentage. Ratio & Proportion, Square roots, Averages, Interest, Profit and Loss, Discount, Partnership Business, Mixture and Alligation, Time and distance, Time & Work',
           scope: [{ kind: 'STAGE', label: 'Tier-I' }],
-          provenance: { ...sscSyllabusSource, id: 'prov-syl-13-10-indicative-syllabus--13-10-3', clauseNumber: 'pattern', excerptText: '13.10.3 Quantitative Aptitude: The questions will be designed to test' }
+          provenance: { ...sscSyllabusSource, id: 'prov-syl-13-10-indicative-syllabus--13-10-3', pageNumber: 31, clauseNumber: 'Para 13.10.3', excerptText: '13.10.3 Quantitative Aptitude: The questions will be designed to test' }
         },
 {
           id: 'syl-13-10-indicative-syllabus--13-10-4',
@@ -1255,7 +1393,7 @@ export const SSC_CGL_EXAM: Exam = {
           levelLabel: 'Subject',
           note: 'Candidates‟ ability to understand correct English, his basic comprehension and writing ability, etc. would be tested. The questions in Parts A, B, & D will be of a level commensurate with the essential qualification viz. Graduation and questions in Part-C will be of 10th standard level.',
           scope: [{ kind: 'STAGE', label: 'Tier-I' }],
-          provenance: { ...sscSyllabusSource, id: 'prov-syl-13-10-indicative-syllabus--13-10-4', clauseNumber: 'pattern', excerptText: '13.10.4 English Comprehension: Candidates‟ ability to understand' }
+          provenance: { ...sscSyllabusSource, id: 'prov-syl-13-10-indicative-syllabus--13-10-4', pageNumber: 31, clauseNumber: 'Para 13.10.4', excerptText: '13.10.4 English Comprehension: Candidates‟ ability to understand' }
         }
       ]
     },
@@ -1264,14 +1402,14 @@ export const SSC_CGL_EXAM: Exam = {
       title: 'Indicative Syllabus (Tier-II)',
       levelLabel: 'Syllabus',
       scope: [{ kind: 'STAGE', label: 'Tier-II' }],
-      provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--root', clauseNumber: 'pattern', excerptText: '13.11 Indicative Syllabus (Tier-II):' },
+      provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--root', pageNumber: 31, clauseNumber: 'Para 13.11', excerptText: '13.11 Indicative Syllabus (Tier-II):' },
       children: [
 {
           id: 'syl-13-11-indicative-syllabus--13-11-1',
           title: 'Part A of Section-I of Paper-I (Mathematical Abilities)',
           levelLabel: 'Part',
           scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-I' }, { kind: 'SECTION', label: 'Part-A' }, { kind: 'SECTION', label: 'Section-I' }],
-          provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-1', clauseNumber: 'pattern', excerptText: '13.11.1 Part A of Section-I of Paper-I (Mathematical Abilities):' },
+          provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-1', pageNumber: 31, clauseNumber: 'Para 13.11.1', excerptText: '13.11.1 Part A of Section-I of Paper-I (Mathematical Abilities):' },
           children: [
 {
               id: 'syl-13-11-indicative-syllabus--13-11-1-1',
@@ -1279,7 +1417,7 @@ export const SSC_CGL_EXAM: Exam = {
               levelLabel: 'Topic',
               note: 'Computation of Whole Number, Decimal and Fractions, Relationship between numbers.',
               scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-I' }, { kind: 'SECTION', label: 'Part-A' }, { kind: 'SECTION', label: 'Section-I' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-1-1', clauseNumber: 'pattern', excerptText: '13.11.1.1 Number Systems: Computation of Whole Number,' }
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-1-1', pageNumber: 31, clauseNumber: 'Para 13.11.1.1', excerptText: '13.11.1.1 Number Systems: Computation of Whole Number,' }
             },
 {
               id: 'syl-13-11-indicative-syllabus--13-11-1-2',
@@ -1287,7 +1425,7 @@ export const SSC_CGL_EXAM: Exam = {
               levelLabel: 'Topic',
               note: 'Percentages, Ratio and Proportion, Square roots, Averages, Interest (Simple and Compound), Profit and Loss, Discount, Partnership Business, Mixture and Alligation, Time and distance, Time and work.',
               scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-I' }, { kind: 'SECTION', label: 'Part-A' }, { kind: 'SECTION', label: 'Section-I' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-1-2', clauseNumber: 'pattern', excerptText: '13.11.1.2 Fundamental arithmetical operations: Percentages,' }
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-1-2', pageNumber: 31, clauseNumber: 'Para 13.11.1.2', excerptText: '13.11.1.2 Fundamental arithmetical operations: Percentages,' }
             },
 {
               id: 'syl-13-11-indicative-syllabus--13-11-1-3',
@@ -1295,7 +1433,7 @@ export const SSC_CGL_EXAM: Exam = {
               levelLabel: 'Topic',
               note: 'Basic algebraic identities of School Algebra and Elementary surds (simple problems) and Graphs of Linear Equations.',
               scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-I' }, { kind: 'SECTION', label: 'Part-A' }, { kind: 'SECTION', label: 'Section-I' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-1-3', clauseNumber: 'pattern', excerptText: '13.11.1.3 Algebra: Basic algebraic identities of School Algebra and' }
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-1-3', pageNumber: 31, clauseNumber: 'Para 13.11.1.3', excerptText: '13.11.1.3 Algebra: Basic algebraic identities of School Algebra and' }
             },
 {
               id: 'syl-13-11-indicative-syllabus--13-11-1-4',
@@ -1303,7 +1441,7 @@ export const SSC_CGL_EXAM: Exam = {
               levelLabel: 'Topic',
               note: 'Familiarity with elementary geometric figures and facts: Triangle and its various kinds of centres, Congruence and similarity of triangles, Circle and its chords, tangents, angles subtended by chords of a circle, common tangents to two or more circles.',
               scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-I' }, { kind: 'SECTION', label: 'Part-A' }, { kind: 'SECTION', label: 'Section-I' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-1-4', clauseNumber: 'pattern', excerptText: '13.11.1.4 Geometry: Familiarity with elementary geometric figures' }
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-1-4', pageNumber: 31, clauseNumber: 'Para 13.11.1.4', excerptText: '13.11.1.4 Geometry: Familiarity with elementary geometric figures' }
             },
 {
               id: 'syl-13-11-indicative-syllabus--13-11-1-5',
@@ -1311,7 +1449,7 @@ export const SSC_CGL_EXAM: Exam = {
               levelLabel: 'Topic',
               note: 'Triangle, Quadrilaterals, Regular Polygons, Circle, Right Prism, Right Circular Cone, Right Circular Cylinder, Sphere, Hemispheres, Rectangular Parallelepiped, Regular Right Pyramid with triangular or square Base.',
               scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-I' }, { kind: 'SECTION', label: 'Part-A' }, { kind: 'SECTION', label: 'Section-I' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-1-5', clauseNumber: 'pattern', excerptText: '13.11.1.5 Mensuration: Triangle, Quadrilaterals, Regular' }
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-1-5', pageNumber: 32, clauseNumber: 'Para 13.11.1.5', excerptText: '13.11.1.5 Mensuration: Triangle, Quadrilaterals, Regular' }
             },
 {
               id: 'syl-13-11-indicative-syllabus--13-11-1-6',
@@ -1319,7 +1457,7 @@ export const SSC_CGL_EXAM: Exam = {
               levelLabel: 'Topic',
               note: 'Trigonometry, Trigonometric ratios, Complementary angles, Height and distances (simple problems only) Standard Identities like sin2𝜃 + cos2𝜃=1 etc.',
               scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-I' }, { kind: 'SECTION', label: 'Part-A' }, { kind: 'SECTION', label: 'Section-I' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-1-6', clauseNumber: 'pattern', excerptText: '13.11.1.6 Trigonometry: Trigonometry, Trigonometric ratios,' }
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-1-6', pageNumber: 32, clauseNumber: 'Para 13.11.1.6', excerptText: '13.11.1.6 Trigonometry: Trigonometry, Trigonometric ratios,' }
             },
 {
               id: 'syl-13-11-indicative-syllabus--13-11-1-7',
@@ -1327,7 +1465,7 @@ export const SSC_CGL_EXAM: Exam = {
               levelLabel: 'Topic',
               note: 'Use of Tables and Graphs: Histogram, Frequency polygon, Bar-diagram, Pie-chart; Measures of central tendency: mean, median, mode, standard deviation; calculation of simple probabilities.',
               scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-I' }, { kind: 'SECTION', label: 'Part-A' }, { kind: 'SECTION', label: 'Section-I' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-1-7', clauseNumber: 'pattern', excerptText: '13.11.1.7 Statistics and probability: Use of Tables and Graphs:' }
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-1-7', pageNumber: 32, clauseNumber: 'Para 13.11.1.7', excerptText: '13.11.1.7 Statistics and probability: Use of Tables and Graphs:' }
             }
           ]
         },
@@ -1337,7 +1475,7 @@ export const SSC_CGL_EXAM: Exam = {
           levelLabel: 'Part',
           note: 'Questions of both verbal and non-verbal type. These will include questions on Semantic Analogy, Symbolic operations, Symbolic/ Number Analogy, Trends, Figural Analogy, Space Orientation, Semantic Classification, Venn Diagrams, Symbolic/ Number Classification, Drawing inferences, Figural Classification, Punched hole/ pattern-folding & unfolding, Semantic Series, Figural Pattern-folding and completi',
           scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-I' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-I' }],
-          provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-2', clauseNumber: 'pattern', excerptText: '13.11.2 Part B of Section-I of Paper-I (Reasoning and General' }
+          provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-2', pageNumber: 32, clauseNumber: 'Para 13.11.2', excerptText: '13.11.2 Part B of Section-I of Paper-I (Reasoning and General' }
         },
 {
           id: 'syl-13-11-indicative-syllabus--13-11-3',
@@ -1345,7 +1483,7 @@ export const SSC_CGL_EXAM: Exam = {
           levelLabel: 'Part',
           note: 'Vocabulary, grammar, sentence structure, synonyms, antonyms and their correct usage; Spot the Error, Fill in the Blanks, Synonyms/ Homonyms, Antonyms, Spellings/ Detecting mis-spelt words, Idioms & Phrases, One word substitution, Improvement of Sentences, Active/ Passive Voice of Verbs, Conversion into Direct/ Indirect narration, Shuffling of Sentence parts, Shuffling of Sentences in a passage, Cl',
           scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-I' }, { kind: 'SECTION', label: 'Part-A' }, { kind: 'SECTION', label: 'Section-II' }],
-          provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-3', clauseNumber: 'pattern', excerptText: '13.11.3 Part A of Section-II of Paper-I (English Language and' }
+          provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-3', pageNumber: 32, clauseNumber: 'Para 13.11.3', excerptText: '13.11.3 Part A of Section-II of Paper-I (English Language and' }
         },
 {
           id: 'syl-13-11-indicative-syllabus--13-11-4',
@@ -1353,14 +1491,14 @@ export const SSC_CGL_EXAM: Exam = {
           levelLabel: 'Part',
           note: 'Questions are designed to test the candidates‟ general awareness of the environment around them and its application to society. Questions are also designed to test knowledge of current events and of such matters of everyday observation and experience in their scientific aspect as may be expected of an educated person. The test will also include questions relating to India and its neighboring count',
           scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-I' }, { kind: 'SECTION', label: 'Part-B' }, { kind: 'SECTION', label: 'Section-II' }],
-          provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-4', clauseNumber: 'pattern', excerptText: '13.11.4 Part B of Section-II of Paper-I (General Awareness):' }
+          provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-4', pageNumber: 32, clauseNumber: 'Para 13.11.4', excerptText: '13.11.4 Part B of Section-II of Paper-I (General Awareness):' }
         },
 {
           id: 'syl-13-11-indicative-syllabus--13-11-5',
           title: 'Section-III of Paper-I (Computer Knowledge/ Proficiency)',
           levelLabel: 'Section',
           scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-I' }, { kind: 'SECTION', label: 'Section-III' }],
-          provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-5', clauseNumber: 'pattern', excerptText: '13.11.5 Section-III of Paper-I (Computer Knowledge/' },
+          provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-5', pageNumber: 33, clauseNumber: 'Para 13.11.5', excerptText: '13.11.5 Section-III of Paper-I (Computer Knowledge/' },
           children: [
 {
               id: 'syl-13-11-indicative-syllabus--13-11-5-1',
@@ -1368,7 +1506,7 @@ export const SSC_CGL_EXAM: Exam = {
               levelLabel: 'Topic',
               note: 'Organization of a computer, Central Processing Unit (CPU), input/ output devices, computer memory, memory organization, back up devices, PORTs, Windows Explorer. Keyboard shortcuts.',
               scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-I' }, { kind: 'SECTION', label: 'Section-III' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-5-1', clauseNumber: 'pattern', excerptText: '13.11.5.1 Computer Basics: Organization of a computer, Central' }
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-5-1', pageNumber: 33, clauseNumber: 'Para 13.11.5.1', excerptText: '13.11.5.1 Computer Basics: Organization of a computer, Central' }
             },
 {
               id: 'syl-13-11-indicative-syllabus--13-11-5-2',
@@ -1376,7 +1514,7 @@ export const SSC_CGL_EXAM: Exam = {
               levelLabel: 'Topic',
               note: 'Windows Operating system including basics of Microsoft Office like MS word, MS Excel and Power Point etc.',
               scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-I' }, { kind: 'SECTION', label: 'Section-III' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-5-2', clauseNumber: 'pattern', excerptText: '13.11.5.2 Software: Windows Operating system including basics of' }
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-5-2', pageNumber: 33, clauseNumber: 'Para 13.11.5.2', excerptText: '13.11.5.2 Software: Windows Operating system including basics of' }
             },
 {
               id: 'syl-13-11-indicative-syllabus--13-11-5-3',
@@ -1384,7 +1522,7 @@ export const SSC_CGL_EXAM: Exam = {
               levelLabel: 'Topic',
               note: 'Web Browsing & Searching, Downloading & Uploading, Managing an E-mail Account, e-Banking.',
               scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-I' }, { kind: 'SECTION', label: 'Section-III' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-5-3', clauseNumber: 'pattern', excerptText: '13.11.5.3 Working with Internet and e-mails: Web Browsing &' }
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-5-3', pageNumber: 33, clauseNumber: 'Para 13.11.5.3', excerptText: '13.11.5.3 Working with Internet and e-mails: Web Browsing &' }
             },
 {
               id: 'syl-13-11-indicative-syllabus--13-11-5-4',
@@ -1392,7 +1530,7 @@ export const SSC_CGL_EXAM: Exam = {
               levelLabel: 'Topic',
               note: 'Networking devices and protocols, Network and information security threats (like hacking, virus, worms, Trojan etc.) and preventive measures.',
               scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-I' }, { kind: 'SECTION', label: 'Section-III' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-5-4', clauseNumber: 'pattern', excerptText: '13.11.5.4 Basics of networking and cyber security: Networking' }
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-5-4', pageNumber: 33, clauseNumber: 'Para 13.11.5.4', excerptText: '13.11.5.4 Basics of networking and cyber security: Networking' }
             }
           ]
         },
@@ -1401,7 +1539,7 @@ export const SSC_CGL_EXAM: Exam = {
           title: 'Paper-II (Statistics)',
           levelLabel: 'Paper',
           scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-II' }],
-          provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-6', clauseNumber: 'pattern', excerptText: '13.11.6 Paper-II (Statistics):' },
+          provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-6', pageNumber: 33, clauseNumber: 'Para 13.11.6', excerptText: '13.11.6 Paper-II (Statistics):' },
           children: [
 {
               id: 'syl-13-11-indicative-syllabus--13-11-6-1',
@@ -1409,7 +1547,7 @@ export const SSC_CGL_EXAM: Exam = {
               levelLabel: 'Topic',
               note: 'Primary and Secondary data, Methods of data collection; Tabulation of data; Graphs and charts; Frequency distributions; Diagrammatic presentation of frequency distributions.',
               scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-6-1', clauseNumber: 'pattern', excerptText: '13.11.6.1 Collection, Classification and Presentation of' }
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-6-1', pageNumber: 33, clauseNumber: 'Para 13.11.6.1', excerptText: '13.11.6.1 Collection, Classification and Presentation of' }
             },
 {
               id: 'syl-13-11-indicative-syllabus--13-11-6-2',
@@ -1417,7 +1555,7 @@ export const SSC_CGL_EXAM: Exam = {
               levelLabel: 'Topic',
               note: 'Common measures of central tendency – mean median and mode; Partition values- quartiles, deciles, percentiles.',
               scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-6-2', clauseNumber: 'pattern', excerptText: '13.11.6.2 Measures of Central Tendency- Common' }
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-6-2', pageNumber: 33, clauseNumber: 'Para 13.11.6.2', excerptText: '13.11.6.2 Measures of Central Tendency- Common' }
             },
 {
               id: 'syl-13-11-indicative-syllabus--13-11-6-3',
@@ -1425,7 +1563,7 @@ export const SSC_CGL_EXAM: Exam = {
               levelLabel: 'Topic',
               note: 'Common measures dispersion – range, quartile deviations, mean deviation and standard deviation; Measures of relative dispersion.',
               scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-6-3', clauseNumber: 'pattern', excerptText: '13.11.6.3 Measures of Dispersion- Common measures' }
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-6-3', pageNumber: 33, clauseNumber: 'Para 13.11.6.3', excerptText: '13.11.6.3 Measures of Dispersion- Common measures' }
             },
 {
               id: 'syl-13-11-indicative-syllabus--13-11-6-4',
@@ -1433,7 +1571,7 @@ export const SSC_CGL_EXAM: Exam = {
               levelLabel: 'Topic',
               note: 'Different types of moments and their relationship; meaning of skewness and kurtosis; different measures of skewness and kurtosis.',
               scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-6-4', clauseNumber: 'pattern', excerptText: '13.11.6.4 Moments, Skewness and Kurtosis – Different' }
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-6-4', pageNumber: 33, clauseNumber: 'Para 13.11.6.4', excerptText: '13.11.6.4 Moments, Skewness and Kurtosis – Different' }
             },
 {
               id: 'syl-13-11-indicative-syllabus--13-11-6-5',
@@ -1441,7 +1579,7 @@ export const SSC_CGL_EXAM: Exam = {
               levelLabel: 'Topic',
               note: 'Scatter diagram; simple correlation coefficient; simple regression lines; Spearman‟s rank correlation; Measures of association of attributes; Multiple regression; Multiple and partial correlation (For three variables only).',
               scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-6-5', clauseNumber: 'pattern', excerptText: '13.11.6.5 Correlation and Regression – Scatter diagram;' }
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-6-5', pageNumber: 34, clauseNumber: 'Para 13.11.6.5', excerptText: '13.11.6.5 Correlation and Regression – Scatter diagram;' }
             },
 {
               id: 'syl-13-11-indicative-syllabus--13-11-6-6',
@@ -1449,7 +1587,7 @@ export const SSC_CGL_EXAM: Exam = {
               levelLabel: 'Topic',
               note: 'Meaning of probability; Different definitions of probability; Conditional probability; Compound probability; Independent events; Bayes‟ theorem.',
               scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-6-6', clauseNumber: 'pattern', excerptText: '13.11.6.6 Probability Theory – Meaning of probability;' }
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-6-6', pageNumber: 34, clauseNumber: 'Para 13.11.6.6', excerptText: '13.11.6.6 Probability Theory – Meaning of probability;' }
             },
 {
               id: 'syl-13-11-indicative-syllabus--13-11-6-7',
@@ -1457,7 +1595,7 @@ export const SSC_CGL_EXAM: Exam = {
               levelLabel: 'Topic',
               note: 'Random variable; Probability functions; Expectation and Variance of a random variable; Higher moments of a random variable; Binomial, Poisson, Normal and Exponential distributions; Joint distribution of two random variable (discrete).',
               scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-6-7', clauseNumber: 'pattern', excerptText: '13.11.6.7 Random Variable and Probability Distributions' }
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-6-7', pageNumber: 34, clauseNumber: 'Para 13.11.6.7', excerptText: '13.11.6.7 Random Variable and Probability Distributions' }
             },
 {
               id: 'syl-13-11-indicative-syllabus--13-11-6-8',
@@ -1465,7 +1603,7 @@ export const SSC_CGL_EXAM: Exam = {
               levelLabel: 'Topic',
               note: 'Concept of population and sample; Parameter and statistic, Sampling and non-sampling errors; Probability and non-probability sampling techniques (simple random sampling, stratified sampling, multistage sampling, multiphase sampling, cluster sampling, systematic sampling, purposive sampling, convenience sampling and quota sampling); Sampling distribution (statement only); Sample size decisions.',
               scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-6-8', clauseNumber: 'pattern', excerptText: '13.11.6.8 Sampling Theory – Concept of population and' }
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-6-8', pageNumber: 34, clauseNumber: 'Para 13.11.6.8', excerptText: '13.11.6.8 Sampling Theory – Concept of population and' }
             },
 {
               id: 'syl-13-11-indicative-syllabus--13-11-6-9',
@@ -1473,7 +1611,7 @@ export const SSC_CGL_EXAM: Exam = {
               levelLabel: 'Topic',
               note: 'Point estimation and interval estimation, Properties of a good estimator, Methods of estimation (Moments method, Maximum likelihood method, Least squares method), Testing of hypothesis, Basic concept of testing, Small sample and large sample tests, Tests based on Z, t, Chi-square and F statistic, Confidence intervals.',
               scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-6-9', clauseNumber: 'pattern', excerptText: '13.11.6.9 Statistical Inference - Point estimation and interval' }
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-6-9', pageNumber: 34, clauseNumber: 'Para 13.11.6.9', excerptText: '13.11.6.9 Statistical Inference - Point estimation and interval' }
             },
 {
               id: 'syl-13-11-indicative-syllabus--13-11-6-10',
@@ -1481,7 +1619,7 @@ export const SSC_CGL_EXAM: Exam = {
               levelLabel: 'Topic',
               note: 'Analysis of one-way classified data and two-way classified data.',
               scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-6-10', clauseNumber: 'pattern', excerptText: '13.11.6.10 Analysis of Variance - Analysis of one-way' }
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-6-10', pageNumber: 34, clauseNumber: 'Para 13.11.6.10', excerptText: '13.11.6.10 Analysis of Variance - Analysis of one-way' }
             },
 {
               id: 'syl-13-11-indicative-syllabus--13-11-6-11',
@@ -1489,7 +1627,7 @@ export const SSC_CGL_EXAM: Exam = {
               levelLabel: 'Topic',
               note: 'Components of time series, Determinations of trend component by different methods, Measurement of seasonal variation by different methods.',
               scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-6-11', clauseNumber: 'pattern', excerptText: '13.11.6.11 Time Series Analysis - Components of time series,' }
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-6-11', pageNumber: 34, clauseNumber: 'Para 13.11.6.11', excerptText: '13.11.6.11 Time Series Analysis - Components of time series,' }
             },
 {
               id: 'syl-13-11-indicative-syllabus--13-11-6-12',
@@ -1497,7 +1635,7 @@ export const SSC_CGL_EXAM: Exam = {
               levelLabel: 'Topic',
               note: 'Meaning of Index Numbers, Problems in the construction of index numbers, Types of index number, Different formulae, Base shifting and splicing of index numbers, Cost of living Index Numbers, Uses of Index Numbers.',
               scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-6-12', clauseNumber: 'pattern', excerptText: '13.11.6.12 Index Numbers - Meaning of Index Numbers,' }
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-6-12', pageNumber: 34, clauseNumber: 'Para 13.11.6.12', excerptText: '13.11.6.12 Index Numbers - Meaning of Index Numbers,' }
             }
           ]
         },
@@ -1506,7 +1644,7 @@ export const SSC_CGL_EXAM: Exam = {
           title: 'Paper-III (General Studies-Finance and Economics)',
           levelLabel: 'Paper',
           scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }],
-          provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7', clauseNumber: 'pattern', excerptText: '13.11.7 Paper-III (General Studies-Finance and Economics):' },
+          provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7', pageNumber: 34, clauseNumber: 'Para 13.11.7', excerptText: '13.11.7 Paper-III (General Studies-Finance and Economics):' },
           children: [
 {
               id: 'syl-13-11-indicative-syllabus--13-11-7-1',
@@ -1514,14 +1652,14 @@ export const SSC_CGL_EXAM: Exam = {
               levelLabel: 'Part',
               note: 'Finance and Accounts-(80 marks):',
               scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-A' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-1', clauseNumber: 'pattern', excerptText: '13.11.7.1 Part A: Finance and Accounts-(80 marks):' },
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-1', pageNumber: 34, clauseNumber: 'Para 13.11.7.1', excerptText: '13.11.7.1 Part A: Finance and Accounts-(80 marks):' },
               children: [
 {
                   id: 'syl-13-11-indicative-syllabus--13-11-7-1-1',
                   title: 'Fundamental principles and basic concept of Accounting',
                   levelLabel: 'Subtopic',
                   scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-A' }],
-                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-1-1', clauseNumber: 'pattern', excerptText: '13.11.7.1.1 Fundamental principles and basic' },
+                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-1-1', pageNumber: 34, clauseNumber: 'Para 13.11.7.1.1', excerptText: '13.11.7.1.1 Fundamental principles and basic' },
                   children: [
 {
                       id: 'syl-13-11-indicative-syllabus--13-11-7-1-1-1',
@@ -1529,7 +1667,7 @@ export const SSC_CGL_EXAM: Exam = {
                       levelLabel: 'Detail',
                       note: 'Nature and scope, Limitations of Financial Accounting, Basic concepts and Conventions, Generally Accepted Accounting Principles.',
                       scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-A' }],
-                      provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-1-1-1', clauseNumber: 'pattern', excerptText: '13.11.7.1.1.1 Financial Accounting: Nature and scope,' }
+                      provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-1-1-1', pageNumber: 35, clauseNumber: 'Para 13.11.7.1.1.1', excerptText: '13.11.7.1.1.1 Financial Accounting: Nature and scope,' }
                     },
 {
                       id: 'syl-13-11-indicative-syllabus--13-11-7-1-1-2',
@@ -1537,7 +1675,7 @@ export const SSC_CGL_EXAM: Exam = {
                       levelLabel: 'Detail',
                       note: 'Single and double entry, Books of original Entry, Bank Reconciliation, Journal, ledgers, Trial Balance, Rectification of Errors, Manufacturing, Trading, Profit & loss Appropriation Accounts, Balance Sheet Distinction between Capital and Revenue Expenditure, Depreciation Accounting, Valuation of Inventories, Non-profit organisations Accounts, Receipts and Payments and Income &Expenditure Accounts, ',
                       scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-A' }],
-                      provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-1-1-2', clauseNumber: 'pattern', excerptText: '13.11.7.1.1.2 Basic concepts of accounting: Single and' }
+                      provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-1-1-2', pageNumber: 35, clauseNumber: 'Para 13.11.7.1.1.2', excerptText: '13.11.7.1.1.2 Basic concepts of accounting: Single and' }
                     }
                   ]
                 }
@@ -1549,14 +1687,14 @@ export const SSC_CGL_EXAM: Exam = {
               levelLabel: 'Part',
               note: 'Economics and Governance-(120 marks):',
               scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-B' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2', clauseNumber: 'pattern', excerptText: '13.11.7.2 Part B: Economics and Governance-(120 marks):' },
+              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2', pageNumber: 35, clauseNumber: 'Para 13.11.7.2', excerptText: '13.11.7.2 Part B: Economics and Governance-(120 marks):' },
               children: [
 {
                   id: 'syl-13-11-indicative-syllabus--13-11-7-2-1',
                   title: 'Comptroller & Auditor General of India￾Constitutional provisions, Role and responsibility',
                   levelLabel: 'Subtopic',
                   scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-B' }],
-                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-1', clauseNumber: 'pattern', excerptText: '13.11.7.2.1 Comptroller & Auditor General of India￾Constitutional provisions, Role and responsibility.' }
+                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-1', pageNumber: 35, clauseNumber: 'Para 13.11.7.2.1', excerptText: '13.11.7.2.1 Comptroller & Auditor General of India￾Constitutional provisions, Role and responsibility.' }
                 },
 {
                   id: 'syl-13-11-indicative-syllabus--13-11-7-2-2',
@@ -1564,7 +1702,7 @@ export const SSC_CGL_EXAM: Exam = {
                   levelLabel: 'Subtopic',
                   note: 'Role and functions.',
                   scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-B' }],
-                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-2', clauseNumber: 'pattern', excerptText: '13.11.7.2.2 Finance Commission- Role and functions.' }
+                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-2', pageNumber: 35, clauseNumber: 'Para 13.11.7.2.2', excerptText: '13.11.7.2.2 Finance Commission- Role and functions.' }
                 },
 {
                   id: 'syl-13-11-indicative-syllabus--13-11-7-2-3',
@@ -1572,7 +1710,7 @@ export const SSC_CGL_EXAM: Exam = {
                   levelLabel: 'Subtopic',
                   note: 'Definition, scope and nature of Economics, Methods of economic study and Central problems of an economy and Production possibilities curve.',
                   scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-B' }],
-                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-3', clauseNumber: 'pattern', excerptText: '13.11.7.2.3 Basic Concept of Economics and introduction' }
+                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-3', pageNumber: 35, clauseNumber: 'Para 13.11.7.2.3', excerptText: '13.11.7.2.3 Basic Concept of Economics and introduction' }
                 },
 {
                   id: 'syl-13-11-indicative-syllabus--13-11-7-2-4',
@@ -1580,7 +1718,7 @@ export const SSC_CGL_EXAM: Exam = {
                   levelLabel: 'Subtopic',
                   note: 'Meaning and determinants of demand, Law of demand and Elasticity of demand, Price, income and cross elasticity; Theory of consumer‟s behaviour- Marshallian approach and Indifference curve approach, Meaning and determinants of supply, Law of supply and Elasticity of Supply.',
                   scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-B' }],
-                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-4', clauseNumber: 'pattern', excerptText: '13.11.7.2.4 Theory of Demand and Supply: Meaning and' }
+                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-4', pageNumber: 35, clauseNumber: 'Para 13.11.7.2.4', excerptText: '13.11.7.2.4 Theory of Demand and Supply: Meaning and' }
                 },
 {
                   id: 'syl-13-11-indicative-syllabus--13-11-7-2-5',
@@ -1588,7 +1726,7 @@ export const SSC_CGL_EXAM: Exam = {
                   levelLabel: 'Subtopic',
                   note: 'Meaning and Factors of production; Laws of production- Law of variable proportions and Laws of returns to scale.',
                   scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-B' }],
-                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-5', clauseNumber: 'pattern', excerptText: '13.11.7.2.5 Theory of Production and cost: Meaning and' }
+                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-5', pageNumber: 35, clauseNumber: 'Para 13.11.7.2.5', excerptText: '13.11.7.2.5 Theory of Production and cost: Meaning and' }
                 },
 {
                   id: 'syl-13-11-indicative-syllabus--13-11-7-2-6',
@@ -1596,14 +1734,14 @@ export const SSC_CGL_EXAM: Exam = {
                   levelLabel: 'Subtopic',
                   note: 'Various forms of markets-Perfect Competition, Monopoly, Monopolistic Competition and Oligopoly and Price determination in these markets.',
                   scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-B' }],
-                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-6', clauseNumber: 'pattern', excerptText: '13.11.7.2.6 Forms of Market and price determination in' }
+                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-6', pageNumber: 35, clauseNumber: 'Para 13.11.7.2.6', excerptText: '13.11.7.2.6 Forms of Market and price determination in' }
                 },
 {
                   id: 'syl-13-11-indicative-syllabus--13-11-7-2-7',
                   title: 'Indian Economy',
                   levelLabel: 'Subtopic',
                   scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-B' }],
-                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-7', clauseNumber: 'pattern', excerptText: '13.11.7.2.7 Indian Economy:' },
+                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-7', pageNumber: 35, clauseNumber: 'Para 13.11.7.2.7', excerptText: '13.11.7.2.7 Indian Economy:' },
                   children: [
 {
                       id: 'syl-13-11-indicative-syllabus--13-11-7-2-7-1',
@@ -1611,21 +1749,21 @@ export const SSC_CGL_EXAM: Exam = {
                       levelLabel: 'Detail',
                       note: 'Role of Agriculture, Industry and Services-their problems and growth;',
                       scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-B' }],
-                      provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-7-1', clauseNumber: 'pattern', excerptText: '13.11.7.2.7.1 Nature of the Indian Economy Role of' }
+                      provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-7-1', pageNumber: 35, clauseNumber: 'Para 13.11.7.2.7.1', excerptText: '13.11.7.2.7.1 Nature of the Indian Economy Role of' }
                     },
 {
                       id: 'syl-13-11-indicative-syllabus--13-11-7-2-7-2',
                       title: 'National Income of India-Concepts of national income, Different methods of measuring national income',
                       levelLabel: 'Detail',
                       scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-B' }],
-                      provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-7-2', clauseNumber: 'pattern', excerptText: '13.11.7.2.7.2 National Income of India-Concepts of' }
+                      provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-7-2', pageNumber: 36, clauseNumber: 'Para 13.11.7.2.7.2', excerptText: '13.11.7.2.7.2 National Income of India-Concepts of' }
                     },
 {
                       id: 'syl-13-11-indicative-syllabus--13-11-7-2-7-3',
                       title: 'Population-Its size, rate of growth and its implication on economic growth',
                       levelLabel: 'Detail',
                       scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-B' }],
-                      provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-7-3', clauseNumber: 'pattern', excerptText: '13.11.7.2.7.3 Population-Its size, rate of growth and its' }
+                      provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-7-3', pageNumber: 36, clauseNumber: 'Para 13.11.7.2.7.3', excerptText: '13.11.7.2.7.3 Population-Its size, rate of growth and its' }
                     },
 {
                       id: 'syl-13-11-indicative-syllabus--13-11-7-2-7-4',
@@ -1633,14 +1771,14 @@ export const SSC_CGL_EXAM: Exam = {
                       levelLabel: 'Detail',
                       note: 'Absolute and relative poverty, types, causes and incidence of unemployment.',
                       scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-B' }],
-                      provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-7-4', clauseNumber: 'pattern', excerptText: '13.11.7.2.7.4 Poverty and unemployment- Absolute and' }
+                      provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-7-4', pageNumber: 36, clauseNumber: 'Para 13.11.7.2.7.4', excerptText: '13.11.7.2.7.4 Poverty and unemployment- Absolute and' }
                     },
 {
                       id: 'syl-13-11-indicative-syllabus--13-11-7-2-7-5',
                       title: 'Infrastructure-Energy, Transportation, Communication',
                       levelLabel: 'Detail',
                       scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-B' }],
-                      provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-7-5', clauseNumber: 'pattern', excerptText: '13.11.7.2.7.5 Infrastructure-Energy, Transportation,' }
+                      provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-7-5', pageNumber: 36, clauseNumber: 'Para 13.11.7.2.7.5', excerptText: '13.11.7.2.7.5 Infrastructure-Energy, Transportation,' }
                     }
                   ]
                 },
@@ -1650,14 +1788,14 @@ export const SSC_CGL_EXAM: Exam = {
                   levelLabel: 'Subtopic',
                   note: 'Economic reforms since 1991; Liberalisation, Privatisation, Globalisation and Disinvestment.',
                   scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-B' }],
-                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-8', clauseNumber: 'pattern', excerptText: '13.11.7.2.8 Economic Reforms in India: Economic reforms' }
+                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-8', pageNumber: 36, clauseNumber: 'Para 13.11.7.2.8', excerptText: '13.11.7.2.8 Economic Reforms in India: Economic reforms' }
                 },
 {
                   id: 'syl-13-11-indicative-syllabus--13-11-7-2-9',
                   title: 'Money and Banking',
                   levelLabel: 'Subtopic',
                   scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-B' }],
-                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-9', clauseNumber: 'pattern', excerptText: '13.11.7.2.9 Money and Banking:' },
+                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-9', pageNumber: 36, clauseNumber: 'Para 13.11.7.2.9', excerptText: '13.11.7.2.9 Money and Banking:' },
                   children: [
 {
                       id: 'syl-13-11-indicative-syllabus--13-11-7-2-9-1',
@@ -1665,21 +1803,21 @@ export const SSC_CGL_EXAM: Exam = {
                       levelLabel: 'Detail',
                       note: 'Role and functions of Reserve Bank of India; functions of commercial Banks/RRB/Payment Banks.',
                       scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-B' }],
-                      provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-9-1', clauseNumber: 'pattern', excerptText: '13.11.7.2.9.1 Monetary/ Fiscal policy- Role and' }
+                      provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-9-1', pageNumber: 36, clauseNumber: 'Para 13.11.7.2.9.1', excerptText: '13.11.7.2.9.1 Monetary/ Fiscal policy- Role and' }
                     },
 {
                       id: 'syl-13-11-indicative-syllabus--13-11-7-2-9-2',
                       title: 'Budget and Fiscal deficits and Balance of payments',
                       levelLabel: 'Detail',
                       scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-B' }],
-                      provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-9-2', clauseNumber: 'pattern', excerptText: '13.11.7.2.9.2 Budget and Fiscal deficits and Balance of' }
+                      provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-9-2', pageNumber: 36, clauseNumber: 'Para 13.11.7.2.9.2', excerptText: '13.11.7.2.9.2 Budget and Fiscal deficits and Balance of' }
                     },
 {
                       id: 'syl-13-11-indicative-syllabus--13-11-7-2-9-3',
                       title: 'Fiscal Responsibility and Budget Management Act, 2003',
                       levelLabel: 'Detail',
                       scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-B' }],
-                      provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-9-3', clauseNumber: 'pattern', excerptText: '13.11.7.2.9.3 Fiscal Responsibility and Budget' }
+                      provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-9-3', pageNumber: 36, clauseNumber: 'Para 13.11.7.2.9.3', excerptText: '13.11.7.2.9.3 Fiscal Responsibility and Budget' }
                     }
                   ]
                 },
@@ -1688,7 +1826,7 @@ export const SSC_CGL_EXAM: Exam = {
                   title: 'Role of Information Technology in Governance',
                   levelLabel: 'Subtopic',
                   scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'PAPER', label: 'Paper-III' }, { kind: 'SECTION', label: 'Part-B' }],
-                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-10', clauseNumber: 'pattern', excerptText: '13.11.7.2.10 Role of Information Technology in' }
+                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-7-2-10', pageNumber: 36, clauseNumber: 'Para 13.11.7.2.10', excerptText: '13.11.7.2.10 Role of Information Technology in' }
                 }
               ]
             }
@@ -1696,334 +1834,11 @@ export const SSC_CGL_EXAM: Exam = {
         },
 {
           id: 'syl-13-11-indicative-syllabus--13-11-8',
-          title: 'Questions in Part A of Section',
+          title: 'Level of the questions',
           levelLabel: 'Subject',
-          note: 'I of Paper-I (Mathematical Abilities) will be of Matriculation Level, in Part A of Section- II of Paper-I (English Language and Comprehension) of 10+2 Level and in Paper-II and Paper-III of Graduation Level.',
+          note: 'Questions in Part A of Section-I of Paper-I (Mathematical Abilities) will be of Matriculation Level, in Part A of Section- II of Paper-I (English Language and Comprehension) of 10+2 Level and in Paper-II and Paper-III of Graduation Level.',
           scope: [{ kind: 'STAGE', label: 'Tier-II' }, { kind: 'SECTION', label: 'Part-A' }],
-          provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-8', clauseNumber: 'pattern', excerptText: '13.11.8 Questions in Part A of Section- I of Paper-I (Mathematical' }
-        },
-{
-          id: 'syl-13-11-indicative-syllabus--14',
-          title: 'Admission to the Examination',
-          levelLabel: 'Subject',
-          note: 'All candidates who register themselves in response to this advertisement by the closing date and time and whose applications are found to be in order and are provisionally accepted by the Commission as per the terms and conditions of this Notice of Examination will be assigned Roll numbers and issued Admission Certificates (AC) for appearing in the Computer Based Examination. Subsequently, qualifi',
-          scope: [{ kind: 'STAGE', label: 'Tier-II' }],
-          provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--14', clauseNumber: 'pattern', excerptText: '14. Admission to the Examination:' },
-          children: [
-{
-              id: 'syl-13-11-indicative-syllabus--14-7-1',
-              title: 'Aadhaar Card/ Printout of E-Aadhaar',
-              levelLabel: 'Subject',
-              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--14-7-1', clauseNumber: 'pattern', excerptText: '14.7.1 Aadhaar Card/ Printout of E-Aadhaar,' }
-            },
-{
-              id: 'syl-13-11-indicative-syllabus--14-7-2',
-              title: 'Voter‟s ID Card',
-              levelLabel: 'Subject',
-              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--14-7-2', clauseNumber: 'pattern', excerptText: '14.7.2 Voter‟s ID Card,' }
-            },
-{
-              id: 'syl-13-11-indicative-syllabus--14-7-3',
-              title: 'Driving License',
-              levelLabel: 'Subject',
-              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--14-7-3', clauseNumber: 'pattern', excerptText: '14.7.3 Driving License,' }
-            },
-{
-              id: 'syl-13-11-indicative-syllabus--14-7-4',
-              title: 'PAN Card',
-              levelLabel: 'Subject',
-              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--14-7-4', clauseNumber: 'pattern', excerptText: '14.7.4 PAN Card,' }
-            },
-{
-              id: 'syl-13-11-indicative-syllabus--14-7-5',
-              title: 'Passport',
-              levelLabel: 'Subject',
-              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--14-7-5', clauseNumber: 'pattern', excerptText: '14.7.5 Passport,' }
-            },
-{
-              id: 'syl-13-11-indicative-syllabus--14-7-6',
-              title: 'ID Card issued by University/ College/ School',
-              levelLabel: 'Subject',
-              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--14-7-6', clauseNumber: 'pattern', excerptText: '14.7.6 ID Card issued by University/ College/ School,' }
-            },
-{
-              id: 'syl-13-11-indicative-syllabus--14-7-7',
-              title: 'Employer ID Card (Govt./ PSU)',
-              levelLabel: 'Subject',
-              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--14-7-7', clauseNumber: 'pattern', excerptText: '14.7.7 Employer ID Card (Govt./ PSU),' }
-            },
-{
-              id: 'syl-13-11-indicative-syllabus--14-7-8',
-              title: 'Ex-Serviceman Discharge Book issued by Ministry of Defence',
-              levelLabel: 'Subject',
-              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--14-7-8', clauseNumber: 'pattern', excerptText: '14.7.8 Ex-Serviceman Discharge Book issued by Ministry of' }
-            },
-{
-              id: 'syl-13-11-indicative-syllabus--14-7-9',
-              title: 'Any other photo bearing ID Card issued by the Central/ State Government',
-              levelLabel: 'Subject',
-              note: 'If Photo Identity Card does not have the date of birth printed on it then the candidate must carry an additional original document (e.g. Matriculation Certificate, Marks Sheet issued only by CBSE/ ICSE/ State Boards; Birth Certificate, Category Certificate, Passport etc.) in proof of their date of birth. In case of mismatch in the date of birth mentioned in the Admission Certificate and photo ID/ ',
-              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--14-7-9', clauseNumber: 'pattern', excerptText: '14.7.9 Any other photo bearing ID Card issued by the Central/' }
-            },
-{
-              id: 'syl-13-11-indicative-syllabus--14-9',
-              title: 'PwBD/ PwD candidates availing the facility of scribes as per Para 7.1',
-              levelLabel: 'Subject',
-              note: 'and 7.3 shall also be required to carry requisite Medical Certificate/ Undertaking/ Photocopy of the Scribe‟s Photo ID Proof, as specified therein. Candidates without above noted documents will not be allowed to appear in the examination. Any other document mentioned in the Admission Certificate shall also be carried by the candidates while appearing in the Examination. Applications with blurred p',
-              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--14-9', clauseNumber: 'pattern', excerptText: '14.9 PwBD/ PwD candidates availing the facility of scribes as per Para 7.1,' }
-            }
-          ]
-        },
-{
-          id: 'syl-13-11-indicative-syllabus--15',
-          title: 'Document Verification (DV)',
-          levelLabel: 'Subject',
-          note: 'Document Verification (DV) will be conducted by the User Departments/Organizations after declaration of the final result. Staff Selection Commission make recruitments as per the vacancies reported by the User Ministries/Departments/Organizations. The Commission has no role in determination of total vacancies (Vertical & Horizontal) arising in a User Ministry/Department/Organization, backlog vacanc',
-          scope: [{ kind: 'STAGE', label: 'Tier-II' }],
-          provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15', clauseNumber: 'pattern', excerptText: '15. Document Verification (DV):' },
-          children: [
-{
-              id: 'syl-13-11-indicative-syllabus--15-7-1',
-              title: 'Inspector (Central Excise)-CBIC',
-              levelLabel: 'Subject',
-              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-7-1', clauseNumber: 'pattern', excerptText: '15.7.1 Inspector (Central Excise)-CBIC' }
-            },
-{
-              id: 'syl-13-11-indicative-syllabus--15-7-2',
-              title: 'Inspector (Examiner)-CBIC',
-              levelLabel: 'Subject',
-              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-7-2', clauseNumber: 'pattern', excerptText: '15.7.2 Inspector (Examiner)-CBIC' }
-            },
-{
-              id: 'syl-13-11-indicative-syllabus--15-7-3',
-              title: 'Inspector (Preventive Officer)-CBIC',
-              levelLabel: 'Subject',
-              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-7-3', clauseNumber: 'pattern', excerptText: '15.7.3 Inspector (Preventive Officer)-CBIC' }
-            },
-{
-              id: 'syl-13-11-indicative-syllabus--15-7-4',
-              title: 'Inspector-CBN',
-              levelLabel: 'Subject',
-              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-7-4', clauseNumber: 'pattern', excerptText: '15.7.4 Inspector-CBN' }
-            },
-{
-              id: 'syl-13-11-indicative-syllabus--15-7-5',
-              title: 'Sub-Inspector-CBN, Ministry of Finance',
-              levelLabel: 'Subject',
-              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-7-5', clauseNumber: 'pattern', excerptText: '15.7.5 Sub-Inspector-CBN, Ministry of Finance' }
-            },
-{
-              id: 'syl-13-11-indicative-syllabus--15-7-6',
-              title: 'Sub-Inspector/ Junior Intelligence Officer in NCB, MHA',
-              levelLabel: 'Subject',
-              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-7-6', clauseNumber: 'pattern', excerptText: '15.7.6 Sub-Inspector/ Junior Intelligence Officer in NCB, MHA' }
-            },
-{
-              id: 'syl-13-11-indicative-syllabus--15-7-7',
-              title: 'Sub-Inspector-CBI',
-              levelLabel: 'Subject',
-              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-7-7', clauseNumber: 'pattern', excerptText: '15.7.7 Sub-Inspector-CBI' }
-            },
-{
-              id: 'syl-13-11-indicative-syllabus--15-7-8',
-              title: 'Sub-Inspector-NIA',
-              levelLabel: 'Subject',
-              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-7-8', clauseNumber: 'pattern', excerptText: '15.7.8 Sub-Inspector-NIA' }
-            },
-{
-              id: 'syl-13-11-indicative-syllabus--15-7-9',
-              title: 'Post(s) in BRO',
-              levelLabel: 'Subject',
-              note: 'Detailed information about the Physical Standard, Physical Tests about the posts at Para 15.7.1 to 15.7.9 is given at Annexure-XV & Annexure-XVI. Candidates must ensure that they fulfil all the requirements of Physical Standards, Physical Tests and Medical Standards before giving their preferences/ options. Measurement of Physical Standards, Physical Tests and Medical Tests will be conducted by th',
-              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-7-9', clauseNumber: 'pattern', excerptText: '15.7.9 Post(s) in BRO' }
-            },
-{
-              id: 'syl-13-11-indicative-syllabus--15-11-1',
-              title: 'Matriculation/ Secondary Certificate',
-              levelLabel: 'Subject',
-              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-11-1', clauseNumber: 'pattern', excerptText: '15.11.1 Matriculation/ Secondary Certificate.' }
-            },
-{
-              id: 'syl-13-11-indicative-syllabus--15-11-2',
-              title: 'Educational Qualification Certificate',
-              levelLabel: 'Subject',
-              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-11-2', clauseNumber: 'pattern', excerptText: '15.11.2 Educational Qualification Certificate.' }
-            },
-{
-              id: 'syl-13-11-indicative-syllabus--15-11-3',
-              title: 'Caste/ Category Certificate, if belongs to reserved categories',
-              levelLabel: 'Subject',
-              note: 'Persons with Benchmark Disabilities Certificate in the required format, if applicable.',
-              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-11-3', clauseNumber: 'pattern', excerptText: '15.11.3 Caste/ Category Certificate, if belongs to reserved' }
-            },
-{
-              id: 'syl-13-11-indicative-syllabus--15-11-5',
-              title: 'For Ex-Servicemen (ESM)',
-              levelLabel: 'Subject',
-              note: 'Serving Defence Personnel Certificate as per Annexure-VII, if applicable.',
-              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-11-5', clauseNumber: 'pattern', excerptText: '15.11.5 For Ex-Servicemen (ESM):' },
-              children: [
-{
-                  id: 'syl-13-11-indicative-syllabus--15-11-5-2',
-                  title: 'Undertaking as per Annexure-VIII',
-                  levelLabel: 'Topic',
-                  scope: [{ kind: 'STAGE', label: 'Tier-II' }],
-                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-11-5-2', clauseNumber: 'pattern', excerptText: '15.11.5.2 Undertaking as per Annexure-VIII.' }
-                },
-{
-                  id: 'syl-13-11-indicative-syllabus--15-11-5-3',
-                  title: 'Discharge Certificate, if discharged from the Armed Forces',
-                  levelLabel: 'Topic',
-                  scope: [{ kind: 'STAGE', label: 'Tier-II' }],
-                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-11-5-3', clauseNumber: 'pattern', excerptText: '15.11.5.3 Discharge Certificate, if discharged from the' }
-                }
-              ]
-            },
-{
-              id: 'syl-13-11-indicative-syllabus--15-11-6',
-              title: 'Relevant Certificate if seeking any age relaxation',
-              levelLabel: 'Subject',
-              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-11-6', clauseNumber: 'pattern', excerptText: '15.11.6 Relevant Certificate if seeking any age relaxation.' }
-            },
-{
-              id: 'syl-13-11-indicative-syllabus--15-11-7',
-              title: 'Certificate as per Annexure-VI by the Central Government Civilian Employees',
-              levelLabel: 'Subject',
-              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-11-7', clauseNumber: 'pattern', excerptText: '15.11.7 Certificate as per Annexure-VI by the Central Government' }
-            },
-{
-              id: 'syl-13-11-indicative-syllabus--15-11-8',
-              title: 'No Objection Certificate, in case already employed in Government/ Government undertakings',
-              levelLabel: 'Subject',
-              note: 'A candidate who claims change in name after matriculation on marriage or remarriage or divorce, etc. the following documents shall be submitted:',
-              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-11-8', clauseNumber: 'pattern', excerptText: '15.11.8 No Objection Certificate, in case already employed in' },
-              children: [
-{
-                  id: 'syl-13-11-indicative-syllabus--15-11-9-1',
-                  title: 'In case of marriage of women',
-                  levelLabel: 'Topic',
-                  note: 'Photocopy of Husband‟s passport showing names of spouses or an attested copy of marriage certificate issued by the Registrar of Marriage or an Affidavit from husband and wife along with a joint photograph duly sworn before the Oath Commissioner;',
-                  scope: [{ kind: 'STAGE', label: 'Tier-II' }],
-                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-11-9-1', clauseNumber: 'pattern', excerptText: '15.11.9.1 In case of marriage of women: Photocopy of' }
-                },
-{
-                  id: 'syl-13-11-indicative-syllabus--15-11-9-2',
-                  title: 'In case of re-marriage of women',
-                  levelLabel: 'Topic',
-                  note: 'Divorce Deed/ Death Certificate as the case may be in respect of first spouse; and photocopy of present husband‟s passport showing names of spouse or an attested copy of marriage certificate issued by the Registrar of Marriage or an Affidavit from the husband and wife along with joint photograph duly sworn before the Oath Commissioner.',
-                  scope: [{ kind: 'STAGE', label: 'Tier-II' }],
-                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-11-9-2', clauseNumber: 'pattern', excerptText: '15.11.9.2 In case of re-marriage of women: Divorce Deed/' }
-                },
-{
-                  id: 'syl-13-11-indicative-syllabus--15-11-9-3',
-                  title: 'In case of divorce of women',
-                  levelLabel: 'Topic',
-                  note: 'Certified copy of Divorce Decree and Deed Poll/ Affidavit duly sworn before the Oath Commissioner.',
-                  scope: [{ kind: 'STAGE', label: 'Tier-II' }],
-                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-11-9-3', clauseNumber: 'pattern', excerptText: '15.11.9.3 In case of divorce of women: Certified copy of' }
-                },
-{
-                  id: 'syl-13-11-indicative-syllabus--15-11-9-4',
-                  title: 'In other circumstances for change of name for both male and female',
-                  levelLabel: 'Topic',
-                  note: 'Deed Poll/ Affidavit duly sworn before the Oath Commissioner and paper cuttings of two leading daily newspaper in original (One daily newspaper should be of the area of applicant‟s permanent and present address or nearby area) and Gazette Notification.',
-                  scope: [{ kind: 'STAGE', label: 'Tier-II' }],
-                  provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-11-9-4', clauseNumber: 'pattern', excerptText: '15.11.9.4 In other circumstances for change of name for both' }
-                }
-              ]
-            },
-{
-              id: 'syl-13-11-indicative-syllabus--15-12',
-              title: 'Any other document specified in the Admission Certificate for DV',
-              levelLabel: 'Subject',
-              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--15-12', clauseNumber: 'pattern', excerptText: '15.12 Any other document specified in the Admission Certificate for DV.' }
-            }
-          ]
-        },
-{
-          id: 'syl-13-11-indicative-syllabus--16',
-          title: 'Mode of Selection',
-          levelLabel: 'Subject',
-          note: 'Minimum qualifying marks in Tier-I; Section-I, Section-II & Section￾III of Paper-I of Tier-II, Paper-II & Paper-III of Tier-II Examination are as follows:',
-          scope: [{ kind: 'STAGE', label: 'Tier-II' }],
-          provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--16', clauseNumber: 'pattern', excerptText: '16. Mode of Selection:' },
-          children: [
-{
-              id: 'syl-13-11-indicative-syllabus--16-1-1',
-              title: 'UR',
-              levelLabel: 'Subject',
-              note: '30%',
-              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--16-1-1', clauseNumber: 'pattern', excerptText: '16.1.1 UR : 30%' }
-            },
-{
-              id: 'syl-13-11-indicative-syllabus--16-1-2',
-              title: 'OBC/ EWS',
-              levelLabel: 'Subject',
-              note: '25%',
-              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--16-1-2', clauseNumber: 'pattern', excerptText: '16.1.2 OBC/ EWS : 25%' }
-            },
-{
-              id: 'syl-13-11-indicative-syllabus--16-1-3',
-              title: 'All other categories',
-              levelLabel: 'Subject',
-              note: '20% Maximum percentage of errors allowed (i.e. minimum qualifying standards) in Section-IV of Paper-I of Tier-II Examination i.e. DEST are as follows:',
-              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--16-1-3', clauseNumber: 'pattern', excerptText: '16.1.3 All other categories : 20%' }
-            },
-{
-              id: 'syl-13-11-indicative-syllabus--16-2-1',
-              title: 'UR',
-              levelLabel: 'Subject',
-              note: '20%',
-              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--16-2-1', clauseNumber: 'pattern', excerptText: '16.2.1 UR : 20%' }
-            },
-{
-              id: 'syl-13-11-indicative-syllabus--16-2-2',
-              title: 'OBC/ EWS',
-              levelLabel: 'Subject',
-              note: '25%',
-              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--16-2-2', clauseNumber: 'pattern', excerptText: '16.2.2 OBC/ EWS : 25%' }
-            },
-{
-              id: 'syl-13-11-indicative-syllabus--16-2-3',
-              title: 'All other categories',
-              levelLabel: 'Subject',
-              note: '30% Based on the marks scored in Tier-I i.e. Computer Based Examination, candidates will be shortlisted, category-wise, to appear in Tier-II Examination. Separate cut-offs will be fixed for the post of Junior Statistical Officer and Statistical Investigator Grade-II for appearing in Paper-I & Paper-II of Tier-II, for the posts of Assistant Audit Officer and Assistant Accounts Officer for appearing',
-              scope: [{ kind: 'STAGE', label: 'Tier-II' }],
-              provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--16-2-3', clauseNumber: 'pattern', excerptText: '16.2.3 All other categories : 30%' }
-            }
-          ]
+          provenance: { ...sscSyllabusSource, id: 'prov-syl-13-11-indicative-syllabus--13-11-8', pageNumber: 36, clauseNumber: 'Para 13.11.8', excerptText: '13.11.8 Questions in Part A of Section- I of Paper-I (Mathematical' }
         }
       ]
     }
@@ -2053,7 +1868,7 @@ export const SSC_CGL_EXAM: Exam = {
         officialUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Final_writeup_17062026.pdf',
         pageNumber: 1,
         clauseNumber: 'pattern',
-        publishedDate: '2026-09-22',
+        publishedDate: '2026-06-17',
         verifiedDate: '2026-09-22',
         verifiedBy: 'GovOS exam builder — read from the source',
         taxonomyType: 'FACT',
@@ -2191,12 +2006,12 @@ export const SSC_CGL_EXAM: Exam = {
       id: 'syl-quant-arithmetic',
       subject: 'Quantitative Aptitude',
       tier: 'BOTH',
-      topicName: 'Arithmetic: Percentage, Profit & Loss, Ratio & Proportion',
-      subtopics: ['Successive Discount', 'Market Price & Cost Price', 'Partnership Ratios', 'Mixture & Alligation', 'Simple & Compound Interest'],
+      topicName: 'Arithmetic: Percentages, Ratio & Proportion, Profit & Loss, Interest, Time & Work, Time & Distance',
+      subtopics: ['Percentages', 'Ratio and Proportion', 'Square roots', 'Averages', 'Interest (Simple and Compound)', 'Profit and Loss', 'Discount', 'Partnership Business', 'Mixture and Alligation', 'Time and distance', 'Time and work'],
       weightagePercentage: 24,
       avgQuestions: 6,
       isHighYield: true,
-      officialProvenance: sscProvenanceSyllabus,
+      officialProvenance: sscNotice('prov-syl-syl-quant-arithmetic', 'Para 13.11.1.2 — Fundamental arithmetical operations', 31, '13.11.1.2 Fundamental arithmetical operations: Percentages, Ratio and Proportion, Square roots, Averages, Interest (Simple and Compound), Profit and Loss, Discount, Partnership Business, Mixture and Alligation, Time and distance, Time and work.'),
       weightageProvenance: sscProvenanceWeightage
     },
     {
@@ -2204,23 +2019,23 @@ export const SSC_CGL_EXAM: Exam = {
       subject: 'Quantitative Aptitude',
       tier: 'BOTH',
       topicName: 'Algebra & Elementary Surds',
-      subtopics: ['Algebraic Identities', 'Linear Equations in Two Variables', 'Quadratic Factorization', 'Symmetric Expressions (x + 1/x rules)'],
+      subtopics: ['Basic algebraic identities of school algebra', 'Elementary surds (simple problems)', 'Graphs of linear equations'],
       weightagePercentage: 16,
       avgQuestions: 4,
       isHighYield: true,
-      officialProvenance: sscProvenanceSyllabus,
+      officialProvenance: sscNotice('prov-syl-syl-quant-algebra', 'Para 13.11.1.3 — Algebra', 31, '13.11.1.3 Algebra: Basic algebraic identities of School Algebra and Elementary surds (simple problems) and Graphs of Linear Equations.'),
       weightageProvenance: sscProvenanceWeightage
     },
     {
       id: 'syl-quant-geometry',
       subject: 'Quantitative Aptitude',
       tier: 'BOTH',
-      topicName: 'Geometry & Mensuration (2D & 3D)',
-      subtopics: ['Triangle Centers (Incenter, Orthocenter, Centroid)', 'Circle Theorems & Tangents', 'Cyclic Quadrilaterals', 'Cylinder, Cone, Sphere, Frustum Volume & TSA'],
+      topicName: 'Geometry & Mensuration',
+      subtopics: ['Triangle and its various kinds of centres', 'Congruence and similarity of triangles', 'Circle: chords, tangents, angles subtended by chords, common tangents', 'Mensuration: triangle, quadrilaterals, regular polygons, circle', 'Right prism, right circular cone, right circular cylinder', 'Sphere, hemispheres, rectangular parallelepiped, regular right pyramid (triangular or square base)'],
       weightagePercentage: 22,
       avgQuestions: 5,
       isHighYield: true,
-      officialProvenance: sscProvenanceSyllabus,
+      officialProvenance: sscNotice('prov-syl-syl-quant-geometry', 'Para 13.11.1.4–13.11.1.5 — Geometry and Mensuration', 31, '13.11.1.4 Geometry: Familiarity with elementary geometric figures and facts: Triangle and its various kinds of centres, Congruence and similarity of triangles, Circle and its chords, tangents, angles subtended by chords of a circle, common tangents to two or more circles.'),
       weightageProvenance: sscProvenanceWeightage
     },
     {
@@ -2228,35 +2043,35 @@ export const SSC_CGL_EXAM: Exam = {
       subject: 'Quantitative Aptitude',
       tier: 'BOTH',
       topicName: 'Trigonometry & Heights and Distances',
-      subtopics: ['Standard Angle Values', 'Trigonometric Identities (sin²θ+cos²θ=1)', 'Complementary Angles', 'Angles of Elevation & Depression'],
+      subtopics: ['Trigonometric ratios', 'Degree and radian measures (Tier-I, Para 13.10.3)', 'Standard identities', 'Complementary angles', 'Heights and distances (simple problems only)'],
       weightagePercentage: 14,
       avgQuestions: 3,
       isHighYield: true,
-      officialProvenance: sscProvenanceSyllabus,
+      officialProvenance: sscNotice('prov-syl-syl-quant-trig', 'Para 13.11.1.6 — Trigonometry', 32, '13.11.1.6 Trigonometry: Trigonometry, Trigonometric ratios, Complementary angles, Height and distances (simple problems only) Standard Identities like'),
       weightageProvenance: sscProvenanceWeightage
     },
     {
       id: 'syl-quant-di',
       subject: 'Quantitative Aptitude',
       tier: 'BOTH',
-      topicName: 'Data Interpretation (DI) & Number System',
-      subtopics: ['Bar Graphs, Pie Charts & Histograms', 'Divisibility Rules (7, 11, 72, 88)', 'Remainder Theorem', 'Unit Digit & Factors'],
+      topicName: 'Number System & Data Interpretation (Graphs and Charts)',
+      subtopics: ['Computation of whole numbers, decimals and fractions', 'Relationships between numbers', 'Histogram, frequency polygon, bar diagram and pie chart (Tier-I, Para 13.10.3)'],
       weightagePercentage: 16,
       avgQuestions: 4,
       isHighYield: false,
-      officialProvenance: sscProvenanceSyllabus,
+      officialProvenance: sscNotice('prov-syl-syl-quant-di', 'Para 13.11.1.1 — Number Systems', 31, '13.11.1.1 Number Systems: Computation of Whole Number, Decimal and Fractions, Relationship between numbers.'),
       weightageProvenance: sscProvenanceWeightage
     },
     {
       id: 'syl-quant-prob-stat',
       subject: 'Quantitative Aptitude',
       tier: 'TIER_2',
-      topicName: 'Tier 2 New Module: Probability & Statistics Basics',
-      subtopics: ['Mean, Median, Mode & Standard Deviation', 'Variance Calculation', 'Coin, Dice, Card Probability', 'Mutually Exclusive Events'],
+      topicName: 'Statistics and Probability (Tier-II Paper-I)',
+      subtopics: ['Use of tables and graphs', 'Mean, median, mode, standard deviation', 'Calculation of simple probabilities'],
       weightagePercentage: 8,
       avgQuestions: 2,
       isHighYield: true,
-      officialProvenance: sscProvenanceSyllabus,
+      officialProvenance: sscNotice('prov-syl-syl-quant-prob-stat', 'Para 13.11.1.7 — Statistics and probability', 32, '13.11.1.7 Statistics and probability: Use of Tables and Graphs: Histogram, Frequency polygon, Bar-diagram, Pie-chart; Measures of central tendency: mean, median, mode, standard deviation; calculation of simple probabilities.'),
       weightageProvenance: sscProvenanceWeightage
     },
 
@@ -2265,60 +2080,60 @@ export const SSC_CGL_EXAM: Exam = {
       id: 'syl-reas-analogy-series',
       subject: 'Reasoning & General Intelligence',
       tier: 'BOTH',
-      topicName: 'Number & Letter Series, Analogies & Classification',
-      subtopics: ['Difference Series & Prime Patterns', 'Word Association Analogies', 'Odd One Out Classification', 'Matrix Number Grids'],
+      topicName: 'Analogies, Classification & Series',
+      subtopics: ['Semantic analogy', 'Symbolic/number analogy', 'Figural analogy', 'Semantic classification', 'Symbolic/number classification', 'Figural classification', 'Semantic series', 'Number series', 'Figural series'],
       weightagePercentage: 28,
       avgQuestions: 7,
       isHighYield: true,
-      officialProvenance: sscProvenanceSyllabus,
+      officialProvenance: sscNotice('prov-syl-syl-reas-analogy-series', 'Para 13.10.1 — General Intelligence & Reasoning (Tier-I)', 30, 'Semantic Analogy, Symbolic/Number Analogy, Figural Analogy, Semantic Classification, Symbolic/Number Classification, Figural Classification, Semantic Series, Number Series, Figural Series'),
       weightageProvenance: sscProvenanceWeightage
     },
     {
       id: 'syl-reas-coding-blood',
       subject: 'Reasoning & General Intelligence',
       tier: 'BOTH',
-      topicName: 'Coding-Decoding & Blood Relations',
-      subtopics: ['Coded Blood Relations (A+B means father)', 'Letter Shift & Opposite Letter Coding', 'Direct Substitution Coding', 'Family Tree Construction'],
+      topicName: 'Coding-Decoding, Operations & Relationship Concepts',
+      subtopics: ['Coding & de-coding', 'Small & capital letters/numbers coding, decoding and classification', 'Numerical operations', 'Symbolic operations', 'Relationship concepts'],
       weightagePercentage: 20,
       avgQuestions: 5,
       isHighYield: true,
-      officialProvenance: sscProvenanceSyllabus,
+      officialProvenance: sscNotice('prov-syl-syl-reas-coding-blood', 'Para 13.10.1 — General Intelligence & Reasoning (Tier-I)', 30, 'Coding & de-coding, Numerical Operations, symbolic Operations'),
       weightageProvenance: sscProvenanceWeightage
     },
     {
       id: 'syl-reas-syllogism-venn',
       subject: 'Reasoning & General Intelligence',
       tier: 'BOTH',
-      topicName: 'Syllogism, Venn Diagrams & Logical Deductions',
-      subtopics: ['Some A are B & All B are C rules', 'Possibility Cases in Syllogism', '3-Circle Intersecting Venn Sets', 'Statement & Assumptions'],
+      topicName: 'Statement Conclusion, Syllogistic Reasoning, Venn Diagrams & Drawing Inferences',
+      subtopics: ['Statement conclusion', 'Syllogistic reasoning', 'Venn diagrams', 'Drawing inferences'],
       weightagePercentage: 20,
       avgQuestions: 5,
       isHighYield: true,
-      officialProvenance: sscProvenanceSyllabus,
+      officialProvenance: sscNotice('prov-syl-syl-reas-syllogism-venn', 'Para 13.10.1 — General Intelligence & Reasoning (Tier-I)', 30, 'coding and decoding, statement conclusion, syllogistic reasoning etc.'),
       weightageProvenance: sscProvenanceWeightage
     },
     {
       id: 'syl-reas-nonverbal',
       subject: 'Reasoning & General Intelligence',
       tier: 'BOTH',
-      topicName: 'Non-Verbal: Mirror Images, Paper Folding, Embedded Figures & Dice',
-      subtopics: ['Opposite Faces of Dice', 'Clockwise/Anti-clockwise Pattern Rotation', 'Paper Cutting Folding Symmetry', 'Hidden/Embedded Shapes'],
+      topicName: 'Non-Verbal: Space Orientation, Pattern Folding & Embedded Figures',
+      subtopics: ['Space orientation', 'Space visualization', 'Punched hole/ pattern folding & unfolding', 'Figural pattern folding and completion', 'Embedded figures'],
       weightagePercentage: 22,
       avgQuestions: 5,
       isHighYield: false,
-      officialProvenance: sscProvenanceSyllabus,
+      officialProvenance: sscNotice('prov-syl-syl-reas-nonverbal', 'Para 13.10.1 — General Intelligence & Reasoning (Tier-I)', 30, 'Punched hole/ pattern- folding& un-folding, Figural Pattern-folding and completion'),
       weightageProvenance: sscProvenanceWeightage
     },
     {
       id: 'syl-reas-critical',
       subject: 'Reasoning & General Intelligence',
-      tier: 'TIER_2',
-      topicName: 'Tier 2 Critical & Analytical Reasoning',
-      subtopics: ['Statement & Argument (Strong vs Weak)', 'Statement & Course of Action', 'Cause and Effect', 'Assertion and Reason'],
+      tier: 'BOTH',
+      topicName: 'Critical Thinking, Problem Solving, Emotional & Social Intelligence',
+      subtopics: ['Critical thinking', 'Problem solving', 'Emotional intelligence', 'Social intelligence', 'Word building', 'Indexing, address matching, date & city matching (Tier-I)', 'Classification of centre codes/roll numbers (Tier-I)'],
       weightagePercentage: 10,
       avgQuestions: 3,
       isHighYield: true,
-      officialProvenance: sscProvenanceSyllabus,
+      officialProvenance: sscNotice('prov-syl-syl-reas-critical', 'Para 13.11.2.1 — Reasoning and General Intelligence (Tier-II)', 32, 'Critical Thinking, Problem Solving, Emotional Intelligence, Word Building, Social Intelligence'),
       weightageProvenance: sscProvenanceWeightage
     },
 
@@ -2327,36 +2142,36 @@ export const SSC_CGL_EXAM: Exam = {
       id: 'syl-eng-grammar',
       subject: 'English Comprehension',
       tier: 'BOTH',
-      topicName: 'Grammar: Error Spotting & Sentence Improvement',
-      subtopics: ['Subject-Verb Agreement', 'Prepositions & Phrasal Verbs', 'Conditional Sentences', 'Noun/Pronoun Case Rules', 'Tense Consistency'],
+      topicName: 'Grammar: Spot the Error, Fill in the Blanks & Improvement of Sentences',
+      subtopics: ['Grammar and sentence structure', 'Spot the error', 'Fill in the blanks', 'Improvement of sentences', 'Spellings/ detecting mis-spelt words'],
       weightagePercentage: 30,
       avgQuestions: 8,
       isHighYield: true,
-      officialProvenance: sscProvenanceSyllabus,
+      officialProvenance: sscNotice('prov-syl-syl-eng-grammar', 'Para 13.11.3.1 — English Language and Comprehension', 32, 'Vocabulary, grammar, sentence structure, synonyms, antonyms and their correct usage; Spot the Error, Fill in the Blanks'),
       weightageProvenance: sscProvenanceWeightage
     },
     {
       id: 'syl-eng-vocab',
       subject: 'English Comprehension',
       tier: 'BOTH',
-      topicName: 'Vocabulary: Synonyms, Antonyms, One-Word Substitution & Idioms',
-      subtopics: ['High-Frequency Root Words', 'Confusable Words', 'Previous 10 Years Idioms', 'Contextual Fillers'],
+      topicName: 'Vocabulary: Synonyms, Antonyms, Idioms & One-Word Substitution',
+      subtopics: ['Synonyms/ homonyms', 'Antonyms', 'Idioms & phrases', 'One word substitution'],
       weightagePercentage: 30,
       avgQuestions: 8,
       isHighYield: true,
-      officialProvenance: sscProvenanceSyllabus,
+      officialProvenance: sscNotice('prov-syl-syl-eng-vocab', 'Para 13.11.3.1 — English Language and Comprehension', 32, 'Synonyms/ Homonyms, Antonyms, Spellings/ Detecting mis-spelt words, Idioms & Phrases, One word substitution'),
       weightageProvenance: sscProvenanceWeightage
     },
     {
       id: 'syl-eng-comprehension',
       subject: 'English Comprehension',
       tier: 'BOTH',
-      topicName: 'Comprehension: Cloze Test & Reading Passages',
-      subtopics: ['Narrative & Editorial Passages', 'Inference & Tone Questions', '5-10 Blank Cloze Test Passages', 'Theme Title Identification'],
+      topicName: 'Comprehension: Cloze Passage, Reading Passages & Sentence Shuffling',
+      subtopics: ['Cloze passage', 'Comprehension passage (three or more paragraphs)', 'Shuffling of sentence parts', 'Shuffling of sentences in a passage'],
       weightagePercentage: 25,
       avgQuestions: 6,
       isHighYield: true,
-      officialProvenance: sscProvenanceSyllabus,
+      officialProvenance: sscNotice('prov-syl-syl-eng-comprehension', 'Para 13.11.3.1 — English Language and Comprehension', 32, 'Shuffling of Sentence parts, Shuffling of Sentences in a passage, Cloze Passage, Comprehension Passage.'),
       weightageProvenance: sscProvenanceWeightage
     },
     {
@@ -2364,11 +2179,11 @@ export const SSC_CGL_EXAM: Exam = {
       subject: 'English Comprehension',
       tier: 'BOTH',
       topicName: 'Active/Passive Voice & Direct/Indirect Narration',
-      subtopics: ['Imperative Sentences Voice Change', 'Interrogative Voice Transformations', 'Tense Backshifting in Reported Speech', 'Pronoun Shifts in Indirect Speech'],
+      subtopics: ['Active/ passive voice of verbs', 'Conversion into direct/ indirect narration'],
       weightagePercentage: 15,
       avgQuestions: 3,
       isHighYield: true,
-      officialProvenance: sscProvenanceSyllabus,
+      officialProvenance: sscNotice('prov-syl-syl-eng-voice-narration', 'Para 13.11.3.1 — English Language and Comprehension', 32, 'Active/ Passive Voice of Verbs, Conversion into Direct/ Indirect narration'),
       weightageProvenance: sscProvenanceWeightage
     },
 
@@ -2378,59 +2193,59 @@ export const SSC_CGL_EXAM: Exam = {
       subject: 'General Awareness',
       tier: 'BOTH',
       topicName: 'Indian Polity & Constitution',
-      subtopics: ['Fundamental Rights & DPSP (Articles 12-51A)', 'President, Parliament & Supreme Court', 'Constitutional Amendments & Schedules', 'Emergency Provisions'],
+      subtopics: [],
       weightagePercentage: 25,
       avgQuestions: 6,
       isHighYield: true,
-      officialProvenance: sscProvenanceSyllabus,
+      officialProvenance: { ...sscNotice('prov-syl-syl-ga-polity', 'Para 13.10.2 / 13.11.4.1 — General Awareness — SSC does not name polity; GovOS files it under General Awareness', 33, 'The test will also include questions relating to India and its neighboring countries especially pertaining to History, Culture, Geography, Economic Scene, General policy and scientific research.', 'INTERPRETATION'), verificationLevel: 'UNDER_VERIFICATION' },
       weightageProvenance: sscProvenanceWeightage
     },
     {
       id: 'syl-ga-history',
       subject: 'General Awareness',
       tier: 'BOTH',
-      topicName: 'Indian History & Freedom Struggle',
-      subtopics: ['Indus Valley & Vedic Period', 'Mughal Architecture & Administration', 'Governor Generals & 1857 Revolt', 'Gandhian Movements & INC Sessions'],
+      topicName: 'History & Culture',
+      subtopics: ['History', 'Culture'],
       weightagePercentage: 20,
       avgQuestions: 5,
       isHighYield: true,
-      officialProvenance: sscProvenanceSyllabus,
+      officialProvenance: sscNotice('prov-syl-syl-ga-history', 'Para 13.10.2 / 13.11.4.1 — General Awareness', 33, 'The test will also include questions relating to India and its neighboring countries especially pertaining to History, Culture, Geography, Economic Scene, General policy and scientific research.'),
       weightageProvenance: sscProvenanceWeightage
     },
     {
       id: 'syl-ga-geography',
       subject: 'General Awareness',
       tier: 'BOTH',
-      topicName: 'Geography: Indian Rivers, Mountains, Climate & Minerals',
-      subtopics: ['Himalayan & Peninsular River Systems', 'National Parks & Biosphere Reserves', 'Monsoon Mechanisms & Soils of India', 'Mineral Belts & World Geography Basics'],
+      topicName: 'Geography',
+      subtopics: ['Geography', 'India and its neighbouring countries'],
       weightagePercentage: 18,
       avgQuestions: 4,
       isHighYield: false,
-      officialProvenance: sscProvenanceSyllabus,
+      officialProvenance: sscNotice('prov-syl-syl-ga-geography', 'Para 13.10.2 / 13.11.4.1 — General Awareness', 33, 'The test will also include questions relating to India and its neighboring countries especially pertaining to History, Culture, Geography, Economic Scene, General policy and scientific research.'),
       weightageProvenance: sscProvenanceWeightage
     },
     {
       id: 'syl-ga-science',
       subject: 'General Awareness',
       tier: 'BOTH',
-      topicName: 'General Science: Physics, Chemistry & Biology',
-      subtopics: ['Human Physiology & Vitamins/Diseases', 'Chemical Formulas, Periodic Table & Acids/Bases', 'Optics, Thermodynamics & SI Units', 'Plant Taxonomy & Genetics'],
+      topicName: 'General Science',
+      subtopics: ['Everyday observation and experience in their scientific aspect', 'Scientific research'],
       weightagePercentage: 20,
       avgQuestions: 5,
       isHighYield: true,
-      officialProvenance: sscProvenanceSyllabus,
+      officialProvenance: sscNotice('prov-syl-syl-ga-science', 'Para 13.10.2 / 13.11.4.1 — General Awareness', 33, 'knowledge of current events and of such matters of everyday observation and experience in their scientific aspect as may be expected of an educated person.'),
       weightageProvenance: sscProvenanceWeightage
     },
     {
       id: 'syl-ga-current-static',
       subject: 'General Awareness',
       tier: 'BOTH',
-      topicName: 'Static GK & Recent 12 Months Current Affairs',
-      subtopics: ['Classical Dances, Festivals & Musical Instruments', 'Government Welfare Schemes & Budgets', 'Sports Awards & Olympic Records', 'Summits, Military Exercises & Appointments'],
+      topicName: 'Current Events, Economic Scene & General Policy',
+      subtopics: ['Current events', 'Economic scene', 'General policy'],
       weightagePercentage: 17,
       avgQuestions: 5,
       isHighYield: true,
-      officialProvenance: sscProvenanceSyllabus,
+      officialProvenance: sscNotice('prov-syl-syl-ga-current-static', 'Para 13.10.2 / 13.11.4.1 — General Awareness', 33, 'The test will also include questions relating to India and its neighboring countries especially pertaining to History, Culture, Geography, Economic Scene, General policy and scientific research.'),
       weightageProvenance: sscProvenanceWeightage
     },
 
@@ -2439,24 +2254,24 @@ export const SSC_CGL_EXAM: Exam = {
       id: 'syl-comp-basics',
       subject: 'Computer Proficiency',
       tier: 'TIER_2',
-      topicName: 'Computer Basics, Hardware & CPU Architecture',
-      subtopics: ['Input/Output Devices & Ports', 'RAM, ROM, Cache Memory & Storage Units', 'Operating Systems (Windows/Linux/Android)', 'Shortcuts & File Formats'],
+      topicName: 'Computer Basics & Windows',
+      subtopics: ['Organization of a computer, CPU', 'Input/ output devices', 'Computer memory and memory organization', 'Back-up devices, ports', 'Windows Explorer, keyboard shortcuts', 'Windows operating system'],
       weightagePercentage: 35,
       avgQuestions: 7,
       isHighYield: true,
-      officialProvenance: sscProvenanceSyllabus,
+      officialProvenance: sscNotice('prov-syl-syl-comp-basics', 'Para 13.11.5.1–13.11.5.2 — Computer Knowledge', 33, '13.11.5.1 Computer Basics: Organization of a computer, Central Processing Unit (CPU), input/ output devices, computer memory, memory organization, back up devices, PORTs, Windows Explorer. Keyboard shortcuts.'),
       weightageProvenance: sscProvenanceWeightage
     },
     {
       id: 'syl-comp-software-internet',
       subject: 'Computer Proficiency',
       tier: 'TIER_2',
-      topicName: 'MS Office 365, Internet Protocols & Cyber Security',
-      subtopics: ['MS Word (Tabs, Ribbons, Tables)', 'MS Excel (VLOOKUP, SUMIF, Cell Referencing)', 'TCP/IP, HTTP/HTTPS, DNS & Web Browsers', 'Malware, Phishing, Firewalls & Cryptography'],
+      topicName: 'MS Office, Internet & E-mail, Networking and Cyber Security',
+      subtopics: ['MS Word, MS Excel, PowerPoint', 'Web browsing & searching, downloading & uploading', 'Managing an e-mail account, e-banking', 'Networking devices and protocols', 'Security threats (hacking, virus, worms, Trojan) and preventive measures'],
       weightagePercentage: 65,
       avgQuestions: 13,
       isHighYield: true,
-      officialProvenance: sscProvenanceSyllabus,
+      officialProvenance: sscNotice('prov-syl-syl-comp-software-internet', 'Para 13.11.5.2–13.11.5.4 — Computer Knowledge', 33, '13.11.5.3 Working with Internet and e-mails: Web Browsing & Searching, Downloading & Uploading, Managing an E-mail Account, e-Banking.'),
       weightageProvenance: sscProvenanceWeightage
     }
   ],
@@ -2464,21 +2279,37 @@ export const SSC_CGL_EXAM: Exam = {
   // Comprehensive Interactive Application & Document Guidelines
   applicationGuide: {
     officialPortal: 'https://ssc.gov.in',
+    fee: {
+      amounts: ['100'],
+      rules: [
+        { scope: 'Application fee', amount: '100', isExempt: false, feeType: 'APPLICATION', statedAs: '10.1 Fee payable: ₹100/- (Rs one hundred only).' },
+        { scope: 'Last date for online fee payment: 26-06-2026 (23:00), after the re-opening (first notified as 23-06-2026)', amount: '', isExempt: false }
+      ],
+      acceptedModes: ['BHIM UPI', 'Net Banking', 'Visa, Mastercard, Maestro or RuPay Debit card'],
+      exemptions: [
+        { category: 'Women candidates', statedAs: '10.2 Women candidates … are exempted from payment of fee.', provenance: sscP_fee },
+        { category: 'Scheduled Castes (SC)', statedAs: '10.2 … Scheduled Castes (SC) … eligible for reservation are exempted from payment of fee.', provenance: sscP_fee },
+        { category: 'Scheduled Tribes (ST)', statedAs: '10.2 … Scheduled Tribes (ST) … eligible for reservation are exempted from payment of fee.', provenance: sscP_fee },
+        { category: 'Persons with Benchmark Disabilities (PwBD)', statedAs: '10.2 … Persons with Benchmark Disabilities (PwBD) … eligible for reservation are exempted from payment of fee.', provenance: sscP_fee },
+        { category: 'Ex-servicemen (ESM) eligible for reservation', statedAs: '10.2 … Ex-servicemen (ESM) eligible for reservation are exempted from payment of fee.', provenance: sscP_fee }
+      ],
+      statedAs: '10.1 Fee payable: ₹100/- (Rs one hundred only). 10.2 Women candidates and candidates belonging to Scheduled Castes (SC), Scheduled Tribes (ST), Persons with Benchmark Disabilities (PwBD) and Ex-servicemen (ESM) eligible for reservation are exempted from payment of fee. 10.3 Fee can be paid online through BHIM UPI, Net Banking or by using Visa, Mastercard, Maestro, or RuPay Debit cards.',
+      provenance: sscP_fee
+    },
     otrSteps: [
       {
         stepNumber: 1,
         title: 'One-Time Registration (OTR) Generation',
         portalUrl: 'https://ssc.gov.in',
         instructions: [
-          'Visit official portal https://ssc.gov.in and click "Login or Register".',
-          'Select "New User / Register Now" to initiate fresh OTR (Old ssc.nic.in registration numbers are deprecated).',
-          'Enter Basic Personal Details: Aadhaar Number, Name, Father Name, Mother Name, and Date of Birth strictly matching Class 10 (Matriculation) Certificate.',
-          'Authenticate via Mobile OTP and Email OTP to generate your unique 11-digit OTR Registration Number.'
+          'Click "Login or Register" on https://ssc.gov.in, then "Register Now" (Annexure-III, 4). An OTR made on the old website (ssc.nic.in) does not work on ssc.gov.in; make a new one (Para 9.2).',
+          'Enter your Name, Father’s name, Mother’s name, Date of Birth and Matriculation details exactly as recorded in your Class 10 certificate (Annexure-III, 8). Aadhaar-based authentication is optional but advised (Para 9.3).',
+          'On "Final Submit", OTPs are sent to your mobile number and e-mail; enter one to complete registration. A registration not completed within 14 days is deleted (Annexure-III, 6(z) and 6(bb)).'
         ],
-        mandatoryFields: ['Aadhaar Number / Govt Photo ID', 'Class 10 Roll Number & Year of Passing', 'Active Mobile Number (for OTP)', 'Active Email ID'],
+        mandatoryFields: ['Mobile number (verified by OTP)', 'E-mail ID (verified by OTP)', 'Aadhaar number, or one of the other identity numbers listed', 'Board, roll number and year of passing of the Matriculation (10th) examination', 'Disability Certificate Number, if PwBD (Annexure-III, 3)'],
         commonMistakesToAvoid: [
-          'Do NOT enter initials if your Class 10 marksheet contains your full name.',
-          'Do NOT use third-party cyber café phone numbers or temporary emails; OTPs for admit cards and results are delivered here.'
+          'One-Time Registration data cannot be edited later; wrong information may lead to cancellation of candidature (Annexure-III, 7).',
+          'GovOS tip: register with a mobile number and e-mail you control, since the OTPs go to them.'
         ]
       },
       {
@@ -2486,15 +2317,14 @@ export const SSC_CGL_EXAM: Exam = {
         title: 'Candidate Profile & Additional Category Details',
         portalUrl: 'https://ssc.gov.in',
         instructions: [
-          'Log in with your OTR credentials and set a strong permanent password.',
-          'Specify Category (UR / OBC / EWS / SC / ST / PwBD) and Nationality.',
-          'Provide Visible Identification Marks (e.g. "A mole on right side of neck").',
-          'Enter Permanent and Correspondence Address along with PIN Code and State Domicile.'
+          'Give your Category and Nationality (Annexure-III, 6: Sl. No. 1–2).',
+          'Give a visible identification mark; you may be asked to show it at various stages of the examination (Sl. No. 4).',
+          'Give your permanent and present address (Sl. No. 6–7).'
         ],
-        mandatoryFields: ['Category Claim', 'Permanent Address with State/PIN', 'Visible Identification Mark'],
+        mandatoryFields: ['Category', 'Nationality', 'Visible identification mark', 'Permanent and present address'],
         commonMistakesToAvoid: [
-          'Claiming OBC without possessing a valid Non-Creamy Layer (NCL) certificate issued for the crucial financial year leads to cancellation during Document Verification.',
-          'Claiming EWS without the valid Income & Asset Certificate for FY 2025-26 leads to treating candidate as General (UR).'
+          'Claiming OBC while in the creamy layer on the closing date (25-06-2026): the claim stays provisional until the Appointing Authority verifies it (Para 6.5).',
+          'Claiming EWS without an Income & Asset Certificate valid for FY 2026-2027, issued on FY 2025-2026 income (Para 6.4).'
         ]
       },
       {
@@ -2502,15 +2332,15 @@ export const SSC_CGL_EXAM: Exam = {
         title: 'Live Webcam Photo Capture & Signature Upload',
         portalUrl: 'https://ssc.gov.in',
         instructions: [
-          'Open live camera capture via desktop webcam or official SSC MyGov Mobile App.',
-          'Ensure background is plain white or light-colored, face is well-lit, and both ears are clearly visible.',
-          'Look straight into the camera lens with a neutral facial expression (No caps, masks, dark sunglasses, or spectacles).',
-          'Upload scanned Signature image in JPEG/JPG format (Size 10 KB to 20 KB, Width ~4.0 cm x Height ~2.0 cm).'
+          'The application module captures your photograph with the camera when prompted; no existing photo is needed. You can also apply through the mySSC mobile app (Para 9.1, 9.4).',
+          'Find a place with good light and a plain background, keep the camera at eye level, look straight ahead, and keep your whole face inside the marked area (Para 9.4).',
+          'Do not wear a cap, mask or glasses/spectacles, and never photograph an existing photo (Para 9.4(v), 9.5).',
+          'Upload the scanned signature in JPEG/JPG format, 10 to 20 KB, about 6.0 cm wide x 2.0 cm high (Para 9.6; Annexure-IV prints 4.0 cm wide).'
         ],
         mandatoryFields: ['Live Camera Capture Photo', 'Scanned Signature (10-20 KB JPEG)'],
         commonMistakesToAvoid: [
-          'Over 40% of rejected applications in SSC occur due to improper live selfies (blurry lighting, tilted face, or wearing spectacles).',
-          'Uploading tiny, blurred, or vertical signature crops will lead to automatic software disqualification.'
+          'Applications with photographs not in accordance with the instructions are liable to be rejected: the photograph must be clear, without cap or spectacles, with a full frontal view (Para 9.5).',
+          'Applications with blurred or miniature signatures are rejected summarily, unless the candidate used Aadhaar-based authentication (Para 9.6).'
         ]
       },
       {
@@ -2518,97 +2348,95 @@ export const SSC_CGL_EXAM: Exam = {
         title: 'Post Preference, Exam Center Selection & Fee Payment',
         portalUrl: 'https://ssc.gov.in',
         instructions: [
-          'Select 3 preferred examination center cities within the same SSC Regional Zone.',
-          'Indicate whether you possess the educational qualification for Junior Statistical Officer (JSO) or Statistical Investigator.',
-          'Preview the complete draft application form and verify spelling across all columns.',
-          'Pay application fee of ₹100 via UPI, Net Banking, or Debit Card (Exempted for Women, SC, ST, PwBD, and ESM candidates).',
-          'Download and save the PDF of the Final Submitted Application Form with Transaction ID.'
+          'Choose three examination centres, in order of priority, within the same Region; no change of centre is considered later (Para 12.2).',
+          'Answer whether you are also applying for Junior Statistical Officer and Statistical Investigator Grade-II, and whether you hold their qualification (Annexure-IV, S. No. 27.1–28.2; Para 8.2–8.3).',
+          'GovOS tip: check the preview of the form carefully before you submit it.',
+          'Pay the ₹100 fee online by BHIM UPI, Net Banking, or a Visa, Mastercard, Maestro or RuPay Debit card (Para 10.3). Women, SC, ST, PwBD and ESM candidates eligible for reservation are exempt (Para 10.2).',
+          'Take a printout of the submitted application form; the Commission may call for it after the Computer Based Examination (Annexure-IV).'
         ],
-        mandatoryFields: ['Exam City Preferences (3 cities)', 'Educational Qualification details', 'Online Fee Payment / Exemption Claim'],
+        mandatoryFields: ['Three examination centre preferences (same Region)', 'Educational Qualification details', 'Online Fee Payment / Exemption Claim'],
         commonMistakesToAvoid: [
-          'Submitting the application without completing fee payment (status showing "Pending" or "Initiated" instead of "Completed"). Check payment double-verification link if amount was debited.',
-          'Not saving the final PDF with timestamp; this is required during Tier-2 Document Verification.'
+          'If SSC does not receive the fee, the form shows "Incomplete"; check the "Payment Status" link in your login. Incomplete applications are summarily rejected (Para 10.5).',
+          'Not keeping the printout of the submitted form, which the Commission may call for later (Annexure-IV).'
         ]
       }
     ],
 
     photoRules: {
-      documentType: 'Live Webcam / App Capture Photograph',
-      dimensions: 'Automatic face boundary detection by SSC portal',
-      fileFormat: 'Live Portal Capture via WebRTC / Android App',
-      fileSize: 'Live Capture stream',
+      documentType: 'Photograph captured live by the application module',
+      dimensions: 'Your face must fill the area the camera marks (Para 9.4(iv))',
+      fileFormat: 'Captured live; no file is uploaded (Para 9.4)',
+      fileSize: 'Not applicable (captured live)',
       rules: [
-        'Must be taken in bright frontal natural or white light.',
-        'Background MUST be plain white or uniform light grey/off-white.',
-        'Both ears and entire face must be clearly visible without shadows.',
-        'No caps, hats, scarves, masks, religious headgear covering face, or sunglasses.',
-        'Spectacles/Glasses must be removed during capture to avoid flash glare reflections.'
+        'Find a place with good light and a plain background (Para 9.4(i)).',
+        'Keep the camera at eye level; sit or stand directly in front of it and look straight ahead (Para 9.4(ii)–(iii)).',
+        'Keep your whole face inside the marked area, neither too close nor too far (Para 9.4(iv)).',
+        'Do not wear a cap, mask or glasses/spectacles (Para 9.4(v)).',
+        'The photograph must be clear, with a full frontal view; never capture a photo of an existing photograph (Para 9.5).'
       ],
-      sampleDescription: 'A sharp, frontal portrait photo with clear neutral expression on a plain white backdrop.'
+      sampleDescription: 'Clear, full frontal view, without cap or spectacles (Para 9.5).',
+      provenance: sscNotice('prov-ssc-photo', 'Para 9.4–9.5', 18, '9.4 For applying, the candidate is not required to have a pre-existing photograph of himself/ herself. The application module has been designed to capture a photograph of the candidate filling up the application form.')
     },
 
     signatureRules: {
-      documentType: 'Scanned Specimen Signature',
-      dimensions: 'Width 4.0 cm × Height 2.0 cm (Aspect Ratio 2:1)',
-      fileFormat: 'JPEG / JPG only',
-      fileSize: '10 KB to 20 KB (Resolution ~100-200 DPI)',
+      documentType: 'Scanned signature',
+      dimensions: 'About 6.0 cm wide x 2.0 cm high (Para 9.6; Annexure-IV prints 4.0 cm wide)',
+      fileFormat: 'JPEG / JPG',
+      fileSize: '10 to 20 KB',
       rules: [
-        'Sign with black or blue ink on clear unruled white paper.',
-        'Crop tightly around the signature without leaving huge blank margins.',
-        'Do NOT sign in ALL CAPITAL letters (Running handwriting only).',
-        'Ensure the image is sharp and not pixelated or compressed below 10 KB.'
+        'Upload the scanned signature in JPEG/JPG format, 10 to 20 KB, about 6.0 cm wide x 2.0 cm high (Para 9.6).',
+        'Blurred or miniature signatures are rejected summarily, unless the candidate used Aadhaar-based authentication (Para 9.6).',
+        'PwD (VH) candidates may give a thumb impression instead (Annexure-IV).'
       ],
-      sampleDescription: 'Clear black running ink signature centered on an unlined white background.'
+      sampleDescription: 'A clear, legible scanned signature.',
+      provenance: sscNotice('prov-ssc-signature', 'Para 9.6', 18, '9.6 Candidates are required to upload the scanned signature in JPEG/JPG format (10 to 20 KB). Image dimension of the signature should be about 6.0 cm (width) x 2.0 cm (height).')
     },
 
     certificateRules: [
       {
         category: 'OBC_NCL',
         title: 'Other Backward Classes (Non-Creamy Layer) Certificate',
-        issuingAuthority: ['District Magistrate / Additional DM', 'Collector / Deputy Commissioner', 'Tehsildar / Sub-Divisional Magistrate (SDM)'],
-        financialYearValidity: 'Certificate issued based on income of FY 2023-24, FY 2024-25, and FY 2025-26',
-        crucialDate: 'Must be issued within 3 years prior to the closing date of application (or on or before 27-09-2026)',
-        officialAnnexure: 'Annexure-VI of SSC CGL 2026 Notification',
+        issuingAuthority: ['District Magistrate / Deputy Commissioner etc., as printed on the Annexure-X format'],
+        financialYearValidity: 'No issue-date rule: the Commission will not insist on an OBC certificate issued within the crucial/cut-off date (Para 6.5, Note).',
+        crucialDate: 'You must not be in the creamy layer on the closing date of applications — 25-06-2026 after the re-opening (Para 6.5; re-opening notice, para 4).',
+        officialAnnexure: 'Annexure-X of the notice',
         keyConditions: [
-          'Caste MUST be listed in the Central List of OBCs published by National Commission for Backward Classes (NCBC). State-only OBC certificates are NOT accepted for Central Government posts.',
-          'Must explicitly contain the Non-Creamy Layer exclusion clause citing DoP&T OM No. 36012/22/93-Estt.(SCT).'
+          'In the Annexure-X format, which certifies non-creamy-layer status under DoP&T O.M. No. 36012/22/93-Estt (SCT) dated 8.9.1993.'
         ]
       },
       {
         category: 'EWS',
         title: 'Economically Weaker Sections (EWS) Income & Asset Certificate',
-        issuingAuthority: ['District Magistrate / ADM / Collector', 'Sub-Divisional Magistrate / Tehsildar', 'Taluka Magistrate'],
-        financialYearValidity: 'Financial Year 2025-26 based on gross annual family income for the preceding FY 2024-25',
-        crucialDate: 'Valid for the year 2026-2027 (Issued between 01-04-2026 and 27-09-2026)',
-        officialAnnexure: 'Annexure-VII of SSC CGL 2026 Notification',
+        issuingAuthority: ['The authority named on the Annexure-XI format (the notice lists none in its text)'],
+        financialYearValidity: 'Valid for Financial Year 2026-2027, issued on the basis of income for Financial Year 2025-2026 (Para 6.4).',
+        crucialDate: 'Category status is judged on the closing date of applications, 25-06-2026 after the re-opening (Para 6.4).',
+        officialAnnexure: 'Annexure-XI of the notice',
         keyConditions: [
-          'Gross annual family income must be below ₹8 Lakhs from all sources.',
-          'Must not possess 5 acres of agricultural land or 1000 sq ft residential flat.',
-          'Certificate must be valid for the recruitment year 2026-27.'
+          'The income and asset criteria are those of DoPT OM No. 36039/1/2019-Estt (Res) dated 31.01.2019, which the notice names (Para 6.4); GovOS has not read the OM itself, so its thresholds are not repeated here.',
+          'Certificate must be valid for Financial Year 2026-2027.'
         ]
       },
       {
         category: 'SC_ST',
         title: 'Scheduled Caste / Scheduled Tribe Certificate',
-        issuingAuthority: ['District Magistrate / Deputy Commissioner', 'Revenue Officer not below rank of Tehsildar', 'Sub-Divisional Officer'],
-        financialYearValidity: 'Permanent Validity (No financial year expiration)',
-        crucialDate: 'Must be issued on or before Document Verification date in standard Central Government format',
-        officialAnnexure: 'Annexure-V of SSC CGL 2026 Notification',
+        issuingAuthority: ['District Magistrate / Additional District Magistrate / Collector / Deputy Commissioner and others listed', 'Revenue Officers not below the rank of Tehsildar', 'Sub-Divisional Officer of the area (Annexure-IX)'],
+        financialYearValidity: 'The notice prescribes the format (Annexure-IX) and states no expiry.',
+        crucialDate: 'Category status is judged on the closing date of applications, 25-06-2026 after the re-opening (Para 6.4).',
+        officialAnnexure: 'Annexure-IX of the notice',
         keyConditions: [
-          'Must specify the Presidential Order / Constitution (Scheduled Castes/Tribes) Order under which the caste/tribe is recognized.',
-          'Must be in bilingual English/Hindi central format.'
+          'Must specify the Presidential Order / Constitution (Scheduled Castes/Tribes) Order under which the caste/tribe is recognized.'
         ]
       },
       {
         category: 'PwBD',
         title: 'Persons with Benchmark Disabilities (PwBD) Certificate',
-        issuingAuthority: ['Duly constituted Medical Board of a State/Central Govt Hospital', 'UDID Card (Unique Disability ID)'],
-        financialYearValidity: 'Permanent for non-progressive disabilities / Specified validity for temporary conditions',
-        crucialDate: 'Valid UDID or Certificate with minimum 40% benchmark disability',
-        officialAnnexure: 'Annexure-VIII / IX / X of SSC CGL 2026 Notification',
+        issuingAuthority: ['The medical authority named on Form V / Form VI (Annexure-XII / XIII)'],
+        financialYearValidity: 'The notice prescribes Form V / Form VI and states no validity period.',
+        crucialDate: 'Category status is judged on the closing date of applications, 25-06-2026 after the re-opening (Para 6.4).',
+        officialAnnexure: 'Annexure-XII / XIII of the notice (disability certificate, Form V / Form VI); scribe: Annexure-I / IA',
         keyConditions: [
-          'Disability percentage must be 40% or higher.',
-          'Scribe permission and compensatory time (20 mins/hr) require Annexure-I/IA certificate declaration during application.'
+          'A benchmark disability is 40% or more (Annexure-IV, S. No. 25.1).',
+          'Candidates allowed a scribe get compensatory time of 20 minutes per hour of examination (Para 7.9); the certificates are in the Annexure-I / IA formats.'
         ]
       }
     ],
@@ -2616,53 +2444,43 @@ export const SSC_CGL_EXAM: Exam = {
     rejectionPitfalls: [
       {
         pitfall: 'Blurry / Inappropriate Live Webcam Photograph',
-        consequence: 'Immediate Application Rejection without correction opportunity.',
-        prevention: 'Use bright front lighting, plain white wall background, remove spectacles, and keep eyes wide open looking into camera lens.'
+        consequence: 'Applications with photographs not in accordance with the instructions are liable to be rejected (Para 9.5).',
+        prevention: 'Good light, plain background, camera at eye level, no cap, mask or spectacles, whole face inside the marked area (Para 9.4).'
       },
       {
-        pitfall: 'State-List Only OBC Certificate',
-        consequence: 'Category cancelled during Document Verification; candidate converted to UR or disqualified.',
-        prevention: 'Verify that your caste is included in the Central OBC Gazette list via ncbc.nic.in before selecting OBC category.'
+        pitfall: 'OBC claim without the Annexure-X certificate',
+        consequence: 'The OBC claim stays provisional until the Appointing Authority verifies it (Para 6.5, Note).',
+        prevention: 'GovOS tip: check your community in the Central List of OBCs at ncbc.nic.in before claiming OBC.'
       },
       {
         pitfall: 'Pending or Failed Online Fee Transaction',
-        consequence: 'Application status marked "Incomplete" and Admit Card is NOT generated.',
-        prevention: 'Check application status on SSC portal after payment. Ensure status displays "Application Received - Complete".'
+        consequence: 'The form shows "Incomplete" and is summarily rejected (Para 10.5).',
+        prevention: 'Check the "Payment Status" link in your login after paying (Para 10.5).'
       },
       {
         pitfall: 'Name Mismatch between Aadhaar and Matriculation Certificate',
-        consequence: 'Discrepancy flag during Exam Entry and Document Verification.',
-        prevention: 'Enter Name, Father’s Name, and DOB EXACTLY as spelled in your Class 10 certificate. Submit gazette notification if you legally changed your name.'
-      },
-      {
-        pitfall: 'Signing in Capital Block Letters',
-        consequence: 'Automatic rejection of signature specimen.',
-        prevention: 'Sign in your natural running handwriting with black/blue ink pen on white unruled paper.'
+        consequence: 'Candidature may be cancelled at Document Verification (notice p.51, item m).',
+        prevention: 'Write your name, date of birth, father’s and mother’s name strictly as in the matriculation certificate (Annexure-III, 8).'
       },
       {
         pitfall: 'Expired EWS Certificate Financial Year',
-        consequence: 'Candidate treated as General (UR) during Tier-2 merit listing.',
-        prevention: 'EWS Certificate must be issued for FY 2026-27 (evaluating income of FY 2025-26) on or before 27-09-2026.'
+        consequence: 'The EWS claim cannot be supported without the certificate the notice requires.',
+        prevention: 'Hold an Income & Asset certificate valid for FY 2026-2027, issued on the basis of income for FY 2025-2026 (Para 6.4).'
       },
       {
         pitfall: 'Selecting "Yes" for JSO without meeting 60% Maths or Stats criteria',
-        consequence: 'Disqualification from JSO merit list after Paper-II.',
+        consequence: 'You are not eligible for Junior Statistical Officer without that qualification (Para 8.2.1).',
         prevention: 'Only select JSO eligibility if you have 60%+ in Class 12 Maths OR Statistics as a subject in your Degree.'
       },
       {
         pitfall: 'Submitting Multiple Applications from Different Emails',
-        consequence: 'Both registrations flagged as duplicate and permanently barred by SSC.',
-        prevention: 'Use only your single verified OTR account on ssc.gov.in.'
-      },
-      {
-        pitfall: 'Entering Inaccurate Percentage / CGPA in Graduation Details',
-        consequence: 'Show-cause notice during final appointment document check.',
-        prevention: 'Use the official conversion formula of your University (e.g. CGPA × 9.5) and enter exact marks.'
+        consequence: 'All the applications are rejected and the candidature is cancelled (notice p.50).',
+        prevention: 'Submit one application only, from one registration.'
       },
       {
         pitfall: 'Missing Crucial Application Deadline due to Server Congestion',
-        consequence: 'No extension beyond 27-09-2026 23:59 IST.',
-        prevention: 'Complete form submission and fee payment at least 5-7 days prior to closing date.'
+        consequence: 'The window closed on 25-06-2026 (23:00 hours), after a two-day re-opening (SSC notice of 23.06.2026).',
+        prevention: 'Apply much before the closing date; heavy load in the closing days can stop you logging in (Para 9.9).'
       }
     ]
   },
@@ -2688,7 +2506,7 @@ export const SSC_CGL_EXAM: Exam = {
           phaseNumber: 1,
           phaseTitle: 'Phase 1: High-Yield Topic Consolidation (Weeks 1 to 4)',
           durationWeeks: 4,
-          focusArea: 'Mastering top 70% weightage topics in Quant (Arithmetic & Geometry), Reasoning patterns, and English Grammar rules.',
+          focusArea: 'Consolidating core topics in Quant (Arithmetic & Geometry), Reasoning patterns, and English Grammar rules.',
           weeklySchedule: [
             {
               weekNumber: 1,
@@ -2937,9 +2755,8 @@ export const SSC_CGL_EXAM: Exam = {
       subject: 'Quantitative Aptitude',
       topicName: 'Arithmetic: Profit & Loss and Successive Discounts',
       tier: 'TIER_1',
-      shiftInfo: 'SSC CGL 2024 Tier-1 (Shift 2, 12-Sep-2024)',
-      questionType: 'OFFICIAL_PYQ',
-      year: 2024,
+      shiftInfo: 'GovOS practice question (not from an SSC paper)',
+      questionType: 'GOVOS_CREATED',
       difficulty: 'MEDIUM',
       questionText:
         'A shopkeeper marks an article at 40% above its cost price and allows a discount of 20% on the marked price. In addition, during a festival sale, he offers an additional cash discount of 5% on the discounted price. If the cost price of the article is ₹1,500, what is the shopkeeper\'s net profit or loss in rupees?',
@@ -2957,7 +2774,7 @@ export const SSC_CGL_EXAM: Exam = {
         'Step 4: Selling Price (SP) after additional 5% cash discount = 1680 × (1 - 0.05) = 1680 × 0.95 = ₹1,596.\n' +
         'Step 5: Net Profit = SP - CP = ₹1,596 - ₹1,500 = ₹96 Profit.\n' +
         'Hence, Option A (Profit of ₹96) is correct.',
-      provenance: sscProvenanceOverview
+      provenance: { ...sscNotice('prov-ssc-practice-question', 'Para 13.10–13.11 — the syllabus this question was written to', 30, '13.10 Indicative Syllabus (Tier-I):', 'RECOMMENDATION'), documentTitle: 'GovOS practice question — written to the syllabus in the SSC notice, not taken from an SSC paper', verificationLevel: 'UNDER_VERIFICATION', verifiedBy: 'GovOS — not an official question' }
     },
     {
       id: 'pyq-cgl-2024-q2',
@@ -2965,9 +2782,8 @@ export const SSC_CGL_EXAM: Exam = {
       subject: 'Quantitative Aptitude',
       topicName: 'Algebra: Symmetric Identities (x + 1/x)',
       tier: 'TIER_1',
-      shiftInfo: 'SSC CGL 2024 Tier-1 (Shift 1, 14-Sep-2024)',
-      questionType: 'OFFICIAL_PYQ',
-      year: 2024,
+      shiftInfo: 'GovOS practice question (not from an SSC paper)',
+      questionType: 'GOVOS_CREATED',
       difficulty: 'EASY',
       questionText:
         'If x + (1 / x) = 4, where x > 0, find the value of x⁴ + (1 / x⁴).',
@@ -2987,7 +2803,7 @@ export const SSC_CGL_EXAM: Exam = {
         '196 = x⁴ + 1/x⁴ + 2\n' +
         'x⁴ + 1/x⁴ = 196 - 2 = 194.\n' +
         'Hence, Option A (194) is the correct answer.',
-      provenance: sscProvenanceOverview
+      provenance: { ...sscNotice('prov-ssc-practice-question', 'Para 13.10–13.11 — the syllabus this question was written to', 30, '13.10 Indicative Syllabus (Tier-I):', 'RECOMMENDATION'), documentTitle: 'GovOS practice question — written to the syllabus in the SSC notice, not taken from an SSC paper', verificationLevel: 'UNDER_VERIFICATION', verifiedBy: 'GovOS — not an official question' }
     },
     {
       id: 'pyq-cgl-2024-q3',
@@ -2995,9 +2811,8 @@ export const SSC_CGL_EXAM: Exam = {
       subject: 'General Awareness',
       topicName: 'Indian Polity: Constitutional Articles',
       tier: 'TIER_1',
-      shiftInfo: 'SSC CGL 2024 Tier-1 (Shift 3, 16-Sep-2024)',
-      questionType: 'OFFICIAL_PYQ',
-      year: 2024,
+      shiftInfo: 'GovOS practice question (not from an SSC paper)',
+      questionType: 'GOVOS_CREATED',
       difficulty: 'EASY',
       questionText:
         'Which Article of the Constitution of India provides that the law declared by the Supreme Court shall be binding on all courts within the territory of India?',
@@ -3013,7 +2828,7 @@ export const SSC_CGL_EXAM: Exam = {
         '• Article 142 deals with enforcement of decrees and orders of Supreme Court to do complete justice.\n' +
         '• Article 136 deals with Special Leave to Appeal (SLP).\n' +
         '• Article 124 deals with establishment and constitution of the Supreme Court.',
-      provenance: sscProvenanceOverview
+      provenance: { ...sscNotice('prov-ssc-practice-question', 'Para 13.10–13.11 — the syllabus this question was written to', 30, '13.10 Indicative Syllabus (Tier-I):', 'RECOMMENDATION'), documentTitle: 'GovOS practice question — written to the syllabus in the SSC notice, not taken from an SSC paper', verificationLevel: 'UNDER_VERIFICATION', verifiedBy: 'GovOS — not an official question' }
     },
     {
       id: 'pyq-cgl-2024-q4',
@@ -3021,9 +2836,8 @@ export const SSC_CGL_EXAM: Exam = {
       subject: 'English Comprehension',
       topicName: 'Grammar: Error Spotting & Subject-Verb Agreement',
       tier: 'TIER_1',
-      shiftInfo: 'SSC CGL 2024 Tier-1 (Shift 2, 18-Sep-2024)',
-      questionType: 'OFFICIAL_PYQ',
-      year: 2024,
+      shiftInfo: 'GovOS practice question (not from an SSC paper)',
+      questionType: 'GOVOS_CREATED',
       difficulty: 'MEDIUM',
       questionText:
         'Identify the segment in the sentence which contains a grammatical error:\n\n"Neither the team captain (A) / nor the members of the committee (B) / was present at the annual prize distribution ceremony (C) / yesterday evening (D)."',
@@ -3039,7 +2853,7 @@ export const SSC_CGL_EXAM: Exam = {
         'Here, the nearer subject is "the members of the committee", which is plural. Therefore, the singular verb "was" must be replaced with the plural verb "were".\n' +
         'Correct Sentence: "Neither the team captain nor the members of the committee were present..."\n' +
         'Hence, part C / Option A contains the grammatical error.',
-      provenance: sscProvenanceOverview
+      provenance: { ...sscNotice('prov-ssc-practice-question', 'Para 13.10–13.11 — the syllabus this question was written to', 30, '13.10 Indicative Syllabus (Tier-I):', 'RECOMMENDATION'), documentTitle: 'GovOS practice question — written to the syllabus in the SSC notice, not taken from an SSC paper', verificationLevel: 'UNDER_VERIFICATION', verifiedBy: 'GovOS — not an official question' }
     },
     {
       id: 'pyq-cgl-2024-q5',
@@ -3047,9 +2861,8 @@ export const SSC_CGL_EXAM: Exam = {
       subject: 'Reasoning & General Intelligence',
       topicName: 'Syllogism: Logical Deductions',
       tier: 'TIER_1',
-      shiftInfo: 'SSC CGL 2024 Tier-1 (Shift 1, 20-Sep-2024)',
-      questionType: 'OFFICIAL_PYQ',
-      year: 2024,
+      shiftInfo: 'GovOS practice question (not from an SSC paper)',
+      questionType: 'GOVOS_CREATED',
       difficulty: 'MEDIUM',
       questionText:
         'Read the given statements and conclusions carefully. Assuming that the information given in the statements is true, decide which of the given conclusions logically follow(s):\n\nStatements:\n1. All computers are laptops.\n2. Some laptops are tablets.\n3. No tablet is a smartphone.\n\nConclusions:\nI. Some computers are tablets.\nII. No smartphone is a tablet.\nIII. Some laptops are not smartphones.',
@@ -3066,7 +2879,7 @@ export const SSC_CGL_EXAM: Exam = {
         '• Conclusion II: "No smartphone is a tablet" – Statement 3 says "No tablet is a smartphone", so its converse "No smartphone is a tablet" is definitely TRUE.\n' +
         '• Conclusion III: "Some laptops are not smartphones" – The portion of laptops that are tablets cannot be smartphones (since No tablet is smartphone). Therefore, those laptops can never be smartphones. TRUE.\n' +
         'Hence, only conclusions II and III follow (Option A).',
-      provenance: sscProvenanceOverview
+      provenance: { ...sscNotice('prov-ssc-practice-question', 'Para 13.10–13.11 — the syllabus this question was written to', 30, '13.10 Indicative Syllabus (Tier-I):', 'RECOMMENDATION'), documentTitle: 'GovOS practice question — written to the syllabus in the SSC notice, not taken from an SSC paper', verificationLevel: 'UNDER_VERIFICATION', verifiedBy: 'GovOS — not an official question' }
     },
     {
       id: 'pyq-cgl-2024-q6',
@@ -3074,9 +2887,8 @@ export const SSC_CGL_EXAM: Exam = {
       subject: 'Computer Proficiency',
       topicName: 'Computer Basics: Networking & Protocols',
       tier: 'TIER_2',
-      shiftInfo: 'SSC CGL Tier-2 Paper-I (Section III Computer Module)',
-      questionType: 'OFFICIAL_PYQ',
-      year: 2024,
+      shiftInfo: 'GovOS practice question (not from an SSC paper)',
+      questionType: 'GOVOS_CREATED',
       difficulty: 'MEDIUM',
       questionText:
         'Which protocol in the TCP/IP protocol suite is responsible for automatically assigning dynamic IP addresses, subnet masks, and default gateways to client devices on a local area network?',
@@ -3092,56 +2904,94 @@ export const SSC_CGL_EXAM: Exam = {
         '• DNS resolves human-readable domain names (e.g. ssc.gov.in) into IP addresses.\n' +
         '• ARP resolves IP addresses into physical MAC addresses on a local subnet.\n' +
         '• SMTP is used for sending electronic mail (email).',
-      provenance: sscProvenanceOverview
+      provenance: { ...sscNotice('prov-ssc-practice-question', 'Para 13.10–13.11 — the syllabus this question was written to', 30, '13.10 Indicative Syllabus (Tier-I):', 'RECOMMENDATION'), documentTitle: 'GovOS practice question — written to the syllabus in the SSC notice, not taken from an SSC paper', verificationLevel: 'UNDER_VERIFICATION', verifiedBy: 'GovOS — not an official question' }
     }
   ],
 
   // Corrigendum Notices
+  // The revisions SSC published for this cycle. The two "corrigenda" this list used to hold
+  // (16.08.2026 and 22.08.2026, an extension to 27-09-2026) are not SSC documents.
   corrigendums: [
     {
-      id: 'corr-cgl-01',
-      title: 'Corrigendum-I: Clarification on PwBD Scribe Guidelines and Compensatory Time',
-      noticeNumber: 'F.No. HQ-PPI03/11/2026-PP_1',
-      publishedDate: '2026-08-16',
-      effectiveDate: '2026-08-16',
-      summary: 'Clarification regarding provision of scribe and compensatory time of 20 minutes per hour for PwBD candidates possessing physical limitation certificate.',
-      pdfUrl: 'https://ssc.gov.in',
+      id: 'corr-cgl-reopen',
+      title: 'Re-opening of the online application window (two days)',
+      noticeNumber: 'F. No. HQ-C11018/1/2026-C-1',
+      publishedDate: '2026-06-23',
+      effectiveDate: '2026-06-23',
+      summary: 'SSC re-opened applications from 23.06.2026 (23:00) to 25.06.2026 (23:00). The fee deadline moved to 26.06.2026 (23:00) and the correction window to 01.07.2026–03.07.2026 (23:00); where the notice used the closing date as a crucial date, it is now 25.06.2026. All other terms of the notice of 21.05.2026 are unchanged.',
+      pdfUrl: SSC_BOARD + 'CGLE_Reopen_23062026.pdf',
       status: 'ACTIVE',
-      diffSummary: 'Scribe declaration Annexure-I/IA made mandatory at application stage.'
+      diffSummary: 'Closing date 22.06.2026 → 25.06.2026; fee deadline 23.06.2026 → 26.06.2026; correction window 29.06–01.07.2026 → 01.07–03.07.2026.',
+      provenance: sscP_reopen_window
     },
     {
-      id: 'corr-cgl-02',
-      title: 'Corrigendum-II: Extension of Online Application Window & Fee Payment Deadline',
-      noticeNumber: 'F.No. HQ-PPI03/15/2026-PP_2',
-      publishedDate: '2026-08-22',
-      effectiveDate: '2026-08-22',
-      summary: 'In view of heavy server traffic and student representations, Commission has extended the closing date for receipt of online applications from 20-09-2026 to 27-09-2026 (23:59 IST).',
-      pdfUrl: 'https://ssc.gov.in',
+      id: 'corr-cgl-tier1-schedule',
+      title: 'Tier-I schedule announced',
+      noticeNumber: 'F.No. HQ-EC033/7/2025-EC',
+      publishedDate: '2026-09-12',
+      effectiveDate: '2026-09-12',
+      summary: 'SSC will hold Tier-I (Computer Based Examination) from 30 September 2026 to 30 October 2026. The notice had given a tentative August–September 2026.',
+      pdfUrl: SSC_BOARD + 'Important%20Notice%202026_cgle_2026_12092026.pdf',
       status: 'ACTIVE',
-      diffSummary: 'Application window extended from 20-Sep-2026 to 27-Sep-2026 (23:59 IST).'
+      diffSummary: 'Tier-I: August-September, 2026 (tentative) → 30.09.2026 to 30.10.2026.',
+      provenance: sscP_tier1_schedule
+    },
+    {
+      id: 'corr-cgl-vacancy',
+      title: 'Tentative vacancies as on 24.09.2026',
+      noticeNumber: 'Tentative_vacancy_CGLE2026_24092026',
+      publishedDate: '2026-09-24',
+      effectiveDate: '2026-09-24',
+      summary: 'SSC published post-wise and category-wise tentative vacancies: 10,731 in 59 rows. The notice had said approx. 12,256. SSC notes that final vacancies may vary from the tentative vacancies.',
+      pdfUrl: SSC_BOARD + 'Tentative_vacancy_CGLE2026_24092026.pdf',
+      status: 'ACTIVE',
+      diffSummary: 'Vacancies: approx. 12,256 → 10,731 (tentative).',
+      provenance: sscP_vacancy_list
     }
   ],
 
-  // Historical Cutoff Data Across Categories (2021-2024)
+  // CGLE 2025 cut-offs as SSC published them (Tier-I result 18.12.2025, corrected 14.01.2026;
+  // FRTA write-up 08.04.2026). The 2022-2024 figures this list held cited the 2026 notice, which
+  // prints no cut-offs; no SSC document for them was read, so they are not shown. The DEST
+  // error cut-offs of 08.04.2026 are left out: their column header reads ambiguously in the PDF.
   cutoffsHistory: [
-    { year: 2024, category: 'UR (Unreserved / General)', tier1Cutoff: 150.04, tier2Cutoff: 308.5, postsEligible: 'All Non-JSO & JSO shortlisted lists', provenance: sscProvenanceOverview },
-    { year: 2024, category: 'OBC (Other Backward Classes)', tier1Cutoff: 145.80, tier2Cutoff: 302.0, postsEligible: 'All Non-JSO & JSO shortlisted lists', provenance: sscProvenanceOverview },
-    { year: 2024, category: 'EWS (Economically Weaker Section)', tier1Cutoff: 143.20, tier2Cutoff: 298.5, postsEligible: 'All Non-JSO & JSO shortlisted lists', provenance: sscProvenanceOverview },
-    { year: 2024, category: 'SC (Scheduled Caste)', tier1Cutoff: 126.50, tier2Cutoff: 275.0, postsEligible: 'All Non-JSO & JSO shortlisted lists', provenance: sscProvenanceOverview },
-    { year: 2024, category: 'ST (Scheduled Tribe)', tier1Cutoff: 118.20, tier2Cutoff: 261.0, postsEligible: 'All Non-JSO & JSO shortlisted lists', provenance: sscProvenanceOverview },
-    { year: 2024, category: 'PwBD (Persons with Disabilities)', tier1Cutoff: 85.50, tier2Cutoff: 220.0, postsEligible: 'Identified PwBD posts', provenance: sscProvenanceOverview },
-    
-    { year: 2023, category: 'UR (Unreserved / General)', tier1Cutoff: 150.04, tier2Cutoff: 302.5, provenance: sscProvenanceOverview },
-    { year: 2023, category: 'OBC', tier1Cutoff: 145.93, tier2Cutoff: 296.0, provenance: sscProvenanceOverview },
-    { year: 2023, category: 'EWS', tier1Cutoff: 143.44, tier2Cutoff: 292.0, provenance: sscProvenanceOverview },
-    { year: 2023, category: 'SC', tier1Cutoff: 126.68, tier2Cutoff: 268.0, provenance: sscProvenanceOverview },
-    { year: 2023, category: 'ST', tier1Cutoff: 118.16, tier2Cutoff: 254.0, provenance: sscProvenanceOverview },
-
-    { year: 2022, category: 'UR (Unreserved / General)', tier1Cutoff: 114.27, tier2Cutoff: 291.0, provenance: sscProvenanceOverview },
-    { year: 2022, category: 'OBC', tier1Cutoff: 114.27, tier2Cutoff: 285.0, provenance: sscProvenanceOverview },
-    { year: 2022, category: 'EWS', tier1Cutoff: 102.35, tier2Cutoff: 280.0, provenance: sscProvenanceOverview },
-    { year: 2022, category: 'SC', tier1Cutoff: 89.08, tier2Cutoff: 255.0, provenance: sscProvenanceOverview },
-    { year: 2022, category: 'ST', tier1Cutoff: 77.56, tier2Cutoff: 240.0, provenance: sscProvenanceOverview }
+    { year: 2025, category: 'SC', stage: 'Tier-I (of 200)', post: 'All posts other than JSO and Statistical Investigator Grade-II (List-3)', tier1Cutoff: 115.02843, value: 115.02843, cutoffType: 'normalized; corrected from 114.97063 by SSC’s corrigendum of 14.01.2026', provenance: sscReplaced(sscDocument('prov-cut25-t1-l3-sc', 'SSC — Corrigendum to the CGLE 2025 (Tier-I) result write-up (No. HQ-C11018/5/2025-C-1, 14.01.2026)', 'Corrigendum.pdf', '2026-01-14', 2, 'Corrected table, "READ AS" columns', 'SC 114.97063 25338 115.02843 25229'), sscDocument('prov-cut25-t1-l3-sc-orig', 'SSC — Declaration of Result of CGL Examination (Tier-I), 2025 (No. HQ-C11018/5/2025-C-1, 18.12.2025)', 'writeup_181225.pdf', '2025-12-18', 2, 'Para 5, List-3', 'SC 114.97063 25338'))[0] },
+    { year: 2025, category: 'ST', stage: 'Tier-I (of 200)', post: 'All posts other than JSO and Statistical Investigator Grade-II (List-3)', tier1Cutoff: 106.38576, value: 106.38576, cutoffType: 'normalized; corrected from 106.36936 by SSC’s corrigendum of 14.01.2026', provenance: sscReplaced(sscDocument('prov-cut25-t1-l3-st', 'SSC — Corrigendum to the CGLE 2025 (Tier-I) result write-up (No. HQ-C11018/5/2025-C-1, 14.01.2026)', 'Corrigendum.pdf', '2026-01-14', 2, 'Corrected table, "READ AS" columns', 'ST 106.36936 11729 106.38576 11722'), sscDocument('prov-cut25-t1-l3-st-orig', 'SSC — Declaration of Result of CGL Examination (Tier-I), 2025 (No. HQ-C11018/5/2025-C-1, 18.12.2025)', 'writeup_181225.pdf', '2025-12-18', 2, 'Para 5, List-3', 'ST 106.36936 11729'))[0] },
+    { year: 2025, category: 'OBC', stage: 'Tier-I (of 200)', post: 'All posts other than JSO and Statistical Investigator Grade-II (List-3)', tier1Cutoff: 130.36617, value: 130.36617, cutoffType: 'normalized; unchanged by the corrigendum of 14.01.2026', provenance: sscDocument('prov-cut25-t1-l3-obc', 'SSC — Corrigendum to the CGLE 2025 (Tier-I) result write-up (No. HQ-C11018/5/2025-C-1, 14.01.2026)', 'Corrigendum.pdf', '2026-01-14', 2, 'Corrected table, "READ AS" columns', 'OBC 130.36617 43260 130.36617 43260') },
+    { year: 2025, category: 'EWS', stage: 'Tier-I (of 200)', post: 'All posts other than JSO and Statistical Investigator Grade-II (List-3)', tier1Cutoff: 127.41630, value: 127.41630, cutoffType: 'normalized; unchanged by the corrigendum of 14.01.2026', provenance: sscDocument('prov-cut25-t1-l3-ews', 'SSC — Corrigendum to the CGLE 2025 (Tier-I) result write-up (No. HQ-C11018/5/2025-C-1, 14.01.2026)', 'Corrigendum.pdf', '2026-01-14', 2, 'Corrected table, "READ AS" columns', 'EWS 127.41630 20268 127.41630 20268') },
+    { year: 2025, category: 'UR', stage: 'Tier-I (of 200)', post: 'All posts other than JSO and Statistical Investigator Grade-II (List-3)', tier1Cutoff: 136.40215, value: 136.40215, cutoffType: 'normalized; corrected from 136.83159 by SSC’s corrigendum of 14.01.2026', provenance: sscReplaced(sscDocument('prov-cut25-t1-l3-ur', 'SSC — Corrigendum to the CGLE 2025 (Tier-I) result write-up (No. HQ-C11018/5/2025-C-1, 14.01.2026)', 'Corrigendum.pdf', '2026-01-14', 2, 'Corrected table, "READ AS" columns', 'UR 136.83159 20035* 136.40215 20723*'), sscDocument('prov-cut25-t1-l3-ur-orig', 'SSC — Declaration of Result of CGL Examination (Tier-I), 2025 (No. HQ-C11018/5/2025-C-1, 18.12.2025)', 'writeup_181225.pdf', '2025-12-18', 2, 'Para 5, List-3', 'UR 136.83159 20035*'))[0] },
+    { year: 2025, category: 'ESM', stage: 'Tier-I (of 200)', post: 'All posts other than JSO and Statistical Investigator Grade-II (List-3)', tier1Cutoff: 92.82040, value: 92.82040, cutoffType: 'normalized; corrected from 92.80460 by SSC’s corrigendum of 14.01.2026', provenance: sscReplaced(sscDocument('prov-cut25-t1-l3-esm', 'SSC — Corrigendum to the CGLE 2025 (Tier-I) result write-up (No. HQ-C11018/5/2025-C-1, 14.01.2026)', 'Corrigendum.pdf', '2026-01-14', 2, 'Corrected table, "READ AS" columns', 'ESM 92.80460 3511 92.82040 3509'), sscDocument('prov-cut25-t1-l3-esm-orig', 'SSC — Declaration of Result of CGL Examination (Tier-I), 2025 (No. HQ-C11018/5/2025-C-1, 18.12.2025)', 'writeup_181225.pdf', '2025-12-18', 2, 'Para 5, List-3', 'ESM 92.80460 3511'))[0] },
+    { year: 2025, category: 'PwBD-OH', stage: 'Tier-I (of 200)', post: 'All posts other than JSO and Statistical Investigator Grade-II (List-3)', tier1Cutoff: 100.87394, value: 100.87394, cutoffType: 'normalized; unchanged by the corrigendum of 14.01.2026', provenance: sscDocument('prov-cut25-t1-l3-pwbd-oh', 'SSC — Corrigendum to the CGLE 2025 (Tier-I) result write-up (No. HQ-C11018/5/2025-C-1, 14.01.2026)', 'Corrigendum.pdf', '2026-01-14', 2, 'Corrected table, "READ AS" columns', 'OH 100.87394 1667 100.87394 1667') },
+    { year: 2025, category: 'PwBD-HH', stage: 'Tier-I (of 200)', post: 'All posts other than JSO and Statistical Investigator Grade-II (List-3)', tier1Cutoff: 68.79973, value: 68.79973, cutoffType: 'normalized; unchanged by the corrigendum of 14.01.2026', provenance: sscDocument('prov-cut25-t1-l3-pwbd-hh', 'SSC — Corrigendum to the CGLE 2025 (Tier-I) result write-up (No. HQ-C11018/5/2025-C-1, 14.01.2026)', 'Corrigendum.pdf', '2026-01-14', 2, 'Corrected table, "READ AS" columns', 'HH 68.79973 1550$ 68.79973 1550$') },
+    { year: 2025, category: 'PwBD-VH', stage: 'Tier-I (of 200)', post: 'All posts other than JSO and Statistical Investigator Grade-II (List-3)', tier1Cutoff: 72.05369, value: 72.05369, cutoffType: 'normalized; corrected from 72.00006 by SSC’s corrigendum of 14.01.2026', provenance: sscReplaced(sscDocument('prov-cut25-t1-l3-pwbd-vh', 'SSC — Corrigendum to the CGLE 2025 (Tier-I) result write-up (No. HQ-C11018/5/2025-C-1, 14.01.2026)', 'Corrigendum.pdf', '2026-01-14', 2, 'Corrected table, "READ AS" columns', 'VH 72.00006 1615# 72.05369 1612#'), sscDocument('prov-cut25-t1-l3-pwbd-vh-orig', 'SSC — Declaration of Result of CGL Examination (Tier-I), 2025 (No. HQ-C11018/5/2025-C-1, 18.12.2025)', 'writeup_181225.pdf', '2025-12-18', 2, 'Para 5, List-3', 'VH 72.00006 1615#'))[0] },
+    { year: 2025, category: 'PwBD-Others', stage: 'Tier-I (of 200)', post: 'All posts other than JSO and Statistical Investigator Grade-II (List-3)', tier1Cutoff: 40.17527, value: 40.17527, cutoffType: 'normalized; corrected from 41.70541 by SSC’s corrigendum of 14.01.2026', provenance: sscReplaced(sscDocument('prov-cut25-t1-l3-pwbd-others', 'SSC — Corrigendum to the CGLE 2025 (Tier-I) result write-up (No. HQ-C11018/5/2025-C-1, 14.01.2026)', 'Corrigendum.pdf', '2026-01-14', 2, 'Corrected table, "READ AS" columns', 'Other-PWD 41.70541 1445^ 40.17527 1487^'), sscDocument('prov-cut25-t1-l3-pwbd-others-orig', 'SSC — Declaration of Result of CGL Examination (Tier-I), 2025 (No. HQ-C11018/5/2025-C-1, 18.12.2025)', 'writeup_181225.pdf', '2025-12-18', 2, 'Para 5, List-3', 'Others (PwD) 41.70541 1445^'))[0] },
+    { year: 2025, category: 'SC', stage: 'Tier-I (of 200)', post: 'Junior Statistical Officer (List-1)', value: 137.29518, cutoffType: 'normalized', provenance: sscDocument('prov-cut25-t1-list-1-sc', 'SSC — Declaration of Result of CGL Examination (Tier-I), 2025 (No. HQ-C11018/5/2025-C-1, 18.12.2025)', 'writeup_181225.pdf', '2025-12-18', 1, 'Para 5, List-1', 'SC 137.29518') },
+    { year: 2025, category: 'ST', stage: 'Tier-I (of 200)', post: 'Junior Statistical Officer (List-1)', value: 136.40211, cutoffType: 'normalized', provenance: sscDocument('prov-cut25-t1-list-1-st', 'SSC — Declaration of Result of CGL Examination (Tier-I), 2025 (No. HQ-C11018/5/2025-C-1, 18.12.2025)', 'writeup_181225.pdf', '2025-12-18', 1, 'Para 5, List-1', 'ST 136.40211') },
+    { year: 2025, category: 'OBC', stage: 'Tier-I (of 200)', post: 'Junior Statistical Officer (List-1)', value: 153.46108, cutoffType: 'normalized', provenance: sscDocument('prov-cut25-t1-list-1-obc', 'SSC — Declaration of Result of CGL Examination (Tier-I), 2025 (No. HQ-C11018/5/2025-C-1, 18.12.2025)', 'writeup_181225.pdf', '2025-12-18', 1, 'Para 5, List-1', 'OBC 153.46108') },
+    { year: 2025, category: 'EWS', stage: 'Tier-I (of 200)', post: 'Junior Statistical Officer (List-1)', value: 151.58638, cutoffType: 'normalized', provenance: sscDocument('prov-cut25-t1-list-1-ews', 'SSC — Declaration of Result of CGL Examination (Tier-I), 2025 (No. HQ-C11018/5/2025-C-1, 18.12.2025)', 'writeup_181225.pdf', '2025-12-18', 1, 'Para 5, List-1', 'EWS 151.58638') },
+    { year: 2025, category: 'UR', stage: 'Tier-I (of 200)', post: 'Junior Statistical Officer (List-1)', value: 153.46108, cutoffType: 'normalized', provenance: sscDocument('prov-cut25-t1-list-1-ur', 'SSC — Declaration of Result of CGL Examination (Tier-I), 2025 (No. HQ-C11018/5/2025-C-1, 18.12.2025)', 'writeup_181225.pdf', '2025-12-18', 1, 'Para 5, List-1', 'UR 153.46108') },
+    { year: 2025, category: 'PwBD-OH', stage: 'Tier-I (of 200)', post: 'Junior Statistical Officer (List-1)', value: 125.16130, cutoffType: 'normalized', provenance: sscDocument('prov-cut25-t1-list-1-pwbd-oh', 'SSC — Declaration of Result of CGL Examination (Tier-I), 2025 (No. HQ-C11018/5/2025-C-1, 18.12.2025)', 'writeup_181225.pdf', '2025-12-18', 1, 'Para 5, List-1', 'OH 125.16130') },
+    { year: 2025, category: 'PwBD-HH', stage: 'Tier-I (of 200)', post: 'Junior Statistical Officer (List-1)', value: 104.04315, cutoffType: 'normalized', provenance: sscDocument('prov-cut25-t1-list-1-pwbd-hh', 'SSC — Declaration of Result of CGL Examination (Tier-I), 2025 (No. HQ-C11018/5/2025-C-1, 18.12.2025)', 'writeup_181225.pdf', '2025-12-18', 1, 'Para 5, List-1', 'HH 104.04315') },
+    { year: 2025, category: 'PwBD-VH', stage: 'Tier-I (of 200)', post: 'Junior Statistical Officer (List-1)', value: 134.15850, cutoffType: 'normalized', provenance: sscDocument('prov-cut25-t1-list-1-pwbd-vh', 'SSC — Declaration of Result of CGL Examination (Tier-I), 2025 (No. HQ-C11018/5/2025-C-1, 18.12.2025)', 'writeup_181225.pdf', '2025-12-18', 1, 'Para 5, List-1', 'VH 134.15850') },
+    { year: 2025, category: 'PwBD-Others', stage: 'Tier-I (of 200)', post: 'Junior Statistical Officer (List-1)', value: 91.01367, cutoffType: 'normalized', provenance: sscDocument('prov-cut25-t1-list-1-pwbd-others', 'SSC — Declaration of Result of CGL Examination (Tier-I), 2025 (No. HQ-C11018/5/2025-C-1, 18.12.2025)', 'writeup_181225.pdf', '2025-12-18', 1, 'Para 5, List-1', 'Others (PwD) 91.01367') },
+    { year: 2025, category: 'SC', stage: 'Tier-I (of 200)', post: 'Statistical Investigator Grade-II (List-2)', value: 137.16184, cutoffType: 'normalized', provenance: sscDocument('prov-cut25-t1-list-2-sc', 'SSC — Declaration of Result of CGL Examination (Tier-I), 2025 (No. HQ-C11018/5/2025-C-1, 18.12.2025)', 'writeup_181225.pdf', '2025-12-18', 2, 'Para 5, List-2', 'SC 137.16184') },
+    { year: 2025, category: 'ST', stage: 'Tier-I (of 200)', post: 'Statistical Investigator Grade-II (List-2)', value: 130.16987, cutoffType: 'normalized', provenance: sscDocument('prov-cut25-t1-list-2-st', 'SSC — Declaration of Result of CGL Examination (Tier-I), 2025 (No. HQ-C11018/5/2025-C-1, 18.12.2025)', 'writeup_181225.pdf', '2025-12-18', 2, 'Para 5, List-2', 'ST 130.16987') },
+    { year: 2025, category: 'OBC', stage: 'Tier-I (of 200)', post: 'Statistical Investigator Grade-II (List-2)', value: 150.51402, cutoffType: 'normalized', provenance: sscDocument('prov-cut25-t1-list-2-obc', 'SSC — Declaration of Result of CGL Examination (Tier-I), 2025 (No. HQ-C11018/5/2025-C-1, 18.12.2025)', 'writeup_181225.pdf', '2025-12-18', 2, 'Para 5, List-2', 'OBC 150.51402') },
+    { year: 2025, category: 'EWS', stage: 'Tier-I (of 200)', post: 'Statistical Investigator Grade-II (List-2)', value: 152.14666, cutoffType: 'normalized', provenance: sscDocument('prov-cut25-t1-list-2-ews', 'SSC — Declaration of Result of CGL Examination (Tier-I), 2025 (No. HQ-C11018/5/2025-C-1, 18.12.2025)', 'writeup_181225.pdf', '2025-12-18', 2, 'Para 5, List-2', 'EWS 152.14666') },
+    { year: 2025, category: 'UR', stage: 'Tier-I (of 200)', post: 'Statistical Investigator Grade-II (List-2)', value: 152.47231, cutoffType: 'normalized', provenance: sscDocument('prov-cut25-t1-list-2-ur', 'SSC — Declaration of Result of CGL Examination (Tier-I), 2025 (No. HQ-C11018/5/2025-C-1, 18.12.2025)', 'writeup_181225.pdf', '2025-12-18', 2, 'Para 5, List-2', 'UR 152.47231') },
+    { year: 2025, category: 'PwBD-HH', stage: 'Tier-I (of 200)', post: 'Statistical Investigator Grade-II (List-2)', value: 112.62423, cutoffType: 'normalized', provenance: sscDocument('prov-cut25-t1-list-2-pwbd-hh', 'SSC — Declaration of Result of CGL Examination (Tier-I), 2025 (No. HQ-C11018/5/2025-C-1, 18.12.2025)', 'writeup_181225.pdf', '2025-12-18', 2, 'Para 5, List-2', 'HH 112.62423') },
+    { year: 2025, category: 'PwBD-OH', stage: 'Tier-I (of 200)', post: 'Statistical Investigator Grade-II (List-2)', value: 127.48052, cutoffType: 'normalized', provenance: sscDocument('prov-cut25-t1-list-2-pwbd-oh', 'SSC — Declaration of Result of CGL Examination (Tier-I), 2025 (No. HQ-C11018/5/2025-C-1, 18.12.2025)', 'writeup_181225.pdf', '2025-12-18', 2, 'Para 5, List-2', 'OH 127.48052') },
+    { year: 2025, category: 'UR', stage: 'Tier-II Paper-I Section-I (of 180)', post: 'All posts (shortlisting for CKT and DEST evaluation)', value: 54, provenance: sscDocument('prov-cut25-t2-section-i-ur', 'SSC — CGL Examination, 2025: Declaration of First Round of Tentative Allocation (08.04.2026)', 'Write%20up_FTRA%20CGLE%20Exam%202025_08042026.pdf', '2026-04-08', 1, 'Para 3 — cut-offs for Section-III and IV evaluation', 'UR 54.00000 63.00000') },
+    { year: 2025, category: 'UR', stage: 'Tier-II Paper-I Section-II (of 210)', post: 'All posts (shortlisting for CKT and DEST evaluation)', value: 63, provenance: sscDocument('prov-cut25-t2-section-ii-ur', 'SSC — CGL Examination, 2025: Declaration of First Round of Tentative Allocation (08.04.2026)', 'Write%20up_FTRA%20CGLE%20Exam%202025_08042026.pdf', '2026-04-08', 1, 'Para 3 — cut-offs for Section-III and IV evaluation', 'UR 54.00000 63.00000') },
+    { year: 2025, category: 'OBC', stage: 'Tier-II Paper-I Section-I (of 180)', post: 'All posts (shortlisting for CKT and DEST evaluation)', value: 45, provenance: sscDocument('prov-cut25-t2-section-i-obc', 'SSC — CGL Examination, 2025: Declaration of First Round of Tentative Allocation (08.04.2026)', 'Write%20up_FTRA%20CGLE%20Exam%202025_08042026.pdf', '2026-04-08', 1, 'Para 3 — cut-offs for Section-III and IV evaluation', 'OBC 45.00000 52.50000') },
+    { year: 2025, category: 'OBC', stage: 'Tier-II Paper-I Section-II (of 210)', post: 'All posts (shortlisting for CKT and DEST evaluation)', value: 52.5, provenance: sscDocument('prov-cut25-t2-section-ii-obc', 'SSC — CGL Examination, 2025: Declaration of First Round of Tentative Allocation (08.04.2026)', 'Write%20up_FTRA%20CGLE%20Exam%202025_08042026.pdf', '2026-04-08', 1, 'Para 3 — cut-offs for Section-III and IV evaluation', 'OBC 45.00000 52.50000') },
+    { year: 2025, category: 'EWS', stage: 'Tier-II Paper-I Section-I (of 180)', post: 'All posts (shortlisting for CKT and DEST evaluation)', value: 45, provenance: sscDocument('prov-cut25-t2-section-i-ews', 'SSC — CGL Examination, 2025: Declaration of First Round of Tentative Allocation (08.04.2026)', 'Write%20up_FTRA%20CGLE%20Exam%202025_08042026.pdf', '2026-04-08', 1, 'Para 3 — cut-offs for Section-III and IV evaluation', 'EWS 45.00000 52.50000') },
+    { year: 2025, category: 'EWS', stage: 'Tier-II Paper-I Section-II (of 210)', post: 'All posts (shortlisting for CKT and DEST evaluation)', value: 52.5, provenance: sscDocument('prov-cut25-t2-section-ii-ews', 'SSC — CGL Examination, 2025: Declaration of First Round of Tentative Allocation (08.04.2026)', 'Write%20up_FTRA%20CGLE%20Exam%202025_08042026.pdf', '2026-04-08', 1, 'Para 3 — cut-offs for Section-III and IV evaluation', 'EWS 45.00000 52.50000') },
+    { year: 2025, category: 'SC, ST, ESM, OH, HH, VH, PwD-Others', stage: 'Tier-II Paper-I Section-I (of 180)', post: 'All posts (shortlisting for CKT and DEST evaluation)', value: 36, provenance: sscDocument('prov-cut25-t2-section-i-sc', 'SSC — CGL Examination, 2025: Declaration of First Round of Tentative Allocation (08.04.2026)', 'Write%20up_FTRA%20CGLE%20Exam%202025_08042026.pdf', '2026-04-08', 1, 'Para 3 — cut-offs for Section-III and IV evaluation', 'SC 36.00000 42.00000 ST 36.00000 42.00000 ESM 36.00000 42.00000 OH 36.00000 42.00000 HH 36.00000 42.00000 VH 36.00000 42.00000 Pwd_Others 36.00000 42.00000') },
+    { year: 2025, category: 'SC, ST, ESM, OH, HH, VH, PwD-Others', stage: 'Tier-II Paper-I Section-II (of 210)', post: 'All posts (shortlisting for CKT and DEST evaluation)', value: 42, provenance: sscDocument('prov-cut25-t2-section-ii-sc', 'SSC — CGL Examination, 2025: Declaration of First Round of Tentative Allocation (08.04.2026)', 'Write%20up_FTRA%20CGLE%20Exam%202025_08042026.pdf', '2026-04-08', 1, 'Para 3 — cut-offs for Section-III and IV evaluation', 'SC 36.00000 42.00000 ST 36.00000 42.00000 ESM 36.00000 42.00000 OH 36.00000 42.00000 HH 36.00000 42.00000 VH 36.00000 42.00000 Pwd_Others 36.00000 42.00000') },
+    { year: 2025, category: 'UR', stage: 'Tier-II Section-III CKT (of 60)', post: 'Posts requiring the Computer Proficiency Test', value: 24, provenance: sscDocument('prov-cut25-ckt-ur', 'SSC — CGL Examination, 2025: Declaration of First Round of Tentative Allocation (08.04.2026)', 'Write%20up_FTRA%20CGLE%20Exam%202025_08042026.pdf', '2026-04-08', 2, 'Para 7(i) — CKT cut-off for posts requiring Computer Proficiency', 'UR OBC EWS SC ST ESM OH HH VH PWD-Others Cut-off marks (out of 60) 24 21 21 18 18 18 18 18 18 18') },
+    { year: 2025, category: 'OBC, EWS', stage: 'Tier-II Section-III CKT (of 60)', post: 'Posts requiring the Computer Proficiency Test', value: 21, provenance: sscDocument('prov-cut25-ckt-obc', 'SSC — CGL Examination, 2025: Declaration of First Round of Tentative Allocation (08.04.2026)', 'Write%20up_FTRA%20CGLE%20Exam%202025_08042026.pdf', '2026-04-08', 2, 'Para 7(i) — CKT cut-off for posts requiring Computer Proficiency', 'UR OBC EWS SC ST ESM OH HH VH PWD-Others Cut-off marks (out of 60) 24 21 21 18 18 18 18 18 18 18') },
+    { year: 2025, category: 'SC, ST, ESM, OH, HH, VH, PwD-Others', stage: 'Tier-II Section-III CKT (of 60)', post: 'Posts requiring the Computer Proficiency Test', value: 18, provenance: sscDocument('prov-cut25-ckt-sc', 'SSC — CGL Examination, 2025: Declaration of First Round of Tentative Allocation (08.04.2026)', 'Write%20up_FTRA%20CGLE%20Exam%202025_08042026.pdf', '2026-04-08', 2, 'Para 7(i) — CKT cut-off for posts requiring Computer Proficiency', 'UR OBC EWS SC ST ESM OH HH VH PWD-Others Cut-off marks (out of 60) 24 21 21 18 18 18 18 18 18 18') }
   ],
 
   // Community-Vetted, Most Trusted & Topper Recommended Resources (AIR 1 & Majority Consensus)
@@ -3755,58 +3605,93 @@ export const SSC_CGL_EXAM: Exam = {
   // Admit Card / Hall Ticket release details & SSC regional download mirrors
   admitCardDetails: {
     status: 'NOT_YET_ANNOUNCED',
-    releaseDateStr: '2026-10-18 10:00:00',
-    officialPortalUrl: 'https://ssc.gov.in',
-    loginCredentialsRequired: [
-      'Registration Number / Roll Number',
-      'Registered Password or Date of Birth',
-      'Captcha verification code'
-    ],
+    releaseDateStr: 'Tentatively 2/3 days before each candidate’s own examination date (SSC notice of 21.09.2026)',
+    officialPortalUrl: 'https://ssc.gov.in/',
+    loginCredentialsRequired: ['The login to the Commission’s website (https://ssc.gov.in/)'],
     instructions: [
-      'Download the e-Admit Card only from the official SSC regional portal for your allotted zone.',
-      'Verify that your name, photograph, signature, exam city, shift timing and venue address are printed correctly.',
-      'Report any discrepancy to the concerned SSC Regional Office immediately, before the exam date.',
-      'Carry a clear laser printout together with the same original photo ID quoted in the application.'
+      'Tier-I is scheduled from 30.09.2026 to 30.10.2026 (SSC Important Notice, 12.09.2026).',
+      'Your examination city is shown after logging in through the designated login module on https://ssc.gov.in/ (SSC notice, 21.09.2026, para 1).',
+      'The Admission Certificate will tentatively be available for download 2/3 days before your own examination date, through the same login (para 2).',
+      'Candidates using an own scribe had to map the scribe’s OTR by 24.09.2026 (11:00 P.M.) for a Scribe Entry Pass (para 6).'
     ],
     cityIntimationAvailable: true,
-    cityIntimationUrl: 'https://ssc.gov.in',
-    regionPortals: [
-      { regionName: 'Northern Region', regionCode: 'NR', statesCovered: 'Delhi, Rajasthan, Uttarakhand', portalUrl: 'https://sscnr.nic.in', status: 'ACTIVE' },
-      { regionName: 'Central Region', regionCode: 'CR', statesCovered: 'Uttar Pradesh, Bihar', portalUrl: 'https://ssc-cr.org', status: 'ACTIVE' },
-      { regionName: 'Western Region', regionCode: 'WR', statesCovered: 'Maharashtra, Gujarat, Goa', portalUrl: 'https://sscwr.net', status: 'ACTIVE' },
-      { regionName: 'Eastern Region', regionCode: 'ER', statesCovered: 'West Bengal, Odisha, Jharkhand', portalUrl: 'https://sscer.org', status: 'ACTIVE' },
-      { regionName: 'Southern Region', regionCode: 'SR', statesCovered: 'Tamil Nadu, Andhra Pradesh, Telangana', portalUrl: 'https://sscsr.gov.in', status: 'ACTIVE' },
-      { regionName: 'Karnataka-Kerala Region', regionCode: 'KKR', statesCovered: 'Karnataka, Kerala', portalUrl: 'https://ssckkr.kar.nic.in', status: 'ACTIVE' },
-      { regionName: 'North Western Region', regionCode: 'NWR', statesCovered: 'Punjab, Haryana, Himachal Pradesh, J&K', portalUrl: 'https://sscnwr.org', status: 'ACTIVE' },
-      { regionName: 'Madhya Pradesh Region', regionCode: 'MPR', statesCovered: 'Madhya Pradesh, Chhattisgarh', portalUrl: 'https://sscmpr.org', status: 'ACTIVE' },
-      { regionName: 'North Eastern Region', regionCode: 'NER', statesCovered: 'Assam, Meghalaya, Manipur, Tripura, Nagaland', portalUrl: 'https://sscner.org.in', status: 'ACTIVE' }
-    ]
+    cityIntimationUrl: 'https://ssc.gov.in/'
   },
+  admitCardEvents: [
+    {
+      id: 'ssc-cgl-2026-city-tier1',
+      examId: 'exam-ssc-cgl-2026',
+      kind: 'CITY_INTIMATION',
+      officialLabel: 'city of examination',
+      sourceLabel: 'Information regarding the city of examination and Admission Certificate for the candidates of Combined Graduate level Examination, 2026 (Tier-I)',
+      status: 'VERIFIED',
+      cycle: '2026',
+      stageLabel: 'Tier-I',
+      releasedAt: '2026-09-21',
+      releasePrecision: 'DAY',
+      releaseNote: 'The date of SSC’s notice saying the city details can be viewed; each candidate sees their own city through the login.',
+      examDateNote: 'Tier-I is scheduled from 30.09.2026 to 30.10.2026 (SSC Important Notice, 12.09.2026)',
+      portalUrl: 'https://ssc.gov.in/',
+      portalNote: 'the Commission’s website; the city is shown through its designated login module, not published as a file',
+      credentials: ['The designated login module on the Commission’s website, https://ssc.gov.in/ (SSC notice of 21.09.2026)'],
+      provenance: sscP_city
+    },
+    {
+      id: 'ssc-cgl-2026-admission-tier1',
+      examId: 'exam-ssc-cgl-2026',
+      kind: 'ADMIT_CARD',
+      officialLabel: 'Admission Certificate',
+      status: 'VERIFIED',
+      cycle: '2026',
+      stageLabel: 'Tier-I',
+      releaseRule: 'tentatively available for download two/three (02/03) days before the candidate’s own date of examination',
+      examDateNote: 'Tier-I is scheduled from 30.09.2026 to 30.10.2026 (SSC Important Notice, 12.09.2026)',
+      portalUrl: 'https://ssc.gov.in/',
+      portalNote: 'the Commission’s website; the certificate is served through its designated login module, not published as a file',
+      credentials: ['The designated login module on the Commission’s website, https://ssc.gov.in/ (SSC notice of 21.09.2026)'],
+      provenance: sscP_admission
+    }
+  ],
 
-  syllabusSourceNote: 'Section 13 of the SSC CGL 2026 Gazette Notification (Scheme of Examination and detailed syllabus)',
+  syllabusSourceNote: 'Para 13.10 (Tier-I) and 13.11 (Tier-II) of the SSC Notice of Examination, CGL 2026 (21.05.2026), pp. 30–35. The topic list below groups those clauses for practice and lists only the terms SSC printed; Paper-II (Statistics) and Paper-III (Finance and Economics) are in the official syllabus tree above. SSC publishes no topic weightage.',
 
   eligibilityHighlights: [
     {
-      title: '1. Crucial Cutoff Date',
-      body: 'Candidate age is calculated strictly as of 01-08-2026. Final year degree holders must possess their qualifying degree on or before this date.',
-      provenance: sscProvenanceEligibility
+      title: 'Age, as on 01-08-2026',
+      body: 'Each post has its own band — 18-27, 18-30, 20-30 or 18-32 years — reckoned as on 01-08-2026 (Para 5.1). Final-year graduates may apply but must hold the essential qualification by 01-08-2026 (Para 8.5).',
+      provenance: sscP_age
     },
     {
-      title: '2. Category Age Relaxations',
-      body: 'OBC: +3 years. SC / ST: +5 years. PwBD (Unreserved): +10 years. PwBD (OBC): +13 years. PwBD (SC/ST): +15 years.',
-      provenance: sscProvenanceEligibility
+      title: 'Category age relaxations',
+      body: 'SC/ST +5 years, OBC +3, PwBD +10, PwBD (OBC) +13, PwBD (SC/ST) +15; Ex-Servicemen 3 years after deducting military service (Para 5.2). Category status is judged on the closing date, 25-06-2026 after the re-opening (Para 6.4).',
+      provenance: sscNotice('prov-ssc-relaxation', 'Para 5.2', 7, '5.2 Permissible relaxation in upper age limit and category-codes for claiming age relaxation are as follows')
     },
     {
-      title: '3. Specialized Degree Posts',
-      body: 'JSO: 60% in 12th Maths OR Degree with Statistics. Statistical Investigator Grade II: Statistics in all 3 years of Degree.',
-      provenance: sscProvenanceEligibility
+      title: 'Posts with their own qualification',
+      body: 'Junior Statistical Officer: 60% in Class 12 Mathematics, or Statistics as a degree subject (Para 8.2). Statistical Investigator Grade-II: a Bachelor degree in Statistics, Mathematics, Economics, Demography, Population Studies, Operation Research, IT, Computer Science/Engineering/Technology/Application, Data Science or AI (Para 8.3). AAO/AAcO (State Cadre) also need the State’s language at matriculation level (Para 8.1). All other posts: any Bachelor’s degree (Para 8.4).',
+      provenance: sscP_si
+    },
+    {
+      title: 'Application fee',
+      body: '₹100, paid online (BHIM UPI, Net Banking, or a Visa, Mastercard, Maestro or RuPay Debit card). Women, SC, ST, PwBD and Ex-Servicemen eligible for reservation are exempt (Para 10.1-10.3). The last date for payment became 26-06-2026 (23:00) after the re-opening.',
+      provenance: sscP_fee
+    },
+    {
+      title: 'Minimum qualifying marks',
+      body: 'Tier-I, and each of Sections I-III of Paper-I, Paper-II and Paper-III: UR 30%, OBC/EWS 25%, all other categories 20% (Para 16.1). DEST: at most 20% errors for UR, 25% for OBC/EWS and 30% for all others (Para 16.2).',
+      provenance: sscP_qualifying
     }
   ],
 
   officialLinks: [
-    { title: 'Staff Selection Commission', url: 'https://ssc.gov.in', note: 'ssc.gov.in (Official Application & Result Portal)' },
-    { title: 'NCBC Central OBC List', url: 'https://ncbc.nic.in', note: 'ncbc.nic.in (Central OBC Caste Verification)' },
-    { title: 'DigiLocker Government Portal', url: 'https://www.digilocker.gov.in', note: 'digilocker.gov.in (Verified Marksheets & ID)' }
+    { title: 'Staff Selection Commission', url: 'https://ssc.gov.in', note: 'The Commission’s website. Applications, the exam city and the Admission Certificate are served through its login.' },
+    { title: 'Notice of Examination — CGL 2026 (PDF, 21.05.2026)', url: SSC_NOTICE_URL, note: 'The notice every rule on this page is read from.', provenance: sscP_notified },
+    { title: 'Re-opening of the application window (PDF, 23.06.2026)', url: SSC_BOARD + 'CGLE_Reopen_23062026.pdf', note: 'Closing date 25.06.2026, fee 26.06.2026, correction window 01-03.07.2026.', provenance: sscP_reopen_window },
+    { title: 'Schedule of Tier-I (PDF, 12.09.2026)', url: SSC_BOARD + 'Important%20Notice%202026_cgle_2026_12092026.pdf', note: 'Tier-I from 30.09.2026 to 30.10.2026.', provenance: sscP_tier1_schedule },
+    { title: 'Exam city and Admission Certificate (PDF, 21.09.2026)', url: SSC_BOARD + 'cgle_2026_city_live_21092026.pdf', note: 'How the city slip and Admission Certificate are served.', provenance: sscP_city },
+    { title: 'Tentative vacancies as on 24.09.2026 (PDF)', url: SSC_BOARD + 'Tentative_vacancy_CGLE2026_24092026.pdf', note: '10,731 tentative vacancies, post- and category-wise.', provenance: sscP_vacancy_list },
+    { title: 'NCBC Central OBC List', url: 'https://ncbc.nic.in', note: 'ncbc.nic.in (Central OBC caste verification)' },
+    { title: 'DigiLocker Government Portal', url: 'https://www.digilocker.gov.in', note: 'digilocker.gov.in (verified marksheets & ID)' }
   ],
 
   // Frequently Asked Questions citing Official Notification Clauses
@@ -3814,44 +3699,44 @@ export const SSC_CGL_EXAM: Exam = {
     {
       id: 'faq-01',
       question: 'Are final year graduation students eligible to apply for SSC CGL 2026?',
-      answer: 'Yes. Candidates appearing in their final year of graduation can apply, provided they acquire the essential educational qualification degree certificate or provisional marksheet on or before the crucial cutoff date (01-08-2026).',
-      officialClause: 'Section 8.1, Clause (b)',
-      provenance: sscProvenanceEligibility
+      answer: 'Yes. Candidates who have appeared in the final year of graduation can apply, but they must possess the essential qualification as on 01.08.2026 (Para 8.5).',
+      officialClause: 'Para 8.5',
+      provenance: sscP_final_year
     },
     {
       id: 'faq-02',
-      question: 'What is the exact crucial date for age limit calculation for SSC CGL 2026?',
-      answer: 'The crucial date for age reckoning is fixed as 01-08-2026. For posts with 18-27 age limit, candidate must be born not earlier than 02-08-1999 and not later than 01-08-2008 (subject to category relaxation).',
-      officialClause: 'Section 3.1, Clause (a)',
-      provenance: sscProvenanceEligibility
+      question: 'What is the crucial date for the age limit in SSC CGL 2026?',
+      answer: 'Age is reckoned as on 01-08-2026 (Para 5). For the 18-27 band a candidate must be born not earlier than 02-08-1999 and not later than 01-08-2008; for 20-30, 02-08-1996 to 01-08-2006; for 18-30, 02-08-1996 to 01-08-2008; for 18-32, 02-08-1994 to 01-08-2008. Category relaxations are added to the upper limit (Para 5.2).',
+      officialClause: 'Para 5.1',
+      provenance: sscP_age
     },
     {
       id: 'faq-03',
-      question: 'What is the negative marking scheme in Tier-1 and Tier-2 exams?',
-      answer: 'In Tier-1, there is a negative marking of 0.50 marks for each incorrect response across all 4 sections. In Tier-2 (Paper-I), there is a negative marking of 1.00 mark for each wrong answer in Section-I, Section-II, and Section-III Module 1.',
-      officialClause: 'Section 13.1 & 13.2',
-      provenance: sscProvenanceOverview
+      question: 'What is the negative marking in Tier-I and Tier-II?',
+      answer: 'Tier-I: 0.50 marks for each wrong answer (Para 13.8.2). Tier-II: 1 mark for each wrong answer in Section-I, Section-II and Section-III of Paper-I, and 0.50 marks for each wrong answer in Paper-II and Paper-III (Para 13.9.8). Section-IV (DEST) is judged on the percentage of errors instead (Para 16.2).',
+      officialClause: 'Para 13.8.2 and 13.9.8',
+      provenance: sscP_neg_t2
     },
     {
       id: 'faq-04',
-      question: 'Is the Data Entry Speed Test (DEST) typing test compulsory for all candidates?',
-      answer: 'Yes, DEST typing test (Section-III Module 2 of Paper-I) is mandatory for ALL posts. Candidates must type approximately 2000 key depressions in 15 minutes (~27 WPM). It is qualifying in nature.',
-      officialClause: 'Section 13.2, Module-II',
-      provenance: sscProvenanceOverview
+      question: 'Is the Data Entry Speed Test (DEST) compulsory for all candidates?',
+      answer: 'Yes. DEST is Section-IV of Tier-II Paper-I, held in Session-II on the same day for 15 minutes: a passage of about 2000 key depressions (Para 13.9.10.1-13.9.10.2). It is mandatory for all posts but qualifying (Para 13.9.10.3). The errors allowed are 20% (UR), 25% (OBC/EWS) and 30% (others) (Para 16.2); posts such as Tax Assistant in CBIC and CBDT and UDC/SSA in CBN are set a higher DEST standard (Para 13.9.10.4).',
+      officialClause: 'Para 13.9.10 and 16.2',
+      provenance: sscP_dest
     },
     {
       id: 'faq-05',
-      question: 'What are the certificate validity requirements for OBC (Non-Creamy Layer) candidates?',
-      answer: 'The OBC certificate must be issued in the prescribed Central Government format (Annexure-VI) within 3 years prior to the closing date of application (27-09-2026) and must certify that the candidate does not belong to the Creamy Layer.',
-      officialClause: 'Section 6.3 & Annexure-VI',
-      provenance: sscProvenanceEligibility
+      question: 'What does SSC require of an OBC (non-creamy layer) certificate?',
+      answer: 'You must not be in the creamy layer on the crucial date, which is the closing date of applications — 25-06-2026 after the re-opening (Para 6.5; re-opening notice, para 4). The certificate is in the Annexure-X format. The Commission will not insist on an OBC certificate issued within the crucial/cut-off date; the candidature stays provisional until the Appointing Authority verifies the claim (Para 6.5, Note).',
+      officialClause: 'Para 6.5 and Annexure-X',
+      provenance: sscP_obc
     },
     {
       id: 'faq-06',
-      question: 'Are physical fitness tests mandatory for all SSC CGL posts?',
-      answer: 'No. Physical measurement and endurance tests (Walking & Cycling) are only required for specific uniformed posts: Inspector (Central Excise, Preventive Officer, Examiner) in CBIC, Sub-Inspector in CBI, Sub-Inspector in NIA, and Inspector in Narcotics.',
-      officialClause: 'Annexure-VII (Physical Standards)',
-      provenance: sscProvenanceEligibility
+      question: 'Are physical standards required for every SSC CGL post?',
+      answer: 'No. They apply to a few posts: Inspector (Central Excise/ Examiner/ Preventive Officer), Inspector and Sub-Inspector in CBN, Sub-Inspector/ Junior Intelligence Officer in NCB, Sub-Inspector in CBI and NIA, and UDC/SSA in BRO (Note-II under Para 2; details in Annexure-XV and XVI). They are measured by the user department after final selection.',
+      officialClause: 'Para 2, Note-II; Annexure-XV and XVI',
+      provenance: sscNotice('prov-ssc-faq-physical', 'Para 2, Note-II', 4, 'Note-II: While giving preference for posts as and when required by the Commission, the candidates may note that there are a few posts like Inspector (Central Excise/ Examiner/ Preventive Officer), Inspector and Sub-Inspector in CBN (Ministry of Finance)')
     }
   ]
 };
@@ -4517,227 +4402,47 @@ const UPSC_APPLICATION_SIMULATOR: ApplicationSimulatorSpec = {
  * present it as such.
  */
 export const CLASSIFICATION_CONFIRMED: Record<string, DataProvenance> = {
-  'post-aso-railways': {
-    id: 'prov-class-1',
-    documentTitle: 'Staff Selection Commission — Notice_of_adv_cgl_2026.pdf',
-    officialUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
-    pageNumber: 1,
-    clauseNumber: 'Posts and services listed in the notice',
-    publishedDate: '',
-    verifiedDate: '2026-09-20',
-    verifiedBy: 'GovOS exam builder — this Group is printed against this post in the authority’s own list',
-    taxonomyType: 'FACT',
-    verificationLevel: 'OFFICIALLY_VERIFIED',
-    excerptText: '1 Assistant Section Officer Central Secretariat Service Group “B” 20-30 years'
-  },
-  'post-iti': {
-    id: 'prov-class-2',
-    documentTitle: 'Staff Selection Commission — Notice_of_adv_cgl_2026.pdf',
-    officialUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
-    pageNumber: 1,
-    clauseNumber: 'Posts and services listed in the notice',
-    publishedDate: '',
-    verifiedDate: '2026-09-20',
-    verifiedBy: 'GovOS exam builder — this Group is printed against this post in the authority’s own list',
-    taxonomyType: 'FACT',
-    verificationLevel: 'OFFICIALLY_VERIFIED',
-    excerptText: '8 Inspector of Income Tax Central Board of Direct Taxes (CBDT) Group “B” 18-30 years'
-  },
-  'post-preventive-officer': {
-    id: 'prov-class-3',
-    documentTitle: 'Staff Selection Commission — Notice_of_adv_cgl_2026.pdf',
-    officialUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
-    pageNumber: 1,
-    clauseNumber: 'Posts and services listed in the notice',
-    publishedDate: '',
-    verifiedDate: '2026-09-20',
-    verifiedBy: 'GovOS exam builder — this Group is printed against this post in the authority’s own list',
-    taxonomyType: 'FACT',
-    verificationLevel: 'OFFICIALLY_VERIFIED',
-    excerptText: '10 Inspector (Preventive Officer) 11 Inspector (Examiner) 12 Assistant Enforcement Officer Directorate of Enforcement (ED), Department of Revenue Group “B” 18-30 years 13'
-  },
-  'post-upsc-iaas': {
-    id: 'prov-class-4',
-    documentTitle: 'Union Public Service Commission — [PDF] Notif-CSP-2026-Engl-060226Rev.pdf - UPSC',
-    officialUrl: 'https://www.upsc.gov.in/sites/default/files/Notif-CSP-2026-Engl-060226Rev.pdf',
-    pageNumber: 1,
-    clauseNumber: 'Posts and services listed in the notice',
-    publishedDate: '',
-    verifiedDate: '2026-09-20',
-    verifiedBy: 'GovOS exam builder — this Group is printed against this post in the authority’s own list',
-    taxonomyType: 'FACT',
-    verificationLevel: 'OFFICIALLY_VERIFIED',
-    excerptText: '(iv) Indian Audit and Accounts Service, Group ‘A’'
-  },
-  'post-upsc-icas': {
-    id: 'prov-class-5',
-    documentTitle: 'Union Public Service Commission — [PDF] Notif-CSP-2026-Engl-060226Rev.pdf - UPSC',
-    officialUrl: 'https://www.upsc.gov.in/sites/default/files/Notif-CSP-2026-Engl-060226Rev.pdf',
-    pageNumber: 1,
-    clauseNumber: 'Posts and services listed in the notice',
-    publishedDate: '',
-    verifiedDate: '2026-09-20',
-    verifiedBy: 'GovOS exam builder — this Group is printed against this post in the authority’s own list',
-    taxonomyType: 'FACT',
-    verificationLevel: 'OFFICIALLY_VERIFIED',
-    excerptText: '(v) Indian Civil Accounts Service, Group ‘A’'
-  },
-  'post-upsc-icls': {
-    id: 'prov-class-6',
-    documentTitle: 'Union Public Service Commission — [PDF] Notif-CSP-2026-Engl-060226Rev.pdf - UPSC',
-    officialUrl: 'https://www.upsc.gov.in/sites/default/files/Notif-CSP-2026-Engl-060226Rev.pdf',
-    pageNumber: 1,
-    clauseNumber: 'Posts and services listed in the notice',
-    publishedDate: '',
-    verifiedDate: '2026-09-20',
-    verifiedBy: 'GovOS exam builder — this Group is printed against this post in the authority’s own list',
-    taxonomyType: 'FACT',
-    verificationLevel: 'OFFICIALLY_VERIFIED',
-    excerptText: '(vi) Indian Corporate Law Service, Group ‘A’'
-  },
-  'post-upsc-idas': {
-    id: 'prov-class-7',
-    documentTitle: 'Union Public Service Commission — [PDF] Notif-CSP-2026-Engl-060226Rev.pdf - UPSC',
-    officialUrl: 'https://www.upsc.gov.in/sites/default/files/Notif-CSP-2026-Engl-060226Rev.pdf',
-    pageNumber: 1,
-    clauseNumber: 'Posts and services listed in the notice',
-    publishedDate: '',
-    verifiedDate: '2026-09-20',
-    verifiedBy: 'GovOS exam builder — this Group is printed against this post in the authority’s own list',
-    taxonomyType: 'FACT',
-    verificationLevel: 'OFFICIALLY_VERIFIED',
-    excerptText: '(vii) Indian Defence Accounts Service, Group ‘A’'
-  },
-  'post-upsc-ides': {
-    id: 'prov-class-8',
-    documentTitle: 'Union Public Service Commission — [PDF] Notif-CSP-2026-Engl-060226Rev.pdf - UPSC',
-    officialUrl: 'https://www.upsc.gov.in/sites/default/files/Notif-CSP-2026-Engl-060226Rev.pdf',
-    pageNumber: 1,
-    clauseNumber: 'Posts and services listed in the notice',
-    publishedDate: '',
-    verifiedDate: '2026-09-20',
-    verifiedBy: 'GovOS exam builder — this Group is printed against this post in the authority’s own list',
-    taxonomyType: 'FACT',
-    verificationLevel: 'OFFICIALLY_VERIFIED',
-    excerptText: '(vii) Indian Defence Accounts Service, Group ‘A’'
-  },
-  'post-upsc-iis': {
-    id: 'prov-class-9',
-    documentTitle: 'Union Public Service Commission — [PDF] Notif-CSP-2026-Engl-060226Rev.pdf - UPSC',
-    officialUrl: 'https://www.upsc.gov.in/sites/default/files/Notif-CSP-2026-Engl-060226Rev.pdf',
-    pageNumber: 1,
-    clauseNumber: 'Posts and services listed in the notice',
-    publishedDate: '',
-    verifiedDate: '2026-09-20',
-    verifiedBy: 'GovOS exam builder — this Group is printed against this post in the authority’s own list',
-    taxonomyType: 'FACT',
-    verificationLevel: 'OFFICIALLY_VERIFIED',
-    excerptText: '(ix) Indian Information Service, Group ‘A’'
-  },
-  'post-upsc-iptafs': {
-    id: 'prov-class-10',
-    documentTitle: 'Union Public Service Commission — [PDF] Notif-CSP-2026-Engl-060226Rev.pdf - UPSC',
-    officialUrl: 'https://www.upsc.gov.in/sites/default/files/Notif-CSP-2026-Engl-060226Rev.pdf',
-    pageNumber: 1,
-    clauseNumber: 'Posts and services listed in the notice',
-    publishedDate: '',
-    verifiedDate: '2026-09-20',
-    verifiedBy: 'GovOS exam builder — this Group is printed against this post in the authority’s own list',
-    taxonomyType: 'FACT',
-    verificationLevel: 'OFFICIALLY_VERIFIED',
-    excerptText: '(xi) Indian Post & Telecommunication Accounts and Finance Service, Group ‘A’'
-  },
-  'post-upsc-irms-traffic': {
-    id: 'prov-class-11',
-    documentTitle: 'Union Public Service Commission — [PDF] Notif-CSP-2026-Engl-060226Rev.pdf - UPSC',
-    officialUrl: 'https://www.upsc.gov.in/sites/default/files/Notif-CSP-2026-Engl-060226Rev.pdf',
-    pageNumber: 1,
-    clauseNumber: 'Posts and services listed in the notice',
-    publishedDate: '',
-    verifiedDate: '2026-09-20',
-    verifiedBy: 'GovOS exam builder — this Group is printed against this post in the authority’s own list',
-    taxonomyType: 'FACT',
-    verificationLevel: 'OFFICIALLY_VERIFIED',
-    excerptText: '(xii) Indian Railway Management Service (Traffic), Group ‘A’'
-  },
-  'post-upsc-irms-personnel': {
-    id: 'prov-class-12',
-    documentTitle: 'Union Public Service Commission — [PDF] Notif-CSP-2026-Engl-060226Rev.pdf - UPSC',
-    officialUrl: 'https://www.upsc.gov.in/sites/default/files/Notif-CSP-2026-Engl-060226Rev.pdf',
-    pageNumber: 1,
-    clauseNumber: 'Posts and services listed in the notice',
-    publishedDate: '',
-    verifiedDate: '2026-09-20',
-    verifiedBy: 'GovOS exam builder — this Group is printed against this post in the authority’s own list',
-    taxonomyType: 'FACT',
-    verificationLevel: 'OFFICIALLY_VERIFIED',
-    excerptText: '(xii) Indian Railway Management Service (Traffic), Group ‘A’'
-  },
-  'post-upsc-irms-accounts': {
-    id: 'prov-class-13',
-    documentTitle: 'Union Public Service Commission — [PDF] Notif-CSP-2026-Engl-060226Rev.pdf - UPSC',
-    officialUrl: 'https://www.upsc.gov.in/sites/default/files/Notif-CSP-2026-Engl-060226Rev.pdf',
-    pageNumber: 1,
-    clauseNumber: 'Posts and services listed in the notice',
-    publishedDate: '',
-    verifiedDate: '2026-09-20',
-    verifiedBy: 'GovOS exam builder — this Group is printed against this post in the authority’s own list',
-    taxonomyType: 'FACT',
-    verificationLevel: 'OFFICIALLY_VERIFIED',
-    excerptText: '(xii) Indian Railway Management Service (Traffic), Group ‘A’'
-  },
-  'post-upsc-irpfs': {
-    id: 'prov-class-14',
-    documentTitle: 'Union Public Service Commission — [PDF] Notif-CSP-2026-Engl-060226Rev.pdf - UPSC',
-    officialUrl: 'https://www.upsc.gov.in/sites/default/files/Notif-CSP-2026-Engl-060226Rev.pdf',
-    pageNumber: 1,
-    clauseNumber: 'Posts and services listed in the notice',
-    publishedDate: '',
-    verifiedDate: '2026-09-20',
-    verifiedBy: 'GovOS exam builder — this Group is printed against this post in the authority’s own list',
-    taxonomyType: 'FACT',
-    verificationLevel: 'OFFICIALLY_VERIFIED',
-    excerptText: '(xii) Indian Railway Management Service (Traffic), Group ‘A’'
-  },
-  'post-upsc-irs-cit': {
-    id: 'prov-class-15',
-    documentTitle: 'Union Public Service Commission — [PDF] Notif-CSP-2026-Engl-060226Rev.pdf - UPSC',
-    officialUrl: 'https://www.upsc.gov.in/sites/default/files/Notif-CSP-2026-Engl-060226Rev.pdf',
-    pageNumber: 1,
-    clauseNumber: 'Posts and services listed in the notice',
-    publishedDate: '',
-    verifiedDate: '2026-09-20',
-    verifiedBy: 'GovOS exam builder — this Group is printed against this post in the authority’s own list',
-    taxonomyType: 'FACT',
-    verificationLevel: 'OFFICIALLY_VERIFIED',
-    excerptText: '(xvi) Indian Revenue Service (Customs & Indirect Taxes) Group ‘A’'
-  },
-  'post-upsc-irs-it': {
-    id: 'prov-class-16',
-    documentTitle: 'Union Public Service Commission — [PDF] Notif-CSP-2026-Engl-060226Rev.pdf - UPSC',
-    officialUrl: 'https://www.upsc.gov.in/sites/default/files/Notif-CSP-2026-Engl-060226Rev.pdf',
-    pageNumber: 1,
-    clauseNumber: 'Posts and services listed in the notice',
-    publishedDate: '',
-    verifiedDate: '2026-09-20',
-    verifiedBy: 'GovOS exam builder — this Group is printed against this post in the authority’s own list',
-    taxonomyType: 'FACT',
-    verificationLevel: 'OFFICIALLY_VERIFIED',
-    excerptText: '(xvi) Indian Revenue Service (Customs & Indirect Taxes) Group ‘A’'
-  },
-  'post-upsc-afhqcs': {
-    id: 'prov-class-17',
-    documentTitle: 'Union Public Service Commission — [PDF] Notif-CSP-2026-Engl-060226Rev.pdf - UPSC',
-    officialUrl: 'https://www.upsc.gov.in/sites/default/files/Notif-CSP-2026-Engl-060226Rev.pdf',
-    pageNumber: 1,
-    clauseNumber: 'Posts and services listed in the notice',
-    publishedDate: '',
-    verifiedDate: '2026-09-20',
-    verifiedBy: 'GovOS exam builder — this Group is printed against this post in the authority’s own list',
-    taxonomyType: 'FACT',
-    verificationLevel: 'OFFICIALLY_VERIFIED',
-    excerptText: '(xix) Armed Forces Headquarters Civil Service, Group ‘B’ (Section Officer’s Grade)'
-  }
+  // SSC CGL 2026: the Group printed against each post in the notice's own table (Para 2).
+  'post-aao-central': sscNotice('prov-class-post-aao-central', 'Para 2.1 Pay Level-8 (₹ 47600 to 151100) — the Group printed against this post', 2, '1 Assistant Audit Officer (Central Cadre) Indian Audit & Accounts Department under O/o Comptroller and Auditor General of India (C&AG) Group “B” Gazetted (Non-Ministerial) 18-30 years'),
+  'post-aao-state': sscNotice('prov-class-post-aao-state', 'Para 2.1 Pay Level-8 (₹ 47600 to 151100) — the Group printed against this post', 2, '2. Assistant Audit Officer (State Cadre) Indian Audit & Accounts Department under O/o Comptroller and Auditor General of India (C&AG) Group “B” Gazetted (Non-Ministerial) 18-30 years'),
+  'post-aaco-state': sscNotice('prov-class-post-aaco-state', 'Para 2.1 Pay Level-8 (₹ 47600 to 151100) — the Group printed against this post', 2, '3. Assistant Accounts Officer (State Cadre) Indian Audit & Accounts Department under O/o Comptroller and Auditor General of India (C&AG) Group “B” Gazetted (Non-Ministerial) 18-30 years'),
+  'post-aso-css': sscNotice('prov-class-post-aso-css', 'Para 2.2 Pay Level-7 (₹ 44900 to 142400) — the Group printed against this post', 2, '1 Assistant Section Officer Central Secretariat Service Group “B” 20-30 years'),
+  'post-aso-ib': sscNotice('prov-class-post-aso-ib', 'Para 2.2 Pay Level-7 (₹ 44900 to 142400) — the Group printed against this post', 2, '2 Assistant Section Officer Intelligence Bureau Group “B” 18-30 years'),
+  'post-aso-railways': sscNotice('prov-class-post-aso-railways', 'Para 2.2 Pay Level-7 (₹ 44900 to 142400) — the Group printed against this post', 2, '3 Assistant Section Officer Ministry of Railways Group “B” 20-30 years'),
+  'post-aso-mea': sscNotice('prov-class-post-aso-mea', 'Para 2.2 Pay Level-7 (₹ 44900 to 142400) — the Group printed against this post', 2, '4 Assistant Section Officer Ministry of External Affairs Group “B” 20-30 years'),
+  'post-aso-afhq': sscNotice('prov-class-post-aso-afhq', 'Para 2.2 Pay Level-7 (₹ 44900 to 142400) — the Group printed against this post', 2, '5 Assistant Section Officer AFHQ Group “B” 20-30 years'),
+  'post-aso-meity': sscNotice('prov-class-post-aso-meity', 'Para 2.2 Pay Level-7 (₹ 44900 to 142400) — the Group printed against this post', 2, '6 Assistant Section Officer Ministry of Electronics and Information Technology Group “B” 18-30 years'),
+  'post-aso-other-l7': sscNotice('prov-class-post-aso-other-l7', 'Para 2.2 Pay Level-7 (₹ 44900 to 142400) — the Group printed against this post', 2, '7 Assistant / Assistant Section Officer Other Ministries/ Departments/ Organizations Group “B” 18-30 years'),
+  'post-iti': sscNotice('prov-class-post-iti', 'Para 2.2 Pay Level-7 (₹ 44900 to 142400) — the Group printed against this post', 2, '8 Inspector of Income Tax Central Board of Direct Taxes (CBDT) Group “B” 18-30 years'),
+  'post-excise': sscNotice('prov-class-post-excise', 'Para 2.2 Pay Level-7 (₹ 44900 to 142400) — the Group printed against this post', 2, '9 Inspector, (Central Excise) Central Board of Indirect Taxes and Customs (CBIC) Group “B” 18-30 years'),
+  'post-preventive-officer': sscNotice('prov-class-post-preventive-officer', 'Para 2.2 Pay Level-7 (₹ 44900 to 142400) — the Group printed against this post', 3, '10 Inspector (Preventive Officer) 11 Inspector (Examiner)'),
+  'post-examiner': sscNotice('prov-class-post-examiner', 'Para 2.2 Pay Level-7 (₹ 44900 to 142400) — the Group printed against this post', 3, '10 Inspector (Preventive Officer) 11 Inspector (Examiner)'),
+  'post-aeo-ed': sscNotice('prov-class-post-aeo-ed', 'Para 2.2 Pay Level-7 (₹ 44900 to 142400) — the Group printed against this post', 3, '12 Assistant Enforcement Officer Directorate of Enforcement (ED), Department of Revenue Group “B” 18-30 years'),
+  'post-si-cbi': sscNotice('prov-class-post-si-cbi', 'Para 2.2 Pay Level-7 (₹ 44900 to 142400) — the Group printed against this post', 3, '13 Sub Inspector Central Bureau of Investigation Group “B” 20-30 years'),
+  'post-inspector-posts': sscNotice('prov-class-post-inspector-posts', 'Para 2.2 Pay Level-7 (₹ 44900 to 142400) — the Group printed against this post', 3, '14 Inspector Posts Department of Posts, Ministry of Communications Group “B” 18-30 years'),
+  'post-inspector-cbn': sscNotice('prov-class-post-inspector-cbn', 'Para 2.2 Pay Level-7 (₹ 44900 to 142400) — the Group printed against this post', 3, '15 Inspector Central Bureau of Narcotics, Ministry of Finance Group “B” 18-30 years'),
+  'post-aso-other-l6': sscNotice('prov-class-post-aso-other-l6', 'Para 2.3 Pay Level-6 (₹ 35400 to 112400) — the Group printed against this post', 3, '1 Assistant / Assistant Section Officer Other Ministries/ Departments/ Organizations Group “B” 18-30 years'),
+  'post-executive-assistant-cbic': sscNotice('prov-class-post-executive-assistant-cbic', 'Para 2.3 Pay Level-6 (₹ 35400 to 112400) — the Group printed against this post', 3, '2 Executive Assistant Central Board of Indirect Taxes and Customs (CBIC) Group “B” 18-30 years'),
+  'post-research-assistant-nhrc': sscNotice('prov-class-post-research-assistant-nhrc', 'Para 2.3 Pay Level-6 (₹ 35400 to 112400) — the Group printed against this post', 3, '3 Research Assistant National Human Rights Commission (NHRC) Group “B” 18-30 years'),
+  'post-divisional-accountant': sscNotice('prov-class-post-divisional-accountant', 'Para 2.3 Pay Level-6 (₹ 35400 to 112400) — the Group printed against this post', 3, '4 Divisional Accountant Offices under C&AG Group “B” 18-30 years'),
+  'post-si-nia': sscNotice('prov-class-post-si-nia', 'Para 2.3 Pay Level-6 (₹ 35400 to 112400) — the Group printed against this post', 3, '5 Sub Inspector National Investigation Agency (NIA) Group “B” 18-30 years'),
+  'post-si-jio-ncb': sscNotice('prov-class-post-si-jio-ncb', 'Para 2.3 Pay Level-6 (₹ 35400 to 112400) — the Group printed against this post', 3, '6 Sub-Inspector/ Junior Intelligence Officer Narcotics Control Bureau (MHA) Group “B” 18-30 years'),
+  'post-jso': sscNotice('prov-class-post-jso', 'Para 2.3 Pay Level-6 (₹ 35400 to 112400) — the Group printed against this post', 3, '7 Junior Statistical Officer Ministry of Statistics & Programme Implementation. Group “B” 18-32 years'),
+  'post-stat-inv': sscNotice('prov-class-post-stat-inv', 'Para 2.3 Pay Level-6 (₹ 35400 to 112400) — the Group printed against this post', 3, '8 Statistical Investigator Grade-II Ministry of Home Affairs Group “B” 18-30 years'),
+  'post-office-superintendent-cbdt': sscNotice('prov-class-post-office-superintendent-cbdt', 'Para 2.3 Pay Level-6 (₹ 35400 to 112400) — the Group printed against this post', 3, '9 Office Superintendent Central Board of Direct Taxes (CBDT) Group “B” 18-30 years'),
+  'post-section-head-dgft': sscNotice('prov-class-post-section-head-dgft', 'Para 2.3 Pay Level-6 (₹ 35400 to 112400) — the Group printed against this post', 3, '10 Section Head Director General of Foreign Trade Group “B” 18-30 years'),
+  'post-auditor-cag': sscNotice('prov-class-post-auditor-cag', 'Para 2.4 Pay Level-5 (₹ 29200 to 92300) — the Group printed against this post', 3, '1 Auditor Offices under C&AG Group “C” 18-27 years'),
+  'post-auditor-cgda': sscNotice('prov-class-post-auditor-cgda', 'Para 2.4 Pay Level-5 (₹ 29200 to 92300) — the Group printed against this post', 3, '2 Auditor Offices under CGDA Group “C” 18-27 years'),
+  'post-auditor-other': sscNotice('prov-class-post-auditor-other', 'Para 2.4 Pay Level-5 (₹ 29200 to 92300) — the Group printed against this post', 4, '3 Auditor Other Ministry/ Departments Group “C” 18-27 years'),
+  'post-accountant-cag-office': sscNotice('prov-class-post-accountant-cag-office', 'Para 2.4 Pay Level-5 (₹ 29200 to 92300) — the Group printed against this post', 4, '4 Accountant Offices under C&AG Group “C” 18-27 years'),
+  'post-accountant-cga': sscNotice('prov-class-post-accountant-cga', 'Para 2.4 Pay Level-5 (₹ 29200 to 92300) — the Group printed against this post', 4, '5 Accountant Controller General of Accounts Group “C” 18-27 years'),
+  'post-accountant-cag': sscNotice('prov-class-post-accountant-cag', 'Para 2.4 Pay Level-5 (₹ 29200 to 92300) — the Group printed against this post', 4, '6 Accountant/ Junior Accountant Other Ministry/ Departments Group “C” 18-27 years'),
+  'post-postal-assistant': sscNotice('prov-class-post-postal-assistant', 'Para 2.5 Pay Level-4 (₹ 25500 to 81100) — the Group printed against this post', 4, '1 Postal Assistant/ Sorting Assistant Department of Posts, Ministry of Communications Group “C” 18-27 years'),
+  'post-ssa-dopt': sscNotice('prov-class-post-ssa-dopt', 'Para 2.5 Pay Level-4 (₹ 25500 to 81100) — the Group printed against this post', 4, '2 Senior Secretariat Assistant/ Upper Division Clerks Central Govt. Offices/ Ministries other than CSCS cadres. Group “C” 18-27 years'),
+  'post-saa-mes': sscNotice('prov-class-post-saa-mes', 'Para 2.5 Pay Level-4 (₹ 25500 to 81100) — the Group printed against this post', 4, '3 Senior Administrative Assistant Military Engineering Services, Ministry of Defence Group “C” 18-27 years'),
+  'post-tax-assistant-cbdt': sscNotice('prov-class-post-tax-assistant-cbdt', 'Para 2.5 Pay Level-4 (₹ 25500 to 81100) — the Group printed against this post', 4, '4 Tax Assistant Central Board of Direct Taxes (CBDT) Group “C” 18-27 years'),
+  'post-tax-assistant-cbic': sscNotice('prov-class-post-tax-assistant-cbic', 'Para 2.5 Pay Level-4 (₹ 25500 to 81100) — the Group printed against this post', 4, '5 Tax Assistant Central Board of Indirect Taxes and Customs (CBIC) Group “C” 18-27 years'),
+  'post-si-cbn': sscNotice('prov-class-post-si-cbn', 'Para 2.5 Pay Level-4 (₹ 25500 to 81100) — the Group printed against this post', 4, '6 Sub-Inspector Central Bureau of Narcotics, Ministry of Finance Group “C” 18-27 years'),
 };
 
 const upscSyllabusSource: Omit<DataProvenance, 'id' | 'clauseNumber' | 'excerptText'> = {
@@ -20116,16 +19821,17 @@ export interface CustomTestConfig {
   durationMinutes?: number;
 }
 
+/** A practice question with no named source: GovOS wrote it; it is not an SSC question. */
 const sscProvenance: DataProvenance = {
-  id: 'prov-ssc-cgl-pyq',
-  documentTitle: 'Staff Selection Commission (SSC) Official Sourced Shift Question Paper',
-  officialUrl: 'https://ssc.gov.in',
-  publishedDate: '2024-10-01',
-  verifiedDate: '2026-09-06',
-  verifiedBy: 'GovOS Official Examination Verification Team',
-  taxonomyType: 'FACT',
-  verificationLevel: 'OFFICIALLY_VERIFIED',
-  excerptText: 'Official Sourced Master Answer Key & Question Paper published by Staff Selection Commission (SSC) under RTI Act / Candidate Key Response Portal.'
+  id: 'prov-ssc-cgl-practice',
+  documentTitle: 'GovOS practice question — not from an SSC paper',
+  officialUrl: '',
+  publishedDate: '',
+  verifiedDate: '',
+  verifiedBy: 'Written by GovOS; not an official question',
+  taxonomyType: 'RECOMMENDATION',
+  verificationLevel: 'UNDER_VERIFICATION',
+  excerptText: 'GovOS wrote this question for practice. It is not taken from an SSC question paper or answer key, and SSC has not reviewed it.'
 };
 
 /**
@@ -20178,7 +19884,8 @@ const sscNoticeSource = (citation: string): QuestionSource => ({
 /** Practice question written by GovOS. Not lifted from an official paper. */
 const govosSource = (citation: string): QuestionSource => ({
   label: citation,
-  url: 'https://ssc.gov.in',
+  // The pattern it was written to: the notice's scheme and syllabus, not the homepage.
+  url: SSC_NOTICE_URL,
   publisher: 'GovOS Preparation Team (pattern based on the official SSC syllabus)',
   kind: 'GOVOS_AUTHORED'
 });
@@ -21274,7 +20981,7 @@ function buildFullPaperQuestions(paperId: string, shiftInfo: string, year: numbe
       topicName: t.topic,
       tier: 'TIER_1',
       shiftInfo: `${shiftInfo} • Q${qNum}`,
-      questionType: 'OFFICIAL_PYQ',
+      questionType: 'GOVOS_CREATED',
       year,
       difficulty: i % 3 === 0 ? 'HARD' : i % 2 === 0 ? 'MEDIUM' : 'EASY',
       questionText: `[Q${qNum} - Reasoning] ${t.text}`,
@@ -21296,7 +21003,7 @@ function buildFullPaperQuestions(paperId: string, shiftInfo: string, year: numbe
       topicName: t.topic,
       tier: 'TIER_1',
       shiftInfo: `${shiftInfo} • Q${qNum}`,
-      questionType: 'OFFICIAL_PYQ',
+      questionType: 'GOVOS_CREATED',
       year,
       difficulty: i % 3 === 0 ? 'HARD' : i % 2 === 0 ? 'MEDIUM' : 'EASY',
       questionText: `[Q${qNum} - General Awareness] ${t.text}`,
@@ -21318,7 +21025,7 @@ function buildFullPaperQuestions(paperId: string, shiftInfo: string, year: numbe
       topicName: t.topic,
       tier: 'TIER_1',
       shiftInfo: `${shiftInfo} • Q${qNum}`,
-      questionType: 'OFFICIAL_PYQ',
+      questionType: 'GOVOS_CREATED',
       year,
       difficulty: i % 3 === 0 ? 'HARD' : i % 2 === 0 ? 'MEDIUM' : 'EASY',
       questionText: `[Q${qNum} - Quantitative Aptitude] ${t.text}`,
@@ -21340,7 +21047,7 @@ function buildFullPaperQuestions(paperId: string, shiftInfo: string, year: numbe
       topicName: t.topic,
       tier: 'TIER_1',
       shiftInfo: `${shiftInfo} • Q${qNum}`,
-      questionType: 'OFFICIAL_PYQ',
+      questionType: 'GOVOS_CREATED',
       year,
       difficulty: i % 3 === 0 ? 'HARD' : i % 2 === 0 ? 'MEDIUM' : 'EASY',
       questionText: `[Q${qNum} - English Comprehension] ${t.text}`,
@@ -21360,153 +21067,153 @@ function buildFullPaperQuestions(paperId: string, shiftInfo: string, year: numbe
 export const OFFICIAL_10_MOCK_PAPERS: MockPaper[] = [
   {
     id: 'paper-cgl-2024-s1',
-    title: 'SSC CGL 2024 Tier-1 (Shift 1 — 12 Sep 2024)',
+    title: 'Full-length practice paper 1 (Tier-1 pattern)',
     category: 'FULL_SHIFT',
     examTier: 'Tier-1',
-    year: 2024,
-    shiftDate: '12-09-2024 (09:00 AM - 10:00 AM)',
+    year: 2026,
+    shiftDate: 'GovOS practice paper — not an SSC shift',
     totalQuestions: 100,
     totalMarks: 200,
     durationMinutes: 60,
     difficulty: 'ADAPTIVE',
-    description: 'Official Sourced TCS Shift Paper featuring latest 2024 TCS patterns in Algebra symmetric identities and Static GK.',
-    provenanceTag: 'SSC 2024 Shift-1 Key Sourced',
-    questions: buildFullPaperQuestions('cgl-2024-s1', 'SSC CGL 2024 Shift-1 (12-Sep)', 2024)
+    description: 'GovOS practice paper written to the SSC CGL Tier-1 pattern. Its questions are GovOS-authored and recur across papers; it is not an SSC question paper and has no official answer key.',
+    provenanceTag: 'GovOS practice paper',
+    questions: buildFullPaperQuestions('cgl-2024-s1', 'GovOS practice paper 1', 2026)
   },
   {
     id: 'paper-cgl-2024-s2',
-    title: 'SSC CGL 2024 Tier-1 (Shift 2 — 14 Sep 2024)',
+    title: 'Full-length practice paper 2 (Tier-1 pattern)',
     category: 'FULL_SHIFT',
     examTier: 'Tier-1',
-    year: 2024,
-    shiftDate: '14-09-2024 (12:30 PM - 01:30 PM)',
+    year: 2026,
+    shiftDate: 'GovOS practice paper — not an SSC shift',
     totalQuestions: 100,
     totalMarks: 200,
     durationMinutes: 60,
     difficulty: 'ADAPTIVE',
-    description: 'Full-length 100 Questions paper highlighting Geometry circle secants, Error Spotting, and Syllogism.',
-    provenanceTag: 'SSC 2024 Shift-2 Key Sourced',
-    questions: buildFullPaperQuestions('cgl-2024-s2', 'SSC CGL 2024 Shift-2 (14-Sep)', 2024)
+    description: 'GovOS practice paper written to the SSC CGL Tier-1 pattern. Its questions are GovOS-authored and recur across papers; it is not an SSC question paper and has no official answer key.',
+    provenanceTag: 'GovOS practice paper',
+    questions: buildFullPaperQuestions('cgl-2024-s2', 'GovOS practice paper 2', 2026)
   },
   {
     id: 'paper-cgl-2024-s3',
-    title: 'SSC CGL 2024 Tier-1 (Shift 3 — 16 Sep 2024)',
+    title: 'Full-length practice paper 3 (Tier-1 pattern)',
     category: 'FULL_SHIFT',
     examTier: 'Tier-1',
-    year: 2024,
-    shiftDate: '16-09-2024 (04:00 PM - 05:00 PM)',
+    year: 2026,
+    shiftDate: 'GovOS practice paper — not an SSC shift',
     totalQuestions: 100,
     totalMarks: 200,
     durationMinutes: 60,
     difficulty: 'ADAPTIVE',
-    description: 'Official shift paper with high-weightage Indian Polity articles and Time & Work efficiency derivations.',
-    provenanceTag: 'SSC 2024 Shift-3 Key Sourced',
-    questions: buildFullPaperQuestions('cgl-2024-s3', 'SSC CGL 2024 Shift-3 (16-Sep)', 2024)
+    description: 'GovOS practice paper written to the SSC CGL Tier-1 pattern. Its questions are GovOS-authored and recur across papers; it is not an SSC question paper and has no official answer key.',
+    provenanceTag: 'GovOS practice paper',
+    questions: buildFullPaperQuestions('cgl-2024-s3', 'GovOS practice paper 3', 2026)
   },
   {
     id: 'paper-cgl-2024-s4',
-    title: 'SSC CGL 2024 Tier-1 (Shift 1 — 18 Sep 2024)',
+    title: 'Full-length practice paper 4 (Tier-1 pattern)',
     category: 'FULL_SHIFT',
     examTier: 'Tier-1',
-    year: 2024,
-    shiftDate: '18-09-2024 (09:00 AM - 10:00 AM)',
+    year: 2026,
+    shiftDate: 'GovOS practice paper — not an SSC shift',
     totalQuestions: 100,
     totalMarks: 200,
     durationMinutes: 60,
     difficulty: 'ADAPTIVE',
-    description: 'Official shift covering Trigonometry identities, Classical dance gharanas, and Coded Blood Relations.',
-    provenanceTag: 'SSC 2024 Shift-1 Key Sourced',
-    questions: buildFullPaperQuestions('cgl-2024-s4', 'SSC CGL 2024 Shift-1 (18-Sep)', 2024)
+    description: 'GovOS practice paper written to the SSC CGL Tier-1 pattern. Its questions are GovOS-authored and recur across papers; it is not an SSC question paper and has no official answer key.',
+    provenanceTag: 'GovOS practice paper',
+    questions: buildFullPaperQuestions('cgl-2024-s4', 'GovOS practice paper 4', 2026)
   },
   {
     id: 'paper-cgl-2024-s5',
-    title: 'SSC CGL 2024 Tier-1 (Shift 2 — 20 Sep 2024)',
+    title: 'Full-length practice paper 5 (Tier-1 pattern)',
     category: 'FULL_SHIFT',
     examTier: 'Tier-1',
-    year: 2024,
-    shiftDate: '20-09-2024 (12:30 PM - 01:30 PM)',
+    year: 2026,
+    shiftDate: 'GovOS practice paper — not an SSC shift',
     totalQuestions: 100,
     totalMarks: 200,
     durationMinutes: 60,
     difficulty: 'ADAPTIVE',
-    description: 'High-speed shift test with Mixtures Alligation, Direct-Indirect Speech, and Number Series matrices.',
-    provenanceTag: 'SSC 2024 Shift-2 Key Sourced',
-    questions: buildFullPaperQuestions('cgl-2024-s5', 'SSC CGL 2024 Shift-2 (20-Sep)', 2024)
+    description: 'GovOS practice paper written to the SSC CGL Tier-1 pattern. Its questions are GovOS-authored and recur across papers; it is not an SSC question paper and has no official answer key.',
+    provenanceTag: 'GovOS practice paper',
+    questions: buildFullPaperQuestions('cgl-2024-s5', 'GovOS practice paper 5', 2026)
   },
   {
     id: 'paper-cgl-2023-s1',
-    title: 'SSC CGL 2023 Tier-1 (Shift 1 — 14 Jul 2023)',
+    title: 'Full-length practice paper 6 (Tier-1 pattern)',
     category: 'FULL_SHIFT',
     examTier: 'Tier-1',
-    year: 2023,
-    shiftDate: '14-07-2023 (09:00 AM - 10:00 AM)',
+    year: 2026,
+    shiftDate: 'GovOS practice paper — not an SSC shift',
     totalQuestions: 100,
     totalMarks: 200,
     durationMinutes: 60,
     difficulty: 'ADAPTIVE',
-    description: 'Benchmark opening day shift paper of SSC CGL 2023 with balanced difficulty across all 4 subjects.',
-    provenanceTag: 'SSC 2023 Shift-1 Key Sourced',
-    questions: buildFullPaperQuestions('cgl-2023-s1', 'SSC CGL 2023 Shift-1 (14-Jul)', 2023)
+    description: 'GovOS practice paper written to the SSC CGL Tier-1 pattern. Its questions are GovOS-authored and recur across papers; it is not an SSC question paper and has no official answer key.',
+    provenanceTag: 'GovOS practice paper',
+    questions: buildFullPaperQuestions('cgl-2023-s1', 'GovOS practice paper 6', 2026)
   },
   {
     id: 'paper-cgl-2023-s2',
-    title: 'SSC CGL 2023 Tier-1 (Shift 3 — 18 Jul 2023)',
+    title: 'Full-length practice paper 7 (Tier-1 pattern)',
     category: 'FULL_SHIFT',
     examTier: 'Tier-1',
-    year: 2023,
-    shiftDate: '18-07-2023 (04:00 PM - 05:00 PM)',
+    year: 2026,
+    shiftDate: 'GovOS practice paper — not an SSC shift',
     totalQuestions: 100,
     totalMarks: 200,
     durationMinutes: 60,
     difficulty: 'ADAPTIVE',
-    description: 'Moderate-to-challenging shift paper featuring CI-SI differences, National Income, and Cloze Test analysis.',
-    provenanceTag: 'SSC 2023 Shift-3 Key Sourced',
-    questions: buildFullPaperQuestions('cgl-2023-s2', 'SSC CGL 2023 Shift-3 (18-Jul)', 2023)
+    description: 'GovOS practice paper written to the SSC CGL Tier-1 pattern. Its questions are GovOS-authored and recur across papers; it is not an SSC question paper and has no official answer key.',
+    provenanceTag: 'GovOS practice paper',
+    questions: buildFullPaperQuestions('cgl-2023-s2', 'GovOS practice paper 7', 2026)
   },
   {
     id: 'paper-cgl-2023-s3',
-    title: 'SSC CGL 2023 Tier-1 (Shift 2 — 24 Jul 2023)',
+    title: 'Full-length practice paper 8 (Tier-1 pattern)',
     category: 'FULL_SHIFT',
     examTier: 'Tier-1',
-    year: 2023,
-    shiftDate: '24-07-2023 (12:30 PM - 01:30 PM)',
+    year: 2026,
+    shiftDate: 'GovOS practice paper — not an SSC shift',
     totalQuestions: 100,
     totalMarks: 200,
     durationMinutes: 60,
     difficulty: 'ADAPTIVE',
-    description: 'Official shift paper with Mensuration 3D melting solids, Active-Passive voice, and Dice projections.',
-    provenanceTag: 'SSC 2023 Shift-2 Key Sourced',
-    questions: buildFullPaperQuestions('cgl-2023-s3', 'SSC CGL 2023 Shift-2 (24-Jul)', 2023)
+    description: 'GovOS practice paper written to the SSC CGL Tier-1 pattern. Its questions are GovOS-authored and recur across papers; it is not an SSC question paper and has no official answer key.',
+    provenanceTag: 'GovOS practice paper',
+    questions: buildFullPaperQuestions('cgl-2023-s3', 'GovOS practice paper 8', 2026)
   },
   {
     id: 'paper-cgl-2023-t2',
-    title: 'SSC CGL 2023 Tier-2 Paper-I (Shift 1 — 26 Oct 2023)',
+    title: 'Full-length practice paper 9 (Tier-2 Paper-I pattern)',
     category: 'FULL_SHIFT',
     examTier: 'Tier-2',
-    year: 2023,
-    shiftDate: '26-10-2023 (09:00 AM - 11:15 AM)',
+    year: 2026,
+    shiftDate: 'GovOS practice paper — not an SSC shift',
     totalQuestions: 100,
     totalMarks: 200,
     durationMinutes: 60,
     difficulty: 'HARD',
-    description: 'Full-length Tier-2 real exam paper with advanced multi-concept questions and Computer module diagnostics.',
-    provenanceTag: 'SSC 2023 Tier-2 Sourced Key',
-    questions: buildFullPaperQuestions('cgl-2023-t2', 'SSC CGL 2023 Tier-2 (26-Oct)', 2023)
+    description: 'GovOS practice paper written to the SSC CGL Tier-2 Paper-I pattern. Its questions are GovOS-authored and recur across papers; it is not an SSC question paper and has no official answer key.',
+    provenanceTag: 'GovOS practice paper',
+    questions: buildFullPaperQuestions('cgl-2023-t2', 'GovOS practice paper 9', 2026)
   },
   {
     id: 'paper-cgl-2022-s1',
-    title: 'SSC CGL 2022 Tier-1 (Shift 1 — 01 Dec 2022)',
+    title: 'Full-length practice paper 10 (Tier-1 pattern)',
     category: 'FULL_SHIFT',
     examTier: 'Tier-1',
-    year: 2022,
-    shiftDate: '01-12-2022 (09:00 AM - 10:00 AM)',
+    year: 2026,
+    shiftDate: 'GovOS practice paper — not an SSC shift',
     totalQuestions: 100,
     totalMarks: 200,
     durationMinutes: 60,
     difficulty: 'MEDIUM',
-    description: 'Classic shift paper establishing the new exam pattern with standard 100 Qs / 60 Mins format.',
-    provenanceTag: 'SSC 2022 Shift-1 Key Sourced',
-    questions: buildFullPaperQuestions('cgl-2022-s1', 'SSC CGL 2022 Shift-1 (01-Dec)', 2022)
+    description: 'GovOS practice paper written to the SSC CGL Tier-1 pattern. Its questions are GovOS-authored and recur across papers; it is not an SSC question paper and has no official answer key.',
+    provenanceTag: 'GovOS practice paper',
+    questions: buildFullPaperQuestions('cgl-2022-s1', 'GovOS practice paper 10', 2026)
   }
 ];
 
@@ -21514,33 +21221,33 @@ export const OFFICIAL_10_MOCK_PAPERS: MockPaper[] = [
 export const NEW_DISCOVERED_PAPERS: MockPaper[] = [
   {
     id: 'paper-cgl-2024-s6',
-    title: 'SSC CGL 2024 Tier-1 (Shift 3 — 24 Sep 2024) [Newly Discovered]',
+    title: 'Full-length practice paper 11 (Tier-1 pattern)',
     category: 'FULL_SHIFT',
     examTier: 'Tier-1',
-    year: 2024,
-    shiftDate: '24-09-2024 (04:00 PM - 05:00 PM)',
+    year: 2026,
+    shiftDate: 'GovOS practice paper — not an SSC shift',
     totalQuestions: 100,
     totalMarks: 200,
     durationMinutes: 60,
     difficulty: 'HARD',
-    description: 'Verified latest shift paper featuring 2024 high-complexity coordinate geometry & Article 368 Amendment clauses.',
-    provenanceTag: 'SSC 2024 RTI Verified Key',
-    questions: buildFullPaperQuestions('cgl-2024-s6', 'SSC CGL 2024 Shift-3 (24-Sep)', 2024)
+    description: 'GovOS practice paper written to the SSC CGL Tier-1 pattern. Its questions are GovOS-authored and recur across papers; it is not an SSC question paper and has no official answer key.',
+    provenanceTag: 'GovOS practice paper',
+    questions: buildFullPaperQuestions('cgl-2024-s6', 'GovOS practice paper 11', 2026)
   },
   {
     id: 'paper-cgl-2024-t2',
-    title: 'SSC CGL 2024 Tier-2 Paper-I (Shift 1 — 18 Jan 2025) [Master Key]',
+    title: 'Full-length practice paper 12 (Tier-2 Paper-I pattern)',
     category: 'FULL_SHIFT',
     examTier: 'Tier-2',
-    year: 2025,
-    shiftDate: '18-01-2025 (09:00 AM - 11:15 AM)',
+    year: 2026,
+    shiftDate: 'GovOS practice paper — not an SSC shift',
     totalQuestions: 100,
     totalMarks: 200,
     durationMinutes: 60,
     difficulty: 'HARD',
-    description: 'Freshly sourced Tier-2 master paper with advanced probability, statistics, and high-difficulty reasoning matrices.',
-    provenanceTag: 'SSC 2025 Tier-2 Key Released',
-    questions: buildFullPaperQuestions('cgl-2024-t2', 'SSC CGL 2025 Tier-2 (18-Jan)', 2025)
+    description: 'GovOS practice paper written to the SSC CGL Tier-2 Paper-I pattern. Its questions are GovOS-authored and recur across papers; it is not an SSC question paper and has no official answer key.',
+    provenanceTag: 'GovOS practice paper',
+    questions: buildFullPaperQuestions('cgl-2024-t2', 'GovOS practice paper 12', 2026)
   }
 ];
 
@@ -23003,19 +22710,7 @@ export function generateCustomMockTest(config: CustomTestConfig): MockPaper {
 // ==========================================================================
 // postStudyPathsData.ts
 // ==========================================================================
-const sscGazetteProvenance: DataProvenance = {
-  id: 'prov-ssc-cgl-scheme-sec13',
-  documentTitle: 'SSC CGL 2026 Official Gazette Notification',
-  officialUrl: 'https://ssc.gov.in',
-  pageNumber: 16,
-  clauseNumber: 'Section 13.1 - 13.4',
-  publishedDate: '2026-06-24',
-  verifiedDate: '2026-08-24',
-  verifiedBy: 'GovOS Legal & Directorate Verification Team',
-  taxonomyType: 'FACT',
-  verificationLevel: 'OFFICIALLY_VERIFIED',
-  excerptText: 'The Examination will be conducted in two tiers: Tier-I (Computer Based Examination) and Tier-II (Computer Based Examination). Paper-I is compulsory for all posts. Paper-II will be for candidates who apply for the posts of Junior Statistical Officer (JSO).'
-};
+const sscGazetteProvenance: DataProvenance = sscNotice('prov-ssc-cgl-scheme-sec13', 'Para 13.9.2–13.9.3 — which posts sit which Tier-II papers', 27, '13.9.2 Paper-I is compulsory for all the posts. 13.9.3 Paper-II will be for only those candidates who have applied and shortlisted for the posts of Junior Statistical Officer (JSO)');
 
 // ==========================================
 // 1. REUSABLE CORE STUDY MODULES

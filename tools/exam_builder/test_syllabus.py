@@ -415,6 +415,20 @@ def test_w_a_revision_supersedes_and_keeps_the_old_wording() -> None:
           decision.title, 'Number Systems and Series')
 
 
+def test_w_a_revision_stated_in_words_must_name_the_syllabus() -> None:
+    # The text branch of `revises` once held a literal backspace where \b belonged, so no
+    # document other than a corrigendum by kind could ever be read as revising a syllabus.
+    from .syllabus_merge import revises
+    check('a notice saying its syllabus stands amended revises it',
+          revises(None, 'The syllabus for Paper-II stands amended as below.'), True)
+    check('a revision word alone, with no syllabus named, does not',
+          revises(None, 'The schedule stands revised as below.'), False)
+    check('the syllabus named with no revision word does not',
+          revises(None, 'The syllabus is given in Annexure-II.'), False)
+    check('a syllabus word inside another word is not the word',
+          revises(None, 'The date stands revised; see the topical note.'), False)
+
+
 def test_x_every_published_node_carries_verbatim_evidence() -> None:
     syllabus = read(DEEP)
     nodes = list(syllabus.walk())
@@ -504,6 +518,7 @@ def main() -> int:
                test_u_a_named_subject_with_no_published_topics_has_no_children,
                test_v_two_sources_that_disagree_are_not_resolved,
                test_w_a_revision_supersedes_and_keeps_the_old_wording,
+               test_w_a_revision_stated_in_words_must_name_the_syllabus,
                test_x_every_published_node_carries_verbatim_evidence,
                test_y_a_label_is_the_authority_s_own_word,
                test_z_one_exam_s_syllabus_cannot_reach_another,

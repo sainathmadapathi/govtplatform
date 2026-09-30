@@ -237,3 +237,34 @@ def main() -> int:
 
 if __name__ == '__main__':
     raise SystemExit(main())
+
+
+import unittest as _unittest
+
+
+class TestNotTheRequirement(_unittest.TestCase):
+    """Two passages that name the field's words and state something else."""
+
+    def test_a_fake_degree_clause_is_not_the_qualification(self):
+        text = ('2. ESSENTIAL QUALIFICATIONS: The essential qualification as provided in the Rules is '
+                'that no person shall be allowed to sit in the examination who does not possess a '
+                'degree of Bachelor of Arts, Bachelor of Science, or Bachelor of Commerce or an '
+                'equivalent degree of a recognised University.\n' + 'Other conditions apply. ' * 40 +
+                '\nix) Candidates who have obtained degree or diploma or certificates for various courses '
+                'from any Board/Institution declared fake by the University Grant Commission or not '
+                'recognized by the State Government shall not be eligible for being considered, and no '
+                'representation regarding such an educational qualification will be entertained.')
+        got = extract('qualification', text, source_url='https://authority.example/n.pdf')
+        self.assertIsNotNone(got)
+        self.assertIn('Bachelor of Arts', got.value['text'])
+        self.assertNotIn('fake', got.evidence.span)
+
+    def test_a_total_is_not_the_paper_it_follows(self):
+        text = ('(A) Preliminary Examination. It shall comprise of two papers (Objective type)\n'
+                'Paper-I : General Studies\n: Total 200 Marks\n100 Marks\n100 Marks\n'
+                'Paper - II : Civil Services Aptitude Test\n'
+                'Both the question papers shall be of objective type and each paper shall be of two '
+                'hours duration. The examination pattern is as above.')
+        got = extract('examPattern', text, source_url='https://authority.example/n.pdf')
+        papers = (got.value or {}).get('papers', []) if got else []
+        self.assertFalse(any(p.get('marks') == 200 for p in papers), papers)

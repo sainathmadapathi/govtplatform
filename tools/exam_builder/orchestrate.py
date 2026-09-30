@@ -97,6 +97,8 @@ class OrchestrationResult:
     build: Optional[BuildResult] = None
     gate: Optional[GateReport] = None
     verifications: dict = dc_field(default_factory=dict)     # field name -> Verdict
+    #: What a person decided, field by field (see review.py); empty when no review was given.
+    reviews: dict = dc_field(default_factory=dict)
     isolation_ok: Optional[bool] = None
     fingerprint_before: dict = dc_field(default_factory=dict)
     fingerprint_after: dict = dc_field(default_factory=dict)
@@ -142,7 +144,8 @@ def orchestrate(exam_query: str = '', *, year: str = '', dry_run: bool = True,
                 data_ts: str = P.DATA_TS, typecheck: bool = True, allow_overwrite: bool = False,
                 allow_overlay: bool = False, overlay_store=None,
                 search_fn: Optional[Callable] = None,
-                render: Optional[Callable[[ExamRecord], str]] = None) -> OrchestrationResult:
+                render: Optional[Callable[[ExamRecord], str]] = None,
+                reviews: Optional[list] = None) -> OrchestrationResult:
 
     """Run the universal pipeline for one exam. Universal: the input is a name and a year and
     nothing authority-specific; every branch reads a *state*, never an exam or an authority.
@@ -211,6 +214,22 @@ def orchestrate(exam_query: str = '', *, year: str = '', dry_run: bool = True,
     # into an existing record on a publish-over-existing path; it is not exercised here.
     res.reached = Stage.MERGE_REVISION
     conflicts: list = []
+
+    # --- HUMAN REVIEW ------------------------------------------------------------------------
+    # A person's decisions on named fields (approve a reading, or withhold one), applied after
+    # every machine step and before the gate. The gate is not consulted about them and is not
+    # changed by them; a withheld field is a gap of ours, an approved one keeps its citation.
+    if reviews:
+        from .review import apply_reviews
+        outcome = apply_reviews(rec, reviews)
+        res.reviews = outcome.to_dict()
+        res.notes.extend(f'review: {n}' for n in outcome.notes)
+        if outcome.applied and getattr(br, 'completeness', None) is not None:
+            # The section states must describe the record as it now stands.
+            from .completeness import evaluate_completeness
+            br.completeness = evaluate_completeness(
+                rec, br.sources, reacquisition_attempts=getattr(br, 'reacquisition_attempts', 0),
+                searched_not_found=getattr(br, 'searched_not_found', frozenset()))
 
     # --- SCHEMA / record-level ISOLATION (single authority, id consistency) -----------------
     res.reached = Stage.ISOLATION
@@ -348,6 +367,7 @@ def _write_staging(res: OrchestrationResult) -> str:
             for n, v in res.verifications.items()
         },
         'gate': (res.gate.summary() if res.gate else ''),
+        'reviews': res.reviews,
         'conflicts': [],
         'notes': list(rec.log) if rec else [],
         'orchestratorNotes': res.notes,

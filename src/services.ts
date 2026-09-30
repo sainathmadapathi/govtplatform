@@ -1,5 +1,19 @@
 // GovOS services: age/profile maths, eligibility engine, dual-persistence storage.
 
+import type { ImportantDate } from './types';
+
+/**
+ * A date as the authority stated it. `displayWhen` is the printed form where the notice gave a
+ * month or a range; otherwise the day, and the time only where one was read. A reader writes
+ * "00:00:00" when the notice printed a date and no time, so that value is never shown: it would
+ * state a precision the source does not have.
+ */
+export function statedWhen(d: Pick<ImportantDate, 'dateTimeStr' | 'displayWhen'>, withTime = false): string {
+  if (d.displayWhen) return d.displayWhen;
+  const [day, time = ''] = (d.dateTimeStr || '').split(' ');
+  return withTime && time && !/^00:00(?::00)?$/.test(time) ? `${day} ${time}` : day;
+}
+
 import {
   ResourceLinkCheck,
   ResearchExtractResult,
@@ -74,7 +88,8 @@ export interface DetailedAge {
  * @param dateOfBirth Candidate DOB in YYYY-MM-DD format
  * @param referenceDate Official cutoff date in YYYY-MM-DD format
  */
-export function calculateAge(dateOfBirth: string, referenceDate: string = '2026-08-01'): number {
+/** No default reference date: an exam that states no crucial date has no age to reckon. */
+export function calculateAge(dateOfBirth: string, referenceDate: string): number {
   const dob = new Date(dateOfBirth);
   const reference = new Date(referenceDate);
 
@@ -98,7 +113,7 @@ export function calculateAge(dateOfBirth: string, referenceDate: string = '2026-
 /**
  * Calculates detailed age in years, months, and days as of crucial cutoff date.
  */
-export function calculateDetailedAge(dateOfBirth: string, referenceDate: string = '2026-08-01'): DetailedAge {
+export function calculateDetailedAge(dateOfBirth: string, referenceDate: string): DetailedAge {
   const dob = new Date(dateOfBirth);
   const ref = new Date(referenceDate);
 
@@ -188,7 +203,9 @@ export function getCategoryAgeRelaxation(
   postId?: string
 ): number {
   const entry = findAgeRelaxation(exam, category, postId);
-  if (!entry || entry.status === 'NOT_PUBLISHED') return 0;
+  // Only a VERIFIED figure is added to a limit. A figure the notice qualifies ("up to",
+  // "& length of service") or a rule stated in words is shown, never computed with.
+  if (!entry || entry.status !== 'VERIFIED') return 0;
   return entry.years ?? 0;
 }
 
@@ -219,24 +236,31 @@ export function normalizeDegree(value: string): string {
 export function evaluatePostEligibility(
   post: PostRequirement,
   profile: UserProfile,
-  crucialDate: string = '2026-08-01',
+  /** The exam's own crucial date. '' when the record states none: age is then not evaluated. */
+  crucialDate: string,
   /** The exam whose published rules govern this verdict. Without it there is no relaxation. */
   exam?: Exam | null
 ): PostVerdict {
-  const age = calculateAge(profile.dateOfBirth, crucialDate);
+  const age = crucialDate ? calculateAge(profile.dateOfBirth, crucialDate) : 0;
   const relaxationEntry = findAgeRelaxation(exam, profile.category, post.id);
   const relaxation = getCategoryAgeRelaxation(exam, profile.category, post.id);
   const maxPermissibleAge = post.maxAge + relaxation;
   const userDegreeNorm = normalizeDegree(profile.degree);
   const isBachelor = userDegreeNorm.includes('bachelor') || userDegreeNorm.includes('degree');
 
-  let ageStatus: 'OK' | 'EXCEEDED' | 'UNDERAGE' = 'OK';
+  let ageStatus: 'OK' | 'EXCEEDED' | 'UNDERAGE' | 'UNKNOWN' = 'OK';
   let qualStatus: 'OK' | 'DISQUALIFIED' = 'OK';
   let physicalStatus: 'OK' | 'RESTRICTED' = 'OK';
   const reasons: string[] = [];
 
-  // 1. Age Verification
-  if (age < post.minAge) {
+  // 1. Age Verification. A post with no published upper limit (0), or an exam with no date to
+  // reckon age on, is not evaluated: a limit of zero would declare every candidate over-age.
+  if (!crucialDate || !(post.maxAge > 0)) {
+    ageStatus = 'UNKNOWN';
+    reasons.push(!crucialDate
+      ? `Age not evaluated: the record states no date on which age is reckoned`
+      : `Age not evaluated: the record carries no upper age limit for ${post.postName}`);
+  } else if (age < post.minAge) {
     ageStatus = 'UNDERAGE';
     reasons.push(`Underage: ${age} yrs is below minimum requirement of ${post.minAge} yrs`);
   } else if (age > maxPermissibleAge) {
@@ -269,12 +293,16 @@ export function evaluatePostEligibility(
         reasons.push(`JSO Criteria Satisfied: ${hasMaths ? '60%+ in 12th Maths' : 'Statistics in Degree'} verified`);
       }
     } else if (post.id === 'post-stat-inv') {
-      const hasStatsDegree = profile.statisticsInDegree === true || (profile.branch || '').toLowerCase().includes('stat');
-      if (!hasStatsDegree) {
+      // SSC CGL 2026 notice, Para 8.3.1: a Bachelor degree in any of these subjects.
+      const branch = (profile.branch || '').toLowerCase();
+      const SI_SUBJECTS = ['stat', 'math', 'economic', 'demograph', 'population', 'operation research', 'information technology',
+        'computer', 'data science', 'artificial intelligence'];
+      const hasQualifyingDegree = profile.statisticsInDegree === true || SI_SUBJECTS.some(sub => branch.includes(sub));
+      if (!hasQualifyingDegree) {
         qualStatus = 'DISQUALIFIED';
-        reasons.push(`Statistical Investigator Gr II: Requires Statistics as a subject in all 3 years of Degree`);
+        reasons.push(`Statistical Investigator Gr II: requires a Bachelor degree in Statistics, Mathematics, Economics, Demography, Population Studies, Operation Research, IT, Computer Science/Engineering/Technology/Application, Data Science or AI (Para 8.3.1)`);
       } else {
-        reasons.push(`Statistical Criteria Satisfied: Statistics in all semesters verified`);
+        reasons.push(`Statistical Investigator Gr II: degree subject is among those listed in Para 8.3.1`);
       }
     } else {
       reasons.push(`Essential Qualification: Bachelor's Degree verified`);
@@ -307,13 +335,17 @@ export function evaluatePostEligibility(
     qualStatus,
     physicalStatus,
     reason: reasons.join(' • '),
-    officialClause: post.provenance.clauseNumber || 'Section 3.1 & Annexure-VII'
+    officialClause: post.provenance?.clauseNumber || 'the notice'
   };
 }
 
 export function evaluateEligibility(exam: Exam, profile: UserProfile): EligibilityDiagnostic {
-  const crucialDate = exam.crucialEligibilityDate || '2026-08-01';
-  const detailedAge = calculateDetailedAge(profile.dateOfBirth, crucialDate);
+  // The exam's own date, or none. There is no fallback date: another exam's cut-off date
+  // would compute an age this exam never asked about.
+  const crucialDate = exam.crucialEligibilityDate || '';
+  const detailedAge = crucialDate
+    ? calculateDetailedAge(profile.dateOfBirth, crucialDate)
+    : { years: 0, months: 0, days: 0, formatted: 'not computed' };
   const relaxationEntry = findAgeRelaxation(exam, profile.category);
   const relaxation = getCategoryAgeRelaxation(exam, profile.category);
   const userAge = detailedAge.years;
@@ -322,7 +354,9 @@ export function evaluateEligibility(exam: Exam, profile: UserProfile): Eligibili
   // for every exam in the register, so a candidate looking at a state commission's exam was
   // shown an SSC clause number as the basis of their own verdict.
   const legalClauses: string[] = [
-    `${exam.title}: age is reckoned as on ${crucialDate}`,
+    crucialDate
+      ? `${exam.title}: age is reckoned as on ${crucialDate}`
+      : `${exam.title}: the record states no date on which age is reckoned, so age is not evaluated.`,
     relaxationEntry
       ? `Age relaxation for ${profile.category}: ${relaxationEntry.years !== undefined ? `+${relaxationEntry.years} years` : relaxationEntry.maximumAge !== undefined ? `upper limit ${relaxationEntry.maximumAge} years` : 'stated without a figure'} — ${relaxationEntry.provenance.documentTitle}`
       : `No age relaxation for ${profile.category} is recorded from ${exam.authorityName}'s own documents, so none has been applied.`,
@@ -337,23 +371,35 @@ export function evaluateEligibility(exam: Exam, profile: UserProfile): Eligibili
 
   const eligibleCount = postVerdicts.filter(p => p.eligible).length;
   const totalCount = postVerdicts.length;
+  const unknownCount = postVerdicts.filter(p => p.ageStatus === 'UNKNOWN').length;
+  const evaluableCount = totalCount - unknownCount;
 
-  let status: 'ELIGIBLE' | 'CONDITIONAL' | 'INELIGIBLE' = 'INELIGIBLE';
+  let status: EligibilityDiagnostic['status'] = 'INELIGIBLE';
   let plainEnglishExplanation = '';
 
-  if (eligibleCount === totalCount) {
+  // Zero posts, or no post whose rules the record carries, is not "eligible for all of them":
+  // an empty set satisfies "every post" trivially, and that used to read as ELIGIBLE.
+  if (totalCount === 0 || evaluableCount === 0) {
+    status = 'NOT_EVALUABLE';
+    plainEnglishExplanation = totalCount === 0
+      ? `The ${exam.title} record carries no posts yet, so eligibility cannot be evaluated. Read the notice's own eligibility clauses.`
+      : !crucialDate
+        ? `The ${exam.title} record states no date on which age is reckoned, so eligibility cannot be evaluated.`
+        : `None of the ${totalCount} posts on record carries a published age limit, so eligibility cannot be evaluated.`;
+  } else if (eligibleCount === totalCount) {
     status = 'ELIGIBLE';
-    plainEnglishExplanation = `Congratulations! Based on official SSC CGL 2026 rules, you are fully eligible for ALL ${totalCount} posts (including Group B Gazetted & Non-Gazetted posts) with your calculated age of ${detailedAge.formatted} as on ${crucialDate}.`;
-  } else if (eligibleCount > 0) {
-    status = 'CONDITIONAL';
-    plainEnglishExplanation = `You are eligible for ${eligibleCount} out of ${totalCount} posts. Some posts (like JSO, Statistical Investigator, or 18-27 age bracket posts) have specific age brackets or subject requirements that you do not satisfy.`;
+    plainEnglishExplanation = `On the rules in the ${exam.title} record you meet the age and qualification conditions for all ${totalCount} posts, with your age of ${detailedAge.formatted} as on ${crucialDate}.`;
+  } else if (eligibleCount > 0 || unknownCount > 0) {
+    status = eligibleCount > 0 ? 'CONDITIONAL' : 'NOT_EVALUABLE';
+    plainEnglishExplanation = eligibleCount > 0
+      ? `You meet the conditions for ${eligibleCount} of ${totalCount} posts in the ${exam.title} record.${unknownCount ? ` ${unknownCount} post(s) have no published age limit in the record and were not evaluated.` : ' The others set age limits or subject requirements you do not meet — see each post below.'}`
+      : `You do not meet the published conditions for the ${evaluableCount} post(s) whose rules the record carries; ${unknownCount} other post(s) have no published age limit and were not evaluated.`;
   } else {
     status = 'INELIGIBLE';
-    if (userAge < 18) {
-      plainEnglishExplanation = `You are currently ${userAge} years old as of the crucial cutoff date (${crucialDate}). Minimum age required for SSC CGL is 18 years.`;
-    } else {
-      plainEnglishExplanation = `Your calculated age (${userAge} years as of ${crucialDate}) exceeds the upper age limit for all SSC CGL posts even after applying ${profile.category} category relaxation (+${relaxation} years).`;
-    }
+    const minAge = Math.min(...exam.posts.map(p => p.minAge).filter(a => a > 0));
+    plainEnglishExplanation = Number.isFinite(minAge) && userAge < minAge
+      ? `You are ${userAge} years old as on ${crucialDate}; the youngest minimum age for any ${exam.title} post on record is ${minAge}.`
+      : `Your age (${userAge} years as on ${crucialDate}) or qualification does not meet the published conditions for any ${exam.title} post on record${relaxation ? `, after the ${profile.category} relaxation of +${relaxation} years` : ''}.`;
   }
 
   return {
@@ -1044,12 +1090,12 @@ class StorageService {
               examTitle: exam.title,
               eventType: 'APPLICATION_DEADLINE',
               title: `⏳ 7 Days Left: ${exam.title} Application Deadline`,
-              message: `Only 7 days remaining until online application closes on ${d.dateTimeStr}. Complete your fee payment and submit before the final rush.`,
+              message: `Only 7 days remaining until online application closes on ${statedWhen(d, true)}. Complete your fee payment and submit before the final rush.`,
               channelsDelivered: channels,
               actionType: 'EXAM_DETAIL',
               actionPayload: { section: 4 },
               priority: 'HIGH',
-              createdAt: '2026-09-20 10:00:00',
+              createdAt: new Date(Date.parse(d.dateTimeStr.replace(' ', 'T')) - 7 * 864e5).toISOString().slice(0, 19).replace('T', ' '),
               scheduledDateStr: d.dateTimeStr,
               isRead: false
             });
@@ -1065,7 +1111,7 @@ class StorageService {
               examTitle: exam.title,
               eventType: 'APPLICATION_DEADLINE',
               title: `🚨 Urgent: 3 Days Left for ${exam.title}!`,
-              message: `Application closes in 3 days (${d.dateTimeStr}). Check that your live photograph, running signature, and category certificates are compliant.`,
+              message: `Application closes in 3 days (${statedWhen(d, true)}). Check that your live photograph, running signature, and category certificates are compliant.`,
               channelsDelivered: channels,
               actionType: 'EXAM_DETAIL',
               actionPayload: { section: 4 },
@@ -1086,7 +1132,7 @@ class StorageService {
               examTitle: exam.title,
               eventType: 'APPLICATION_DEADLINE',
               title: `⚠️ 24 Hours Left: Final Call for ${exam.title}`,
-              message: `The application portal closes tomorrow (${d.dateTimeStr})! Confirm payment status and download your application acknowledgment receipt immediately.`,
+              message: `The application portal closes tomorrow (${statedWhen(d, true)})! Confirm payment status and download your application acknowledgment receipt immediately.`,
               channelsDelivered: channels,
               actionType: 'EXAM_DETAIL',
               actionPayload: { section: 4 },
@@ -1112,7 +1158,7 @@ class StorageService {
               actionType: 'EXAM_DETAIL',
               actionPayload: { section: 4 },
               priority: 'CRITICAL',
-              createdAt: '2026-09-27 12:00:00',
+              createdAt: `${d.dateTimeStr.slice(0, 10)} 00:00:00`,
               scheduledDateStr: d.dateTimeStr,
               isRead: false
             });
@@ -1129,7 +1175,7 @@ class StorageService {
             examTitle: exam.title,
             eventType: 'CORRECTION_WINDOW',
             title: `✏️ Correction Window Open: ${exam.title}`,
-            message: `The official application correction facility is active from ${d.dateTimeStr}. Review your uploaded photograph, post preferences, and exam center choices.`,
+            message: `The official application correction facility is active from ${statedWhen(d, true)}. Review your uploaded photograph, post preferences, and exam center choices.`,
             channelsDelivered: channels,
             actionType: 'EXAM_DETAIL',
             actionPayload: { section: 4 },
@@ -1150,7 +1196,7 @@ class StorageService {
             examTitle: exam.title,
             eventType: 'ADMIT_CARD',
             title: `🎟️ Admit Card & City Slip: ${exam.title}`,
-            message: `Tier 1 Exam City Intimation & e-Admit Card released on ${d.dateTimeStr}. Check your examination date, shift time, and exam center address.`,
+            message: `Tier 1 Exam City Intimation & e-Admit Card released on ${statedWhen(d, true)}. Check your examination date, shift time, and exam center address.`,
             channelsDelivered: channels,
             actionType: 'CALENDAR',
             actionPayload: { examCode: exam.code },
@@ -1171,7 +1217,10 @@ class StorageService {
             examTitle: exam.title,
             eventType: 'EXAM_DATE',
             title: `🎯 Exam Day Announcement: ${exam.title}`,
-            message: `The Computer Based Test commences on ${d.dateTimeStr}. Remember to carry your original Photo ID, two passport photos, and printed Admit Card.`,
+            message: d.displayWhen
+              // Printed without a day: say so, and do not name one.
+              ? `${d.label}: ${d.displayWhen}${d.isTentative ? ' (tentative)' : ''}. No exact date has been announced yet; GovOS will show it when ${exam.authorityName} publishes it.`
+              : `The Computer Based Test commences on ${statedWhen(d, true)}. Remember to carry your original Photo ID, two passport photos, and printed Admit Card.`,
             channelsDelivered: channels,
             actionType: 'EXAM_DETAIL',
             actionPayload: { section: 5 },
@@ -1192,7 +1241,7 @@ class StorageService {
             examTitle: exam.title,
             eventType: 'ANSWER_KEY',
             title: `🔑 Tentative Answer Key Released: ${exam.title}`,
-            message: `Response sheet and tentative answer keys are available on ${d.dateTimeStr}. Calculate your score and raise challenges if questions contain errors.`,
+            message: `Response sheet and tentative answer keys are available on ${statedWhen(d, true)}. Calculate your score and raise challenges if questions contain errors.`,
             channelsDelivered: channels,
             actionType: 'EXAM_DETAIL',
             actionPayload: { section: 9 },
@@ -1213,7 +1262,7 @@ class StorageService {
             examTitle: exam.title,
             eventType: 'RESULT',
             title: `🏆 Official Result Declared: ${exam.title}`,
-            message: `Official shortlisted roll numbers and category cut-off marks announced on ${d.dateTimeStr}. Check your merit status for the next stage!`,
+            message: `Official shortlisted roll numbers and category cut-off marks announced on ${statedWhen(d, true)}. Check your merit status for the next stage!`,
             channelsDelivered: channels,
             actionType: 'EXAM_DETAIL',
             actionPayload: { section: 10 },

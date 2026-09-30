@@ -43,6 +43,31 @@ class FetchError(RuntimeError):
     """Raised when a document could not be obtained. Never swallowed into a blank value."""
 
 
+#: Public suffixes under which an Indian authority registers one name and then runs several
+#: hosts on it: a commission's site, its apply portal and its results host are
+#: `websitenew.<body>.gov.in`, `otr.<body>.gov.in`, `results.<body>.gov.in` -- one estate.
+_TWO_LABEL_SUFFIXES = ('gov.in', 'nic.in', 'ac.in', 'co.in', 'org.in', 'net.in', 'res.in', 'edu.in')
+
+
+def estate_of(host: str) -> str:
+    """The registered domain a host belongs to: `otr.tgpsc.gov.in` -> `tgpsc.gov.in`,
+    `www.ibps.in` -> `ibps.in`. Two hosts with one estate are one authority's own sites."""
+    h = (host or '').lower().replace('www.', '').strip('.')
+    labels = h.split('.')
+    if len(labels) >= 3 and '.'.join(labels[-2:]) in _TWO_LABEL_SUFFIXES:
+        return '.'.join(labels[-3:])
+    return '.'.join(labels[-2:]) if len(labels) >= 2 else h
+
+
+def same_estate(host: str, own_host: str) -> bool:
+    """Is `host` the authority's own site, or a sibling host on its registered domain?"""
+    h = (host or '').lower().replace('www.', '')
+    own = (own_host or '').lower().replace('www.', '')
+    if not h or not own:
+        return False
+    return h == own or h.endswith('.' + own) or estate_of(h) == estate_of(own)
+
+
 @dataclass
 class Document:
     """One document from an authority, with enough identity to cite it."""
@@ -142,6 +167,34 @@ def fetch(url: str, *, use_cache: bool = True, max_age_hours: int = 24) -> bytes
     raise FetchError(f'{url} could not be fetched after {_RETRIES} attempts: {last!r}')
 
 
+def pdf_text(text: str) -> str:
+    """A page's text with the printed hyphen restored where the extractor marked one.
+
+    pdfium returns U+FFFE (a noncharacter) for a hyphen that ended a printed line, and a
+    soft hyphen as U+00AD; "De-industrialization" came through as "De\\ufffeindustrialization"
+    and reached a candidate's syllabus that way. The table reader already restored these."""
+    return text.replace('\ufffe', '-').replace('\u00ad', '-')
+
+
+_LATIN_WORD = re.compile(r'[A-Za-z]{3,}')
+_VOWEL = re.compile(r'[aeiouyAEIOUY]')
+
+
+def unreadable_text(text: str) -> bool:
+    """True for a page whose Latin letters form no words.
+
+    Among mixed- and lower-case words of three letters or more (all-capital acronyms such as
+    OBC or UR are left out), real English almost always has a vowel: across 1,245 pages of
+    official notices the highest vowel-less share was 0.154. Legacy-font Hindi and garbage OCR
+    layers ran from 0.22 to 0.43. A page is judged only when it has 40 such words, so a short
+    page or a page in its own script (Devanagari, Telugu) is never touched.
+    """
+    words = [w for w in _LATIN_WORD.findall(text or '') if not w.isupper()]
+    if len(words) < 40:
+        return False
+    return sum(1 for w in words if not _VOWEL.search(w)) / len(words) > 0.2
+
+
 def load_pdf(url: str, **kw) -> Document:
     """A PDF as per-page text. A scanned PDF is reported as scanned, never as empty."""
     import pypdfium2 as pdfium
@@ -153,9 +206,14 @@ def load_pdf(url: str, **kw) -> Document:
     pages = []
     for i in range(len(doc)):
         try:
-            pages.append(doc[i].get_textpage().get_text_range())
+            pages.append(pdf_text(doc[i].get_textpage().get_text_range()))
         except Exception:
             pages.append('')
+    # A text layer can exist and still not be text: a notice typed in a legacy (non-Unicode)
+    # Hindi font, or a bad OCR layer, extracts as Latin letters that form no words ("qrqr ftdr
+    # sH"). Readers took such pages at face value and "read" FAQ questions out of them. A page
+    # like that is read as having no text, the same as a scan.
+    pages = ['' if unreadable_text(p) else p for p in pages]
     # A notice with almost no extractable text is a scan. Saying so is the honest outcome:
     # the alternative is an extractor reporting "field not found" for a document it simply
     # could not read, which reads as "the authority did not publish it".
@@ -199,19 +257,49 @@ def html_rows(document: Document) -> list[list[str]]:
     return rows
 
 
+#: An anchor as authorities actually write it: `href="…"`, `href='…'`, `href ="…"` (a space
+#: before the equals sign), attributes in any order. The strict `href="` form missed a
+#: commission's whole notification list, whose anchors were written `href ="preview/…"`.
+_ANCHOR = re.compile(r'<a\b([^>]*)>(.*?)</a>', re.S | re.I)
+_HREF = re.compile(r'''\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))''', re.I)
+
+
 def html_links(document: Document, pattern: str = r'.*') -> list[tuple[str, str]]:
-    """(text, absolute url) for links whose text or href matches, in page order."""
+    """(text, absolute url) for links whose text or href matches, in page order.
+
+    A relative href is resolved against the page it was found on, the way a browser does:
+    "preview/abc" on /notifications is /preview/abc. Skipping those dropped every document
+    a site linked without a leading slash.
+    """
     html = getattr(document, 'html', '')
     rx = re.compile(pattern, re.I)
-    base = re.match(r'(https?://[^/]+)', document.url)
-    root = base.group(1) if base else ''
     out = []
-    for m in re.finditer(r'<a\b[^>]*href="([^"]+)"[^>]*>(.*?)</a>', html, re.S | re.I):
-        href, label = m.group(1), ' '.join(unescape(_TAG.sub(' ', m.group(2))).split())
-        if href.startswith('/'):
-            href = root + href
-        elif not href.startswith('http'):
+    for m in _ANCHOR.finditer(html):
+        hm = _HREF.search(m.group(1))
+        if not hm:
+            continue
+        href = unescape(next(g for g in hm.groups() if g is not None)).strip()
+        label = ' '.join(unescape(_TAG.sub(' ', m.group(2))).split())
+        if not href or href.startswith(('#', 'javascript:', 'mailto:', 'tel:')):
+            continue
+        if not href.startswith('http'):
+            href = urllib.parse.urljoin(document.url, href)
+        if not href.startswith('http'):
             continue
         if rx.search(label) or rx.search(href):
             out.append((label, href.replace(' ', '%20')))
     return out
+
+
+def load_document(url: str, **kw) -> Document:
+    """A document as whatever it *is*, not whatever its address says.
+
+    Authorities serve PDFs behind viewer routes with no extension ("/preview/<token>"), and
+    reading one of those as HTML yields no text at all -- which then reads as "the document
+    names no examination". The bytes are fetched once and the PDF magic decides; `load_pdf`
+    re-reads them from the cache.
+    """
+    data = fetch(url, **kw)
+    if data[:5] == b'%PDF-':
+        return load_pdf(url, **kw)
+    return load_html(url, **kw)

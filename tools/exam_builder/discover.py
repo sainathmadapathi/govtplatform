@@ -28,7 +28,8 @@ from enum import Enum
 from urllib.parse import urlparse
 
 from ..exam_authoring.sources import Document, FetchError, html_links, load_html
-from .resolve import ResolvedExam, distinctive_words, exam_aliases  # noqa: F401
+from ..exam_authoring.sources import same_estate as on_estate
+from .resolve import ResolvedExam, alias_in, distinctive_words, exam_aliases  # noqa: F401
 
 
 class DocKind(str, Enum):
@@ -51,14 +52,26 @@ class DocKind(str, Enum):
 #: one. "Answer key" must beat "key", and "corrigendum to the notification" must be read as
 #: a corrigendum rather than as the notification it amends.
 _KIND_PATTERNS: list[tuple[DocKind, str]] = [
-    (DocKind.CORRIGENDUM, r'corrigend|addend|amendment|errata|revised\s+(notice|notif)'),
+    # A notice that re-opens an application window or extends a date amends the notice's own
+    # schedule, whatever it is titled: "Reopening of Online Applications Form Window",
+    # "Extension of last date". Read as the notice or as the application portal, its later
+    # dates could never outrank the dates it changed.
+    (DocKind.CORRIGENDUM, r'corrigend|addend|amendment|errata|revised\s+(notice|notif)|'
+                          r're-?open(?:ing|ed|s)?(?![a-z])|'
+                          r'extension\s+of\s+(?:the\s+)?(?:last\s+date|closing\s+date|dates?|'
+                          r'(?:application\s+)?window)|(?:last|closing)\s+date\s+(?:is\s+)?extended'),
     (DocKind.ANSWER_KEY, r'answer\s*-?\s*key|final\s+key|tentative\s+key|response\s+sheet'),
     (DocKind.ADMIT_CARD, r'admit\s*-?\s*card|hall\s*ticket|call\s*letter|e-?admit|intimation\s+slip'),
     (DocKind.CUTOFF, r'cut\s*-?\s*off|qualifying\s+marks|minimum\s+marks'),
     (DocKind.QUESTION_PAPER, r'question\s*paper|previous\s*year|\bpyq\b|\bqp[-_ ]|papers?\s+held'),
-    (DocKind.RESULT, r'\bresults?\b|merit\s+list|short\s*-?\s*list|written\s+result|recommend'),
+    # A selection notification and a call to certificate verification are stages of the
+    # result: the first declares who is selected, the second who is shortlisted for it.
+    (DocKind.RESULT, r'\bresults?\b|merit\s+list|short\s*-?\s*list|written\s+result|recommend|'
+                     r'(?:provisional|final)\s+selection|selection\s+(?:list|notification)|'
+                     r'verification\s+of\s+certificates|certificates?\s+verification'),
     (DocKind.SYLLABUS, r'syllabus|scheme\s+of\s+exam|course\s+content'),
-    (DocKind.EXAM_PATTERN, r'exam(ination)?\s+pattern|scheme\s+and\s+syllabus|marking\s+scheme'),
+    (DocKind.EXAM_PATTERN, r'exam(ination)?\s+pattern|pattern\s+of\s+exam\w*|scheme\s+and\s+syllabus|'
+                           r'marking\s+scheme'),
     (DocKind.CALENDAR, r'calendar|exam\s+schedule|date\s*sheet|time\s*table|programme'),
     (DocKind.APPLICATION_PORTAL, r'apply\s*online|online\s+application|registration|one\s*time\s*reg|\botr\b'),
     (DocKind.NOTIFICATION, r'notification|notice|advertisement|\badvt\b|employment\s+news|recruitment\s+for'),
@@ -125,8 +138,8 @@ class SourceSet:
 
 
 def gate(link_text: str, link_url: str, *, exam_words: list[str],
-         page_is_exam_specific: bool, sibling_exam_words: list[str] | None = None
-         ) -> tuple[Relevance, list[str], list[str]]:
+         page_is_exam_specific: bool, sibling_exam_words: list[str] | None = None,
+         designation=None) -> tuple[Relevance, list[str], list[str]]:
     """Decide whether a link belongs to this exam. The whole isolation rule lives here.
 
     `sibling_exam_words` are the distinctive words of *other* exams known to live on the same
@@ -141,8 +154,21 @@ def gate(link_text: str, link_url: str, *, exam_words: list[str],
     parsed = urlparse(link_url or '')
     path_only = f'{parsed.path} {parsed.query}' if parsed.scheme else (link_url or '')
     blob = f'{link_text} {path_only}'.lower()
-    matched = [w for w in exam_words if w in blob]
-    foreign = [w for w in (sibling_exam_words or []) if w in blob and w not in exam_words]
+    if designation is not None:
+        # Designation mode (identity.designation_mode): the exam has no distinctive word, so
+        # its words would match every link the authority publishes. A link is admitted by the
+        # designation its own text names, refused when it names a different one, and otherwise
+        # admitted only by inheritance from an exam-specific page. Admission is not identity:
+        # the document is judged on its own content afterwards.
+        from .designation import link_admission
+        named = link_admission(link_text, designation)
+        if named is True:
+            return Relevance.DIRECT, ['designation'], []
+        if named is False:
+            return Relevance.REJECTED, [], ['another designation']
+        return (Relevance.INHERITED if page_is_exam_specific else Relevance.REJECTED), [], []
+    matched = [w for w in exam_words if alias_in(w, blob)]
+    foreign = [w for w in (sibling_exam_words or []) if alias_in(w, blob) and w not in exam_words]
 
     if foreign and not matched:
         return Relevance.REJECTED, matched, foreign
@@ -153,20 +179,38 @@ def gate(link_text: str, link_url: str, *, exam_words: list[str],
     return Relevance.REJECTED, matched, foreign
 
 
-def page_is_specific_to(title: str, url: str, exam_words: list[str], *, need: int = 2) -> bool:
+def page_is_specific_to(title: str, url: str, exam_words: list[str], *, need: int = 2,
+                        designation=None) -> bool:
     """Is this page about one exam, rather than the authority's whole site?
 
     A page must carry at least `need` of the exam's distinctive words before anything is
     allowed to inherit relevance from it. One word is not enough: "Combined" appears in
     Combined Graduate Level, Combined Higher Secondary and Combined Defence Services alike.
     """
+    if designation is not None:
+        from .designation import link_admission
+        return link_admission(title, designation) is True
     # Path only, for the same reason as `gate`: the host carries the authority's own token
     # and would make every page on the site look exam-specific.
     parsed = urlparse(url or '')
     path_only = parsed.path if parsed.scheme else (url or '')
     blob = f'{title} {path_only}'.lower()
-    hits = sum(1 for w in exam_words if w in blob)
+    hits = sum(1 for w in exam_words if alias_in(w, blob))
     return hits >= min(need, len(exam_words))
+
+
+def _designation_for(resolved: ResolvedExam):
+    """(designation to admit links by, whether designation mode is on) -- the same switch
+    identity uses, so discovery and identity always agree on the mode."""
+    from .designation import query_designation
+    from .identity import ExamIdentity, designation_mode
+    probe = ExamIdentity(exam_id='', query=resolved.query, official_name=resolved.official_name,
+                         year=resolved.year, authority_name=resolved.authority.name,
+                         authority_domain=resolved.authority.domain)
+    if not designation_mode(probe):
+        return None, False
+    return query_designation(resolved.query, resolved.official_name, probe.authority_aliases,
+                             resolved.authority.name), True
 
 
 def discover(resolved: ResolvedExam, *, exam_id: str, max_pages: int = 6,
@@ -174,6 +218,10 @@ def discover(resolved: ResolvedExam, *, exam_id: str, max_pages: int = 6,
     """Crawl outward from the resolver's seeds, keeping only what belongs to this exam."""
     words = exam_aliases(resolved.query, resolved.official_name)
     host = (urlparse(resolved.authority.domain).hostname or '').replace('www.', '')
+    want, on = _designation_for(resolved)
+    if on:
+        out.log.append('designation mode: the exam has no distinctive word; links are admitted by '
+                       f'the designation they name ({want.text if want else "none readable"})')
     out = SourceSet(exam_id=exam_id, authority_domain=resolved.authority.domain)
     seen_urls: set[str] = set()
 
@@ -187,7 +235,7 @@ def discover(resolved: ResolvedExam, *, exam_id: str, max_pages: int = 6,
         path = urlparse(url).path
         rel, matched, foreign = gate(path, url, exam_words=words,
                                      page_is_exam_specific=False,
-                                     sibling_exam_words=sibling_exam_words)
+                                     sibling_exam_words=sibling_exam_words, designation=want)
         if rel is Relevance.REJECTED:
             out.rejected.append(DiscoveredDoc(url=url, kind=classify_kind(path, url),
                                               title=path.rsplit('/', 1)[-1],
@@ -200,45 +248,63 @@ def discover(resolved: ResolvedExam, *, exam_id: str, max_pages: int = 6,
 
     # Visit the most exam-specific seeds first, so inheritance starts from a real exam page.
     seeds = sorted((u for u in dict.fromkeys(resolved.seed_urls) if u not in seen_urls),
-                   key=lambda u: -sum(1 for w in words if w in urlparse(u).path.lower()))
+                   key=lambda u: -sum(1 for w in words if alias_in(w, urlparse(u).path.lower())))
 
-    for seed in seeds[:max_pages]:
-        if seed in seen_urls:
-            continue
-        seen_urls.add(seed)
+    # Site-wide listing pages met while crawling (a "Notifications" or "Results" link on the
+    # authority's own estate). They are pages, not documents, so they are never kept as
+    # sources on the strength of their link text; they are crawled so that the documents
+    # they list can earn their place through the gate.
+    listing_candidates: list[str] = []
+    _LISTING_KINDS = (DocKind.NOTIFICATION, DocKind.CORRIGENDUM, DocKind.SYLLABUS, DocKind.EXAM_PATTERN,
+                      DocKind.QUESTION_PAPER, DocKind.ANSWER_KEY, DocKind.ADMIT_CARD, DocKind.RESULT,
+                      DocKind.CUTOFF, DocKind.CALENDAR)
+
+    def crawl(page_url: str) -> None:
+        seen_urls.add(page_url)
         try:
-            page = load_html(seed)
+            page = load_html(page_url)
         except FetchError as exc:
             # A page we could not fetch is a page we did not look at.
             out.infrastructure_failed = True
-            out.infrastructure_note = f'could not read {seed}: {exc}'
+            out.infrastructure_note = f'could not read {page_url}: {exc}'
             out.log.append(out.infrastructure_note)
-            continue
+            return
 
         title = _title_of(page)
-        specific = page_is_specific_to(title, seed, words)
-        out.log.append(f'{"exam-specific" if specific else "general"} page: {seed}')
+        specific = page_is_specific_to(title, page_url, words, designation=want)
+        out.log.append(f'{"exam-specific" if specific else "general"} page: {page_url}')
+        # What kind of listing this page is ("/notifications", "Results"), so that a link on
+        # it whose own text is only a recruitment's name ("02/2024 - GROUP-I SERVICES") is
+        # filed under the kind of list it sits in rather than dropped as unclassifiable.
+        page_kind = classify_kind(title, page_url)
 
         if specific:
             out.docs.append(DiscoveredDoc(
-                url=seed, kind=DocKind.EXAM_PAGE, title=title,
+                url=page_url, kind=DocKind.EXAM_PAGE, title=title,
                 relevance=Relevance.DIRECT,
-                matched=[w for w in words if w in f'{title} {seed}'.lower()]))
+                matched=[w for w in words if alias_in(w, f'{title} {page_url}'.lower())]))
 
         for text, href in html_links(page, r'.*'):
             if not href or href in seen_urls:
                 continue
             link_host = (urlparse(href).hostname or '').replace('www.', '')
-            # Stay on the authority's own estate. A link off-site may be the application
+            # Stay on the authority's own estate (its registered domain, so a sibling host
+            # such as its apply portal counts). A link off-site may be the application
             # portal, which is allowed only where the authority itself points at it.
-            same_estate = link_host == host or link_host.endswith('.' + host)
+            same_estate = on_estate(link_host, host)
             rel, matched, foreign = gate(text, href, exam_words=words,
                                          page_is_exam_specific=specific,
-                                         sibling_exam_words=sibling_exam_words)
+                                         sibling_exam_words=sibling_exam_words, designation=want)
             kind = classify_kind(text, href)
+            if kind is DocKind.UNKNOWN and rel is Relevance.DIRECT and page_kind not in (
+                    DocKind.UNKNOWN, DocKind.EXAM_PAGE):
+                kind = page_kind
             doc = DiscoveredDoc(url=href, kind=kind, title=text.strip()[:160],
-                                relevance=rel, matched=matched, found_on=seed,
+                                relevance=rel, matched=matched, found_on=page_url,
                                 foreign_words=foreign)
+            if (same_estate and kind in _LISTING_KINDS and not doc.is_pdf
+                    and not foreign and href not in listing_candidates):
+                listing_candidates.append(href)
             if kind is DocKind.UNKNOWN and rel is not Relevance.DIRECT:
                 continue                       # navigation chrome, not a document
             if not same_estate and kind is not DocKind.APPLICATION_PORTAL:
@@ -247,6 +313,20 @@ def discover(resolved: ResolvedExam, *, exam_id: str, max_pages: int = 6,
                 out.rejected.append(doc)
                 continue
             out.docs.append(doc)
+
+    for seed in seeds[:max_pages]:
+        if seed in seen_urls:
+            continue
+        crawl(seed)
+
+    # One level further: an authority's *listing* pages. A site's notification list, results
+    # list or key list is reached from its navigation, is one page for every exam it runs,
+    # and is where the exam's own documents are actually linked. Crawling only the seeds
+    # never reached them. The pages are on the authority's estate and of a known kind; every
+    # link found on them still passes the same gate, and a listing page is never
+    # exam-specific, so nothing inherits from it -- only a link naming this exam is kept.
+    for page_url in [u for u in listing_candidates if u not in seen_urls][:max_pages]:
+        crawl(page_url)
 
     _search_for_missing_kinds(out, resolved, words, host, sibling_exam_words)
     _dedupe(out)
@@ -277,8 +357,12 @@ def _search_for_missing_kinds(out: SourceSet, resolved: ResolvedExam, words: lis
     enters by a softer route than a crawled link would.
     """
     from .search import SearchUnavailable, search as web_search
+    designation, _ = _designation_for(resolved)
 
-    have = {d.kind for d in out.docs}
+    # A kind is "had" only by a document that names this exam. An inherited navigation link
+    # ("Notifications for All Recruitments") is a list of every exam's documents, and letting
+    # it satisfy the kind suppressed the one search that would have found this exam's own.
+    have = {d.kind for d in out.docs if d.relevance is Relevance.DIRECT or d.is_pdf}
     for kind, phrase in _KIND_QUERIES:
         if kind in have:
             continue
@@ -292,12 +376,13 @@ def _search_for_missing_kinds(out: SourceSet, resolved: ResolvedExam, words: lis
             return
         for h in hits:
             hit_host = (h.host or '').replace('www.', '')
-            if not (hit_host == host or hit_host.endswith('.' + host)):
+            if not on_estate(hit_host, host):
                 continue                       # someone else writing about this exam
             path = urlparse(h.url).path
             rel, matched, foreign = gate(f'{h.title} {path}', h.url, exam_words=words,
                                          page_is_exam_specific=False,
-                                         sibling_exam_words=sibling_exam_words)
+                                         sibling_exam_words=sibling_exam_words,
+                                         designation=designation)
             found_kind = classify_kind(f'{h.title} {path}', h.url)
             doc = DiscoveredDoc(url=h.url, kind=found_kind, title=h.title[:160],
                                 relevance=rel, matched=matched,

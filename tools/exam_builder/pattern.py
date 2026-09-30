@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import re
 
-from .evidence import Evidence, EvidenceStatus
+from .evidence import Evidence, EvidenceStatus, normalise_ws
 from .schema import (CategoryMinimum, DurationVariant, ExamPattern, Fact, NegativeMarking,
                      PatternLevel, PatternNode, QualifyingRule, SourceDocument,
                      SourceEvidence, Status)
@@ -129,6 +129,7 @@ _CLAUSE_PROSE = re.compile(r'^\s*(?:\d+(?:\.\d+)+|\([ivxlmcd]+\)|\([a-z]\))\s+\S
 _ROW_LABEL = re.compile(
     r"""^\s*(?:
         \(?(?P<num>\d{1,3})\s*[.)]?\s+(?=\S)                      # 1 English Language
+        (?!(?:hours?|hrs?|minutes?|mins?)\b)                     # but "(2 hours" is a time
       | (?P<letter>[A-H])\s*[.):]\s*(?=\S|$)                      # A. General Intelligence
       | (?P<label>section|paper|part|phase|session|tier|stage|module|group)
         \s*[-–—:\s]?\s*(?P<ord>[IVXL]{1,4}|\d{1,2}|[A-H])\b
@@ -243,11 +244,25 @@ def read_negative_marking(passage: str) -> NegativeMarking | None:
     return NegativeMarking(as_printed=_sentence_around(text, _NEG_CUE.search(text).start()))
 
 
+#: Where a sentence ends: a full stop or semicolon with space (or the text's end) after it. A
+#: stop inside "13.8.2" or "0.50" ends nothing, and after "i.e."/"Rs." the sentence goes on.
+_SENTENCE_END = re.compile(r'(?<!\bi\.e)(?<!\be\.g)(?<!\bRs)(?<!\bNo)(?<!\bviz)[.;](?=\s|$)')
+#: A clause number opening the sentence is the clause's, not part of what it says; nor is the
+#: page furniture a flattened PDF puts in front of it ("Page 29 of 132 13.9.8 There will be").
+#: Case-sensitive on purpose: "0.25 marks will be deducted" opens on its figure, not a clause.
+_LEADING_CLAUSE = re.compile(r'^(?:[Pp]age\s+\d+\s+of\s+\d+\s+)*\(?\d+(?:\.\d+)*[.)]?\s+(?=[A-Z(])|'
+                             r'^(?:[Pp]age\s+\d+\s+of\s+\d+\s+)+')
+
+
 def _sentence_around(text: str, index: int, width: int = 220) -> str:
-    start = max((text.rfind(c, 0, index) for c in '.;'), default=-1)
-    end = text.find('.', index)
-    out = text[start + 1: end + 1 if end != -1 else min(len(text), index + width)]
-    return out.strip()[:300]
+    """The sentence containing `index`. "13.8.2 There will be negative marking of 0.50 marks
+    for each wrong answer." used to come back as "2 There will be negative marking of 0.":
+    every full stop was an end, the ones inside a clause number and a decimal included."""
+    before = [m.end() for m in _SENTENCE_END.finditer(text, 0, index)]
+    start = before[-1] if before else 0
+    after = _SENTENCE_END.search(text, index)
+    end = after.end() if after else min(len(text), index + width)
+    return _LEADING_CLAUSE.sub('', text[start:end].strip())[:300]
 
 
 # ================================================================== qualifying
@@ -605,7 +620,11 @@ def _read_table_rows(cur: _Cursor, doc: SourceDocument, columns: list, start: in
 
         name = _row_name(raw, label)
         node_level, node_label = (level, level_label)
-        by_label = _node_level(columns, label)
+        # A row that names its own level ("Session-I" in a table whose column says Paper) is
+        # that level: the label is the row's word for itself, the column only the table's.
+        own = next(((lv, word.title()) for word, lv in _LEVEL_WORDS
+                    if re.match(rf'\s*{word}\b', label or '', re.I)), None)
+        by_label = own or _node_level(columns, label)
         if by_label[0] is not level and label:
             node_level, node_label = by_label
         node = PatternNode(
@@ -874,10 +893,20 @@ def _stage_regions(cur: _Cursor) -> list[tuple[int, str, str]]:
         line = raw.strip()
         if not _is_heading(line):
             continue
+        if _continues_previous(cur.lines, index):
+            # The tail of a heading the column wrapped: "... AND VALUATION OF" /
+            # "DESCRIPTIVE TYPE EXAMINATION FOR WRITTEN (MAINS):". The line names a stage
+            # only as the object of the heading above it, which is about something else.
+            continue
         labelled = _STAGE_LABELLED.search(line)
         named = _STAGE_NAMED.search(line)
         scheme = _SCHEME_HEADING.search(line)
         if not (labelled or named or scheme):
+            continue
+        if labelled and _ROW_LEADING_ORDINAL.match(line[:labelled.start()]):
+            # "II Paper-I:" is a flattened table row -- the first column's value, then the
+            # next column's own label -- not a heading: a heading punctuates its enumerator
+            # ("II.", "(ii)", "13.9"). Read as one, it cut a stage's table in two.
             continue
         # A heading names its subject at the start; prose mentions it anywhere. Without
         # this, "list of Examination centres for the Online Preliminary Examination" was
@@ -900,6 +929,235 @@ def _stage_regions(cur: _Cursor) -> list[tuple[int, str, str]]:
         found.append((index, line, 'labelled' if labelled else
                       ('named' if named else 'scheme')))
     return found
+
+
+#: A bare Roman ordinal, unpunctuated, before a line's stage label: a row's first cell.
+_ROW_LEADING_ORDINAL = re.compile(r'^\s*[IVXL]{1,5}\s+$')
+
+_DANGLING = re.compile(
+    r'\b(?:for|of|in|to|and|or|the|a|an|with|by|from|as|on|at|regarding|relating|under)\s*$',
+    re.I)
+
+
+def _continues_previous(lines: list[str], index: int) -> bool:
+    """Is this line the continuation of the line above it?
+
+    A heading or a sentence that the column wrapped leaves its first line hanging on a
+    function word; the next line finishes it and is not a heading of its own.
+    """
+    if re.match(r'^\s*(?:\(?[ivxlc]{1,5}\)|\(?[a-h]\)|[A-H][.)]|\d+(?:\.\d+)*[.)]?)\s+\S', lines[index], re.I):
+        # A list or clause marker starts a new item, whatever the line above ended with:
+        # "(ii) Stage-II: ... Papers); and" / "(iii) Stage-III: Personality Test/Interview".
+        return False
+    for back in range(index - 1, max(-1, index - 3), -1):
+        prev = lines[back].strip()
+        if prev:
+            return bool(_DANGLING.search(prev))
+    return False
+
+
+def _under_other_heading(lines: list[str], index: int, reach: int = 5) -> bool:
+    """Does this line sit directly under a heading over some other list?
+
+    "SYLLABUS" / "GENERAL STUDIES AND MENTAL ABILITY" / "(PRELIMINARY TEST)" names a stage,
+    but as the part of the syllabus that follows, not as a stage of the scheme.
+    """
+    for back in range(index - 1, max(-1, index - 1 - reach), -1):
+        prev = lines[back].strip()
+        if not prev or not _is_heading(prev) or not _is_marked(prev):
+            continue
+        if _NOT_THE_SCHEME.search(prev) and not _SCHEME_HEADING.search(prev):
+            return True
+    return False
+
+
+#: A row heading inside a scheme table that names a stage of its own: "Preliminary Test",
+#: "Written Examination (Main)". Words for a phase of a selection, not any exam's names.
+_ROW_STAGE = re.compile(
+    r'^\s*(?P<name>preliminary|prelims?|main|mains|written|screening|final|objective|'
+    r'descriptive)\b[\s\-–—]*(?:exam\w*|test)\b', re.I)
+
+
+def _stages_named_in(cur: _Cursor, start: int, end: int) -> set[str]:
+    """The distinct stages that row headings inside [start, end) name."""
+    names: set[str] = set()
+    for raw in cur.lines[start:end]:
+        line = raw.strip()
+        m = _ROW_STAGE.match(line)
+        if m and len(line.split()) <= 8 and not _IS_STATEMENT.search(line):
+            names.add(m.group('name').lower().rstrip('s'))
+    return names
+
+
+_FIGURES = ('questions', 'marks', 'duration_minutes', 'marks_per_question')
+
+
+def _hold_figures(node: PatternNode, why: str) -> None:
+    """Every figure on this node and under it becomes NEEDS_REVIEW, with the reason."""
+    for n in node.walk():
+        for name in _FIGURES:
+            fact = getattr(n, name)
+            if fact.has_value and fact.status is Status.VERIFIED:
+                fact.status = Status.NEEDS_REVIEW
+                fact.note = why
+
+
+#: The tail of a scheme row: its duration and its marks, as two bare figures. "2 ½ 150",
+#: "3 150". The fraction is the document's own glyph.
+_ROW_TAIL = re.compile(r'(?:^|\s)(?P<a>\d{1,3}(?:\s*(?:½|1/2)|\.\d)?)\s+(?P<b>\d{1,4})\s*$')
+_TOTAL_MARKS = re.compile(r'^\s*total\s*(?:marks)?\s*[:\-–—]?\s*(?P<n>\d{2,5})\s*$', re.I)
+
+
+def _hours_to_minutes(token: str) -> int | None:
+    t = token.replace(' ', '')
+    half = t.endswith('½') or t.endswith('1/2')
+    t = t.replace('½', '').replace('1/2', '')
+    try:
+        hours = float(t)
+    except ValueError:
+        return None
+    return int(round((hours + (0.5 if half else 0)) * 60))
+
+
+def _segmented_stages(cur: _Cursor, doc: SourceDocument, text: str, span: tuple[int, int], *,
+                      prefix: str) -> list[PatternNode]:
+    """Stages read from one scheme table whose own row headings name the stages.
+
+    The header must declare a duration column and a marks column, in an order; each row of a
+    stage ends on the line whose tail is those two figures in that order; the stage's own
+    total is the table's "TOTAL MARKS" line where it follows the stage's rows. Every row of
+    every stage must read this way -- if any stage yields no row, nothing is returned and the
+    heading stays a heading under review.
+    """
+    from .tables import ColumnKind as _CK, _columns_in
+    start, end = span
+    lines = [l.rstrip() for l in cur.lines[start:end]]
+    heads = [i for i, l in enumerate(lines)
+             if _ROW_STAGE.match(l.strip()) and len(l.split()) <= 8 and not _IS_STATEMENT.search(l)]
+    if len(heads) < 2:
+        return []
+    header_text = ' '.join(l.strip() for l in lines[:heads[0]])
+    columns = [c.kind for c in _columns_in(header_text)]
+    if _CK.DURATION not in columns or _CK.MARKS not in columns:
+        return []
+    duration_first = columns.index(_CK.DURATION) < columns.index(_CK.MARKS)
+    in_hours = bool(re.search(r'\bhours?\b|\bhrs?\b', header_text, re.I))
+    if not in_hours:
+        return []
+
+    stages: list[PatternNode] = []
+    for n, head in enumerate(heads):
+        stop = heads[n + 1] if n + 1 < len(heads) else len(lines)
+        name = normalise_ws(lines[head])
+        stage_id = f'{prefix}-{_slug(name)}'
+        stage = PatternNode(id=stage_id, level=PatternLevel.STAGE, level_label='Stage',
+                            name=name, order=n + 1)
+        ev = _evidence(name, doc, text, reading=f'a stage named in the scheme table: {name}')
+        if ev is None:
+            return []
+        stage.evidence, stage.status = [ev], Status.VERIFIED
+        buffer: list[str] = []
+        for raw in lines[head + 1:stop]:
+            line = raw.strip()
+            if not line:
+                continue
+            total = _TOTAL_MARKS.match(line)
+            if total and stage.children:
+                stage.marks = _fact(float(total.group('n')), line, doc, text,
+                                    reading=f'total marks printed for {name}')
+                break
+            buffer.append(line)
+            tail = _ROW_TAIL.search(line)
+            if not tail:
+                continue
+            row = normalise_ws(' '.join(buffer))
+            buffer = []
+            a, b = tail.group('a'), tail.group('b')
+            duration_token, marks_token = (a, b) if duration_first else (b, a)
+            minutes = _hours_to_minutes(duration_token)
+            body = row[:len(row) - len(tail.group(0).strip())].strip()
+            paper_name = re.split(r'\s(?:It\s+will\b|1\.\s)', body, maxsplit=1)[0].strip(' .:-–—')
+            if minutes is None or not paper_name:
+                return []
+            questions = re.search(r'\b(\d{1,4})\s+questions\b', body, re.I)
+            if questions:
+                paper_name = paper_name[:paper_name.lower().rfind(questions.group(0).lower())].strip() or paper_name
+            code_m = _STAGE_LABELLED.search(paper_name)
+            paper = PatternNode(id=f'{stage_id}-{_slug(paper_name)}', level=PatternLevel.PAPER,
+                                level_label='Paper', name=paper_name,
+                                code=code_m.group(0).strip() if code_m and code_m.group('label').lower() == 'paper' else '',
+                                order=len(stage.children) + 1)
+            pev = _evidence(row, doc, text, reading=f'a row of the scheme table: {paper_name}')
+            if pev is None:
+                return []
+            paper.evidence, paper.status = [pev], Status.VERIFIED
+            paper.marks = Fact.verified(float(marks_token), pev)
+            paper.duration_minutes = Fact.verified(minutes, pev)
+            if questions:
+                paper.questions = Fact.verified(int(questions.group(1)), pev)
+            qtype = re.search(r'\((objective|descriptive|conventional)\s+type\)', body, re.I)
+            if qtype:
+                paper.question_type = Fact.verified(qtype.group(1).title(), pev)
+            if re.search(r'\bqualifying\b', paper_name, re.I):
+                paper.qualifying = Fact.verified(
+                    QualifyingRule(as_printed=paper_name, is_qualifying_only=True), pev)
+            stage.children.append(paper)
+        if not stage.children:
+            return []
+        stages.append(stage)
+    return stages
+
+
+def _classify_scheme_containers(pattern: ExamPattern, cur: _Cursor,
+                                containers: dict[str, tuple[int, int]],
+                                doc: SourceDocument | None = None, text: str = '') -> None:
+    """A scheme heading whose table names several stages is a heading over them.
+
+    "SCHEME OF EXAMINATION" over a table with a "Preliminary Test" row block and a
+    "Written Examination (Main)" row block is the heading of two stages, not one. Which rows
+    belong to which stage is not decided here -- a flattened table does not say -- so the
+    node is kept as a HEADING with everything read under it, and every figure in it is held
+    for review: a total across two stages is nobody's total.
+    """
+    replaced: list = []
+    for node in pattern.stages:
+        span = containers.get(node.id)
+        if span is None:
+            replaced.append(node)
+            continue
+        named = _stages_named_in(cur, *span)
+        if len(named) < 2:
+            replaced.append(node)
+            continue
+        # The table names its stages in its own rows. Where every stage's rows can be read
+        # from the table's declared columns, the heading gives way to those stages.
+        stages = _segmented_stages(cur, doc, text, span, prefix=node.id)
+        if stages:
+            for i, st in enumerate(stages, start=len(replaced) + 1):
+                st.order = i
+            replaced.extend(stages)
+            continue
+        node.level = PatternLevel.HEADING
+        node.level_label = 'Heading'
+        node.status = Status.NEEDS_REVIEW
+        _hold_figures(node, 'read from a table that spans several stages '
+                            f'({", ".join(sorted(named))}); not attributed to one stage')
+        replaced.append(node)
+    pattern.stages[:] = replaced
+
+
+def _hold_figures_of_unsure_rows(pattern: ExamPattern) -> None:
+    """A row the reader could not delimit is NEEDS_REVIEW, and so are the figures on it.
+
+    A merged cell ("2 ½ 150") or a year inside a topic list ("1757 to 1947") reads as marks
+    once the row boundaries are lost; the row was already held, and its figures must not be
+    published as verified on their own.
+    """
+    for stage in pattern.stages:
+        for node in stage.walk():
+            if node.status is Status.NEEDS_REVIEW:
+                _hold_figures(node, 'the row this figure was read from could not be delimited '
+                                    'with confidence')
 
 
 def _stage_name(line: str) -> tuple[str, str, str]:
@@ -977,6 +1235,7 @@ def extract_pattern(doc: SourceDocument, text: str, *, exam_id: str,
     bounds = [r[0] for r in regions] + [len(cur.lines)]
     seen: set[str] = set()
     consumed = 0
+    containers: dict[str, tuple[int, int]] = {}
     for position, (line_no, line, _kind) in enumerate(regions):
         end = bounds[position + 1]
         if end - line_no < 2 or line_no < consumed:
@@ -1021,14 +1280,31 @@ def extract_pattern(doc: SourceDocument, text: str, *, exam_id: str,
 
         if not _keeps(stage, line):
             continue
+        measurable = any(getattr(stage, f).has_value for f in
+                         ('questions', 'marks', 'duration_minutes', 'negative_marking', 'qualifying'))
+        if not children and not measurable and _under_other_heading(cur.lines, line_no):
+            # A stage named as a part of the syllabus (or of a list, or of the fee), with
+            # nothing of the scheme read under it: a heading of that list, not a stage.
+            continue
         pattern.stages.append(stage)
         seen.add(stage_id)
+        if _kind == 'scheme':
+            containers[stage_id] = (line_no + 1, end)
         if children:
             consumed = end
 
     _fold_restated_stages(pattern)
     _apply_merit_statements(pattern, doc, text)
     _push_down_stage_rules(pattern)
+    _classify_scheme_containers(pattern, cur, containers, doc, text)
+    if containers:
+        # A scheme table read as several stages makes new stage and paper nodes, and the
+        # authority's merit statements ("the marks secured in the Preliminary Test will not
+        # be counted for Ranking") must reach them too, not only the heading they replaced.
+        _apply_merit_statements(pattern, doc, text, only_unset=True)
+        _push_down_stage_rules(pattern)
+    _apply_language_statements(pattern, doc, text)
+    _hold_figures_of_unsure_rows(pattern)
     return pattern
 
 
@@ -1073,12 +1349,14 @@ def _distance_in(flat: str, node, where: int) -> int:
     return 10 ** 9
 
 
-def _apply_merit_statements(pattern: ExamPattern, doc: SourceDocument, text: str) -> None:
+def _apply_merit_statements(pattern: ExamPattern, doc: SourceDocument, text: str, *,
+                            only_unset: bool = False) -> None:
     """Attach each merit statement to the node it names, by that node's own words.
 
     A sentence that names no node is left alone. It is real and it is about something, but
     guessing which paper it governs would be inventing the most consequential field in the
-    pattern -- whether the marks count.
+    pattern -- whether the marks count. With `only_unset`, a node that already carries a
+    qualifying reading keeps it: a second pass fills gaps, it does not re-read.
     """
     flat = ' '.join((text or '').split())
     nodes = list(pattern.walk())
@@ -1136,6 +1414,8 @@ def _apply_merit_statements(pattern: ExamPattern, doc: SourceDocument, text: str
                 best, score, distance = node, hits, gap
         if best is None or score < 1:
             continue
+        if only_unset and best.qualifying.has_value:
+            continue
         existing = best.qualifying.value if best.qualifying.has_value else None
         rule = QualifyingRule(
             as_printed=sentence[:300], is_qualifying_only=True, counts_towards_merit=False,
@@ -1145,6 +1425,45 @@ def _apply_merit_statements(pattern: ExamPattern, doc: SourceDocument, text: str
         best.qualifying = _fact(rule, sentence, doc, text,
                                 reading=f'{best.name}: the authority states its marks are '
                                         f'not counted towards the merit')
+
+
+#: A sentence stating the language a stage is conducted in, wherever the document puts it.
+_LANGUAGE_SENTENCE = re.compile(
+    r'[^.\n]{0,160}?\b(?:will|shall)\s+be\s+(?:set|conducted|held)\s+(?:only\s+)?in\s+'
+    r'([^.;\n]{4,80})\.', re.I)
+
+
+def _apply_language_statements(pattern: ExamPattern, doc: SourceDocument, text: str) -> None:
+    """Attach "The Main Examination will be conducted in English, Telugu & Urdu" to that stage.
+
+    An authority states the medium where it explains the stage, often pages from the scheme
+    table, so the stage's own region never sees it. Only a sentence naming exactly one stage,
+    by that stage's distinguishing words, is attached; only a stage with no medium of its own
+    receives it; and the words must name languages, as the in-region reading requires.
+    """
+    flat = ' '.join((text or '').split())
+    for match in _LANGUAGE_SENTENCE.finditer(flat):
+        sentence = match.group(0).strip()
+        languages = match.group(1).strip()
+        if (any(ch.isdigit() for ch in languages) or not _LANGUAGE_CELL.search(languages)
+                or len(languages) > 70
+                # "conducted in OMR based offline mode / CBRT" is how, not in what language.
+                or _MODE.search(languages) or re.search(r'\bmode\b', languages, re.I)):
+            continue
+        lowered = set(re.split(r'[^a-z]+', sentence.lower()))
+        named = []
+        for stage in pattern.stages:
+            marks = {w for w in re.split(r'[^a-z]+', (stage.name or '').lower())
+                     if len(w) > 3 and w not in _GENERIC_NODE_WORDS}
+            if marks and marks <= lowered:
+                named.append(stage)
+        if len(named) != 1 or named[0].languages.has_value:
+            continue
+        parts = [p.strip(' .') for p in re.split(r'\s*(?:and|&|/|,)\s*', languages)
+                 if 2 < len(p.strip()) < 40]
+        if parts:
+            named[0].languages = _fact(parts, sentence, doc, text,
+                                       reading=f'{named[0].name}: conducted in {languages}')
 
 
 def _fold_restated_stages(pattern: ExamPattern) -> None:
@@ -1286,9 +1605,9 @@ def _restates(outer: str, inner: str) -> bool:
 #: and carry a maximum of 400 marks" declares paper, questions, marks and subject between
 #: them, and was read as a five-column header.
 _SENTENCE_VERB = re.compile(
-    r"""(?:will|shall|may|must|should|would|can|could|is|are|was|were|be|been|being|
+    r"""\b(?:will|shall|may|must|should|would|can|could|is|are|was|were|be|been|being|
         has|have|had|consist|consists|include|includes|comprise|comprises|carry|carries|
-        means|denotes|conducted)""", re.I | re.X)
+        means|denotes|conducted)\b""", re.I | re.X)
 
 
 def _extend_past_rows(cur: _Cursor, regions: list, position: int,
@@ -1481,7 +1800,7 @@ def may_supply_pattern(text: str, target) -> tuple[bool, str]:
       * MISMATCH -- it belongs to another exam. Nothing is taken from it, whatever it says
         about patterns.
     """
-    from .identity import IdentityVerdict, verify
+    from .identity import IdentityVerdict, designation_mode, verify
 
     check = verify(text, target)
     if check.verdict is IdentityVerdict.MATCH:
@@ -1489,6 +1808,10 @@ def may_supply_pattern(text: str, target) -> tuple[bool, str]:
     if check.verdict is IdentityVerdict.MISMATCH:
         return False, ('refused: ' + (check.reasons[0] if check.reasons
                                       else 'the document names another exam'))
+    if designation_mode(target):
+        # An exam named only by a designation of common words: AMBIGUOUS supplies nothing.
+        return False, ('not published: ' + (check.reasons[0] if check.reasons
+                                            else 'the document is not identified as this exam\'s'))
     opening = verify(text[:_TITLE_BLOCK], target)
     if opening.verdict is IdentityVerdict.MATCH or opening.matched:
         return True, (f'the document names this exam in its own title block '

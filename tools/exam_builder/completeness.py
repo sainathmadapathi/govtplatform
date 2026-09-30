@@ -466,6 +466,10 @@ def _classify_field_status(rec: ExamRecord, field_name: str,
             return CompletenessState.INFRASTRUCTURE_FAILURE, 'Pipeline could not finish search'
         return CompletenessState.NOT_YET_PUBLISHED, f.note or 'Not published by authority'
     if st_val == 'NOT_EXTRACTED':
+        # A reading a person withheld (review.py) is held back, not failed and not absent:
+        # the section stays under review, and the note says who held it and why.
+        if 'withheld by reviewer' in (f.note or ''):
+            return CompletenessState.NEEDS_REVIEW, f.note
         if infra_failed:
             return CompletenessState.INFRASTRUCTURE_FAILURE, 'Infrastructure failure during build'
         if unreadable_docs:

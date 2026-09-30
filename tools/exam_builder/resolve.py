@@ -108,6 +108,41 @@ def id_words(name: str) -> list[str]:
             if w and w not in _GENERIC and not w.isdigit()]
 
 
+#: "Group-I", "Paper-II", "Grade B", "Class 1": a word whose *ordinal* is the whole difference
+#: between sibling exams. The ordinal is one or two characters, which `distinctive_words`
+#: rightly drops for prose matching -- and so "Group-I" and "Group-II" became the same alias
+#: ("group") and one exam's documents were another's. The compound is kept as one alias and
+#: matched on its own boundary (see `alias_in`), so it names exactly one of them.
+#: The head and the ordinal must be *separated* (space or dash): "tgpsc" is not "tgps c".
+_ORDINAL_SEP = r'(?:\s+|\s*[-–—]\s*)'
+_ORDINAL_COMPOUND_RX = re.compile(
+    r'\b([a-z]{3,})' + _ORDINAL_SEP + r'((?:i{1,3}|iv|v|vi{0,3}|ix|x)|[a-d]|\d{1,2})\b(?![-–—]?[a-z0-9])')
+
+
+def ordinal_compounds(name: str) -> list[str]:
+    """The "word ordinal" pairs in a name, normalised to "word ordinal"."""
+    low = (name or '').lower()
+    out = []
+    for m in _ORDINAL_COMPOUND_RX.finditer(low):
+        head, ordinal = m.group(1), m.group(2)
+        if head in _GENERIC:
+            continue
+        out.append(f'{head} {ordinal}')
+    return list(dict.fromkeys(out))
+
+
+def alias_in(alias: str, text: str) -> bool:
+    """Does `alias` occur in `text`? A plain alias is a substring; a compound alias ("group i")
+    must match on its own boundary with any separator, so "group i" is found in "Group-I" and
+    "GROUP – I" but never inside "Group-II"."""
+    if ' ' not in alias:
+        return alias in text
+    head, ordinal = alias.split(' ', 1)
+    rx = re.compile(r'\b' + re.escape(head) + _ORDINAL_SEP + re.escape(ordinal)
+                    + r'\b(?![-–—]?[a-z0-9])')
+    return bool(rx.search(text))
+
+
 def exam_aliases(query: str, official_name: str = '') -> list[str]:
     """Every token that legitimately names this exam, expansion and acronym alike.
 
@@ -118,9 +153,16 @@ def exam_aliases(query: str, official_name: str = '') -> list[str]:
 
     Acronyms are built from the name the authority prints, never from a table of exams — a
     hand-kept table is the thing this engine exists to avoid.
+
+    A word carrying an ordinal ("Group-I") enters as the compound "group i" and its bare
+    head is dropped: "group" alone would name every Group-N exam the authority runs.
     """
     words = list(dict.fromkeys(distinctive_words(query) + distinctive_words(official_name)))
     aliases = set(words)
+    compounds = ordinal_compounds(query) + ordinal_compounds(official_name)
+    for c in compounds:
+        aliases.discard(c.split(' ', 1)[0])
+        aliases.add(c)
 
     for source in (official_name, query):
         tokens = distinctive_words(source)
@@ -143,6 +185,24 @@ def exam_aliases(query: str, official_name: str = '') -> list[str]:
 def _year_in(text: str) -> str:
     m = re.search(r'\b(20\d{2})\b', text or '')
     return m.group(1) if m else ''
+
+
+def _label_of(host: str) -> str:
+    """The first label of a host: the authority's own short form (ssc, upsc, tgpsc)."""
+    return (host or '').replace('www.', '').split('.')[0].lower()
+
+
+def _authority_words(authority_name: str, host: str) -> set[str]:
+    """Every word by which a page may name the *authority* rather than an exam: the words of
+    its printed name, the initials of that name (a commission prints "TSPSC" beside its full
+    name), and every label of its host ("websitenew", "tgpsc")."""
+    words = set(distinctive_words(authority_name))
+    initials = ''.join(w[0] for w in re.findall(r'[a-z]+', (authority_name or '').lower())
+                       if w not in ('of', 'and', 'the', 'for'))
+    if len(initials) >= 2:
+        words.add(initials)
+    words |= {lbl for lbl in (host or '').lower().replace('www.', '').split('.') if lbl}
+    return words
 
 
 def _authority_name_from(host: str, hits: list[Hit]) -> str:
@@ -376,7 +436,15 @@ def resolve(exam_query: str, *, year: str = '', min_confidence: float = 0.34) ->
         # A title must name this exam. Aliases, not the query's raw words: the query says
         # "CGL" while the authority's own title spells out "Combined Graduate Level", and
         # checking only the query's words rejected the very title we want.
-        if not any(a in t.lower() for a in aliases):
+        if not any(alias_in(a, t.lower()) for a in aliases):
+            return False
+        # ... and it must name the *exam*, not merely the authority. A commission's home
+        # page is titled with the commission's own name and acronym, which the query also
+        # carries ("TGPSC Group-I" -> "Telangana Public Service Commission - TGPSC"), and
+        # taking that as the exam's official name made every page on the site "about" the
+        # exam. A title whose distinctive words are all the authority's is the authority's.
+        authority_words = _authority_words(named[top_host].value, top_host)
+        if not (set(distinctive_words(t)) - authority_words):
             return False
         return bool(re.search(r'[A-Za-z]{3}', t))
 

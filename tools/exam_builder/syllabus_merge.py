@@ -81,7 +81,7 @@ def revises(document, text_span: str = '') -> bool:
     span = text_span or ''
     if not _REVISION_WORDS.search(span):
         return False
-    return bool(re.search(r'(?:syllab\w+|curricul\w+|topics?|papers?)', span, re.I))
+    return bool(re.search(r'\b(?:syllab\w+|curricul\w+|topics?|papers?)\b', span, re.I))
 
 
 class NodeDecision:
