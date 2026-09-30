@@ -245,7 +245,7 @@ def extract_stages(doc: SourceDocument, text: str) -> list[ApplicationStage]:
     """
     out: list[ApplicationStage] = []
     for candidate in discover_stages(text):
-        ev = _evidence(candidate.body[:900], doc, text,
+        ev = _evidence(candidate.body, doc, text,
                        reading=f'{candidate.structure.value.lower()}: {candidate.title}',
                        section='application procedure')
         if ev is None:
@@ -259,7 +259,7 @@ def extract_stages(doc: SourceDocument, text: str) -> list[ApplicationStage]:
             id=f'stage-{candidate.order}-{_slug(candidate.title)}',
             title=candidate.title,
             order=candidate.order,
-            description=normalise_ws(candidate.body)[:900],
+            description=normalise_ws(candidate.body),
             evidence=[ev],
             status=Status.VERIFIED if labelled else Status.NEEDS_REVIEW)
         if not labelled:

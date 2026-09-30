@@ -288,6 +288,98 @@ def record_date_revisions(rec: ExamRecord, sources=None, loaded: dict | None = N
     return len(entries)
 
 
+def _establish_designation(target: ExamIdentity, sources: SourceSet, loaded: dict,
+                           rec: ExamRecord, provider=None) -> ExamIdentity:
+    """Designation mode only: the canonical designation, from the authority's own notification.
+
+    Only documents classified as the recruitment NOTIFICATION, on the authority's own estate,
+    are offered -- a result, scorecard, admit card, handout or listing can never establish
+    what the recruitment is. The local model, when enabled, locates the designation and the
+    components the notice declares; designation.validate_extraction accepts only strings
+    printed in the notice. With no unique canonical designation, the target carries none and
+    every document stays AMBIGUOUS.
+    """
+    from dataclasses import replace
+    from .designation import establish_canonical, query_designation
+    from .verification.client import get_provider
+    from .verification.designation_llm import extract_designation
+
+    want = query_designation(target.query, target.official_name, target.authority_aliases,
+                             target.authority_name)
+    if want is None:
+        rec.note('designation mode: the exam\'s name gives no designation to look for; '
+                 'no document can be identified as its own')
+        return target
+    own_host = (urlparse(target.authority_domain).hostname or '')
+    notifications = []
+    for doc in sources.docs:
+        document = loaded.get(doc.url)
+        if doc.kind is not DocKind.NOTIFICATION or document is None:
+            continue
+        if not same_estate(urlparse(doc.url).hostname or '', own_host):
+            rec.note(f'designation mode: {doc.url} is not on the authority\'s own site and '
+                     f'cannot establish the recruitment\'s designation')
+            continue
+        text = document.all_text() if hasattr(document, 'all_text') else ''
+        if text.strip():
+            notifications.append((doc.url, text))
+    provider = provider or get_provider()
+    enabled = provider.is_enabled()
+    canonical, notes = establish_canonical(
+        want, target.year, notifications, authority_name=target.authority_name,
+        extractor=lambda block: extract_designation(block, provider), llm_enabled=enabled)
+    for n in notes:
+        rec.note(f'designation mode: {n}')
+    if canonical is None:
+        rec.note(f'designation mode: no canonical designation for {want.text!r} '
+                 f'({target.year}); every document stays AMBIGUOUS')
+        return target
+    rec.note(f'designation mode: canonical designation {canonical.text!r} for {canonical.year}, '
+             f'read from {canonical.source_url} ({canonical.basis}); qualifiers '
+             f'{sorted(canonical.qualifiers)}, declared components {sorted(canonical.components)}')
+    return replace(target, designation=canonical)
+
+
+def _identify(text: str, target: ExamIdentity, *, source_url: str = '', document_title: str = '',
+              provider=None) -> IdentityCheck:
+    """The identity verdict every loop uses. In alias mode it is identity.verify, unchanged.
+
+    In designation mode, a deterministic MATCH is put to the local model when one is enabled:
+    it may *withhold* the MATCH (the document is about something else), never create one, and
+    an answer whose evidence is not printed in the document -- or no answer -- withholds too.
+    """
+    check = verify_identity(text, target, source_url=source_url, document_title=document_title)
+    if (not target.designation_mode or target.designation is None
+            or check.verdict is not IdentityVerdict.MATCH):
+        return check
+    from .designation import TITLE_BLOCK_CHARS
+    from .verification.client import get_provider
+    from .verification.designation_llm import confirm_same_recruitment, validate_confirmation
+    provider = provider or get_provider()
+    if not provider.is_enabled():
+        check.reasons.append('designation judged deterministically; no local model enabled')
+        return check
+    canon = target.designation
+    raw, infra, detail = confirm_same_recruitment(
+        canon.text, canon.year, sorted(canon.components),
+        normalise_ws(text)[:TITLE_BLOCK_CHARS], provider)
+    if infra != 'OK':
+        return IdentityCheck(IdentityVerdict.AMBIGUOUS, evidence=check.evidence, matched=check.matched,
+                             reasons=[f'the local model could not confirm the designation match '
+                                      f'({infra}: {detail}); withheld'])
+    same, span, reason = validate_confirmation(raw, text)
+    if same is None:
+        return IdentityCheck(IdentityVerdict.AMBIGUOUS, evidence=check.evidence, matched=check.matched,
+                             reasons=[f'the local model\'s confirmation was unusable ({reason}); withheld'])
+    if not same:
+        return IdentityCheck(IdentityVerdict.AMBIGUOUS, evidence=check.evidence, matched=check.matched,
+                             competing=check.competing,
+                             reasons=[f'the local model reads this document as a different '
+                                      f'recruitment ({reason}; evidence: {span[:160]!r}); withheld'])
+    check.reasons.append(f'confirmed by the local model: {span[:160]!r}')
+    return check
+
+
 def _listing_entry(document, target: ExamIdentity):
     """The part of a many-recruitment listing page that names this exam, or None.
 
@@ -745,6 +837,217 @@ def _dispatch_domain_extraction(
         got = _vet_posts(got, rec, loaded)
     if cf.name == 'fee':
         got = _type_fee_components(got, loaded, rec, resolved)
+    if cf.name == 'dates':
+        return _vet_dates(got, loaded, rec, cycle=getattr(resolved, 'year', '') or '')
+    got = _vet_attribution(cf.name, got, loaded, rec)
+    return _vet_completeness(cf.name, got, loaded, rec)
+
+
+def _vet_completeness(field_name: str, got: Field, loaded: dict, rec: ExamRecord,
+                      provider=None) -> Field:
+    """A quoted unit must be whole: the qualification, each application step, each exam-day rule
+    and each official clause, as the document printed it.
+
+    Readers end every unit at its semantic boundary (units.py), never at a character count. This
+    is the test after them, for every reader of these fields: a unit that stops inside a word or
+    inside a sentence the document continues is held for review with its evidence -- the field is
+    NEEDS_REVIEW, which the gate refuses to publish -- and nothing is added to it. Where the
+    deterministic test passes and a local model is enabled, the model is asked only whether each
+    quotation is whole; any other answer, or no answer, holds the field. The model supplies no text.
+    """
+    from . import units as U
+    if (field_name not in U.UNIT_FIELDS or got is None or got.status is not RecordStatus.FOUND
+            or not got.usable or got.citation is None):
+        return got
+    document = loaded.get(got.citation.url)
+    text = document.all_text() if document is not None and hasattr(document, 'all_text') else ''
+    if not text.strip():
+        return got
+    units = U.units_of(field_name, got.value)
+    if not units:
+        return got
+
+    def held(reason: str) -> Field:
+        rec.note(f'{field_name}: completeness withheld -- {reason[:220]}')
+        return Field.needs_review(field_name, got.value,
+                                  f'read, but a quoted unit is not whole: {reason} Held for review '
+                                  f'with its evidence; not published, and nothing was added to it',
+                                  got.citation)
+
+    cut = [(label, U.check_value(quoted, text)) for label, quoted in units]
+    cut = [(label, c) for label, c in cut if c.cut]
+    if cut:
+        return held('; '.join(f'{label}: {c.reason}' for label, c in cut[:3])
+                    + (f' (and {len(cut) - 3} more)' if len(cut) > 3 else '') + '.')
+
+    from .verification.client import get_provider
+    provider = provider or get_provider()
+    if not provider.is_enabled():
+        return got
+    from .verification.completeness_llm import classify, validate
+    flat = normalise_ws(text)
+    for label, quoted in units:
+        q = normalise_ws(quoted)
+        at = flat.find(q)
+        # The context is the unit and what surrounds it, so the model can see whether the
+        # document continues it; where the reader cleaned the words, the reader's own span is
+        # shown with no surroundings and the model judges it alone.
+        context = flat[max(0, at - 400):at + len(q) + 400] if at >= 0 else q
+        raw, infra, detail = classify(field_name, quoted, context, provider)
+        if infra != 'OK':
+            return held(f'{label}: the local model could not check completeness ({infra}: {detail}).')
+        ok, why = validate(raw)
+        if not ok:
+            return held(f'{label}: {why}.')
+    rec.note(f'{field_name}: the local model confirms {len(units)} quoted unit(s) whole')
+    return got
+
+
+def _vet_dates(got: Field, loaded: dict, rec: ExamRecord, *, cycle: str = '',
+               provider=None) -> Field:
+    """A date publishes only with an event role its own evidence establishes.
+
+    Each date is its own fact. Deterministically (attribution.check_dates): a date that is
+    provably not an event of this recruitment -- not a calendar date, another cycle's, cited
+    rather than scheduled, in a footnote, inside a clause of rule text -- is set aside; a date
+    whose evidence names no event, is stated for a different event, or rivals another live date
+    for one single event is held for review. With a local model enabled, every date that stands
+    is put to it: it may withhold, and it may give a role-less date its role only when its
+    verbatim evidence contains the date and a cue for that event. It never writes a date.
+    """
+    from . import attribution as ATT
+    if got is None or got.status is not RecordStatus.FOUND or not isinstance(got.value, list):
+        return got
+
+    def source_of(item: dict) -> str:
+        url = (item.get('provenance') or {}).get('officialUrl') or (got.citation.url if got.citation else '')
+        doc = loaded.get(url) or (loaded.get(got.citation.url) if got.citation else None)
+        return doc.all_text() if doc is not None and hasattr(doc, 'all_text') else ''
+
+    texts = {id(i): source_of(i) for i in got.value}
+    v = ATT.check_dates(got.value, ' '.join(dict.fromkeys(texts.values())), cycle)
+    held = list(v.unresolved) + list(v.conflicts)
+    kept = list(v.kept)
+
+    from .verification.client import get_provider
+    provider = provider or get_provider()
+    if provider.is_enabled():
+        from .verification.attribution_llm import classify_date, validate_date
+
+        def context(item):
+            flat = normalise_ws(texts[id(item)])
+            label, stated = ATT._date_evidence(item)
+            at = flat.find(stated[:60]) if stated else -1
+            return flat[max(0, at - 600):at + len(stated) + 400] if at >= 0 else flat[:1200]
+
+        confirmed = []
+        for item in kept:
+            raw, infra, detail = classify_date(item, context(item), provider)
+            if infra != 'OK':
+                held.append((item, f'the local model could not check this date ({infra}: {detail})'))
+                continue
+            ok, why = validate_date(item, raw, texts[id(item)],
+                                    need_role=lambda r, it=item: ATT.model_role_fits(it, r))
+            (confirmed.append(item) if ok else held.append((item, why)))
+        still = []
+        for item, why in held:
+            if 'rival' in why or 'two different live dates' in why or 'could not check' in why:
+                still.append((item, why))
+                continue
+            raw, infra, detail = classify_date(item, context(item), provider)
+            if infra == 'OK':
+                ok, why2 = ATT.resolve_with_model_reply(item, raw, texts[id(item)])
+                if ok:
+                    confirmed.append(item)
+                    rec.note(f'dates: {item.get("dateTimeStr", "")[:10]} {why2}')
+                    continue
+                why = f'{why}; {why2}'
+            still.append((item, why))
+        kept, held = confirmed, still
+
+    for item, why in v.dropped:
+        rec.note(f'dates: set aside {item.get("dateTimeStr", "")[:10]} '
+                 f'({(item.get("label") or "")[:40]!r}) -- {why}')
+    note = got.note or ''
+    if v.dropped:
+        note = '; '.join(filter(None, [note, f'{len(v.dropped)} date(s) that are not events of this '
+                                             f'recruitment were set aside']))
+    if held:
+        for item, why in held:
+            rec.note(f'dates: held {item.get("dateTimeStr", "")[:10]} '
+                     f'({(item.get("label") or "")[:40]!r}) -- {why}')
+        reasons = '; '.join(f'{(i.get("label") or "")[:30]!r} {i.get("dateTimeStr", "")[:10]}: {w}'
+                            for i, w in held[:4])
+        return Field.needs_review('dates', kept + [i for i, _ in held],
+                                  f'read, but {len(held)} date(s) are not attributed to an event: '
+                                  f'{reasons}. Held for review with their evidence; not published',
+                                  got.citation)
+    if not kept:
+        return Field.needs_review('dates', [], 'every date read was set aside as not an event of '
+                                  'this recruitment; nothing is published', got.citation)
+    if not v.dropped and kept == got.value:
+        return got
+    return Field(name='dates', status=got.status, value=kept, citation=got.citation, note=note)
+
+
+def _vet_attribution(field_name: str, got: Field, loaded: dict, rec: ExamRecord,
+                     provider=None) -> Field:
+    """Identity MATCH is not attribution: does the evidence a reading cites state *this* fact?
+
+    Every reader's output for the fields a candidate acts on is put to the same deterministic
+    test of role and scope (attribution.py), then -- only when a local model is enabled -- to
+    the model, which may classify the evidence's role and withhold, never supply. A failed
+    reading is held as NEEDS_REVIEW with its evidence and the reason, which the publication
+    gate refuses to publish until a person decides; an exemption group read from a
+    neighbouring clause is set aside, as `_vet_posts` sets aside document names.
+    """
+    from . import attribution as ATT
+    if (field_name not in ATT.FIELDS or got is None or got.status is not RecordStatus.FOUND
+            or not got.usable or got.citation is None):
+        return got
+    document = loaded.get(got.citation.url)
+    text = document.all_text() if document is not None and hasattr(document, 'all_text') else ''
+    if not text.strip():
+        return got
+    excerpt = got.citation.excerpt or ''
+    verdict = ATT.check(field_name, got.value, excerpt, text)
+    if verdict is None:
+        return got
+
+    def held(reason: str) -> Field:
+        rec.note(f'{field_name}: attribution withheld -- {reason[:220]}')
+        return Field.needs_review(field_name, got.value,
+                                  f'read, but not attributed: {reason} Held for review with its '
+                                  f'evidence; not published', got.citation)
+
+    if verdict.out_of_scope:
+        value = ATT.without_groups(field_name, got.value, verdict.out_of_scope)
+        rec.note(f'{field_name}: set aside exemption group(s) {verdict.out_of_scope} -- '
+                 f'{"; ".join(verdict.reasons)[:200]}')
+        if field_name == 'feeExemptions' and not value:
+            return held('; '.join(verdict.reasons))
+        got = Field(name=field_name, status=got.status, value=value, citation=got.citation,
+                    note='; '.join(filter(None, [got.note, 'exemption group(s) not named in any '
+                                          'clause granting the exemption were set aside: '
+                                          + ', '.join(verdict.out_of_scope)])))
+    elif not verdict.ok:
+        return held('; '.join(verdict.reasons))
+
+    from .verification.client import get_provider
+    provider = provider or get_provider()
+    if not provider.is_enabled():
+        return got
+    from .verification.attribution_llm import classify, validate
+    flat = normalise_ws(text)
+    at = flat.find(normalise_ws(excerpt)[:80])
+    context = flat[max(0, at - 600):at + len(normalise_ws(excerpt)) + 600] if at >= 0 else ''
+    raw, infra, detail = classify(field_name, got.value, excerpt, context, provider)
+    if infra != 'OK':
+        return held(f'the local model could not check the evidence\'s role ({infra}: {detail}).')
+    ok, why = validate(field_name, raw, text)
+    if not ok:
+        return held(why + '.')
+    rec.note(f'{field_name}: {why}')
     return got
 
 
@@ -1816,7 +2119,7 @@ def _targeted_reacquire(
                 continue
 
             text = document.all_text() if hasattr(document, 'all_text') else ''
-            check = verify_identity(text, target, source_url=h_url, document_title=disc_doc.title)
+            check = _identify(text, target, source_url=h_url, document_title=disc_doc.title)
             identity[h_url] = check
             if check.verdict is IdentityVerdict.MISMATCH:
                 sources.rejected.append(disc_doc)
@@ -1908,19 +2211,23 @@ def build(exam_query: str = '', *, year: str = '',
                           official_name=resolved.official_name, year=resolved.year,
                           authority_name=resolved.authority.name,
                           authority_domain=resolved.authority.domain)
+    if target.designation_mode:
+        # No distinctive word names this exam: its identity is the designation its own
+        # notification prints (designation.py). Established once, before any document is judged.
+        target = _establish_designation(target, sources, loaded, rec)
     identity: dict[str, IdentityCheck] = {}
     for doc in list(sources.docs):
         document = loaded.get(doc.url)
         if document is None:
             continue
         text = document.all_text() if hasattr(document, 'all_text') else ''
-        check = verify_identity(text, target, source_url=doc.url, document_title=doc.title)
+        check = _identify(text, target, source_url=doc.url, document_title=doc.title)
         if check.verdict is not IdentityVerdict.MATCH:
             entry = _listing_entry(document, target)
             if entry is not None:
                 loaded[doc.url] = entry
-                check = verify_identity(entry.text, target, source_url=doc.url,
-                                        document_title=doc.title)
+                check = _identify(entry.text, target, source_url=doc.url,
+                                  document_title=doc.title)
                 rec.note(f'{doc.url} lists many recruitments; only its row(s) naming this exam '
                          f'were kept ({len(entry.text)} chars)')
         identity[doc.url] = check

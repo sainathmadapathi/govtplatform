@@ -193,7 +193,7 @@ export const SSC_CGL_EXAM: Exam = {
   isGoldenJourney: true,
   isDemoData: false,
   overviewDescription:
-    'The SSC CGL Examination is the highest-volume graduate recruitment examination conducted by the Government of India for recruitment to prestigious Group B (Gazetted & Non-Gazetted) and Group C posts in Central Ministries, Departments, Intelligence Bureau, CBI, CAG, CBIC, and CBDT.',
+    'The SSC CGL Examination is a graduate-level recruitment examination conducted by the Staff Selection Commission for recruitment to Group B (Gazetted & Non-Gazetted) and Group C posts in Central Ministries, Departments, Intelligence Bureau, CBI, CAG, CBIC, and CBDT.',
   vacanciesTotal: '10,731 (tentative, as on 24.09.2026)',
   factEvidence: { vacanciesTotal: sscP_vacancy_list, crucialEligibilityDate: sscP_age },
 
@@ -2506,7 +2506,7 @@ provenance: sscNotice('prov-pattern-ssc-t2-p3', 'Para 13.9 — Scheme of Tier-II
           phaseNumber: 1,
           phaseTitle: 'Phase 1: High-Yield Topic Consolidation (Weeks 1 to 4)',
           durationWeeks: 4,
-          focusArea: 'Mastering top 70% weightage topics in Quant (Arithmetic & Geometry), Reasoning patterns, and English Grammar rules.',
+          focusArea: 'Consolidating core topics in Quant (Arithmetic & Geometry), Reasoning patterns, and English Grammar rules.',
           weeklySchedule: [
             {
               weekNumber: 1,

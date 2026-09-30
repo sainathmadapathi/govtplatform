@@ -1,5 +1,19 @@
 // GovOS services: age/profile maths, eligibility engine, dual-persistence storage.
 
+import type { ImportantDate } from './types';
+
+/**
+ * A date as the authority stated it. `displayWhen` is the printed form where the notice gave a
+ * month or a range; otherwise the day, and the time only where one was read. A reader writes
+ * "00:00:00" when the notice printed a date and no time, so that value is never shown: it would
+ * state a precision the source does not have.
+ */
+export function statedWhen(d: Pick<ImportantDate, 'dateTimeStr' | 'displayWhen'>, withTime = false): string {
+  if (d.displayWhen) return d.displayWhen;
+  const [day, time = ''] = (d.dateTimeStr || '').split(' ');
+  return withTime && time && !/^00:00(?::00)?$/.test(time) ? `${day} ${time}` : day;
+}
+
 import {
   ResourceLinkCheck,
   ResearchExtractResult,
@@ -1076,7 +1090,7 @@ class StorageService {
               examTitle: exam.title,
               eventType: 'APPLICATION_DEADLINE',
               title: `⏳ 7 Days Left: ${exam.title} Application Deadline`,
-              message: `Only 7 days remaining until online application closes on ${d.dateTimeStr}. Complete your fee payment and submit before the final rush.`,
+              message: `Only 7 days remaining until online application closes on ${statedWhen(d, true)}. Complete your fee payment and submit before the final rush.`,
               channelsDelivered: channels,
               actionType: 'EXAM_DETAIL',
               actionPayload: { section: 4 },
@@ -1097,7 +1111,7 @@ class StorageService {
               examTitle: exam.title,
               eventType: 'APPLICATION_DEADLINE',
               title: `🚨 Urgent: 3 Days Left for ${exam.title}!`,
-              message: `Application closes in 3 days (${d.dateTimeStr}). Check that your live photograph, running signature, and category certificates are compliant.`,
+              message: `Application closes in 3 days (${statedWhen(d, true)}). Check that your live photograph, running signature, and category certificates are compliant.`,
               channelsDelivered: channels,
               actionType: 'EXAM_DETAIL',
               actionPayload: { section: 4 },
@@ -1118,7 +1132,7 @@ class StorageService {
               examTitle: exam.title,
               eventType: 'APPLICATION_DEADLINE',
               title: `⚠️ 24 Hours Left: Final Call for ${exam.title}`,
-              message: `The application portal closes tomorrow (${d.dateTimeStr})! Confirm payment status and download your application acknowledgment receipt immediately.`,
+              message: `The application portal closes tomorrow (${statedWhen(d, true)})! Confirm payment status and download your application acknowledgment receipt immediately.`,
               channelsDelivered: channels,
               actionType: 'EXAM_DETAIL',
               actionPayload: { section: 4 },
@@ -1161,7 +1175,7 @@ class StorageService {
             examTitle: exam.title,
             eventType: 'CORRECTION_WINDOW',
             title: `✏️ Correction Window Open: ${exam.title}`,
-            message: `The official application correction facility is active from ${d.dateTimeStr}. Review your uploaded photograph, post preferences, and exam center choices.`,
+            message: `The official application correction facility is active from ${statedWhen(d, true)}. Review your uploaded photograph, post preferences, and exam center choices.`,
             channelsDelivered: channels,
             actionType: 'EXAM_DETAIL',
             actionPayload: { section: 4 },
@@ -1182,7 +1196,7 @@ class StorageService {
             examTitle: exam.title,
             eventType: 'ADMIT_CARD',
             title: `🎟️ Admit Card & City Slip: ${exam.title}`,
-            message: `Tier 1 Exam City Intimation & e-Admit Card released on ${d.dateTimeStr}. Check your examination date, shift time, and exam center address.`,
+            message: `Tier 1 Exam City Intimation & e-Admit Card released on ${statedWhen(d, true)}. Check your examination date, shift time, and exam center address.`,
             channelsDelivered: channels,
             actionType: 'CALENDAR',
             actionPayload: { examCode: exam.code },
@@ -1206,7 +1220,7 @@ class StorageService {
             message: d.displayWhen
               // Printed without a day: say so, and do not name one.
               ? `${d.label}: ${d.displayWhen}${d.isTentative ? ' (tentative)' : ''}. No exact date has been announced yet; GovOS will show it when ${exam.authorityName} publishes it.`
-              : `The Computer Based Test commences on ${d.dateTimeStr}. Remember to carry your original Photo ID, two passport photos, and printed Admit Card.`,
+              : `The Computer Based Test commences on ${statedWhen(d, true)}. Remember to carry your original Photo ID, two passport photos, and printed Admit Card.`,
             channelsDelivered: channels,
             actionType: 'EXAM_DETAIL',
             actionPayload: { section: 5 },
@@ -1227,7 +1241,7 @@ class StorageService {
             examTitle: exam.title,
             eventType: 'ANSWER_KEY',
             title: `🔑 Tentative Answer Key Released: ${exam.title}`,
-            message: `Response sheet and tentative answer keys are available on ${d.dateTimeStr}. Calculate your score and raise challenges if questions contain errors.`,
+            message: `Response sheet and tentative answer keys are available on ${statedWhen(d, true)}. Calculate your score and raise challenges if questions contain errors.`,
             channelsDelivered: channels,
             actionType: 'EXAM_DETAIL',
             actionPayload: { section: 9 },
@@ -1248,7 +1262,7 @@ class StorageService {
             examTitle: exam.title,
             eventType: 'RESULT',
             title: `🏆 Official Result Declared: ${exam.title}`,
-            message: `Official shortlisted roll numbers and category cut-off marks announced on ${d.dateTimeStr}. Check your merit status for the next stage!`,
+            message: `Official shortlisted roll numbers and category cut-off marks announced on ${statedWhen(d, true)}. Check your merit status for the next stage!`,
             channelsDelivered: channels,
             actionType: 'EXAM_DETAIL',
             actionPayload: { section: 10 },

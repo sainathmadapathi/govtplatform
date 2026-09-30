@@ -53,10 +53,18 @@ class ExamIdentity:
     #: The authority's own site. Its host labels ("ssc", "tgpsc") name the authority, and so
     #: every exam it conducts -- never one exam in particular.
     authority_domain: str = ''
+    #: Designation mode only (see `designation_mode`): the recruitment's canonical designation
+    #: as its own notification prints it (designation.CanonicalDesignation). Set by the builder
+    #: once, from notifications; None until then, and always None in alias mode.
+    designation: object = None
 
     @property
     def aliases(self) -> list[str]:
         return exam_aliases(self.query, self.official_name)
+
+    @property
+    def designation_mode(self) -> bool:
+        return designation_mode(self)
 
     @property
     def authority_aliases(self) -> set[str]:
@@ -329,9 +337,44 @@ def _year_conflicts(ref: ExamReference, target: ExamIdentity) -> bool:
     return bool(target.year and ref.year and ref.year != target.year)
 
 
+def designation_mode(target: ExamIdentity) -> bool:
+    """True when the alias model has nothing exam-level to identify this exam by.
+
+    Its naming aliases, minus the authority's own, are empty: every word of the exam's name is
+    generic ("Officers in Grade 'B'"). Only then does identity rest on the ordered designation
+    its notification prints (designation.py). Any exam with one distinctive alias -- every exam
+    GovOS has built so far -- stays on the alias model, unchanged.
+    """
+    return not (set(target.aliases) - target.authority_aliases)
+
+
+def _verify_by_designation(text: str, target: ExamIdentity, *, source_url: str = '',
+                           document_title: str = '') -> IdentityCheck:
+    from .designation import judge
+    if not normalise_ws(text):
+        return IdentityCheck(IdentityVerdict.AMBIGUOUS,
+                             reasons=['the document has no readable text; identity cannot '
+                                      'be established from it'])
+    j = judge(text, target.designation, year=target.year, authority_name=target.authority_name)
+    ev = None
+    if j.evidence:
+        ev = Evidence(span=j.evidence, source_url=source_url, document_title=document_title,
+                      reading=f'names {target.exam_id} by its designation')
+        ev.verify(text)
+        if ev.status is not EvidenceStatus.VERIFIED and j.verdict == 'MATCH':
+            return IdentityCheck(IdentityVerdict.AMBIGUOUS, evidence=ev,
+                                 reasons=['the designation that would establish identity could '
+                                          'not be verified verbatim in the document'])
+    return IdentityCheck(IdentityVerdict(j.verdict), evidence=ev, matched=j.matched,
+                         competing=j.competing, reasons=j.reasons)
+
+
 def verify(text: str, target: ExamIdentity, *, source_url: str = '',
            document_title: str = '') -> IdentityCheck:
     """Decide whether a document's content belongs to the target exam."""
+    if designation_mode(target):
+        return _verify_by_designation(text, target, source_url=source_url,
+                                      document_title=document_title)
     if not normalise_ws(text):
         return IdentityCheck(IdentityVerdict.AMBIGUOUS,
                              reasons=['the document has no readable text; identity cannot '
@@ -459,7 +502,14 @@ def field_is_attributable(text: str, target: ExamIdentity, evidence_span: str) -
     it names the target itself. This is what keeps AMBIGUOUS from being either uselessly
     strict or quietly permissive: the document stays ambiguous, but a span that identifies
     the exam on its own terms is attributable.
+
+    Never in designation mode: there an AMBIGUOUS document supplies nothing. A designation of
+    common words is only identity inside a title block judged against the canonical one, and a
+    span is not a title block -- attributing it would let a document the identity gate
+    withheld supply a fact through this older path.
     """
+    if designation_mode(target):
+        return False
     window = normalise_ws(evidence_span)
     if not window:
         return False

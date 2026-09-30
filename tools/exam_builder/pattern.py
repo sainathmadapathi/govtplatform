@@ -1800,7 +1800,7 @@ def may_supply_pattern(text: str, target) -> tuple[bool, str]:
       * MISMATCH -- it belongs to another exam. Nothing is taken from it, whatever it says
         about patterns.
     """
-    from .identity import IdentityVerdict, verify
+    from .identity import IdentityVerdict, designation_mode, verify
 
     check = verify(text, target)
     if check.verdict is IdentityVerdict.MATCH:
@@ -1808,6 +1808,10 @@ def may_supply_pattern(text: str, target) -> tuple[bool, str]:
     if check.verdict is IdentityVerdict.MISMATCH:
         return False, ('refused: ' + (check.reasons[0] if check.reasons
                                       else 'the document names another exam'))
+    if designation_mode(target):
+        # An exam named only by a designation of common words: AMBIGUOUS supplies nothing.
+        return False, ('not published: ' + (check.reasons[0] if check.reasons
+                                            else 'the document is not identified as this exam\'s'))
     opening = verify(text[:_TITLE_BLOCK], target)
     if opening.verdict is IdentityVerdict.MATCH or opening.matched:
         return True, (f'the document names this exam in its own title block '

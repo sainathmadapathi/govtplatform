@@ -151,7 +151,9 @@ def to_legacy_provenance(fact: Fact, *, prov_id: str, taxonomy: str = 'FACT',
         'verifiedBy': 'GovOS exam builder — read from the source',
         'taxonomyType': taxonomy,
         'verificationLevel': verification_level_for(fact.status, superseded=superseded),
-        'excerptText': (ev.span or '')[:600],
+        # The evidence carries the whole span it verified: a published value longer than a
+        # fixed excerpt would otherwise cite words that stop before the value does.
+        'excerptText': ev.span or '',
     }
 
 

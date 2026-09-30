@@ -27,6 +27,7 @@ from dataclasses import dataclass, field as dc_field
 from typing import Callable, Iterable
 
 from .evidence import Evidence, Extracted, normalise_ws, verified_or_none
+from .units import next_structural_boundary, sentence_end, sentence_start
 
 # --------------------------------------------------------------------------- passages
 
@@ -102,6 +103,10 @@ class FieldSpec:
     #: The narrowest sentence carrying the value becomes the evidence span.
     evidence_from: Callable[[str, object], str] | None = None
     purpose: str = ''
+    #: 'sentence' when the value's `text` quotes one sentence of the document. The passage it was
+    #: read from is a search window, not a boundary: the text runs to the sentence's own end in
+    #: the whole document, and a sentence whose end cannot be found is not read at all.
+    unit: str = ''
 
 
 # ------------------------------------------------------------------------ normalisers
@@ -244,19 +249,35 @@ def _attempts(passage: str):
     return {'limited': True, 'count': int(m.group(2))}
 
 
+def _qualification_levels(text: str) -> list[str]:
+    return sorted({w.lower() for w in re.findall(
+        r"\b(bachelor'?s?|master'?s?|graduat\w+|post[- ]graduat\w+|degree|diploma|"
+        r"matriculation|10\+2|intermediate|doctorate|ph\.?d)\b", text, re.I)})
+
+
 def _qualification(passage: str):
-    m = re.search(r"((?:must|should|shall)\s+(?:hold|possess|have)\b.{0,320}|"
+    # From the requirement's first word to its sentence end within what was read; `extract`
+    # re-reads the sentence to its own end in the whole document (the spec's unit), so the
+    # passage's width never decides where the requirement stops.
+    m = re.search(r"((?:must|should|shall)\s+(?:hold|possess|have)\b.*|"
                   r"\b(?:bachelor'?s?|graduat\w+|master'?s?|degree|diploma|"
-                  r"matriculation|10\+2|intermediate)\b.{0,300})", passage, re.I | re.S)
+                  r"matriculation|10\+2|intermediate)\b.*)", passage, re.I | re.S)
     if not m:
         return None
     text = normalise_ws(m.group(1))
-    levels = sorted({w.lower() for w in re.findall(
-        r"\b(bachelor'?s?|master'?s?|graduat\w+|post[- ]graduat\w+|degree|diploma|"
-        r"matriculation|10\+2|intermediate|doctorate|ph\.?d)\b", text, re.I)})
+    end = sentence_end(text, 0)
+    if end is not None:
+        text = text[:end]
+    levels = _qualification_levels(text)
     if not levels:
         return None
-    return {'text': text[:400], 'levels': levels}
+    out = {'text': text, 'levels': levels}
+    if not re.match(r'(?:must|should|shall)\s', text, re.I):
+        # Matched on the degree word inside a sentence ("... and the degree must have been
+        # obtained ..."): the requirement is the whole sentence, so `extract` reads it from the
+        # sentence's own start. Never published; removed there.
+        out['_starts_inside_sentence'] = True
+    return out
 
 
 def _pattern(passage: str):
@@ -349,7 +370,7 @@ SPECS: tuple[FieldSpec, ...] = (
             # count; it names degrees and eligibility without stating the requirement.
             against=(r'degree of difficulty', r'degrees celsius', r'\bfake\b', r'\bbogus\b'),
         ),
-        normalise=_qualification),
+        normalise=_qualification, unit='sentence'),
     FieldSpec(
         name='examPattern',
         purpose='Papers, marks, questions, duration and negative marking.',
@@ -379,20 +400,28 @@ def extract(field_name: str, document_text: str, *, source_url: str,
     if spec is None or not document_text:
         return None
 
-    scored: list[tuple[float, list[str], str]] = []
-    for _, chunk in passages(document_text):
+    scored: list[tuple[float, list[str], str, int]] = []
+    for offset, chunk in passages(document_text):
         score, cues = spec.cues.score(chunk)
         if score >= min_confidence:
-            scored.append((score, cues, chunk))
+            scored.append((score, cues, chunk, offset))
     scored.sort(key=lambda t: -t[0])
+    flat = normalise_ws(document_text) if spec.unit else ''
 
-    for score, cues, chunk in scored[:25]:
+    for score, cues, chunk, offset in scored[:25]:
         value = spec.normalise(chunk)
         if value is None:
             continue
-        # The evidence is the narrowest sentence that still carries the value, so a
-        # reviewer sees the claim rather than a paragraph around it.
-        span = _narrowest_span(chunk, spec, value)
+        if spec.unit == 'sentence':
+            value = _whole_sentence(value, chunk, offset, flat, spec)
+            if value is None:
+                continue
+            # The value is the sentence, verbatim, and so is its evidence.
+            span = value['text']
+        else:
+            # The evidence is the narrowest sentence that still carries the value, so a
+            # reviewer sees the claim rather than a paragraph around it.
+            span = _narrowest_span(chunk, spec, value)
         ev = Evidence(span=span, source_url=source_url, document_title=document_title,
                       page=(page_of(span) if page_of else 1),
                       reading=f'{field_name} = {value}')
@@ -402,6 +431,40 @@ def extract(field_name: str, document_text: str, *, source_url: str,
         if ok is not None:
             return ok
     return None
+
+
+def _whole_sentence(value: object, chunk: str, offset: int, flat: str, spec: FieldSpec):
+    """The value with its `text` ending where its sentence ends in the whole document.
+
+    A passage is a fixed-width window, so a requirement that begins near its right edge was cut
+    wherever the window stopped ("... under a Central Act, Provincial Act or a"). The text is found
+    in the document at the passage's own offset and read to its sentence end. When no sentence end
+    follows before the next clause or heading, the reading is not complete and is dropped: nothing
+    is supplied for the part that could not be read.
+    """
+    if not isinstance(value, dict) or not value.get('text'):
+        return None
+    head = normalise_ws(value['text'])[:60]
+    local = chunk.find(head)
+    if local < 0:
+        return None
+    start = offset + local
+    if flat[start:start + len(head)] != head:
+        start = flat.find(head, max(0, offset - 5))
+        if start < 0:
+            return None
+    end = sentence_end(flat, start, next_structural_boundary(flat, start + 1))
+    if end is None:
+        return None
+    whole = dict(value)
+    if whole.pop('_starts_inside_sentence', False):
+        start = sentence_start(flat, start)
+    whole['text'] = flat[start:end]
+    if spec.name == 'qualification':
+        whole['levels'] = _qualification_levels(whole['text'])
+        if not whole['levels']:
+            return None
+    return whole
 
 
 def _narrowest_span(chunk: str, spec: FieldSpec, value: object) -> str:

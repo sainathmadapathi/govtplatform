@@ -27,6 +27,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from .units import sentence_end
 from .evidence import Evidence, EvidenceStatus, normalise_ws
 from .tables import ColumnKind, reconstruct, reconstruct_lists
 from .schema import (AgeRelaxation, AgeRule, Eligibility, Fact, Post, QualificationRule,
@@ -597,7 +598,7 @@ def extract_qualifications(doc: SourceDocument, text: str, *,
 
         rule = QualificationRule(
             scope=scope,
-            requirement=Fact.verified(normalise_ws(passage)[:400], ev),
+            requirement=Fact.verified(normalise_ws(passage), ev),
             is_essential=True if re.search(r'\bessential\b|\bmust\b|\bshall\s+(?:hold|'
                                            r'possess|have)\b', passage, re.I) else None)
         as_on = _AS_ON.search(passage)
@@ -669,7 +670,7 @@ def extract_requirements(doc: SourceDocument, text: str, *,
 
             out.append(Requirement(
                 kind=kind, scope=scope,
-                statement=Fact.verified(normalise_ws(passage)[:400], ev),
+                statement=Fact.verified(normalise_ws(passage), ev),
                 is_essential=True if re.search(r'\bessential\b|\bmust\b|\bshall\b',
                                                passage, re.I) else None))
             break
@@ -1091,7 +1092,7 @@ def _join_by_known_name(post: Post | None, row, table, doc: SourceDocument, text
         return False
     post.qualification.append(QualificationRule(
         scope=Scope([ScopeRef(ScopeKind.POST, post.id, post.name)]),
-        requirement=Fact.verified(remainder[:600], ev)))
+        requirement=Fact.verified(remainder, ev)))
     return True
 
 
@@ -1120,7 +1121,7 @@ def _add_row_facts(post: Post, row, ev, table) -> None:
     if qualification and not post.qualification:
         post.qualification.append(QualificationRule(
             scope=Scope([ScopeRef(ScopeKind.POST, post.id, post.name)]),
-            requirement=Fact.verified(qualification[:600], ev)))
+            requirement=Fact.verified(qualification, ev)))
 
 
 #: "For Post Code Nos. 02 & 09:", "For PC. No. 07", "Post Code No.07 -". The codes a clause is
@@ -1160,8 +1161,10 @@ def post_code_clauses(doc: SourceDocument, text: str, posts: list[Post], *,
         for i, m in enumerate(scopes):
             clause_end = scopes[i + 1].start() if i + 1 < len(scopes) else len(body)
             clause = normalise_ws(body[m.start():clause_end])
-            first = re.split(r'(?<=[.;])\s+(?=[A-Z])', clause)[0]
-            span = normalise_ws(first)[:500]
+            # The requirement is the clause's first sentence, whole. Where no sentence end is
+            # printed, the clause itself -- bounded by the next post-code scope -- is the unit.
+            end = sentence_end(clause, 0)
+            span = clause[:end] if end is not None else clause
             ev = _evidence(span, doc, text, reading='a clause scoped to post codes')
             if ev is None:
                 continue

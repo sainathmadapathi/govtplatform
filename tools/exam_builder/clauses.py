@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import re
 
+from .units import next_structural_boundary
+
 #: A numbered heading: "PARA-15 MEMORANDUM OF MARKS:-", "PARA 17: SPECIAL INSTRUCTIONS", "SECTION-11:".
 _HEADING = re.compile(r'\b(?:PARA|SECTION|CHAPTER)\s*[-–]?\s*(\d{1,2})\s*[:.]?\s*[-–:]?\s*', re.I)
 #: The heading's title: a run of capitals ending where the clause text begins.
@@ -25,7 +27,7 @@ _PROCEDURE = re.compile(
 _FOOTER = re.compile(r'\bPage\s+\d+\s+of\s+\d+\b|^\s*\d{1,3}\s+', re.I)
 
 
-def procedure_clauses(text: str, *, page_of=None, max_len: int = 700) -> list[dict]:
+def procedure_clauses(text: str, *, page_of=None) -> list[dict]:
     """[{heading, number, text, page}] for every numbered clause under a procedure heading."""
     flat = ' '.join((text or '').split())
     heads = []
@@ -48,13 +50,19 @@ def procedure_clauses(text: str, *, page_of=None, max_len: int = 700) -> list[di
         seen.add(number)
         label = re.sub(r'\s+', ' ', title).strip().capitalize()
         for j, mk in enumerate(marks):
-            body_end = marks[j + 1].start() if j + 1 < len(marks) else len(region)
+            # A clause is one unit: it ends where the next clause of its heading begins. The
+            # last clause of a heading ends at the next heading of any kind, or at an annexure,
+            # appendix or other part of the document -- never at a character count, which cut
+            # long clauses mid-sentence ("Provided that, in case …").
+            if j + 1 < len(marks):
+                body_end = marks[j + 1].start()
+            else:
+                body_end = next_structural_boundary(region, mk.end(), clauses=False)
             body = region[mk.end():body_end].strip()
             body = _FOOTER.sub(' ', body).strip()
             if len(body) < 25:
                 continue
             clause = f'{number}.{mk.group(1)}'
-            quoted = body if len(body) <= max_len else body[:max_len].rsplit(' ', 1)[0] + ' …'
-            out.append({'heading': label, 'number': clause, 'text': quoted,
+            out.append({'heading': label, 'number': clause, 'text': body,
                         'page': page_of(body[:120]) if page_of else 1})
     return out

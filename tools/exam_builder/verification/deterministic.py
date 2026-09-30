@@ -7,7 +7,7 @@ so the model can neither see nor override an identity failure.
 """
 from __future__ import annotations
 
-from ..identity import ExamIdentity, IdentityVerdict, verify as identity_verify
+from ..identity import ExamIdentity, IdentityVerdict, designation_mode, verify as identity_verify
 from ..schema import normalise_ws
 from .schemas import Claim, DeterministicResult
 
@@ -55,6 +55,12 @@ def run_deterministic(claim: Claim) -> DeterministicResult:
     elif check.verdict is IdentityVerdict.MATCH:
         r.identity_ok = True
         r.cross_exam_ok = True
+    elif designation_mode(target):
+        # An exam named only by a designation of common words: AMBIGUOUS is never enough.
+        r.identity_ok = False
+        r.cross_exam_ok = False
+        r.reasons.append('identity not established: ' + (check.reasons[0] if check.reasons
+                                                         else 'ambiguous'))
     else:  # AMBIGUOUS -- accept only if the source's own title block names this exam
         opening = identity_verify(text[:_TITLE_BLOCK], target)
         r.identity_ok = opening.verdict is IdentityVerdict.MATCH or bool(opening.matched)

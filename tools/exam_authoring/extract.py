@@ -21,6 +21,7 @@ from typing import Iterable, Optional
 
 from .record import Citation, Field
 from .sources import Document
+from tools.exam_builder.units import next_structural_boundary, sentence_end, unit_end
 
 MONTHS = ('January February March April May June July August September October November December').split()
 _MONTH_RX = '|'.join(MONTHS) + '|' + '|'.join(m[:3] for m in MONTHS)
@@ -41,6 +42,29 @@ def pages_of(doc: Document) -> list[str]:
     nothing and keeps the page number, which is what the citation needs.
     """
     return [_clean(p) for p in (doc.pages or [doc.text])]
+
+
+def document_flat(doc: Document) -> tuple[str, list[int]]:
+    """The whole document as one line of normalised text, with each page's starting offset.
+
+    A quoted unit (a clause, a section, an answer) may run across a page break; reading it page
+    by page ends it wherever the page ended. Reading the whole text and mapping the start back to
+    its page keeps both the unit and the citation."""
+    pages = pages_of(doc)
+    starts, pos = [], 0
+    for page in pages:
+        starts.append(pos)
+        pos += len(page) + 1
+    return ' '.join(pages), starts
+
+
+def page_at(starts: list[int], offset: int) -> int:
+    """The 1-based page on which `offset` of `document_flat` falls."""
+    page = 1
+    for i, start in enumerate(starts, start=1):
+        if start <= offset:
+            page = i
+    return page
 
 
 def excerpt_around(text: str, match: re.Match, width: int = 260) -> str:
@@ -242,23 +266,30 @@ def qualification(doc: Document, doc_title: str) -> Field:
     says nothing about what degree is required. Anchoring on the heading is what makes this
     the eligibility rule rather than a passing mention.
     """
-    heading = re.compile(r'Minimum Educational Qualification\s*[:\-]?\s*(.{80,900})', re.I)
-    for page_no, page in enumerate(pages_of(doc), start=1):
-        m = heading.search(page)
-        if m:
-            return Field.found('qualification', _clean(m.group(1))[:700],
-                               cite(doc, doc_title, page_no,
-                                    'Conditions of Eligibility — Minimum Educational Qualification',
-                                    _clean(m.group(0))))
+    # The clause runs from its heading to its own end -- the last sentence before the next clause
+    # or heading -- in the whole document, so a page break or a character count never ends it.
+    flat, starts = document_flat(doc)
+    heading = re.compile(r'Minimum Educational Qualification\s*[:\-]?\s*', re.I)
+    for m in heading.finditer(flat):
+        end = unit_end(flat, m.end())
+        if end is None or end - m.end() < 80:
+            continue
+        clause = flat[m.end():end]
+        return Field.found('qualification', clause,
+                           cite(doc, doc_title, page_at(starts, m.start()),
+                                'Conditions of Eligibility — Minimum Educational Qualification',
+                                flat[m.start():end]))
     # No heading: a degree sentence is better than nothing, but it is offered for review.
-    loose = re.compile(r'must hold a\s+(?:Bachelor|Graduate|Degree)[^.]{0,400}\.', re.I)
-    for page_no, page in enumerate(pages_of(doc), start=1):
-        m = loose.search(page)
-        if m:
-            return Field.needs_review('qualification', _clean(m.group(0))[:700],
-                                      'Read from a degree sentence, not from a "Minimum Educational '
-                                      'Qualification" heading — confirm it is the eligibility rule.',
-                                      cite(doc, doc_title, page_no, 'Degree requirement', _clean(m.group(0))))
+    loose = re.compile(r'must hold a\s+(?:Bachelor|Graduate|Degree)', re.I)
+    for m in loose.finditer(flat):
+        end = sentence_end(flat, m.start(), next_structural_boundary(flat, m.start() + 1))
+        if end is None:
+            continue
+        sentence = flat[m.start():end]
+        return Field.needs_review('qualification', sentence,
+                                  'Read from a degree sentence, not from a "Minimum Educational '
+                                  'Qualification" heading — confirm it is the eligibility rule.',
+                                  cite(doc, doc_title, page_at(starts, m.start()), 'Degree requirement', sentence))
     return Field.not_extracted('qualification', doc.url, 'educational-qualification clause')
 
 
@@ -386,12 +417,16 @@ def how_to_apply(doc: Document, doc_title: str) -> Field:
     """The How-to-Apply section verbatim, which is what the mock form is authored from."""
     # No leading newline anchor: pages_of() normalises each page to a single line, so an
     # anchor on "\n" matches nothing at all once the text has been cleaned.
-    rx = re.compile(r'\bHOW TO APPLY\s*[:\-]?.{300,6000}', re.I | re.S)
-    for page_no, page in enumerate(pages_of(doc), start=1):
-        m = rx.search(page)
-        if m:
-            return Field.found('howToApply', _clean(m.group(0))[:6000],
-                               cite(doc, doc_title, page_no, 'How to Apply', _clean(m.group(0))[:400]))
+    # The section runs to the next heading of the document (it holds numbered clauses of its
+    # own), ending at its last sentence; a section with no sentence end in view is not read.
+    flat, starts = document_flat(doc)
+    for m in re.finditer(r'\bHOW TO APPLY\b', flat, re.I):
+        end = unit_end(flat, m.start(), clauses=False)
+        if end is None or end - m.start() < 300:
+            continue
+        section = flat[m.start():end]
+        return Field.found('howToApply', section,
+                           cite(doc, doc_title, page_at(starts, m.start()), 'How to Apply', section))
     return Field.not_extracted('howToApply', doc.url, '"How to Apply" section')
 
 
@@ -441,26 +476,35 @@ def faqs(doc: Document, doc_title: str) -> Field:
     section is not evidence of anything and must not be filled from elsewhere.
     """
     items: list[dict] = []
-    for page_no, page in enumerate(pages_of(doc), start=1):
-        matches = list(_FAQ_QUESTION_RX.finditer(page))
-        for i, m in enumerate(matches):
-            question = _clean(m.group(1))
-            tail_end = matches[i + 1].start() if i + 1 < len(matches) else min(len(page), m.end() + 700)
-            answer = _clean(_FAQ_ANSWER_MARK_RX.sub('', page[m.end():tail_end]))
-            if len(answer) < 5 or answer.endswith('?'):
+    # An answer is everything up to the next question -- across a page break if it runs over
+    # one. The last answer ends at the next heading, annexure or signature, at its last sentence;
+    # an answer with no sentence end in view is left out rather than quoted cut.
+    flat, starts = document_flat(doc)
+    matches = list(_FAQ_QUESTION_RX.finditer(flat))
+    for i, m in enumerate(matches):
+        question = _clean(m.group(1))
+        if i + 1 < len(matches):
+            tail_end = min(matches[i + 1].start(), next_structural_boundary(flat, m.end(), clauses=False))
+        else:
+            tail_end = unit_end(flat, m.end(), clauses=False)
+            if tail_end is None:
                 continue
-            items.append({
-                'id': f'faq-{len(items) + 1}',
-                'question': question,
-                'answer': answer[:600],
-                'officialClause': f'FAQ / question-and-answer clause, page {page_no}',
-                'page': page_no,
-                'excerpt': f'{question} {answer[:300]}',
-            })
-        if items:
-            first = items[0]
-            return Field.found('faqs', items[:40],
-                               cite(doc, doc_title, first['page'], 'Frequently asked questions', first['excerpt']))
+        answer = _clean(_FAQ_ANSWER_MARK_RX.sub('', flat[m.end():tail_end]))
+        if len(answer) < 5 or answer.endswith('?'):
+            continue
+        page_no = page_at(starts, m.start())
+        items.append({
+            'id': f'faq-{len(items) + 1}',
+            'question': question,
+            'answer': answer,
+            'officialClause': f'FAQ / question-and-answer clause, page {page_no}',
+            'page': page_no,
+            'excerpt': f'{question} {answer}',
+        })
+    if items:
+        first = items[0]
+        return Field.found('faqs', items[:40],
+                           cite(doc, doc_title, first['page'], 'Frequently asked questions', first['excerpt']))
     return Field.not_extracted('faqs', doc.url, 'FAQ / question-and-answer clauses')
 
 
@@ -510,7 +554,9 @@ def exam_day_checklist(doc: Document, doc_title: str) -> Field:
                     items.append({
                         'id': f'examday-{len(items) + 1}',
                         'category': category,
-                        'title': s[:90],
+                        # The rule itself: one sentence, whole. A 90-character title cut
+                        # "... in Telugu or Urdu" to "... in Telug".
+                        'title': s,
                         'description': s,
                         'isMandatory': bool(_MANDATORY_RX.search(s)),
                         'page': page_no,

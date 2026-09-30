@@ -138,8 +138,8 @@ class SourceSet:
 
 
 def gate(link_text: str, link_url: str, *, exam_words: list[str],
-         page_is_exam_specific: bool, sibling_exam_words: list[str] | None = None
-         ) -> tuple[Relevance, list[str], list[str]]:
+         page_is_exam_specific: bool, sibling_exam_words: list[str] | None = None,
+         designation=None) -> tuple[Relevance, list[str], list[str]]:
     """Decide whether a link belongs to this exam. The whole isolation rule lives here.
 
     `sibling_exam_words` are the distinctive words of *other* exams known to live on the same
@@ -154,6 +154,19 @@ def gate(link_text: str, link_url: str, *, exam_words: list[str],
     parsed = urlparse(link_url or '')
     path_only = f'{parsed.path} {parsed.query}' if parsed.scheme else (link_url or '')
     blob = f'{link_text} {path_only}'.lower()
+    if designation is not None:
+        # Designation mode (identity.designation_mode): the exam has no distinctive word, so
+        # its words would match every link the authority publishes. A link is admitted by the
+        # designation its own text names, refused when it names a different one, and otherwise
+        # admitted only by inheritance from an exam-specific page. Admission is not identity:
+        # the document is judged on its own content afterwards.
+        from .designation import link_admission
+        named = link_admission(link_text, designation)
+        if named is True:
+            return Relevance.DIRECT, ['designation'], []
+        if named is False:
+            return Relevance.REJECTED, [], ['another designation']
+        return (Relevance.INHERITED if page_is_exam_specific else Relevance.REJECTED), [], []
     matched = [w for w in exam_words if alias_in(w, blob)]
     foreign = [w for w in (sibling_exam_words or []) if alias_in(w, blob) and w not in exam_words]
 
@@ -166,13 +179,17 @@ def gate(link_text: str, link_url: str, *, exam_words: list[str],
     return Relevance.REJECTED, matched, foreign
 
 
-def page_is_specific_to(title: str, url: str, exam_words: list[str], *, need: int = 2) -> bool:
+def page_is_specific_to(title: str, url: str, exam_words: list[str], *, need: int = 2,
+                        designation=None) -> bool:
     """Is this page about one exam, rather than the authority's whole site?
 
     A page must carry at least `need` of the exam's distinctive words before anything is
     allowed to inherit relevance from it. One word is not enough: "Combined" appears in
     Combined Graduate Level, Combined Higher Secondary and Combined Defence Services alike.
     """
+    if designation is not None:
+        from .designation import link_admission
+        return link_admission(title, designation) is True
     # Path only, for the same reason as `gate`: the host carries the authority's own token
     # and would make every page on the site look exam-specific.
     parsed = urlparse(url or '')
@@ -182,11 +199,29 @@ def page_is_specific_to(title: str, url: str, exam_words: list[str], *, need: in
     return hits >= min(need, len(exam_words))
 
 
+def _designation_for(resolved: ResolvedExam):
+    """(designation to admit links by, whether designation mode is on) -- the same switch
+    identity uses, so discovery and identity always agree on the mode."""
+    from .designation import query_designation
+    from .identity import ExamIdentity, designation_mode
+    probe = ExamIdentity(exam_id='', query=resolved.query, official_name=resolved.official_name,
+                         year=resolved.year, authority_name=resolved.authority.name,
+                         authority_domain=resolved.authority.domain)
+    if not designation_mode(probe):
+        return None, False
+    return query_designation(resolved.query, resolved.official_name, probe.authority_aliases,
+                             resolved.authority.name), True
+
+
 def discover(resolved: ResolvedExam, *, exam_id: str, max_pages: int = 6,
              sibling_exam_words: list[str] | None = None) -> SourceSet:
     """Crawl outward from the resolver's seeds, keeping only what belongs to this exam."""
     words = exam_aliases(resolved.query, resolved.official_name)
     host = (urlparse(resolved.authority.domain).hostname or '').replace('www.', '')
+    want, on = _designation_for(resolved)
+    if on:
+        out.log.append('designation mode: the exam has no distinctive word; links are admitted by '
+                       f'the designation they name ({want.text if want else "none readable"})')
     out = SourceSet(exam_id=exam_id, authority_domain=resolved.authority.domain)
     seen_urls: set[str] = set()
 
@@ -200,7 +235,7 @@ def discover(resolved: ResolvedExam, *, exam_id: str, max_pages: int = 6,
         path = urlparse(url).path
         rel, matched, foreign = gate(path, url, exam_words=words,
                                      page_is_exam_specific=False,
-                                     sibling_exam_words=sibling_exam_words)
+                                     sibling_exam_words=sibling_exam_words, designation=want)
         if rel is Relevance.REJECTED:
             out.rejected.append(DiscoveredDoc(url=url, kind=classify_kind(path, url),
                                               title=path.rsplit('/', 1)[-1],
@@ -236,7 +271,7 @@ def discover(resolved: ResolvedExam, *, exam_id: str, max_pages: int = 6,
             return
 
         title = _title_of(page)
-        specific = page_is_specific_to(title, page_url, words)
+        specific = page_is_specific_to(title, page_url, words, designation=want)
         out.log.append(f'{"exam-specific" if specific else "general"} page: {page_url}')
         # What kind of listing this page is ("/notifications", "Results"), so that a link on
         # it whose own text is only a recruitment's name ("02/2024 - GROUP-I SERVICES") is
@@ -259,7 +294,7 @@ def discover(resolved: ResolvedExam, *, exam_id: str, max_pages: int = 6,
             same_estate = on_estate(link_host, host)
             rel, matched, foreign = gate(text, href, exam_words=words,
                                          page_is_exam_specific=specific,
-                                         sibling_exam_words=sibling_exam_words)
+                                         sibling_exam_words=sibling_exam_words, designation=want)
             kind = classify_kind(text, href)
             if kind is DocKind.UNKNOWN and rel is Relevance.DIRECT and page_kind not in (
                     DocKind.UNKNOWN, DocKind.EXAM_PAGE):
@@ -322,6 +357,7 @@ def _search_for_missing_kinds(out: SourceSet, resolved: ResolvedExam, words: lis
     enters by a softer route than a crawled link would.
     """
     from .search import SearchUnavailable, search as web_search
+    designation, _ = _designation_for(resolved)
 
     # A kind is "had" only by a document that names this exam. An inherited navigation link
     # ("Notifications for All Recruitments") is a list of every exam's documents, and letting
@@ -345,7 +381,8 @@ def _search_for_missing_kinds(out: SourceSet, resolved: ResolvedExam, words: lis
             path = urlparse(h.url).path
             rel, matched, foreign = gate(f'{h.title} {path}', h.url, exam_words=words,
                                          page_is_exam_specific=False,
-                                         sibling_exam_words=sibling_exam_words)
+                                         sibling_exam_words=sibling_exam_words,
+                                         designation=designation)
             found_kind = classify_kind(f'{h.title} {path}', h.url)
             doc = DiscoveredDoc(url=h.url, kind=found_kind, title=h.title[:160],
                                 relevance=rel, matched=matched,

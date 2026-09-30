@@ -204,7 +204,8 @@ import {
   INTERACTION_WEIGHTS,
   INTERACTION_HALF_LIVES_HOURS,
   SIGNAL_STRENGTH_MULTIPLIER,
-  RECOMMENDATION_HALF_LIFE_HOURS
+  RECOMMENDATION_HALF_LIFE_HOURS,
+  statedWhen
 } from './services';
 
 // ==========================================================================
@@ -286,6 +287,101 @@ export const EvidenceButton: React.FC<EvidenceButtonProps> = ({ provenance, onOp
     >
       <Eye size={compact ? 11 : 12} /> {label || 'Evidence'}
     </button>
+  );
+};
+
+/** Every quoted provenance anywhere in the record, so a value can be matched to the words that print it. */
+function quotedProvenances(root: unknown): DataProvenance[] {
+  const out: DataProvenance[] = [];
+  const seen = new Set<unknown>();
+  const walk = (v: unknown) => {
+    if (!v || typeof v !== 'object' || seen.has(v)) return;
+    seen.add(v);
+    if (Array.isArray(v)) { v.forEach(walk); return; }
+    const o = v as Record<string, unknown>;
+    if (typeof o.excerptText === 'string' && typeof o.documentTitle === 'string' && provenanceHasEvidence(o as unknown as DataProvenance)) {
+      out.push(o as unknown as DataProvenance);
+    }
+    Object.values(o).forEach(walk);
+  };
+  walk(root);
+  return out;
+}
+
+const _figure = (n: string) => new RegExp(`(?<![\\d.,])${n.replace(/,/g, ',?')}(?![\\d])`);
+const _words = (s: string) => s.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+
+/**
+ * The evidence for each money figure a summary card prints ("Application processing fee: Rs. 200;
+ * Examination fee: Rs. 120"). The card's own provenance covers the figures its quoted words contain;
+ * any other figure is matched to a quotation elsewhere in the same record that prints both that
+ * figure and the card's own name for it. A figure no quotation prints is returned without evidence,
+ * so the card can say so rather than let one clause stand behind two amounts.
+ */
+export function moneyFigureEvidence(body: string, own: DataProvenance | undefined, record: unknown):
+    { label: string; figure: string; provenance?: DataProvenance }[] {
+  const out: { label: string; figure: string; provenance?: DataProvenance }[] = [];
+  let pool: DataProvenance[] | null = null;
+  for (const seg of body.split(/[;—]/)) {
+    const m = seg.match(/^\s*([A-Za-z][A-Za-z ()/-]*?)\s*:\s*(?:Rs\.?|₹)\s*([\d,]+)/);
+    if (!m) continue;
+    const [, label, figure] = m;
+    const prints = (p?: DataProvenance) => !!p && _figure(figure).test(p.excerptText || '');
+    if (prints(own)) { out.push({ label, figure, provenance: own }); continue; }
+    pool = pool || quotedProvenances(record);
+    const found = pool.find(p => prints(p) && _words(p.excerptText || '').includes(_words(label))
+      && (!own?.officialUrl || p.officialUrl === own.officialUrl));
+    out.push({ label, figure, provenance: found });
+  }
+  return out;
+}
+
+/**
+ * A quoted official text shown whole. A clause can run to a couple of thousand characters, so past
+ * `collapseAfter` characters it opens folded to a few lines with a "View full" control -- the whole
+ * text is always in the page (folding is presentation only: nothing is cut from the value), and
+ * one click shows it all.
+ */
+export const FullText: React.FC<{ text: string; collapseAfter?: number; label?: string; style?: React.CSSProperties }> = ({
+  text, collapseAfter = 600, label = 'clause', style,
+}) => {
+  const [open, setOpen] = useState(false);
+  // Folded only where the text is longer than the fold: measured in the browser (a clause that fits
+  // at this width gets no control), with the character count as the first-render estimate.
+  const [overflows, setOverflows] = useState<boolean | null>(null);
+  const ref = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || text.length <= collapseAfter) return;
+    const measure = () => {
+      // Against the fold's own height, so it holds whether or not the text is folded right now.
+      const fold = parseFloat(getComputedStyle(el).fontSize || '16') * 9.6;
+      setOverflows(el.scrollHeight > fold + 2);
+    };
+    measure();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
+    ro?.observe(el);
+    return () => ro?.disconnect();
+  }, [text, collapseAfter]);
+  const long = text.length > collapseAfter && overflows !== false;
+  const id = `fulltext-${React.useId().replace(/:/g, "")}`;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: 0 }}>
+      <p id={id} ref={ref} data-full-text="true" style={{
+        margin: 0, overflowWrap: 'anywhere', whiteSpace: 'pre-wrap',
+        ...(long && !open ? { maxHeight: '9.6em', overflow: 'hidden',
+          WebkitMaskImage: 'linear-gradient(to bottom, black 70%, transparent)',
+          maskImage: 'linear-gradient(to bottom, black 70%, transparent)' } : {}),
+        ...style,
+      }}>{text}</p>
+      {long && (
+        <button type="button" className="btn btn-outline" aria-expanded={open} aria-controls={id}
+          onClick={() => setOpen(o => !o)}
+          style={{ alignSelf: 'flex-start', fontSize: '0.74rem', padding: '3px 10px' }}>
+          {open ? 'Show less' : `View full ${label}`}
+        </button>
+      )}
+    </div>
   );
 };
 
@@ -3443,7 +3539,7 @@ export const ExamCalendar: React.FC<ExamCalendarProps> = ({
 
                     {upcoming.length === 0 && completed.length > 0 && !pastOpen && (
                       <div style={{ padding: '14px 16px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', fontSize: '0.86rem', marginBottom: '12px' }}>
-                        Every milestone on record for this exam has passed. The next cycle's dates appear here once {exam.authorityName.split(' (')[0]} publishes them.
+                        Every milestone on record for this exam has passed. No dates for a later cycle are on record.
                       </div>
                     )}
 
@@ -8575,7 +8671,7 @@ export const PreparationPlanner: React.FC<PreparationPlannerProps> = ({ exam }) 
               Day 1 to Exam Hall Preparation Roadmap
             </h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-              Structured, milestone-driven preparation roadmaps for {exam.title}, tailored to your daily study capacity and timeline.
+              Structured, milestone-driven preparation roadmaps for {exam.title}. These tracks, their durations and their daily hours are GovOS's suggested schedules, not rules of the examining authority; pick the one that fits the time you have.
             </p>
           </div>
 
@@ -8620,7 +8716,7 @@ export const PreparationPlanner: React.FC<PreparationPlannerProps> = ({ exam }) 
                   {track.name}
                 </span>
                 <span className="badge badge-demo" style={{ fontSize: '0.75rem' }}>
-                  {track.targetDailyHours} Hrs / Day
+                  Suggested {track.targetDailyHours} hrs/day
                 </span>
               </div>
               <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>
@@ -9592,9 +9688,9 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
 
       if (newlyAdded.length > 0) {
         setAvailablePapers(prev => [...newlyAdded, ...prev]);
-        setSyncSuccessNotice(`🎉 Successfully fetched ${newlyAdded.length} new verified shift papers from official repository (SSC 2024 Shift-3 & SSC 2025 Tier-2 Master Key)!`);
+        setSyncSuccessNotice(`Added ${newlyAdded.length} more GovOS practice papers. They are written to the exam pattern by GovOS, not SSC question papers.`);
       } else {
-        setSyncSuccessNotice(`✅ Official repository verified: Your question paper library is already 100% up to date with the latest 2024-2025 shifts.`);
+        setSyncSuccessNotice(`Every GovOS practice paper is already in your list.`);
       }
       setIsSyncingPapers(false);
     }, 1200);
@@ -10154,7 +10250,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
               <span className="badge badge-demo" style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#137638', border: '1px solid rgba(16, 185, 129, 0.4)' }}>
-                ⚡ OFFICIAL CBT ENGINE & ANIMATED SHORTCUTS
+                ⚡ GOVOS PRACTICE · TIMED CBT FORMAT
               </span>
               <span style={{ fontSize: '0.8rem', color: '#235ddd', fontWeight: 700 }}>
                 • Target: {hasTargetPost ? targetPath.postName : 'no target post chosen yet'}
@@ -10171,8 +10267,8 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
               {scope === 'MOCKS'
                 ? 'Describe the mock you want — subjects, topics, number of questions, difficulty, duration — and the engine assembles it, times it on the real CBT clock and marks it to the official scheme. Your attempts are kept with everything else in Past Tests History.'
                 : scope === 'PRACTICE'
-                  ? 'Attempt authentic previous years shift papers, subject sectionals and topic drills. Every test features step-by-step solutions with animated speed shortcut cards, and every attempt is kept for review.'
-                  : 'Attempt authentic previous years shift papers, sectionals, topic drills, or chat with AI. Every test features step-by-step solutions with animated speed shortcut cards.'}
+                  ? 'Attempt GovOS practice papers written to the exam pattern, subject sectionals and topic drills. These are GovOS-authored questions, not SSC question papers. Every test features step-by-step solutions with animated speed shortcut cards, and every attempt is kept for review.'
+                  : 'Attempt GovOS practice papers written to the exam pattern, sectionals, topic drills, or chat with AI. These are GovOS-authored questions, not SSC question papers. Every test features step-by-step solutions with animated speed shortcut cards.'}
             </p>
           </div>
 
@@ -10185,7 +10281,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
               style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px' }}
             >
               <RefreshCw size={14} className={isSyncingPapers ? 'animate-spin' : ''} />
-              {isSyncingPapers ? 'Checking Repositories...' : '🔄 Sync Latest Sourced Papers'}
+              {isSyncingPapers ? 'Loading...' : '🔄 Show More Practice Papers'}
             </button>
             )}
 
@@ -13090,6 +13186,16 @@ export const ExamApplicationSimulator: React.FC<ExamApplicationSimulatorProps> =
                   ))}
                 </select>
               )}
+              {field.kind === 'SELECT' && (() => {
+                // A closed select shows only as much of a long printed name as its width allows;
+                // the chosen option is also written out in full beneath it.
+                const chosen = (field.options || []).find(o => o.value === values[field.id]);
+                return chosen && chosen.label.length > 60 ? (
+                  <div data-selected-full="true" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.45, overflowWrap: 'anywhere' }}>
+                    Selected: {chosen.label}
+                  </div>
+                ) : null;
+              })()}
 
               {field.kind === 'RADIO' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -13449,7 +13555,11 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
                         </ul>
                       </div>
 
+                      {/* A list with no verified entries is not shown: an empty heading reads as if the
+                          notice listed nothing, which the record does not say. */}
+                      {(step.mandatoryFields.length > 0 || step.commonMistakesToAvoid.length > 0) && (
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '16px', marginTop: '8px' }}>
+                        {step.mandatoryFields.length > 0 && (
                         <div style={{ padding: '14px', borderRadius: 'var(--radius-md)', background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
                           <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#137638', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
                             <CheckCircle2 size={15} /> Mandatory Required Documents / Details
@@ -13460,7 +13570,9 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
                             ))}
                           </ul>
                         </div>
+                        )}
 
+                        {step.commonMistakesToAvoid.length > 0 && (
                         <div style={{ padding: '14px', borderRadius: 'var(--radius-md)', background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
                           <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#b71f1f', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
                             <AlertTriangle size={15} /> Common Mistakes to Avoid
@@ -13471,7 +13583,9 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
                             ))}
                           </ul>
                         </div>
+                        )}
                       </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -14174,27 +14288,27 @@ export const AdmitCardSection: React.FC<AdmitCardSectionProps> = ({
         {/* Box 2: Crucial Printing & Verification Guidelines */}
         <div className="glass-card" style={{ padding: '24px' }}>
           <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Printer size={18} color="#235ddd" /> Essential Printing Rules
+            <Printer size={18} color="#235ddd" /> General Admit-Card Tips
           </h4>
-          {/* General CBT guidance written by GovOS, not a clause of any authority's notice.
-              Where an authority's own document lists what to bring, that list is shown
-              above on the event it belongs to. */}
+          {/* General guidance written by GovOS, not a clause of any authority's notice. It states
+              no requirement of its own: every rule a candidate must follow is the one printed on
+              their card or in the authority's notice, shown above where GovOS has read it. */}
           <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '-6px 0 12px' }}>
             General guidance from GovOS — not a rule of {exam.authorityName.split(' (')[0]}'s notice. Your card's own instructions govern.
           </p>
 
           <ul style={{ paddingLeft: '20px', margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '10px', lineHeight: 1.5 }}>
             <li>
-              <strong style={{ color: 'var(--text-primary)' }}>Print in High Resolution:</strong> Both Color or Laser Black & White prints are acceptable, but the <strong style={{ color: '#235ddd' }}>QR Code / Barcode</strong> and candidate photograph must be crisp and easily scannable.
+              <strong style={{ color: 'var(--text-primary)' }}>Print it clearly:</strong> make sure the photograph and any QR code or barcode on the card can be read. If the card says how it must be printed, follow the card.
             </li>
             <li>
-              <strong style={{ color: 'var(--text-primary)' }}>Check Candidate Particulars:</strong> Verify Name spelling, Category, Sub-Category, and Date of Birth against your official Class 10th Certificate.
+              <strong style={{ color: 'var(--text-primary)' }}>Check your particulars:</strong> compare the name, category and date of birth on the card with your own documents, and raise any error with the authority before the exam.
             </li>
             <li>
-              <strong style={{ color: 'var(--text-primary)' }}>Exam Lab & Shift Timing:</strong> Note the precise <strong style={{ color: '#b71f1f' }}>Reporting Time and Gate Closing Time</strong>. No candidate is permitted inside the examination center after gate closure.
+              <strong style={{ color: 'var(--text-primary)' }}>Note the times printed on it:</strong> the reporting time and any gate-closing time on your card are the ones that apply to you.
             </li>
             <li>
-              <strong style={{ color: 'var(--text-primary)' }}>Self-Declaration Form:</strong> Complete the Covid / Scribe / Identity self-declaration paragraphs in your own handwriting <em>only inside the exam hall in front of the Invigilator</em>.
+              <strong style={{ color: 'var(--text-primary)' }}>Forms on the card:</strong> if the card carries a declaration or another form, complete it exactly as the card instructs.
             </li>
           </ul>
         </div>
@@ -14397,12 +14511,13 @@ export const ExamDayChecklistSection: React.FC<ExamDayChecklistSectionProps> = (
   const completedCount = items.filter(i => checkedIds[i.id]).length;
   const progressPercent = totalItems ? Math.round((completedCount / totalItems) * 100) : 0;
 
-  const categories: { key: ExamDayChecklistItem['category']; name: string; icon: React.ElementType; color: string }[] = [
+  const categories: { key: ExamDayChecklistItem['category'] | 'CONDUCT'; name: string; icon: React.ElementType; color: string }[] = [
     { key: 'DOCUMENTS', name: 'Documents to carry', icon: FileText, color: '#235ddd' },
     { key: 'TIMING', name: 'Reporting & timing', icon: Clock, color: '#a55a05' },
     { key: 'ITEMS_ALLOWED', name: 'Permitted items', icon: CheckCircle2, color: '#137638' },
     { key: 'ITEMS_PROHIBITED', name: 'Prohibited items', icon: Ban, color: '#b33333' },
-    { key: 'CENTRE_INSTRUCTIONS', name: 'Centre instructions', icon: ShieldCheck, color: 'var(--primary)' }
+    { key: 'CENTRE_INSTRUCTIONS', name: 'Centre instructions', icon: ShieldCheck, color: 'var(--primary)' },
+    { key: 'CONDUCT', name: 'Examination rules', icon: Scale, color: '#334155' }
   ];
 
   return (
@@ -14466,7 +14581,7 @@ export const ExamDayChecklistSection: React.FC<ExamDayChecklistSectionProps> = (
       </div>
 
       {categories.map(cat => {
-        const catItems = items.filter(i => i.category === cat.key);
+        const catItems = items.filter(i => examDayDisplayCategory(i) === cat.key);
         if (catItems.length === 0) return null;
         const CatIcon = cat.icon;
 
@@ -14517,9 +14632,13 @@ export const ExamDayChecklistSection: React.FC<ExamDayChecklistSectionProps> = (
                         )}
                       </div>
 
-                      <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: '4px 0 0', lineHeight: 1.45 }}>
-                        {item.description}
-                      </p>
+                      {/* The title is the rule itself where the notice gave it no heading; the same
+                          words are not printed twice. */}
+                      {item.description.trim() !== item.title.trim() && (
+                        <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: '4px 0 0', lineHeight: 1.45 }}>
+                          {item.description}
+                        </p>
+                      )}
 
                       {item.provenance?.officialUrl && (
                         <a
@@ -15380,7 +15499,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                 {isUPSC ? '🏛️ UPSC CIVIL SERVICES 3-STAGE RESULT & VERDICT ENGINE' : '🏆 MULTI-TIER RESULT & VERDICT ENGINE'}
               </span>
               <span className="badge badge-verified">
-                OFFICIALLY AUDITED SCHEME
+                GOVOS SELF-ASSESSMENT
               </span>
               <span className="badge" style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#0272ab', fontSize: '0.72rem' }}>
                 ISOLATED STORAGE: {exam.code}
@@ -15395,7 +15514,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0 }}>
               {isUPSC 
                 ? 'GovOS evaluates performance across all three stages: Stage 1 (Prelims GS-1 Merit & CSAT Qualifying), Stage 2 (Mains Written 1750), Stage 3 (Personality Test 275), and Stage 4 (Final Total 2025 & Service Allocation: IAS, IFS, IPS, IRS).'
-                : `GovOS evaluates performance across every stage this exam has on record (${exam.stages.map(st => st.stageName.split(/[:—(]/)[0].trim()).join(', ')}) to deliver one definitive examination conclusion.`}
+                : `GovOS compares your marks against the published cut-offs for each stage this exam has on record (${distinctStageNames(exam.stages).join(', ')}). This is a self-assessment, not a result.`}
             </p>
           </div>
 
@@ -15533,8 +15652,8 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
               onChange={e => setCategoryInput(e.target.value)}
               style={{ padding: '9px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontSize: '0.9rem', minWidth: '160px' }}
             >
-              {cutoffRows.map(row => (
-                <option key={row.category} value={row.category}>{row.category}</option>
+              {distinctCategories(cutoffRows).map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
               ))}
             </select>
           </div>
@@ -18996,8 +19115,59 @@ const SectionStateNote: React.FC<{ exam: Exam; sectionNum: number }> = ({ exam, 
 // milestone is shown only under its own name, so an exam with no published opening date shows
 // its notification date as "Notification Date" rather than as "Application Starts".
 /** A milestone as the authority printed it: its own words where it printed no day, else the date. */
-export const shownWhen = (d: ImportantDate, withTime = false): string =>
-  d.displayWhen || (withTime ? d.dateTimeStr : d.dateTimeStr.slice(0, 10));
+/** A date as stated: the time only where one was read (never a reader's "00:00:00"). */
+export const shownWhen = (d: ImportantDate, withTime = false): string => statedWhen(d, withTime);
+
+const _bareUrl = (u?: string) => (u || '').split('#')[0].trim();
+const _norm = (s?: string) => (s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+
+/**
+ * Why a date is superseded, as far as the record says -- never assumed from the SUPERSEDED
+ * state. A corrigendum is named only when the statement that replaced the date comes from a
+ * document the record holds as a corrigendum with its own notice number; a later official
+ * statement is named, with its document, when the replacing date is known; otherwise nothing
+ * is claimed about the cause.
+ */
+/** A stage's short name as the authority prints it, each named once: SSC's three Tier-II papers are one Tier-II. */
+export function distinctStageNames(stages: { stageName: string }[]): string[] {
+  return Array.from(new Set(stages.map(st => st.stageName.split(/[:—(]/)[0].trim()).filter(Boolean)));
+}
+/** The categories a candidate can pick, each once. A cut-off row may name several categories that
+ *  share one figure ("SC, ST, ESM, OH, HH, VH, PwD-Others"); each is one category, and a short form
+ *  ("OH", "PwD-Others") is the same category as a longer one already listed ("PwBD-OH", "PwBD-Others"). */
+export function distinctCategories(rows: { category: string }[]): string[] {
+  const key = (c: string) => c.toLowerCase().replace(/^pw(?:b)?d[\s-]*/, '').replace(/[^a-z0-9]/g, '');
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const row of rows) {
+    for (const part of row.category.split(',').map(p => p.trim()).filter(Boolean)) {
+      if (seen.has(key(part))) continue;
+      seen.add(key(part));
+      out.push(part);
+    }
+  }
+  return out;
+}
+/** Where an exam-day item is shown. An item filed as a prohibited item that names nothing a candidate
+ *  could carry ("not permitted to write part of the paper in English and part in Telugu") is a rule of
+ *  conduct, not an object to leave at home, so it is listed under "Examination rules". The item's words
+ *  and evidence are untouched; only its heading changes. */
+const _CARRIABLE = /\b(?:bring|brought|carry|carrying|carried|possess\w*|gadgets?|devices?|phones?|mobiles?|calculators?|watch(?:es)?|electronic|bags?|books?|notes?|papers? chits?|chits?|pen ?drives?|bluetooth|ear ?phones?|wallets?|ornaments?|jewell?ery|log tables?|instruments?|items?|articles?)\b/i;
+export function examDayDisplayCategory(item: Pick<ExamDayChecklistItem, 'category' | 'title' | 'description'>): ExamDayChecklistItem['category'] | 'CONDUCT' {
+  if (item.category === 'ITEMS_PROHIBITED' && !_CARRIABLE.test(`${item.title} ${item.description || ''}`)) return 'CONDUCT';
+  return item.category;
+}
+export function supersessionOf(d: ImportantDate, exam: Pick<Exam, 'dates' | 'corrigendums'>): { label: string; source: string } {
+  const by = d.supersededBy ? exam.dates.find(x => x.id === d.supersededBy) : undefined;
+  if (!by) return { label: 'Superseded', source: '' };
+  const src = _bareUrl(by.provenance?.officialUrl);
+  const notice = (exam.corrigendums || []).find(c =>
+    src && (_bareUrl(c.pdfUrl) === src || _bareUrl(c.provenance?.officialUrl) === src)
+    && !!c.noticeNumber && _norm(c.noticeNumber) !== _norm(c.provenance?.documentTitle)
+    && _norm(c.noticeNumber) !== _norm(by.provenance?.documentTitle));
+  if (notice) return { label: 'Superseded by corrigendum', source: notice.noticeNumber };
+  return { label: 'Superseded by a later official statement', source: by.provenance?.documentTitle || by.label };
+}
 
 export function examHeaderWindowTiles(liveDates: ImportantDate[]): { label: string; value: string }[] {
   const tile = (d: ImportantDate | undefined, label: string) =>
@@ -19451,10 +19621,12 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
             .sort((a, b) => a.time - b.time);
           const upcoming = milestones.filter(m => !m.when.isPast);
           const past = milestones.filter(m => m.when.isPast);
-          // A superseded date is still shown, struck through, because the corrigendum that
+          // A superseded date is still shown, struck through, because the statement that
           // replaced it is part of the record — but it must never be announced as what is
-          // coming next. The candidate would prepare for a deadline that no longer exists.
+          // coming next, nor counted as a milestone still ahead: the candidate would prepare
+          // for a deadline that no longer exists.
           const next = upcoming.find(m => m.d.status !== 'SUPERSEDED');
+          const liveAhead = upcoming.filter(m => m.d.status !== 'SUPERSEDED');
 
           const renderMilestone = (m: typeof milestones[number]) => {
             const d = m.d;
@@ -19469,9 +19641,15 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                     <span style={{ fontSize: '1rem', fontWeight: 700, color: d.status === 'SUPERSEDED' ? '#b71f1f' : 'var(--text-primary)', textDecoration: d.status === 'SUPERSEDED' ? 'line-through' : 'none' }}>
                       {d.label}
                     </span>
-                    {d.status === 'SUPERSEDED' && (
-                      <span className="badge badge-superseded" style={{ fontSize: '0.7rem' }}>SUPERSEDED BY CORRIGENDUM</span>
-                    )}
+                    {d.status === 'SUPERSEDED' && (() => {
+                      const why = supersessionOf(d, exam);
+                      return (
+                        <span className="badge badge-superseded" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}
+                          title={why.source ? `Replaced by: ${why.source}` : 'A later statement replaced this date'}>
+                          {why.label}
+                        </span>
+                      );
+                    })()}
                   </div>
                   <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
                     {m.when.text && (
@@ -19514,7 +19692,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                     Dates & Timeline — {exam.title}
                   </h3>
                   <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', margin: '4px 0 0' }}>
-                    Only this exam's milestones, counted against the clock. {upcoming.length} still ahead, {past.length} already passed.
+                    Only this exam's milestones, counted against the clock. {liveAhead.length} still ahead, {past.length} already passed{upcoming.length > liveAhead.length ? `, ${upcoming.length - liveAhead.length} superseded` : ''}.
                   </p>
                 </div>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -19552,7 +19730,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
 
               {upcoming.length === 0 ? (
                 <div style={{ padding: '22px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                  Every date the register holds for this exam has passed. The next cycle's dates appear here as soon as the commission publishes them.
+                  Every date on record for this exam has passed. No dates for a later cycle are on record.
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -19613,7 +19791,18 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                   <div key={card.title} style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: palette.bg, border: `1px solid ${palette.border}`, display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <h4 style={{ fontSize: '1rem', fontWeight: 700, color: palette.color, margin: 0 }}>{card.title}</h4>
                     <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.55 }}>{card.body}</p>
-                    <EvidenceButton provenance={card.provenance} onOpen={onOpenProvenanceModal} />
+                    {(() => {
+                      // A card printing several amounts needs evidence for each, not one clause for all.
+                      const figures = moneyFigureEvidence(card.body, card.provenance, exam);
+                      if (figures.length < 2) return <EvidenceButton provenance={card.provenance} onOpen={onOpenProvenanceModal} />;
+                      return (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+                          {figures.map(f => f.provenance
+                            ? <EvidenceButton key={f.label} provenance={f.provenance} onOpen={onOpenProvenanceModal} label={`Evidence: ${f.label}`} />
+                            : <span key={f.label} style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>{f.label}: no quoted evidence on record</span>)}
+                        </div>
+                      );
+                    })()}
                   </div>
                 );
               })}
@@ -20146,9 +20335,8 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                   <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>{faq.question}</h4>
                   <span className="badge badge-verified" style={{ fontSize: '0.72rem' }}>{faq.officialClause}</span>
                 </div>
-                <p style={{ fontSize: '0.92rem', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
-                  {faq.answer}
-                </p>
+                <FullText text={faq.answer} label="clause"
+                  style={{ fontSize: '0.92rem', color: 'var(--text-secondary)', lineHeight: 1.5 }} />
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
                   <EvidenceButton provenance={faq.provenance} onOpen={onOpenProvenanceModal} />
                 </div>

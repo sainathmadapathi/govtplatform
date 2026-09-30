@@ -500,7 +500,7 @@ def _posts(rec: ExamRecord) -> tuple[list[dict], list[str], list[dict]]:
             row['specialQualification'] = _clean(extra['qualification'], 600)
         if extra.get('physicalRequirements'):
             row['physicalRequired'] = True
-            row['physicalNote'] = _clean(' '.join(extra['physicalRequirements']), 900)
+            row['physicalNote'] = re.sub(r'\s+', ' ', ' '.join(extra['physicalRequirements'])).strip()
         if extra.get('conditions'):
             row['postConditions'] = [_clean(c, 320) for c in extra['conditions']]
         rows.append(row)
@@ -532,7 +532,7 @@ def _eligibility_highlights(rec: ExamRecord) -> list[dict]:
                         + (f"; born on or after {v['bornNotEarlierThan']} and on or before {v['bornNotLaterThan']}."
                            if v.get('bornNotEarlierThan') else '.'))
         elif isinstance(v, dict) and v.get('text'):
-            body = str(v['text'])[:400]
+            body = str(v['text'])
         elif name == 'fee' and isinstance(v, dict) and v.get('components'):
             # Each fee under the name the notice gave it, never one merged figure.
             body = '; '.join(f"{c.get('label') or c.get('feeType')}: Rs. {c.get('amount'):g}"
@@ -543,7 +543,7 @@ def _eligibility_highlights(rec: ExamRecord) -> list[dict]:
             amounts = [str(a) for a in (v.get('amounts') or [v.get('amount')]) if a not in (None, '')]
             body = 'Rs. ' + ' / Rs. '.join(dict.fromkeys(amounts)) + ' as printed in the notice; the evidence span carries the wording.'
         elif isinstance(v, dict):
-            body = str(f.citation.excerpt or '')[:400] if f.citation and getattr(f.citation, 'excerpt', '') else str(v)[:400]
+            body = str(f.citation.excerpt or '') if f.citation and getattr(f.citation, 'excerpt', '') else str(v)[:400]
         else:
             body = str(v)[:400]
         cards.append({'title': title, 'body': body, 'provenance': _prov(rec, f, name.lower()) or {}})
@@ -700,13 +700,13 @@ def _how_to_apply_lines(value: Any) -> list[str]:
             else:
                 text = re.sub(r'\s+', ' ', str(item).strip())
             if text:
-                lines.append(text[:600])
+                lines.append(text)
     elif isinstance(value, dict):
         text = re.sub(r'\s+', ' ', str(value.get('text') or '').strip())
         if text:
-            lines.append(text[:1200])
+            lines.append(text)
     elif value:
-        lines.append(re.sub(r'\s+', ' ', str(value).strip())[:1200])
+        lines.append(re.sub(r'\s+', ' ', str(value).strip()))
     return lines[:20]
 
 
@@ -893,7 +893,7 @@ def _faqs(rec: ExamRecord) -> list[dict]:
         item_prov = dict(prov)
         item_prov['id'] = f'{prov.get("id", "prov")}-{i}'
         if q.get('excerpt'):
-            item_prov['excerptText'] = str(q['excerpt'])[:600]
+            item_prov['excerptText'] = str(q['excerpt'])
         if q.get('page'):
             item_prov['pageNumber'] = q['page']
             item_prov['clauseNumber'] = str(q.get('officialClause') or '')
@@ -918,13 +918,13 @@ def _exam_day(rec: ExamRecord) -> list[dict]:
         item_prov = dict(prov)
         item_prov['id'] = f'{prov.get("id", "prov")}-{i}'
         if it.get('excerpt'):
-            item_prov['excerptText'] = str(it['excerpt'])[:600]
+            item_prov['excerptText'] = str(it['excerpt'])
         if it.get('page'):
             item_prov['pageNumber'] = it['page']
         cat = str(it.get('category') or 'CENTRE_INSTRUCTIONS')
         out.append({'id': f'examday-{rec.exam_id}-{i}',
                     'category': cat if cat in _EXAM_DAY_CATEGORIES else 'CENTRE_INSTRUCTIONS',
-                    'title': str(it.get('title') or it['description'])[:120],
+                    'title': str(it.get('title') or it['description']),
                     'description': str(it['description']), 'isMandatory': bool(it.get('isMandatory', False)),
                     'provenance': item_prov})
     return out

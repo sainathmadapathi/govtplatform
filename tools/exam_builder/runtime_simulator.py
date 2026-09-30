@@ -51,7 +51,8 @@ def _where(p: dict) -> str:
 
 
 def _words(p: dict) -> str:
-    return str(p.get('excerptText') or '').strip()[:300]
+    # The clause a check quotes is quoted whole; a cut quotation ends mid-word ("... Other Go").
+    return str(p.get('excerptText') or '').strip()
 
 
 def _category_label(raw: str) -> str:
@@ -93,7 +94,8 @@ def build_simulator(exam: dict) -> Optional[dict]:
         particulars.append({
             'id': 'post', 'label': 'Post applied for', 'kind': 'SELECT',
             'defaultValue': posts[0]['id'],
-            'options': [{'value': p['id'], 'label': p['postName'][:90]} for p in posts[:80]],
+            # Each post under its full printed name ("... (Social Welfare Service)", not "(Social Wel").
+            'options': [{'value': p['id'], 'label': p['postName']} for p in posts[:80]],
             'noteFromNotice': 'The posts this notice recruits to. Age limits and qualifications differ by post '
                               '— see Eligibility & Posts for the one you choose.'})
     if asof and bands and is_provenance(age_prov):
