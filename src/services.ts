@@ -15,6 +15,10 @@ export function statedWhen(d: Pick<ImportantDate, 'dateTimeStr' | 'displayWhen'>
 }
 
 import {
+  ClaudeHealth,
+  ClaudeJob,
+  ClaudeJobTicket,
+  ClaudeOutcome,
   ResourceLinkCheck,
   ResearchExtractResult,
   ResearchFact,
@@ -2083,10 +2087,39 @@ export function computePersonalizedRecommendations(
 export const storageService = new StorageService();
 
 /**
- * GovOS Live Source Research — thin client over the server's Tavily pipeline.
- * The API key never reaches the browser; every call goes through app.py, which
- * classifies results by domain and stores them for human review.
+ * GovOS Live Source Research — thin client over the server's Claude discovery pipeline.
+ *
+ * Claude runs only on the server: the installed Claude CLI, behind a persistent job queue. The
+ * browser never sees a prompt, a command line, an account or a key. A discovery run is a job —
+ * Claude proposes candidate sources, the server checks every one — and its results are stored for
+ * human review. Trust Panel operations carry the admin token when the server demands one (see
+ * CLAUDE_CLI_INTEGRATION.md; that guard is local protection, not user authentication).
  */
+const ADMIN_TOKEN_KEY = 'govos_admin_token';
+
+/** The Trust Panel's admin token, kept for this browser tab only (sessionStorage), never persisted. */
+export const adminToken = {
+  get(): string {
+    try { return sessionStorage.getItem(ADMIN_TOKEN_KEY) || ''; } catch { return ''; }
+  },
+  set(value: string): void {
+    try {
+      if (value) sessionStorage.setItem(ADMIN_TOKEN_KEY, value);
+      else sessionStorage.removeItem(ADMIN_TOKEN_KEY);
+    } catch {
+      // storage blocked: the token simply is not remembered
+    }
+  }
+};
+
+/** Headers for a Trust Panel operation: the admin token, when one has been entered. */
+export const adminHeaders = (): Record<string, string> => {
+  const token = adminToken.get();
+  return token ? { 'X-GovOS-Admin-Token': token } : {};
+};
+
+const jsonHeaders = (): Record<string, string> => ({ 'Content-Type': 'application/json', ...adminHeaders() });
+
 async function researchOutcome<T>(res: Response): Promise<ResearchOutcome<T>> {
   let body: any = null;
   try {
@@ -2097,13 +2130,138 @@ async function researchOutcome<T>(res: Response): Promise<ResearchOutcome<T>> {
   if (res.ok) {
     return { ok: true, data: body as T };
   }
+  const refused = body && body.error === 'ADMIN_REQUIRED';
   return {
     ok: false,
-    error: (body && (body.detail || body.error)) || `Server returned HTTP ${res.status}`,
+    error: refused
+      ? `${body.message || 'Admin access is required'}. ${body.hint || ''}`.trim()
+      : (body && (body.message || body.detail || body.error)) || `Server returned HTTP ${res.status}`,
     setup: body && body.setup,
-    notConfigured: res.status === 503 && !!(body && body.setup)
+    claudeUnavailable: res.status === 503 && !!(body && body.error === 'CLAUDE_UNAVAILABLE'),
+    status: body && body.status
   };
 }
+
+const NETWORK_ERROR = (e: any) => `GovOS server unreachable: ${e?.message || 'network error'}`;
+
+let _healthCache: { at: number; value: ClaudeHealth | null } | null = null;
+
+const isTerminal = (status: string) => status === 'SUCCEEDED' || status === 'FAILED' || status === 'CANCELLED';
+
+/**
+ * Claude jobs: health, polling, cancel, retry, and the two candidate-facing operations. Every call
+ * swallows network errors into an `ok: false` outcome, so a feature that depends on Claude can
+ * always fall back to the deterministic one.
+ */
+export const claudeService = {
+  async health(): Promise<ClaudeHealth | null> {
+    try {
+      const res = await fetch('/api/claude/health');
+      if (res.ok) return await res.json();
+    } catch {
+      // server offline
+    }
+    return null;
+  },
+
+  /** `health()`, remembered for `maxAgeMs`, so a chat that asks before every unplaced question does not poll. */
+  async healthCached(maxAgeMs = 30_000): Promise<ClaudeHealth | null> {
+    if (_healthCache && Date.now() - _healthCache.at < maxAgeMs) return _healthCache.value;
+    const value = await claudeService.health();
+    _healthCache = { at: Date.now(), value };
+    return value;
+  },
+
+  async getJob<R = any>(jobId: string, token?: string): Promise<ClaudeJob<R> | null> {
+    try {
+      const res = await fetch(`/api/claude/jobs/${encodeURIComponent(jobId)}`, {
+        headers: { ...adminHeaders(), ...(token ? { 'X-GovOS-Job-Token': token } : {}) }
+      });
+      if (res.ok) return await res.json();
+    } catch {
+      // server offline
+    }
+    return null;
+  },
+
+  /**
+   * Poll a job until it finishes. Gives up (ok: false, fallback: true) after `timeoutMs` so a slow
+   * Claude never blocks a candidate: the caller shows its deterministic answer instead. The job is
+   * left running on the server unless the caller cancels it.
+   */
+  async waitForJob<R = any>(jobId: string, opts: {
+    token?: string; intervalMs?: number; timeoutMs?: number; signal?: AbortSignal; onUpdate?: (job: ClaudeJob<R>) => void;
+  } = {}): Promise<ClaudeOutcome<ClaudeJob<R>>> {
+    const interval = opts.intervalMs ?? 1200;
+    const deadline = Date.now() + (opts.timeoutMs ?? 120_000);
+    while (Date.now() < deadline) {
+      if (opts.signal?.aborted) return { ok: false, error: 'Stopped waiting.', status: 'ABORTED' };
+      const job = await claudeService.getJob<R>(jobId, opts.token);
+      if (job) {
+        opts.onUpdate?.(job);
+        if (isTerminal(job.status)) return { ok: true, data: job };
+      }
+      await new Promise(resolve => setTimeout(resolve, interval));
+    }
+    return { ok: false, error: 'Claude is taking too long to answer.', status: 'TIMEOUT', fallback: true };
+  },
+
+  async cancel(jobId: string, token?: string): Promise<ClaudeJob | null> {
+    try {
+      const res = await fetch(`/api/claude/jobs/${encodeURIComponent(jobId)}/cancel`, {
+        method: 'POST',
+        headers: { ...adminHeaders(), ...(token ? { 'X-GovOS-Job-Token': token } : {}) }
+      });
+      if (res.ok) return await res.json();
+    } catch {
+      // server offline
+    }
+    return null;
+  },
+
+  async retry(jobId: string): Promise<ClaudeOutcome<ClaudeJobTicket>> {
+    return claudeService._post(`/api/claude/jobs/${encodeURIComponent(jobId)}/retry`, {});
+  },
+
+  /** Recent jobs, newest first, with a count per status. Admin only. */
+  async listJobs(limit = 30): Promise<{ jobs: ClaudeJob[]; counts: Record<string, number> } | null> {
+    try {
+      const res = await fetch(`/api/claude/jobs?limit=${limit}`, { headers: adminHeaders() });
+      if (res.ok) return await res.json();
+    } catch {
+      // server offline
+    }
+    return null;
+  },
+
+  /** Queue a question about ONE exam. The server builds the facts Claude may use; the answer is checked against them. */
+  async ask(examId: string, question: string, history: { role: 'user' | 'assistant'; text: string }[] = []): Promise<ClaudeOutcome<ClaudeJobTicket>> {
+    return claudeService._post('/api/claude/ask', { examId, question, history });
+  },
+
+  /** Queue practice questions on one topic of an exam's verified syllabus. */
+  async practice(examId: string, topic: string, count = 3, difficulty: 'EASY' | 'MEDIUM' | 'HARD' = 'MEDIUM'): Promise<ClaudeOutcome<ClaudeJobTicket>> {
+    return claudeService._post('/api/claude/practice', { examId, topic, count, difficulty });
+  },
+
+  async _post(url: string, body: unknown): Promise<ClaudeOutcome<ClaudeJobTicket>> {
+    try {
+      const res = await fetch(url, { method: 'POST', headers: jsonHeaders(), body: JSON.stringify(body) });
+      let data: any = null;
+      try { data = await res.json(); } catch { data = null; }
+      if (res.ok) return { ok: true, data: data as ClaudeJobTicket };
+      return {
+        ok: false,
+        error: (data && (data.message || data.error)) || `Server returned HTTP ${res.status}`,
+        status: data && data.status,
+        fallback: !!(data && data.fallback) || res.status === 503 || res.status === 429,
+        retryAfter: data && data.retryAfter
+      };
+    } catch (e: any) {
+      return { ok: false, error: NETWORK_ERROR(e), fallback: true };
+    }
+  }
+};
 
 export const researchService = {
   async getStatus(): Promise<ResearchStatus | null> {
@@ -2116,36 +2274,50 @@ export const researchService = {
     return null;
   },
 
-  async search(
+  /** Queue a discovery job. Claude proposes sources; the server checks each one. Admin only. */
+  async startSearch(
     query: string,
     mode: ResearchMode = 'OFFICIAL',
     examId?: string,
     maxResults: number = 8
-  ): Promise<ResearchOutcome<ResearchSearchResult>> {
+  ): Promise<ResearchOutcome<ClaudeJobTicket>> {
     try {
       const res = await fetch('/api/research/search', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: jsonHeaders(),
         body: JSON.stringify({ query, mode, exam_id: examId, max_results: maxResults })
       });
-      return await researchOutcome<ResearchSearchResult>(res);
+      return await researchOutcome<ClaudeJobTicket>(res);
     } catch (e: any) {
-      return { ok: false, error: `GovOS server unreachable: ${e?.message || 'network error'}` };
+      return { ok: false, error: NETWORK_ERROR(e) };
     }
   },
 
-  async extract(urls: string[], findingId?: number): Promise<ResearchOutcome<ResearchExtractResult[]>> {
+  /** A stored run and its findings (what a finished discovery job produced). */
+  async getRun(runId: number): Promise<ResearchSearchResult | null> {
+    try {
+      const res = await fetch(`/api/research/runs/${runId}`);
+      if (!res.ok) return null;
+      const run = (await res.json()).run as ResearchRun;
+      return { runId: run.id, query: run.query, mode: run.mode, examId: run.examId, engine: run.engine, jobId: run.jobId, results: run.findings };
+    } catch {
+      return null;
+    }
+  },
+
+  /** Fetch and store a finding's page text, deterministically, on the server. No Claude call. */
+  async extract(findingId: number): Promise<ResearchOutcome<ResearchExtractResult[]>> {
     try {
       const res = await fetch('/api/research/extract', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ urls, finding_id: findingId })
+        headers: jsonHeaders(),
+        body: JSON.stringify({ finding_id: findingId })
       });
       const outcome = await researchOutcome<{ results: ResearchExtractResult[] }>(res);
       if (outcome.ok) return { ok: true, data: outcome.data.results || [] };
       return outcome;
     } catch (e: any) {
-      return { ok: false, error: `GovOS server unreachable: ${e?.message || 'network error'}` };
+      return { ok: false, error: NETWORK_ERROR(e) };
     }
   },
 
@@ -2176,7 +2348,7 @@ export const researchService = {
     try {
       const res = await fetch(`/api/research/findings/${id}/status`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: jsonHeaders(),
         body: JSON.stringify({ status })
       });
       return res.ok;
@@ -2186,14 +2358,16 @@ export const researchService = {
   },
 
   // --- Field-level validation layer (RESEARCH_VALIDATION_DESIGN.md) ---
-  // These sit beside the existing finding review; they never call Tavily and never publish.
+  // These sit beside the existing finding review and never publish. The rule-based reader runs
+  // immediately; reading with Claude is a job whose proposals are kept only where their quotation
+  // is printed in the page text the server fetched.
 
-  /** Extract + validate typed facts from findings already stored for a run or one finding. */
+  /** Extract + validate typed facts, rule-based, from findings already stored for a run or one finding. */
   async extractFacts(target: { runId?: number; findingId?: number }): Promise<ResearchFact[]> {
     try {
       const res = await fetch('/api/research/facts/extract', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: jsonHeaders(),
         body: JSON.stringify({ run_id: target.runId, finding_id: target.findingId })
       });
       if (res.ok) {
@@ -2204,6 +2378,20 @@ export const researchService = {
       // server offline
     }
     return [];
+  },
+
+  /** Queue Claude's reading of one finding's page text. Needs the page text to have been fetched first. */
+  async extractFactsWithClaude(findingId: number): Promise<ResearchOutcome<ClaudeJobTicket>> {
+    try {
+      const res = await fetch('/api/research/facts/extract', {
+        method: 'POST',
+        headers: jsonHeaders(),
+        body: JSON.stringify({ finding_id: findingId, claude: true })
+      });
+      return await researchOutcome<ClaudeJobTicket>(res);
+    } catch (e: any) {
+      return { ok: false, error: NETWORK_ERROR(e) };
+    }
   },
 
   /** List extracted facts for the Trust Panel, filtered by run / status / exam. */
@@ -2229,7 +2417,7 @@ export const researchService = {
     try {
       const res = await fetch(`/api/research/facts/${id}/status`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: jsonHeaders(),
         body: JSON.stringify({ status })
       });
       return res.ok;
@@ -2287,7 +2475,7 @@ export const syllabusLiveService = {
     try {
       const res = await fetch('/api/syllabus/revisions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: jsonHeaders(),
         body: JSON.stringify(input)
       });
       const data = await res.json();
@@ -2300,7 +2488,7 @@ export const syllabusLiveService = {
 
   async retireRevision(id: string): Promise<boolean> {
     try {
-      const res = await fetch(`/api/syllabus/revisions/${encodeURIComponent(id)}/retire`, { method: 'POST' });
+      const res = await fetch(`/api/syllabus/revisions/${encodeURIComponent(id)}/retire`, { method: 'POST', headers: adminHeaders() });
       return res.ok;
     } catch {
       return false;
@@ -2460,9 +2648,10 @@ export const resourceLiveService = {
     return {};
   },
 
-  async additions(): Promise<ResourceAddition[]> {
+  /** The verifier-added entries for ONE exam (or every exam's, for the Trust Panel, when no exam is given). */
+  async additions(examId?: string): Promise<ResourceAddition[]> {
     try {
-      const res = await fetch('/api/resources/additions');
+      const res = await fetch(examId ? `/api/resources/additions?exam_id=${encodeURIComponent(examId)}` : '/api/resources/additions');
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data.additions)) return data.additions;
@@ -2473,11 +2662,11 @@ export const resourceLiveService = {
     return [];
   },
 
-  async addResource(payload: { title: string; url: string; subject?: string; resourceFormat?: string; author?: string; description?: string; findingId?: number; addedFrom?: string }): Promise<ResourceAddition | null> {
+  async addResource(payload: { title: string; url: string; examId: string; subject?: string; resourceFormat?: string; author?: string; description?: string; findingId?: number; addedFrom?: string }): Promise<ResourceAddition | null> {
     try {
       const res = await fetch('/api/resources/additions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: jsonHeaders(),
         body: JSON.stringify(payload)
       });
       if (res.ok) {
@@ -2492,7 +2681,7 @@ export const resourceLiveService = {
 
   async retireResource(id: string): Promise<boolean> {
     try {
-      const res = await fetch(`/api/resources/additions/${encodeURIComponent(id)}/retire`, { method: 'POST' });
+      const res = await fetch(`/api/resources/additions/${encodeURIComponent(id)}/retire`, { method: 'POST', headers: adminHeaders() });
       return res.ok;
     } catch {
       return false;
@@ -2652,7 +2841,7 @@ export const examOverlayService = {
     try {
       const res = await fetch(`/api/exams/${encodeURIComponent(examId)}/overlays`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: jsonHeaders(),
         body: JSON.stringify(overlay)
       });
       if (!res.ok) return null;
@@ -2666,7 +2855,8 @@ export const examOverlayService = {
   async retireOverlay(overlayId: string): Promise<boolean> {
     try {
       const res = await fetch(`/api/exams/overlays/${encodeURIComponent(overlayId)}/retire`, {
-        method: 'POST'
+        method: 'POST',
+        headers: adminHeaders()
       });
       return res.ok;
     } catch {

@@ -19,9 +19,9 @@ def claim_from_result(row: dict, *, official_name: str, authority: str,
 
     - `value` is the declared date, else the scheduled date -- exactly what the record states.
     - `evidence_span` is the declaration's own provenance excerpt (the verbatim span the
-      reader captured), never a Tavily snippet.
+      reader captured), never a search snippet.
     - identity/cycle come from the exam record, so the deterministic gate can reject a source
-      that belongs to another exam or cycle before the model is ever consulted.
+      that belongs to another exam or cycle before Claude is ever consulted.
     """
     prov = row.get('provenance') or {}
     value = row.get('declaredAt') or row.get('expectedAt') or ''
@@ -47,13 +47,13 @@ def claim_from_cutoff(entry: dict, *, exam_id: str, official_name: str, authorit
                       tier: str = 'prelim', source_text: str = '') -> Claim:
     """A `Claim` for one cut-off value.
 
-    Cut-offs are the case where Qwen earns its place: the value alone ("92.66") appears in
+    Cut-offs are the case where Claude earns its place: the value alone ("92.66") appears in
     several rows of one sheet, so only reading it *in context* decides whether it is the
     General prelim mark or another category's. So the claim carries the value, the category
     and the stage in its `field`, and the evidence is the sheet's own verbatim excerpt.
 
     Identity and cycle come from the exam record and the entry's own year, so a source for
-    another exam -- or another cycle -- is rejected deterministically before the model is
+    another exam -- or another cycle -- is rejected deterministically before Claude is
     consulted. `tier` selects which published mark this claim is about ('prelim' -> the
     tier-1/stage-1 mark, 'mains' -> tier-2), because one row can carry more than one.
     """
@@ -67,7 +67,7 @@ def claim_from_cutoff(entry: dict, *, exam_id: str, official_name: str, authorit
     composed = source_text or (title + ' ' + excerpt).strip()
     # Cut-off sheets pack every category's mark onto one line, and a whole-line span lets a
     # model mis-bind a value to the wrong category. Focus the evidence on the claimed
-    # category's own pairing where the sheet writes it as "<value> (<Category>)", so the model
+    # category's own pairing where the sheet writes it as "<value> (<Category>)", so Claude
     # is asked about the right cell. Generic: it keys on the category token, never an exam.
     focused = _focus_on_category(excerpt, category)
     return Claim(
@@ -88,7 +88,7 @@ def claim_from_cutoff(entry: dict, *, exam_id: str, official_name: str, authorit
 def _focus_on_category(excerpt: str, category: str) -> str:
     """A tight window around the claimed category's own mark, where the sheet pairs them.
 
-    Cut-off sheets write "92.66 (General) 89.34 (EWS) 92.00 (OBC)"; asked about OBC, the model
+    Cut-off sheets write "92.66 (General) 89.34 (EWS) 92.00 (OBC)"; asked about OBC, Claude
     should see "92.00 (OBC)", not the whole line. This finds the category token and returns a
     small window that captures the value written beside it. It keys only on the category word
     (a generic label like General/OBC/SC/ST/UR/EWS), never on an exam or authority, so it
@@ -118,10 +118,10 @@ def claim_from_revision(rev: dict, *, exam_id: str, official_name: str, authorit
     verified once against the original source and is preserved in the record; the *new* value
     is what this revision's own document must support, so that is what the verifier checks. The
     affected field travels in the claim's `field`, so a document that changes the last date can
-    never verify a change to the exam date -- the model is asked about the right field.
+    never verify a change to the exam date -- Claude is asked about the right field.
 
     Identity and cycle come from the exam record, so a corrigendum for another exam or another
-    cycle is rejected deterministically before the model is consulted. Generic: no branch on an
+    cycle is rejected deterministically before Claude is consulted. Generic: no branch on an
     authority or exam type.
     """
     affected = rev.get('affected') or rev.get('fieldPath') or 'field'
@@ -148,7 +148,7 @@ def resource_officiality(url: str, authority_domain: str = '') -> str:
     """'OFFICIAL' when the URL is on the authority's own host, else 'UNOFFICIAL'.
 
     Deterministic and domain-based -- officiality is never taken from a snippet, a professional
-    look, or the model. A resource on a coaching or news host is UNOFFICIAL even when it is
+    look, or Claude. A resource on a coaching or news host is UNOFFICIAL even when it is
     useful. Reuses the admit-card URL host check, so there is one definition of "the authority's
     own host" across the engine.
     """
@@ -175,9 +175,9 @@ def claim_from_resource(resource: dict, *, exam_id: str, official_name: str, aut
     """A `Claim` that a resource belongs to the exact exam/cycle and matches its claimed type.
 
     The value is the resource's title and its evidence is the resource's own description or
-    provenance excerpt -- what the record already holds, not a Tavily snippet. Identity and
+    provenance excerpt -- what the record already holds, not a search snippet. Identity and
     cycle come from the exam record, so a resource for another exam or cycle is rejected before
-    the model. The model then judges scope/type semantically (Step 6). Officiality is decided
+    Claude. Claude then judges scope/type semantically (Step 6). Officiality is decided
     separately and deterministically by `resource_officiality` on the URL's host -- never here.
     """
     prov = resource.get('provenance') or {}
@@ -188,7 +188,7 @@ def claim_from_resource(resource: dict, *, exam_id: str, official_name: str, aut
     composed = source_text or (doc_title + ' ' + excerpt).strip()
     # The claim's value is a scope phrase, not the verbatim title: a title often carries an
     # identifier (a notice number, a file name) the evidence does not repeat, which makes the
-    # model conservatively return INSUFFICIENT. The evidence can support "an official document
+    # Claude conservatively return INSUFFICIENT. The evidence can support "an official document
     # for <exam> <cycle>", which is what the record is actually asserting. Generic label map,
     # no exam-specific branch.
     label = _RESOURCE_LABEL.get(rtype, 'resource')
@@ -216,7 +216,7 @@ def claim_from_question(q: dict, *, official_name: str, authority: str,
     question text; the evidence is the question's own provenance (the OCR-read page), so the
     model checks whether the source establishes that this question is in that paper. Identity,
     cycle and paper come from the question's own fields, so a question from another exam or
-    cycle -- or a generated one with no official provenance -- is rejected before the model.
+    cycle -- or a generated one with no official provenance -- is rejected before Claude.
 
     A generated (GOVOS_CREATED / AI_GENERATED) question has no official provenance and no source
     document, so it cannot pass this check and can never be verified as an official PYQ. Generic:
@@ -251,7 +251,7 @@ def claim_from_exam_day(instruction: dict, *, exam_id: str, official_name: str, 
     """A `Claim` that an exam-day instruction is stated by this exam's official evidence.
 
     Exam-day rules are cycle-sensitive and must never be copied between exams, so identity and
-    cycle come from the exam record and are checked before the model. The claim's value is the
+    cycle come from the exam record and are checked before Claude. The claim's value is the
     instruction text and its evidence is the official clause; the category and stage travel in
     the `field`, so a document that states a documents rule cannot verify a timing rule, and a
     Prelims instruction cannot verify a Mains one. Generic: no branch on an authority or exam.
@@ -283,7 +283,7 @@ def claim_from_faq(faq: dict, *, exam_id: str, official_name: str, authority: st
 
     The value is the FAQ answer (the factual statement), the evidence is the clause's own
     provenance excerpt, and identity/cycle come from the exam record -- so a FAQ verified
-    against another exam's or another cycle's clause is rejected before the model. The clause
+    against another exam's or another cycle's clause is rejected before Claude. The clause
     label and stage travel in the `field`. A FAQ whose answer bundles several facts is best
     verified fact by fact against each fact's own clause; the adapter shapes one such claim.
     Generic: no branch on an authority or exam type.
@@ -321,7 +321,7 @@ def portal_officiality(url: str, authority_domains='') -> str:
     different TLDs: UPSC's notices are on `upsc.gov.in` but its application and admit-card portal
     is `upsconline.nic.in` (NIC's `.nic.in`), a distinct host that is not a subdomain of the
     first. So officiality is a match against the authority's *set* of own domains, which the
-    caller supplies from the record -- deterministic, never the model, never a guess. It
+    caller supplies from the record -- deterministic, never Claude, never a guess. It
     delegates to `resource_officiality` per domain, so there is one host-match definition across
     the engine. `authority_domains` may be a single domain, a comma/space-separated string, or an
     iterable. A coaching, look-alike or aggregator host matches none and is UNOFFICIAL even when
@@ -353,14 +353,14 @@ def claim_from_portal(link: dict, *, exam_id: str, official_name: str, authority
     """A `Claim` that a portal/link has its *claimed purpose* for the exact exam/cycle.
 
     This is the check the phase is about: a URL must not become "Download Admit Card" merely by
-    existing. So the claim binds the URL's *host* to its purpose -- the model is asked whether
+    existing. So the claim binds the URL's *host* to its purpose -- Claude is asked whether
     the official evidence supports that *this host* is the application (or admit-card, result, …)
     portal for this exam and cycle, not merely that some such portal exists. A homepage clause
     that names no purpose cannot support "admit-card download portal", so a homepage claimed as a
     download link lands at INSUFFICIENT -> NEEDS_REVIEW, never VERIFIED.
 
     Identity and cycle come from the exam record, so a portal for another exam or another cycle
-    is rejected deterministically before the model. The purpose and stage travel in the `field`,
+    is rejected deterministically before Claude. The purpose and stage travel in the `field`,
     so evidence for one purpose cannot verify another. Officiality is **not** decided here: it is
     `portal_officiality(url, authority_domain)`, deterministic and domain-based. Generic: no
     branch on an authority or exam type, and no URL is ever invented or inferred from a filename.
@@ -372,7 +372,7 @@ def claim_from_portal(link: dict, *, exam_id: str, official_name: str, authority
     excerpt = str(link.get('evidenceSpan') or link.get('note') or link.get('title') or '')
     title = str(link.get('sourceTitle') or link.get('title') or '')
     composed = source_text or (title + ' ' + excerpt).strip()
-    # The value binds the URL's host to the purpose, so the model judges URL<->purpose, not the
+    # The value binds the URL's host to the purpose, so Claude judges URL<->purpose, not the
     # bare existence of a portal. A scope phrase (host + purpose + exam/cycle), never a snippet.
     scope = f'{host} is the {label} for {official_name}' + (f' {cycle}' if cycle else '')
     stage_part = f':{stage.lower()}' if stage else ''
@@ -396,7 +396,7 @@ def claim_from_field(field, *, exam_id: str, official_name: str, authority: str,
     """A `Claim` for one extracted record `Field` (the build pipeline's output).
 
     This is the generic bridge from the record model (`exam_authoring.record.Field`) to the
-    verifier, so the orchestrator can run the same deterministic + Qwen gate over whatever a
+    verifier, so the orchestrator can run the same deterministic + Claude gate over whatever a
     build read, without the verifier knowing anything about the field. It reads only the
     field's own value and citation -- value, evidence excerpt, source url/title -- and composes
     a source text from the document title plus the excerpt, exactly as the other adapters do,

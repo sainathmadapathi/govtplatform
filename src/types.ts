@@ -30,6 +30,9 @@ export interface DataProvenance {
   supersededBy?: DataProvenance;
   /** On a derived value: how GovOS computed it, and the evidence of every input. */
   derivation?: { method: string; inputs: DataProvenance[] };
+  /** Set where a value is shown with this provenance but its quoted words do not contain it:
+   *  the value as displayed. Such a provenance is never presented as direct or verified. */
+  claimNotInQuote?: string;
 }
 
 export type EvidenceType = 'DIRECT' | 'RECONCILED' | 'DERIVED';
@@ -551,8 +554,9 @@ export interface ResourceItem {
     | 'Previous Year Papers'
     | 'Optional Subjects';
   author: string;
-  type: 'OFFICIAL_PDF' | 'OFFICIAL_PORTAL' | 'SIMPLIFIED_GUIDE' | 'RECOMMENDED_BOOK' | 'VIDEO_LECTURE' | 'ONLINE_TOOL';
-  resourceFormat: 'DIRECT_PDF' | 'YOUTUBE_COURSE' | 'YOUTUBE_CHANNEL' | 'INTERACTIVE_HANDBOOK' | 'ONLINE_TOOL' | 'OFFICIAL_PORTAL';
+  /** THIRD_PARTY: a page GovOS did not write and no authority published (a coaching portal, say). Never counted as official. */
+  type: 'OFFICIAL_PDF' | 'OFFICIAL_PORTAL' | 'SIMPLIFIED_GUIDE' | 'RECOMMENDED_BOOK' | 'VIDEO_LECTURE' | 'ONLINE_TOOL' | 'THIRD_PARTY';
+  resourceFormat: 'DIRECT_PDF' | 'YOUTUBE_COURSE' | 'YOUTUBE_CHANNEL' | 'INTERACTIVE_HANDBOOK' | 'ONLINE_TOOL' | 'OFFICIAL_PORTAL' | 'EXTERNAL_PAGE';
   url: string;
   directPdfUrl?: string;
   youtubeUrl?: string;
@@ -582,13 +586,13 @@ export interface ResourceLinkCheck {
   checkedAt: string;
 }
 
-// --- Live Source Research (Tavily) ---
+// --- Live Source Research (Claude discovery; every candidate source is checked by the server) ---
 
 /** How much a search result can be trusted, decided purely from its domain. */
 export type ResearchTrustLevel = 'OFFICIAL' | 'TRUSTED_PUBLIC' | 'UNVERIFIED';
 
-/** OFFICIAL restricts Tavily to government/statutory domains; NEWS is the last 30 days; WEB is unrestricted. */
-export type ResearchMode = 'OFFICIAL' | 'NEWS' | 'WEB';
+/** OFFICIAL keeps only candidates whose host the server classifies as official; WEB keeps any host (labelled by trust). */
+export type ResearchMode = 'OFFICIAL' | 'WEB';
 
 export type ResearchReviewStatus = 'PENDING_REVIEW' | 'REVIEWED' | 'PROMOTED' | 'REJECTED';
 
@@ -605,6 +609,24 @@ export interface ResearchFinding {
   hasExtractedText?: boolean;
   extractedText?: string;
   createdAt?: string;
+  /** What the server itself checked about this candidate source; null for runs made before Claude discovery. */
+  discovery?: ResearchDiscoveryMeta | null;
+}
+
+/**
+ * The deterministic checks the server ran on one candidate source Claude proposed. `whyRelevant` and
+ * `authorityName` are Claude's words and are shown as such; everything else was measured by the server.
+ */
+export interface ResearchDiscoveryMeta {
+  authorityName?: string | null;
+  documentKind?: string | null;
+  whyRelevant?: string | null;
+  reachable?: boolean | null;
+  httpStatus?: number | null;
+  finalUrl?: string | null;
+  finalTrust?: ResearchTrustLevel | null;
+  identity?: string | null;
+  reasons?: string[];
 }
 
 export interface ResearchRun {
@@ -615,27 +637,35 @@ export interface ResearchRun {
   answer?: string | null;
   resultCount: number;
   createdAt: string;
+  /** CLAUDE_DISCOVERY for a run made through Claude; LEGACY_SEARCH for one made by the earlier search provider. */
+  engine?: string | null;
+  jobId?: string | null;
   findings: ResearchFinding[];
 }
 
 export interface ResearchStatus {
-  configured: boolean;
-  baseUrl: string;
+  /** True when Claude is installed, signed in and enabled, so a discovery job can run. */
+  available: boolean;
+  engine: string;
+  claude: ClaudeHealth;
+  /** True when the server demands X-GovOS-Admin-Token for Trust Panel operations. */
+  adminTokenRequired: boolean;
   officialDomains: string[];
   runCount: number;
   pendingReview: number;
 }
 
+/** A finished discovery run, as stored: the findings plus what the server rejected and why. */
 export interface ResearchSearchResult {
   runId: number;
   query: string;
   mode: ResearchMode;
   examId?: string | null;
-  answer?: string | null;
+  engine?: string | null;
+  jobId?: string | null;
   results: ResearchFinding[];
-  /** Results Tavily returned that were dropped because OFFICIAL scope only keeps official domains. */
-  filteredOut?: number;
-  responseTime?: number;
+  /** Candidates Claude proposed that the server refused (bad syntax, unreachable, not official, duplicate). */
+  rejected?: { url: string; reasons: string[] }[];
 }
 
 /**
@@ -676,13 +706,115 @@ export interface ResearchExtractResult {
   rawContent: string;
   chars: number;
   failed: boolean;
+  /** SOURCE_FETCH_FAILURE or SCANNED_DOCUMENT: a statement about this fetch, never about the authority. */
+  failure?: string;
   reason?: string;
 }
 
 /** Discriminated result so callers can render a setup notice instead of a generic error. */
 export type ResearchOutcome<T> =
   | { ok: true; data: T }
-  | { ok: false; error: string; setup?: string; notConfigured?: boolean };
+  | { ok: false; error: string; setup?: string; claudeUnavailable?: boolean; status?: string };
+
+// --- Claude CLI integration (server-side jobs; see CLAUDE_CLI_INTEGRATION.md) ---
+
+/** What the server may say about Claude's readiness. Never a path, command line or account. */
+export interface ClaudeHealth {
+  enabled: boolean;
+  installed: boolean;
+  authenticated: boolean | null;
+  ready: boolean;
+  version: string;
+  busy: boolean;
+  /** An infrastructure state such as CLAUDE_DISABLED or CLAUDE_CLI_NOT_AUTHENTICATED; never a fact about an exam. */
+  status: string;
+  message: string;
+  adminTokenRequired?: boolean;
+}
+
+export type ClaudeJobStatus = 'QUEUED' | 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED';
+
+export interface ClaudeJob<R = any> {
+  jobId: string;
+  operation: string;
+  examId?: string;
+  cycle?: string;
+  status: ClaudeJobStatus;
+  stage: string;
+  result: R | null;
+  /** An infrastructure or validation category (CLAUDE_CLI_TIMEOUT, ANSWER_REJECTED…). Never a verdict on an exam. */
+  errorCategory: string;
+  errorMessage: string;
+  templateVersion?: string;
+  createdAt?: string;
+  startedAt?: string;
+  finishedAt?: string;
+  retryCount?: number;
+  maxRetries?: number;
+  cancelRequested?: boolean;
+  evidenceLinks?: any[];
+  audit?: Record<string, any>;
+  requestedBy?: string;
+}
+
+export interface ClaudeJobTicket {
+  jobId: string;
+  status: ClaudeJobStatus;
+  deduplicated: boolean;
+  pollUrl: string;
+  /** Returned once to a candidate; it is the only way to read that job back. */
+  token?: string;
+}
+
+export type ClaudeOutcome<T> =
+  | { ok: true; data: T }
+  | { ok: false; error: string; status?: string; fallback?: boolean; retryAfter?: number };
+
+export interface ClaudeAnswerCitation {
+  id: string;
+  section: string;
+  label: string;
+  text: string;
+  /** The exam record's own provenance for this fact, opened as Evidence. */
+  provenance?: DataProvenance;
+}
+
+export interface ClaudeAnswerResult {
+  answer: string;
+  basis: 'VERIFIED_DATA' | 'NOT_IN_RECORD' | 'NEEDS_CLARIFICATION';
+  uncertainty: 'NONE' | 'PARTIAL' | 'UNKNOWN';
+  navigateTo: string;
+  followUp: string;
+  citations: ClaudeAnswerCitation[];
+  label: string;
+  engine: string;
+  examId: string;
+  factsSupplied: number;
+  factsTruncated: boolean;
+}
+
+export interface ClaudePracticeQuestion {
+  topic: string;
+  stem: string;
+  options: string[];
+  correct_index: number;
+  explanation: string;
+  /** INDEPENDENT_SOLVE_AGREED: a second Claude call solved it without seeing the key and reached the same option. */
+  answerCheck?: string;
+}
+
+/** Practice questions written by Claude for one verified syllabus topic. Never an official previous-year question. */
+export interface ClaudePracticeResult {
+  questions: ClaudePracticeQuestion[];
+  dropped: string[];
+  examId: string;
+  topic: string;
+  source: 'GOVOS_AUTHORED';
+  generatedBy: 'CLAUDE_CLI';
+  officialSource: false;
+  label: string;
+  answerCheck?: string;
+}
 
 export interface FAQItem {
   id: string;
@@ -1453,6 +1585,10 @@ export interface ResourceAddition {
   addedAt: string;
   addedFrom: string;
   findingId?: number | null;
+  /** The one exam whose library shows this addition. */
+  examId?: string | null;
+  /** Decided by the server from the URL's host on every read: OFFICIAL, TRUSTED_PUBLIC (academic) or THIRD_PARTY. */
+  sourceKind?: 'OFFICIAL' | 'TRUSTED_PUBLIC' | 'THIRD_PARTY';
 }
 
 /** The fields a verifier may set when adding or amending a syllabus topic. */

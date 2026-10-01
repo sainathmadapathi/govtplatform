@@ -2,11 +2,11 @@
 
 Every case drives the REAL orchestrator (`orchestrate.orchestrate`) — the real gate, the real
 publisher, the real record-level isolation check, the real verifier — and only the outermost
-`build` (network) and the Qwen provider are stubbed, exactly as `test_contamination` stubs the
+`build` (network) and the Claude provider are stubbed, exactly as `test_contamination` stubs the
 build's own I/O. The live register is never touched: publish tests write to a temp file.
 
 The point is to prove the wiring is safe and universal: each distinct failure keeps its own
-state, Qwen can only withhold, publishing goes through the gate, and no orchestrator branch
+state, Claude can only withhold, publishing goes through the gate, and no orchestrator branch
 names an exam or an authority.
 """
 from __future__ import annotations
@@ -24,7 +24,7 @@ from . import publish as P
 from .gate import BuildState
 from .identity import IdentityCheck, IdentityVerdict
 from .resolve import AmbiguousAuthority, Authority, ResolvedExam, SearchUnavailable
-from .verification.client import ProviderError, VerificationProvider
+from tools.claude_cli.testing import FakeClaude, ForbiddenClaude, verdict_reply
 from .verification.schemas import InfraStatus
 from ..exam_authoring.record import Citation, ExamRecord, Field, Status
 
@@ -72,26 +72,16 @@ def patch_build(test, fn):
     test.addCleanup(lambda: setattr(O, 'build', real))
 
 
-class _Stub(VerificationProvider):
-    def __init__(self, payload=None, raises=None):
-        self.cfg = {'model': 'stub'}
-        self.payload, self.raises = payload, raises
-
-    def is_enabled(self):
-        return True
-
-    def health(self):
-        return {'enabled': True, 'reachable': True}
-
-    def complete(self, messages, *, max_tokens=320):
-        if self.raises:
-            raise self.raises
-        return self.payload
+def _Stub(payload=None, raises=None):
+    """A scripted Claude gateway: the real gateway over a fake CLI process. `payload` is a verdict
+    reply (or a raw string for a malformed one); `raises` is the failure to simulate."""
+    if raises is not None:
+        return FakeClaude(fail=raises)
+    return FakeClaude(payload)
 
 
 def _json(decision, ident=True, ev=True, claim=True):
-    return json.dumps({'decision': decision, 'identity_supported': ident,
-                       'evidence_supported': ev, 'claim_supported': claim, 'reason': 'stub'})
+    return verdict_reply(decision, identity=ident, evidence=ev, claim=claim)
 
 
 def _temp_register(tmpdir, exams):
@@ -184,7 +174,7 @@ class TestOrchestration(unittest.TestCase):
     # --- 9: source unavailable -> INFRASTRUCTURE_FAILURE / SOURCE_FETCH_FAILURE --------------
     def test_9a_search_unavailable(self):
         def boom(*a, **k):
-            raise SearchUnavailable('search API key not configured')
+            raise SearchUnavailable('discovery is unavailable')
         patch_build(self, boom)
         r = O.orchestrate('SSC CGL 2026')
         self.assertEqual(r.state, O.OrchestrationState.INFRASTRUCTURE_FAILURE)
@@ -212,40 +202,40 @@ class TestOrchestration(unittest.TestCase):
         bad.citation = Citation(document_title='Some other exam 2099', url='https://ssc.gov.in/x',
                                 page=1, excerpt='A clause that names no exam at all.', verified_date='2026')
         patch_build(self, lambda *a, **k: _build(rec))
-        r = O.orchestrate('SSC CGL 2026', use_llm=True, provider=_Stub(_json('SUPPORTED')),
+        r = O.orchestrate('SSC CGL 2026', use_claude=True, gateway=_Stub(_json('SUPPORTED')),
                           year='2026')
         v = r.verifications.get('dates')
         self.assertIsNotNone(v)
         self.assertFalse(v.publishable)          # deterministic gate withheld it
 
-    # --- 12: Qwen SUPPORTED -> field stays FOUND --------------------------------------------
-    def test_12_qwen_supported(self):
+    # --- 12: Claude SUPPORTED -> field stays FOUND --------------------------------------------
+    def test_12_claude_supported(self):
         patch_build(self, lambda *a, **k: _build(_rec()))
-        r = O.orchestrate('SSC CGL 2026', use_llm=True, provider=_Stub(_json('SUPPORTED')))
+        r = O.orchestrate('SSC CGL 2026', use_claude=True, gateway=_Stub(_json('SUPPORTED')))
         self.assertEqual(r.build.record.fields['officialName'].status, Status.FOUND)
 
-    # --- 13: Qwen CONTRADICTED -> field downgraded to NEEDS_REVIEW, gate blocks --------------
-    def test_13_qwen_contradicted_downgrades(self):
+    # --- 13: Claude CONTRADICTED -> field downgraded to NEEDS_REVIEW, gate blocks --------------
+    def test_13_claude_contradicted_downgrades(self):
         patch_build(self, lambda *a, **k: _build(_rec()))
-        r = O.orchestrate('SSC CGL 2026', use_llm=True,
-                          provider=_Stub(_json('CONTRADICTED', ev=False, claim=False)))
+        r = O.orchestrate('SSC CGL 2026', use_claude=True,
+                          gateway=_Stub(_json('CONTRADICTED', ev=False, claim=False)))
         self.assertEqual(r.build.record.fields['officialName'].status, Status.NEEDS_REVIEW)
         self.assertEqual(r.state, O.OrchestrationState.BLOCKED_BY_GATE)
 
-    # --- 14: Qwen INSUFFICIENT -> field NOT downgraded (build evidence stands) ---------------
-    def test_14_qwen_insufficient_does_not_downgrade(self):
+    # --- 14: Claude INSUFFICIENT -> field NOT downgraded (build evidence stands) ---------------
+    def test_14_claude_insufficient_does_not_downgrade(self):
         patch_build(self, lambda *a, **k: _build(_rec()))
-        r = O.orchestrate('SSC CGL 2026', use_llm=True,
-                          provider=_Stub(_json('INSUFFICIENT', ev=False, claim=False)))
+        r = O.orchestrate('SSC CGL 2026', use_claude=True,
+                          gateway=_Stub(_json('INSUFFICIENT', ev=False, claim=False)))
         self.assertEqual(r.build.record.fields['officialName'].status, Status.FOUND)
 
-    # --- 15: Qwen unavailable -> field unchanged, never VERIFIED, never fabricated -----------
-    def test_15_qwen_unavailable(self):
+    # --- 15: Claude unavailable -> field unchanged, never VERIFIED, never fabricated -----------
+    def test_15_claude_unavailable(self):
         patch_build(self, lambda *a, **k: _build(_rec()))
-        r = O.orchestrate('SSC CGL 2026', use_llm=True,
-                          provider=_Stub(raises=ProviderError(InfraStatus.LLM_UNAVAILABLE, 'down')))
+        r = O.orchestrate('SSC CGL 2026', use_claude=True,
+                          gateway=_Stub(raises=InfraStatus.CLAUDE_CLI_FAILED))
         self.assertEqual(r.build.record.fields['officialName'].status, Status.FOUND)
-        self.assertIs(r.verifications['officialName'].infra, InfraStatus.LLM_UNAVAILABLE)
+        self.assertIs(r.verifications['officialName'].infra, InfraStatus.CLAUDE_CLI_FAILED)
         self.assertFalse(r.verifications['officialName'].publishable)
 
     # --- 16: publication rejection (non-dry-run, gate BLOCK) leaves live data unchanged ------

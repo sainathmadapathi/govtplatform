@@ -179,7 +179,7 @@ def unit_end(flat: str, start: int, stop: int | None = None, *, clauses: bool = 
 # ----------------------------------------------------------------- the fields that quote units
 
 #: Candidate-facing fields whose value quotes whole units of a document.
-UNIT_FIELDS = ('qualification', 'howToApply', 'examDayChecklist', 'faqs')
+UNIT_FIELDS = ('qualification', 'howToApply', 'examDayChecklist', 'faqs', 'syllabus')
 
 
 def units_of(field_name: str, value) -> list[tuple[str, str]]:
@@ -203,11 +203,80 @@ def units_of(field_name: str, value) -> list[tuple[str, str]]:
             for key in ('title', 'description'):
                 if str(item.get(key) or '').strip():
                     out.append((f'item {i} {key}', str(item[key])))
+    elif field_name == 'syllabus':
+        # A syllabus entry's unit is the entry as printed: its evidence quotation.
+        for node in _syllabus_nodes(value):
+            quoted = str((node.get('provenance') or {}).get('excerptText') or '')
+            if node.get('status', 'VERIFIED') == 'VERIFIED' and quoted.strip():
+                out.append((f'syllabus entry {str(node.get("title") or "")[:40]!r}', quoted))
     elif field_name == 'faqs':
         for i, q in enumerate(value if isinstance(value, list) else [], start=1):
             if isinstance(q, dict) and str(q.get('answer') or '').strip():
                 out.append((f'clause {i} ({str(q.get("officialClause") or "")[:30]})', str(q['answer'])))
     return out
+
+
+def _syllabus_nodes(tree) -> list[dict]:
+    out: list[dict] = []
+
+    def walk(node):
+        if isinstance(node, dict):
+            out.append(node)
+            for child in node.get('children') or []:
+                walk(child)
+    for root in tree if isinstance(tree, list) else []:
+        walk(root)
+    return out
+
+
+def _within(value: str, quoted: str) -> bool:
+    """Is `value` printed inside `quoted`, allowing a page number printed between its words?"""
+    v, q = normalise_ws(value).strip(' .;,:'), normalise_ws(quoted)
+    if not v or v in q:
+        return True
+    # Words compared without their trailing punctuation: a title is stored without the full stop
+    # the entry printed after its last word.
+    want = [w.rstrip('.,;:') for w in v.split()]
+    have = [w.rstrip('.,;:') for w in q.split()]
+    for start, word in enumerate(have):
+        if word != want[0]:
+            continue
+        i, j = 1, start + 1
+        while i < len(want) and j < len(have):
+            if have[j] == want[i]:
+                i += 1
+            elif not re.fullmatch(r'\d{1,3}', have[j]):
+                break
+            j += 1
+        if i == len(want):
+            return True
+    return False
+
+
+def syllabus_problems(tree, document_text: str) -> list[str]:
+    """Why a syllabus tree is not publishable as whole units, or []. A verified entry's title and
+    note must lie inside its own quotation (the evidence covers the value), and that quotation must
+    not be cut -- stopping inside a word, or carrying a cut marker. Entries the reader already held
+    for review are not re-judged here."""
+    doc = normalise_ws(_markup_as_boundaries(document_text))
+    problems: list[str] = []
+    for node in _syllabus_nodes(tree):
+        if node.get('status', 'VERIFIED') != 'VERIFIED':
+            continue
+        quoted = str((node.get('provenance') or {}).get('excerptText') or '')
+        label = repr(str(node.get('title') or '')[:40])
+        for key in ('title', 'note'):
+            value = str(node.get(key) or '')
+            if value and not _within(value, quoted):
+                problems.append(f'{label}: its {key} is not inside the words its evidence quotes')
+        q = normalise_ws(quoted).rstrip()
+        if q.endswith('…'):
+            problems.append(f'{label}: its quotation carries a cut marker')
+            continue
+        at = _locate(q, doc) if q else -1
+        if at >= 0 and at + len(q) < len(doc) and doc[at + len(q)].isalnum() and q[-1:].isalnum():
+            problems.append(f'{label}: its quotation stops inside a word')
+    return problems
 
 
 # ------------------------------------------------------------------- checking a stored value

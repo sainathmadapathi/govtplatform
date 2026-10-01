@@ -2,7 +2,7 @@
 
 Fixtures are title blocks written in one real authority's own wording (a central bank's Grade
 'B' recruitment, used only as the validation case); nothing in the code under test names it.
-The local model is replaced by a fake provider, so these tests never need a running server.
+Claude is replaced by a scripted gateway over a fake CLI process, so these tests never start the real CLI.
 
 Run: python -m unittest tools.exam_builder.test_designation
 """
@@ -12,6 +12,9 @@ import json
 import unittest
 from dataclasses import replace
 from types import SimpleNamespace
+
+from tools.claude_cli.schemas import InfraStatus
+from tools.claude_cli.testing import FakeClaude
 
 from . import build as B
 from . import designation as D
@@ -84,28 +87,10 @@ def canonical_target() -> ExamIdentity:
     return replace(target(), designation=canonical())
 
 
-class FakeProvider:
-    """Stands in for the local model: returns canned replies in order."""
-
-    name = 'fake'
-
-    def __init__(self, *replies, enabled=True, fail=None):
-        self.replies = list(replies)
-        self.enabled = enabled
-        self.fail = fail
-        self.calls = 0
-
-    def is_enabled(self):
-        return self.enabled
-
-    def complete(self, messages, *, max_tokens=320):
-        from .verification.client import ProviderError
-        from .verification.schemas import InfraStatus
-        self.calls += 1
-        if self.fail:
-            raise ProviderError(InfraStatus.LLM_UNAVAILABLE, self.fail)
-        r = self.replies.pop(0) if len(self.replies) > 1 else self.replies[0]
-        return r if isinstance(r, str) else json.dumps(r)
+def FakeProvider(*replies, enabled=True, fail=None):
+    """A scripted Claude gateway returning canned replies in order (a dict, or a raw string for a
+    malformed one). `fail` simulates the CLI failing; `enabled=False` simulates the integration off."""
+    return FakeClaude(*replies, enabled=enabled, fail=InfraStatus.CLAUDE_CLI_FAILED if fail else None)
 
 
 def extraction(**over) -> dict:
@@ -125,12 +110,12 @@ def extraction(**over) -> dict:
 
 
 def canonical_with(provider) -> tuple:
-    from .verification.designation_llm import extract_designation
+    from .verification.designation_claude import extract_designation
     t = target()
     want = D.query_designation(t.query, t.official_name, t.authority_aliases, AUTH)
     return D.establish_canonical(want, '2026', [(DOMAIN + '/advt', ADVERT)], authority_name=AUTH,
                                  extractor=lambda b: extract_designation(b, provider),
-                                 llm_enabled=provider.is_enabled())
+                                 claude_enabled=provider.is_enabled())
 
 
 # ======================================================================== mode and parity
@@ -193,7 +178,7 @@ class TestCanonical(unittest.TestCase):
                   DOMAIN + '/score': SimpleNamespace(all_text=lambda: SCORECARD)}
         rec = SimpleNamespace(note=lambda m: None)
         t = B._establish_designation(target(), SimpleNamespace(docs=docs), loaded, rec,
-                                     provider=FakeProvider(enabled=False))
+                                     gateway=FakeProvider(enabled=False))
         self.assertIsNone(t.designation)
         self.assertIs(verify(RESULT_GENERAL, t).verdict, IdentityVerdict.AMBIGUOUS)
 
@@ -203,7 +188,7 @@ class TestCanonical(unittest.TestCase):
         notes = []
         t = B._establish_designation(target(), SimpleNamespace(docs=docs), loaded,
                                      SimpleNamespace(note=notes.append),
-                                     provider=FakeProvider(enabled=False))
+                                     gateway=FakeProvider(enabled=False))
         self.assertIsNone(t.designation)
         self.assertTrue(any('not on the authority' in n for n in notes))
 
@@ -214,7 +199,7 @@ class TestCanonical(unittest.TestCase):
                   DOMAIN + '/result': SimpleNamespace(all_text=lambda: RESULT_GENERAL)}
         t = B._establish_designation(target(), SimpleNamespace(docs=docs), loaded,
                                      SimpleNamespace(note=lambda m: None),
-                                     provider=FakeProvider(enabled=False))
+                                     gateway=FakeProvider(enabled=False))
         self.assertIsNotNone(t.designation)
         self.assertEqual(t.designation.source_url, DOMAIN + '/advt')
 
@@ -237,7 +222,7 @@ class TestModelOutput(unittest.TestCase):
     def test_a_valid_extraction_adds_the_components_the_notice_declares(self):
         canon, notes = canonical_with(FakeProvider(extraction()))
         self.assertIsNotNone(canon, notes)
-        self.assertEqual(canon.basis, 'deterministic+qwen')
+        self.assertEqual(canon.basis, 'deterministic+claude')
         self.assertTrue({'depr', 'dsim', 'cadre'} <= canon.components)
         self.assertNotIn('officer', canon.qualifiers)          # core words are never qualifiers
         self.assertTrue(all(D.normalise_ws(e) in D.normalise_ws(ADVERT) for e in canon.evidence))
@@ -298,7 +283,7 @@ class TestModelOutput(unittest.TestCase):
     def test_an_unreachable_model_that_is_enabled_gives_no_canonical(self):
         canon, notes = canonical_with(FakeProvider(fail='connection refused'))
         self.assertIsNone(canon)
-        self.assertTrue(any('model unavailable' in n for n in notes))
+        self.assertTrue(any('Claude unavailable' in n for n in notes))
 
     def test_a_disabled_model_leaves_the_deterministic_reading(self):
         canon, _ = canonical_with(FakeProvider(enabled=False))
@@ -310,31 +295,31 @@ class TestConfirmationOnlyWithholds(unittest.TestCase):
     def test_confirmed_match_stays_a_match(self):
         p = FakeProvider({'same_recruitment': True, 'reason': 'same designation and cycle',
                           'evidence_span': 'Officers in Grade ‘B’ (DR) - General Cadre - PY 2026'})
-        self.assertIs(B._identify(RESULT_GENERAL, canonical_target(), provider=p).verdict,
+        self.assertIs(B._identify(RESULT_GENERAL, canonical_target(), gateway=p).verdict,
                       IdentityVerdict.MATCH)
 
     def test_the_model_can_withhold_a_match(self):
         p = FakeProvider({'same_recruitment': False, 'reason': 'different cadre',
                           'evidence_span': 'Officers in Grade ‘B’ (DR) - General Cadre - PY 2026'})
-        self.assertIs(B._identify(RESULT_GENERAL, canonical_target(), provider=p).verdict,
+        self.assertIs(B._identify(RESULT_GENERAL, canonical_target(), gateway=p).verdict,
                       IdentityVerdict.AMBIGUOUS)
 
     def test_the_model_cannot_create_a_match(self):
         p = FakeProvider({'same_recruitment': True, 'reason': 'x', 'evidence_span': 'Legal Officer'})
         for text in (LEGAL, OTHER_CYCLE, BARE, UNDECLARED_STREAM):
-            self.assertIsNot(B._identify(text, canonical_target(), provider=p).verdict,
+            self.assertIsNot(B._identify(text, canonical_target(), gateway=p).verdict,
                              IdentityVerdict.MATCH)
         self.assertEqual(p.calls, 0)                     # it is never even asked
 
     def test_an_unverifiable_confirmation_withholds(self):
         p = FakeProvider({'same_recruitment': True, 'reason': 'x',
                           'evidence_span': 'a sentence the document never prints'})
-        self.assertIs(B._identify(RESULT_GENERAL, canonical_target(), provider=p).verdict,
+        self.assertIs(B._identify(RESULT_GENERAL, canonical_target(), gateway=p).verdict,
                       IdentityVerdict.AMBIGUOUS)
 
     def test_an_unreachable_model_withholds(self):
         self.assertIs(B._identify(RESULT_GENERAL, canonical_target(),
-                                  provider=FakeProvider(fail='timeout')).verdict,
+                                  gateway=FakeProvider(fail='timeout')).verdict,
                       IdentityVerdict.AMBIGUOUS)
 
 
@@ -460,7 +445,7 @@ class TestNoExamSpecificCode(unittest.TestCase):
         import io
         import re
         for path in ('tools/exam_builder/designation.py',
-                     'tools/exam_builder/verification/designation_llm.py'):
+                     'tools/exam_builder/verification/designation_claude.py'):
             with io.open(path, encoding='utf-8') as fh:
                 src = fh.read()
             code = re.sub(r'"""[\s\S]*?"""', '', src)          # docstrings describe; code decides

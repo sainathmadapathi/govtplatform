@@ -27,6 +27,10 @@ Re-frozen once more after the candidate-truth audit, for two changes and no othe
 department the notice does not print now shows none (all 18 had shown the Commission's own name),
 and the hall-ticket search page is typed as a service page, not a PDF. Undoing exactly those two on
 the new runtime reproduces the previous digest.
+Re-frozen on 2026-10-01 for the move from the local model to the Claude CLI, for one change and no
+other: studyGuidance.infra, the state of the optional AI step, now reads CLAUDE_DISABLED where it
+read LLM_DISABLED. Two digest lines changed (studyGuidance in runtimeDigest and in factDigest); no
+fact, page, clause or excerpt did.
 
 The record is TGPSC's; the code under test names no exam. If a digest changes on purpose, re-freeze:
     python -m tools.exam_builder.test_tgpsc_v7_fixture --refreeze

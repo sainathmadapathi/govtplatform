@@ -15,6 +15,13 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from flask import Flask, send_from_directory, jsonify, request
 from flask_cors import CORS
+from tools.claude_cli import ClaudeGateway, get_gateway, set_gateway
+from tools.claude_cli.audit import DecisionCache, SqliteAuditSink, init_audit_tables
+from tools.claude_cli.context import ExamStore
+from tools.claude_cli.handlers import AppHooks
+from tools.claude_cli.jobs import init_job_tables
+from tools.claude_cli.routes import admin_denied, admin_required, create_blueprint
+from tools.claude_cli.security import admin_token_required
 
 # =============================================================================
 # SQLite storage layer (schema, connection, seed data)
@@ -166,7 +173,7 @@ def init_database():
         )
     ''')
 
-    # 10. Live Source Research (Tavily) — one row per search run
+    # 10. Live Source Research — one row per discovery run
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS research_runs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -199,7 +206,7 @@ def init_database():
 
     # 12. Field-level facts extracted from research_findings (RESEARCH_VALIDATION_DESIGN.md).
     #     One row = one candidate value for one field of one exam, from one source. This is
-    #     a validation/evidence layer between Tavily findings and the existing human promote
+    #     a validation/evidence layer between discovery findings and the existing human promote
     #     gate -- it never publishes to GovOS on its own. Statuses are the fact lifecycle
     #     (pending|validated|conflicting|rejected|approved), distinct from a finding's
     #     review_status. The shape maps 1:1 to a future Firestore document if ever needed.
@@ -231,6 +238,18 @@ def init_database():
     ''')
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_research_facts_conflict ON research_facts(conflict_group)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_research_facts_status ON research_facts(status)")
+
+    # Claude CLI integration (CLAUDE_CLI_INTEGRATION.md). A discovery run records the job that made it
+    # and the manifest of what Claude proposed and what the server rejected; each finding keeps the
+    # deterministic checks that were run on it. Runs made by the search provider that preceded this
+    # keep every finding untouched and are labelled LEGACY_SEARCH.
+    for _table, _column in (('research_runs', 'engine'), ('research_runs', 'job_id'),
+                            ('research_runs', 'manifest_json'), ('research_findings', 'meta_json')):
+        if _column not in {r[1] for r in cursor.execute(f'PRAGMA table_info({_table})')}:
+            cursor.execute(f'ALTER TABLE {_table} ADD COLUMN {_column} TEXT')
+    cursor.execute("UPDATE research_runs SET engine = 'LEGACY_SEARCH' WHERE engine IS NULL")
+    init_job_tables(conn)       # claude_jobs, claude_job_events
+    init_audit_tables(conn)     # claude_invocations, claude_decision_cache
 
     # Insert default primary user if not exists
     cursor.execute('SELECT id FROM users WHERE id = ?', ('default-candidate',))
@@ -296,6 +315,13 @@ def init_database():
             retired INTEGER NOT NULL DEFAULT 0
         )
     ''')
+
+    # A verifier-added resource belongs to ONE exam. Before this column every addition was shown in every
+    # exam's library (a TGPSC link would have appeared under SSC and UPSC). The additions that existed then
+    # all concern SSC (the library the feature was built for; three are test entries), so they stay with it.
+    if 'exam_id' not in {r[1] for r in cursor.execute('PRAGMA table_info(resource_additions)')}:
+        cursor.execute('ALTER TABLE resource_additions ADD COLUMN exam_id TEXT')
+    cursor.execute("UPDATE resource_additions SET exam_id = 'exam-ssc-cgl-2026' WHERE exam_id IS NULL")
 
     # 13. Candidate Behavioral Interactions (Time-Decayed BPR)
     cursor.execute('''
@@ -400,7 +426,10 @@ DIST_DIR = os.path.join(BASE_DIR, 'dist')
 STATIC_DIR = DIST_DIR if os.path.exists(DIST_DIR) else BASE_DIR
 
 app = Flask(__name__, static_folder=STATIC_DIR)
-CORS(app)
+# The API serves GovOS's own pages (same origin in production, the Vite proxy in development). It is
+# not a public API, so cross-origin access is limited to this machine: a web page on another origin
+# can not make the browser call the admin or Claude endpoints.
+CORS(app, origins=[r'^https?://(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$'])
 
 # Ensure database tables exist on server startup
 init_database()
@@ -747,6 +776,7 @@ def list_reports():
     })
 
 @app.route('/api/reports/<int:report_id>/status', methods=['POST'])
+@admin_required
 def update_report_status(report_id):
     """Let a verifier resolve or reject a queued report."""
     data = request.get_json(silent=True) or {}
@@ -1117,9 +1147,10 @@ def clear_user_interactions():
 
 
 # =============================================================================
-# Live Source Research pipeline (Tavily)
+# Live Source Research pipeline (Claude discovery)
 #
-#   search  ->  classify every result by domain  ->  store run + findings
+#   Claude proposes sources -> the server checks every one (syntax, public address, reachability,
+#   redirects, document identity) and classifies it by domain -> store run + findings
 #           ->  human review in the Trust Panel   ->  promote / reject
 #
 # Nothing found here reaches candidates as "verified"; it enters the audit
@@ -1127,26 +1158,29 @@ def clear_user_interactions():
 # =============================================================================
 
 def _load_dotenv():
-    """Minimal .env loader (no dependency): sets keys that aren't already in the environment."""
+    """Minimal .env loader (no dependency): sets GovOS's own settings (GOVOS_*, PORT) that aren't
+    already in the environment. Any other line -- another service's secret, say -- is never read
+    into the process."""
     path = os.path.join(BASE_DIR, '.env')
     if not os.path.exists(path):
         return
     try:
-        with open(path, encoding='utf-8') as fh:
+        # utf-8-sig: a file saved by Windows Notepad starts with a BOM, which would otherwise glue
+        # itself to the first key and silently hide it. A file in another encoding (PowerShell's `>`
+        # writes UTF-16) is unreadable here, and an unreadable .env must not stop the server starting.
+        with open(path, encoding='utf-8-sig') as fh:
             for line in fh:
                 line = line.strip()
                 if not line or line.startswith('#') or '=' not in line:
                     continue
                 key, value = line.split('=', 1)
-                os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
-    except OSError:
+                key = key.strip()
+                if key.startswith('GOVOS_') or key == 'PORT':
+                    os.environ.setdefault(key, value.strip().strip('"').strip("'"))
+    except (OSError, UnicodeError):
         pass
 
 _load_dotenv()
-
-TAVILY_API_KEY = os.environ.get('TAVILY_API_KEY', '').strip()
-TAVILY_BASE_URL = os.environ.get('TAVILY_BASE_URL', 'https://api.tavily.com').rstrip('/')
-TAVILY_TIMEOUT = 45
 
 # Domains whose content is treated as OFFICIAL. Any *.gov.in / *.nic.in host is
 # official by definition; these are the non-obvious statutory bodies.
@@ -1161,7 +1195,8 @@ OFFICIAL_HOSTS = {
     'sscnwr.org', 'sscmpr.org', 'sscner.org.in',
 }
 
-# Domain list handed to Tavily for "official sources only" searches.
+# Official domains listed in the Trust Panel. Discovery in OFFICIAL mode keeps only a result whose
+# host `_classify_trust` calls OFFICIAL; this list is for display, not for the search itself.
 OFFICIAL_SEARCH_DOMAINS = [
     'ssc.gov.in', 'upsc.gov.in', 'ibps.in', 'egazette.gov.in', 'pib.gov.in', 'ncert.nic.in',
     'legislative.gov.in', 'india.gov.in', 'mospi.gov.in', 'rbi.org.in', 'sebi.gov.in',
@@ -1178,62 +1213,13 @@ def _classify_trust(url):
     if host.startswith('www.') and host[4:] in OFFICIAL_HOSTS:
         return 'OFFICIAL'
     # `.gov` without `.in` is the United States, not India. It used to be accepted here
-    # and in tools/exam_builder/search.py, which let a search for an Indian exam return
+    # and in the builder's search, which let a search for an Indian exam return
     # US federal and state agencies badged OFFICIAL.
     if host in OFFICIAL_HOSTS or host.endswith('.gov.in') or host.endswith('.nic.in'):
         return 'OFFICIAL'
     if host in TRUSTED_PUBLIC_HOSTS or host.endswith(TRUSTED_PUBLIC_SUFFIXES):
         return 'TRUSTED_PUBLIC'
     return 'UNVERIFIED'
-
-
-class TavilyNotConfigured(Exception):
-    pass
-
-
-class TavilyError(Exception):
-    def __init__(self, status, detail):
-        super().__init__(detail)
-        self.status = status
-        self.detail = detail
-
-
-def _tavily_post(path, payload):
-    """POST to the Tavily REST API. Sends the key both as a bearer header (current API)
-    and in the body (older API) so either server version accepts it."""
-    if not TAVILY_API_KEY:
-        raise TavilyNotConfigured()
-    body = dict(payload)
-    body['api_key'] = TAVILY_API_KEY
-    req = urllib.request.Request(
-        TAVILY_BASE_URL + path,
-        data=json.dumps(body).encode('utf-8'),
-        headers={
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + TAVILY_API_KEY,
-            'User-Agent': 'GovOS-Research/1.0'
-        },
-        method='POST'
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=TAVILY_TIMEOUT) as resp:
-            return json.loads(resp.read().decode('utf-8'))
-    except urllib.error.HTTPError as e:
-        try:
-            detail = e.read().decode('utf-8')[:400]
-        except Exception:
-            detail = str(e)
-        raise TavilyError(e.code, detail)
-    except Exception as e:
-        raise TavilyError(0, str(e)[:200])
-
-
-def _not_configured_response():
-    return jsonify({
-        "error": "Tavily API key is not configured on the server.",
-        "setup": "Add TAVILY_API_KEY=tvly-... to the .env file next to app.py (or export it) and restart python app.py.",
-        "configured": False
-    }), 503
 
 
 def _finding_row_to_dict(r):
@@ -1248,12 +1234,50 @@ def _finding_row_to_dict(r):
         "publishedDate": r["published_date"],
         "reviewStatus": r["review_status"],
         "hasExtractedText": bool(r["extracted_text"]),
-        "createdAt": r["created_at"]
+        "createdAt": r["created_at"],
+        # What the server itself checked about this candidate source (None for earlier runs).
+        "discovery": _loads_or_none(r["meta_json"]),
     }
+
+
+def _run_row_to_dict(run, findings):
+    return {
+        "id": run["id"], "query": run["query"], "mode": run["mode"], "examId": run["exam_id"],
+        "answer": run["answer"], "resultCount": run["result_count"], "createdAt": run["created_at"],
+        "engine": run["engine"], "jobId": run["job_id"], "findings": findings,
+    }
+
+
+_DISCOVERY_ENGINE = 'CLAUDE_DISCOVERY'
+_TRUST_RANK = {'OFFICIAL': 0, 'TRUSTED_PUBLIC': 1, 'UNVERIFIED': 2}
+MAX_SOURCE_TEXT_CHARS = 60_000
+
+
+def _claude_unavailable_response(health):
+    """Claude being unavailable is an infrastructure state, never a finding about an authority."""
+    return jsonify({
+        "error": "CLAUDE_UNAVAILABLE",
+        "available": False,
+        "status": health.get('status'),
+        "message": health.get('message') or "Claude is not available on this server.",
+        "setup": "Install the Claude CLI, sign in once with `claude auth login`, set GOVOS_CLAUDE_ENABLED=1 "
+                 "and restart python app.py. See CLAUDE_CLI_INTEGRATION.md.",
+    }), 503
+
+
+def _admin_rate_limited(scope, limit=20):
+    """Even an admin can spend a lot of Claude usage by accident (a script stuck in a retry loop), so the
+    expensive admin operations are rate limited per client as well. A 429 response, or None."""
+    from tools.claude_cli.routes import LIMITER
+    allowed, wait = LIMITER.allow('%s:%s' % (scope, request.remote_addr), limit, 60)
+    if allowed:
+        return None
+    return jsonify({"error": "RATE_LIMITED", "retryAfter": wait}), 429
 
 
 @app.route('/api/research/status', methods=['GET'])
 def research_status():
+    health = _claude_gateway().health()
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT COUNT(*) FROM research_runs")
@@ -1262,142 +1286,106 @@ def research_status():
     pending = cursor.fetchone()[0]
     conn.close()
     return jsonify({
-        "configured": bool(TAVILY_API_KEY),
-        "baseUrl": TAVILY_BASE_URL,
+        "available": bool(health.get('ready')),
+        "engine": _DISCOVERY_ENGINE,
+        "claude": health,
+        "adminTokenRequired": admin_token_required(),
         "officialDomains": OFFICIAL_SEARCH_DOMAINS,
         "runCount": run_count,
-        "pendingReview": pending
+        "pendingReview": pending,
     })
 
 
 @app.route('/api/research/search', methods=['POST'])
+@admin_required
 def research_search():
+    """Start a discovery job. Claude proposes candidate sources; the server then checks every one
+    (syntax, public address, reachability, redirects, document identity) and records a manifest.
+    Nothing it finds is official because Claude said so, and nothing reaches candidates from here."""
     data = request.get_json(silent=True) or {}
     query = (data.get('query') or '').strip()
     if not query:
         return jsonify({"error": "query is required"}), 400
-    mode = data.get('mode', 'OFFICIAL')
-    if mode not in ('OFFICIAL', 'NEWS', 'WEB'):
-        mode = 'OFFICIAL'
-    exam_id = data.get('exam_id') or None
+    mode = 'OFFICIAL' if data.get('mode', 'OFFICIAL') == 'OFFICIAL' else 'ANY'
+    limited = _admin_rate_limited('research-search')
+    if limited:
+        return limited
+    health = _claude_gateway().health()
+    if not health.get('ready'):
+        return _claude_unavailable_response(health)
+    payload = {"query": query, "mode": mode, "maxResults": data.get('max_results', 8)}
+    if data.get('exam_id'):
+        payload["examId"] = data['exam_id']
     try:
-        max_results = max(1, min(int(data.get('max_results', 8)), 20))
-    except (TypeError, ValueError):
-        max_results = 8
+        job, deduplicated, _token = _claude_queue().submit(
+            'DISCOVER_SOURCES', payload, exam_id=str(data.get('exam_id') or ''), requested_by='admin', role='admin')
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    return jsonify({"jobId": job.id, "status": job.status.value, "deduplicated": deduplicated,
+                    "pollUrl": "/api/claude/jobs/" + job.id}), 202
 
-    payload = {
-        "query": query,
-        "max_results": max_results,
-        "include_answer": True,
-        "include_raw_content": False,
-        "search_depth": "advanced" if mode == 'OFFICIAL' else "basic",
-        "topic": "news" if mode == 'NEWS' else "general",
-    }
-    if mode == 'OFFICIAL':
-        payload["include_domains"] = OFFICIAL_SEARCH_DOMAINS
-    if mode == 'NEWS':
-        payload["days"] = 30
 
-    try:
-        raw = _tavily_post('/search', payload)
-    except TavilyNotConfigured:
-        return _not_configured_response()
-    except TavilyError as e:
-        return jsonify({"error": "Tavily request failed", "status": e.status, "detail": e.detail}), 502
-
-    results = raw.get('results') or []
-    answer = raw.get('answer')
-
+@app.route('/api/research/runs/<int:run_id>', methods=['GET'])
+def research_run_detail(run_id):
+    """One run with its stored findings (what a finished discovery job produced)."""
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute(
-        "INSERT INTO research_runs (query, mode, exam_id, answer, result_count) VALUES (?, ?, ?, ?, ?)",
-        (query, mode, exam_id, answer, len(results))
-    )
-    run_id = cursor.lastrowid
-    stored = []
-    # Tavily's include_domains is advisory in practice: live runs returned coaching
-    # sites under OFFICIAL scope. Enforce the promise here and report what was dropped.
-    classified = [(item, _classify_trust(item.get('url') or '')) for item in results if item.get('url')]
-    filtered_out = 0
-    if mode == 'OFFICIAL':
-        kept = [(item, trust) for item, trust in classified if trust == 'OFFICIAL']
-        filtered_out = len(classified) - len(kept)
-        classified = kept
-        cursor.execute("UPDATE research_runs SET result_count = ? WHERE id = ?", (len(classified), run_id))
-    for item, trust in classified:
-        url = item['url']
-        cursor.execute(
-            "INSERT INTO research_findings (run_id, title, url, snippet, trust_level, score, published_date) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (run_id, item.get('title') or url, url, (item.get('content') or '')[:1200], trust,
-             float(item.get('score') or 0), item.get('published_date'))
-        )
-        stored.append({
-            "id": cursor.lastrowid,
-            "runId": run_id,
-            "title": item.get('title') or url,
-            "url": url,
-            "snippet": (item.get('content') or '')[:1200],
-            "trustLevel": trust,
-            "score": float(item.get('score') or 0),
-            "publishedDate": item.get('published_date'),
-            "reviewStatus": "PENDING_REVIEW",
-            "hasExtractedText": False
-        })
-    conn.commit()
+    cursor.execute("SELECT * FROM research_runs WHERE id = ?", (run_id,))
+    run = cursor.fetchone()
+    if not run:
+        conn.close()
+        return jsonify({"error": "not found"}), 404
+    cursor.execute("SELECT * FROM research_findings WHERE run_id = ? ORDER BY id", (run_id,))
+    findings = [_finding_row_to_dict(r) for r in cursor.fetchall()]
     conn.close()
+    findings.sort(key=lambda f: _TRUST_RANK.get(f['trustLevel'], 3))
+    return jsonify({"run": _run_row_to_dict(run, findings)})
 
-    # Official results first, then by Tavily's relevance score.
-    order = {'OFFICIAL': 0, 'TRUSTED_PUBLIC': 1, 'UNVERIFIED': 2}
-    stored.sort(key=lambda f: (order[f['trustLevel']], -f['score']))
 
-    return jsonify({
-        "runId": run_id,
-        "query": query,
-        "mode": mode,
-        "examId": exam_id,
-        "answer": answer,
-        "results": stored,
-        "filteredOut": filtered_out,
-        "responseTime": raw.get('response_time')
-    })
+def _fetch_source_text(url):
+    """Deterministic page text for one stored finding: the server fetches the page itself (every
+    redirect hop re-validated, public addresses only) and reads its text layer. No Claude call."""
+    from tools.claude_cli.discovery import fetch_checked
+    from tools.exam_authoring.sources import load_document
+    probe = fetch_checked(url)
+    if not probe.ok:
+        return None, 'SOURCE_FETCH_FAILURE', probe.error or ('HTTP %s' % probe.status)
+    try:
+        doc = load_document(probe.final_url or url, use_cache=False)
+    except Exception as exc:                                                   # noqa: BLE001
+        return None, 'SOURCE_FETCH_FAILURE', type(exc).__name__
+    if getattr(doc, 'is_scanned', False):
+        return None, 'SCANNED_DOCUMENT', 'the document is a scan with no text layer; it was not read'
+    return doc.all_text()[:MAX_SOURCE_TEXT_CHARS], None, None
 
 
 @app.route('/api/research/extract', methods=['POST'])
+@admin_required
 def research_extract():
-    """Pull the readable text of one or more pages so a verifier can read the primary source in-app."""
+    """Fetch and store the readable text of a stored finding so a verifier (and, on request, Claude
+    extraction) can read the primary source. Only a finding's own URL is fetched -- the caller can
+    not point the server at an arbitrary address."""
     data = request.get_json(silent=True) or {}
-    urls = data.get('urls')
-    if not isinstance(urls, list) or not urls:
-        return jsonify({"error": "urls[] is required"}), 400
-    urls = [u for u in urls if isinstance(u, str) and u.startswith(('http://', 'https://'))][:5]
-    finding_id = data.get('finding_id')
-
     try:
-        raw = _tavily_post('/extract', {"urls": urls})
-    except TavilyNotConfigured:
-        return _not_configured_response()
-    except TavilyError as e:
-        return jsonify({"error": "Tavily request failed", "status": e.status, "detail": e.detail}), 502
-
-    out = []
-    for item in raw.get('results') or []:
-        text = (item.get('raw_content') or '')[:20000]
-        out.append({"url": item.get('url'), "rawContent": text, "chars": len(text), "failed": False})
-    for item in raw.get('failed_results') or []:
-        out.append({"url": item.get('url'), "rawContent": "", "chars": 0, "failed": True,
-                    "reason": item.get('error')})
-
-    if finding_id and out and not out[0]["failed"]:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("UPDATE research_findings SET extracted_text = ? WHERE id = ?",
-                       (out[0]["rawContent"], int(finding_id)))
-        conn.commit()
+        finding_id = int(data.get('finding_id'))
+    except (TypeError, ValueError):
+        return jsonify({"error": "finding_id is required"}), 400
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT url FROM research_findings WHERE id = ?", (finding_id,))
+    row = cursor.fetchone()
+    if not row:
         conn.close()
-
-    return jsonify({"results": out})
+        return jsonify({"error": "not found"}), 404
+    text, failure, reason = _fetch_source_text(row['url'])
+    if failure:
+        conn.close()
+        return jsonify({"results": [{"url": row['url'], "rawContent": "", "chars": 0, "failed": True,
+                                     "failure": failure, "reason": reason}]})
+    cursor.execute("UPDATE research_findings SET extracted_text = ? WHERE id = ?", (text, finding_id))
+    conn.commit()
+    conn.close()
+    return jsonify({"results": [{"url": row['url'], "rawContent": text[:20000], "chars": len(text), "failed": False}]})
 
 
 @app.route('/api/research/history', methods=['GET'])
@@ -1414,11 +1402,7 @@ def research_history():
     for run in runs:
         cursor.execute("SELECT * FROM research_findings WHERE run_id = ? ORDER BY id", (run["id"],))
         findings = [_finding_row_to_dict(r) for r in cursor.fetchall()]
-        out.append({
-            "id": run["id"], "query": run["query"], "mode": run["mode"], "examId": run["exam_id"],
-            "answer": run["answer"], "resultCount": run["result_count"], "createdAt": run["created_at"],
-            "findings": findings
-        })
+        out.append(_run_row_to_dict(run, findings))
     conn.close()
     return jsonify({"runs": out})
 
@@ -1438,6 +1422,7 @@ def research_finding_detail(finding_id):
 
 
 @app.route('/api/research/findings/<int:finding_id>/status', methods=['POST'])
+@admin_required
 def research_finding_status(finding_id):
     data = request.get_json(silent=True) or {}
     status = data.get('status', 'REVIEWED')
@@ -1452,42 +1437,26 @@ def research_finding_status(finding_id):
 
 
 @app.route('/api/llm/health', methods=['GET'])
-def llm_health():
-    """Diagnostic for the local semantic-verification model. Never exposes the model file
-    path or any secret -- only whether the verifier is enabled and its server reachable."""
-    try:
-        from tools.exam_builder.verification.client import get_provider
-        h = get_provider().health()
-    except Exception as e:                                       # noqa: BLE001
-        return jsonify({"enabled": False, "reachable": False, "error": type(e).__name__}), 200
-    model = h.get('model') or ''
-    # A GOVOS_LLM_MODEL set to a path is reduced to a label; candidates never see the path.
-    if '/' in model or '\\' in model or model.lower().endswith('.gguf'):
-        model = 'local-gguf'
-    return jsonify({
-        "enabled": bool(h.get('enabled')),
-        "reachable": bool(h.get('reachable')),
-        "model": model,
-        "endpoint": h.get('endpoint'),
-        "error": h.get('error'),
-    })
+def llm_health_removed():
+    """The local-model health endpoint no longer exists; GovOS has no local model. Answered with a
+    deprecation response (not a 404) so a stale monitor learns where to look."""
+    return jsonify({"error": "REMOVED", "replacement": "/api/claude/health",
+                    "message": "GovOS no longer runs a local model. Use /api/claude/health."}), 410
 
 
 # =============================================================================
 # Field-level research validation layer  (RESEARCH_VALIDATION_DESIGN.md)
 #
-#   Tavily -> research_findings -> [rule-based extraction] -> research_facts
-#          -> human review -> existing PROMOTE gate -> GovOS
+#   discovery -> research_findings -> [reader] -> research_facts -> human review -> promote gate
 #
-# This layer turns a stored finding (a whole web document) into typed, validated,
-# evidence-backed facts. It is deliberately rule-based: no LLM, no generation. Every fact
-# enters as `pending` and a human still approves before it can reach the existing promotion
-# flow -- this module writes to `research_facts` and nothing else.
-#
-# WHERE A LOCAL LLM GOES LATER: replace or supplement `_extract_facts` (the regex reader)
-# with an LLM extractor that returns the same fact dicts, and/or add an LLM pass in
-# `_validate_fact` that sets confidence. The table, the statuses, the endpoints and the
-# human gate do not change. That insertion point is the only thing that changes.
+# This layer turns a stored finding (a whole web document) into typed, validated, evidence-backed
+# facts. Two readers feed it and both write through the same seven validation rules:
+#   * a deterministic cue-and-pattern reader (`_extract_facts`) -- no model, no generation;
+#   * Claude (the EXTRACT_FIELDS job), which may only PROPOSE a value together with a quotation. The
+#     server keeps a proposal only if the quotation is printed verbatim in the page text it fetched
+#     itself and the quotation states the value (tools/claude_cli/handlers.py).
+# Every fact enters as `pending` or `validated`, never approved, and a human still approves before it
+# can reach the existing promotion flow -- this module writes to `research_facts` and nothing else.
 # =============================================================================
 
 # The 18 GovOS fields, each with its value type and the label cues a reader looks for.
@@ -1695,15 +1664,163 @@ def _fact_row(r):
     }
 
 
+def _store_candidates(cursor, finding, exam_id, exam_name, candidates, reachable_cache, stored, summary):
+    """Validate each candidate fact with the seven rules and store it for human review.
+
+    Both readers (the deterministic one and Claude's verified proposals) come through here, so a
+    fact is judged the same way whoever proposed it. Never selects a winner on conflict."""
+    exam_key = exam_id or exam_name or 'unknown'
+    source_type = _fact_source_type(finding.get('trust_level'))
+    for c in candidates:
+        c['source_url'] = finding['url']
+        status, notes = _validate_fact(cursor, c, exam_key, reachable_cache)
+        print("[research-fact] field=%s rule=%s -> %s (%s source %s)"
+              % (c['field'], c['extraction_rule'], status, source_type, urlparse(finding['url']).hostname))
+        if status == 'duplicate':
+            summary['duplicate'] += 1
+            continue
+        conflict_group = None
+        if status == 'conflicting':
+            conflict_group = '%s:%s' % (exam_key, c['field'])
+            # mark existing rivals conflicting too -- never silently choose one
+            cursor.execute(
+                "UPDATE research_facts SET status='conflicting', conflict_group=? "
+                "WHERE COALESCE(exam_id, exam_name)=? AND field=? AND status IN ('pending','validated')",
+                (conflict_group, exam_key, c['field']))
+        cursor.execute(
+            "INSERT INTO research_facts (finding_id, run_id, exam_id, exam_name, field, "
+            "raw_value, value, value_type, source_url, source_title, source_type, evidence, "
+            "extraction_rule, confidence, status, validation_notes, conflict_group) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (finding['id'], finding['run_id'], exam_id, exam_name, c['field'],
+             c['raw_value'], str(c['value']), c['value_type'], finding['url'],
+             finding.get('title'), source_type, c['evidence'], c['extraction_rule'],
+             c['confidence'], status, json.dumps(notes), conflict_group))
+        stored.append(cursor.lastrowid)
+
+
+def _read_back_facts(cursor, stored, summary):
+    """Re-read the inserted rows so the response reflects final status -- a conflict flips an
+    earlier row from validated to conflicting, and the payload must show that, not the pre-flip
+    value."""
+    facts = []
+    for fid in stored:
+        cursor.execute("SELECT * FROM research_facts WHERE id = ?", (fid,))
+        row = cursor.fetchone()
+        if row:
+            fr = _fact_row(row)
+            facts.append(fr)
+            summary[fr['status']] = summary.get(fr['status'], 0) + 1
+    return facts
+
+
+# Claude's field names (tools/claude_cli/schemas.py) -> the stored field and its value type.
+_CLAUDE_FIELD_MAP = {
+    'application_start': ('application_start_date', 'DATE'),
+    'application_last_date': ('application_last_date', 'DATE'),
+    'exam_date': ('exam_date', 'DATE'),
+    'admit_card_date': ('admit_card', 'DATE'),
+    'result_date': ('result', 'DATE'),
+    'vacancies_total': ('vacancies', 'INTEGER'),
+    'application_fee': ('application_fee', 'TEXT'),
+    'minimum_age': ('minimum_age', 'TEXT'),
+    'maximum_age': ('maximum_age', 'TEXT'),
+    'educational_qualification': ('qualification', 'TEXT'),
+    'number_of_attempts': ('number_of_attempts', 'TEXT'),
+    'exam_stage_name': ('exam_stage_name', 'TEXT'),
+    'official_portal': ('official_website', 'URL'),
+}
+
+
+def _claude_candidate(proposal):
+    """One verified Claude proposal as a fact dict, or None when its value cannot be typed.
+
+    The quotation has already been matched verbatim against the page text by the job handler. Here
+    the value is parsed deterministically into the field's type; a value that will not parse is
+    dropped, never repaired. Confidence is deliberately modest: Claude read it, no rule did."""
+    mapped = _CLAUDE_FIELD_MAP.get(proposal.get('field'))
+    raw = str(proposal.get('value') or '').strip()
+    if not mapped or not raw:
+        return None
+    field, vtype = mapped
+    value = raw
+    if vtype == 'DATE':
+        if re.fullmatch(r'\d{4}-\d{2}-\d{2}', raw):
+            try:
+                datetime.fromisoformat(raw)
+            except ValueError:
+                return None
+        else:
+            value, _ = _extract_date(raw)
+    elif vtype == 'INTEGER':
+        m = _INT_RE.search(raw)
+        value = str(int(m.group(1).replace(',', ''))) if m else None
+    elif vtype == 'URL':
+        value = raw.rstrip('.,);')
+    if not value:
+        return None
+    location = (proposal.get('location') or '').strip()
+    return {'field': field, 'value_type': vtype, 'value': value, 'raw_value': raw,
+            'evidence': proposal.get('quote') or '',
+            'extraction_rule': 'claude:EXTRACT_FIELDS' + ((' @ ' + location[:80]) if location else ''),
+            'confidence': 0.6 if vtype in ('DATE', 'INTEGER', 'URL') else 0.5}
+
+
+def _ingest_claude_facts(finding_id, accepted):
+    """Job hook: store Claude's quotation-verified proposals through the normal validation."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM research_findings WHERE id = ?", (finding_id,))
+        row = cursor.fetchone()
+        if not row:
+            return {"stored": 0}
+        finding = dict(row)
+        cursor.execute("SELECT exam_id, query FROM research_runs WHERE id = ?", (finding['run_id'],))
+        run = cursor.fetchone()
+        candidates = [c for c in (_claude_candidate(p) for p in accepted) if c]
+        stored, summary = [], {'validated': 0, 'pending': 0, 'conflicting': 0, 'rejected': 0, 'duplicate': 0}
+        _store_candidates(cursor, finding, run['exam_id'] if run else None, run['query'] if run else None,
+                          candidates, {}, stored, summary)
+        conn.commit()
+        _read_back_facts(cursor, stored, summary)
+        return {"stored": len(stored), "summary": summary, "factIds": stored}
+    finally:
+        conn.close()
+
+
 @app.route('/api/research/facts/extract', methods=['POST'])
+@admin_required
 def research_facts_extract():
-    """Extract + validate typed facts from already-stored findings. Does NOT call Tavily,
-    does NOT publish anything -- it fills research_facts for human review."""
+    """Extract + validate typed facts from already-stored findings. Publishes nothing -- it fills
+    research_facts for human review.
+
+    By default the deterministic cue-and-pattern reader runs (no model). With `"claude": true` a
+    single finding's page text is read by Claude as a background job: Claude proposes values with
+    quotations and the server keeps only those whose quotation is printed in the page."""
     data = request.get_json(silent=True) or {}
     finding_id = data.get('finding_id')
     run_id = data.get('run_id')
     if not finding_id and not run_id:
         return jsonify({"error": "finding_id or run_id is required"}), 400
+
+    if data.get('claude'):
+        if not finding_id:
+            return jsonify({"error": "finding_id is required for Claude extraction"}), 400
+        limited = _admin_rate_limited('research-extract')
+        if limited:
+            return limited
+        health = _claude_gateway().health()
+        if not health.get('ready'):
+            return _claude_unavailable_response(health)
+        try:
+            job, deduplicated, _token = _claude_queue().submit(
+                'EXTRACT_FIELDS', {"findingId": finding_id, "fields": data.get('fields') or []},
+                requested_by='admin', role='admin')
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+        return jsonify({"jobId": job.id, "status": job.status.value, "deduplicated": deduplicated,
+                        "pollUrl": "/api/claude/jobs/" + job.id}), 202
 
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -1722,56 +1839,11 @@ def research_facts_extract():
         finding = dict(f)
         cursor.execute("SELECT exam_id, query FROM research_runs WHERE id = ?", (finding['run_id'],))
         run = cursor.fetchone()
-        exam_id = run['exam_id'] if run else None
-        exam_name = (run['query'] if run else None)
-        exam_key = exam_id or exam_name or 'unknown'
-        source_type = _fact_source_type(finding.get('trust_level'))
         candidates = _extract_facts(finding)
-        print("[research-fact] extract finding=%s run=%s exam=%s -> %d candidate facts"
-              % (finding['id'], finding['run_id'], exam_key, len(candidates)))
-        for c in candidates:
-            c['source_url'] = finding['url']
-            print("[research-fact] field=%s raw=%r value=%r rule=%s"
-                  % (c['field'], c['raw_value'], c['value'], c['extraction_rule']))
-            status, notes = _validate_fact(cursor, c, exam_key, reachable_cache)
-            print("[research-fact] validate field=%s result=%s notes=%s" % (c['field'], status, notes))
-            print("[research-fact] classify field=%s source=%s url=%s"
-                  % (c['field'], source_type, urlparse(finding['url']).hostname))
-            if status == 'duplicate':
-                summary['duplicate'] += 1
-                continue
-            conflict_group = None
-            if status == 'conflicting':
-                conflict_group = '%s:%s' % (exam_key, c['field'])
-                # mark existing rivals conflicting too -- never silently choose one
-                cursor.execute(
-                    "UPDATE research_facts SET status='conflicting', conflict_group=? "
-                    "WHERE COALESCE(exam_id, exam_name)=? AND field=? AND status IN ('pending','validated')",
-                    (conflict_group, exam_key, c['field']))
-            cursor.execute(
-                "INSERT INTO research_facts (finding_id, run_id, exam_id, exam_name, field, "
-                "raw_value, value, value_type, source_url, source_title, source_type, evidence, "
-                "extraction_rule, confidence, status, validation_notes, conflict_group) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                (finding['id'], finding['run_id'], exam_id, exam_name, c['field'],
-                 c['raw_value'], str(c['value']), c['value_type'], finding['url'],
-                 finding.get('title'), source_type, c['evidence'], c['extraction_rule'],
-                 c['confidence'], status, json.dumps(notes), conflict_group))
-            fact_id = cursor.lastrowid
-            print("[research-fact] store id=%s status=%s table=research_facts" % (fact_id, status))
-            stored.append(fact_id)
+        _store_candidates(cursor, finding, run['exam_id'] if run else None, run['query'] if run else None,
+                          candidates, reachable_cache, stored, summary)
     conn.commit()
-    # Re-read the inserted rows so the response reflects final status -- a conflict flips an
-    # earlier row from validated to conflicting, and the payload must show that, not the
-    # pre-flip value.
-    facts = []
-    for fid in stored:
-        cursor.execute("SELECT * FROM research_facts WHERE id = ?", (fid,))
-        row = cursor.fetchone()
-        if row:
-            fr = _fact_row(row)
-            facts.append(fr)
-            summary[fr['status']] = summary.get(fr['status'], 0) + 1
+    facts = _read_back_facts(cursor, stored, summary)
     conn.close()
     return jsonify({"facts": facts, "summary": summary, "count": len(facts)})
 
@@ -1797,6 +1869,7 @@ def research_facts_list():
 
 
 @app.route('/api/research/facts/<int:fact_id>/status', methods=['POST'])
+@admin_required
 def research_facts_status(fact_id):
     """Human review of a fact. `approved` is the only state that makes a fact eligible for
     the EXISTING promote gate -- this route never publishes anything itself."""
@@ -1817,6 +1890,87 @@ def research_facts_status(fact_id):
     print("[research-fact] review id=%s -> %s" % (fact_id, status))
     return jsonify({"status": "updated", "factId": fact_id, "newStatus": status})
 
+
+
+# =============================================================================
+# Claude CLI integration  (tools/claude_cli, CLAUDE_CLI_INTEGRATION.md)
+#
+# The only AI in GovOS is the installed Claude CLI, run server-side behind one gateway and one
+# persistent job queue. The app supplies the pieces that need its database (hooks below); the
+# package never imports this file. Candidates never reach the CLI directly: every request is an
+# allow-listed operation filled into a server-owned template, and nothing Claude returns is
+# published without the deterministic checks and the publication gate.
+# =============================================================================
+
+def _claude_gateway():
+    return get_gateway()
+
+
+def _loads_or_none(text):
+    try:
+        return json.loads(text) if text else None
+    except ValueError:
+        return None
+
+
+def _persist_discovery(manifest, mode, exam_id, job_id):
+    """Job hook: record a finished discovery manifest as a research run with its findings. The
+    finding's trust is the WEAKER of the proposed host and the host it finally redirected to -- a
+    redirect can lower trust but never raise it."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        candidates = manifest.get('candidates') or []
+        cursor.execute(
+            "INSERT INTO research_runs (query, mode, exam_id, answer, result_count, engine, job_id, manifest_json) "
+            "VALUES (?, ?, ?, NULL, ?, ?, ?, ?)",
+            (manifest.get('query') or '', mode, exam_id or None, len(candidates), _DISCOVERY_ENGINE, job_id,
+             json.dumps(manifest)))
+        run_id = cursor.lastrowid
+        for c in candidates:
+            if not c.get('url'):
+                continue
+            ranks = [_TRUST_RANK.get(t, 2) for t in (c.get('trust'), c.get('finalTrust') or c.get('trust'))]
+            trust = [k for k, v in _TRUST_RANK.items() if v == max(ranks)][0]
+            meta = {k: c.get(k) for k in ('authorityName', 'documentKind', 'whyRelevant', 'reachable', 'httpStatus',
+                                          'finalUrl', 'finalTrust', 'identity', 'reasons')}
+            cursor.execute(
+                "INSERT INTO research_findings (run_id, title, url, snippet, trust_level, score, published_date, meta_json) "
+                "VALUES (?, ?, ?, ?, ?, 0, NULL, ?)",
+                (run_id, c.get('title') or c['url'], c['url'], (c.get('snippet') or '')[:1200], trust,
+                 json.dumps(meta)))
+        conn.commit()
+        return run_id
+    finally:
+        conn.close()
+
+
+def _load_finding(finding_id):
+    """Job hook: a stored finding and the page text the server itself fetched (never Claude's)."""
+    conn = get_db_connection()
+    try:
+        row = conn.execute(
+            "SELECT f.id, f.url, f.title, f.extracted_text, f.trust_level, r.exam_id AS exam_id, r.query AS query "
+            "FROM research_findings f LEFT JOIN research_runs r ON r.id = f.run_id WHERE f.id = ?",
+            (finding_id,)).fetchone()
+    finally:
+        conn.close()
+    if not row:
+        return None
+    return {"id": row["id"], "url": row["url"], "title": row["title"], "text": row["extracted_text"] or "",
+            "trust": row["trust_level"], "examId": row["exam_id"], "examName": row["query"]}
+
+
+set_gateway(ClaudeGateway(audit=SqliteAuditSink(DB_FILE), cache=DecisionCache(DB_FILE)))
+_CLAUDE_HOOKS = AppHooks(exam_store=ExamStore(DB_FILE), classify_trust=_classify_trust,
+                         persist_discovery=_persist_discovery, load_finding=_load_finding,
+                         ingest_facts=_ingest_claude_facts)
+_CLAUDE_BLUEPRINT, _CLAUDE_QUEUE = create_blueprint(DB_FILE, _CLAUDE_HOOKS)
+app.register_blueprint(_CLAUDE_BLUEPRINT)
+
+
+def _claude_queue():
+    return _CLAUDE_QUEUE
 
 
 # =============================================================================
@@ -2172,17 +2326,37 @@ def live_channel_uploads():
                     "intervalHours": FEED_MAX_AGE_SECONDS // 3600})
 
 
+_ADDITION_SOURCE_KIND = {'OFFICIAL': 'OFFICIAL', 'TRUSTED_PUBLIC': 'TRUSTED_PUBLIC', 'UNVERIFIED': 'THIRD_PARTY'}
+
+
+def _addition_source_kind(url):
+    """OFFICIAL, TRUSTED_PUBLIC or THIRD_PARTY, from the host of `url` by the server's own rule. It is computed
+    on every read and never stored or taken from a request, so a coaching site can not be added as official."""
+    return _ADDITION_SOURCE_KIND[_classify_trust(url)]
+
+
 def _addition_row(r):
     return {"id": r["id"], "title": r["title"], "url": r["url"], "subject": r["subject"],
             "resourceFormat": r["resource_format"], "author": r["author"], "description": r["description"],
-            "addedAt": r["added_at"], "addedFrom": r["added_from"], "findingId": r["finding_id"]}
+            "addedAt": r["added_at"], "addedFrom": r["added_from"], "findingId": r["finding_id"],
+            "examId": r["exam_id"], "sourceKind": _addition_source_kind(r["url"])}
 
 
 @app.route('/api/resources/additions', methods=['GET', 'POST'])
 def resource_additions():
+    if request.method == 'POST':
+        denied = admin_denied()
+        if denied is not None:
+            return denied
     if request.method == 'GET':
+        # `exam_id` returns only that exam's additions; without it, all of them (the Trust Panel's own view).
+        exam_id = (request.args.get('exam_id') or '').strip()
         conn = get_db_connection()
-        rows = conn.execute('SELECT * FROM resource_additions WHERE retired = 0 ORDER BY added_at DESC').fetchall()
+        if exam_id:
+            rows = conn.execute('SELECT * FROM resource_additions WHERE retired = 0 AND exam_id = ? '
+                                'ORDER BY added_at DESC', (exam_id,)).fetchall()
+        else:
+            rows = conn.execute('SELECT * FROM resource_additions WHERE retired = 0 ORDER BY added_at DESC').fetchall()
         conn.close()
         return jsonify({"additions": [_addition_row(r) for r in rows]})
     data = request.get_json(silent=True) or {}
@@ -2190,8 +2364,18 @@ def resource_additions():
     url = (data.get('url') or '').strip()
     if not title or not url.startswith(('http://', 'https://')):
         return jsonify({"error": "title and an http(s) url are required"}), 400
+    exam_id = (data.get('examId') or '').strip()
+    if not exam_id:
+        return jsonify({"error": "examId is required: a resource belongs to one exam's library"}), 400
+    if not re.fullmatch(r'[A-Za-z0-9._:-]{1,120}', exam_id):
+        return jsonify({"error": "examId must be a plain exam identifier"}), 400
+    kind = _addition_source_kind(url)
     lower = url.lower()
-    fmt = data.get('resourceFormat') or ('DIRECT_PDF' if lower.endswith('.pdf') else 'OFFICIAL_PORTAL')
+    # Only an official host may be filed as an official portal; anything else is an external page.
+    fmt = data.get('resourceFormat') or ('DIRECT_PDF' if lower.endswith('.pdf')
+                                         else 'OFFICIAL_PORTAL' if kind == 'OFFICIAL' else 'EXTERNAL_PAGE')
+    if kind != 'OFFICIAL' and fmt == 'OFFICIAL_PORTAL':
+        fmt = 'EXTERNAL_PAGE'
     row = {
         "id": f"add-{int(time.time() * 1000)}",
         "title": title[:200],
@@ -2199,14 +2383,18 @@ def resource_additions():
         "subject": data.get('subject') or 'Official Gazette',
         "resource_format": fmt,
         "author": (data.get('author') or urlparse(url).netloc)[:160],
-        "description": (data.get('description') or f'Added by the GovOS verifier from a live official-domain search on {_now_iso()[:10]}.')[:1200],
+        "description": (data.get('description') or (
+            f'Added by the GovOS verifier from a live official-domain search on {_now_iso()[:10]}.' if kind == 'OFFICIAL'
+            else f'A third-party page added by the GovOS verifier on {_now_iso()[:10]}. It is not an official source '
+                 f'and GovOS has not fact-checked what it publishes.'))[:1200],
         "added_at": _now_iso(),
         "added_from": data.get('addedFrom') or 'TRUST_PANEL',
-        "finding_id": data.get('findingId')
+        "finding_id": data.get('findingId'),
+        "exam_id": exam_id
     }
     conn = get_db_connection()
-    conn.execute("""INSERT INTO resource_additions (id, title, url, subject, resource_format, author, description, added_at, added_from, finding_id)
-                    VALUES (:id, :title, :url, :subject, :resource_format, :author, :description, :added_at, :added_from, :finding_id)""", row)
+    conn.execute("""INSERT INTO resource_additions (id, title, url, subject, resource_format, author, description, added_at, added_from, finding_id, exam_id)
+                    VALUES (:id, :title, :url, :subject, :resource_format, :author, :description, :added_at, :added_from, :finding_id, :exam_id)""", row)
     conn.commit()
     conn.close()
     _store_health([_check_one_link(url)])
@@ -2217,6 +2405,7 @@ def resource_additions():
 
 
 @app.route('/api/resources/additions/<addition_id>/retire', methods=['POST'])
+@admin_required
 def retire_resource_addition(addition_id):
     conn = get_db_connection()
     cur = conn.execute('UPDATE resource_additions SET retired = 1 WHERE id = ?', (addition_id,))
@@ -2296,6 +2485,10 @@ def _revision_row(r):
 
 @app.route('/api/syllabus/revisions', methods=['GET', 'POST'])
 def syllabus_revisions():
+    if request.method == 'POST':
+        denied = admin_denied()
+        if denied is not None:
+            return denied
     if request.method == 'GET':
         exam_id = request.args.get('exam_id') or ''
         conn = get_db_connection()
@@ -2359,6 +2552,7 @@ def syllabus_revisions():
 
 
 @app.route('/api/syllabus/revisions/<revision_id>/retire', methods=['POST'])
+@admin_required
 def retire_syllabus_revision(revision_id):
     conn = get_db_connection()
     cur = conn.execute('UPDATE syllabus_revisions SET retired = 1 WHERE id = ?', (revision_id,))
@@ -2399,6 +2593,10 @@ def _overlay_row(r):
 
 @app.route('/api/exams/<exam_id>/overlays', methods=['GET', 'POST'])
 def exam_overlays(exam_id):
+    if request.method == 'POST':
+        denied = admin_denied()
+        if denied is not None:
+            return denied
     if request.method == 'GET':
         cycle = request.args.get('cycle')
         domain = request.args.get('domain')
@@ -2439,6 +2637,7 @@ def exam_overlays(exam_id):
 
 
 @app.route('/api/exams/overlays/<overlay_id>/retire', methods=['POST'])
+@admin_required
 def retire_exam_overlay(overlay_id):
     from tools.exam_builder.overlay import OverlayStore
     store = OverlayStore(DB_FILE)
@@ -2477,21 +2676,35 @@ def get_runtime_exam(exam_id):
 
 
 @app.route('/api/exams/build', methods=['POST'])
+@admin_required
 def build_runtime_exam():
-    """Server-side, gate-controlled build of one exam into the runtime registry.
+    """Queue a server-side, gate-controlled build of one exam into the runtime registry.
 
-    The client supplies only a name and a cycle; every fact comes from the authority's own
-    documents through the universal pipeline, and nothing is published unless the existing
-    publication gate returns PASS. The client can never declare VERIFIED or PUBLISHED itself.
-    """
+    The client supplies only a name and a cycle (and whether Claude may review what the rules left
+    undecided). Every fact comes from the authority's own documents through the universal pipeline,
+    nothing is published unless the existing publication gate returns PASS, and the client can never
+    declare VERIFIED or PUBLISHED itself. The build runs as a background job; poll the returned URL."""
     data = request.get_json(silent=True) or {}
     query = (data.get('query') or data.get('exam') or '').strip()
     year = str(data.get('year') or data.get('cycle') or '').strip()
     if not query:
         return jsonify({"error": "query (the exam name) is required"}), 400
-    from tools.exam_builder.materialize import ExamRegistry, build_exam
-    result = build_exam(query, year, registry=ExamRegistry(DB_FILE), use_llm=bool(data.get('llm')))
-    return jsonify(result.to_dict()), (201 if result.registered else 200)
+    use_claude = bool(data.get('claude', data.get('useClaude', False)))
+    limited = _admin_rate_limited('exam-build', limit=6)
+    if limited:
+        return limited
+    if use_claude:
+        health = _claude_gateway().health()
+        if not health.get('ready'):
+            return _claude_unavailable_response(health)
+    try:
+        job, deduplicated, _token = _claude_queue().submit(
+            'BUILD_EXAM', {"query": query, "year": year, "useClaude": use_claude},
+            cycle=year, requested_by='admin', role='admin')
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    return jsonify({"jobId": job.id, "status": job.status.value, "deduplicated": deduplicated,
+                    "pollUrl": "/api/claude/jobs/" + job.id}), 202
 
 
 
@@ -3069,4 +3282,5 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     print(f"GovOS Unified Server + SQLite starting at http://localhost:{port}")
     _start_background_refresh()
+    _claude_queue().ensure_started()      # recovers jobs a previous process left RUNNING
     app.run(host='0.0.0.0', port=port, debug=False)

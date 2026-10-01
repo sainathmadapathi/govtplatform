@@ -12,7 +12,7 @@ on (`identity.designation_mode`). Every exam the alias model can identify stays 
 
     CANONICAL   read once, from the authority's own recruitment NOTIFICATION -- never from a
                 result page, scorecard, admit card, handout, listing row or arbitrary page.
-                A local model may help locate the designation and the components the notice
+                Claude may help locate the designation and the components the notice
                 declares, but every string it returns must be printed verbatim in that
                 notice, and the decomposition of each string is done here, deterministically.
     JUDGE       per document, deterministic: the designation in its title block, read from
@@ -110,7 +110,7 @@ class CanonicalDesignation:
     year: str
     text: str
     source_url: str
-    #: 'deterministic' | 'deterministic+qwen' | 'qwen-located'
+    #: 'deterministic' | 'deterministic+claude' | 'claude-located'
     basis: str
     evidence: tuple[str, ...] = ()
     notes: tuple[str, ...] = ()
@@ -164,7 +164,7 @@ def read_designations(text: str, *, authority_name: str = '') -> list[Designatio
 
 
 def parse_designation(printed: str, *, authority_name: str = '') -> Optional[Designation]:
-    """A designation string on its own (a query, or a string a model located in a notice)."""
+    """A designation string on its own (a query, or a string Claude located in a notice)."""
     flat = normalise_ws(printed)
     m = _INTRO.search(flat)
     return _read_at(flat, m.end() if m else 0, authority_name)
@@ -179,15 +179,15 @@ def query_designation(query: str, official_name: str, authority_aliases: set[str
     return parse_designation(' '.join(words), authority_name=authority_name)
 
 
-# ================================================================== the model's contribution
-#: The only keys a model's designation extraction may carry.
+# ================================================================== Claude's contribution
+#: The only keys Claude's designation extraction may carry.
 EXTRACTION_KEYS = ('designation_core', 'qualifiers', 'cycle', 'declared_components',
                    'evidence_spans', 'confidence', 'ambiguities')
 
 
 @dataclass
 class ValidatedExtraction:
-    """What survives deterministic validation of a model's extraction. `ok` False means the
+    """What survives deterministic validation of Claude's extraction. `ok` False means the
     output is refused whole; `reasons` says why."""
 
     ok: bool
@@ -202,7 +202,7 @@ class ValidatedExtraction:
 
 def validate_extraction(raw, notification_text: str, *,
                         authority_name: str = '') -> ValidatedExtraction:
-    """Every string the model returns must be printed in the notification and sit inside one
+    """Every string Claude returns must be printed in the notification and sit inside one
     of its own verbatim evidence spans; each is then decomposed here. Anything else -- a
     malformed object, an invented span, an invented component, a declared ambiguity, or
     designations that disagree -- refuses the whole output."""
@@ -211,12 +211,12 @@ def validate_extraction(raw, notification_text: str, *,
         try:
             raw = json.loads(raw)
         except (ValueError, TypeError):
-            return bad('model output was not valid JSON')
+            return bad('Claude output was not valid JSON')
     if not isinstance(raw, dict):
-        return bad('model output was not a JSON object')
+        return bad('Claude output was not a JSON object')
     extra = set(raw) - set(EXTRACTION_KEYS)
     if extra:
-        return bad(f'model output carried fields outside the contract: {sorted(extra)}')
+        return bad(f'Claude output carried fields outside the contract: {sorted(extra)}')
     for key in ('designation_core', 'qualifiers', 'declared_components', 'evidence_spans',
                 'ambiguities'):
         v = raw.get(key, [])
@@ -228,12 +228,12 @@ def validate_extraction(raw, notification_text: str, *,
     doc = normalise_ws(notification_text)
     spans = [normalise_ws(s) for s in raw.get('evidence_spans', []) if normalise_ws(s)]
     if not spans:
-        return bad('no evidence span: nothing the model said can be checked')
+        return bad('no evidence span: nothing Claude said can be checked')
     for s in spans:
         if s not in doc:
             return bad(f'evidence span not printed in the notification: {s[:80]!r}')
     if [a for a in raw.get('ambiguities', []) if normalise_ws(a)]:
-        return bad('the model reported the designation as ambiguous: '
+        return bad('Claude reported the designation as ambiguous: '
                    + '; '.join(normalise_ws(a) for a in raw['ambiguities'])[:200])
 
     # Every string is printed in the notification, verbatim -- that is what makes an invented
@@ -250,10 +250,10 @@ def validate_extraction(raw, notification_text: str, *,
     designations = [d for d in (parse_designation(x, authority_name=authority_name)
                                 for x in raw.get('designation_core', [])) if d is not None]
     if not designations:
-        return bad('no designation the notice prints could be read from the model output')
+        return bad('no designation the notice prints could be read from the output of Claude')
     cores = {d.core for d in designations}
     if len(cores) > 1:
-        return bad('the model returned designations that disagree: '
+        return bad('Claude returned designations that disagree: '
                    + ' / '.join(' '.join(c) for c in sorted(cores)))
 
     # A component is this designation's own only where it is printed *with* the designation
@@ -271,7 +271,7 @@ def validate_extraction(raw, notification_text: str, *,
     cycle = normalise_ws(raw.get('cycle', ''))
     year = _YEAR.search(cycle)
     if cycle and (not year or not any(year.group(1) in s for s in spans)):
-        return bad(f'cycle {cycle!r} is not printed in the model\'s evidence')
+        return bad(f'cycle {cycle!r} is not printed in Claude\'s evidence')
 
     # A qualifier qualifies *this* designation only where the notice prints it in the same
     # statement: a bracketed word anywhere else in the notice is not the designation's own.
@@ -288,7 +288,7 @@ def validate_extraction(raw, notification_text: str, *,
         if not any(normalise_ws(q) in s for s in own_spans):
             return bad(f'qualifier {normalise_ws(q)[:60]!r} is not printed in the same statement '
                        f'as the designation')
-        # A qualifier is its bracketed words (all of it when the model copied it unbracketed);
+        # A qualifier is its bracketed words (all of it when Claude copied it unbracketed);
         # the designation's own words are never qualifiers.
         inside = re.findall(r'\(([^)]*)\)?', q)
         qwords |= set(tokens(' '.join(inside) if inside else q)) - set(core)
@@ -303,7 +303,7 @@ def validate_extraction(raw, notification_text: str, *,
                                         if set_aside else []))
 
 
-#: (title_block) -> (raw model output or None, infra status value, detail)
+#: (title_block) -> (Claude's validated output or None, infra status value, detail)
 Extractor = Callable[[str], tuple]
 
 
@@ -319,12 +319,12 @@ def establish_canonical(want: Designation, year: str,
                         notifications: list[tuple[str, str]], *,
                         authority_name: str = '',
                         extractor: Optional[Extractor] = None,
-                        llm_enabled: bool = False) -> tuple[Optional[CanonicalDesignation], list[str]]:
+                        claude_enabled: bool = False) -> tuple[Optional[CanonicalDesignation], list[str]]:
     """The recruitment's canonical designation, from its own notification(s), or None.
 
     `notifications` are (url, text) of documents the builder classified as the authority's
     recruitment notification -- the caller never passes a result page or a listing. With a
-    model enabled, it must be reachable and its output must validate, or there is no canonical
+    Claude enabled, it must be reachable and its output must validate, or there is no canonical
     designation: an interpretation that cannot be checked is not used, and not bypassed.
     """
     notes: list[str] = []
@@ -334,61 +334,61 @@ def establish_canonical(want: Designation, year: str,
         block = flat[:TITLE_BLOCK_CHARS]
         det = [d for d in read_designations(block, authority_name=authority_name)
                if _admits(d, want, year)]
-        qwen: Optional[ValidatedExtraction] = None
-        if llm_enabled:
+        claude: Optional[ValidatedExtraction] = None
+        if claude_enabled:
             if extractor is None:
-                notes.append(f'{url}: a model is enabled but no extractor was supplied')
+                notes.append(f'{url}: Claude is enabled but no extractor was supplied')
                 return None, notes
             raw, infra, detail = extractor(block)
             if infra != 'OK':
-                notes.append(f'{url}: model unavailable ({infra}: {detail}); no canonical '
+                notes.append(f'{url}: Claude unavailable ({infra}: {detail}); no canonical '
                              f'designation without it')
                 return None, notes
-            qwen = validate_extraction(raw, flat, authority_name=authority_name)
-            if not qwen.ok:
-                notes.append(f'{url}: model extraction refused: {"; ".join(qwen.reasons)}')
+            claude = validate_extraction(raw, flat, authority_name=authority_name)
+            if not claude.ok:
+                notes.append(f'{url}: Claude extraction refused: {"; ".join(claude.reasons)}')
                 return None, notes
-            notes.extend(f'{url}: {r}' for r in qwen.reasons)
-            if qwen.cycle and qwen.cycle != year:
-                notes.append(f'{url}: the model read cycle {qwen.cycle}, not {year}')
+            notes.extend(f'{url}: {r}' for r in claude.reasons)
+            if claude.cycle and claude.cycle != year:
+                notes.append(f'{url}: Claude read cycle {claude.cycle}, not {year}')
                 continue
 
         if det:
             anchor = det[0]
-            if qwen is not None and qwen.designations[0].core != anchor.core:
-                notes.append(f'{url}: the model and the notice\'s own wording disagree on the '
-                             f'designation ({" ".join(qwen.designations[0].core)} vs '
+            if claude is not None and claude.designations[0].core != anchor.core:
+                notes.append(f'{url}: Claude and the notice\'s own wording disagree on the '
+                             f'designation ({" ".join(claude.designations[0].core)} vs '
                              f'{" ".join(anchor.core)})')
                 return None, notes
-            basis = 'deterministic+qwen' if qwen is not None else 'deterministic'
-        elif qwen is not None:
-            # The notice's wording was not in the recruitment grammar; the model located a
+            basis = 'deterministic+claude' if claude is not None else 'deterministic'
+        elif claude is not None:
+            # The notice's wording was not in the recruitment grammar; Claude located a
             # designation the notice prints in its title block, which the checks confirmed.
-            located = [d for d in qwen.designations if _admits(
-                Designation(d.core, d.qualifiers, d.components, qwen.cycle or d.year, d.text),
+            located = [d for d in claude.designations if _admits(
+                Designation(d.core, d.qualifiers, d.components, claude.cycle or d.year, d.text),
                 want, year) and normalise_ws(d.text) in block]
             if not located:
                 continue
             anchor = Designation(located[0].core, located[0].qualifiers, located[0].components,
                                  year, located[0].text)
-            basis = 'qwen-located'
+            basis = 'claude-located'
         else:
             continue
 
         qualifiers = set(anchor.qualifiers)
         components = set(anchor.components)
         evidence = [anchor.text]
-        if qwen is not None:
+        if claude is not None:
             # A component counts only when the notice prints it as this designation's own
-            # (same ordered core) -- the model locates it, the parse decides it. Qualifier
-            # strings were checked to be printed inside the model's verbatim evidence; their
+            # (same ordered core) -- Claude locates it, the parse decides it. Qualifier
+            # strings were checked to be printed inside Claude's verbatim evidence; their
             # cycle labels and numbers are not qualifiers.
-            for c in qwen.components:
+            for c in claude.components:
                 qualifiers |= c.qualifiers
                 components |= c.components
-            qualifiers |= {w for w in qwen.qualifier_words
+            qualifiers |= {w for w in claude.qualifier_words
                            if w not in _context_words() and not w.isdigit()}
-            evidence += [s for s in qwen.evidence if s not in evidence]
+            evidence += [s for s in claude.evidence if s not in evidence]
         found.append(CanonicalDesignation(
             core=anchor.core, qualifiers=frozenset(qualifiers),
             components=frozenset(components), year=year, text=anchor.text, source_url=url,

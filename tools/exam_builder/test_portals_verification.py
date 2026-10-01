@@ -1,13 +1,13 @@
 """The verification layer applied to OFFICIAL PORTALS & LINKS: the twenty required cases over
 real UPSC CSE 2026 notice clauses that tie a URL to a purpose (the online application portal and
-the admit-card download portal, both named verbatim in the notice). The LLM is stubbed for
+the admit-card download portal, both named verbatim in the notice). The Claude is stubbed for
 determinism; the live-model proof is the portal replay.
 
 Additive only -- no `officialLinks` type, section 12, or authored link is changed, and no portal
 is published. This verifies four things the phase demands: (1) officiality is deterministic and
 domain-based, not a ".gov.in" test and not the model's; (2) a URL's *purpose* is checked against
 official evidence, so a homepage cannot become an application/download link; (3) a portal is bound
-to the exact exam/cycle, rejected before Qwen otherwise; (4) a dead/unreachable link is
+to the exact exam/cycle, rejected before Claude otherwise; (4) a dead/unreachable link is
 infrastructure, never NOT_PUBLISHED, and a discovered-but-unsupported URL is never VERIFIED.
 """
 from __future__ import annotations
@@ -16,7 +16,7 @@ import json
 import unittest
 
 from .verification.adapters import claim_from_portal, portal_officiality, resource_officiality
-from .verification.client import ProviderError, VerificationProvider
+from tools.claude_cli.testing import FakeClaude, ForbiddenClaude, verdict_reply
 from .verification.schemas import InfraStatus, VerificationDecision
 from .verification.verifier import verify
 
@@ -55,29 +55,19 @@ def home_link(url='https://www.upsc.gov.in', note=HOME_CLAUSE):
             'evidenceSpan': note, 'sourceTitle': UPSC_TITLE}
 
 
-class _Stub(VerificationProvider):
-    def __init__(self, payload=None, raises=None):
-        self.cfg = {'model': 'stub'}
-        self.payload, self.raises = payload, raises
-
-    def is_enabled(self):
-        return True
-
-    def health(self):
-        return {'enabled': True, 'reachable': True}
-
-    def complete(self, messages, *, max_tokens=320):
-        if self.raises:
-            raise self.raises
-        return self.payload
+def _Stub(payload=None, raises=None):
+    """A scripted Claude gateway: the real gateway over a fake CLI process. `payload` is a verdict
+    reply (or a raw string for a malformed one); `raises` is the infrastructure failure to simulate."""
+    if raises is not None:
+        return FakeClaude(fail=raises)
+    return FakeClaude(payload)
 
 
 def _json(decision, ident=True, ev=True, claim=True):
-    return json.dumps({'decision': decision, 'identity_supported': ident,
-                       'evidence_supported': ev, 'claim_supported': claim, 'reason': 'stub'})
+    return verdict_reply(decision, identity=ident, evidence=ev, claim=claim)
 
 
-POISON = _Stub(raises=AssertionError('LLM must not be called after a deterministic failure'))
+POISON = ForbiddenClaude('Claude must not be called after a deterministic failure')
 
 
 class TestPortalsVerification(unittest.TestCase):
@@ -85,49 +75,49 @@ class TestPortalsVerification(unittest.TestCase):
     # --- 1-4: real official links of four purposes verify against their own evidence ------
     def test_1_real_application_portal_verified(self):
         c = claim_from_portal(apply_link(), purpose='APPLICATION', source_text=APPLY_SRC, **UPSC_CTX)
-        v = verify(c, provider=_Stub(_json('SUPPORTED')))
+        v = verify(c, gateway=_Stub(_json('SUPPORTED')))
         self.assertTrue(v.publishable)
         self.assertEqual(v.status, 'VERIFIED')
-        self.assertIs(v.llm.decision, VerificationDecision.SUPPORTED)
+        self.assertIs(v.claude.decision, VerificationDecision.SUPPORTED)
 
     def test_2_real_admit_card_portal_verified(self):
         c = claim_from_portal(admit_link(), purpose='ADMIT_CARD', source_text=ADMIT_SRC, **UPSC_CTX)
-        v = verify(c, provider=_Stub(_json('SUPPORTED')))
+        v = verify(c, gateway=_Stub(_json('SUPPORTED')))
         self.assertTrue(v.publishable)
         self.assertIn('admit_card', c.field)
 
     def test_3_real_official_home_verified(self):
         c = claim_from_portal(home_link(), purpose='OFFICIAL_HOME', source_text=HOME_SRC, **UPSC_CTX)
-        v = verify(c, provider=_Stub(_json('SUPPORTED')))
+        v = verify(c, gateway=_Stub(_json('SUPPORTED')))
         self.assertTrue(v.publishable)
 
     def test_4_real_notification_page_verified(self):
         link = {'url': 'https://www.upsc.gov.in/examinations/active-exams', 'title': 'CSE 2026 notice',
                 'note': HOME_CLAUSE, 'evidenceSpan': HOME_CLAUSE, 'sourceTitle': UPSC_TITLE}
         c = claim_from_portal(link, purpose='NOTIFICATION', source_text=HOME_SRC, **UPSC_CTX)
-        v = verify(c, provider=_Stub(_json('SUPPORTED')))
+        v = verify(c, gateway=_Stub(_json('SUPPORTED')))
         self.assertTrue(v.publishable)
 
-    # --- 5-8: wrong exam / cycle / authority rejected deterministically, before the LLM ---
-    def test_5_wrong_exam_rejected_before_llm(self):
+    # --- 5-8: wrong exam / cycle / authority rejected deterministically, before Claude ---
+    def test_5_wrong_exam_rejected_before_claude(self):
         c = claim_from_portal(apply_link(), purpose='APPLICATION', source_text=APPLY_SRC,
                               exam_id='exam-ssc-cgl-2026',
                               official_name='Combined Graduate Level Examination',
                               authority='Staff Selection Commission', cycle='2026')
-        v = verify(c, provider=POISON)
+        v = verify(c, gateway=POISON)
         self.assertFalse(v.publishable)
         self.assertFalse(v.deterministic.cross_exam_ok)
-        self.assertIsNone(v.llm)
+        self.assertIsNone(v.claude)
 
-    def test_6_wrong_cycle_rejected_before_llm(self):
+    def test_6_wrong_cycle_rejected_before_claude(self):
         src2025 = ('UPSC — Civil Services (Preliminary) Examination, 2025 notice. Apply online at '
                    'https://upsconline.nic.in.')
         c = claim_from_portal(apply_link(note='Apply online at https://upsconline.nic.in.'),
                               purpose='APPLICATION', source_text=src2025, **dict(UPSC_CTX, cycle='2026'))
-        v = verify(c, provider=POISON)
+        v = verify(c, gateway=POISON)
         self.assertFalse(v.publishable)
         self.assertFalse(v.deterministic.cycle_ok)
-        self.assertIsNone(v.llm)
+        self.assertIsNone(v.claude)
 
     def test_7_wrong_authority_evidence_rejected(self):
         # SSC-scoped context against UPSC evidence: the source names UPSC, not SSC.
@@ -135,17 +125,17 @@ class TestPortalsVerification(unittest.TestCase):
                               exam_id='exam-ssc-cgl-2026',
                               official_name='Combined Graduate Level Examination',
                               authority='Staff Selection Commission', cycle='2026')
-        v = verify(c, provider=POISON)
+        v = verify(c, gateway=POISON)
         self.assertFalse(v.deterministic.cross_exam_ok)
-        self.assertIsNone(v.llm)
+        self.assertIsNone(v.claude)
 
     def test_8_stale_cycle_evidence_rejected(self):
         stale = 'UPSC — Civil Services (Preliminary) Examination, 2024 notice. Apply at upsconline.nic.in.'
         c = claim_from_portal(apply_link(note='Apply at upsconline.nic.in.'), purpose='APPLICATION',
                               source_text=stale, **UPSC_CTX)
-        v = verify(c, provider=POISON)
+        v = verify(c, gateway=POISON)
         self.assertFalse(v.deterministic.cycle_ok)
-        self.assertIsNone(v.llm)
+        self.assertIsNone(v.claude)
 
     # --- 9-10: officiality is deterministic and NOT a .gov.in test -----------------------
     def test_9_officiality_non_govin_domains(self):
@@ -169,14 +159,14 @@ class TestPortalsVerification(unittest.TestCase):
         # The homepage clause names no application purpose; claiming it as the application portal
         # cannot be SUPPORTED. The model returns INSUFFICIENT -> NEEDS_REVIEW, never VERIFIED.
         c = claim_from_portal(home_link(), purpose='APPLICATION', source_text=HOME_SRC, **UPSC_CTX)
-        v = verify(c, provider=_Stub(_json('INSUFFICIENT', ev=False, claim=False)))
+        v = verify(c, gateway=_Stub(_json('INSUFFICIENT', ev=False, claim=False)))
         self.assertFalse(v.publishable)
         self.assertEqual(v.status, 'NEEDS_REVIEW')
         self.assertTrue(v.deterministic.passed)   # identity fine; purpose is what fails
 
     def test_12_homepage_claimed_as_admit_card_not_verified(self):
         c = claim_from_portal(home_link(), purpose='ADMIT_CARD', source_text=HOME_SRC, **UPSC_CTX)
-        v = verify(c, provider=_Stub(_json('CONTRADICTED', ev=False, claim=False)))
+        v = verify(c, gateway=_Stub(_json('CONTRADICTED', ev=False, claim=False)))
         self.assertFalse(v.publishable)
         self.assertEqual(v.status, 'NEEDS_REVIEW')
 
@@ -186,7 +176,7 @@ class TestPortalsVerification(unittest.TestCase):
         # judges the mismatch. Deterministic passes (same exam/cycle), publication does not.
         c = claim_from_portal(admit_link(), purpose='RESULT', source_text=ADMIT_SRC, **UPSC_CTX)
         self.assertIn('portal:result', c.field)
-        v = verify(c, provider=_Stub(_json('INSUFFICIENT', ev=False, claim=False)))
+        v = verify(c, gateway=_Stub(_json('INSUFFICIENT', ev=False, claim=False)))
         self.assertFalse(v.publishable)
 
     # --- 14: a fabricated / not-official URL is UNOFFICIAL and unsupported ----------------
@@ -195,7 +185,7 @@ class TestPortalsVerification(unittest.TestCase):
         self.assertEqual(portal_officiality(fake, UPSC_DOMAINS), 'UNOFFICIAL')
         c = claim_from_portal(apply_link(url=fake), purpose='APPLICATION', source_text=APPLY_SRC, **UPSC_CTX)
         # the evidence names upsconline.nic.in, not this host -> the model cannot support it
-        v = verify(c, provider=_Stub(_json('INSUFFICIENT', ev=False, claim=False)))
+        v = verify(c, gateway=_Stub(_json('INSUFFICIENT', ev=False, claim=False)))
         self.assertFalse(v.publishable)
 
     # --- 15: a URL not present in the evidence is not verifiable --------------------------
@@ -203,7 +193,7 @@ class TestPortalsVerification(unittest.TestCase):
         # A plausible official-looking host that the cited clause never mentions.
         c = claim_from_portal(apply_link(url='https://digilocker.gov.in'), purpose='APPLICATION',
                               source_text=APPLY_SRC, **UPSC_CTX)
-        v = verify(c, provider=_Stub(_json('INSUFFICIENT', ev=False, claim=False)))
+        v = verify(c, gateway=_Stub(_json('INSUFFICIENT', ev=False, claim=False)))
         self.assertFalse(v.publishable)
 
     # --- 16: missing source -> NEEDS_REVIEW, never VERIFIED and never NOT_PUBLISHED -------
@@ -211,10 +201,10 @@ class TestPortalsVerification(unittest.TestCase):
         c = claim_from_portal(apply_link(), purpose='APPLICATION', **UPSC_CTX)  # no source_text...
         c.source_text = ''
         c.evidence_span = ''
-        v = verify(c, provider=POISON)
+        v = verify(c, gateway=POISON)
         self.assertFalse(v.publishable)
         self.assertFalse(v.deterministic.span_in_source)
-        self.assertIsNone(v.llm)
+        self.assertIsNone(v.claude)
 
     # --- 17-18: a dead / unreachable official link is not NOT_PUBLISHED -------------------
     def test_17_dead_official_link_stays_official(self):
@@ -224,20 +214,20 @@ class TestPortalsVerification(unittest.TestCase):
         self.assertEqual(portal_officiality('https://upsconline.nic.in/old', UPSC_DOMAINS), 'OFFICIAL')
 
     def test_18_unreachable_source_never_verified_but_not_absent(self):
-        # The source could not be fetched (LLM stands in for an infrastructure failure here):
+        # The source could not be fetched (Claude stands in for an infrastructure failure here):
         # NEEDS_REVIEW with an infra status, never VERIFIED and never NOT_PUBLISHED.
         c = claim_from_portal(apply_link(), purpose='APPLICATION', source_text=APPLY_SRC, **UPSC_CTX)
-        v = verify(c, provider=_Stub(raises=ProviderError(InfraStatus.LLM_UNAVAILABLE, 'down')))
+        v = verify(c, gateway=_Stub(raises=InfraStatus.CLAUDE_CLI_FAILED))
         self.assertFalse(v.publishable)
-        self.assertIs(v.infra, InfraStatus.LLM_UNAVAILABLE)
+        self.assertIs(v.infra, InfraStatus.CLAUDE_CLI_FAILED)
         self.assertNotEqual(v.status, 'VERIFIED')
 
-    # --- 19: malformed LLM output is never VERIFIED --------------------------------------
-    def test_19_malformed_llm_never_verified(self):
+    # --- 19: malformed Claude output is never VERIFIED --------------------------------------
+    def test_19_malformed_claude_never_verified(self):
         c = claim_from_portal(apply_link(), purpose='APPLICATION', source_text=APPLY_SRC, **UPSC_CTX)
-        v = verify(c, provider=_Stub('not json'))
+        v = verify(c, gateway=_Stub('not json'))
         self.assertFalse(v.publishable)
-        self.assertIs(v.infra, InfraStatus.LLM_INVALID_RESPONSE)
+        self.assertIs(v.infra, InfraStatus.CLAUDE_INVALID_OUTPUT)
 
     # --- 20: cross-exam isolation — SSC evidence can never verify a UPSC portal -----------
     def test_20_cross_exam_isolation(self):
@@ -245,10 +235,10 @@ class TestPortalsVerification(unittest.TestCase):
                    'Apply online at https://ssc.gov.in.')
         c = claim_from_portal(apply_link(url='https://ssc.gov.in', note='Apply online at https://ssc.gov.in.'),
                               purpose='APPLICATION', source_text=ssc_src, **UPSC_CTX)
-        v = verify(c, provider=POISON)
+        v = verify(c, gateway=POISON)
         self.assertFalse(v.publishable)
         self.assertFalse(v.deterministic.cross_exam_ok)
-        self.assertIsNone(v.llm)
+        self.assertIsNone(v.claude)
 
 
 if __name__ == '__main__':

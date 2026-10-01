@@ -219,10 +219,10 @@ def discover(resolved: ResolvedExam, *, exam_id: str, max_pages: int = 6,
     words = exam_aliases(resolved.query, resolved.official_name)
     host = (urlparse(resolved.authority.domain).hostname or '').replace('www.', '')
     want, on = _designation_for(resolved)
+    out = SourceSet(exam_id=exam_id, authority_domain=resolved.authority.domain)
     if on:
         out.log.append('designation mode: the exam has no distinctive word; links are admitted by '
                        f'the designation they name ({want.text if want else "none readable"})')
-    out = SourceSet(exam_id=exam_id, authority_domain=resolved.authority.domain)
     seen_urls: set[str] = set()
 
     # A seed that is itself a PDF is a *document*, not a page to crawl. The resolver's best

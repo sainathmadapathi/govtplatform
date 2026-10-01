@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import re
 
+from .evidence import normalise_ws
 from .pattern import (_Cursor, _evidence, _IS_STATEMENT, _is_marked, _slug,
                       may_supply_pattern)
 from .schema import (Fact, Scope, ScopeKind, ScopeRef, SourceDocument, Status, Syllabus,
@@ -228,6 +229,46 @@ def _depth_of(number: str) -> int:
     return len([p for p in (number or '').split('.') if p])
 
 
+def _only_page_numbers_between(printed: str, entry: str) -> bool:
+    """Is `printed` the entry's own words, in order, with nothing added but bare page numbers
+    (the footer a PDF prints where an entry runs over a page)?"""
+    p, e = normalise_ws(printed).split(), normalise_ws(entry).split()
+    i = 0
+    for word in p:
+        if i < len(e) and word == e[i]:
+            i += 1
+        elif not re.fullmatch(r'\d{1,3}', word):
+            return False
+    return i == len(e)
+
+
+def _covers(ev, span: str) -> bool:
+    """Does this evidence quote the whole span (whitespace, and a page number printed inside a
+    wrapped entry, aside)?"""
+    return ev is not None and (normalise_ws(ev.span) == normalise_ws(span)
+                               or _only_page_numbers_between(ev.span, span))
+
+
+def _entry_evidence(entry_text: str, first_line: str, doc: SourceDocument, text: str, *,
+                    reading: str):
+    """Evidence for a syllabus entry: the whole entry as printed, across every line it wrapped
+    onto, so the quotation covers the title and note it publishes. An entry that runs over a
+    page has the page's number printed between its lines; the quotation is then the printed
+    span itself, number and all, which is verbatim. Where neither is found, its first line is
+    the evidence, and the caller holds the node for review instead of calling it covered."""
+    entry = entry_text.strip()
+    whole = _evidence(entry, doc, text, reading=reading) if entry else None
+    if whole is None and entry:
+        flat, head, tail = normalise_ws(text), normalise_ws(first_line), normalise_ws(entry)[-40:]
+        at = flat.find(head)
+        end = flat.find(tail, at) if at >= 0 else -1
+        if at >= 0 and end >= 0:
+            printed = flat[at:end + len(tail)]
+            if _only_page_numbers_between(printed, entry):
+                whole = _evidence(printed, doc, text, reading=reading)
+    return whole or _evidence(first_line, doc, text, reading=reading)
+
+
 def _split_title(text: str) -> tuple[str, str]:
     """An entry's own name, and the description the authority wrote after it.
 
@@ -298,22 +339,22 @@ def _read_clauses(cur: _Cursor, doc: SourceDocument, start: int, end: int, *,
         if not title or (_IS_STATEMENT.search(title) and len(title.split()) > 8):
             if stack:
                 node = stack[-1][1]
-                node.note = (node.note + ' ' + body_text).strip()[:600]
+                node.note = (node.note + ' ' + body_text).strip()
             continue
 
         node = SyllabusNode(
             id=f'{prefix}-{_slug(number)}',
-            title=title[:160],
+            title=title,
             level_label=_level_label(title, depth - (opening_depth or 1)),
             order=1)
         if body:
-            node.note = body[:600]
+            node.note = body
 
-        evidence = _evidence(cur.lines[index].strip(), doc, cur.text,
-                             reading=f'a syllabus entry: {title[:60]}')
+        evidence = _entry_evidence(body_text, cur.lines[index].strip(), doc, cur.text,
+                                   reading=f'a syllabus entry: {title[:60]}')
         if evidence:
             node.evidence = [evidence]
-            node.status = Status.VERIFIED
+            node.status = Status.VERIFIED if _covers(evidence, body_text) else Status.NEEDS_REVIEW
         else:
             node.status = Status.NEEDS_REVIEW
             node.note = (node.note + ' [span not verbatim in the source]').strip()
@@ -366,17 +407,17 @@ def _read_headings_and_bullets(cur: _Cursor, doc: SourceDocument, start: int, en
         title, entry_body = _split_title(text)
         node = SyllabusNode(
             id=f'{prefix}-{_slug(parent.title)[:18]}-{len(parent.children) + 1}',
-            title=title[:160],
+            title=title,
             level_label='Topic',
             order=len(parent.children) + 1,
             scope=parent.scope)
         if entry_body:
-            node.note = entry_body[:600]
-        evidence = _evidence(cur.lines[index].strip(), doc, cur.text,
-                             reading=f'a syllabus entry under {parent.title[:40]}')
+            node.note = entry_body
+        evidence = _entry_evidence(text, cur.lines[index].strip(), doc, cur.text,
+                                   reading=f'a syllabus entry under {parent.title[:40]}')
         if evidence:
             node.evidence = [evidence]
-            node.status = Status.VERIFIED
+            node.status = Status.VERIFIED if _covers(evidence, text) else Status.NEEDS_REVIEW
         else:
             node.status = Status.NEEDS_REVIEW
         parent.children.append(node)
@@ -389,7 +430,7 @@ def _read_headings_and_bullets(cur: _Cursor, doc: SourceDocument, start: int, en
             continue
         if _NOTE_LINE.match(line):
             if stack:
-                stack[-1][1].note = (stack[-1][1].note + ' ' + line).strip()[:600]
+                stack[-1][1].note = (stack[-1][1].note + ' ' + line).strip()
             continue
 
         bullet = _BULLET.match(line)
@@ -417,7 +458,7 @@ def _read_headings_and_bullets(cur: _Cursor, doc: SourceDocument, start: int, en
             title = f'{label} {ordinal}'.strip()
             if trailing and len(trailing) < 80:
                 title = f'{title} — {trailing}' if ordinal else trailing
-            node = SyllabusNode(id=f'{prefix}-{_slug(title)}', title=title[:140],
+            node = SyllabusNode(id=f'{prefix}-{_slug(title)}', title=title,
                                 level_label=label, order=1)
             evidence = _evidence(line, doc, cur.text,
                                  reading=f'a syllabus heading: {title[:50]}')
@@ -553,7 +594,7 @@ def _read_outline(cur: _Cursor, doc: SourceDocument, start: int, end: int, *,
     stack: list[tuple[int, SyllabusNode]] = []   # (rank, node); rank 0 stage … 3 entry
     title_before: dict[int, bool] = {}
     expected: dict[int, int] = {}                # id(parent) -> next entry number
-    entry: list = [None, []]                     # [node, lines]
+    entry: list = [None, [], [], 0]              # [node, lines, raw lines, first index]
 
     def evidence_for(node: SyllabusNode, index: int, reading: str) -> None:
         ev = _evidence(cur.lines[index].strip(), doc, cur.text, reading=reading)
@@ -561,13 +602,20 @@ def _read_outline(cur: _Cursor, doc: SourceDocument, start: int, end: int, *,
         node.status = Status.VERIFIED if ev else Status.NEEDS_REVIEW
 
     def close_entry() -> None:
-        node, parts = entry
+        node, parts, raw, first = entry
         if node is not None:
             title, body = _split_title(' '.join(parts))
-            node.title = title[:160] or node.title
+            node.title = title or node.title
             if body:
-                node.note = body[:600]
-        entry[0], entry[1] = None, []
+                node.note = body
+            # The evidence is the whole entry as printed, across the lines it wrapped onto,
+            # so it covers the title and note it publishes, not only their first line.
+            ev = _entry_evidence(' '.join(raw), cur.lines[first].strip(), doc, cur.text,
+                                 reading=f'a syllabus entry: {node.title[:60]}')
+            node.evidence = [ev] if ev else []
+            covered = bool(ev) and (len(raw) == 1 or _covers(ev, ' '.join(raw)))
+            node.status = Status.VERIFIED if covered else Status.NEEDS_REVIEW
+        entry[0], entry[1], entry[2], entry[3] = None, [], [], 0
 
     def attach(node: SyllabusNode, rank: int) -> None:
         while stack and stack[-1][0] >= rank:
@@ -592,11 +640,11 @@ def _read_outline(cur: _Cursor, doc: SourceDocument, start: int, end: int, *,
         if item and parent is not None and int(item.group('n')) == expected.get(id(parent), 1):
             close_entry()
             node = SyllabusNode(id=f'{prefix}-{_slug(parent.title)[:18]}-{item.group("n")}',
-                                title=item.group('rest')[:160], level_label='Topic', order=1)
+                                title=item.group('rest'), level_label='Topic', order=1)
             evidence_for(node, index, f'a syllabus entry under {parent.title[:40]}')
             attach(node, 3)
             expected[id(parent)] = int(item.group('n')) + 1
-            entry[0], entry[1] = node, [item.group('rest')]
+            entry[0], entry[1], entry[2], entry[3] = node, [item.group('rest')], [text], index
             k += 1
             continue
 
@@ -629,11 +677,15 @@ def _read_outline(cur: _Cursor, doc: SourceDocument, start: int, end: int, *,
                 label, rank = ('Stage', 0) if is_stage else ('Subject', 1)
                 if notes and not is_stage:
                     heading = f'{heading} {notes[0]}' if len(notes[0]) < 40 else heading
-            node = SyllabusNode(id=f'{prefix}-{_slug(heading)[:40]}', title=heading[:160],
+            node = SyllabusNode(id=f'{prefix}-{_slug(heading)[:40]}', title=heading,
                                 level_label=label, order=1)
             if notes:
-                node.note = ' '.join(notes)[:600]
-            evidence_for(node, index, f'a syllabus heading: {heading[:50]}')
+                node.note = ' '.join(notes)
+            printed = ' '.join(parts + notes)
+            ev = _entry_evidence(printed, cur.lines[index].strip(), doc, cur.text,
+                                 reading=f'a syllabus heading: {heading[:50]}')
+            node.evidence = [ev] if ev else []
+            node.status = Status.VERIFIED if _covers(ev, printed) or (ev and len(parts) + len(notes) == 1)                 else Status.NEEDS_REVIEW
             attach(node, rank)
             title_before[j - 1] = True
             k = j
@@ -641,6 +693,7 @@ def _read_outline(cur: _Cursor, doc: SourceDocument, start: int, end: int, *,
 
         if entry[0] is not None:
             entry[1].append(text)          # an entry wrapped onto the next line
+            entry[2].append(text)
         k += 1
     close_entry()
 

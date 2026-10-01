@@ -1,5 +1,5 @@
 """A tiny fingerprint cache so identical (claim, evidence, source, verifier version) is not
-re-verified. Successful LLM results are cached; infrastructure failures are never cached, so a
+re-verified. Successful Claude results are cached; infrastructure failures are never cached, so a
 transient outage does not stick. New evidence or a new verifier version changes the
 fingerprint and forces re-verification."""
 from __future__ import annotations

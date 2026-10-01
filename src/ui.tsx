@@ -94,11 +94,16 @@ import {
   Zap
 } from 'lucide-react';
 import {
+  ClaudeAnswerResult,
+  ClaudeHealth,
+  ClaudeJob,
+  ClaudePracticeResult,
   ResearchFact,
   ResearchFactStatus,
   ResearchFinding,
   ResearchMode,
   ResearchRun,
+  ResearchSearchResult,
   ResearchStatus,
   ResourceLinkCheck,
   ApplicationGuideData,
@@ -187,6 +192,9 @@ import {
   buildChatContext,
   conversationService,
   canonicalExamId,
+  adminHeaders,
+  adminToken,
+  claudeService,
   researchService,
   resourceLiveService,
   syllabusLiveService,
@@ -234,20 +242,102 @@ const QUALIFICATION_WORDS: Record<ExamQualificationLevel, string> = {
   CLASS_10: 'Class 10', CLASS_12: 'Class 12', GRADUATION: 'Graduation', POST_GRADUATION: 'Post-graduation',
 };
 
-export type EvidenceKind = EvidenceType | 'INTERPRETATION';
+export type EvidenceKind = EvidenceType | 'INTERPRETATION' | 'UNSUPPORTED';
+
+// ---------------------------------------------------------------- does the quote state the value?
+const _MONTHS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september',
+  'october', 'november', 'december'];
+const _quoteText = (s: string) => s.toLowerCase().replace(/[‐-―−]/g, '-').replace(/\s+/g, ' ');
+const _STOP = new Set(['the', 'and', 'for', 'with', 'from', 'into', 'cum']);
+
+/** Every way a notice prints one calendar date: 21.05.2026, 21/5/2026, 21-05-2026, 21st May 2026,
+ *  May 21, 2026, 2026-05-21. */
+function _dateForms(y: string, mo: string, d: string): RegExp[] {
+  const dd = `0?${+d}`, mm = `0?${+mo}`, mon = _MONTHS[+mo - 1], mon3 = mon.slice(0, 3);
+  return [
+    new RegExp(`(?<!\\d)${dd}\\s*[./-]\\s*${mm}\\s*[./-]\\s*${y}(?!\\d)`),
+    new RegExp(`(?<!\\d)${dd}(?:st|nd|rd|th)?\\s*(?:of\\s+)?(?:${mon}|${mon3}\\.?)\\s*,?\\s*${y}`),
+    new RegExp(`(?:${mon}|${mon3}\\.?)\\s+${dd}(?:st|nd|rd|th)?\\s*,?\\s*${y}`),
+    new RegExp(`(?<!\\d)${y}\\s*-\\s*${mo}\\s*-\\s*${d}(?!\\d)`),
+  ];
+}
+
+/**
+ * Do the words this provenance quotes contain the value shown with it?
+ *
+ * Only the quotation counts. A source URL -- a homepage above all -- an authority or domain, a
+ * verifier's name and a model's confidence are not evidence that a value is printed anywhere.
+ * A date is found in whatever form the document prints it; a figure with or without its digit
+ * grouping; a name when each of its words (outside brackets, which carry abbreviations) is quoted.
+ * A value printed as a range or as words ("October/November 2026") matches that exact printed
+ * form, never a single day inside it.
+ */
+export type ClaimValue = string | number | null | undefined | (string | number | null | undefined)[];
+const _alternatives = (value: ClaimValue): string[] =>
+  (Array.isArray(value) ? value : [value]).filter(v => v !== null && v !== undefined && String(v).trim() !== '').map(String);
+
+export function claimInQuote(p: DataProvenance | null | undefined, value: ClaimValue): boolean {
+  const alts = _alternatives(value);
+  if (alts.length === 0) return true;
+  return alts.some(v => _oneInQuote(p, v));
+}
+
+function _oneInQuote(p: DataProvenance | null | undefined, value: string): boolean {
+  const quote = _quoteText(p?.excerptText || '');
+  if (!quote.trim()) return false;
+  const v = value.trim();
+  const iso = v.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T]\d{2}:\d{2}(?::\d{2})?)?$/);
+  if (iso) return _dateForms(iso[1], iso[2], iso[3]).some(rx => rx.test(quote));
+  const num = v.match(/^\s*(\d[\d,]*)\b/);
+  if (num && /^\s*\d[\d,]*(?:\s*\(.*\))?\s*$/.test(v)) {
+    const digits = num[1].replace(/,/g, '');
+    return new RegExp(`(?<![\\d,])${digits.split('').join(',?')}(?![\\d])`).test(quote.replace(/\s/g, ' '));
+  }
+  if (quote.includes(_quoteText(v))) return true;
+  const words = (_quoteText(v.replace(/\([^)]*\)|\[[^\]]*\]/g, ' ')).match(/[a-z0-9]+/g) || [])
+    .filter(w => w.length > 2 && !_STOP.has(w));
+  if (words.length === 0) return false;
+  const quoted = new Set(quote.match(/[a-z0-9]+/g) || []);
+  return words.every(w => quoted.has(w));
+}
+
+/** The provenance to show beside a value: unchanged where its quotation contains the value (or
+ *  where it never claimed to be a direct, verified quotation); otherwise marked with the value its
+ *  quotation does not contain, which presents it as neither direct nor verified. */
+export function withClaim(p: DataProvenance | null | undefined, value: ClaimValue): DataProvenance | null | undefined {
+  const alts = _alternatives(value);
+  if (!p || alts.length === 0) return p;
+  const claimsQuote = evidenceKind(p) === 'DIRECT' || provenanceIsVerified(p);
+  if (!claimsQuote || claimInQuote(p, alts)) return p;
+  return { ...p, claimNotInQuote: alts[0] };
+}
+
+/** A dated milestone's claim: as printed where the notice printed words or a range, and its day. */
+export const dateClaim = (d: Pick<ImportantDate, 'displayWhen' | 'dateTimeStr'>): string[] =>
+  [d.displayWhen || '', (d.dateTimeStr || '').split(' ')[0]].filter(Boolean);
+
+/** How many of an exam's displayed dates and posts carry a quotation that does not state them. */
+export function unsupportedClaims(exam: Pick<Exam, 'dates' | 'posts'>): number {
+  const dates = exam.dates.filter(d => d.status !== 'SUPERSEDED')
+    .filter(d => withClaim(d.provenance, dateClaim(d))?.claimNotInQuote);
+  const posts = exam.posts.filter(p => withClaim(p.provenance, p.postName)?.claimNotInQuote);
+  return dates.length + posts.length;
+}
 
 /** A source a candidate can open, or the words themselves. */
 export const provenanceHasEvidence = (p?: DataProvenance | null): p is DataProvenance =>
   !!p && (/^https?:\/\//.test(p.officialUrl || '') || !!(p.excerptText || '').trim());
 
-/** Official verification needs a source to open and a place in it (a page or the words). */
+/** Official verification needs a source to open and a place in it (a page or the words), and
+ *  never covers a value the quoted words do not contain. */
 export const provenanceIsVerified = (p?: DataProvenance | null): boolean =>
-  !!p && p.verificationLevel === 'OFFICIALLY_VERIFIED' && /^https?:\/\//.test(p.officialUrl || '')
+  !!p && !p.claimNotInQuote && p.verificationLevel === 'OFFICIALLY_VERIFIED' && /^https?:\/\//.test(p.officialUrl || '')
   && (!!p.pageNumber || !!(p.excerptText || '').trim());
 
 /** What kind of evidence this is: the builder states it; an authored record's is read from the
  *  links and taxonomy it already carries, never assumed to be a quotation. */
 export const evidenceKind = (p: DataProvenance): EvidenceKind => {
+  if (p.claimNotInQuote) return 'UNSUPPORTED';
   if (p.evidenceType) return p.evidenceType;
   if (p.derivation) return 'DERIVED';
   if ((p.supersedes && p.supersedes.length) || p.supersededBy) return 'RECONCILED';
@@ -259,6 +349,7 @@ const EVIDENCE_KIND_TEXT: Record<EvidenceKind, { label: string; means: string; c
   RECONCILED: { label: 'Reconciled', means: 'A later official statement replaced an earlier one. Both are shown, and the later one governs.', color: 'var(--amber)', bg: 'var(--amber-soft)' },
   DERIVED: { label: 'Derived', means: 'GovOS calculated this from the official figures listed below. It is not printed as such.', color: 'var(--primary)', bg: 'var(--primary-soft)' },
   INTERPRETATION: { label: 'GovOS interpretation', means: 'GovOS wording based on the source below, not a quotation from it.', color: 'var(--text-secondary)', bg: 'var(--surface-3)' },
+  UNSUPPORTED: { label: 'Not in the quoted words', means: 'The source below is named for this value, but the words it quotes do not contain the value. GovOS does not present it as verified; check it in the official document.', color: '#a55a05', bg: 'var(--amber-soft)' },
 };
 
 export interface EvidenceButtonProps {
@@ -268,10 +359,48 @@ export interface EvidenceButtonProps {
   label?: string;
   compact?: boolean;
   style?: React.CSSProperties;
+  /** The value shown beside this button. Where the quotation does not contain it, the evidence
+   *  opens as "Not in the quoted words" and is never presented as direct or verified. */
+  claim?: ClaimValue;
 }
 
+/**
+ * Whether internal fixture data may be shown. The Trust Panel's source-health monitor and PDF
+ * extraction simulator are driven by hardcoded fixtures -- an SSC "deadline conflict", sample
+ * hashes, a sample extraction -- not by anything GovOS detected. They are shown in a development
+ * build only (Vite's DEV flag), labelled as fixtures, and never in the build candidates use.
+ */
+const SHOW_DEV_FIXTURES: boolean = !!(import.meta as any).env?.DEV;
+
+const DevFixtureNote: React.FC = () => (
+  <div data-dev-fixture="true" style={{ marginBottom: '14px', padding: '8px 12px', borderRadius: 'var(--radius-sm)', background: 'var(--amber-soft)', color: '#a55a05', fontSize: '0.8rem', fontWeight: 700 }}>
+    Development fixture — sample data, not detected from any live source. Hidden in the production build.
+  </div>
+);
+
+/** The exam's verification badge. "Officially verified" only where every displayed date and post
+ *  is stated in the words its evidence quotes; otherwise it says how many are not. */
+export const ExamVerifiedBadge: React.FC<{ exam: Pick<Exam, 'dates' | 'posts'>; compact?: boolean }> = ({ exam, compact }) => {
+  const n = unsupportedClaims(exam);
+  const size = compact ? 11 : 14;
+  if (n === 0) {
+    return compact
+      ? <span className="badge badge-verified" style={{ fontSize: '0.62rem' }}><ShieldCheck size={size} /> Officially verified</span>
+      : <span className="badge badge-verified"><ShieldCheck size={size} /> OFFICIALLY VERIFIED</span>;
+  }
+  const text = `${n} ${n === 1 ? 'fact' : 'facts'} not in their quoted source`;
+  return (
+    <span className="badge" data-unsupported-claims={n}
+      title="These dates or posts are shown with a source whose quoted words do not contain them. They are not presented as verified."
+      style={{ background: 'var(--amber-soft)', color: '#a55a05', border: '1px solid rgba(165, 90, 5, 0.35)', ...(compact ? { fontSize: '0.62rem' } : {}) }}>
+      <AlertTriangle size={size} /> {compact ? text : text.toUpperCase()}
+    </span>
+  );
+};
+
 /** The single Evidence action. Renders nothing where there is no evidence to show. */
-export const EvidenceButton: React.FC<EvidenceButtonProps> = ({ provenance, onOpen, label, compact, style }) => {
+export const EvidenceButton: React.FC<EvidenceButtonProps> = ({ provenance: given, onOpen, label, compact, style, claim }) => {
+  const provenance = withClaim(given, claim);
   if (!onOpen || !provenanceHasEvidence(provenance)) return null;
   const kind = evidenceKind(provenance);
   return (
@@ -285,7 +414,7 @@ export const EvidenceButton: React.FC<EvidenceButtonProps> = ({ provenance, onOp
       aria-label={`Evidence for this value: ${provenance.documentTitle}`}
       style={{ fontSize: compact ? '0.68rem' : '0.72rem', padding: compact ? '2px 7px' : '3px 9px', display: 'inline-flex', alignItems: 'center', gap: '5px', flexShrink: 0, ...style }}
     >
-      <Eye size={compact ? 11 : 12} /> {label || 'Evidence'}
+      <Eye size={compact ? 11 : 12} /> {label || 'Evidence'}{kind === 'UNSUPPORTED' ? ' · not verified' : ''}
     </button>
   );
 };
@@ -410,7 +539,9 @@ export const EvidencePanel: React.FC<EvidencePanelProps> = ({ provenance: p, onC
   const kind = evidenceKind(p);
   const kindText = EVIDENCE_KIND_TEXT[kind];
   const verified = provenanceIsVerified(p);
-  const status = p.verificationLevel === 'SUPERSEDED' || p.supersededBy
+  const status = p.claimNotInQuote
+    ? { text: 'Not verified — the quotation does not contain this value', color: '#b71f1f' }
+    : p.verificationLevel === 'SUPERSEDED' || p.supersededBy
     ? { text: 'Superseded statement', color: 'var(--amber)' }
     : verified ? { text: 'Officially verified', color: 'var(--emerald)' }
       : p.verificationLevel === 'OFFICIALLY_VERIFIED'
@@ -445,6 +576,7 @@ export const EvidencePanel: React.FC<EvidencePanelProps> = ({ provenance: p, onC
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        {row('Value shown', p.claimNotInQuote)}
         {row('Authority', p.authorityName)}
         {row('Document', p.documentTitle)}
         {row('Page', p.pageNumber ? String(p.pageNumber) : undefined)}
@@ -2563,9 +2695,7 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
                       🟡 DEMO DATA
                     </span>
                   ) : (
-                    <span className="badge badge-verified">
-                      <ShieldCheck size={14} /> OFFICIALLY VERIFIED
-                    </span>
+                    <ExamVerifiedBadge exam={exam} />
                   )}
                 </div>
 
@@ -3472,9 +3602,7 @@ export const ExamCalendar: React.FC<ExamCalendarProps> = ({
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                        <span className="badge badge-verified">
-                          <ShieldCheck size={14} /> OFFICIALLY VERIFIED
-                        </span>
+                        <ExamVerifiedBadge exam={exam} />
                         <span className="badge badge-demo" style={{ background: 'rgba(99,102,241,0.2)', color: '#4f46e5' }}>
                           {examDisplayCode(exam)}
                         </span>
@@ -3786,23 +3914,292 @@ const researchHost = (url: string): string => {
   }
 };
 
-const ResearchSetupNotice: React.FC<{ setup?: string }> = ({ setup }) => (
+/**
+ * What to show when Claude is not available on the server. Always an infrastructure message — never
+ * a statement about an exam, an authority, or whether anything has been published.
+ */
+const ClaudeSetupNotice: React.FC<{ health?: ClaudeHealth | null; message?: string; status?: string }> = ({ health, message, status }) => (
   <div style={{ padding: '18px 20px', borderRadius: 'var(--radius-md)', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.35)', display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
     <Lock size={18} color="#af5109" style={{ flexShrink: 0, marginTop: '2px' }} />
     <div style={{ fontSize: '0.86rem', color: '#92400e', lineHeight: 1.5 }}>
-      <strong>Live research is not configured on this server.</strong>
+      <strong>Claude is not available on this server.</strong>
       <div style={{ marginTop: '6px', color: 'var(--text-secondary)' }}>
-        {setup || 'Add TAVILY_API_KEY=tvly-... to the .env file next to app.py and restart python app.py.'}
+        {message || health?.message || 'The Claude integration is turned off, not installed, or not signed in.'}
+        {(status || health?.status) && <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.74rem', color: 'var(--text-muted)' }}> ({status || health?.status})</span>}
       </div>
-      <div style={{ marginTop: '8px', fontFamily: 'var(--font-mono)', fontSize: '0.78rem', color: '#af5109' }}>
-        TAVILY_API_KEY=tvly-xxxxxxxxxxxxxxxx
-      </div>
-      <div style={{ marginTop: '6px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-        Keys are issued at tavily.com. The key stays on the server; the browser never sees it.
+      <ol style={{ margin: '8px 0 0', paddingLeft: '18px', color: 'var(--text-secondary)', fontSize: '0.82rem' }}>
+        <li>Install the Claude CLI, then sign in once with <code style={{ fontFamily: 'var(--font-mono)' }}>claude auth login</code>.</li>
+        <li>Set <code style={{ fontFamily: 'var(--font-mono)' }}>GOVOS_CLAUDE_ENABLED=1</code> in <code style={{ fontFamily: 'var(--font-mono)' }}>.env</code> (see <code style={{ fontFamily: 'var(--font-mono)' }}>.env.example</code>).</li>
+        <li>Restart <code style={{ fontFamily: 'var(--font-mono)' }}>python app.py</code>.</li>
+      </ol>
+      <div style={{ marginTop: '8px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+        No API key is used or stored. Claude runs through the CLI on your own account, and each call counts against that account's usage allowance. Everything else in GovOS keeps working without it.
       </div>
     </div>
   </div>
 );
+
+/** The server's Claude readiness as one short label for a status tile. */
+const claudeStateLabel = (health?: ClaudeHealth | null): { label: string; ok: boolean } => {
+  if (!health) return { label: 'Checking…', ok: false };
+  if (health.ready) return { label: health.busy ? 'Ready (busy)' : 'Ready', ok: true };
+  const labels: Record<string, string> = {
+    CLAUDE_DISABLED: 'Disabled',
+    CLAUDE_CLI_NOT_INSTALLED: 'Not installed',
+    CLAUDE_CLI_NOT_AUTHENTICATED: 'Not signed in',
+    CLAUDE_CLI_UNSUPPORTED: 'CLI unsupported'
+  };
+  return { label: labels[health.status] || 'Unavailable', ok: false };
+};
+
+const CLAUDE_JOB_LABELS: Record<string, string> = {
+  DISCOVER_SOURCES: 'Source discovery',
+  EXTRACT_FIELDS: 'Reading a page for facts',
+  BUILD_EXAM: 'Exam build',
+  ORDER_ROADMAP: 'Roadmap order',
+  ANSWER_QUESTION: 'Candidate question',
+  GENERATE_PRACTICE: 'Practice questions'
+};
+
+const claudeJobColor = (status: string): string =>
+  status === 'SUCCEEDED' ? '#137638' : status === 'FAILED' ? '#b71f1f' : status === 'CANCELLED' ? 'var(--text-muted)' : '#8a6d00';
+
+const jobSeconds = (job: ClaudeJob): string => {
+  const start = Date.parse(job.startedAt || job.createdAt || '');
+  const end = job.finishedAt ? Date.parse(job.finishedAt) : Date.now();
+  return Number.isFinite(start) && Number.isFinite(end) && end >= start ? `${Math.round((end - start) / 1000)}s` : '';
+};
+
+/**
+ * The Trust Panel's view of Claude jobs: what ran, what it is doing, why it failed (a safe category
+ * and message, never a command line or a path), and the controls to cancel or retry. A finished
+ * job never published anything: its results wait here for a person.
+ */
+const ClaudeJobsPanel: React.FC<{
+  jobs: ClaudeJob[];
+  onRefresh: () => void;
+  onCancel: (job: ClaudeJob) => void;
+  onRetry: (job: ClaudeJob) => void;
+}> = ({ jobs, onRefresh, onCancel, onRetry }) => (
+  <div className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+      <h4 style={{ fontSize: '1.0rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Claude jobs</h4>
+      <button className="btn btn-secondary" onClick={onRefresh} style={{ fontSize: '0.74rem', padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+        <RefreshCw size={12} /> Refresh
+      </button>
+    </div>
+    {jobs.length === 0 && (
+      <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>No Claude jobs yet. A job appears here as soon as a search or a reading is started.</div>
+    )}
+    {jobs.map(job => {
+      const active = job.status === 'QUEUED' || job.status === 'RUNNING';
+      return (
+        <div key={job.jobId} style={{ padding: '10px 12px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-2)', border: '1px solid var(--border-color)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <strong style={{ fontSize: '0.84rem', color: 'var(--text-primary)' }}>{CLAUDE_JOB_LABELS[job.operation] || job.operation}</strong>
+            <span style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.04em', color: claudeJobColor(job.status) }}>{job.status}</span>
+            {active && job.stage && <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{job.stage.toLowerCase().replace(/_/g, ' ')}</span>}
+            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{jobSeconds(job)}</span>
+            <span style={{ flex: 1 }} />
+            {active && (
+              <button className="btn btn-secondary" onClick={() => onCancel(job)} style={{ fontSize: '0.7rem', padding: '3px 9px' }}>Cancel</button>
+            )}
+            {(job.status === 'FAILED' || job.status === 'CANCELLED') && (
+              <button className="btn btn-secondary" onClick={() => onRetry(job)} style={{ fontSize: '0.7rem', padding: '3px 9px' }}>Retry</button>
+            )}
+          </div>
+          {job.status === 'FAILED' && (
+            <div style={{ marginTop: '6px', fontSize: '0.78rem', color: '#b71f1f' }}>
+              <AlertTriangle size={12} style={{ verticalAlign: '-2px' }} /> {job.errorMessage || 'The job failed.'}{' '}
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-muted)' }}>{job.errorCategory}</span>
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem', marginTop: '2px' }}>
+                A failure here is a state of the tool, not a finding about any authority or exam.
+              </div>
+            </div>
+          )}
+          <div style={{ marginTop: '4px', fontSize: '0.68rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+            {job.jobId.slice(0, 8)}{job.templateVersion ? ` · ${job.templateVersion}` : ''}{job.retryCount ? ` · retried ${job.retryCount}×` : ''}{job.examId ? ` · ${job.examId}` : ''}
+          </div>
+        </div>
+      );
+    })}
+  </div>
+);
+
+/** Shown only when the server demands an admin token for Trust Panel operations. Kept for this tab only. */
+const AdminTokenField: React.FC<{ required: boolean }> = ({ required }) => {
+  const [value, setValue] = useState<string>(adminToken.get());
+  const [saved, setSaved] = useState<boolean>(!!adminToken.get());
+  if (!required) return null;
+  return (
+    <div className="glass-card" style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+      <Lock size={15} color="var(--text-muted)" />
+      <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>This server asks for an admin token before it spends Claude usage or changes canonical data.</span>
+      <input
+        type="password"
+        value={value}
+        onChange={e => { setValue(e.target.value); setSaved(false); }}
+        placeholder="Admin token"
+        aria-label="Admin token"
+        autoComplete="off"
+        style={{ minWidth: 0, flex: 1, maxWidth: '280px', padding: '7px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontSize: '0.84rem' }}
+      />
+      <button className="btn btn-secondary" onClick={() => { adminToken.set(value.trim()); setSaved(!!value.trim()); }} style={{ fontSize: '0.76rem', padding: '6px 12px', flexShrink: 0 }}>
+        {saved ? 'Saved for this tab' : 'Use token'}
+      </button>
+    </div>
+  );
+};
+
+/** The label on an answer Claude wrote from an exam's verified facts. Never the "official record" badge. */
+const ClaudeAnswerBadge: React.FC<{ answer: ClaudeAnswerResult }> = ({ answer }) => {
+  const grounded = answer.basis === 'VERIFIED_DATA';
+  const clarify = answer.basis === 'NEEDS_CLARIFICATION';
+  return (
+    <span className={`badge ${grounded ? 'badge-demo' : clarify ? 'badge-pending' : 'badge-changed'}`} style={{ fontSize: '0.65rem' }}>
+      <Bot size={12} /> {grounded ? 'CLAUDE-ASSISTED · FROM GOVOS VERIFIED DATA' : clarify ? 'CLAUDE-ASSISTED · NEEDS YOUR DETAILS' : 'CLAUDE-ASSISTED · NOT IN THE VERIFIED RECORD'}
+    </span>
+  );
+};
+
+/** Exam Guide section numbers (stable ids) for the destinations Claude may name. */
+const CLAUDE_NAV_SECTIONS: Record<string, { section: number; label: string }> = {
+  OVERVIEW: { section: 1, label: 'Open Overview' },
+  DATES: { section: 2, label: 'Open Dates & Timeline' },
+  ELIGIBILITY: { section: 3, label: 'Open Eligibility & Posts' },
+  APPLICATION: { section: 4, label: 'Open Application & Documents' },
+  PATTERN: { section: 5, label: 'Open Exam Pattern' },
+  SYLLABUS: { section: 6, label: 'Open Syllabus' },
+  ROADMAP: { section: 7, label: 'Open Study Roadmap' },
+  RESOURCES: { section: 8, label: 'Open Resources' },
+  PRACTICE: { section: 9, label: 'Open Practice & PYQs' },
+  CUTOFFS: { section: 10, label: 'Open Cutoff History' },
+  FAQS: { section: 11, label: 'Open FAQs' },
+  PORTALS: { section: 12, label: 'Open Official Links' },
+  CORRIGENDA: { section: 13, label: 'Open Corrigenda' },
+  ADMIT_CARD: { section: 14, label: 'Open Admit Card' },
+  EXAM_DAY: { section: 15, label: 'Open Exam Day' },
+  RESULTS: { section: 16, label: 'Open Results & Next Steps' },
+  MOCKS: { section: 17, label: 'Open Mock Tests' }
+};
+
+/**
+ * Optional practice written by Claude for ONE topic of the exam's verified syllabus. It appears only
+ * when Claude is ready, sits beside the exam's own practice engine without touching it, and is
+ * labelled for what it is: GovOS-authored, not an official previous-year question. The server has
+ * already refused anything off-topic, malformed, or claiming an official origin. Nothing here is
+ * scored or saved to the attempt history.
+ */
+const ClaudePracticePanel: React.FC<{ exam: Exam }> = ({ exam }) => {
+  const topics = Array.from(new Set(exam.syllabus.map(t => (t.topicName || '').replace(/\s+/g, ' ').trim()).filter(Boolean)));
+  const [ready, setReady] = useState<boolean>(false);
+  const [topic, setTopic] = useState<string>(topics[0] || '');
+  const [count, setCount] = useState<number>(3);
+  const [difficulty, setDifficulty] = useState<'EASY' | 'MEDIUM' | 'HARD'>('MEDIUM');
+  const [busy, setBusy] = useState<boolean>(false);
+  const [error, setError] = useState<string>('');
+  const [result, setResult] = useState<ClaudePracticeResult | null>(null);
+  const [picked, setPicked] = useState<Record<number, number>>({});
+
+  useEffect(() => {
+    let live = true;
+    claudeService.healthCached().then(h => { if (live) setReady(!!h?.ready); });
+    return () => { live = false; };
+  }, [exam.id]);
+
+  if (!ready || topics.length === 0) return null;
+
+  const write = async () => {
+    if (busy || !topic) return;
+    setBusy(true);
+    setError('');
+    setResult(null);
+    setPicked({});
+    const ticket = await claudeService.practice(exam.id, topic, count, difficulty);
+    if (!ticket.ok) {
+      setError(ticket.error);
+      setBusy(false);
+      return;
+    }
+    const done = await claudeService.waitForJob<ClaudePracticeResult>(ticket.data.jobId, { token: ticket.data.token, timeoutMs: 120_000 });
+    if (!done.ok) {
+      void claudeService.cancel(ticket.data.jobId, ticket.data.token);
+      setError(done.error);
+    } else if (done.data.status !== 'SUCCEEDED' || !done.data.result) {
+      setError(done.data.errorMessage || 'No questions could be written.');
+    } else {
+      setResult(done.data.result);
+    }
+    setBusy(false);
+  };
+
+  return (
+    <div className="glass-card" style={{ padding: '20px', marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+        <h4 style={{ fontSize: '1.0rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Practice written by Claude</h4>
+        <span className="badge badge-pending" style={{ fontSize: '0.64rem' }}><Bot size={12} /> GOVOS-AUTHORED · NOT AN OFFICIAL PREVIOUS-YEAR QUESTION</span>
+      </div>
+      <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+        Pick a topic from {exam.title}'s verified syllabus and Claude writes a few new questions on it. Each answer key is checked by a second, independent solve that is never shown the key, and a question where the two disagree is left out. They are practice, not past papers; they are not scored or saved to your history, and you should still check an answer against your study material.
+      </div>
+      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+        <select value={topic} onChange={e => setTopic(e.target.value)} aria-label="Syllabus topic" style={{ minWidth: 0, maxWidth: '100%', flex: 1, padding: '9px 10px', borderRadius: 'var(--radius-md)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontSize: '0.84rem' }}>
+          {topics.map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
+        <select value={count} onChange={e => setCount(Number(e.target.value))} aria-label="Number of questions" style={{ padding: '9px 10px', borderRadius: 'var(--radius-md)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontSize: '0.84rem' }}>
+          {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n} question{n > 1 ? 's' : ''}</option>)}
+        </select>
+        <select value={difficulty} onChange={e => setDifficulty(e.target.value as 'EASY' | 'MEDIUM' | 'HARD')} aria-label="Difficulty" style={{ padding: '9px 10px', borderRadius: 'var(--radius-md)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontSize: '0.84rem' }}>
+          <option value="EASY">Easy</option>
+          <option value="MEDIUM">Medium</option>
+          <option value="HARD">Hard</option>
+        </select>
+        <button className="btn btn-primary" onClick={write} disabled={busy} style={{ fontSize: '0.84rem', flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+          <RefreshCw size={14} className={busy ? 'animate-spin' : ''} /> {busy ? 'Writing…' : 'Write questions'}
+        </button>
+      </div>
+      {error && (
+        <div style={{ fontSize: '0.8rem', color: '#b71f1f' }}><AlertTriangle size={12} style={{ verticalAlign: '-2px' }} /> {error}</div>
+      )}
+      {result && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>{result.label}{result.answerCheck === 'INDEPENDENT_SOLVE_AGREED' ? ' Every answer key was confirmed by an independent second solve.' : ''}</div>
+          {result.questions.map((q, qi) => {
+            const choice = picked[qi];
+            return (
+              <div key={qi} style={{ padding: '14px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)' }}>
+                <div style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>{qi + 1}. {q.stem}</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {q.options.map((opt, oi) => {
+                    const answered = choice !== undefined;
+                    const right = oi === q.correct_index;
+                    return (
+                      <button
+                        key={oi}
+                        onClick={() => !answered && setPicked(prev => ({ ...prev, [qi]: oi }))}
+                        style={{ textAlign: 'left', padding: '8px 12px', borderRadius: 'var(--radius-sm)', fontSize: '0.84rem', fontFamily: 'var(--font-sans)', cursor: answered ? 'default' : 'pointer', color: 'var(--text-primary)', background: answered && right ? 'var(--emerald-soft)' : answered && choice === oi ? 'var(--rose-soft)' : 'var(--surface-3)', border: `1px solid ${answered && right ? '#147a3a' : answered && choice === oi ? '#b71f1f' : 'var(--border-color)'}` }}
+                      >
+                        {String.fromCharCode(65 + oi)}. {opt}
+                      </button>
+                    );
+                  })}
+                </div>
+                {choice !== undefined && (
+                  <div style={{ marginTop: '8px', fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                    <strong>{choice === q.correct_index ? 'Correct.' : `Not quite — the answer is ${String.fromCharCode(65 + q.correct_index)}.`}</strong> {q.explanation}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {result.dropped.length > 0 && (
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{result.dropped.length} question{result.dropped.length > 1 ? 's' : ''} did not pass GovOS's checks (including the independent answer check) and {result.dropped.length > 1 ? 'were' : 'was'} left out.</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
 
 
 // --------------------------------------------------------------------------
@@ -3810,7 +4207,8 @@ const ResearchSetupNotice: React.FC<{ setup?: string }> = ({ setup }) => (
 //
 // Two kinds of question have to work: "where do I do X in this platform" (navigation)
 // and "what does the notice say about X" (facts read out of SSC_CGL_EXAM, cited).
-// Anything else falls back honestly and offers a live official-domain search.
+// Anything else falls back honestly: to Claude reading this exam's verified facts when it is
+// available (checked on the server), and to the register's own reply when it is not.
 // --------------------------------------------------------------------------
 
 export interface AssistantAction {
@@ -3824,7 +4222,7 @@ export interface AssistantAction {
  * What sort of claim an answer is — the safety rule in one field.
  * OFFICIAL: read from the verified register, cited. PLATFORM: how GovOS itself works.
  * GUIDANCE: derived advice, true of the register but not a quote from it.
- * CLARIFY: a question back. UNVERIFIED: not in the register; live search offered.
+ * CLARIFY: a question back. UNVERIFIED: not in the register; Claude is asked, when it is available.
  */
 export type AssistantSourceKind = 'OFFICIAL' | 'PLATFORM' | 'GUIDANCE' | 'CLARIFY' | 'UNVERIFIED';
 
@@ -4987,7 +5385,7 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
     verified: false,
     sourceKind: 'UNVERIFIED',
     unresolved: true,
-    text: 'That is not in the verified GovOS register, so I will not guess at it.\n\nI can answer eligibility and age limits, important dates, exam pattern and marking, posts and pay, the syllabus, the application process, admit card, cutoffs, and where anything lives in this platform. Ask me one of those, or let me search official government domains live — live results are labelled unverified until a GovOS verifier reviews them.'
+    text: 'That is not in the verified GovOS register, so I will not guess at it.\n\nI can answer eligibility and age limits, important dates, exam pattern and marking, posts and pay, the syllabus, the application process, admit card, cutoffs, and where anything lives in this platform. Ask me one of those, or open this exam\'s Official Links section for the authority\'s own pages.'
   };
 }
 
@@ -5014,12 +5412,12 @@ interface AIChatMessage {
     clauseNumber: string;
     provenance: any;
   };
-  /** Set on a fallback reply: the question the candidate can send to a live official-domain search. */
-  liveSearchOffer?: string;
-  liveResults?: ResearchFinding[];
-  liveAnswer?: string | null;
-  liveError?: string;
-  liveSetup?: string;
+  /** True while Claude is being asked about a question the register could not place. */
+  claudeAsking?: boolean;
+  /** An answer Claude wrote from this exam's verified facts, already checked against them by the server. */
+  claudeAnswer?: ClaudeAnswerResult;
+  /** Why the register's own reply is shown when Claude was tried and not used. */
+  claudeNote?: string;
   /** "Take me there" button for answers that point at a part of the platform. */
   action?: AssistantAction;
   sourceKind?: AssistantSourceKind;
@@ -5028,23 +5426,9 @@ interface AIChatMessage {
 
 export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal, onNavigate, exam = SSC_CGL_EXAM }) => {
   const [inputQuery, setInputQuery] = useState<string>('');
-  const [liveSearchingId, setLiveSearchingId] = useState<string | null>(null);
+  // Questions Claude is working on. The candidate can stop waiting and keep the register's own reply.
+  const pendingClaude = useRef<Map<string, { abort: AbortController; fallback: AIChatMessage; settle: (text: string) => void; jobId?: string; token?: string }>>(new Map());
 
-  // Fallback path: run a Tavily search restricted to official government domains and
-  // attach the results to the message, clearly labelled as not yet verified.
-  const handleLiveOfficialSearch = async (messageId: string, question: string) => {
-    if (liveSearchingId) return;
-    setLiveSearchingId(messageId);
-    const outcome = await researchService.search(question, 'OFFICIAL', exam.id, 5);
-    setMessages(prev => prev.map(m => {
-      if (m.id !== messageId) return m;
-      if (outcome.ok) {
-        return { ...m, liveResults: outcome.data.results, liveAnswer: outcome.data.answer, liveError: undefined, liveSetup: undefined };
-      }
-      return { ...m, liveResults: [], liveError: outcome.error, liveSetup: outcome.notConfigured ? outcome.setup : undefined };
-    }));
-    setLiveSearchingId(null);
-  };
   const [messages, setMessages] = useState<AIChatMessage[]>([
     {
       id: 'm-1',
@@ -5053,6 +5437,106 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal,
       isVerified: true
     }
   ]);
+
+  const replaceMessage = (id: string, next: AIChatMessage) =>
+    setMessages(prev => prev.map(m => (m.id === id ? next : m)));
+
+  /**
+   * The register has no answer for this question. If Claude is available it reads THIS exam's verified
+   * facts (the server builds them; the browser sends only the question) and its answer is checked
+   * against them on the server before it gets here. Everything else — Claude off, signed out, slow, or
+   * an answer that did not check out — ends with the register's own reply and a note saying why. A
+   * failure is never displayed as an answer.
+   */
+  const resolveWithClaude = async (id: string, examId: string, question: string, fallback: AIChatMessage, settle: (text: string) => void) => {
+    const abort = new AbortController();
+    const handle: { abort: AbortController; fallback: AIChatMessage; settle: (text: string) => void; jobId?: string; token?: string } = { abort, fallback, settle };
+    pendingClaude.current.set(id, handle);
+    const useRegister = (note?: string) => {
+      if (!pendingClaude.current.has(id)) return;           // the candidate already chose the register's reply
+      pendingClaude.current.delete(id);
+      replaceMessage(id, { ...fallback, id, claudeNote: note });
+      settle(fallback.text);
+    };
+    const history = conversationService.history('ASSISTANT').slice(0, -1).slice(-6)
+      .map(t => ({ role: t.role, text: t.text }));
+    const ticket = await claudeService.ask(examId, question, history);
+    if (!ticket.ok) return useRegister(ticket.error);
+    handle.jobId = ticket.data.jobId;
+    handle.token = ticket.data.token;
+    const done = await claudeService.waitForJob<ClaudeAnswerResult>(ticket.data.jobId, {
+      token: ticket.data.token, timeoutMs: 60_000, intervalMs: 1000, signal: abort.signal
+    });
+    if (abort.signal.aborted) return;                       // stopWaiting() already replaced the message
+    if (!done.ok) {
+      void claudeService.cancel(ticket.data.jobId, ticket.data.token);
+      return useRegister(`${done.error} This is the register's own reply.`);
+    }
+    const job = done.data;
+    if (job.status !== 'SUCCEEDED' || !job.result) {
+      return useRegister(job.errorCategory === 'ANSWER_REJECTED'
+        ? "Claude's answer could not be checked against this exam's record, so it was not used."
+        : (job.errorMessage || 'Claude could not answer.'));
+    }
+    pendingClaude.current.delete(id);
+    const result = job.result;
+    const target = CLAUDE_NAV_SECTIONS[result.navigateTo];
+    replaceMessage(id, {
+      id, sender: 'AI', text: result.answer, isVerified: false, claudeAnswer: result,
+      action: target ? { label: target.label, tab: 'EXAM_DETAIL', section: target.section } : undefined
+    });
+    settle(result.answer);
+  };
+
+  /** Stop waiting for Claude and show the register's own reply. The job is cancelled on the server. */
+  const stopWaiting = (id: string) => {
+    const handle = pendingClaude.current.get(id);
+    if (!handle) return;
+    pendingClaude.current.delete(id);
+    handle.abort.abort();
+    if (handle.jobId) void claudeService.cancel(handle.jobId, handle.token);
+    replaceMessage(id, { ...handle.fallback, id, claudeNote: 'You chose the register\'s own reply.' });
+    handle.settle(handle.fallback.text);
+  };
+
+  const respondTo = (text: string, delayMs: number) => {
+    setTimeout(async () => {
+      // Answer from the register, the conversation so far, and what the candidate has selected.
+      const ctx = buildChatContext(exam, 'ASSISTANT');
+      const reply = answerCandidateQuery(text, ctx);
+      conversationService.append('ASSISTANT', { role: 'user', text, examId: exam.id });
+      const settle = (finalText: string) => conversationService.append('ASSISTANT', {
+        role: 'assistant',
+        text: finalText,
+        subject: reply.subject,
+        intent: reply.sourceKind,
+        // the exam this turn answered about, so a switch made mid-thread sticks
+        examId: reply.switchedExamId || exam.id
+      });
+      const id = `m-ai-${Date.now()}`;
+      const register: AIChatMessage = {
+        id,
+        sender: 'AI',
+        text: reply.text,
+        isVerified: reply.verified,
+        sourceKind: reply.sourceKind,
+        citation: reply.citation,
+        action: reply.action,
+        resourceLink: reply.resourceLink
+      };
+      // Only a question the register could not place goes to Claude. A matched fact, a "where is it"
+      // answer or a request for the candidate's details stays deterministic: the rules are exact.
+      const unplaced = reply.sourceKind === 'UNVERIFIED' || (!reply.sourceKind && !reply.verified);
+      const health = unplaced ? await claudeService.healthCached() : null;
+      if (!unplaced || !health?.ready) {
+        settle(reply.text);
+        setMessages(prev => [...prev, register]);
+        return;
+      }
+      setMessages(prev => [...prev, { id, sender: 'AI', text: '', isVerified: false, claudeAsking: true }]);
+      void resolveWithClaude(id, reply.switchedExamId || exam.id, text, register, settle);
+    }, delayMs);
+  };
 
   const handleSendMessage = () => {
     if (!inputQuery.trim()) return;
@@ -5067,40 +5551,21 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal,
 
     setMessages(prev => [...prev, userMsg]);
     setInputQuery('');
-
-    // Answer from the register, the conversation so far, and what the candidate has selected.
-    setTimeout(() => {
-      const ctx = buildChatContext(exam, 'ASSISTANT');
-      const reply = answerCandidateQuery(userText, ctx);
-      conversationService.append('ASSISTANT', { role: 'user', text: userText, examId: exam.id });
-      conversationService.append('ASSISTANT', {
-        role: 'assistant',
-        text: reply.text,
-        subject: reply.subject,
-        intent: reply.sourceKind,
-        // the exam this turn answered about, so a switch made mid-thread sticks
-        examId: reply.switchedExamId || exam.id
-      });
-
-      const aiMsg: AIChatMessage = {
-        id: `m-ai-${Date.now()}`,
-        sender: 'AI',
-        text: reply.text,
-        isVerified: reply.verified,
-        sourceKind: reply.sourceKind,
-        citation: reply.citation,
-        action: reply.action,
-        resourceLink: reply.resourceLink,
-        liveSearchOffer: reply.verified ? undefined : userText
-      };
-
-      setMessages(prev => [...prev, aiMsg]);
-    }, 400);
+    respondTo(userText, 400);
   };
 
-  // A different exam means "it" no longer refers to the same thing: start the thread again.
+  // A different exam means "it" no longer refers to the same thing: start the thread again, and stop
+  // waiting on any answer that was being written for the exam we just left.
   useEffect(() => {
     conversationService.clear('ASSISTANT');
+    return () => {
+      pendingClaude.current.forEach((h, id) => {
+        h.abort.abort();
+        if (h.jobId) void claudeService.cancel(h.jobId, h.token);
+        replaceMessage(id, { ...h.fallback, id, claudeNote: 'Stopped because the exam changed.' });
+      });
+      pendingClaude.current.clear();
+    };
   }, [exam.id]);
 
   const suggestedQuestions = [
@@ -5117,23 +5582,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal,
       ...prev,
       { id: `m-user-${Date.now()}`, sender: 'USER', text: question, isVerified: false }
     ]);
-    setTimeout(() => {
-      const ctx = buildChatContext(exam, 'ASSISTANT');
-      const reply = answerCandidateQuery(question, ctx);
-      conversationService.append('ASSISTANT', { role: 'user', text: question, examId: exam.id });
-      conversationService.append('ASSISTANT', { role: 'assistant', text: reply.text, subject: reply.subject, intent: reply.sourceKind, examId: reply.switchedExamId || exam.id });
-      setMessages(prev => [...prev, {
-        id: `m-ai-${Date.now()}`,
-        sender: 'AI',
-        text: reply.text,
-        isVerified: reply.verified,
-        sourceKind: reply.sourceKind,
-        citation: reply.citation,
-        action: reply.action,
-        resourceLink: reply.resourceLink,
-        liveSearchOffer: reply.verified ? undefined : question
-      }]);
-    }, 300);
+    respondTo(question, 300);
   };
 
   return (
@@ -5150,7 +5599,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal,
               Strictly Grounded AI Guidance Assistant
             </h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-              Queries strictly restricted to the Verified Database & Deterministic Rule Engine. Unverified queries trigger fallback alerts.
+              Answers come from the verified GovOS register and its rule engine. When the register has no direct answer, Claude may read this exam's verified facts to help; its answer is labelled, cited and checked against the record, and if Claude is unavailable you get the register's own reply.
             </p>
           </div>
         </div>
@@ -5198,7 +5647,8 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal,
                   {msg.sender === 'USER' ? 'CANDIDATE' : 'GOVOS GROUNDED AI'}
                 </span>
                 
-                {msg.sender === 'AI' && (() => {
+                {msg.sender === 'AI' && msg.claudeAnswer && <ClaudeAnswerBadge answer={msg.claudeAnswer} />}
+                {msg.sender === 'AI' && !msg.claudeAnswer && !msg.claudeAsking && (() => {
                   // Four different kinds of claim must not wear the same badge.
                   const kind = msg.sourceKind || (msg.isVerified ? 'OFFICIAL' : 'UNVERIFIED');
                   const meta: Record<AssistantSourceKind, { label: string; cls: string }> = {
@@ -5218,6 +5668,51 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal,
               </div>
 
               <span style={{ whiteSpace: 'pre-wrap' }}>{msg.sender === 'AI' ? renderAssistantText(msg.text) : msg.text}</span>
+
+              {msg.claudeAsking && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                  <RefreshCw size={14} className="animate-spin" />
+                  <span style={{ fontSize: '0.88rem', color: 'var(--text-secondary)' }}>The register has no direct answer. Asking Claude about {exam.title}'s verified data…</span>
+                  <button className="btn btn-secondary" onClick={() => stopWaiting(msg.id)} style={{ fontSize: '0.74rem', padding: '4px 10px' }}>
+                    Use the register's reply instead
+                  </button>
+                </div>
+              )}
+
+              {msg.claudeAnswer && (
+                <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid var(--surface-3)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {msg.claudeAnswer.uncertainty !== 'NONE' && (
+                    <div style={{ fontSize: '0.78rem', color: '#92400e' }}>
+                      {msg.claudeAnswer.uncertainty === 'PARTIAL' ? 'Claude could answer only part of this from the record.' : 'Claude could not find this in the record.'}
+                    </div>
+                  )}
+                  {msg.claudeAnswer.followUp && (
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>To answer fully: {msg.claudeAnswer.followUp}</div>
+                  )}
+                  {msg.claudeAnswer.citations.length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <div style={{ fontSize: '0.66rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                        Facts used ({msg.claudeAnswer.citations.length}) · from this exam's verified record
+                      </div>
+                      {msg.claudeAnswer.citations.map(c => (
+                        <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                          <span style={{ minWidth: 0, flex: 1 }}><strong>{c.label}:</strong> {c.text}</span>
+                          {c.provenance && <EvidenceButton provenance={c.provenance} onOpen={onOpenProvenanceModal} />}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                    Written by Claude from this exam's verified facts only; the server checked every cited fact and figure against them. It is not an official statement.
+                  </div>
+                </div>
+              )}
+
+              {msg.claudeNote && (
+                <div style={{ marginTop: '10px', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                  <Info size={11} style={{ verticalAlign: '-1px' }} /> {msg.claudeNote}
+                </div>
+              )}
 
               {msg.resourceLink && (
                 <div style={{ marginTop: '12px' }}>
@@ -5257,65 +5752,6 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal,
                 </div>
               )}
 
-              {/* Live official-domain search: offered only when the grounded database had no answer */}
-              {msg.liveSearchOffer && !msg.liveResults && !msg.liveError && (
-                <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid var(--surface-3)' }}>
-                  <button
-                    className="btn btn-secondary"
-                    disabled={liveSearchingId !== null}
-                    onClick={() => handleLiveOfficialSearch(msg.id, msg.liveSearchOffer!)}
-                    style={{ fontSize: '0.78rem', padding: '6px 12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                  >
-                    <Globe size={14} className={liveSearchingId === msg.id ? 'animate-spin' : ''} />
-                    {liveSearchingId === msg.id ? 'Searching official domains…' : 'Search official government sources live'}
-                  </button>
-                </div>
-              )}
-
-              {msg.liveError && (
-                <div style={{ marginTop: '12px' }}>
-                  {msg.liveSetup
-                    ? <ResearchSetupNotice setup={msg.liveSetup} />
-                    : <div style={{ fontSize: '0.8rem', color: '#b71f1f' }}><AlertCircle size={12} /> Live search failed: {msg.liveError}</div>}
-                </div>
-              )}
-
-              {msg.liveResults && msg.liveResults.length === 0 && !msg.liveError && (
-                <div style={{ marginTop: '12px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                  No official-domain pages matched this question.
-                </div>
-              )}
-
-              {msg.liveResults && msg.liveResults.length > 0 && (
-                <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid var(--surface-3)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                    <span className="badge badge-changed" style={{ fontSize: '0.65rem' }}>
-                      <Globe size={11} /> LIVE WEB RESULTS — NOT YET VERIFIED BY GOVOS
-                    </span>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Restricted to official government domains · queued for verifier review</span>
-                  </div>
-                  {msg.liveAnswer && (
-                    <div style={{ fontSize: '0.84rem', color: '#334155', lineHeight: 1.5, padding: '8px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-3)' }}>
-                      <strong style={{ color: '#af5109' }}>Search summary (unverified):</strong> {msg.liveAnswer}
-                    </div>
-                  )}
-                  {msg.liveResults.map(f => {
-                    const meta = researchTrustMeta(f.trustLevel);
-                    return (
-                      <div key={f.id} style={{ padding: '10px 12px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-3)', border: `1px solid ${meta.border}` }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
-                          <span style={{ fontSize: '0.66rem', fontWeight: 700, color: meta.color, letterSpacing: '0.04em' }}>{meta.label} · {researchHost(f.url)}</span>
-                          <a href={f.url} target="_blank" rel="noreferrer" style={{ fontSize: '0.74rem', color: '#235ddd', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                            Open <ExternalLink size={11} />
-                          </a>
-                        </div>
-                        <div style={{ fontSize: '0.86rem', fontWeight: 700, color: 'var(--text-primary)' }}>{f.title}</div>
-                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.45, marginTop: '3px' }}>{f.snippet.slice(0, 260)}{f.snippet.length > 260 ? '…' : ''}</div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
             </div>
           ))}
         </div>
@@ -5374,7 +5810,7 @@ interface AdminVerificationPanelProps {
 }
 
 export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ onOpenProvenanceModal }) => {
-  const [activeTab, setActiveTab] = useState<'HEALTH' | 'EXTRACTION' | 'CORRIGENDUM' | 'REPORTS' | 'RESEARCH'>('HEALTH');
+  const [activeTab, setActiveTab] = useState<'HEALTH' | 'EXTRACTION' | 'CORRIGENDUM' | 'REPORTS' | 'RESEARCH'>(SHOW_DEV_FIXTURES ? 'HEALTH' : 'CORRIGENDUM');
 
   // ---- Syllabus revisions, for whichever exam the verifier picks ----
   // This was pinned to SSC CGL, which meant no other exam's syllabus could be revised at all —
@@ -5474,14 +5910,18 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
     }
   };
 
-  // ---- Live Source Research (Tavily) ----
+  // ---- Live Source Research (Claude discovery) ----
   const [researchStatus, setResearchStatus] = useState<ResearchStatus | null>(null);
   const [researchQuery, setResearchQuery] = useState<string>('');
   const [researchMode, setResearchMode] = useState<ResearchMode>('OFFICIAL');
   const [researchExamId, setResearchExamId] = useState<string>(ALL_EXAMS[0]?.id || '');
   const [researchLoading, setResearchLoading] = useState<boolean>(false);
-  const [researchError, setResearchError] = useState<{ error: string; setup?: string; notConfigured?: boolean } | null>(null);
-  const [researchRun, setResearchRun] = useState<{ runId: number; query: string; mode: ResearchMode; answer?: string | null; results: ResearchFinding[]; filteredOut?: number } | null>(null);
+  const [researchError, setResearchError] = useState<{ error: string; setup?: string; claudeUnavailable?: boolean; status?: string } | null>(null);
+  const [researchRun, setResearchRun] = useState<ResearchSearchResult | null>(null);
+  // The Claude jobs behind this tab: the one being waited on, the recent list, and the page being read.
+  const [activeJob, setActiveJob] = useState<ClaudeJob | null>(null);
+  const [claudeJobs, setClaudeJobs] = useState<ClaudeJob[]>([]);
+  const [claudeFactsId, setClaudeFactsId] = useState<number | null>(null);
   const [researchHistory, setResearchHistory] = useState<ResearchRun[]>([]);
   // Field-level facts extracted from the current run (RESEARCH_VALIDATION_DESIGN.md). This is
   // a review surface, not a publishing path — approving a fact only marks it eligible for the
@@ -5500,12 +5940,16 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
   const addFindingToLibrary = async (f: ResearchFinding) => {
     if (addingId !== null) return;
     setAddingId(f.id);
+    // The addition belongs to the exam picked above, and the server decides what kind of source it is from the
+    // host. Only an official finding gets the "official-domain search" wording; any other host is described by the
+    // server as a third-party page.
     const added = await resourceLiveService.addResource({
       title: f.title,
       url: f.url,
+      examId: researchExamId,
       findingId: f.id,
       addedFrom: 'LIVE_RESEARCH',
-      description: f.snippet
+      description: f.snippet && f.trustLevel === 'OFFICIAL'
         ? `${f.snippet.slice(0, 600)} — added by the GovOS verifier from a live official-domain search.`
         : undefined
     });
@@ -5514,10 +5958,11 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
   };
 
   const loadResearchMeta = async () => {
-    const [status, history, adds] = await Promise.all([researchService.getStatus(), researchService.history(15), resourceLiveService.additions()]);
+    const [status, history, adds, jobs] = await Promise.all([researchService.getStatus(), researchService.history(15), resourceLiveService.additions(), claudeService.listJobs(15)]);
     setResearchStatus(status);
     setResearchHistory(history);
     setLibraryAdditions(adds);
+    setClaudeJobs(jobs?.jobs || []);
   };
 
   useEffect(() => {
@@ -5526,6 +5971,14 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
     }
   }, [activeTab]);
 
+  const refreshJobs = async () => setClaudeJobs((await claudeService.listJobs(15))?.jobs || []);
+
+  /** A page fetch that failed or a scanned PDF is a statement about this fetch, never about the authority. */
+  const fetchFailureText = (f: ResearchFinding, first?: { failure?: string; reason?: string }) =>
+    first?.failure === 'SCANNED_DOCUMENT'
+      ? `${f.url} is a scanned document with no text layer, so it was not read.`
+      : `Could not fetch ${f.url} (${first?.reason || 'no reason given'}). That says nothing about what the authority published.`;
+
   const runResearch = async (queryOverride?: string) => {
     const q = (queryOverride ?? researchQuery).trim();
     if (!q || researchLoading) return;
@@ -5533,14 +5986,31 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
     setResearchLoading(true);
     setResearchError(null);
     setResearchRun(null);
-    const outcome = await researchService.search(q, researchMode, researchExamId || undefined, 8);
-    if (outcome.ok) {
-      setResearchRun(outcome.data);
-      setResearchHistory(await researchService.history(15));
-      setResearchStatus(await researchService.getStatus());
-    } else {
-      setResearchError({ error: outcome.error, setup: outcome.setup, notConfigured: outcome.notConfigured });
+    setActiveJob(null);
+    // Claude proposes candidate sources as a background job; the server checks every one before it is stored.
+    const started = await researchService.startSearch(q, researchMode, researchExamId || undefined, 8);
+    if (!started.ok) {
+      setResearchError({ error: started.error, setup: started.setup, claudeUnavailable: started.claudeUnavailable, status: started.status });
+      setResearchLoading(false);
+      return;
     }
+    const done = await claudeService.waitForJob<{ runId: number | null; manifest?: { rejected?: { url: string; reasons: string[] }[] } }>(
+      started.data.jobId, { timeoutMs: 600_000, intervalMs: 1500, onUpdate: job => setActiveJob(job) });
+    if (!done.ok) {
+      setResearchError({ error: done.error });
+    } else if (done.data.status !== 'SUCCEEDED') {
+      setResearchError({
+        error: done.data.status === 'CANCELLED' ? 'The search was cancelled.' : (done.data.errorMessage || 'The search did not finish.'),
+        status: done.data.errorCategory
+      });
+    } else if (done.data.result?.runId) {
+      const run = await researchService.getRun(done.data.result.runId);
+      if (run) setResearchRun({ ...run, rejected: done.data.result.manifest?.rejected });
+    }
+    setActiveJob(null);
+    setResearchHistory(await researchService.history(15));
+    setResearchStatus(await researchService.getStatus());
+    await refreshJobs();
     setResearchLoading(false);
   };
 
@@ -5551,15 +6021,65 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
       return;
     }
     setExtractingId(f.id);
-    const outcome = await researchService.extract([f.url], f.id);
-    if (outcome.ok && outcome.data[0] && !outcome.data[0].failed) {
-      setExtractedText(prev => ({ ...prev, [f.id]: outcome.data[0].rawContent }));
+    const outcome = await researchService.extract(f.id);
+    const first = outcome.ok ? outcome.data[0] : undefined;
+    if (first && !first.failed) {
+      setExtractedText(prev => ({ ...prev, [f.id]: first.rawContent }));
+      setResearchRun(prev => (prev ? { ...prev, results: prev.results.map(r => (r.id === f.id ? { ...r, hasExtractedText: true } : r)) } : prev));
       setOpenExtractId(f.id);
     } else {
-      setExtractedText(prev => ({ ...prev, [f.id]: '' }));
-      setResearchError({ error: outcome.ok ? `Could not extract ${f.url}` : outcome.error, setup: outcome.ok ? undefined : outcome.setup, notConfigured: outcome.ok ? undefined : outcome.notConfigured });
+      setResearchError({ error: outcome.ok ? fetchFailureText(f, first) : outcome.error });
     }
     setExtractingId(null);
+  };
+
+  /**
+   * Claude reads one finding's page text and proposes values with quotations. The server fetched that
+   * text itself and keeps a proposal only where its quotation is printed in it; what is kept lands in
+   * the facts list below as pending, for a person to approve or reject. Nothing is published.
+   */
+  const readWithClaude = async (f: ResearchFinding) => {
+    if (claudeFactsId !== null) return;
+    setClaudeFactsId(f.id);
+    setResearchError(null);
+    if (!f.hasExtractedText && !extractedText[f.id]) {
+      const fetched = await researchService.extract(f.id);
+      const first = fetched.ok ? fetched.data[0] : undefined;
+      if (!first || first.failed) {
+        setResearchError({ error: fetched.ok ? fetchFailureText(f, first) : fetched.error });
+        setClaudeFactsId(null);
+        return;
+      }
+      setExtractedText(prev => ({ ...prev, [f.id]: first.rawContent }));
+      setResearchRun(prev => (prev ? { ...prev, results: prev.results.map(r => (r.id === f.id ? { ...r, hasExtractedText: true } : r)) } : prev));
+    }
+    const started = await researchService.extractFactsWithClaude(f.id);
+    if (!started.ok) {
+      setResearchError({ error: started.error, setup: started.setup, claudeUnavailable: started.claudeUnavailable, status: started.status });
+      setClaudeFactsId(null);
+      return;
+    }
+    const done = await claudeService.waitForJob(started.data.jobId, { timeoutMs: 300_000, intervalMs: 1500, onUpdate: job => setActiveJob(job) });
+    if (!done.ok) {
+      setResearchError({ error: done.error });
+    } else if (done.data.status !== 'SUCCEEDED') {
+      setResearchError({ error: done.data.errorMessage || 'Claude could not read this page.', status: done.data.errorCategory });
+    }
+    setActiveJob(null);
+    if (researchRun) setResearchFacts(await researchService.listFacts({ runId: researchRun.runId }));
+    await refreshJobs();
+    setClaudeFactsId(null);
+  };
+
+  const cancelClaudeJob = async (job: ClaudeJob) => {
+    await claudeService.cancel(job.jobId);
+    await refreshJobs();
+  };
+
+  const retryClaudeJob = async (job: ClaudeJob) => {
+    const outcome = await claudeService.retry(job.jobId);
+    if (!outcome.ok) setResearchError({ error: outcome.error, status: outcome.status });
+    await refreshJobs();
   };
 
   const setFindingStatus = async (id: number, status: ResearchFinding['reviewStatus']) => {
@@ -5633,7 +6153,7 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
     try {
       await fetch(`/api/reports/${id}/status`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...adminHeaders() },
         body: JSON.stringify({ status })
       });
       setReports(prev => prev.map(r => (r.id === id ? { ...r, status } : r)));
@@ -5643,7 +6163,9 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
   };
 
   
-  const [healthLogs, setHealthLogs] = useState<SourceHealthLog[]>([
+  // Fixture rows (see SHOW_DEV_FIXTURES): created in a development build only, so the production
+  // bundle carries no sample "detected" conflict at all.
+  const [healthLogs, setHealthLogs] = useState<SourceHealthLog[]>(!SHOW_DEV_FIXTURES ? [] : [
     {
       id: 'sh-01',
       endpointUrl: 'https://ssc.gov.in',
@@ -5703,10 +6225,12 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
             </div>
             <div>
               <h2 style={{ fontSize: '1.5rem', fontWeight: 800 }}>
-                Trust Pipeline & Source Health Monitoring Console
+                {SHOW_DEV_FIXTURES ? 'Trust Pipeline & Source Health Monitoring Console' : 'Trust Pipeline & Verifier Console'}
               </h2>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                Multi-layer SHA-256 hash checks, official domain security boundary, and human verifier approval workflow.
+                {SHOW_DEV_FIXTURES
+                  ? 'Multi-layer SHA-256 hash checks, official domain security boundary, and human verifier approval workflow.'
+                  : 'Corrigenda, syllabus revisions, candidate accuracy reports and official-source research, each decided by a human verifier.'}
               </p>
             </div>
           </div>
@@ -5720,10 +6244,12 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
       </div>
 
       {/* Admin Tabs */}
-      <div style={{ display: 'flex', gap: '8px' }}>
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        {SHOW_DEV_FIXTURES && (
         <button className={`btn ${activeTab === 'HEALTH' ? 'btn-emerald' : 'btn-secondary'}`} onClick={() => setActiveTab('HEALTH')} style={{ fontSize: '0.85rem' }}>
           <RefreshCw size={16} /> Source Health Monitor (SHA-256)
         </button>
+        )}
         <button className={`btn ${activeTab === 'CORRIGENDUM' ? 'btn-emerald' : 'btn-secondary'}`} onClick={() => setActiveTab('CORRIGENDUM')} style={{ fontSize: '0.85rem' }}>
           <AlertTriangle size={16} /> Corrigendum & Conflict Queue
         </button>
@@ -5738,14 +6264,17 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
             </span>
           )}
         </button>
+        {SHOW_DEV_FIXTURES && (
         <button className={`btn ${activeTab === 'EXTRACTION' ? 'btn-emerald' : 'btn-secondary'}`} onClick={() => setActiveTab('EXTRACTION')} style={{ fontSize: '0.85rem' }}>
           <Database size={16} /> AI PDF Extraction Simulator
         </button>
+        )}
       </div>
 
-      {/* Subsystem 8 View: Source Health Log */}
-      {activeTab === 'HEALTH' && (
+      {/* Subsystem 8 View: Source Health Log -- fixture data, development builds only */}
+      {SHOW_DEV_FIXTURES && activeTab === 'HEALTH' && (
         <div className="glass-card" style={{ padding: '28px' }}>
+          <DevFixtureNote />
           <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <RefreshCw size={20} color="var(--emerald)" /> Monitored Official Source Endpoints ({healthLogs.length})
           </h3>
@@ -5911,12 +6440,12 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
               <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Compass size={20} color="var(--primary)" /> Syllabus Revisions — {syllabusExam.title}
               </h3>
-              <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', color: 'var(--text-secondary)', maxWidth: '100%', minWidth: 0 }}>
                 Exam
                 <select
                   value={syllabusExam.id}
                   onChange={e => setSyllabusExamId(e.target.value)}
-                  style={{ padding: '6px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', background: '#fff', color: 'var(--text-primary)', fontFamily: 'var(--font-sans)', fontSize: '0.82rem' }}
+                  style={{ padding: '6px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', background: '#fff', color: 'var(--text-primary)', fontFamily: 'var(--font-sans)', fontSize: '0.82rem', maxWidth: '100%', minWidth: 0 }}
                 >
                   {revisableExams.map(e => <option key={e.id} value={e.id}>{e.title} ({e.syllabus.length})</option>)}
                 </select>
@@ -6169,7 +6698,7 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
       )}
 
       {/* PDF Extraction Simulator */}
-      {/* Live Source Research (Tavily) */}
+      {/* Live Source Research (Claude discovery) */}
       {activeTab === 'RESEARCH' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
@@ -6179,18 +6708,18 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' }}>
                   <span className="badge badge-verified" style={{ fontSize: '0.68rem' }}><Globe size={12} /> LIVE SOURCE RESEARCH</span>
-                  <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>powered by Tavily search · server-side, key never leaves app.py</span>
+                  <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Claude-assisted discovery · runs server-side on your Claude account, no API key</span>
                 </div>
                 <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px' }}>Discover and verify official sources on the live web</h3>
                 <p style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', margin: 0, maxWidth: '760px', lineHeight: 1.5 }}>
-                  Search → every result is classified by domain (official / academic / unverified) → stored in the audit database → a verifier reviews it → only then can it be promoted into the platform. Nothing here reaches candidates automatically.
+                  Claude proposes candidate sources → the server checks every one itself (address, reachability, redirects, which host it really is, whether the page names this exam) and classifies it by domain → stored in the audit database → a verifier reviews it → only then can it be promoted into the platform. A source is never official because Claude said so, and nothing here reaches candidates automatically.
                 </p>
               </div>
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                 <div style={{ padding: '10px 16px', borderRadius: 'var(--radius-md)', background: 'var(--surface-3)', border: '1px solid var(--border-color)', minWidth: '120px' }}>
-                  <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Connector</div>
-                  <div style={{ fontSize: '0.95rem', fontWeight: 800, color: researchStatus?.configured ? '#137638' : '#af5109' }}>
-                    {researchStatus === null ? 'Checking…' : researchStatus.configured ? 'Connected' : 'Not configured'}
+                  <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Claude</div>
+                  <div style={{ fontSize: '0.95rem', fontWeight: 800, color: claudeStateLabel(researchStatus?.claude).ok ? '#137638' : '#af5109' }}>
+                    {researchStatus === null ? 'Checking…' : claudeStateLabel(researchStatus.claude).label}
                   </div>
                 </div>
                 <div style={{ padding: '10px 16px', borderRadius: 'var(--radius-md)', background: 'var(--surface-3)', border: '1px solid var(--border-color)', minWidth: '120px' }}>
@@ -6205,7 +6734,8 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
             </div>
           </div>
 
-          {researchStatus && !researchStatus.configured && <ResearchSetupNotice />}
+          {researchStatus && !researchStatus.available && <ClaudeSetupNotice health={researchStatus.claude} />}
+          <AdminTokenField required={!!researchStatus?.adminTokenRequired} />
 
           {/* Query builder */}
           <div className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -6226,16 +6756,15 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
                 {ALL_EXAMS.map(e => <option key={e.id} value={e.id}>{e.code.replace(/_/g, ' ')}</option>)}
               </select>
               <button className="btn btn-emerald" onClick={() => runResearch()} disabled={researchLoading || !researchQuery.trim()} style={{ fontSize: '0.86rem', display: 'inline-flex', alignItems: 'center', gap: '6px', opacity: researchLoading ? 0.7 : 1 }}>
-                <RefreshCw size={15} className={researchLoading ? 'animate-spin' : ''} /> {researchLoading ? 'Searching…' : 'Run research'}
+                <RefreshCw size={15} className={researchLoading ? 'animate-spin' : ''} /> {researchLoading ? 'Claude is searching…' : 'Run research'}
               </button>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginRight: '4px' }}>Scope</span>
               {([
-                { key: 'OFFICIAL', label: 'Official domains only', hint: 'ssc.gov.in, upsc.gov.in, egazette, PIB…' },
-                { key: 'NEWS', label: 'News · last 30 days', hint: 'recent coverage, any domain' },
-                { key: 'WEB', label: 'Whole web', hint: 'unrestricted' }
+                { key: 'OFFICIAL', label: 'Official domains only', hint: 'the server keeps only hosts it classifies as official (*.gov.in, *.nic.in, statutory bodies)' },
+                { key: 'WEB', label: 'Any host (labelled by trust)', hint: 'every host is kept and badged official / academic / unverified by the server' }
               ] as { key: ResearchMode; label: string; hint: string }[]).map(m => (
                 <button key={m.key} onClick={() => setResearchMode(m.key)} title={m.hint} style={{ padding: '6px 12px', borderRadius: 'var(--radius-full)', border: `1px solid ${researchMode === m.key ? 'var(--primary)' : 'var(--border-color)'}`, background: researchMode === m.key ? 'rgba(99,102,241,0.16)' : 'transparent', color: researchMode === m.key ? '#4f46e5' : 'var(--text-secondary)', fontSize: '0.78rem', fontWeight: researchMode === m.key ? 700 : 500, fontFamily: 'var(--font-sans)', cursor: 'pointer' }}>
                   {m.label}
@@ -6253,15 +6782,26 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
             </div>
           </div>
 
+          {activeJob && (activeJob.status === 'QUEUED' || activeJob.status === 'RUNNING') && (
+            <div className="glass-card" style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
+              <RefreshCw size={14} className="animate-spin" />
+              <span><strong>{CLAUDE_JOB_LABELS[activeJob.operation] || activeJob.operation}</strong> · {activeJob.status === 'QUEUED' ? 'waiting for a free Claude slot' : (activeJob.stage || 'working').toLowerCase().replace(/_/g, ' ')} · {jobSeconds(activeJob)}</span>
+              <span style={{ flex: 1 }} />
+              <button className="btn btn-secondary" onClick={() => cancelClaudeJob(activeJob)} style={{ fontSize: '0.74rem', padding: '4px 10px' }}>Cancel</button>
+            </div>
+          )}
+
           {researchError && (
-            researchError.notConfigured
-              ? <ResearchSetupNotice setup={researchError.setup} />
+            researchError.claudeUnavailable
+              ? <ClaudeSetupNotice message={researchError.error} status={researchError.status} />
               : (
                 <div style={{ padding: '12px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.35)', fontSize: '0.84rem', color: '#b71f1f', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <AlertTriangle size={15} /> {researchError.error}
                 </div>
               )
           )}
+
+          <ClaudeJobsPanel jobs={claudeJobs} onRefresh={refreshJobs} onCancel={cancelClaudeJob} onRetry={retryClaudeJob} />
 
           {/* Results */}
           {researchRun && (
@@ -6270,20 +6810,24 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
                 <div>
                   <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>{researchRun.results.length} results for “{researchRun.query}”</h4>
                   <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                    Run #{researchRun.runId} · {researchRun.mode === 'OFFICIAL' ? 'official domains only' : researchRun.mode === 'NEWS' ? 'news, last 30 days' : 'whole web'} · {researchRun.results.filter(f => f.trustLevel === 'OFFICIAL').length} official · {researchRun.results.filter(f => f.trustLevel === 'UNVERIFIED').length} unverified{researchRun.filteredOut ? ` · ${researchRun.filteredOut} non-official result${researchRun.filteredOut === 1 ? '' : 's'} filtered out` : ''}
+                    Run #{researchRun.runId} · {researchRun.engine === 'LEGACY_SEARCH' ? 'archived run from the earlier search provider' : 'proposed by Claude, checked by the server'} · {researchRun.mode === 'OFFICIAL' ? 'official domains only' : 'any host'} · {researchRun.results.filter(f => f.trustLevel === 'OFFICIAL').length} official · {researchRun.results.filter(f => f.trustLevel === 'UNVERIFIED').length} unverified{researchRun.rejected && researchRun.rejected.length > 0 ? ` · ${researchRun.rejected.length} proposed source${researchRun.rejected.length === 1 ? '' : 's'} rejected by the server's checks` : ''}
                   </div>
                 </div>
               </div>
 
-              {researchRun.answer && (
-                <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.3)', fontSize: '0.86rem', color: '#92400e', lineHeight: 1.5 }}>
-                  <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#af5109', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Search-engine summary — unverified, for orientation only</div>
-                  {researchRun.answer}
-                </div>
+              {researchRun.rejected && researchRun.rejected.length > 0 && (
+                <details style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                  <summary style={{ cursor: 'pointer', fontWeight: 700 }}>Rejected by the server ({researchRun.rejected.length}) — Claude proposed these, GovOS did not keep them</summary>
+                  <ul style={{ margin: '6px 0 0', paddingLeft: '18px', lineHeight: 1.5 }}>
+                    {researchRun.rejected.map((r, i) => (
+                      <li key={i}><span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.74rem', wordBreak: 'break-all' }}>{r.url}</span> — {r.reasons.join('; ')}</li>
+                    ))}
+                  </ul>
+                </details>
               )}
 
               {researchRun.results.length === 0 && (
-                <div style={{ fontSize: '0.86rem', color: 'var(--text-secondary)' }}>No pages matched. Try broader wording or the “Whole web” scope.</div>
+                <div style={{ fontSize: '0.86rem', color: 'var(--text-secondary)' }}>No candidate source passed the server's checks. Try broader wording or the “Any host” scope. This says nothing about what the authority has published.</div>
               )}
 
               {researchRun.results.map(f => {
@@ -6296,7 +6840,16 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
                         <span style={{ padding: '2px 9px', borderRadius: 'var(--radius-full)', background: meta.bg, color: meta.color, fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.04em' }}>{meta.label}</span>
                         <span style={{ fontSize: '0.74rem', color: '#235ddd', fontFamily: 'var(--font-mono)' }}>{researchHost(f.url)}</span>
                         {f.publishedDate && <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Clock size={11} /> {f.publishedDate}</span>}
-                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>relevance {Math.round(f.score * 100)}%</span>
+                        {f.discovery && (
+                          <>
+                            <span style={{ fontSize: '0.7rem', fontWeight: 700, color: f.discovery.reachable ? '#137638' : '#b71f1f' }}>
+                              {f.discovery.reachable ? `reachable (HTTP ${f.discovery.httpStatus})` : 'not reachable'}
+                            </span>
+                            {f.discovery.identity && f.discovery.identity !== 'UNCHECKED' && (
+                              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>page identity: {f.discovery.identity.toLowerCase().replace(/_/g, ' ')}</span>
+                            )}
+                          </>
+                        )}
                       </div>
                       <span className={`badge ${f.reviewStatus === 'PROMOTED' ? 'badge-verified' : f.reviewStatus === 'REJECTED' ? 'badge-superseded' : f.reviewStatus === 'REVIEWED' ? 'badge-changed' : 'badge-pending'}`} style={{ fontSize: '0.66rem' }}>
                         {f.reviewStatus.replace('_', ' ')}
@@ -6305,6 +6858,14 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
 
                     <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '4px' }}>{f.title}</div>
                     <div style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{f.snippet}</div>
+
+                    {f.discovery && (f.discovery.whyRelevant || f.discovery.authorityName || (f.discovery.reasons || []).length > 0) && (
+                      <div style={{ marginTop: '8px', padding: '8px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-3)', fontSize: '0.76rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                        {f.discovery.whyRelevant && <div><strong>Claude's note (unverified):</strong> {f.discovery.whyRelevant}</div>}
+                        {f.discovery.authorityName && <div><strong>Claude names the publisher as:</strong> {f.discovery.authorityName}{f.discovery.documentKind ? ` · ${f.discovery.documentKind.toLowerCase().replace(/_/g, ' ')}` : ''}</div>}
+                        {(f.discovery.reasons || []).length > 0 && <div style={{ color: '#92400e' }}><strong>Server checks:</strong> {(f.discovery.reasons || []).join('; ')}</div>}
+                      </div>
+                    )}
 
                     {openExtractId === f.id && extractedText[f.id] && (
                       <div style={{ marginTop: '10px', padding: '12px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-3)', border: '1px solid var(--border-color)', fontSize: '0.8rem', color: '#334155', lineHeight: 1.55, maxHeight: '260px', overflowY: 'auto', whiteSpace: 'pre-wrap', fontFamily: 'var(--font-mono)' }}>
@@ -6318,7 +6879,10 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
                       </a>
                       <button className="btn btn-secondary" onClick={() => extractFinding(f)} disabled={extractingId !== null} style={{ fontSize: '0.76rem', padding: '5px 11px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
                         <Eye size={12} className={extractingId === f.id ? 'animate-spin' : ''} />
-                        {extractingId === f.id ? 'Extracting…' : extractedText[f.id] ? (openExtractId === f.id ? 'Hide extracted text' : 'Show extracted text') : 'Extract page text'}
+                        {extractingId === f.id ? 'Fetching…' : extractedText[f.id] ? (openExtractId === f.id ? 'Hide page text' : 'Show page text') : 'Fetch page text'}
+                      </button>
+                      <button className="btn btn-secondary" onClick={() => readWithClaude(f)} disabled={claudeFactsId !== null || !researchStatus?.available} title="Claude proposes values with quotations; the server keeps only those printed in the page text" style={{ fontSize: '0.76rem', padding: '5px 11px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                        <Bot size={12} /> {claudeFactsId === f.id ? 'Claude is reading…' : 'Read with Claude'}
                       </button>
                       <span style={{ flex: 1 }} />
                       {f.reviewStatus === 'PROMOTED' && (
@@ -6355,9 +6919,11 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
                 <Info size={12} /> “Promote” records the verifier's decision. “Add to Resource Library” then publishes the source to candidates immediately, labelled as verifier-approved, and the GovOS server re-checks its link on schedule. Nothing reaches the library without that explicit second step.
               </div>
 
-              {/* Structured facts — the rule-based validation layer (RESEARCH_VALIDATION_DESIGN.md).
-                  A review surface only: extraction never calls Tavily, and approving a fact just
-                  marks it eligible for the promote gate above. No LLM, no automatic publishing. */}
+              {/* Structured facts — the validation layer (RESEARCH_VALIDATION_DESIGN.md). A review
+                  surface only: the rule-based reader calls nothing, Claude's reading is a separate
+                  explicit job whose values are kept only with a quotation printed in the page, and
+                  approving a fact just marks it eligible for the promote gate above. No automatic
+                  publishing. */}
               <div style={{ marginTop: '18px', borderTop: '1px dashed var(--border-color)', paddingTop: '16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '10px' }}>
                   <div>
@@ -6365,7 +6931,7 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
                       <ShieldCheck size={16} color="var(--primary)" /> Structured facts
                     </h4>
                     <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
-                      Rule-based extraction of typed fields from the results above — validated, evidence-kept, conflict-aware. No LLM. Nothing here publishes to GovOS.
+                      Typed fields read from the results above by fixed rules, or by Claude from the page text the server fetched (each Claude value must come with a quotation printed in that page). Validated, evidence-kept, conflict-aware. Nothing here publishes to GovOS.
                     </div>
                   </div>
                   <button className="btn btn-secondary" onClick={extractFacts} disabled={factsLoading}
@@ -6376,7 +6942,7 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
 
                 {researchFacts.length === 0 ? (
                   <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', padding: '10px 12px', background: 'var(--surface-2)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
-                    No structured facts yet. “Extract structured facts” reads the stored results and proposes typed, validated field values for your review — it does not call Tavily.
+                    No structured facts yet. “Extract structured facts” applies fixed reading rules to the stored results and proposes typed, validated field values for your review (no Claude call). “Read with Claude” on a result asks Claude to read that page too.
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -6394,6 +6960,9 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
                             <code style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)' }}>{fact.field}</code>
                             <span style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.03em', color: statusColor[fact.status] || 'var(--text-muted)', textTransform: 'uppercase' }}>{fact.status}</span>
                             <span style={{ fontSize: '0.66rem', fontWeight: 700, color: srcColor[fact.sourceType] || 'var(--text-muted)' }}>{fact.sourceType}</span>
+                            <span className="badge" style={{ fontSize: '0.6rem', background: 'var(--surface-3)', color: 'var(--text-secondary)' }}>
+                              {(fact.extractionRule || '').startsWith('claude:') ? 'CLAUDE-ASSISTED · QUOTE VERIFIED' : 'RULE-BASED'}
+                            </span>
                             {fact.conflictGroup && <span className="badge" style={{ fontSize: '0.62rem', background: 'rgba(180,83,9,0.14)', color: '#b45309' }}>CONFLICT</span>}
                             <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)' }}>conf {fact.confidence.toFixed(2)}</span>
                           </div>
@@ -6459,7 +7028,7 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
                           Run #{run.id} · {run.mode} · {run.createdAt} · {run.findings.length} results · {run.findings.filter(f => f.reviewStatus === 'PENDING_REVIEW').length} pending · {run.findings.filter(f => f.reviewStatus === 'PROMOTED').length} promoted
                         </div>
                       </div>
-                      <button className="btn btn-secondary" onClick={() => { setResearchRun({ runId: run.id, query: run.query, mode: run.mode, answer: run.answer, results: run.findings }); setIsHistoryOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }} style={{ fontSize: '0.74rem', padding: '5px 11px' }}>
+                      <button className="btn btn-secondary" onClick={() => { setResearchRun({ runId: run.id, query: run.query, mode: run.mode, examId: run.examId, engine: run.engine, jobId: run.jobId, results: run.findings }); setIsHistoryOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }} style={{ fontSize: '0.74rem', padding: '5px 11px' }}>
                         Reopen results
                       </button>
                     </div>
@@ -6471,8 +7040,9 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
         </div>
       )}
 
-      {activeTab === 'EXTRACTION' && (
+      {SHOW_DEV_FIXTURES && activeTab === 'EXTRACTION' && (
         <div className="glass-card" style={{ padding: '28px' }}>
+          <DevFixtureNote />
           <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '16px' }}>AI Notification PDF Ingestion Simulator</h3>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>
             Simulates PDF download → OCR text extraction → JSON schema mapping → Admin verification queue.
@@ -16572,13 +17142,14 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
 // ResourceLibrary.tsx — organised, searchable study-resource library (Section 08)
 // ==========================================================================
 
-type ResourceTypeGroup = 'ALL' | 'OFFICIAL' | 'BOOKS' | 'VIDEO' | 'TOOLS';
+type ResourceTypeGroup = 'ALL' | 'OFFICIAL' | 'BOOKS' | 'VIDEO' | 'TOOLS' | 'THIRD_PARTY';
 
 const RESOURCE_TYPE_GROUPS: { key: ResourceTypeGroup; label: string; types: ResourceItem['type'][] }[] = [
   { key: 'OFFICIAL', label: 'Official Documents & Portals', types: ['OFFICIAL_PDF', 'OFFICIAL_PORTAL'] },
   { key: 'BOOKS', label: 'Books & Handbooks', types: ['RECOMMENDED_BOOK', 'SIMPLIFIED_GUIDE'] },
   { key: 'VIDEO', label: 'Video Courses', types: ['VIDEO_LECTURE'] },
-  { key: 'TOOLS', label: 'Practice Tools', types: ['ONLINE_TOOL'] }
+  { key: 'TOOLS', label: 'Practice Tools', types: ['ONLINE_TOOL'] },
+  { key: 'THIRD_PARTY', label: 'Third-party (not official)', types: ['THIRD_PARTY'] }
 ];
 
 // Display order for subject groups: primary sources first, then foundations, then subjects.
@@ -16602,6 +17173,7 @@ const resourceTypeLabel = (type: ResourceItem['type']): string => {
     case 'RECOMMENDED_BOOK': return 'Recommended Book';
     case 'SIMPLIFIED_GUIDE': return 'Handbook';
     case 'ONLINE_TOOL': return 'Practice Tool';
+    case 'THIRD_PARTY': return 'Third-party link';
     default: return 'Resource';
   }
 };
@@ -16611,7 +17183,8 @@ const resourceTypeColor = (type: ResourceItem['type']): string => {
     case 'OFFICIAL_PDF':
     case 'OFFICIAL_PORTAL': return '#137638';
     case 'VIDEO_LECTURE': return '#b71f1f';
-    case 'ONLINE_TOOL': return '#af5109';
+    case 'ONLINE_TOOL':
+    case 'THIRD_PARTY': return '#af5109';
     default: return '#4f46e5';
   }
 };
@@ -16619,7 +17192,8 @@ const resourceTypeColor = (type: ResourceItem['type']): string => {
 const ResourceTypeIcon: React.FC<{ type: ResourceItem['type']; size?: number }> = ({ type, size = 14 }) => {
   const color = resourceTypeColor(type);
   switch (type) {
-    case 'OFFICIAL_PORTAL': return <Globe size={size} color={color} />;
+    case 'OFFICIAL_PORTAL':
+    case 'THIRD_PARTY': return <Globe size={size} color={color} />;
     case 'VIDEO_LECTURE': return <PlayCircle size={size} color={color} />;
     case 'ONLINE_TOOL': return <Zap size={size} color={color} />;
     case 'RECOMMENDED_BOOK':
@@ -16654,33 +17228,65 @@ const formatFetched = (iso: string | null | undefined): string =>
   iso ? new Date(iso).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'not yet';
 
 /** A verifier-added entry rendered through the same card as the static library. */
-const additionToResource = (a: ResourceAddition): ResourceItem => ({
-  id: a.id,
-  title: a.title,
-  subject: a.subject as ResourceItem['subject'],
-  author: a.author,
-  type: a.resourceFormat === 'DIRECT_PDF'
-    ? 'OFFICIAL_PDF'
-    : a.resourceFormat === 'YOUTUBE_COURSE' || a.resourceFormat === 'YOUTUBE_CHANNEL'
-      ? 'VIDEO_LECTURE'
-      : 'OFFICIAL_PORTAL',
-  resourceFormat: a.resourceFormat,
-  url: a.url,
-  description: a.description,
-  recommendedFor: 'Added after a live official-domain search and a verifier\'s review. Open it to confirm it fits what you need.',
-  officialTag: `ADDED ${a.addedAt.slice(0, 10)} · VERIFIER-APPROVED FROM LIVE SOURCE RESEARCH`,
-  provenance: {
-    id: `prov-${a.id}`,
-    documentTitle: a.title,
-    officialUrl: a.url,
-    publishedDate: a.addedAt.slice(0, 10),
-    verifiedDate: a.addedAt.slice(0, 10),
-    verifiedBy: 'GovOS verifier — promoted in the Trust Panel after a live official-domain search',
-    taxonomyType: 'FACT',
-    verificationLevel: 'OFFICIALLY_VERIFIED',
-    excerptText: `Added to the library at runtime from Live Source Research${a.findingId ? ` finding #${a.findingId}` : ''}, not from a code edit. The GovOS server re-checks this link on its schedule; the badge on the card shows the latest result.`
+const additionToResource = (a: ResourceAddition): ResourceItem => {
+  const date = a.addedAt.slice(0, 10);
+  // The server decides the kind from the URL's host. Anything it did not call official is never shown as official.
+  const kind = a.sourceKind || 'THIRD_PARTY';
+  const common = {
+    id: a.id,
+    title: a.title,
+    subject: a.subject as ResourceItem['subject'],
+    author: a.author,
+    resourceFormat: a.resourceFormat,
+    url: a.url,
+    description: a.description
+  };
+  if (kind === 'OFFICIAL') {
+    return {
+      ...common,
+      type: a.resourceFormat === 'DIRECT_PDF'
+        ? 'OFFICIAL_PDF'
+        : a.resourceFormat === 'YOUTUBE_COURSE' || a.resourceFormat === 'YOUTUBE_CHANNEL'
+          ? 'VIDEO_LECTURE'
+          : 'OFFICIAL_PORTAL',
+      recommendedFor: 'Added after a live official-domain search and a verifier\'s review. Open it to confirm it fits what you need.',
+      officialTag: `ADDED ${date} · VERIFIER-APPROVED FROM LIVE SOURCE RESEARCH`,
+      provenance: {
+        id: `prov-${a.id}`,
+        documentTitle: a.title,
+        officialUrl: a.url,
+        publishedDate: date,
+        verifiedDate: date,
+        verifiedBy: 'GovOS verifier — promoted in the Trust Panel after a live official-domain search',
+        taxonomyType: 'FACT',
+        verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: `Added to the library at runtime from Live Source Research${a.findingId ? ` finding #${a.findingId}` : ''}, not from a code edit. The GovOS server re-checks this link on its schedule; the badge on the card shows the latest result.`
+      }
+    };
   }
-});
+  const academic = kind === 'TRUSTED_PUBLIC';
+  return {
+    ...common,
+    type: 'THIRD_PARTY',
+    recommendedFor: academic
+      ? 'An academic or public-body page a GovOS verifier added. Open it to confirm it fits what you need.'
+      : 'Orientation only. GovOS did not write it, no authority published it, and GovOS has not fact-checked it. Where it disagrees with the official notice or paper, the official one governs.',
+    officialTag: academic
+      ? `ADDED ${date} · ACADEMIC / PUBLIC BODY · NOT AN OFFICIAL SOURCE`
+      : `ADDED ${date} · THIRD-PARTY · NOT OFFICIAL · NOT FACT-CHECKED`,
+    provenance: {
+      id: `prov-${a.id}`,
+      documentTitle: a.title,
+      officialUrl: a.url,
+      publishedDate: date,
+      verifiedDate: date,
+      verifiedBy: `GovOS verifier — added in the Trust Panel on ${date}; the link is checked, the content is not`,
+      taxonomyType: 'RECOMMENDATION',
+      verificationLevel: 'UNDER_VERIFICATION',
+      excerptText: `A third-party page, not a government publication. A GovOS verifier added it to this exam's library${a.findingId ? ` from research finding #${a.findingId}` : ''} on ${date}. GovOS re-checks that the link opens, but does not endorse the site, is not affiliated with it, and has not fact-checked what it publishes. Anything in it that disagrees with the authority's own notice or papers is wrong, and the authority's document governs.`
+    }
+  };
+};
 
 export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenResource, onOpenProvenanceModal, showSectionNumber = true }) => {
   const [additions, setAdditions] = useState<ResourceAddition[]>([]);
@@ -16791,7 +17397,7 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
     let cancelled = false;
     let retry: ReturnType<typeof setTimeout> | undefined;
     const load = async () => {
-      const adds = await resourceLiveService.additions();
+      const adds = await resourceLiveService.additions(exam.id);
       if (cancelled) return;
       setAdditions(adds);
       const urls = Array.from(new Set([
@@ -16872,6 +17478,7 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
       case 'YOUTUBE_COURSE': return { label: 'Watch Video Course', onClick: () => onOpenResource(r) };
       case 'YOUTUBE_CHANNEL': return { label: 'Open Channel on YouTube', href: r.youtubeUrl || r.url };
       case 'OFFICIAL_PORTAL': return { label: 'Open Official Portal', href: r.url };
+      case 'EXTERNAL_PAGE': return { label: 'Open on the third-party site', href: r.url };
       case 'ONLINE_TOOL': return { label: 'Launch Tool', href: r.url };
       case 'INTERACTIVE_HANDBOOK': return { label: 'Read Handbook', onClick: () => onOpenResource(r) };
       default:
@@ -18430,8 +19037,20 @@ export const ExamPracticeRouter: React.FC<{
   onOpenProvenanceModal: (provenance: DataProvenance) => void;
 }> = ({ exam, scope = 'ALL', onOpenProvenanceModal }) => {
   const entry = PRACTICE_ENGINES[exam.id];
-  if (!entry) return <UnavailablePracticeEngine key={exam.id} exam={exam} scope={scope} onOpenProvenanceModal={onOpenProvenanceModal} />;
-  return <React.Fragment key={exam.id}>{entry.render({ exam, scope, onOpenProvenanceModal })}</React.Fragment>;
+  // The Claude practice panel is the same for every exam and reads only that exam's own verified syllabus;
+  // it appears only when Claude is ready and never replaces or feeds the exam's own engine.
+  if (!entry) return (
+    <React.Fragment key={exam.id}>
+      <UnavailablePracticeEngine exam={exam} scope={scope} onOpenProvenanceModal={onOpenProvenanceModal} />
+      <ClaudePracticePanel exam={exam} />
+    </React.Fragment>
+  );
+  return (
+    <React.Fragment key={exam.id}>
+      {entry.render({ exam, scope, onOpenProvenanceModal })}
+      <ClaudePracticePanel exam={exam} />
+    </React.Fragment>
+  );
 };
 
 // =====================================================================================
@@ -19403,7 +20022,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
               <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0, lineHeight: 1.2 }}>{exam.title}</h2>
               <div style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '2px' }}>{exam.authorityName}</div>
               <div style={{ marginTop: '6px', display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
-                <span className="badge badge-verified" style={{ fontSize: '0.62rem' }}><ShieldCheck size={11} /> Officially verified</span>
+                <ExamVerifiedBadge exam={exam} compact />
                 {isTracked && <span className="badge badge-pending" style={{ fontSize: '0.62rem' }}><Bell size={11} /> Tracking active</span>}
                 {exam.vacanciesTotal && <span className="badge badge-demo" style={{ fontSize: '0.62rem' }}>{exam.vacanciesTotal}</span>}
               </div>
@@ -19549,7 +20168,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                       <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>{label}</div>
                       <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)' }}>{value}</div>
                     </div>
-                    <EvidenceButton provenance={prov} onOpen={onOpenProvenanceModal} />
+                    <EvidenceButton provenance={prov} onOpen={onOpenProvenanceModal} claim={value} />
                   </div>
                 ))}
               </div>
@@ -19603,7 +20222,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                   )}
 
                   <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--surface-2)', paddingTop: '8px' }}>
-                    <EvidenceButton provenance={p.provenance} onOpen={onOpenProvenanceModal} />
+                    <EvidenceButton provenance={p.provenance} onOpen={onOpenProvenanceModal} claim={p.postName} />
                   </div>
                 </div>
               ))}
@@ -19678,7 +20297,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                       Result Next Steps →
                     </button>
                   )}
-                  <EvidenceButton provenance={d.provenance} onOpen={onOpenProvenanceModal} />
+                  <EvidenceButton provenance={d.provenance} onOpen={onOpenProvenanceModal} claim={dateClaim(d)} />
                 </div>
               </div>
             );

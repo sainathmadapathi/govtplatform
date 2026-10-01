@@ -1,9 +1,9 @@
-"""Deterministic verification -- the authoritative checks that run before the LLM.
+"""Deterministic verification -- the authoritative checks that run before Claude.
 
 These reuse the engine's own identity and evidence discipline: `identity.verify` (exam and
 cycle, MATCH/AMBIGUOUS/MISMATCH) and verbatim span membership (`normalise_ws`). Nothing here
-calls a model. A cross-exam or cross-cycle source fails here and the LLM is never consulted,
-so the model can neither see nor override an identity failure.
+calls Claude. A cross-exam or cross-cycle source fails here and Claude is never consulted,
+so Claude can neither see nor override an identity failure.
 """
 from __future__ import annotations
 

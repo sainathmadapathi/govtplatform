@@ -1,3 +1,5 @@
+> **ARCHIVAL NOTE (2026-10-01).** This document records what was true when it was written and is kept as history, not rewritten. Where it mentions a local model (Qwen, llama.cpp, a GGUF file, a local OpenAI-compatible endpoint), `GOVOS_LLM_*` variables, `LLM_*` states or the Tavily search provider, that system has since been removed: GovOS now uses only the installed Claude CLI, server-side. The current architecture is in `CLAUDE_CLI_INTEGRATION.md`.
+
 # Admit cards: what exists, what it assumes, and what four authorities actually publish
 
 Audit only. No production data was changed while writing this.

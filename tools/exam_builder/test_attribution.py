@@ -18,6 +18,9 @@ from __future__ import annotations
 import json
 import unittest
 
+from tools.claude_cli.schemas import InfraStatus, Operation
+from tools.claude_cli.testing import ByOperation, FakeClaude, use_gateway
+
 from ..exam_authoring.record import ExamRecord, Status
 from ..exam_authoring.sources import Document
 from . import build as B
@@ -33,7 +36,7 @@ TARGET = ExamIdentity(exam_id='exam-example-officers-2031', query='Example Offic
                       authority_name='Example Commission', authority_domain=DOMAIN)
 
 
-def read(field: str, text: str, *, html: str = '', provider=None):
+def read(field: str, text: str, *, html: str = '', gateway=None):
     """One contract field, read from one identity-matched notification."""
     kind = 'HTML' if html else 'PDF'
     doc = Document(url=URL, kind=kind, fetched_at='2031-01-01',
@@ -49,10 +52,8 @@ def read(field: str, text: str, *, html: str = '', provider=None):
                             authority=Authority(name='Example Commission', domain=DOMAIN, confidence=1.0))
     identity = {URL: IdentityCheck(IdentityVerdict.MATCH)}
     cf = next(c for c in CONTRACT if c.name == field)
-    if provider is None:
-        return B._dispatch_domain_extraction(cf, sources, {URL: doc}, rec, resolved, identity, TARGET)
-    from unittest import mock
-    with mock.patch('tools.exam_builder.verification.client.get_provider', return_value=provider):
+    # The real CLI is never reached: with no gateway given, a disabled one is installed.
+    with use_gateway(gateway or FakeClaude(enabled=False)):
         return B._dispatch_domain_extraction(cf, sources, {URL: doc}, rec, resolved, identity, TARGET)
 
 
@@ -319,29 +320,18 @@ class TestEachRuleAlone(unittest.TestCase):
         self.assertTrue(check_pattern(ok, 'Paper-I General Awareness 100 marks').ok)
 
 
-# ================================================================ the local model's part
-class FakeProvider:
-    name = 'fake'
+# ================================================================ Claude's part
+#: The completeness check asks a different question; these tests are about attribution, so it is
+#: answered "whole" and never decides one of them.
+WHOLE = {'complete': True, 'continues_after': False, 'starts_mid_unit': False, 'confidence': 'high', 'reason': ''}
 
-    def __init__(self, reply, enabled=True, fail=None):
-        self.reply, self.enabled, self.fail, self.calls = reply, enabled, fail, 0
 
-    def is_enabled(self):
-        return self.enabled
-
-    def complete(self, messages, *, max_tokens=320):
-        from .verification.client import ProviderError
-        from .verification.schemas import InfraStatus
-        self.calls += 1
-        if self.fail:
-            raise ProviderError(InfraStatus.LLM_UNAVAILABLE, self.fail)
-        if 'is a whole unit of that notice' in messages[0]['content'] and not (
-                isinstance(self.reply, dict) and 'complete' in self.reply):
-            # The completeness check (completeness_llm) asks a different question; these tests
-            # are about attribution, so it is answered "whole" and never decides one of them.
-            return json.dumps({'complete': True, 'continues_after': False, 'starts_mid_unit': False,
-                               'confidence': 'high', 'reason': ''})
-        return self.reply if isinstance(self.reply, str) else json.dumps(self.reply)
+def FakeProvider(reply, enabled=True, fail=None):
+    """A scripted Claude gateway that answers the attribution and date-role questions with `reply` (a
+    dict, or a raw string for a malformed reply) and the completeness question with "whole"."""
+    return FakeClaude(ByOperation({Operation.CLASSIFY_ATTRIBUTION: reply, Operation.CLASSIFY_DATE: reply,
+                                   Operation.CHECK_COMPLETENESS: WHOLE}),
+                      enabled=enabled, fail=InfraStatus.CLAUDE_CLI_FAILED if fail else None)
 
 
 class TestModelOnlyWithholds(unittest.TestCase):
@@ -355,43 +345,43 @@ class TestModelOnlyWithholds(unittest.TestCase):
         return out
 
     def test_a_supported_fact_stays_published(self):
-        got = read('qualification', CORRECT_QUALIFICATION, provider=FakeProvider(self.reply()))
+        got = read('qualification', CORRECT_QUALIFICATION, gateway=FakeProvider(self.reply()))
         self.assertTrue(published(got), got.note)
 
     def test_an_unsupported_claim_is_withheld(self):
         got = read('qualification', CORRECT_QUALIFICATION,
-                   provider=FakeProvider(self.reply(supports_value=False)))
+                   gateway=FakeProvider(self.reply(supports_value=False)))
         self.assertFalse(published(got))
 
     def test_evidence_not_in_the_source_is_withheld(self):
         got = read('qualification', CORRECT_QUALIFICATION,
-                   provider=FakeProvider(self.reply(evidence_span='Candidates must hold a PhD.')))
+                   gateway=FakeProvider(self.reply(evidence_span='Candidates must hold a PhD.')))
         self.assertFalse(published(got))
 
     def test_evidence_from_the_wrong_scope_is_withheld(self):
         got = read('qualification', CORRECT_QUALIFICATION,
-                   provider=FakeProvider(self.reply(role='age_relaxation')))
+                   gateway=FakeProvider(self.reply(role='age_relaxation')))
         self.assertFalse(published(got))
 
     def test_an_ambiguous_scope_is_withheld(self):
         got = read('qualification', CORRECT_QUALIFICATION,
-                   provider=FakeProvider(self.reply(conflicts=['applies only to one stream'])))
+                   gateway=FakeProvider(self.reply(conflicts=['applies only to one stream'])))
         self.assertFalse(published(got))
 
     def test_an_unreachable_model_withholds(self):
-        got = read('qualification', CORRECT_QUALIFICATION, provider=FakeProvider({}, fail='down'))
+        got = read('qualification', CORRECT_QUALIFICATION, gateway=FakeProvider({}, fail='down'))
         self.assertFalse(published(got))
         self.assertIn('could not check', got.note)          # withheld for this reason, not another
 
     def test_the_model_cannot_rescue_a_fact_the_checks_refused(self):
         p = FakeProvider(self.reply(role='total_vacancies', evidence_span='Vacancies GEN/UR'))
-        got = read('vacancies', FLATTENED_VACANCY_TABLE, provider=p)
+        got = read('vacancies', FLATTENED_VACANCY_TABLE, gateway=p)
         self.assertFalse(published(got) and got.value == 1)
         self.assertEqual(p.calls, 0)
 
     def test_the_model_cannot_create_a_fact(self):
         p = FakeProvider(self.reply(evidence_span='x'))
-        got = read('qualification', 'The Commission will announce the schedule later.', provider=p)
+        got = read('qualification', 'The Commission will announce the schedule later.', gateway=p)
         self.assertFalse(published(got))
         self.assertEqual(p.calls, 0)
 

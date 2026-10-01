@@ -289,20 +289,20 @@ def record_date_revisions(rec: ExamRecord, sources=None, loaded: dict | None = N
 
 
 def _establish_designation(target: ExamIdentity, sources: SourceSet, loaded: dict,
-                           rec: ExamRecord, provider=None) -> ExamIdentity:
+                           rec: ExamRecord, gateway=None) -> ExamIdentity:
     """Designation mode only: the canonical designation, from the authority's own notification.
 
     Only documents classified as the recruitment NOTIFICATION, on the authority's own estate,
     are offered -- a result, scorecard, admit card, handout or listing can never establish
-    what the recruitment is. The local model, when enabled, locates the designation and the
+    what the recruitment is. Claude, when enabled, locates the designation and the
     components the notice declares; designation.validate_extraction accepts only strings
     printed in the notice. With no unique canonical designation, the target carries none and
     every document stays AMBIGUOUS.
     """
     from dataclasses import replace
     from .designation import establish_canonical, query_designation
-    from .verification.client import get_provider
-    from .verification.designation_llm import extract_designation
+    from tools.claude_cli import get_gateway
+    from .verification.designation_claude import extract_designation
 
     want = query_designation(target.query, target.official_name, target.authority_aliases,
                              target.authority_name)
@@ -323,11 +323,11 @@ def _establish_designation(target: ExamIdentity, sources: SourceSet, loaded: dic
         text = document.all_text() if hasattr(document, 'all_text') else ''
         if text.strip():
             notifications.append((doc.url, text))
-    provider = provider or get_provider()
-    enabled = provider.is_enabled()
+    gateway = gateway or get_gateway()
+    enabled = gateway.is_enabled()
     canonical, notes = establish_canonical(
         want, target.year, notifications, authority_name=target.authority_name,
-        extractor=lambda block: extract_designation(block, provider), llm_enabled=enabled)
+        extractor=lambda block: extract_designation(block, gateway), claude_enabled=enabled)
     for n in notes:
         rec.note(f'designation mode: {n}')
     if canonical is None:
@@ -341,10 +341,10 @@ def _establish_designation(target: ExamIdentity, sources: SourceSet, loaded: dic
 
 
 def _identify(text: str, target: ExamIdentity, *, source_url: str = '', document_title: str = '',
-              provider=None) -> IdentityCheck:
+              gateway=None) -> IdentityCheck:
     """The identity verdict every loop uses. In alias mode it is identity.verify, unchanged.
 
-    In designation mode, a deterministic MATCH is put to the local model when one is enabled:
+    In designation mode, a deterministic MATCH is put to Claude when it is enabled:
     it may *withhold* the MATCH (the document is about something else), never create one, and
     an answer whose evidence is not printed in the document -- or no answer -- withholds too.
     """
@@ -353,30 +353,30 @@ def _identify(text: str, target: ExamIdentity, *, source_url: str = '', document
             or check.verdict is not IdentityVerdict.MATCH):
         return check
     from .designation import TITLE_BLOCK_CHARS
-    from .verification.client import get_provider
-    from .verification.designation_llm import confirm_same_recruitment, validate_confirmation
-    provider = provider or get_provider()
-    if not provider.is_enabled():
-        check.reasons.append('designation judged deterministically; no local model enabled')
+    from tools.claude_cli import get_gateway
+    from .verification.designation_claude import confirm_same_recruitment, validate_confirmation
+    gateway = gateway or get_gateway()
+    if not gateway.is_enabled():
+        check.reasons.append('designation judged deterministically; Claude is not enabled')
         return check
     canon = target.designation
     raw, infra, detail = confirm_same_recruitment(
         canon.text, canon.year, sorted(canon.components),
-        normalise_ws(text)[:TITLE_BLOCK_CHARS], provider)
+        normalise_ws(text)[:TITLE_BLOCK_CHARS], gateway)
     if infra != 'OK':
         return IdentityCheck(IdentityVerdict.AMBIGUOUS, evidence=check.evidence, matched=check.matched,
-                             reasons=[f'the local model could not confirm the designation match '
+                             reasons=[f'Claude could not confirm the designation match '
                                       f'({infra}: {detail}); withheld'])
     same, span, reason = validate_confirmation(raw, text)
     if same is None:
         return IdentityCheck(IdentityVerdict.AMBIGUOUS, evidence=check.evidence, matched=check.matched,
-                             reasons=[f'the local model\'s confirmation was unusable ({reason}); withheld'])
+                             reasons=[f'Claude\'s confirmation was unusable ({reason}); withheld'])
     if not same:
         return IdentityCheck(IdentityVerdict.AMBIGUOUS, evidence=check.evidence, matched=check.matched,
                              competing=check.competing,
-                             reasons=[f'the local model reads this document as a different '
+                             reasons=[f'Claude reads this document as a different '
                                       f'recruitment ({reason}; evidence: {span[:160]!r}); withheld'])
-    check.reasons.append(f'confirmed by the local model: {span[:160]!r}')
+    check.reasons.append(f'confirmed by Claude: {span[:160]!r}')
     return check
 
 
@@ -517,7 +517,9 @@ def _place_tree_pages(roots, document) -> Optional[int]:
 
     for root in roots or []:
         walk(root)
-    candidates = [_span_pages(norm_pages, ev.span) for ev in ordered]
+    # A span that runs over a page (an entry with the page's number printed inside it) is on
+    # no single page; it is placed where it begins.
+    candidates = [_span_pages(norm_pages, ev.span) or _span_pages(norm_pages, ev.span[:80]) for ev in ordered]
     unique = [c[0] for c in candidates if len(c) == 1]
     if not unique:
         return None
@@ -567,6 +569,32 @@ def _place_citation_page(got: Field, loaded: dict) -> Field:
                 item_hits = _span_pages(norm_pages, item['evidenceSpan'])
                 if len(item_hits) == 1:
                     item['page'] = item_hits[0]
+    return got
+
+
+def _place_row_pages(got: Field, loaded: dict) -> Field:
+    """A row that carries its own provenance takes the page its words are printed on.
+
+    The milestone reader joins a PDF into one text and makes every piece of evidence with
+    page=1, so each date cited page 1 whichever page printed it. As with the field's own
+    citation, a row takes a page only where its words are printed on exactly one; words found
+    on several pages, or on none, keep what the reader gave them."""
+    if not got or not isinstance(got.value, list):
+        return got
+    normalised: dict = {}
+    for item in got.value:
+        prov = item.get('provenance') if isinstance(item, dict) else None
+        if not (isinstance(prov, dict) and prov.get('pageNumber') in (None, 1) and prov.get('excerptText')):
+            continue
+        url = prov.get('officialUrl') or ''
+        pages = getattr(loaded.get(url), 'pages', None) or []
+        if len(pages) < 2:
+            continue
+        if url not in normalised:
+            normalised[url] = [re.sub(r'[^a-z0-9]', '', (p or '').lower()) for p in pages]
+        hits = _span_pages(normalised[url], prov['excerptText'])
+        if len(hits) == 1:
+            prov['pageNumber'] = hits[0]
     return got
 
 
@@ -832,7 +860,7 @@ def _dispatch_domain_extraction(
 ) -> Field:
     """Dispatch one contract field, then vet the reading where a generic test applies."""
     got = _dispatch_domain_extraction_raw(cf, sources, loaded, rec, resolved, identity, target)
-    got = _place_citation_page(got, loaded)
+    got = _place_row_pages(_place_citation_page(got, loaded), loaded)
     if cf.name == 'posts':
         got = _vet_posts(got, rec, loaded)
     if cf.name == 'fee':
@@ -844,7 +872,7 @@ def _dispatch_domain_extraction(
 
 
 def _vet_completeness(field_name: str, got: Field, loaded: dict, rec: ExamRecord,
-                      provider=None) -> Field:
+                      gateway=None) -> Field:
     """A quoted unit must be whole: the qualification, each application step, each exam-day rule
     and each official clause, as the document printed it.
 
@@ -852,8 +880,8 @@ def _vet_completeness(field_name: str, got: Field, loaded: dict, rec: ExamRecord
     is the test after them, for every reader of these fields: a unit that stops inside a word or
     inside a sentence the document continues is held for review with its evidence -- the field is
     NEEDS_REVIEW, which the gate refuses to publish -- and nothing is added to it. Where the
-    deterministic test passes and a local model is enabled, the model is asked only whether each
-    quotation is whole; any other answer, or no answer, holds the field. The model supplies no text.
+    deterministic test passes and Claude is enabled, Claude is asked only whether each
+    quotation is whole; any other answer, or no answer, holds the field. Claude supplies no text.
     """
     from . import units as U
     if (field_name not in U.UNIT_FIELDS or got is None or got.status is not RecordStatus.FOUND
@@ -874,44 +902,50 @@ def _vet_completeness(field_name: str, got: Field, loaded: dict, rec: ExamRecord
                                   f'with its evidence; not published, and nothing was added to it',
                                   got.citation)
 
-    cut = [(label, U.check_value(quoted, text)) for label, quoted in units]
+    if field_name == 'syllabus':
+        # A syllabus entry ends at the next entry or heading rather than at a sentence end, so
+        # it is judged by its own quotation: the value inside it, the quotation uncut.
+        problems = U.syllabus_problems(got.value, text)
+        if problems:
+            return held('; '.join(problems[:3]) + (f' (and {len(problems) - 3} more)' if len(problems) > 3 else '') + '.')
+    cut = [] if field_name == 'syllabus' else [(label, U.check_value(quoted, text)) for label, quoted in units]
     cut = [(label, c) for label, c in cut if c.cut]
     if cut:
         return held('; '.join(f'{label}: {c.reason}' for label, c in cut[:3])
                     + (f' (and {len(cut) - 3} more)' if len(cut) > 3 else '') + '.')
 
-    from .verification.client import get_provider
-    provider = provider or get_provider()
-    if not provider.is_enabled():
+    from tools.claude_cli import get_gateway
+    gateway = gateway or get_gateway()
+    if not gateway.is_enabled():
         return got
-    from .verification.completeness_llm import classify, validate
+    from .verification.completeness_claude import classify, validate
     flat = normalise_ws(text)
     for label, quoted in units:
         q = normalise_ws(quoted)
         at = flat.find(q)
-        # The context is the unit and what surrounds it, so the model can see whether the
+        # The context is the unit and what surrounds it, so Claude can see whether the
         # document continues it; where the reader cleaned the words, the reader's own span is
-        # shown with no surroundings and the model judges it alone.
+        # shown with no surroundings and Claude judges it alone.
         context = flat[max(0, at - 400):at + len(q) + 400] if at >= 0 else q
-        raw, infra, detail = classify(field_name, quoted, context, provider)
+        raw, infra, detail = classify(field_name, quoted, context, gateway)
         if infra != 'OK':
-            return held(f'{label}: the local model could not check completeness ({infra}: {detail}).')
+            return held(f'{label}: Claude could not check completeness ({infra}: {detail}).')
         ok, why = validate(raw)
         if not ok:
             return held(f'{label}: {why}.')
-    rec.note(f'{field_name}: the local model confirms {len(units)} quoted unit(s) whole')
+    rec.note(f'{field_name}: Claude confirms {len(units)} quoted unit(s) whole')
     return got
 
 
 def _vet_dates(got: Field, loaded: dict, rec: ExamRecord, *, cycle: str = '',
-               provider=None) -> Field:
+               gateway=None) -> Field:
     """A date publishes only with an event role its own evidence establishes.
 
     Each date is its own fact. Deterministically (attribution.check_dates): a date that is
     provably not an event of this recruitment -- not a calendar date, another cycle's, cited
     rather than scheduled, in a footnote, inside a clause of rule text -- is set aside; a date
     whose evidence names no event, is stated for a different event, or rivals another live date
-    for one single event is held for review. With a local model enabled, every date that stands
+    for one single event is held for review. With Claude enabled, every date that stands
     is put to it: it may withhold, and it may give a role-less date its role only when its
     verbatim evidence contains the date and a cue for that event. It never writes a date.
     """
@@ -929,10 +963,10 @@ def _vet_dates(got: Field, loaded: dict, rec: ExamRecord, *, cycle: str = '',
     held = list(v.unresolved) + list(v.conflicts)
     kept = list(v.kept)
 
-    from .verification.client import get_provider
-    provider = provider or get_provider()
-    if provider.is_enabled():
-        from .verification.attribution_llm import classify_date, validate_date
+    from tools.claude_cli import get_gateway
+    gateway = gateway or get_gateway()
+    if gateway.is_enabled():
+        from .verification.attribution_claude import classify_date, validate_date
 
         def context(item):
             flat = normalise_ws(texts[id(item)])
@@ -942,9 +976,9 @@ def _vet_dates(got: Field, loaded: dict, rec: ExamRecord, *, cycle: str = '',
 
         confirmed = []
         for item in kept:
-            raw, infra, detail = classify_date(item, context(item), provider)
+            raw, infra, detail = classify_date(item, context(item), gateway)
             if infra != 'OK':
-                held.append((item, f'the local model could not check this date ({infra}: {detail})'))
+                held.append((item, f'Claude could not check this date ({infra}: {detail})'))
                 continue
             ok, why = validate_date(item, raw, texts[id(item)],
                                     need_role=lambda r, it=item: ATT.model_role_fits(it, r))
@@ -954,7 +988,7 @@ def _vet_dates(got: Field, loaded: dict, rec: ExamRecord, *, cycle: str = '',
             if 'rival' in why or 'two different live dates' in why or 'could not check' in why:
                 still.append((item, why))
                 continue
-            raw, infra, detail = classify_date(item, context(item), provider)
+            raw, infra, detail = classify_date(item, context(item), gateway)
             if infra == 'OK':
                 ok, why2 = ATT.resolve_with_model_reply(item, raw, texts[id(item)])
                 if ok:
@@ -991,12 +1025,12 @@ def _vet_dates(got: Field, loaded: dict, rec: ExamRecord, *, cycle: str = '',
 
 
 def _vet_attribution(field_name: str, got: Field, loaded: dict, rec: ExamRecord,
-                     provider=None) -> Field:
+                     gateway=None) -> Field:
     """Identity MATCH is not attribution: does the evidence a reading cites state *this* fact?
 
     Every reader's output for the fields a candidate acts on is put to the same deterministic
-    test of role and scope (attribution.py), then -- only when a local model is enabled -- to
-    the model, which may classify the evidence's role and withhold, never supply. A failed
+    test of role and scope (attribution.py), then -- only when Claude is enabled -- to
+    Claude, which may classify the evidence's role and withhold, never supply. A failed
     reading is held as NEEDS_REVIEW with its evidence and the reason, which the publication
     gate refuses to publish until a person decides; an exemption group read from a
     neighbouring clause is set aside, as `_vet_posts` sets aside document names.
@@ -1033,17 +1067,17 @@ def _vet_attribution(field_name: str, got: Field, loaded: dict, rec: ExamRecord,
     elif not verdict.ok:
         return held('; '.join(verdict.reasons))
 
-    from .verification.client import get_provider
-    provider = provider or get_provider()
-    if not provider.is_enabled():
+    from tools.claude_cli import get_gateway
+    gateway = gateway or get_gateway()
+    if not gateway.is_enabled():
         return got
-    from .verification.attribution_llm import classify, validate
+    from .verification.attribution_claude import classify, validate
     flat = normalise_ws(text)
     at = flat.find(normalise_ws(excerpt)[:80])
     context = flat[max(0, at - 600):at + len(normalise_ws(excerpt)) + 600] if at >= 0 else ''
-    raw, infra, detail = classify(field_name, got.value, excerpt, context, provider)
+    raw, infra, detail = classify(field_name, got.value, excerpt, context, gateway)
     if infra != 'OK':
-        return held(f'the local model could not check the evidence\'s role ({infra}: {detail}).')
+        return held(f'Claude could not check the evidence\'s role ({infra}: {detail}).')
     ok, why = validate(field_name, raw, text)
     if not ok:
         return held(why + '.')

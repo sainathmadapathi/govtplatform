@@ -75,11 +75,13 @@ conflict (see Development Rules) rather than proceed.
 
 ## B.1 Zero AI-generated factual data — **NO EVIDENCE = NO FACT**
 
-- **0% AI-generated factual examination data.** An LLM may be internal machinery (classification,
-  extraction assistance, structure detection, semantic comparison, evidence verification,
-  contradiction detection, passage selection, converting *already-supported* information into
-  structured fields). An LLM is **never** the factual authority.
-- The LLM must **never invent** exam dates, eligibility, age limits, vacancies, posts,
+- **0% AI-generated factual examination data.** Claude (the installed Claude CLI, reached only
+  through the gateway in `tools/claude_cli/`; see `CLAUDE_CLI_INTEGRATION.md`) may be internal
+  machinery (discovering candidate sources, classification, extraction proposals that carry exact
+  quotations, structure detection, semantic comparison, evidence verification, contradiction
+  detection, completeness judgement, converting *already-supported* information into structured
+  fields, and clearly labelled GovOS guidance). Claude is **never** the factual authority.
+- Claude must **never invent** exam dates, eligibility, age limits, vacancies, posts,
   qualifications, fees, procedures, patterns, syllabus, cutoffs, results, admit-card dates, answer
   keys, official links, stages, rules, or clauses.
 - If a claim cannot be supported by a source, it must not become published factual information.
@@ -93,8 +95,11 @@ conflict (see Development Rules) rather than proceed.
 - Every user-facing factual item should carry an **evidence trail** and be able to answer: where
   it came from, which official source supports it, which exam/cycle the source belongs to, the
   exact supporting evidence, when it was verified, and whether it has been superseded.
-- Search/discovery tools (Tavily, search engines, coaching sites, YouTube, etc.) **find** sources;
-  they are **not** factual authorities. `Tavily result → VERIFIED FACT` must never exist.
+- Search/discovery (Claude's web discovery, search engines, coaching sites, YouTube, etc.) **find**
+  sources; they are **not** factual authorities. `Claude-proposed source → VERIFIED FACT` must never
+  exist: every URL Claude proposes is only a candidate until deterministic checks (syntax, public
+  address, reachability, redirects, authority ownership, document and exam/cycle identity) and a human
+  have judged it, and it is never official because Claude said so.
 
 ## B.3 Trust & evidence chain
 
@@ -103,7 +108,7 @@ SOURCE → SOURCE IDENTITY → EXAM/CYCLE IDENTITY → RELEVANT EVIDENCE →
 EXTRACTION → VALIDATION → VERIFICATION → PUBLICATION
 ```
 
-A fact must never be published because an LLM said it, a search result said it, a secondary site
+A fact must never be published because Claude said it, a search result said it, a secondary site
 said it, the value "looks right," another exam has the same rule, or an older cycle had the value.
 
 ## B.4 Isolation
@@ -116,16 +121,22 @@ become another's.
 
 `NOT_PUBLISHED ≠ NOT_EXTRACTED ≠ SOURCE_UNAVAILABLE ≠ FETCH_FAILURE ≠ EXTRACTION_FAILURE ≠
 VERIFICATION_FAILURE`. Infrastructure failures (`NETWORK_UNAVAILABLE`, `SOURCE_FETCH_FAILURE`,
-`LLM_UNAVAILABLE`, `LLM_TIMEOUT`, `LLM_INVALID_RESPONSE`, `PARSER_FAILURE`, `BUILD_FAILURE`) must
+`CLAUDE_DISABLED`, `CLAUDE_CLI_NOT_INSTALLED`, `CLAUDE_CLI_NOT_AUTHENTICATED`, `CLAUDE_CLI_BUSY`,
+`CLAUDE_CLI_TIMEOUT`, `CLAUDE_CLI_FAILED`, `CLAUDE_INVALID_OUTPUT`, `CLAUDE_SCHEMA_REJECTED`,
+`PARSER_FAILURE`, `BUILD_FAILURE`) must
 never become "official information does not exist," never become `NOT_PUBLISHED`, `NOT_APPLICABLE`,
 or `NOT_RELEASED`. Engineering states stay internal; users see plain language
 ("Not released yet by the authority").
 
-## B.6 Failure safety & LLM safety
+## B.6 Failure safety & Claude safety
 
-Deterministic validation runs **before** semantic (LLM) validation. The LLM receives only the
-claim, the exact evidence, and source metadata — never outside knowledge. LLM failures fail safely
-(NEEDS_REVIEW, never VERIFIED, never a fabricated fact). An LLM can **never directly publish**.
+Deterministic validation runs **before** semantic (Claude) validation. Claude receives only the
+claim, the exact evidence, and source metadata, each inside a delimited data block, never outside
+knowledge, and every reply is validated against a strict schema and re-checked by code that does not
+trust it (a proposed value is kept only if its quotation is printed verbatim in the source text GovOS
+fetched itself). Claude failures fail safely (NEEDS_REVIEW, never VERIFIED, never a fabricated fact,
+never `NOT_PUBLISHED`). Claude can **never directly publish**, and its job results wait for a human or
+the publication gate.
 
 ## B.7 Preservation
 
@@ -172,7 +183,7 @@ ecosystem. The product must:
 - `NOT_EXTRACTED` is **never** an acceptable final state when the information exists and can
   reasonably be acquired.
 - **Completeness must never be faked.** No generic filler, no other exam's information, no prior
-  year's value without proving applicability, no LLM knowledge, no assumptions, no guessed values,
+  year's value without proving applicability, no Claude knowledge, no assumptions, no guessed values,
   ever — to make a section look complete.
 
 ## B.12 Full lifecycle & next-step guidance
@@ -337,9 +348,11 @@ UI order differs from the numbering below — see `EXAM_SECTIONS`/`REFERENCE_SEC
   render, + per-domain readers: dates, eligibility, pattern, syllabus, pyq, results, admit_card,
   application, stages, tables) and `tools/exam_authoring/` (adapters, extract, emit, verify).
   `IMPLEMENTED` as a library; `PARTIAL` as an end-to-end automatic onboarding tool (see gaps).
-- **LLM verification:** `tools/exam_builder/verification/` (deterministic → prompts → llm_verifier
-  → verifier, adapters, cache, client for a local Qwen). Deterministic-first; VERIFIED == det.pass
-  AND SUPPORTED; infra failures never VERIFIED/never cached. `IMPLEMENTED` as a library.
+- **Claude verification:** `tools/exam_builder/verification/` (deterministic → claude_verifier →
+  verifier, adapters, cache) over the single gateway `tools/claude_cli/` (the installed Claude CLI,
+  non-interactive, server-side, behind a persistent job queue). Deterministic-first; VERIFIED ==
+  det.pass AND SUPPORTED; infra failures never VERIFIED/never cached. `IMPLEMENTED` as a library
+  and wired into the build through `use_claude`.
 
 ## E.2 The exam register (authored data)
 
@@ -384,7 +397,7 @@ UI order differs from the numbering below — see `EXAM_SECTIONS`/`REFERENCE_SEC
 ## E.6 The offline universal pipeline & verification
 
 - **Orchestrated end-to-end** (`orchestrate.py`): resolve → discover → identity → extract →
-  (optional Qwen) → gate → staging → atomic publish, dry-run by default, distinct failure states,
+  (optional Claude) → gate → staging → atomic publish, dry-run by default, distinct failure states,
   no exam-specific branch. `IMPLEMENTED` (see `ORCHESTRATION_AUDIT.md`).
 - **Identity & isolation:** content identity (`identity.py`, MATCH/MISMATCH/AMBIGUOUS, drops
   MISMATCH before extraction), authority ambiguity (`ambiguity.py`, e.g. Andhra vs Arunachal PSC →
@@ -396,9 +409,13 @@ UI order differs from the numbering below — see `EXAM_SECTIONS`/`REFERENCE_SEC
   provenance-carrying `Exam` block; preservation guard appends NEW exams and **refuses to overwrite
   authored records**. tsc-validated against the real interface this session. `IMPLEMENTED` for new
   exams.
-- **Tavily** (`app.py`): discovery only; OFFICIAL scope enforced server-side; findings stored
-  `PENDING_REVIEW` with a trust level, **never VERIFIED**; `research_facts` validation stays
-  pending when a source is unreachable. `IMPLEMENTED` and consistent with B.2/B.6.
+- **Claude discovery** (`app.py` + `tools/claude_cli/discovery.py`): discovery only, as a background
+  job. Claude proposes candidate URLs; the server checks each deterministically and enforces the
+  OFFICIAL scope; findings are stored `PENDING_REVIEW` with a server-computed trust level, **never
+  VERIFIED**; a manifest records everything proposed and everything rejected; `research_facts`
+  validation stays pending when a source is unreachable. Claude's fact reading keeps a value only with
+  a quotation found verbatim in the fetched page. `IMPLEMENTED` and consistent with B.2/B.6. The earlier
+  search provider is removed; its stored runs remain, labelled `LEGACY_SEARCH`.
 - **Tests:** 260 exam_builder unittest + 15 research-facts + 23 standalone modules pass; `tsc
   --noEmit` clean; `npm run build` succeeds. **No frontend test harness.** `IMPLEMENTED` (backend/
   pipeline) / `LIMITATION` (frontend untested by automation).
@@ -409,11 +426,11 @@ UI order differs from the numbering below — see `EXAM_SECTIONS`/`REFERENCE_SEC
 |---|---|---|---|---|---|
 | Exam discovery (naive) | Yes | PARTIAL | `ExamFinder`, recommendation engine in `ui.tsx`/`services.ts` | Only 5 authored exams; not the ecosystem | P1 |
 | Candidate guidance / eligibility | Yes | IMPLEMENTED | `EligibilityCalculator`, `evaluateEligibility` | Guidance limited to authored posts | P2 |
-| Exam resolution | Yes | IMPLEMENTED | `resolve.py`, `ambiguity.py` | Needs live search key to run | P1 |
-| Official source discovery | Yes | PARTIAL | `discover.py`, `search.py` (Tavily) | Not run live; key/network needed | P1 |
+| Exam resolution | Yes | IMPLEMENTED | `resolve.py`, `ambiguity.py` | Needs Claude discovery (signed-in CLI) to run live | P1 |
+| Official source discovery | Yes | PARTIAL | `discover.py`, `search.py` (Claude discovery adapter), `tools/claude_cli/discovery.py` | Not run live; needs a signed-in Claude CLI with web tools | P1 |
 | Source identity | Yes | IMPLEMENTED | `identity.py` (MATCH/MISMATCH/AMBIGUOUS) | — | — |
 | Extraction | Yes | PARTIAL | `semantic.py`, `exam_authoring/extract.py`, per-domain readers | Coverage limited; many fields NOT_EXTRACTED by current readers | P1 |
-| Evidence verification | Yes | IMPLEMENTED | `verification/` (deterministic + Qwen) | Standalone; not a step in the automated build unless orchestrator calls it | P2 |
+| Evidence verification | Yes | IMPLEMENTED | `verification/` (deterministic + Claude) | A step in the build when `use_claude` is set; otherwise fields are held, never upgraded | P2 |
 | Completeness (search until found) | Yes | NOT YET | `contract.py`/`coverage_from` compute coverage but do not re-search on gaps | No automatic multi-source re-acquisition loop | P0 |
 | Canonical data | Yes | PARTIAL | `schema.py` `UniversalExam` (Fact/evidence/revisions) | No types for resources/portals/FAQs/exam-day/roadmap; `ExamRecord→UniversalExam` bridge missing | P1 |
 | 17 sections | Yes | IMPLEMENTED | `ui.tsx` sections + `types.ts` | Thin data for IBPS/APPSC; some thin (no-provenance) types | P2 |
@@ -502,7 +519,7 @@ UI order differs from the numbering below — see `EXAM_SECTIONS`/`REFERENCE_SEC
 - **Acceptance:** for a captured official source set, the pipeline populates the applicable
   sections with verified, provenance-backed facts and passes the gate; failures keep distinct
   states.
-- **Must NOT:** add exam-specific logic; let Tavily/LLM output become VERIFIED without evidence.
+- **Must NOT:** add exam-specific logic; let search/Claude output become VERIFIED without evidence.
 
 ### PHASE 3 — Reliably populate the 17 sections from verified official data
 - **Objective:** the completeness loop (Part 6) — widen search across official documents before
@@ -551,11 +568,11 @@ UI order differs from the numbering below — see `EXAM_SECTIONS`/`REFERENCE_SEC
 | 1 | **Naive student** — a user with no exam knowledge can understand what to do | UX clarity | PARTIAL (works for the 5 authored exams) |
 | 2 | **Unknown exam** — a previously unsupported exam onboarded without exam-specific logic | universality | NOT YET (pipeline safe but not end-to-end live) |
 | 3 | **Authenticity** — every published factual claim has valid evidence | B.1/B.2 | IMPLEMENTED for authored data (provenance on facts) |
-| 4 | **Zero AI fact creation** — the LLM cannot introduce unsupported facts | B.1/B.6 | IMPLEMENTED (deterministic-first; LLM never publishes) |
+| 4 | **Zero AI fact creation** — Claude cannot introduce unsupported facts | B.1/B.6 | IMPLEMENTED (deterministic-first; every proposed value needs a verbatim quotation; Claude never publishes) |
 | 5 | **Completeness** — legitimate official sources searched before "unavailable" | Part 6 | NOT YET (no re-acquisition loop) |
 | 6 | **Isolation** — no exam receives another's information | B.4 | IMPLEMENTED (content + data isolation, tested) |
 | 7 | **Revision** — corrigenda update current info while preserving history | B.7 | IMPLEMENTED (dates supersession; merge refuses to overwrite) |
-| 8 | **Failure safety** — network/LLM/parser failures never become false facts | B.5/B.6 | IMPLEMENTED (distinct infra states; not cached) |
+| 8 | **Failure safety** — network/Claude/parser failures never become false facts | B.5/B.6 | IMPLEMENTED (distinct infra states; not cached) |
 | 9 | **User clarity** — a naive student understands a page without technical knowledge | UX | PARTIAL (honest empty states; engineering states hidden) |
 | 10 | **Full journey** — discovery → result → next step | A.2 | PARTIAL (all sections exist; data deep only for SSC/UPSC) |
 

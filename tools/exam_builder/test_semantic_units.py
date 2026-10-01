@@ -33,7 +33,16 @@ from . import semantic as SM
 from . import stages as ST
 from . import units as U
 from .clauses import procedure_clauses
-from .test_attribution import URL, FakeProvider
+from tools.claude_cli.schemas import InfraStatus
+from tools.claude_cli.testing import FakeClaude
+
+from .test_attribution import URL
+
+
+def FakeProvider(reply, enabled=True, fail=None):
+    """A scripted Claude gateway whose every answer is `reply` (the completeness vetting asks only
+    that one question). `fail` simulates the CLI failing; `enabled=False` the integration off."""
+    return FakeClaude(reply, enabled=enabled, fail=InfraStatus.CLAUDE_CLI_FAILED if fail else None)
 
 # ------------------------------------------------------------------------------ fixtures
 
@@ -370,9 +379,9 @@ def _rec():
 
 class TestCompletenessVetting(unittest.TestCase):
 
-    def vet(self, field: Field, text: str, provider=None):
+    def vet(self, field: Field, text: str, gateway=None):
         return B._vet_completeness(field.name, field, _loaded(text), _rec(),
-                                   provider=provider or FakeProvider({}, enabled=False))
+                                   gateway=gateway or FakeProvider({}, enabled=False))
 
     def test_whole_units_pass_untouched(self):
         f = Field.found('faqs', [{'question': 'Q', 'answer': LONG_CLAUSE}], cite(LONG_CLAUSE))
@@ -507,12 +516,214 @@ class TestUnrelatedValuesUnchanged(unittest.TestCase):
         self.assertEqual(U.complete_from_source(rule, text, 'sentence').kind, 'unchanged')
         f = Field.found('examDayChecklist', [{'title': rule, 'description': rule}], cite(rule))
         self.assertIs(B._vet_completeness('examDayChecklist', f, _loaded(text), _rec(),
-                                          provider=FakeProvider({}, enabled=False)), f)
+                                          gateway=FakeProvider({}, enabled=False)), f)
 
     def test_fields_that_quote_no_unit_are_not_vetted(self):
         f = Field.found('vacancies', {'count': '120'}, cite('There are 120 vacancies.'))
         self.assertIs(B._vet_completeness('vacancies', f, _loaded('There are 120 vacancies.'), _rec()), f)
         self.assertEqual(U.units_of('vacancies', {'count': '120'}), [])
+
+
+# ------------------------------------------------------------------ syllabus units (F3)
+
+#: 284 characters: longer than the old 160-character title cut. It is printed over two pages,
+#: so the page's number ("29") stands between two of its lines.
+LONG_ENTRY = ('Early Indian Civilizations of the river valleys; Emergence of Religious Movements in the '
+              'sixth century BC - Jainism and Buddhism; Indo- Greek Art and Architecture – Mauryan, '
+              'Satavahana and Gupta periods; Growth of Socialist and Communist Movements; Independence '
+              'and Partition of India')
+#: A note longer than the old 600-character cut.
+LONG_NOTE = ' '.join(f'Resource {i} of the region, its distribution and its conservation are studied.'
+                     for i in range(1, 11))
+
+
+def _wrap(text: str, width: int = 80) -> list[str]:
+    out, line = [], ''
+    for word in text.split():
+        if len(line) + len(word) + 1 > width:
+            out.append(line)
+            line = word
+        else:
+            line = (line + ' ' + word).strip()
+    return out + [line]
+
+
+def syllabus_notice(footer: str = '29') -> str:
+    entry = _wrap('1. ' + LONG_ENTRY)
+    note = _wrap('3. Natural Resources: ' + LONG_NOTE)
+    return '\n'.join([
+        'ANNEXURE-II', 'SCHEME AND SYLLABUS', 'SYLLABUS',
+        'PAPER-II: HISTORY, CULTURE AND GEOGRAPHY OF THE STATE AND OF THE COUNTRY AS A WHOLE',
+        'I. History and Culture of India', *entry[:2], footer, *entry[2:],
+        '2. Satavahanas and their contribution to the culture of the Deccan.',
+        'II. Geography of India', '1. Physical features of India.', '2. Rivers of India.', *note,
+    ])
+
+
+def read_syllabus(text: str):
+    from . import syllabus as SY
+    from .schema import SourceDocument, SourceKind
+    doc = SourceDocument(id=URL, url=URL, kind=SourceKind.OTHER_OFFICIAL, title='Notice',
+                         authority='Example Commission', exam_id='exam-example-officers-2031')
+    return SY.extract_syllabus(doc, text, exam_id='exam-example-officers-2031', cycle='2031')
+
+
+def _all(nodes):
+    for n in nodes:
+        yield n
+        yield from _all(n.children)
+
+
+def _tree(syl):
+    from .compat import syllabus_tree
+    return syllabus_tree(syl, exam_id='exam-example-officers-2031')
+
+
+class TestSyllabusUnits(unittest.TestCase):
+
+    def entry(self, syl, start):
+        return next(n for n in _all(syl.roots) if n.title.startswith(start))
+
+    def test_an_entry_longer_than_160_is_kept_whole(self):
+        node = self.entry(read_syllabus(syllabus_notice()), 'Early Indian Civilizations')
+        self.assertGreater(len(LONG_ENTRY), 160)
+        self.assertEqual(node.title, LONG_ENTRY)                         # was title[:160]
+        self.assertTrue(node.title.endswith('Independence and Partition of India'))
+
+    def test_a_page_number_inside_an_entry_is_not_part_of_it_but_the_evidence_quotes_it(self):
+        node = self.entry(read_syllabus(syllabus_notice()), 'Early Indian Civilizations')
+        self.assertNotIn(' 29 ', f' {node.title} ')
+        self.assertEqual(node.status.value, 'VERIFIED')
+        self.assertIn(' 29 ', f' {node.evidence[0].span} ')              # verbatim, footer and all
+        self.assertTrue(U._within(node.title, node.evidence[0].span))  # and it covers the value
+
+    def test_a_note_longer_than_600_is_kept_whole(self):
+        node = self.entry(read_syllabus(syllabus_notice()), 'Natural Resources')
+        self.assertGreater(len(LONG_NOTE), 600)
+        self.assertEqual(node.note, LONG_NOTE)                           # was note[:600]
+        self.assertTrue(U._within(node.note, node.evidence[0].span))
+
+    def test_no_entry_ends_inside_a_word(self):
+        text = syllabus_notice()
+        for node in _all(read_syllabus(text).roots):
+            if node.status.value == 'VERIFIED':
+                self.assertFalse(U.check_value(node.evidence[0].span, text).reason.startswith('ends inside a word'),
+                                 node.title)
+
+    def test_the_published_tree_carries_whole_values_and_covering_evidence(self):
+        text = syllabus_notice()
+        tree = _tree(read_syllabus(text))
+        self.assertEqual(U.syllabus_problems(tree, text), [])
+        flat = M.flat_syllabus_from_tree(tree)
+        subs = [s for t in flat for s in t['subtopics']] + [t['topicName'] for t in flat]
+        self.assertIn(LONG_ENTRY, subs)                                  # was [:220] / [:160]
+
+    def test_a_long_heading_is_its_own_subject_label(self):
+        heading = 'PAPER-II: HISTORY, CULTURE AND GEOGRAPHY OF THE STATE AND OF THE COUNTRY AS A WHOLE'
+        self.assertEqual(M._subject_label(heading), heading)             # was [:58] + '…'
+
+    def test_an_entry_whose_whole_text_is_not_printed_is_held_not_completed(self):
+        # A page footer of words ("Page 29 of 40", which the reader recognises and leaves out of the
+        # entry) sits inside it: the entry as read is not printed verbatim and is not only a page
+        # number apart, so it is held for review with its first line -- never published as covered
+        # evidence, and never completed.
+        text = syllabus_notice(footer='Page 29 of 40')
+        node = self.entry(read_syllabus(text), 'Early Indian Civilizations')
+        self.assertEqual(node.status.value, 'NEEDS_REVIEW')
+        self.assertNotIn('Page 29', node.title)
+        self.assertFalse(U._within(node.title, node.evidence[0].span))
+
+    def test_a_cut_syllabus_is_found_and_held(self):
+        text = syllabus_notice()
+        tree = _tree(read_syllabus(text))
+        cut = json.loads(json.dumps(tree))
+        for node in U._syllabus_nodes(cut):
+            if node['title'].startswith('Early Indian'):
+                node['title'] = node['title'][:160]                      # the old cut
+                node['provenance']['excerptText'] = node['provenance']['excerptText'][:88]
+        problems = U.syllabus_problems(cut, text)
+        self.assertTrue(problems)
+        got = B._vet_completeness('syllabus', Field.found('syllabus', cut, cite('SYLLABUS')),
+                                  _loaded(text), _rec(), gateway=FakeProvider({}, enabled=False))
+        self.assertEqual(got.status, Status.NEEDS_REVIEW)
+        self.assertEqual(got.value, cut)                                 # held as read, not completed
+
+    def test_a_whole_syllabus_passes_untouched(self):
+        text = syllabus_notice()
+        f = Field.found('syllabus', _tree(read_syllabus(text)), cite('SYLLABUS'))
+        self.assertIs(B._vet_completeness('syllabus', f, _loaded(text), _rec(),
+                                          gateway=FakeProvider({}, enabled=False)), f)
+
+    def test_the_model_only_withholds_a_syllabus(self):
+        text = syllabus_notice()
+        tree = _tree(read_syllabus(text))
+        f = Field.found('syllabus', tree, cite('SYLLABUS'))
+        no = FakeProvider({'complete': False, 'continues_after': True, 'starts_mid_unit': False,
+                           'confidence': 'high', 'reason': 'x'})
+        held = B._vet_completeness('syllabus', f, _loaded(text), _rec(), gateway=no)
+        self.assertEqual(held.status, Status.NEEDS_REVIEW)
+        self.assertEqual(held.value, tree)                               # no text supplied
+        down = B._vet_completeness('syllabus', f, _loaded(text), _rec(), gateway=FakeProvider({}, fail='down'))
+        self.assertEqual(down.status, Status.NEEDS_REVIEW)
+
+    def test_an_entry_over_a_page_is_placed_where_it_begins(self):
+        from types import SimpleNamespace
+        text = syllabus_notice()
+        head, rest = text.split('I. History and Culture of India\n')
+        entry_start, page_three = rest.split('\n29\n')
+        syl = read_syllabus(text)
+        # Page 1 is the heading block, page 2 is where the entry begins, page 3 holds its tail.
+        B._place_tree_pages(syl.roots, SimpleNamespace(pages=[head + 'I. History and Culture of India',
+                                                              entry_start, '29\n' + page_three]))
+        node = self.entry(syl, 'Early Indian Civilizations')
+        self.assertEqual(node.evidence[0].page, 2)                       # not left at page 1
+
+    def test_a_long_wrapped_heading_is_kept_whole(self):
+        heading = ('Social, Cultural and Economic History of the Region from the earliest settlements to the '
+                   'present day, with special reference to its movements, institutions and people')
+        lines = _wrap('III. ' + heading, 70)
+        text = syllabus_notice() + '\n' + '\n'.join(lines + ['1. Early settlements of the region.',
+                                                            '2. The modern period.'])
+        syl = read_syllabus(text)
+        self.assertGreater(len(heading), 160)
+        self.assertTrue(any(n.title == heading for n in _all(syl.roots)),
+                        [n.title[:60] for n in _all(syl.roots) if n.title.startswith('Social')])
+
+    def test_the_clause_reader_keeps_a_long_clause_and_its_whole_evidence(self):
+        topic = ('Number Systems and their properties, including divisibility, the highest common factor and '
+                 'the least common multiple, fractions and decimals, and the relationships between numbers '
+                 'of every kind printed in the school curriculum up to the tenth class')
+        body = ' '.join(f'Computation of item {i} of the arithmetic section, with worked problems.' for i in range(1, 16))
+        text = '\n'.join(['NOTICE OF EXAMINATION 2031', '13.10 Indicative Syllabus (Tier-I):',
+                          '13.10.1 Quantitative Aptitude:', f'13.10.1.1 {topic}: {body}',
+                          '13.10.1.2 Percentages: Percentage and its applications.'])
+        node = next(n for n in _all(read_syllabus(text).roots) if n.title.startswith('Number Systems'))
+        self.assertGreater(len(node.title), 160)
+        self.assertTrue(node.title.startswith(topic))                    # was title[:160]
+        self.assertTrue((node.title + ' ' + (node.note or '')).rstrip().endswith('with worked problems'))
+        self.assertGreater(len(node.evidence[0].span), 900)             # was span[:900]
+        self.assertEqual(node.status.value, 'VERIFIED')
+
+    def test_the_bullet_reader_keeps_a_long_bullet_whole(self):
+        bullet = ('Indian Polity and Governance including the Constitution, the Political System, Panchayati Raj, '
+                  'Public Policy and Rights Issues, the working of the Parliament and of the State Legislatures, '
+                  'and the role of the constitutional bodies in the Republic')
+        text = '\n'.join(['SECTION III: SYLLABI FOR THE EXAMINATION', 'Part A—Preliminary Examination',
+                          'Paper I - (200 marks) Duration: Two hours',
+                          '• Current events of national and international importance.', f'• {bullet}',
+                          '• Economic and Social Development.', 'SECTION IV: CENTRES'])
+        node = next(n for n in _all(read_syllabus(text).roots) if n.title.startswith('Indian Polity'))
+        self.assertGreater(len(bullet), 160)
+        self.assertEqual(node.title, bullet)                             # was title[:160]
+
+    def test_a_long_branch_topic_is_its_whole_name(self):
+        name = ('Paper-IV Economy and Development: the Indian economy, its growth, planning, the public sector, '
+                'agriculture, industry and services, with the development of the State since its formation and '
+                'the problems and prospects of each of its regions')
+        tree = [{'id': 'r', 'title': 'SYLLABUS', 'children': [{'id': 's', 'title': 'Main Examination', 'children': [
+            {'id': 't', 'title': name, 'children': [{'id': 'l1', 'title': 'Growth'}, {'id': 'l2', 'title': 'Planning'}]}]}]}]
+        self.assertGreater(len(name), 220)
+        self.assertIn(name, [t['topicName'] for t in M.flat_syllabus_from_tree(tree)])   # was [:220]
 
 
 if __name__ == '__main__':

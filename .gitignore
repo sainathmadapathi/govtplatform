@@ -2,6 +2,7 @@ __pycache__/
 *.py[cod]
 .env
 .env.*
+!.env.example
 .venv/
 venv/
 node_modules/
@@ -22,5 +23,5 @@ archive/
 # Discovery snapshots: which documents a past build found, never their contents
 .exam_manifests/
 
-# Local LLM model files must never be committed
-*.gguf
+# Generated projection of src/data.ts for the server's Ask AI context (npm run export:authored)
+exam_data/
