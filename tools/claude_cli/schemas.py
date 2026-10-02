@@ -85,6 +85,9 @@ class Operation(str, Enum):
     GENERATE_PRACTICE = 'GENERATE_PRACTICE'
     #: A second, independent pass: solve generated questions WITHOUT being shown the answer key.
     SOLVE_PRACTICE = 'SOLVE_PRACTICE'
+    #: Name the role of official links the deterministic rules could not classify. A role only:
+    #: never a source class, never a new link (tools/exam_builder/authority_discovery.py).
+    CLASSIFY_SOURCE = 'CLASSIFY_SOURCE'
 
 
 # ------------------------------------------------------------------------------- the validator
@@ -233,6 +236,14 @@ EXTRACTABLE_FIELDS = ['application_start', 'application_last_date', 'exam_date',
 
 DISCOVERY_KINDS = ['NOTIFICATION', 'SYLLABUS', 'RESULT', 'ADMIT_CARD', 'ANSWER_KEY', 'PORTAL', 'OTHER']
 
+#: The roles CLASSIFY_SOURCE may name: tools.exam_builder.discover.DocKind without UNKNOWN. Listed
+#: here rather than imported so this package never depends on the builder; a test pins the two
+#: together. UNKNOWN is deliberately absent -- "I cannot tell" is CLAUDE leaving a link out.
+SOURCE_ROLES = ['EXAM_PAGE', 'NOTIFICATION', 'CORRIGENDUM', 'SYLLABUS', 'EXAM_PATTERN', 'QUESTION_PAPER',
+                'ANSWER_KEY', 'ADMIT_CARD', 'RESULT', 'APPLICATION_PORTAL', 'CUTOFF', 'CALENDAR', 'OTR_PORTAL',
+                'OFFICIAL_PORTAL', 'APPLICATION_GUIDE', 'EXAM_GUIDE', 'EXAM_DAY_INSTRUCTIONS', 'STUDY_MATERIAL',
+                'LECTURE_VIDEO', 'PRACTICE_TOOL', 'DISCOVERY_SIGNAL']
+
 OPERATION_SCHEMAS: dict[Operation, dict] = {
     Operation.VERIFY_CLAIM: _obj({
         'decision': _str(16, ['SUPPORTED', 'CONTRADICTED', 'INSUFFICIENT']),
@@ -301,6 +312,14 @@ OPERATION_SCHEMAS: dict[Operation, dict] = {
             'index': {'type': 'integer', 'minimum': 0, 'maximum': 9},
             'choice': {'type': 'integer', 'minimum': -1, 'maximum': 3},
         }), 10),
+    }),
+    # Only links GovOS sent; `index` echoes the link's position. A link Claude cannot place is left out.
+    Operation.CLASSIFY_SOURCE: _obj({
+        'links': _arr(_obj({
+            'index': {'type': 'integer', 'minimum': 0, 'maximum': 49},
+            'role': _str(24, SOURCE_ROLES),
+            'is_repository': _BOOL,
+        }), 50),
     }),
 }
 

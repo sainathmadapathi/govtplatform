@@ -46,6 +46,19 @@ class DocKind(str, Enum):
     CUTOFF = 'CUTOFF'
     CALENDAR = 'CALENDAR'
     UNKNOWN = 'UNKNOWN'
+    # The roles below were added for authority source discovery (authority_discovery.py), which
+    # looks at a whole authority and the material around it, not only one exam's documents.
+    # `classify_kind` never returns them, so exam discovery behaves exactly as before; the
+    # source-graph classifier (resource_roles.py) does. One vocabulary, not two.
+    OTR_PORTAL = 'OTR_PORTAL'                  # one-time registration / candidate account
+    OFFICIAL_PORTAL = 'OFFICIAL_PORTAL'        # an authority service or site that is not one document
+    APPLICATION_GUIDE = 'APPLICATION_GUIDE'    # how to apply: instructions, walkthroughs
+    EXAM_GUIDE = 'EXAM_GUIDE'                  # explanations of an exam's process or pattern
+    EXAM_DAY_INSTRUCTIONS = 'EXAM_DAY_INSTRUCTIONS'
+    STUDY_MATERIAL = 'STUDY_MATERIAL'          # learning material: notes, textbooks, references
+    LECTURE_VIDEO = 'LECTURE_VIDEO'            # a lesson or a channel of lessons
+    PRACTICE_TOOL = 'PRACTICE_TOOL'            # an interactive practice tool
+    DISCOVERY_SIGNAL = 'DISCOVERY_SIGNAL'      # a lead (a social post, a news item), never a fact
 
 
 #: Ordered: the first match wins, so the more specific kind is listed before the general
@@ -214,8 +227,13 @@ def _designation_for(resolved: ResolvedExam):
 
 
 def discover(resolved: ResolvedExam, *, exam_id: str, max_pages: int = 6,
-             sibling_exam_words: list[str] | None = None) -> SourceSet:
-    """Crawl outward from the resolver's seeds, keeping only what belongs to this exam."""
+             sibling_exam_words: list[str] | None = None, authority_run=None) -> SourceSet:
+    """Crawl outward from the resolver's seeds, keeping only what belongs to this exam.
+
+    `authority_run` (an `authority_discovery` run over the same authority) is optional. Its
+    official items are judged by this same gate, item by item, before any search is spent on a
+    kind they already supply; a run never adds a document by a softer route than a crawled link.
+    """
     words = exam_aliases(resolved.query, resolved.official_name)
     host = (urlparse(resolved.authority.domain).hostname or '').replace('www.', '')
     want, on = _designation_for(resolved)
@@ -328,9 +346,38 @@ def discover(resolved: ResolvedExam, *, exam_id: str, max_pages: int = 6,
     for page_url in [u for u in listing_candidates if u not in seen_urls][:max_pages]:
         crawl(page_url)
 
+    if authority_run is not None:
+        _merge_authority_run(out, authority_run, resolved, exam_id, sibling_exam_words, want)
     _search_for_missing_kinds(out, resolved, words, host, sibling_exam_words)
     _dedupe(out)
     return out
+
+
+def _merge_authority_run(out: SourceSet, run, resolved: ResolvedExam, exam_id: str,
+                         sibling_exam_words: list[str] | None, designation) -> None:
+    """Admit an authority run's official items that this exam's gate accepts.
+
+    The words are the exam's own without the authority's: a run spans every listing the
+    authority publishes, and its acronym names all of them."""
+    from .authority_discovery import admit_for_exam, exam_words_for
+    words = exam_words_for(resolved.query, resolved.official_name, authority_name=resolved.authority.name,
+                           authority_domain=resolved.authority.domain)
+    if not words and designation is None:
+        out.log.append('authority discovery: the exam has no word of its own to judge items by; none admitted')
+        return
+    admission = admit_for_exam(run, exam_id=exam_id, exam_words=words, sibling_words=sibling_exam_words,
+                               exam_cycle=resolved.year or '', designation=designation)
+    have = {d.url for d in out.docs}
+    added = 0
+    for doc in admission.docs:
+        if doc.url in have:
+            continue
+        doc.found_on = f'{doc.found_on} (authority discovery)'
+        out.docs.append(doc)
+        have.add(doc.url)
+        added += 1
+    out.log.append(f'authority discovery: {added} official document(s) admitted for this exam from '
+                   f'{run.pages_fetched} page(s) read; {len(admission.mismatches)} named another exam')
 
 
 #: The words to search with for each kind GovOS needs. Generic recruitment vocabulary, not

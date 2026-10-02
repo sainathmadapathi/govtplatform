@@ -154,7 +154,10 @@ import {
   DiscoveryProfileField,
   DiscoveryResult,
   DiscoveryExamResult,
-  DiscoveryVerdict
+  DiscoveryVerdict,
+  ResourceRole,
+  DiscoveredSources,
+  DiscoveredSourceItem
 } from './types';
 import {
   ALL_EXAMS,
@@ -197,6 +200,7 @@ import {
   claudeService,
   researchService,
   resourceLiveService,
+  sourceDiscoveryService,
   syllabusLiveService,
   calculateDetailedAge,
   discoverExams,
@@ -3958,7 +3962,108 @@ const CLAUDE_JOB_LABELS: Record<string, string> = {
   BUILD_EXAM: 'Exam build',
   ORDER_ROADMAP: 'Roadmap order',
   ANSWER_QUESTION: 'Candidate question',
-  GENERATE_PRACTICE: 'Practice questions'
+  GENERATE_PRACTICE: 'Practice questions',
+  DISCOVER_AUTHORITY: 'Authority site walk'
+};
+
+/**
+ * Trust Panel: walk one exam's authority site from its official address and show what the latest
+ * walk can honestly say. The walk is a server job (bounded, deterministic link reading; Claude only
+ * when ticked, and only to name a link's role). Nothing it finds becomes a candidate fact: official
+ * documents still go through the builder's gates, and the exam's sections only *link* to what it found.
+ */
+const AuthoritySourceDiscoveryCard: React.FC<{ examId: string; onQueued?: () => void }> = ({ examId: researchExamId, onQueued }) => {
+  // The research picker lists the register; an exam built at runtime (the open one) can be walked too.
+  const openExamId = storageService.getCurrentExamId();
+  const choices = [
+    ...ALL_EXAMS.map(e => ({ id: e.id, label: e.code.replace(/_/g, ' ') })),
+    ...(openExamId && !ALL_EXAMS.some(e => e.id === openExamId) ? [{ id: openExamId, label: `${openExamId} (the exam you have open)` }] : [])
+  ];
+  const [examId, setExamId] = useState<string>(researchExamId);
+  useEffect(() => setExamId(researchExamId), [researchExamId]);
+  const exam = ALL_EXAMS.find(e => e.id === examId);
+  const [found, setFound] = useState<DiscoveredSources | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [useClaude, setUseClaude] = useState(false);
+  const [message, setMessage] = useState<{ text: string; tone: 'info' | 'error' } | null>(null);
+  const load = async () => setFound(await sourceDiscoveryService.forExam(examId));
+  useEffect(() => { setFound(null); setMessage(null); load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [examId]);
+
+  const walk = async () => {
+    setBusy(true);
+    setMessage(null);
+    const queued = await sourceDiscoveryService.discover(examId, useClaude);
+    if (!queued.ok) {
+      setMessage({ text: queued.error, tone: 'error' });
+      setBusy(false);
+      return;
+    }
+    onQueued?.();
+    setMessage({ text: 'Walking the authority’s site. This reads up to 25 pages and takes about a minute.', tone: 'info' });
+    const done = await claudeService.waitForJob(queued.data.jobId, { timeoutMs: 300_000, intervalMs: 2000 });
+    if (done.ok && done.data.status === 'SUCCEEDED') {
+      setMessage({ text: 'Walk finished and stored.', tone: 'info' });
+      await load();
+    } else if (done.ok) {
+      setMessage({ text: done.data.errorMessage || `The walk ended ${done.data.status.toLowerCase()}.`, tone: 'error' });
+    } else {
+      setMessage({ text: 'Still running on the server; it appears in Claude jobs below. Reopen this tab to see the result.', tone: 'info' });
+    }
+    onQueued?.();
+    setBusy(false);
+  };
+
+  const states = found?.searchStates ? Object.entries(found.searchStates) : [];
+  return (
+    <div className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+        <div style={{ minWidth: 0, flex: '1 1 320px' }}>
+          <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Authority source discovery{exam ? ` — ${exam.authorityName.split(' (')[0]}` : found?.authorityName ? ` — ${found.authorityName}` : ''}</h4>
+          <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: '4px 0 0', lineHeight: 1.5 }}>
+            Walks the exam&apos;s authority site from its official address — at most 2 links deep, 25 pages and 40 files — and records every repository, document and portal it finds, how it was reached, and what it could not read. Links are read from the pages themselves. Nothing found becomes a candidate fact: the exam&apos;s sections only link to it, labelled by source.
+          </p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <select value={examId} onChange={e => setExamId(e.target.value)} aria-label="Exam whose authority to walk" style={{ padding: '8px 10px', borderRadius: 'var(--radius-md)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontSize: '0.82rem', fontFamily: 'var(--font-sans)', maxWidth: '100%' }}>
+            {choices.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+          </select>
+          <label style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+            <input type="checkbox" checked={useClaude} onChange={e => setUseClaude(e.target.checked)} />
+            Ask Claude to name unclear links
+          </label>
+          <button className="btn btn-emerald" onClick={walk} disabled={busy} style={{ fontSize: '0.84rem', display: 'inline-flex', alignItems: 'center', gap: '6px', opacity: busy ? 0.7 : 1 }}>
+            <RefreshCw size={14} className={busy ? 'animate-spin' : ''} /> {busy ? 'Walking…' : 'Walk the authority site'}
+          </button>
+        </div>
+      </div>
+      {message && (
+        <div style={{ fontSize: '0.82rem', color: message.tone === 'error' ? '#b71f1f' : 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {message.tone === 'error' ? <AlertTriangle size={14} /> : <Info size={14} />} {message.text}
+        </div>
+      )}
+      {found === null && <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>No answer from the GovOS server.</div>}
+      {found && found.state !== 'DISCOVERED' && (
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{found.note}</div>
+      )}
+      {found && found.state === 'DISCOVERED' && (
+        <>
+          <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+            Last walk {found.discoveredAt?.slice(0, 16).replace('T', ' ')} UTC · {found.coverage?.pagesFetched} page{found.coverage?.pagesFetched === 1 ? '' : 's'} · {found.coverage?.officialResources} official link{found.coverage?.officialResources === 1 ? '' : 's'} ·{' '}
+            {(found.repositories || []).length} listing{(found.repositories || []).length === 1 ? '' : 's'} relevant to this exam ·{' '}
+            {found.exhaustive ? 'every reachable page was read' : `not exhaustive (${found.coverage?.fetchFailures || 0} unreachable, ${found.coverage?.pagesWithoutLinks || 0} script-built, ${found.coverage?.unexplored || 0} left for later)`}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(260px, 100%), 1fr))', gap: '8px' }}>
+            {states.map(([role, st]) => (
+              <div key={role} style={{ padding: '8px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-2)', border: '1px solid var(--border-color)' }}>
+                <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-primary)' }}>{RESOURCE_ROLE_LABEL[role as ResourceRole] || role} · {st.state.replace(/_/g, ' ').toLowerCase()}</div>
+                <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>{st.reason}</div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
 };
 
 const claudeJobColor = (status: string): string =>
@@ -4487,13 +4592,126 @@ export function resolveWithHistory(message: string, history: ConversationTurn[])
   return { text: `${message} ${reenter}`.trim(), inherited };
 }
 
+// ---- what a resource is for ------------------------------------------------------------
+// A PDF is not study material because it is a PDF, and a YouTube link is not a lesson because it
+// is on YouTube. The role is what the content is *for*, and only learning material belongs in the
+// Resource Library. This mirrors tools/exam_builder/resource_roles.py `classify_resource_item`;
+// both are held to tools/exam_builder/resource_role_cases.json (the Python suite and
+// `npm run check:frontend`), so the two cannot drift apart.
+const RESOURCE_ROLES: ResourceRole[] = [
+  'EXAM_PAGE', 'NOTIFICATION', 'CORRIGENDUM', 'SYLLABUS', 'EXAM_PATTERN', 'QUESTION_PAPER', 'ANSWER_KEY',
+  'ADMIT_CARD', 'RESULT', 'APPLICATION_PORTAL', 'CUTOFF', 'CALENDAR', 'OTR_PORTAL', 'OFFICIAL_PORTAL',
+  'APPLICATION_GUIDE', 'EXAM_GUIDE', 'EXAM_DAY_INSTRUCTIONS', 'STUDY_MATERIAL', 'LECTURE_VIDEO', 'PRACTICE_TOOL',
+  'DISCOVERY_SIGNAL', 'UNKNOWN'
+];
+const LEARNING_ROLES: ResourceRole[] = ['STUDY_MATERIAL', 'LECTURE_VIDEO', 'PRACTICE_TOOL'];
+const OFFICIAL_RESOURCE_SUBJECTS = ['official gazette', 'official portal', 'official notices', 'previous year papers'];
+const STUDY_REFERENCE = /constitution|india\s+code|\bcentral\s+acts?\b|statutes?|bare\s+acts?|textbooks?|ncert/i;
+const ITEM_ROLE_RULES: Array<[ResourceRole, RegExp]> = [
+  ['ANSWER_KEY', /answer\s*keys?|response\s+sheets?/i],
+  ['QUESTION_PAPER', /question\s+papers?|previous\s+year|\bpyqs?\b|question\s+booklet|official\s+question\s+paper/i],
+  ['CUTOFF', /cut[\s-]*off|qualifying\s+marks/i],
+  ['CALENDAR', /\bcalendar\b|exam(ination)?\s+schedule|time\s*table/i],
+  ['RESULT', /\bresults?\b|merit\s+list|selection\s+list|qualified\s+candidates/i],
+  ['ADMIT_CARD', /admit\s*card|hall\s*ticket|call\s*letter/i],
+  ['CORRIGENDUM', /corrigend|addend|re-?open|amendment|extension\s+of/i],
+  ['SYLLABUS', /syllabus|scheme\s+(of|and)\s+exam/i],
+  ['OTR_PORTAL', /one[\s-]*time[\s-]*registration|\botr\b/i],
+  ['APPLICATION_PORTAL', /application\s+portal|apply\s+(online|here)|online\s+application|\bapplication\b.*\bportal/i],
+  ['NOTIFICATION', /notification|notice|advertisement|press\s+note|recruitment/i]
+];
+const APPLICATION_PORTAL_WORDS = /application\s+portal|apply\s+(online|here)|online\s+application/i;
+const ARCHIVE_WORDS = /gazette|\barchive\b/i;
+const PORTAL_WORDS = /\bportal\b|official\s+(web)?site/i;
+
+/** A video's role from its title: a walkthrough of applying, news (a lead), or a lesson. */
+const videoRoleOf = (words: string): ResourceRole => {
+  if (/how\s+to\s+(apply|fill|register)|application\s+form|registration\s+process|\botr\b|one[\s-]*time[\s-]*registration|fill(ing)?\s+(the\s+)?(online\s+)?form|apply\s+online|step[\s-]+by[\s-]+step/i.test(words)) return 'APPLICATION_GUIDE';
+  if (/\b(released?|out\s+now|is\s+out|declared|breaking|update|announced|notification\s+out|news)\b/i.test(words)) return 'DISCOVERY_SIGNAL';
+  // An explanation of the exam, a lesson, or a title that says nothing: each is learning.
+  return 'LECTURE_VIDEO';
+};
+
+export const resourceRoleOf = (r: Pick<ResourceItem, 'title' | 'type' | 'resourceFormat' | 'subject' | 'officialTag'> & { role?: string }): ResourceRole => {
+  if (r.role && (RESOURCE_ROLES as string[]).includes(r.role)) return r.role as ResourceRole;
+  const subject = String(r.subject || '').trim().toLowerCase();
+  const words = `${r.title || ''} ${r.officialTag || ''}`;
+  if (r.type === 'THIRD_PARTY' || r.resourceFormat === 'EXTERNAL_PAGE') {
+    // A third-party page is filed by what it carries; it is never official whatever it carries.
+    const hit = ITEM_ROLE_RULES.find(([, re]) => re.test(words));
+    if (hit) return hit[0];
+    return subject === 'previous year papers' ? 'QUESTION_PAPER' : 'STUDY_MATERIAL';
+  }
+  if (r.type === 'VIDEO_LECTURE' || r.resourceFormat === 'YOUTUBE_COURSE' || r.resourceFormat === 'YOUTUBE_CHANNEL') return videoRoleOf(words);
+  if (r.type === 'ONLINE_TOOL' || r.resourceFormat === 'ONLINE_TOOL') return 'PRACTICE_TOOL';
+  if (subject === 'previous year papers') return ITEM_ROLE_RULES[0][1].test(words) ? 'ANSWER_KEY' : 'QUESTION_PAPER';
+  if (OFFICIAL_RESOURCE_SUBJECTS.includes(subject)) {
+    if (STUDY_REFERENCE.test(words)) return 'STUDY_MATERIAL';
+    // A portal that takes applications names that first, even when it also serves admit cards.
+    if (APPLICATION_PORTAL_WORDS.test(words)) return 'APPLICATION_PORTAL';
+    // A card naming three or more kinds of document is a general portal, not one of them.
+    const named = new Set(ITEM_ROLE_RULES.filter(([, re]) => re.test(words)).map(([role]) => role));
+    if (named.size >= 3 || (PORTAL_WORDS.test(words) && [...named].every(role => role === 'NOTIFICATION'))) return 'OFFICIAL_PORTAL';
+    // A gazette or an archive holds every body's notifications, not this exam's.
+    if (ARCHIVE_WORDS.test(words) && !named.has('QUESTION_PAPER') && !named.has('ANSWER_KEY')) return 'OFFICIAL_PORTAL';
+    const hit = ITEM_ROLE_RULES.find(([, re]) => re.test(words));
+    return hit ? hit[0] : 'OFFICIAL_PORTAL';
+  }
+  // A learning subject. Still, an official document filed under one by mistake is not study material.
+  const official = ITEM_ROLE_RULES.slice(0, 2).find(([, re]) => re.test(words));
+  return official ? official[0] : 'STUDY_MATERIAL';
+};
+
+export const isLearningResource = (r: ResourceItem): boolean => LEARNING_ROLES.includes(resourceRoleOf(r));
+
+/** The section of an exam's page an entry is shown in. Only learning material is in the Resource Library. */
+export type ResourcePlacement = 'RESOURCES' | 'PRACTICE' | 'APPLICATION' | 'OFFICIAL_LINKS' | 'CORRIGENDA' | 'ADMIT_CARD'
+  | 'RESULTS' | 'SYLLABUS' | 'CUTOFFS' | 'EXAM_DAY' | 'DATES' | 'PATTERN' | 'OVERVIEW' | 'NONE';
+export type ResourceSection = Exclude<ResourcePlacement, 'NONE'>;
+
+/** The one placement model: role -> section. Mirrors tools/exam_builder/resource_roles.py SECTION_FOR_ROLE;
+ *  both are held to resource_role_cases.json ("sectionForRole"). null: never shown as a resource -- a lead
+ *  (news) is a reason to look, not information. */
+export const RESOURCE_SECTION: Record<ResourceRole, ResourceSection | null> = {
+  NOTIFICATION: 'OFFICIAL_LINKS', EXAM_PAGE: 'OFFICIAL_LINKS', OFFICIAL_PORTAL: 'OFFICIAL_LINKS',
+  CORRIGENDUM: 'CORRIGENDA', SYLLABUS: 'SYLLABUS', EXAM_PATTERN: 'PATTERN', QUESTION_PAPER: 'PRACTICE',
+  ANSWER_KEY: 'PRACTICE', ADMIT_CARD: 'ADMIT_CARD', RESULT: 'RESULTS', CUTOFF: 'CUTOFFS', CALENDAR: 'DATES',
+  APPLICATION_PORTAL: 'APPLICATION', OTR_PORTAL: 'APPLICATION', APPLICATION_GUIDE: 'APPLICATION',
+  EXAM_GUIDE: 'OVERVIEW', EXAM_DAY_INSTRUCTIONS: 'EXAM_DAY', STUDY_MATERIAL: 'RESOURCES', LECTURE_VIDEO: 'RESOURCES',
+  PRACTICE_TOOL: 'RESOURCES', DISCOVERY_SIGNAL: null, UNKNOWN: null
+};
+
+/** Each section as the exam page names it, with its stable section number (the deep-link id). */
+export const SECTION_OF_PLACEMENT: Record<ResourceSection, { num: number; label: string }> = {
+  OVERVIEW: { num: 1, label: 'Overview' }, DATES: { num: 2, label: 'Dates & Timeline' },
+  APPLICATION: { num: 4, label: 'Application & Documents' }, PATTERN: { num: 5, label: 'Exam Pattern' },
+  SYLLABUS: { num: 6, label: 'Syllabus' }, RESOURCES: { num: 8, label: 'Resources' },
+  PRACTICE: { num: 9, label: 'Practice & PYQs' }, CUTOFFS: { num: 10, label: 'Cutoff History' },
+  OFFICIAL_LINKS: { num: 12, label: 'Official Portals & Links' }, CORRIGENDA: { num: 13, label: 'Corrigenda Log' },
+  ADMIT_CARD: { num: 14, label: 'Admit Card' }, EXAM_DAY: { num: 15, label: 'Exam Day' },
+  RESULTS: { num: 16, label: 'Results & Next Steps' }
+};
+
+export const resourcePlacementOf = (r: ResourceItem): ResourcePlacement => RESOURCE_SECTION[resourceRoleOf(r)] || 'NONE';
+
+/** Plain words for a role, for a card's kicker. */
+const RESOURCE_ROLE_LABEL: Record<ResourceRole, string> = {
+  EXAM_PAGE: 'Exam page', NOTIFICATION: 'Notification', CORRIGENDUM: 'Corrigendum / revision', SYLLABUS: 'Syllabus',
+  EXAM_PATTERN: 'Exam pattern', QUESTION_PAPER: 'Question papers', ANSWER_KEY: 'Answer keys', ADMIT_CARD: 'Admit card',
+  RESULT: 'Results', APPLICATION_PORTAL: 'Application portal', CUTOFF: 'Cut-offs', CALENDAR: 'Exam calendar',
+  OTR_PORTAL: 'One-time registration', OFFICIAL_PORTAL: 'Official portal', APPLICATION_GUIDE: 'How to apply',
+  EXAM_GUIDE: 'About the exam', EXAM_DAY_INSTRUCTIONS: 'Exam-day instructions', STUDY_MATERIAL: 'Study material',
+  LECTURE_VIDEO: 'Lessons', PRACTICE_TOOL: 'Practice tool', DISCOVERY_SIGNAL: 'Lead', UNKNOWN: 'Link'
+};
+
 /**
  * Counts in answer text come from the register, not from whatever was true when the
- * sentence was written: {posts}, {resources}, {syllabus}, {exam}.
+ * sentence was written: {posts}, {resources}, {syllabus}, {exam}. {resources} counts only what the
+ * Resource Library lists -- learning material.
  */
 const fillCounts = (text: string, exam: Exam): string => text
   .replace(/\{posts\}/g, String(exam.posts.length))
-  .replace(/\{resources\}/g, String(exam.resources.length))
+  .replace(/\{resources\}/g, String((exam.resources || []).filter(isLearningResource).length))
   .replace(/\{syllabus\}/g, String(exam.syllabus.length))
   .replace(/\{exam\}/g, exam.title);
 
@@ -4550,7 +4768,7 @@ const needsInheritedSubject = (q: string): boolean =>
  * The candidate named a specific thing that lives in the library ("typing test tool",
  * "constitution pdf"). Answering with the item beats answering with the section.
  */
-function namedResourceAnswer(q: string, minScore: number = 6, exam: Exam = SSC_CGL_EXAM): { reply: AssistantReply; score: number } | null {
+export function namedResourceAnswer(q: string, minScore: number = 6, exam: Exam = SSC_CGL_EXAM): { reply: AssistantReply; score: number } | null {
   // Only this exam's library. A candidate inside UPSC must not be handed an SSC document.
   const library = exam.resources || [];
   // Scoring weights a term by how few entries carry it, which says nothing in a library of
@@ -4561,14 +4779,22 @@ function namedResourceAnswer(q: string, minScore: number = 6, exam: Exam = SSC_C
   const { results } = rankResourcesForQuery(q, library, 3);
   if (results.length === 0 || results[0].score < minScore) return null;
   const top = results[0].resource;
-  const others = results.slice(1, 3).map(x => x.resource.title);
+  // Route to where the entry is actually shown: only learning material is in Resources. A lead is not
+  // offered at all, and nothing is said about a card that a section does not hold.
+  const placement = resourcePlacementOf(top);
+  if (placement === 'NONE') return null;
+  const where = SECTION_OF_PLACEMENT[placement];
+  const others = results.slice(1, 3).filter(x => resourcePlacementOf(x.resource) === placement).map(x => x.resource.title);
+  const inLibrary = placement === 'RESOURCES';
   const reply: AssistantReply = {
     verified: true,
     sourceKind: top.provenance?.verificationLevel === 'OFFICIALLY_VERIFIED' ? 'OFFICIAL' : 'GUIDANCE',
     subject: top.subject,
     resourceLink: linkFor(top),
-    text: `**${top.title}** — ${top.author}.${top.recommendedFor ? `\n\nBest for: ${top.recommendedFor}` : ''}${others.length > 0 ? `\n\nAlso in the library: ${others.join('; ')}.` : ''}\n\nThe link below opens it on the publisher's own site; the card in Resources shows when it was last checked.`,
-    action: { label: 'Open Resources', tab: 'EXAM_DETAIL', section: 8 }
+    text: inLibrary
+      ? `**${top.title}** — ${top.author}.${top.recommendedFor ? `\n\nBest for: ${top.recommendedFor}` : ''}${others.length > 0 ? `\n\nAlso in the library: ${others.join('; ')}.` : ''}\n\nThe link below opens it on the publisher's own site; the card in Resources shows when it was last checked.`
+      : `**${top.title}** — ${top.author}.\n\nI found it under **${where.label}**.${others.length > 0 ? ` Also there: ${others.join('; ')}.` : ''}\n\nThe link below opens it on the publisher's own site.`,
+    action: { label: `Open ${where.label}`, tab: 'EXAM_DETAIL', section: where.num }
   };
   return { reply, score: results[0].score };
 }
@@ -4667,7 +4893,7 @@ const PLATFORM_MAP: { keys: string[]; answer: string; action: AssistantAction }[
   },
   {
     keys: ['resource', 'study material', 'material', 'book', 'pdf', 'video', 'lecture', 'notes', 'ncert', 'where should i study', 'what should i read', 'youtube', 'channel', 'channels', 'coaching', 'teacher', 'best channel'],
-    answer: 'Study material is **Resources**, inside the {exam} page — open the exam and pick Resources from its section row.\n\nAt the top it shows the latest entries from SSC\'s own notice board, read live from ssc.gov.in. Below that it holds the SSC notice and reopening notice, previous-year question papers and answer keys, the Constitution of India official text, India Code, NCERT Exemplar and textbooks, the Census, MoSPI and RBI data portals, SWAYAM, NPTEL and NIOS free courses, single video lessons, and the free YouTube channels most SSC candidates follow — each labelled with its subscriber count and marked as coaching content, not an official source.\n\nGovOS stores no files. Every entry opens the publisher\'s own page, so you always get the current version. Use the "Start here" shelf if you are new, the subject chips to narrow down, the bookmark icon to keep something, and "Verify all links now" to see live which links are answering.',
+    answer: 'Study material is **Resources**, inside the {exam} page — open the exam and pick Resources from its section row.\n\nIt lists learning material only — {resources} links to textbooks and references, video lessons and channels, and practice tools — each labelled with where it comes from; coaching content is marked as such, never as an official source. The authority\'s own documents are where they belong: notices in **Official Links**, calendars and schedules in **Dates & Timeline**, question papers and answer keys in **Practice & PYQs**, and registration and application links in **Application & Documents**.\n\nGovOS stores no files. Every entry opens the publisher\'s own page, so you always get the current version. Use the "Start here" shelf if you are new, the subject chips to narrow down, the bookmark icon to keep something, and "Verify all links now" to see live which links are answering.',
     action: { label: 'Open Resources', tab: 'EXAM_DETAIL', section: 8 }
   },
   {
@@ -4908,7 +5134,7 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
   if (has(q, 'what can you do', 'what can i ask', 'how does this work', 'how do i use', 'help me get started', 'getting started', 'what is govos', 'guide me through')) {
     return {
       verified: true,
-      text: fillCounts('I answer from the verified GovOS register for {exam}, and I can point you to the right part of the platform.\n\nAlmost everything lives inside the exam you have open. The {exam} page has 13 parts:\n• **Overview** · **Dates & Timeline** · **Eligibility & Posts** · **Application & Documents**\n• **Exam Pattern** · **Syllabus** · **Study Roadmap** · **Resources** ({resources} verified links, PDFs and videos)\n• **Practice & PYQs** · **Mock Tests** · **Admit Card** · **Exam Day** · **Results & Next Steps**\n\nAcross all exams the top bar also has **Find Exam**, **Am I Eligible?**, **Compare Exams**, **All-Exam Calendar** and the **Trust Panel**.\n\nTry asking: "where do I check my eligibility", "what is the last date to apply", "is there negative marking", "where are the resources", or "what is the exam pattern".', exam),
+      text: fillCounts('I answer from the verified GovOS register for {exam}, and I can point you to the right part of the platform.\n\nAlmost everything lives inside the exam you have open. The {exam} page has 13 parts:\n• **Overview** · **Dates & Timeline** · **Eligibility & Posts** · **Application & Documents**\n• **Exam Pattern** · **Syllabus** · **Study Roadmap** · **Resources** ({resources} links to study material, lessons and practice tools)\n• **Practice & PYQs** · **Mock Tests** · **Admit Card** · **Exam Day** · **Results & Next Steps**\n\nAcross all exams the top bar also has **Find Exam**, **Am I Eligible?**, **Compare Exams**, **All-Exam Calendar** and the **Trust Panel**.\n\nTry asking: "where do I check my eligibility", "what is the last date to apply", "is there negative marking", "where are the resources", or "what is the exam pattern".', exam),
       action: { label: 'Open the Exam Guide', tab: 'EXAM_DETAIL', section: 1 }
     };
   }
@@ -5268,12 +5494,22 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
   }
 
   if (factId === 'resources') {
-    const videos = exam.resources.filter(r => r.resourceFormat === 'YOUTUBE_COURSE' || r.resourceFormat === 'YOUTUBE_CHANNEL').length;
-    const pdfs = exam.resources.filter(r => r.resourceFormat === 'DIRECT_PDF').length;
-    const portals = exam.resources.filter(r => r.resourceFormat === 'OFFICIAL_PORTAL').length;
+    // Counted by what each entry is for, from this exam's own register -- never one exam's list of sources.
+    const all = exam.resources || [];
+    const learning = all.filter(isLearningResource);
+    const lessons = learning.filter(r => resourceRoleOf(r) === 'LECTURE_VIDEO').length;
+    const tools = learning.filter(r => resourceRoleOf(r) === 'PRACTICE_TOOL').length;
+    const reading = learning.length - lessons - tools;
+    const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+    const bySection = new Map<ResourceSection, number>();
+    all.forEach(r => {
+      const placement = resourcePlacementOf(r);
+      if (placement !== 'NONE' && placement !== 'RESOURCES') bySection.set(placement, (bySection.get(placement) || 0) + 1);
+    });
+    const elsewhere = [...bySection.entries()].map(([section, n]) => `${plural(n, 'entry', 'entries')} in **${SECTION_OF_PLACEMENT[section].label}**`);
     return {
       verified: true,
-      text: `The Resources tab holds ${exam.resources.length} verified entries for ${exam.title}: ${pdfs} direct PDFs (the notice, the reopening notice and the Constitution official text), ${portals} official portals (previous-year papers, answer keys, the exam calendar, NCERT, SWAYAM, NIOS, Census and MoSPI data) and ${videos} video lessons.\n\nEvery one links to the publisher's own server — GovOS stores no study material, so nothing goes stale here. Each card shows when the link was last checked, and "Verify all links now" re-checks them live.`,
+      text: `The Resource Library for ${exam.title} lists ${plural(learning.length, 'learning resource', 'learning resources')}: ${reading} to read, ${plural(lessons, 'video lesson or channel', 'video lessons and channels')} and ${plural(tools, 'practice tool', 'practice tools')}.${elsewhere.length ? `\n\nIt lists only study material; ${exam.authorityName}'s own documents are in the sections they belong to: ${elsewhere.join('; ')}.` : ''}\n\nEvery entry links to the publisher's own server — GovOS stores no study material, so nothing goes stale here. Each card shows when the link was last checked, and "Verify all links now" re-checks them live.`,
       action: { label: 'Open Resources', tab: 'EXAM_DETAIL', section: 8 }
     };
   }
@@ -6802,6 +7038,8 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
           )}
 
           <ClaudeJobsPanel jobs={claudeJobs} onRefresh={refreshJobs} onCancel={cancelClaudeJob} onRetry={retryClaudeJob} />
+
+          <AuthoritySourceDiscoveryCard examId={researchExamId} onQueued={refreshJobs} />
 
           {/* Results */}
           {researchRun && (
@@ -17288,10 +17526,474 @@ const additionToResource = (a: ResourceAddition): ResourceItem => {
   };
 };
 
+// ==========================================================================
+// Where everything that is not study material goes
+// ==========================================================================
+// The Resource Library lists learning material only (resourceRoleOf). An exam's notices, papers,
+// keys and portals are shown here instead, in the section a candidate would look for them in,
+// each with its source in plain words. Every panel reads only the exam it is handed.
+
+/** This exam's verifier additions (exam-scoped on the server). */
+const useExamAdditions = (examId: string): ResourceAddition[] => {
+  const [adds, setAdds] = useState<ResourceAddition[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    setAdds([]);
+    resourceLiveService.additions(examId).then(a => { if (!cancelled) setAdds(a); });
+    return () => { cancelled = true; };
+  }, [examId]);
+  return adds;
+};
+
+/** The latest walk of this exam's authority, projected onto this exam. Null while loading or offline. */
+const useDiscoveredSources = (examId: string): DiscoveredSources | null => {
+  const [found, setFound] = useState<DiscoveredSources | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    setFound(null);
+    sourceDiscoveryService.forExam(examId).then(d => { if (!cancelled) setFound(d); });
+    return () => { cancelled = true; };
+  }, [examId]);
+  return found;
+};
+
+const examResourcesFor = (exam: Exam, additions: ResourceAddition[], placement: ResourcePlacement): ResourceItem[] =>
+  [...(exam.resources || []), ...additions.map(additionToResource)].filter(r => resourcePlacementOf(r) === placement);
+
+type SourceTone = 'OFFICIAL' | 'TRUSTED' | 'THIRD_PARTY' | 'LEAD';
+const SOURCE_TONE_STYLE: Record<SourceTone, { color: string; bg: string }> = {
+  OFFICIAL: { color: '#137638', bg: 'rgba(16,185,129,0.12)' },
+  TRUSTED: { color: '#235ddd', bg: 'rgba(43,98,235,0.10)' },
+  THIRD_PARTY: { color: '#af5109', bg: 'rgba(245,158,11,0.12)' },
+  LEAD: { color: 'var(--text-secondary)', bg: 'var(--surface-3)' }
+};
+const toneOfClass = (c: string): SourceTone =>
+  c === 'PRIMARY_OFFICIAL' ? 'OFFICIAL' : c === 'TRUSTED_SECONDARY' ? 'TRUSTED' : c === 'DISCOVERY_ONLY' ? 'LEAD' : 'THIRD_PARTY';
+/** A card from the register: official unless it says it is not. */
+const sourceOfResource = (r: ResourceItem): { text: string; tone: SourceTone } =>
+  r.type === 'THIRD_PARTY' || r.provenance?.taxonomyType === 'RECOMMENDATION'
+    ? { text: 'Third-party source — not verified', tone: 'THIRD_PARTY' }
+    : { text: 'Official source', tone: 'OFFICIAL' };
+
+const SourceChip: React.FC<{ text: string; tone: SourceTone }> = ({ text, tone }) => (
+  <span style={{ padding: '2px 9px', borderRadius: 'var(--radius-full)', background: SOURCE_TONE_STYLE[tone].bg, color: SOURCE_TONE_STYLE[tone].color, fontSize: '0.7rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
+    {text}
+  </span>
+);
+
+const SourceRow: React.FC<{
+  kicker: string; title: string; url: string; sub?: string; source: { text: string; tone: SourceTone };
+  note?: string; provenance?: DataProvenance; onOpenProvenanceModal?: (p: DataProvenance) => void;
+}> = ({ kicker, title, url, sub, source, note, provenance, onOpenProvenanceModal }) => (
+  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', padding: '12px 14px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)' }}>
+    <div style={{ minWidth: 0, flex: '1 1 260px' }}>
+      <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{kicker}</div>
+      <div style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.35, overflowWrap: 'anywhere' }}>{title}</div>
+      {sub && <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '2px' }}>{sub}</div>}
+      {note && <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '4px', lineHeight: 1.45 }}>{note}</div>}
+    </div>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flexShrink: 0 }}>
+      <SourceChip text={source.text} tone={source.tone} />
+      <a href={url} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ fontSize: '0.76rem', padding: '5px 12px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+        Open <ExternalLink size={12} />
+      </a>
+      {provenance && onOpenProvenanceModal && <EvidenceButton provenance={provenance} onOpen={onOpenProvenanceModal} />}
+    </div>
+  </div>
+);
+
+const relationNote = (item: DiscoveredSourceItem): string => [
+  item.relation === 'THIS_EXAM_OTHER_CYCLE'
+    ? `Another cycle of this exam${item.identity.cycle ? ` (${item.identity.cycle})` : ''} — not this cycle's document.`
+    : item.obtainable ? '' : 'Listed by the authority, but GovOS could not open it.',
+  // A link from the authority's own page is a relationship, never ownership.
+  item.relationship === 'LINKED_FROM_OFFICIAL'
+    ? `Run by ${item.owner || 'another site'}, not by the authority; the authority's own page links to it.`
+    : ''
+].filter(Boolean).join(' ');
+
+/** This exam's discovered items for one section, under the listing each was found on: every item once,
+ *  in the section its own role names (its listing's, where its own role is unknown). */
+const discoveredForSection = (discovered: DiscoveredSources | null, section: ResourceSection) => {
+  const seen = new Set<string>();
+  return (discovered?.repositories || [])
+    .map(repo => ({
+      repo,
+      items: repo.items.filter(i => i.role !== 'DISCOVERY_SIGNAL' && (i.section || repo.section || 'OFFICIAL_LINKS') === section
+        && !seen.has(i.url) && (seen.add(i.url), true))
+    }))
+    .filter(g => g.items.length > 0);
+};
+
+const discoveredRow = (item: DiscoveredSourceItem, kicker?: string) => (
+  <SourceRow
+    key={item.url}
+    kicker={kicker || RESOURCE_ROLE_LABEL[item.role] || 'Link'}
+    title={item.title}
+    url={item.url}
+    sub={item.foundOnTitle ? `Listed on: ${item.foundOnTitle}` : undefined}
+    source={{ text: item.label || item.sourceLabel || 'Official source', tone: toneOfClass(item.sourceClass) }}
+    note={relationNote(item) || undefined}
+  />
+);
+
+/** "Not found" and "never looked" must never read alike. */
+const SEARCH_STATE_WORDS: Record<string, string> = {
+  FOUND_VERIFIED: 'found on the authority’s own site and tied to this exam',
+  FOUND_AMBIGUOUS: 'listed on the authority’s own site, but nothing listed could be tied to this exam from its own wording; open the listing to check',
+  FOUND_UNREADABLE: 'found on the authority’s own site, but GovOS could not open them',
+  NOT_FOUND_AFTER_DISCOVERY: 'every listing and item GovOS found on the authority’s site that could hold them was read, and none is for this exam',
+  SEARCH_INCOMPLETE: 'none of what GovOS could read on the authority’s site is for this exam, but some listings or items that could hold them were not read, so GovOS cannot say none exist',
+  NOT_SEARCHED: 'GovOS could not read any listing on the authority’s site that could hold them, so it cannot say whether they exist'
+};
+
+/** Why places were not read, in plain words: "12 not fetched (file limit), 2 pages built by script". */
+const NOT_READ_WORDS: Record<string, string> = {
+  skipped_due_to_file_budget: 'not fetched (the walk’s file limit)', skipped_due_to_page_budget: 'not read (the walk’s page limit)',
+  skipped_due_to_item_budget: 'not recorded (the walk’s item limit)', skipped_due_to_depth: 'too deep for the walk',
+  skipped_due_to_script_rendering: 'built by script', skipped_due_to_fetch_failed: 'could not be opened',
+  skipped_due_to_refused_address: 'address refused', skipped_due_to_not_opened: 'not opened',
+  skipped_due_to_links_not_followed: 'opened, but what they link to was not followed'
+};
+const notReadWords = (counts?: Record<string, number>): string =>
+  Object.entries(counts || {}).map(([k, n]) => `${n} ${NOT_READ_WORDS[k] || k}`).join(', ');
+
+const DiscoveryStatusLine: React.FC<{ exam: Exam; discovered: DiscoveredSources | null }> = ({ exam, discovered }) => {
+  if (!discovered) return null;
+  const authority = exam.authorityName.split(' (')[0];
+  if (discovered.state !== 'DISCOVERED') {
+    return (
+      <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'flex-start', gap: '6px', lineHeight: 1.5 }}>
+        <Info size={12} style={{ flexShrink: 0, marginTop: '3px' }} />
+        GovOS has not walked {authority}&apos;s site for this exam yet. That is a gap here, not a statement about what {authority} publishes.
+      </div>
+    );
+  }
+  const c = discovered.coverage;
+  return (
+    <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'flex-start', gap: '6px', lineHeight: 1.5 }}>
+      <Info size={12} style={{ flexShrink: 0, marginTop: '3px' }} />
+      <span>
+        Read from {authority}&apos;s own site{discovered.discoveredAt ? ` on ${discovered.discoveredAt.slice(0, 10)}` : ''}
+        {c ? `: ${c.pagesFetched} page${c.pagesFetched === 1 ? '' : 's'} and ${c.officialResources} official link${c.officialResources === 1 ? '' : 's'}` : ''}.
+        {c && c.skipped && Object.keys(c.skipped).length > 0
+          ? ` Not everything it found could be read: ${notReadWords(c.skipped)}.`
+          : c && (c.fetchFailures > 0 || c.unexplored > 0 || c.pagesWithoutLinks > 0)
+            ? ` Not everything could be read (${[c.fetchFailures ? `${c.fetchFailures} could not be opened` : '', c.pagesWithoutLinks ? `${c.pagesWithoutLinks} page${c.pagesWithoutLinks === 1 ? '' : 's'} built by script` : '', c.unexplored ? `${c.unexplored} left for a later walk` : ''].filter(Boolean).join(', ')}).`
+            : ''}
+      </span>
+    </div>
+  );
+};
+
+/** Section 12: the authority's own documents and services that are not study material. */
+export const OfficialDocumentsPanel: React.FC<{ exam: Exam; onOpenProvenanceModal: (p: DataProvenance) => void }> = ({ exam, onOpenProvenanceModal }) => {
+  const additions = useExamAdditions(exam.id);
+  const discovered = useDiscoveredSources(exam.id);
+  const docs = examResourcesFor(exam, additions, 'OFFICIAL_LINKS');
+  const linked = new Set(docs.map(d => d.url));
+  // Only what belongs here: a corrigendum, a result or a syllabus found on the same listings is shown in
+  // its own section, and a document listed on two listings is shown once, under the first.
+  const repos = discoveredForSection(discovered, 'OFFICIAL_LINKS').map(g => ({ ...g.repo, items: g.items }));
+  const portals = (discovered?.portals || []).filter(p => p.role === 'OFFICIAL_PORTAL' && !linked.has(p.url));
+  if (docs.length === 0 && repos.length === 0 && portals.length === 0 && !discovered) return null;
+  const authority = exam.authorityName.split(' (')[0];
+  return (
+    <div className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div>
+        <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>{authority}&apos;s documents and services for {exam.title}</h4>
+        <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: '4px 0 0', lineHeight: 1.5 }}>
+          Notices and the authority&apos;s own portals and pages. These are official records, not study material, so they are not in the Resource Library; corrigenda, results, syllabus, cut-offs and calendars are shown in their own sections.
+        </p>
+      </div>
+      {docs.map(r => (
+        <SourceRow key={r.id} kicker={RESOURCE_ROLE_LABEL[resourceRoleOf(r)]} title={r.title} url={r.url} sub={r.author}
+          source={sourceOfResource(r)} provenance={r.provenance} onOpenProvenanceModal={onOpenProvenanceModal} />
+      ))}
+      {repos.map(repo => (
+        <div key={repo.url} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+            <h5 style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>On {authority}&apos;s listing “{repo.title}”</h5>
+            <a href={repo.url} target="_blank" rel="noreferrer" style={{ fontSize: '0.76rem', color: '#235ddd', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>Open the listing <ExternalLink size={11} /></a>
+          </div>
+          <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>{repo.note}</div>
+          {repo.items.map(item => discoveredRow(item))}
+        </div>
+      ))}
+      {portals.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <h5 style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Candidate services on {authority}&apos;s site</h5>
+          {portals.map(item => discoveredRow(item, 'Official service'))}
+        </div>
+      )}
+      <DiscoveryStatusLine exam={exam} discovered={discovered} />
+    </div>
+  );
+};
+
+/** Section 09: where this exam's question papers and answer keys are published, beside the engine. */
+export const QuestionPaperSourcesPanel: React.FC<{ exam: Exam; onOpenProvenanceModal: (p: DataProvenance) => void }> = ({ exam, onOpenProvenanceModal }) => {
+  const additions = useExamAdditions(exam.id);
+  const discovered = useDiscoveredSources(exam.id);
+  // An official question-paper PDF is already listed by the exam's own engine (OfficialPapersPanel).
+  const items = examResourcesFor(exam, additions, 'PRACTICE').filter(r => !(r.subject === 'Previous Year Papers' && r.type === 'OFFICIAL_PDF'));
+  const practice = discoveredForSection(discovered, 'PRACTICE');
+  // The authority's paper and key listings are shown even when nothing on them is this exam's: there,
+  // "none of these is yours" is itself the answer. Practice items found on other listings follow them.
+  const repos = [
+    ...(discovered?.repositories || []).filter(r => r.role === 'QUESTION_PAPER' || r.role === 'ANSWER_KEY')
+      .map(r => ({ ...r, items: practice.find(g => g.repo.url === r.url)?.items || [] })),
+    ...practice.filter(g => g.repo.role !== 'QUESTION_PAPER' && g.repo.role !== 'ANSWER_KEY').map(g => ({ ...g.repo, items: g.items }))
+  ];
+  const states = (['QUESTION_PAPER', 'ANSWER_KEY'] as const)
+    .map(role => ({ role, st: discovered?.searchStates?.[role] }))
+    .filter(x => x.st);
+  if (items.length === 0 && repos.length === 0 && states.length === 0) return null;
+  const authority = exam.authorityName.split(' (')[0];
+  return (
+    <div className="glass-card" style={{ padding: '20px', marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div>
+        <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Where question papers and answer keys are published</h4>
+        <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: '4px 0 0', lineHeight: 1.5 }}>
+          Links to the papers themselves. A third-party copy is labelled as one: GovOS has not checked it, and where it disagrees with {authority}&apos;s own paper or key, {authority}&apos;s governs.
+        </p>
+      </div>
+      {items.map(r => (
+        <SourceRow key={r.id} kicker={RESOURCE_ROLE_LABEL[resourceRoleOf(r)]} title={r.title} url={r.url} sub={r.author}
+          source={sourceOfResource(r)} note={r.type === 'THIRD_PARTY' ? r.description : undefined}
+          provenance={r.provenance} onOpenProvenanceModal={onOpenProvenanceModal} />
+      ))}
+      {repos.map(repo => (
+        <div key={repo.url} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <SourceRow kicker={`${authority}'s listing`} title={repo.title} url={repo.url}
+            sub={`${repo.itemCount} item${repo.itemCount === 1 ? '' : 's'} listed${repo.listedWithoutLink.length ? `, ${repo.listedWithoutLink.length} without a link` : ''}`}
+            source={{ text: repo.sourceLabel || 'Official source', tone: 'OFFICIAL' }} note={repo.note} />
+          {repo.items.map(item => discoveredRow(item))}
+        </div>
+      ))}
+      {states.map(({ role, st }) => (
+        <div key={role} style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'flex-start', gap: '6px', lineHeight: 1.5 }}>
+          <Search size={13} style={{ flexShrink: 0, marginTop: '3px' }} />
+          <span><strong style={{ color: 'var(--text-primary)' }}>{role === 'QUESTION_PAPER' ? 'Question papers' : 'Answer keys'} for this exam:</strong> {SEARCH_STATE_WORDS[st!.state] || st!.reason}{st!.notRead && Object.keys(st!.notRead).length > 0 ? ` (not read: ${notReadWords(st!.notRead)})` : ''}.</span>
+        </div>
+      ))}
+      <DiscoveryStatusLine exam={exam} discovered={discovered} />
+    </div>
+  );
+};
+
+/** Section 04: where to register and apply, and practical guidance labelled as such. */
+export const ApplicationSourcesPanel: React.FC<{ exam: Exam; onOpenProvenanceModal: (p: DataProvenance) => void }> = ({ exam, onOpenProvenanceModal }) => {
+  const additions = useExamAdditions(exam.id);
+  const discovered = useDiscoveredSources(exam.id);
+  const items = examResourcesFor(exam, additions, 'APPLICATION');
+  const linked = new Set(items.map(r => r.url));
+  const portals = (discovered?.portals || []).filter(p => (p.role === 'OTR_PORTAL' || p.role === 'APPLICATION_PORTAL') && !linked.has(p.url));
+  const guidance = discovered?.practicalGuidance || [];
+  const listed = discoveredForSection(discovered, 'APPLICATION').flatMap(g => g.items).filter(i => !linked.has(i.url));
+  if (items.length === 0 && portals.length === 0 && guidance.length === 0 && listed.length === 0) return null;
+  return (
+    <div className="glass-card" style={{ padding: '20px', marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div>
+        <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Where to register and apply</h4>
+        <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: '4px 0 0', lineHeight: 1.5 }}>
+          The authority&apos;s own registration and application services. A registration portal serves every recruitment the authority runs; the notice says which one is open.
+        </p>
+      </div>
+      {items.map(r => (
+        <SourceRow key={r.id} kicker={RESOURCE_ROLE_LABEL[resourceRoleOf(r)]} title={r.title} url={r.url} sub={r.author}
+          source={sourceOfResource(r)} provenance={r.provenance} onOpenProvenanceModal={onOpenProvenanceModal} />
+      ))}
+      {portals.map(item => discoveredRow(item))}
+      {listed.map(item => discoveredRow(item))}
+      {guidance.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <h5 style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Guidance on applying</h5>
+          {guidance.map(item => discoveredRow(item, item.label))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+/** What each section's panel says above the documents it holds. */
+const SECTION_PANEL_COPY: Partial<Record<ResourceSection, { title: string; intro: string }>> = {
+  CORRIGENDA: { title: 'Corrigenda and addenda', intro: 'Notices that change or add to a published notice, on the authority’s own copies.' },
+  ADMIT_CARD: { title: 'Admit-card notices and services', intro: 'Where the authority publishes admit cards and hall tickets. The card itself is served through each candidate’s own login.' },
+  RESULTS: { title: 'Result documents', intro: 'Results, merit lists and selection notices the authority published.' },
+  SYLLABUS: { title: 'Syllabus documents', intro: 'The syllabus as the authority published it.' },
+  CUTOFFS: { title: 'Cut-off documents', intro: 'Cut-off and qualifying-marks sheets the authority published.' },
+  EXAM_DAY: { title: 'Exam-day instructions', intro: 'Instructions the authority published for the day of the examination.' },
+  DATES: { title: 'Calendars and schedules', intro: 'Examination calendars and schedules the authority published.' },
+  PATTERN: { title: 'Exam pattern documents', intro: 'The scheme of examination as the authority published it.' },
+  OVERVIEW: { title: 'About this exam', intro: 'The authority’s own explanation of the examination.' }
+};
+/** Section number -> the placement whose documents its generic panel shows. */
+const SECTION_PANEL_FOR: Record<number, ResourceSection> = Object.fromEntries(
+  (Object.keys(SECTION_PANEL_COPY) as ResourceSection[]).map(section => [SECTION_OF_PLACEMENT[section].num, section])
+);
+
+/** One section's official documents -- from the register and from GovOS's walk of the authority's site --
+ *  shown in the section a candidate would look for them in. Each entry appears in exactly one section. */
+export const SectionSourcesPanel: React.FC<{ exam: Exam; section: ResourceSection; onOpenProvenanceModal: (p: DataProvenance) => void }> = ({ exam, section, onOpenProvenanceModal }) => {
+  const additions = useExamAdditions(exam.id);
+  const discovered = useDiscoveredSources(exam.id);
+  const docs = examResourcesFor(exam, additions, section);
+  const linked = new Set(docs.map(d => d.url));
+  const groups = discoveredForSection(discovered, section)
+    .map(g => ({ ...g, items: g.items.filter(i => !linked.has(i.url)) }))
+    .filter(g => g.items.length > 0);
+  const copy = SECTION_PANEL_COPY[section];
+  if (!copy || (docs.length === 0 && groups.length === 0)) return null;
+  const authority = exam.authorityName.split(' (')[0];
+  return (
+    <div className="glass-card" style={{ padding: '20px', marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div>
+        <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>{copy.title} — {authority}</h4>
+        <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: '4px 0 0', lineHeight: 1.5 }}>{copy.intro}</p>
+      </div>
+      {docs.map(r => (
+        <SourceRow key={r.id} kicker={RESOURCE_ROLE_LABEL[resourceRoleOf(r)]} title={r.title} url={r.url} sub={r.author}
+          source={sourceOfResource(r)} provenance={r.provenance} onOpenProvenanceModal={onOpenProvenanceModal} />
+      ))}
+      {groups.map(({ repo, items }) => (
+        <div key={repo.url} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+            <h5 style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>On {authority}&apos;s listing “{repo.title}”</h5>
+            <a href={repo.url} target="_blank" rel="noreferrer" style={{ fontSize: '0.76rem', color: '#235ddd', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>Open the listing <ExternalLink size={11} /></a>
+          </div>
+          {items.map(item => discoveredRow(item))}
+        </div>
+      ))}
+    </div>
+  );
+};
+
+/** The authorities' live boards (SSC's notice board, UPSC's What's New): official notices, not study material. */
+export const OfficialNoticeBoards: React.FC<{ exam: Exam }> = ({ exam }) => {
+  const [sscFeed, setSscFeed] = useState<SscNoticeFeed | null>(null);
+  const [noticeScope, setNoticeScope] = useState<'cgl' | 'all'>('cgl');
+  const [upscFeed, setUpscFeed] = useState<SscNoticeFeed | null>(null);
+  const isSscExam = exam.id.includes('ssc');
+  const isUpscExam = exam.id.includes('upsc');
+  useEffect(() => {
+    let cancelled = false;
+    if (!isUpscExam) { setUpscFeed(null); return; }
+    resourceLiveService.upscNotices('cse', 8).then(feed => { if (!cancelled) setUpscFeed(feed); });
+    return () => { cancelled = true; };
+  }, [isUpscExam, exam.id]);
+  // SSC's own notice board, scoped to CGL or all of SSC.
+  useEffect(() => {
+    if (!isSscExam) { setSscFeed(null); return; }
+    let cancelled = false;
+    resourceLiveService.sscNotices(noticeScope, 8).then(feed => { if (!cancelled) setSscFeed(feed); });
+    return () => { cancelled = true; };
+  }, [exam.id, noticeScope, isSscExam]);
+  const chipStyle = (active: boolean): React.CSSProperties => ({
+    padding: '6px 12px', borderRadius: 'var(--radius-full)', border: `1px solid ${active ? 'var(--primary)' : 'var(--border-color)'}`,
+    background: active ? 'rgba(99, 102, 241, 0.16)' : 'transparent', color: active ? '#4f46e5' : 'var(--text-secondary)',
+    fontSize: '0.78rem', fontWeight: active ? 700 : 500, fontFamily: 'var(--font-sans)', cursor: 'pointer', whiteSpace: 'nowrap'
+  });
+  if (!isSscExam && !isUpscExam) return null;
+  return (
+    <>
+      {/* Live: UPSC's What's New, for a UPSC exam. The list carries no dates, so the badge says
+          when GovOS first saw each item rather than pretending to a publication date. */}
+      {isUpscExam && upscFeed && (
+        <div className="glass-card" style={{ padding: '20px', background: 'linear-gradient(135deg, rgba(99,102,241,0.10) 0%, #ffffff 60%)', border: '1px solid rgba(99,102,241,0.35)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <Bell size={18} color="#4f46e5" />
+              <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Latest from UPSC's What's New — Civil Services</h4>
+              <span className="badge badge-verified" style={{ fontSize: '0.62rem' }}>LIVE · OFFICIAL</span>
+            </div>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              Read {formatFetched(upscFeed.fetchedAt)}{upscFeed.stale ? ' · last good copy' : ''} · <a href={upscFeed.source} target="_blank" rel="noreferrer" style={{ color: '#4f46e5' }}>upsc.gov.in/whats-new</a>
+            </span>
+          </div>
+          {upscFeed.error && upscFeed.items.length === 0 && (
+            <div style={{ fontSize: '0.82rem', color: '#af5109' }}>UPSC's page could not be read just now ({upscFeed.error}). Open it directly.</div>
+          )}
+          {!upscFeed.error && upscFeed.items.length === 0 && (
+            <div style={{ fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
+              Nothing about the Civil Services Examination among the {upscFeed.total} latest items on UPSC's What's New page right now. The page is re-read every {upscFeed.intervalHours} h; anything new appears here, dated by when GovOS first saw it.
+            </div>
+          )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {upscFeed.items.map(n => (
+              <a key={n.id} href={n.files[0]?.url || upscFeed.source} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '10px 12px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', textDecoration: 'none' }}>
+                <span style={{ fontSize: '0.86rem', color: '#334155' }}>{n.headline}</span>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>first seen {n.createdAt} <ExternalLink size={11} /></span>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Live: SSC's own notice board */}
+      {isSscExam && sscFeed && (sscFeed.items.length > 0 || sscFeed.total > 0 || sscFeed.error) && (
+        <div className="glass-card" style={{ padding: '20px', background: 'linear-gradient(135deg, rgba(99,102,241,0.10) 0%, #ffffff 60%)', border: '1px solid rgba(99,102,241,0.35)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <Bell size={18} color="#4f46e5" />
+              <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Latest from SSC's notice board</h4>
+              <span className="badge badge-verified" style={{ fontSize: '0.62rem' }}>LIVE · OFFICIAL</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <button onClick={() => setNoticeScope('cgl')} style={chipStyle(noticeScope === 'cgl')}>CGL only</button>
+              <button onClick={() => setNoticeScope('all')} style={chipStyle(noticeScope === 'all')}>All SSC notices</button>
+            </div>
+          </div>
+
+          {sscFeed.error && sscFeed.items.length === 0 && (
+            <div style={{ fontSize: '0.84rem', color: '#af5109' }}>Could not reach SSC's notice board just now ({sscFeed.error}). It is retried automatically.</div>
+          )}
+          {!sscFeed.error && sscFeed.items.length === 0 && (
+            <div style={{ fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
+              None of SSC's latest {sscFeed.total} board entries mention CGL. Switch to "All SSC notices" to see the rest.
+            </div>
+          )}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {sscFeed.items.map(n => (
+              <div key={n.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '10px 12px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.74rem', color: '#4f46e5', fontFamily: 'var(--font-mono)', flexShrink: 0, paddingTop: '2px' }}>{n.createdAt}</span>
+                <div style={{ flex: 1, minWidth: '220px', fontSize: '0.88rem', color: 'var(--text-primary)', lineHeight: 1.45 }}>{n.headline}</div>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  {n.files.map(f => (
+                    <a key={f.url} href={f.url} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ fontSize: '0.74rem', padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                      <FileText size={12} /> PDF{f.sizeKb ? ` · ${f.sizeKb} KB` : ''}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ marginTop: '10px', fontSize: '0.74rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+            <Info size={12} />
+            Read from ssc.gov.in's own notice-board API, fetched {formatFetched(sscFeed.fetchedAt)}{sscFeed.stale ? ' (could not refresh; showing the last copy)' : ''} · refreshes every {sscFeed.intervalHours} h · every file opens on ssc.gov.in.
+            <a href={sscFeed.source} target="_blank" rel="noreferrer" style={{ color: '#4f46e5', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>Open the full board <ExternalLink size={11} /></a>
+          </div>
+        </div>
+      )}
+
+    </>
+  );
+};
+
 export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenResource, onOpenProvenanceModal, showSectionNumber = true }) => {
   const [additions, setAdditions] = useState<ResourceAddition[]>([]);
-  // The static register plus whatever the verifier has added at runtime.
-  const resources: ResourceItem[] = [...(exam.resources || []), ...additions.map(additionToResource)];
+  // The static register plus whatever the verifier has added at runtime -- and of that, only what is
+  // for learning. A notice, a paper or a portal is shown in its own section, whatever its file type.
+  const allResources: ResourceItem[] = [...(exam.resources || []), ...additions.map(additionToResource)];
+  const resources: ResourceItem[] = allResources.filter(isLearningResource);
+  // Where everything that is not study material is shown instead, counted by section.
+  const placedElsewhere = new Map<ResourceSection, number>();
+  allResources.forEach(r => {
+    const placement = resourcePlacementOf(r);
+    if (placement !== 'NONE' && placement !== 'RESOURCES') placedElsewhere.set(placement, (placedElsewhere.get(placement) || 0) + 1);
+  });
 
   const [query, setQuery] = useState<string>('');
   const [typeGroup, setTypeGroup] = useState<ResourceTypeGroup>('ALL');
@@ -17302,10 +18004,11 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
   const [isVerifying, setIsVerifying] = useState<boolean>(false);
   const [verifySummary, setVerifySummary] = useState<string>('');
   const [isNavigatorOpen, setIsNavigatorOpen] = useState<boolean>(false);
-  const [sscFeed, setSscFeed] = useState<SscNoticeFeed | null>(null);
-  const [noticeScope, setNoticeScope] = useState<'cgl' | 'all'>('cgl');
   const [channelFeeds, setChannelFeeds] = useState<Record<string, ChannelUploadFeed>>({});
   const [healthMeta, setHealthMeta] = useState<{ lastRun: string | null; pending: number; intervalHours: number } | null>(null);
+  // Learning material the authority's own site links to, from the latest walk of it (labelled by source).
+  const discovered = useDiscoveredSources(exam.id);
+  const linkedLearning = (discovered?.learning || []).filter(item => !allResources.some(r => r.url === item.url));
 
   useEffect(() => {
     storageService.loadBookmarksFromSQLite().then(setBookmarkIds);
@@ -17374,15 +18077,6 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
   ));
 
   const channelIds = Array.from(new Set(resources.map(r => channelIdOf(r.url)).filter((c): c is string => !!c)));
-  const isSscExam = exam.id.includes('ssc');
-  const isUpscExam = exam.id.includes('upsc');
-  const [upscFeed, setUpscFeed] = useState<SscNoticeFeed | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    if (!isUpscExam) { setUpscFeed(null); return; }
-    resourceLiveService.upscNotices('cse', 8).then(feed => { if (!cancelled) setUpscFeed(feed); });
-    return () => { cancelled = true; };
-  }, [isUpscExam, exam.id]);
 
   const applyHealth = (health: { results: ResourceLinkCheck[]; lastRun: string | null; pending: number; intervalHours: number }) => {
     const map: Record<string, ResourceLinkCheck> = {};
@@ -17426,14 +18120,6 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
     return () => { cancelled = true; if (retry) clearTimeout(retry); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [exam.id]);
-
-  // SSC's own notice board, scoped to CGL or all of SSC.
-  useEffect(() => {
-    if (!isSscExam) { setSscFeed(null); return; }
-    let cancelled = false;
-    resourceLiveService.sscNotices(noticeScope, 8).then(feed => { if (!cancelled) setSscFeed(feed); });
-    return () => { cancelled = true; };
-  }, [exam.id, noticeScope, isSscExam]);
 
   const handleVerifyLinks = async () => {
     if (externalUrls.length === 0 || isVerifying) return;
@@ -17668,8 +18354,7 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
             {resources.length} resources · {officialCount} from official government sources · {savedCount} saved for later
           </p>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', margin: '6px 0 0 0', maxWidth: '700px', lineHeight: 1.5 }}>
-            {/* The notice-board shelf only exists for SSC, so only say so there. */}
-            Kept current automatically: {isSscExam ? `SSC's notice board and channel uploads refresh every ${sscFeed?.intervalHours || 6} h, and every link is` : 'every link is'}{' '}
+            Kept current automatically: {channelIds.length > 0 ? 'channel uploads refresh every 6 h, and every link is' : 'every link is'}{' '}
             re-checked every {healthMeta?.intervalHours || 12} h on the GovOS server.
             {healthMeta
               ? ` Links last checked ${formatFetched(healthMeta.lastRun)}${healthMeta.pending > 0 ? ` · ${healthMeta.pending} still being checked` : ''}.`
@@ -17692,6 +18377,17 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
       {verifySummary && (
         <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.3)', fontSize: '0.82rem', color: '#4f46e5', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Info size={14} /> {verifySummary}
+        </div>
+      )}
+
+      {/* What is not here, and where it is. Nothing moved out of the exam: only out of this list. */}
+      {placedElsewhere.size > 0 && (
+        <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', fontSize: '0.82rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'flex-start', gap: '8px', lineHeight: 1.5 }}>
+          <Info size={14} style={{ flexShrink: 0, marginTop: '2px' }} />
+          <span>
+            This library lists study material, lessons and practice tools only. {exam.authorityName.split(' (')[0]}&apos;s own documents are in the sections they belong to:{' '}
+            {[...placedElsewhere.entries()].map(([section, n]) => `${n} in ${SECTION_OF_PLACEMENT[section].label}`).join('; ')}.
+          </span>
         </div>
       )}
 
@@ -17758,84 +18454,16 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
         )}
       </div>
 
-      {/* Live: UPSC's What's New, for a UPSC exam. The list carries no dates, so the badge says
-          when GovOS first saw each item rather than pretending to a publication date. */}
-      {isUpscExam && !isFiltered && upscFeed && (
-        <div className="glass-card" style={{ padding: '20px', background: 'linear-gradient(135deg, rgba(99,102,241,0.10) 0%, #ffffff 60%)', border: '1px solid rgba(99,102,241,0.35)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <Bell size={18} color="#4f46e5" />
-              <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Latest from UPSC's What's New — Civil Services</h4>
-              <span className="badge badge-verified" style={{ fontSize: '0.62rem' }}>LIVE · OFFICIAL</span>
-            </div>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              Read {formatFetched(upscFeed.fetchedAt)}{upscFeed.stale ? ' · last good copy' : ''} · <a href={upscFeed.source} target="_blank" rel="noreferrer" style={{ color: '#4f46e5' }}>upsc.gov.in/whats-new</a>
-            </span>
+      {/* Linked from the authority's own site, found by GovOS's last walk of it */}
+      {!isFiltered && linkedLearning.length > 0 && (
+        <div className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div>
+            <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Linked from {exam.authorityName.split(' (')[0]}&apos;s own site</h4>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '4px 0 0', lineHeight: 1.5 }}>
+              Practice and learning links the authority&apos;s site points to. Each says who runs it; one run by someone else is labelled so, even though the authority links to it.
+            </p>
           </div>
-          {upscFeed.error && upscFeed.items.length === 0 && (
-            <div style={{ fontSize: '0.82rem', color: '#af5109' }}>UPSC's page could not be read just now ({upscFeed.error}). Open it directly.</div>
-          )}
-          {!upscFeed.error && upscFeed.items.length === 0 && (
-            <div style={{ fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
-              Nothing about the Civil Services Examination among the {upscFeed.total} latest items on UPSC's What's New page right now. The page is re-read every {upscFeed.intervalHours} h; anything new appears here, dated by when GovOS first saw it.
-            </div>
-          )}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {upscFeed.items.map(n => (
-              <a key={n.id} href={n.files[0]?.url || upscFeed.source} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '10px 12px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', textDecoration: 'none' }}>
-                <span style={{ fontSize: '0.86rem', color: '#334155' }}>{n.headline}</span>
-                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>first seen {n.createdAt} <ExternalLink size={11} /></span>
-              </a>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Live: SSC's own notice board */}
-      {isSscExam && !isFiltered && sscFeed && (sscFeed.items.length > 0 || sscFeed.total > 0 || sscFeed.error) && (
-        <div className="glass-card" style={{ padding: '20px', background: 'linear-gradient(135deg, rgba(99,102,241,0.10) 0%, #ffffff 60%)', border: '1px solid rgba(99,102,241,0.35)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <Bell size={18} color="#4f46e5" />
-              <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Latest from SSC's notice board</h4>
-              <span className="badge badge-verified" style={{ fontSize: '0.62rem' }}>LIVE · OFFICIAL</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <button onClick={() => setNoticeScope('cgl')} style={chipStyle(noticeScope === 'cgl')}>CGL only</button>
-              <button onClick={() => setNoticeScope('all')} style={chipStyle(noticeScope === 'all')}>All SSC notices</button>
-            </div>
-          </div>
-
-          {sscFeed.error && sscFeed.items.length === 0 && (
-            <div style={{ fontSize: '0.84rem', color: '#af5109' }}>Could not reach SSC's notice board just now ({sscFeed.error}). It is retried automatically.</div>
-          )}
-          {!sscFeed.error && sscFeed.items.length === 0 && (
-            <div style={{ fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
-              None of SSC's latest {sscFeed.total} board entries mention CGL. Switch to "All SSC notices" to see the rest.
-            </div>
-          )}
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {sscFeed.items.map(n => (
-              <div key={n.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '10px 12px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '0.74rem', color: '#4f46e5', fontFamily: 'var(--font-mono)', flexShrink: 0, paddingTop: '2px' }}>{n.createdAt}</span>
-                <div style={{ flex: 1, minWidth: '220px', fontSize: '0.88rem', color: 'var(--text-primary)', lineHeight: 1.45 }}>{n.headline}</div>
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                  {n.files.map(f => (
-                    <a key={f.url} href={f.url} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ fontSize: '0.74rem', padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                      <FileText size={12} /> PDF{f.sizeKb ? ` · ${f.sizeKb} KB` : ''}
-                    </a>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div style={{ marginTop: '10px', fontSize: '0.74rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-            <Info size={12} />
-            Read from ssc.gov.in's own notice-board API, fetched {formatFetched(sscFeed.fetchedAt)}{sscFeed.stale ? ' (could not refresh; showing the last copy)' : ''} · refreshes every {sscFeed.intervalHours} h · every file opens on ssc.gov.in.
-            <a href={sscFeed.source} target="_blank" rel="noreferrer" style={{ color: '#4f46e5', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>Open the full board <ExternalLink size={11} /></a>
-          </div>
+          {linkedLearning.map(item => discoveredRow(item))}
         </div>
       )}
 
@@ -17865,7 +18493,19 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
         </div>
       )}
 
-      {matches.length === 0 ? (
+      {resources.length === 0 ? (
+        <div className="glass-card" style={{ padding: '32px 24px', textAlign: 'center' }}>
+          <BookOpen size={26} color="var(--text-muted)" style={{ marginBottom: '8px' }} />
+          <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '6px' }}>
+            {linkedLearning.length > 0 ? `No other study material checked for ${exam.title} yet` : `No study material listed for ${exam.title} yet`}
+          </h4>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', maxWidth: '520px', margin: '0 auto', lineHeight: 1.55 }}>
+            GovOS lists study material here only when it has been checked for this exam. That is a gap in GovOS, not a
+            statement that none exists. The authority&apos;s own notices, papers and portals are in Official Links,
+            Practice &amp; PYQs and Application &amp; Documents.
+          </p>
+        </div>
+      ) : matches.length === 0 ? (
         <div className="glass-card" style={{ padding: '40px 24px', textAlign: 'center' }}>
           <AlertTriangle size={26} color="var(--text-muted)" style={{ marginBottom: '8px' }} />
           <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '6px' }}>
@@ -18251,7 +18891,7 @@ const AnswerKeyPanel: React.FC<{
   if (keys.length === 0) return null;
   // This page's own cycle: the record's, or the year in its title.
   const examCycle = (exam as Exam & { cycle?: string }).cycle || (exam.title.match(/\b(20\d{2})\b/) || [])[1] || '';
-  const earlierOnly = examCycle !== '' && keys.every(k => k.identity.cycle && k.identity.cycle !== examCycle);
+  const otherCyclesOnly = examCycle !== '' && keys.every(k => k.identity.cycle && k.identity.cycle !== examCycle);
   const byPaper = new Map<string, ExamAnswerKey[]>();
   keys.forEach(k => {
     const list = byPaper.get(k.identity.describe);
@@ -18268,7 +18908,7 @@ const AnswerKeyPanel: React.FC<{
           Each key below names the exact paper it answers — the cycle, the stage and the sitting the
           authority printed. A later key does not replace an earlier one here: both are kept, because a
           candidate who challenged an answer needs to see what changed.
-          {earlierOnly && <> <strong>All of them belong to earlier cycles; GovOS has read no answer key for {examCycle}.</strong></>}
+          {otherCyclesOnly && <> <strong>All of them belong to other cycles; GovOS has read no answer key for {examCycle}.</strong></>}
         </p>
       </div>
       {[...byPaper.entries()].map(([describe, group]) => (
@@ -18277,7 +18917,7 @@ const AnswerKeyPanel: React.FC<{
             {describe}
             {group[0].identity.cycle && examCycle && group[0].identity.cycle !== examCycle && (
               <span className="badge badge-demo" style={{ fontSize: '0.62rem', marginLeft: '8px' }}>
-                Earlier cycle ({group[0].identity.cycle}) — not a {examCycle} key
+                Another cycle ({group[0].identity.cycle}) — not a {examCycle} key
               </span>
             )}
           </div>
@@ -19042,12 +19682,14 @@ export const ExamPracticeRouter: React.FC<{
   if (!entry) return (
     <React.Fragment key={exam.id}>
       <UnavailablePracticeEngine exam={exam} scope={scope} onOpenProvenanceModal={onOpenProvenanceModal} />
+      {scope !== 'MOCKS' && <QuestionPaperSourcesPanel exam={exam} onOpenProvenanceModal={onOpenProvenanceModal} />}
       <ClaudePracticePanel exam={exam} />
     </React.Fragment>
   );
   return (
     <React.Fragment key={exam.id}>
       {entry.render({ exam, scope, onOpenProvenanceModal })}
+      {scope !== 'MOCKS' && <QuestionPaperSourcesPanel exam={exam} onOpenProvenanceModal={onOpenProvenanceModal} />}
       <ClaudePracticePanel exam={exam} />
     </React.Fragment>
   );
@@ -20527,11 +21169,14 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
 
         {/* Section 04: Application & Docs (Embeds ApplicationGuide) */}
         {activeSection === 4 && (
-          <ApplicationGuide 
-            guide={exam.applicationGuide}
-            examId={exam.id}
-            onOpenProvenanceModal={onOpenProvenanceModal}
-          />
+          <>
+            <ApplicationGuide 
+              guide={exam.applicationGuide}
+              examId={exam.id}
+              onOpenProvenanceModal={onOpenProvenanceModal}
+            />
+            <ApplicationSourcesPanel exam={exam} onOpenProvenanceModal={onOpenProvenanceModal} />
+          </>
         )}
 
         {/* Section 05: Exam Pattern */}
@@ -20992,6 +21637,8 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                 </div>
               ))}
             </div>
+            <OfficialDocumentsPanel exam={exam} onOpenProvenanceModal={onOpenProvenanceModal} />
+            <OfficialNoticeBoards exam={exam} />
           </div>
         )}
 
@@ -21058,6 +21705,13 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
             onSelectAlternativeExam={onSelectAlternativeExam}
             onOpenProvenanceModal={onOpenProvenanceModal}
           />
+        )}
+
+        {/* The authority's own documents for this section (corrigenda, results, syllabus, cut-offs, ...):
+            one panel, placed by the same model that keeps them out of Resources. */}
+        {SECTION_PANEL_FOR[activeSection] && (
+          <SectionSourcesPanel key={`${exam.id}-${activeSection}`} exam={exam} section={SECTION_PANEL_FOR[activeSection]}
+            onOpenProvenanceModal={onOpenProvenanceModal} />
         )}
       </div>
 

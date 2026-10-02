@@ -1,0 +1,31 @@
+{
+  "_doc": "The reviewed-source registry (tools/exam_builder/source_trust.py classifies with it; tools/exam_builder/secondary_ingestion.py reads the sources it names). GovOS does not decide a site is trustworthy because it is popular: a profile is added by a person after reviewing the site, and must name the roles it is trusted for (DocKind values), the authorities it covers, when and by whom it was reviewed, and on what basis. source_class may be TRUSTED_SECONDARY, SECONDARY or DISCOVERY_ONLY - never official; a profile claiming anything else is refused. A role the profile does not name makes the same source SECONDARY. The optional `ingestion` block lists the source's own listings to read for an authority (every URL must be on the profile's domain); without it the source is classified but never read. Remove a profile, or set review_status to REVOKED, to stop using it.",
+  "profiles": [
+    {
+      "domain": "manabadi.co.in",
+      "source_class": "TRUSTED_SECONDARY",
+      "authority_coverage": ["tgpsc.gov.in", "tspsc.gov.in", "Telangana Public Service Commission"],
+      "permitted_roles": ["NOTIFICATION", "RESULT", "ANSWER_KEY", "QUESTION_PAPER", "CALENDAR"],
+      "review_status": "REVIEWED",
+      "last_reviewed": "2026-10-02",
+      "reviewed_by": "GovOS owner (instruction of 2026-10-02); pages read and compared by Claude Code",
+      "notes": "Manabadi.com is an education news portal, not TGPSC. Its TSPSC section (notifications, results, keys, question papers) is useful for finding what TGPSC published and for orientation. Trusted to corroborate and to point at resources for TGPSC exams only, never to state a fact: on 2026-10-02 its Group-I 02/2024 pages agreed with TGPSC's notice on 563 vacancies, the notification and application dates and the 21-27 October 2024 Mains, but still gave the original 14/03/2024 last date, not the 16/03/2024 TGPSC extended it to - it can lag an official revision. Its paper files are its own copies, with keys that are not TGPSC's.",
+      "evidence": [
+        "https://www.manabadi.co.in/sourceview/questionpaperlist.aspx?sourceid=1550 - 25 of 77 TSPSC papers on its first page (Group-IV 2023, Group-1 2022 master paper and key, Group-II 2016, TRT 2018, model papers); the rest are behind ASP.NET page buttons",
+        "https://www.manabadi.co.in/sourceview/TSPSC/Notification/notification-list and .../Results/results-list - list Group-I 2024 notification, results and answer-key pages",
+        "https://www.manabadi.co.in/Entrance-Exams/tspsc-group-1-notification-telangana-group-1-notification.asp - a label/value table of the 02/2024 dates and 563 vacancies, compared with TGPSC's notice and directRecruitment page"
+      ],
+      "ingestion": {
+        "maxItemPages": 8,
+        "entryPoints": [
+          {"url": "https://www.manabadi.co.in/sourceview/TSPSC/Notification/notification-list", "lists": "NOTIFICATION",
+           "authority": "Telangana Public Service Commission", "estates": ["tgpsc.gov.in", "tspsc.gov.in"]},
+          {"url": "https://www.manabadi.co.in/sourceview/TSPSC/Results/results-list", "lists": "RESULT",
+           "authority": "Telangana Public Service Commission", "estates": ["tgpsc.gov.in", "tspsc.gov.in"]},
+          {"url": "https://www.manabadi.co.in/sourceview/questionpaperlist.aspx?sourceid=1550", "lists": "QUESTION_PAPER",
+           "authority": "Telangana Public Service Commission", "estates": ["tgpsc.gov.in", "tspsc.gov.in"]}
+        ]
+      }
+    }
+  ]
+}

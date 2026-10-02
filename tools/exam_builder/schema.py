@@ -142,6 +142,9 @@ class SourceEvidence:
     span_status: EvidenceStatus = EvidenceStatus.UNCHECKED
     #: What the extractor understood the span to say, for whoever reviews it.
     reading: str = ''
+    #: The `source_graph.SourceClass` of the document. Empty is the pipeline's own gated official
+    #: reading, which is every piece of evidence that existed before secondary sources did.
+    source_class: str = ''
 
     @property
     def span_digest(self) -> str:
@@ -150,6 +153,16 @@ class SourceEvidence:
     @property
     def is_verbatim(self) -> bool:
         return self.span_status is EvidenceStatus.VERIFIED
+
+    @property
+    def is_official(self) -> bool:
+        return self.source_class in ('', 'PRIMARY_OFFICIAL')
+
+    @property
+    def is_official_verbatim(self) -> bool:
+        """Words found in an official document. Only this publishes a value as the authority's: a
+        trusted secondary source's exact words corroborate, they never state."""
+        return self.is_verbatim and self.is_official
 
     def locator(self) -> str:
         """A human-readable 'where', for a report or a UI tooltip."""
@@ -217,7 +230,7 @@ class Fact(Generic[T]):
     def is_publishable(self) -> bool:
         """A value may be shown as the authority's only if it is sourced and verbatim."""
         return (self.status is Status.VERIFIED and self.has_value
-                and any(e.is_verbatim for e in self.evidence))
+                and any(e.is_official_verbatim for e in self.evidence))
 
     @property
     def primary_source(self) -> Optional[SourceEvidence]:
@@ -795,7 +808,7 @@ class AnswerEntry:
         return (self.status in (AnswerStatus.PUBLISHED, AnswerStatus.MULTIPLE_ACCEPTED,
                                 AnswerStatus.REVISED)
                 and bool(self.accepted or self.value)
-                and any(e.is_verbatim for e in self.evidence))
+                and any(e.is_official_verbatim for e in self.evidence))
 
 
 @dataclass
@@ -839,7 +852,7 @@ class OfficialQuestion:
         """Publishable only with an exact paper, a number, text, and verbatim evidence."""
         return (self.paper.is_paper_level and bool(self.number) and bool(self.text.strip())
                 and self.source_status is SourceStatus.OFFICIAL_VERIFIED
-                and any(e.is_verbatim for e in self.evidence))
+                and any(e.is_official_verbatim for e in self.evidence))
 
 
 class AnswerKeyKind(str, Enum):
@@ -884,7 +897,7 @@ class AnswerKey:
     def is_publishable(self) -> bool:
         """A key is shown only when it names its exact paper and cites a document."""
         return (self.paper.is_paper_level
-                and any(e.is_verbatim for e in self.evidence))
+                and any(e.is_official_verbatim for e in self.evidence))
 
     @property
     def is_attached_to_a_paper(self) -> bool:
@@ -1300,7 +1313,7 @@ class AdmitCardNotice:
         """
         return (self.status is Status.VERIFIED
                 and bool(self.scope.refs or self.cycle)
-                and any(e.is_verbatim for e in self.evidence))
+                and any(e.is_official_verbatim for e in self.evidence))
 
 
 # ===================================================================== results
@@ -1426,7 +1439,7 @@ class ResultDeclaration:
         """
         return (self.status is Status.VERIFIED
                 and bool(self.scope.refs or self.cycle)
-                and any(e.is_verbatim for e in self.evidence))
+                and any(e.is_official_verbatim for e in self.evidence))
 
 
 # ================================================================== revisions

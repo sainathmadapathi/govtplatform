@@ -20,6 +20,7 @@ from tools.claude_cli.audit import DecisionCache, SqliteAuditSink, init_audit_ta
 from tools.claude_cli.context import ExamStore
 from tools.claude_cli.handlers import AppHooks
 from tools.claude_cli.jobs import init_job_tables
+from tools.exam_builder.source_graph import init_source_tables
 from tools.claude_cli.routes import admin_denied, admin_required, create_blueprint
 from tools.claude_cli.security import admin_token_required
 
@@ -250,6 +251,7 @@ def init_database():
     cursor.execute("UPDATE research_runs SET engine = 'LEGACY_SEARCH' WHERE engine IS NULL")
     init_job_tables(conn)       # claude_jobs, claude_job_events
     init_audit_tables(conn)     # claude_invocations, claude_decision_cache
+    init_source_tables(conn)    # source_discovery_runs (authority source discovery, an audit record)
 
     # Insert default primary user if not exists
     cursor.execute('SELECT id FROM users WHERE id = ?', ('default-candidate',))
@@ -2706,6 +2708,102 @@ def build_runtime_exam():
     return jsonify({"jobId": job.id, "status": job.status.value, "deduplicated": deduplicated,
                     "pollUrl": "/api/claude/jobs/" + job.id}), 202
 
+
+
+# =============================================================================
+# Authority source discovery
+#
+# A bounded walk of an exam's authority from that exam's verified official address
+# (tools/exam_builder/authority_discovery.py). The walk is a job; the stored run is an audit
+# record of what one traversal saw, never a fact. What an exam's page may show is projected
+# from the latest run on read, so a classification fix applies without walking again.
+# =============================================================================
+
+def _sources_exam_store():
+    # The queue's own store (the same one the job reads), so the routes and the job agree on what
+    # an exam is -- and a test that points the queue at a temporary database moves both.
+    return _claude_queue().hooks.exam_store
+
+
+def _exam_estate(exam):
+    from tools.exam_authoring.sources import estate_of
+    from tools.exam_builder.source_trust import bare_host
+    domain = str((exam or {}).get('officialDomain') or '')
+    return estate_of(bare_host(domain)) if domain else ''
+
+
+@app.route('/api/sources/discover', methods=['POST'])
+@admin_required
+def queue_authority_discovery():
+    data = request.get_json(silent=True) or {}
+    exam_id = str(data.get('examId') or data.get('exam_id') or '').strip()
+    use_claude = bool(data.get('useClaude', data.get('claude', False)))
+    if not exam_id:
+        return jsonify({"error": "examId is required"}), 400
+    if _sources_exam_store().get(exam_id) is None:
+        return jsonify({"error": "no such exam", "examId": exam_id}), 404
+    limited = _admin_rate_limited('source-discovery', limit=6)
+    if limited:
+        return limited
+    if use_claude:
+        health = _claude_gateway().health()
+        if not health.get('ready'):
+            return _claude_unavailable_response(health)
+    payload = {"examId": exam_id}
+    if use_claude:
+        payload["useClaude"] = True
+    try:
+        job, deduplicated, _token = _claude_queue().submit('DISCOVER_AUTHORITY', payload, exam_id=exam_id,
+                                                           requested_by='admin', role='admin')
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    return jsonify({"jobId": job.id, "status": job.status.value, "deduplicated": deduplicated,
+                    "pollUrl": "/api/claude/jobs/" + job.id}), 202
+
+
+@app.route('/api/sources/exam/<exam_id>', methods=['GET'])
+def exam_discovered_sources(exam_id):
+    """What the latest walk of this exam's authority offers its sections, or an honest "not walked"."""
+    from tools.exam_builder.authority_discovery import project_for_exam
+    from tools.exam_builder.source_graph import SourceGraphStore
+    import re as _re
+    exam = _sources_exam_store().get(exam_id)
+    if exam is None:
+        return jsonify({"error": "no such exam", "examId": exam_id}), 404
+    estate = _exam_estate(exam)
+    run = SourceGraphStore(DB_FILE).latest(estate) if estate else None
+    if run is None:
+        return jsonify({"examId": exam_id, "state": "NOT_DISCOVERED", "estate": estate,
+                        "note": "GovOS has not walked this authority's site yet. That is a gap here, "
+                                "not a statement about what the authority publishes."})
+    m = _re.search(r'-(20[0-9]{2})(?:-[0-9]{2,4})?$', exam_id)
+    projection = project_for_exam(run, exam_id=exam_id, title=str(exam.get('title') or ''),
+                                  authority_name=str(exam.get('authorityName') or ''),
+                                  authority_domain=str(exam.get('officialDomain') or ''),
+                                  cycle=str(exam.get('cycle') or (m.group(1) if m else '')))
+    projection.update({"state": "DISCOVERED", "estate": estate})
+    return jsonify(projection)
+
+
+@app.route('/api/sources/runs', methods=['GET'])
+@admin_required
+def list_source_runs():
+    from tools.exam_builder.source_graph import SourceGraphStore
+    try:
+        limit = int(request.args.get('limit', 20))
+    except ValueError:
+        limit = 20
+    return jsonify({"runs": SourceGraphStore(DB_FILE).list(limit=limit)})
+
+
+@app.route('/api/sources/runs/<run_id>/coverage', methods=['GET'])
+@admin_required
+def source_run_coverage(run_id):
+    from tools.exam_builder.source_graph import SourceGraphStore, coverage_report
+    run = SourceGraphStore(DB_FILE).get(run_id)
+    if run is None:
+        return jsonify({"error": "no such run"}), 404
+    return jsonify(coverage_report(run))
 
 
 # =============================================================================

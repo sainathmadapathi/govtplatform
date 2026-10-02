@@ -385,11 +385,13 @@ class SubmitValidationTests(QueueCase):
     def test_all_default_operations_are_registered_and_only_two_are_for_candidates(self):
         specs = default_specs()
         self.assertEqual(set(specs), {'DISCOVER_SOURCES', 'EXTRACT_FIELDS', 'BUILD_EXAM', 'ORDER_ROADMAP',
-                                      'ANSWER_QUESTION', 'GENERATE_PRACTICE'})
+                                      'ANSWER_QUESTION', 'GENERATE_PRACTICE', 'DISCOVER_AUTHORITY'})
         self.assertEqual({n for n, s in specs.items() if s.candidate}, {'ANSWER_QUESTION', 'GENERATE_PRACTICE'})
         for name, spec in specs.items():
             self.assertEqual(spec.name, name)
-            if name != 'BUILD_EXAM':                                   # a build drives many gateway operations
+            # A build drives many gateway operations; an authority walk is deterministic and drives at
+            # most CLASSIFY_SOURCE. Every other job is exactly one operation.
+            if name not in ('BUILD_EXAM', 'DISCOVER_AUTHORITY'):
                 self.assertIn(name, {o.value for o in Operation})
 
 
