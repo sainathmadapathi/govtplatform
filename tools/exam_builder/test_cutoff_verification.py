@@ -1,10 +1,10 @@
 """The verification layer applied to CUT-OFF facts: the thirteen required cases over the real
 UPSC CSE 2025 minimum-qualifying-marks sheet (authored in the register with a verbatim excerpt
-and the official PDF URL). The LLM is stubbed for determinism; the live-model proof is the
+and the official PDF URL). The Claude is stubbed for determinism; the live-model proof is the
 cut-off replay script.
 
 Additive only: no cut-off model, UI, or authored `cutoffsHistory` is changed. This verifies
-that a published cut-off, routed through the deterministic + Qwen gate, behaves correctly and
+that a published cut-off, routed through the deterministic + Claude gate, behaves correctly and
 stays isolated by exam and cycle.
 """
 from __future__ import annotations
@@ -13,7 +13,7 @@ import json
 import unittest
 
 from .verification.adapters import claim_from_cutoff
-from .verification.client import ProviderError, VerificationProvider
+from tools.claude_cli.testing import FakeClaude, ForbiddenClaude, verdict_reply
 from .verification.schemas import InfraStatus, VerificationDecision
 from .verification.verifier import verify
 
@@ -40,74 +40,64 @@ UPSC_CTX = dict(exam_id='exam-upsc-cse-2026',
                 authority='Union Public Service Commission')
 
 
-class _Stub(VerificationProvider):
-    def __init__(self, payload=None, raises=None):
-        self.cfg = {'model': 'stub'}
-        self.payload, self.raises = payload, raises
-
-    def is_enabled(self):
-        return True
-
-    def health(self):
-        return {'enabled': True, 'reachable': True}
-
-    def complete(self, messages, *, max_tokens=320):
-        if self.raises:
-            raise self.raises
-        return self.payload
+def _Stub(payload=None, raises=None):
+    """A scripted Claude gateway: the real gateway over a fake CLI process. `payload` is a verdict
+    reply (or a raw string for a malformed one); `raises` is the infrastructure failure to simulate."""
+    if raises is not None:
+        return FakeClaude(fail=raises)
+    return FakeClaude(payload)
 
 
 def _json(decision, ident=True, ev=True, claim=True):
-    return json.dumps({'decision': decision, 'identity_supported': ident,
-                       'evidence_supported': ev, 'claim_supported': claim, 'reason': 'stub'})
+    return verdict_reply(decision, identity=ident, evidence=ev, claim=claim)
 
 
-POISON = _Stub(raises=AssertionError('LLM must not be called after a deterministic failure'))
+POISON = ForbiddenClaude('Claude must not be called after a deterministic failure')
 
 
 class TestCutoffVerification(unittest.TestCase):
 
     def test_1_valid_cutoff_matching_evidence(self):
         c = claim_from_cutoff(upsc_entry(), **UPSC_CTX)
-        v = verify(c, provider=_Stub(_json('SUPPORTED')))
+        v = verify(c, gateway=_Stub(_json('SUPPORTED')))
         self.assertTrue(v.deterministic.passed)
         self.assertIn('92.66', c.evidence_span)
 
-    def test_2_valid_cutoff_qwen_supported_verified(self):
+    def test_2_valid_cutoff_claude_supported_verified(self):
         c = claim_from_cutoff(upsc_entry(), **UPSC_CTX)
-        v = verify(c, provider=_Stub(_json('SUPPORTED')))
+        v = verify(c, gateway=_Stub(_json('SUPPORTED')))
         self.assertTrue(v.publishable)
         self.assertEqual(v.status, 'VERIFIED')
-        self.assertIs(v.llm.decision, VerificationDecision.SUPPORTED)
+        self.assertIs(v.claude.decision, VerificationDecision.SUPPORTED)
 
     def test_3_contradictory_cutoff_evidence(self):
         c = claim_from_cutoff(upsc_entry(), **UPSC_CTX)
-        v = verify(c, provider=_Stub(_json('CONTRADICTED', ev=False, claim=False)))
+        v = verify(c, gateway=_Stub(_json('CONTRADICTED', ev=False, claim=False)))
         self.assertFalse(v.publishable)
         self.assertEqual(v.status, 'NEEDS_REVIEW')
 
     def test_4_insufficient_cutoff_evidence(self):
         c = claim_from_cutoff(upsc_entry(), **UPSC_CTX)
-        v = verify(c, provider=_Stub(_json('INSUFFICIENT', ev=False, claim=False)))
+        v = verify(c, gateway=_Stub(_json('INSUFFICIENT', ev=False, claim=False)))
         self.assertFalse(v.publishable)
 
-    def test_5_wrong_exam_rejected_before_llm(self):
+    def test_5_wrong_exam_rejected_before_claude(self):
         # UPSC sheet, but the claim says it is SSC CGL's cut-off.
         c = claim_from_cutoff(upsc_entry(), exam_id='exam-ssc-cgl-2026',
                               official_name='Combined Graduate Level Examination',
                               authority='Staff Selection Commission')
-        v = verify(c, provider=POISON)
+        v = verify(c, gateway=POISON)
         self.assertFalse(v.publishable)
         self.assertFalse(v.deterministic.cross_exam_ok)
-        self.assertIsNone(v.llm)
+        self.assertIsNone(v.claude)
 
-    def test_6_wrong_cycle_rejected_before_llm(self):
+    def test_6_wrong_cycle_rejected_before_claude(self):
         # The 2025 sheet, but the claim asserts cycle 2026.
         c = claim_from_cutoff(upsc_entry(year=2026), **UPSC_CTX)
-        v = verify(c, provider=POISON)
+        v = verify(c, gateway=POISON)
         self.assertFalse(v.publishable)
         self.assertFalse(v.deterministic.cycle_ok)
-        self.assertIsNone(v.llm)
+        self.assertIsNone(v.claude)
 
     def test_7_wrong_stage_is_semantic_needs_review(self):
         # Claim: this is a Mains cut-off of 92.66. 92.66 is a Prelim mark; the model, given
@@ -117,39 +107,39 @@ class TestCutoffVerification(unittest.TestCase):
         # a wrong-stage assertion, then the model contradicts.
         c.value = '92.66'
         c.field = 'cutoff:mains:General'
-        v = verify(c, provider=_Stub(_json('CONTRADICTED', ev=False, claim=False)))
+        v = verify(c, gateway=_Stub(_json('CONTRADICTED', ev=False, claim=False)))
         self.assertFalse(v.publishable)
-        self.assertTrue(v.deterministic.passed)     # deterministic can't tell; Qwen does
+        self.assertTrue(v.deterministic.passed)     # deterministic can't tell; Claude does
 
     def test_8_wrong_category_scope_is_semantic_needs_review(self):
         # Claim: OBC prelim cut-off is 92.66. 92.66 is General; OBC is 92.00. The value is in
         # the sheet, so only the model catches the wrong category.
         entry = upsc_entry(category='OBC', tier1=92.66)
         c = claim_from_cutoff(entry, **UPSC_CTX)
-        v = verify(c, provider=_Stub(_json('CONTRADICTED', ev=False, claim=False)))
+        v = verify(c, gateway=_Stub(_json('CONTRADICTED', ev=False, claim=False)))
         self.assertFalse(v.publishable)
         self.assertTrue(v.deterministic.passed)
 
-    def test_9_llm_unavailable_never_verified(self):
+    def test_9_claude_unavailable_never_verified(self):
         c = claim_from_cutoff(upsc_entry(), **UPSC_CTX)
-        v = verify(c, provider=_Stub(raises=ProviderError(InfraStatus.LLM_UNAVAILABLE, 'down')))
+        v = verify(c, gateway=_Stub(raises=InfraStatus.CLAUDE_CLI_FAILED))
         self.assertFalse(v.publishable)
-        self.assertIs(v.infra, InfraStatus.LLM_UNAVAILABLE)
+        self.assertIs(v.infra, InfraStatus.CLAUDE_CLI_FAILED)
 
-    def test_10_malformed_llm_never_verified(self):
+    def test_10_malformed_claude_never_verified(self):
         c = claim_from_cutoff(upsc_entry(), **UPSC_CTX)
-        v = verify(c, provider=_Stub('{not valid json'))
+        v = verify(c, gateway=_Stub('{not valid json'))
         self.assertFalse(v.publishable)
-        self.assertIs(v.infra, InfraStatus.LLM_INVALID_RESPONSE)
+        self.assertIs(v.infra, InfraStatus.CLAUDE_INVALID_OUTPUT)
 
     def test_11_historical_cutoff_isolated_from_current_cycle(self):
         # A 2025 cut-off verifies as a 2025 fact; the same evidence cannot verify a 2026 claim.
         ok = verify(claim_from_cutoff(upsc_entry(year=2025), **UPSC_CTX),
-                    provider=_Stub(_json('SUPPORTED')))
+                    gateway=_Stub(_json('SUPPORTED')))
         self.assertTrue(ok.deterministic.cycle_ok)
-        bad = verify(claim_from_cutoff(upsc_entry(year=2026), **UPSC_CTX), provider=POISON)
+        bad = verify(claim_from_cutoff(upsc_entry(year=2026), **UPSC_CTX), gateway=POISON)
         self.assertFalse(bad.deterministic.cycle_ok)
-        self.assertIsNone(bad.llm)
+        self.assertIsNone(bad.claude)
 
     def test_12_cross_exam_isolation(self):
         ssc_src = ('Staff Selection Commission. Combined Graduate Level Examination, 2024. '
@@ -162,10 +152,10 @@ class TestCutoffVerification(unittest.TestCase):
         c = claim_from_cutoff(entry, exam_id='exam-upsc-cse-2026',
                               official_name='Civil Services (Preliminary) Examination',
                               authority='Union Public Service Commission', source_text=ssc_src)
-        v = verify(c, provider=POISON)
+        v = verify(c, gateway=POISON)
         self.assertFalse(v.publishable)
         self.assertFalse(v.deterministic.cross_exam_ok)
-        self.assertIsNone(v.llm)
+        self.assertIsNone(v.claude)
 
     def test_13_no_fallback_from_missing_cutoff(self):
         # An exam with no cut-off evidence produces a claim with no source text -> the span
@@ -175,9 +165,9 @@ class TestCutoffVerification(unittest.TestCase):
         c = claim_from_cutoff(empty, exam_id='exam-appsc-group1-2026',
                               official_name='APPSC Group-I Services Examination',
                               authority='Andhra Pradesh Public Service Commission')
-        v = verify(c, provider=POISON)
+        v = verify(c, gateway=POISON)
         self.assertFalse(v.publishable)
-        self.assertIsNone(v.llm)                    # never reaches the model
+        self.assertIsNone(v.claude)                    # never reaches the model
         self.assertNotEqual(v.status, 'VERIFIED')
 
 

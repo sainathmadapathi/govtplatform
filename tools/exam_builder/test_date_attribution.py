@@ -234,7 +234,7 @@ class TestModelOnlyWithholdsDates(unittest.TestCase):
         return out
 
     def run_with(self, reply):
-        return read('dates', text_of(*self.ROWS), html=self.TABLE, provider=FakeProvider(reply))
+        return read('dates', text_of(*self.ROWS), html=self.TABLE, gateway=FakeProvider(reply))
 
     def test_a_supported_date_stays(self):
         got = self.run_with(self.reply())
@@ -249,7 +249,7 @@ class TestModelOnlyWithholdsDates(unittest.TestCase):
     def test_text_the_model_calls_no_date_is_withheld(self):
         self.assertFalse(published(self.run_with(self.reply(role='NOT_A_DATE'))))
         # ... even where no established role would otherwise refuse it.
-        from .verification.attribution_llm import validate_date
+        from .verification.attribution_claude import validate_date
         item = row('Closing Date for Online Registration of Applications', 'May 20, 2031',
                    kind='APPLICATION_CLOSE')
         text = text_of(*self.ROWS)
@@ -270,20 +270,20 @@ class TestModelOnlyWithholdsDates(unittest.TestCase):
             evidence_span='Closing Date for Online Registration of Applications'))))
 
     def test_an_unreachable_model_withholds(self):
-        got = read('dates', text_of(*self.ROWS), html=self.TABLE, provider=FakeProvider({}, fail='down'))
+        got = read('dates', text_of(*self.ROWS), html=self.TABLE, gateway=FakeProvider({}, fail='down'))
         self.assertFalse(published(got))
         self.assertIn('could not check', got.note)
 
     def test_the_model_cannot_rescue_a_dropped_date(self):
         # A historical date is dropped deterministically; the model is never asked about it.
         p = FakeProvider(self.reply(role='EXAM', evidence_span='before 1st January, 1962'))
-        got = read('dates', text_of(('x', 'y')), html=RULE_TABLE, provider=p)
+        got = read('dates', text_of(('x', 'y')), html=RULE_TABLE, gateway=p)
         dates = [d['dateTimeStr'][:10] for d in (got.value or [])]
         self.assertNotIn('1962-01-01', dates)
 
     def test_a_dateline_read_as_cited_still_dates_the_notification(self):
         from .attribution import model_role_fits
-        from .verification.attribution_llm import validate_date
+        from .verification.attribution_claude import validate_date
         item = milestone('NOTIFICATION', 'Notification published', '2031-02-19',
                          'NOTIFICATION NO. 02/2031, DATED: 19/02/2031')
         text = 'NOTIFICATION NO. 02/2031, DATED: 19/02/2031 GROUP-I SERVICES'

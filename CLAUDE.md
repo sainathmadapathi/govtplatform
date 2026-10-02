@@ -9,7 +9,7 @@ same depth from UPSC's own documents; IBPS PO and the two APPSC exams are thin s
 
 ```
 govt-platform/
-├── app.py                     # Flask API + SQLite schema + static serving + Tavily research pipeline
+├── app.py                     # Flask API + SQLite schema + static serving + research pipeline + Claude wiring
 ├── index.html                 # HTML shell + all global CSS
 ├── govos.db                   # SQLite database
 ├── requirements.txt           # Flask, flask-cors
@@ -17,8 +17,12 @@ govt-platform/
 ├── vite.config.ts             # dev proxy + single-file build
 ├── tsconfig.json
 
-├── .env / .gitignore          # .env holds TAVILY_API_KEY (never committed)
+├── .env / .env.example        # .env (never committed) holds GOVOS_* settings; there is no API key anywhere
+├── tools/claude_cli/          # the ONE Claude integration: gateway, job queue, discovery, handlers, routes
+├── tools/exam_builder/        # build-time universal pipeline; its verification/ package uses the gateway
 ├── tools/exam_authoring/      # build-time: read an authority's documents into an Exam record
+├── CLAUDE_CLI_INTEGRATION.md  # how Claude is installed, invoked, queued, secured and limited
+├── exam_data/                 # generated (gitignored): authored_exams.json for Ask AI's fact sheets
 
 └── src/
     ├── main.tsx               # App shell, global modals, React root
@@ -38,6 +42,9 @@ npm run dev                # Vite dev server on :3000, proxies /api -> :5000
 python app.py              # Flask API + static server on :5000 (override with PORT)
 npm run build              # -> dist/index.html, fully self-contained
 npx tsc --noEmit           # type check (NOT part of build — currently clean, keep it so)
+npm run export:authored    # exam_data/authored_exams.json from src/data.ts (also runs before `npm run build`)
+npm run check:frontend     # headless checks of the Claude-facing frontend contract (assistant fallback, services fail soft)
+python -m pytest tools test_research_facts.py test_app_claude.py -q   # backend suite; never starts the real Claude CLI
 
 ```
 
@@ -71,6 +78,38 @@ Two kinds of question exist, and the UI distinguishes them:
 When adding questions, read the official source and cite it; never copy a paper wholesale,
 and never label an authored question as officially sourced.
 
+
+## AI: the installed Claude CLI, and nothing else
+
+GovOS has **one** AI integration: the Claude CLI on the machine that runs `app.py`, called server-side
+through `tools/claude_cli/` (one gateway, one persistent job queue, one set of fixed prompt templates).
+There is no local model, no model server, no search API, no SDK and **no API key**; authentication is
+the host CLI's login (`claude auth login`). It is off unless `GOVOS_CLAUDE_ENABLED=1`. Read
+`CLAUDE_CLI_INTEGRATION.md` before touching any of it.
+
+**Claude is machinery, never the factual authority.** It may propose candidate sources, classify,
+extract *with exact quotations*, judge completeness, compare a value to its quotation, answer a
+candidate from one exam's server-built facts, and write labelled guidance or practice. It never
+publishes, never supplies a date/figure/URL that is trusted because it said so, and its failure is an
+infrastructure state (`CLAUDE_DISABLED`, `CLAUDE_CLI_TIMEOUT`, …), never `VERIFIED`, `NOT_PUBLISHED` or
+`NEEDS_REVIEW`. Deterministic code (arithmetic, eligibility, dates, CRUD, ranking, rendering, schema
+and quotation checks, the publication gate) stays deterministic.
+
+Rules that must survive any change:
+- Every Claude call goes through `ClaudeGateway.run(Operation, payload)`. The payload is schema fields;
+  no caller supplies a prompt, flag, tool, working directory, model or executable path. `runner.py` is
+  the only place a process is spawned (array args, no shell, prompt on stdin, narrow env, process-tree kill).
+- Output is untrusted: strict-schema validated, reasoning-like keys stripped, every quotation re-checked
+  against text GovOS fetched itself. A malformed or schema-rejected reply is never retried as if it were
+  transient.
+- Slow work is a **job** (`claude_jobs`), never inside a request. `app.py` supplies the database-backed
+  hooks (`AppHooks`); `tools/claude_cli` never imports `app.py`.
+- Admin operations (discovery, extraction, builds, canonical-changing routes) need `admin_required`:
+  `GOVOS_CLAUDE_ADMIN_TOKEN`, or loopback with no proxy headers and no foreign Origin. That is a local
+  guard, **not** production authentication, and the docs say so.
+- Tests never start the real CLI: use `FakeClaude` / `ByOperation` / `ForbiddenClaude` / `use_gateway`
+  from `tools/claude_cli/testing.py`, or `fake_cli.py` for a real child process. The root `conftest.py`
+  and the test-mode flag enforce it.
 
 ## Architecture
 
@@ -228,9 +267,18 @@ Four candidate-facing gaps on TGPSC, each fixed for every machine-read exam:
      URLs are checked in the background and the page re-polls once after 15 s. "Verify all
      links now" forces a sweep (`/health/recheck`) and stores it for the next visitor.
   4. **Verifier additions.** A PROMOTED research finding gets "Add to Resource Library" in the
-     Trust Panel (`POST /api/resources/additions`). It appears in the library immediately via
-     `additionToResource()`, labelled "ADDED <date> · VERIFIER-APPROVED FROM LIVE SOURCE
-     RESEARCH" with provenance naming the finding, and its link joins the health schedule.
+     Trust Panel (`POST /api/resources/additions`, admin). **An addition belongs to one exam**
+     (`resource_additions.exam_id`, required on every new addition; `GET ?exam_id=` filters, and the
+     library asks for its own exam's only) — it used to appear in every exam's library. The server
+     derives the **source kind from the URL's host on every read** (`_addition_source_kind`:
+     OFFICIAL / TRUSTED_PUBLIC / THIRD_PARTY) and never stores or accepts it from a client, so a
+     coaching site can not be filed as official. OFFICIAL appears via `additionToResource()` labelled
+     "ADDED <date> · VERIFIER-APPROVED FROM LIVE SOURCE RESEARCH"; anything else is `type: THIRD_PARTY`
+     (`resourceFormat: EXTERNAL_PAGE`, "Third-party (not official)" filter group, amber "THIRD-PARTY LINK"
+     card, tag "THIRD-PARTY · NOT OFFICIAL · NOT FACT-CHECKED", `RECOMMENDATION` / `UNDER_VERIFICATION`
+     provenance, never counted among "official government sources"). Its link joins the health schedule.
+     First use: the Manabadi.com list of 77 TSPSC papers was added to TGPSC Group-I on 2026-10-01 (none
+     of them is the 02/2024 paper; its description says so).
      `…/retire` hides it again. This is the only path by which research reaches candidates,
      and it is a deliberate second click after Promote.
   The background loop wakes hourly and refreshes only what is past its own interval, so
@@ -816,9 +864,16 @@ runtime through the same two-step rule as resource additions, never from a scrap
   physical/colour-blindness restrictions; aggregates to `ELIGIBLE | CONDITIONAL | INELIGIBLE`.
 - `calculateAge`, `calculateDetailedAge`, `getCategoryAgeRelaxation`
   (OBC +3, SC/ST +5, PwBD +10).
-- `researchService` — `getStatus`, `search(query, mode, examId?)`, `extract(urls, findingId?)`,
-  `history`, `getFinding`, `setFindingStatus`. Returns a `ResearchOutcome<T>` discriminated
-  union so the UI can render the setup notice on 503 instead of a generic error.
+- `researchService` — `getStatus`, `startSearch(query, mode, examId?)` (queues a discovery job),
+  `getRun`, `extract(findingId)` (deterministic page-text fetch), `extractFactsWithClaude`, `history`,
+  `getFinding`, `setFindingStatus`, `extractFacts`/`listFacts`/`setFactStatus`. Returns a
+  `ResearchOutcome<T>` discriminated union so the UI can render the Claude setup notice on a 503
+  `CLAUDE_UNAVAILABLE` instead of a generic error.
+- `claudeService` — `health`/`healthCached`, `getJob`, `waitForJob` (gives up after a timeout so a slow
+  Claude never blocks a candidate), `cancel`, `retry`, `listJobs`, `ask`, `practice`. Every call swallows
+  network errors into `ok: false`, so a feature can always fall back to its deterministic form.
+  `adminToken` / `adminHeaders()` carry the optional admin token (sessionStorage, this tab only) on every
+  Trust Panel mutation.
 - `conversationService` / `buildChatContext` / `deriveCandidateStage` / `daysToApplicationClose`
   — the shared conversation context described above.
 - `syllabusLiveService` — `watch`, `revisions`, `addRevision`, `retireRevision`; plus the pure
@@ -896,16 +951,31 @@ words, off-topic — and prints destination/kind/top results; copy it into `src/
 esbuild (`--jsx=automatic`), run, delete. Every behavioural fix in this area came from
 reading that output, and it is the fastest way to see a regression.
 
-**Live Source Research (Tavily).** The Admin Trust Panel's "Live Source Research" tab runs a
-Tavily search (scope: official domains only / news / whole web), and every result is
-classified by domain — `OFFICIAL` (`*.gov.in`, `*.nic.in`, statutory bodies), `TRUSTED_PUBLIC`
-(`*.ac.in`, `*.edu`, PRS), or `UNVERIFIED` — stored in `research_runs` / `research_findings`,
-and reviewed by a human (promote / reviewed / reject) with optional full-text extraction.
-The `AIAssistant` offers a live official-domain search **only** on its fallback path, with
-results badged "LIVE WEB RESULTS — NOT YET VERIFIED". Nothing from research reaches
-candidates as verified; promoting a finding records the decision, and adding it to `data.ts`
-with provenance remains a deliberate edit. Shared helpers: `researchTrustMeta`,
-`ResearchSetupNotice` (shown when no key is configured).
+**Live Source Research (Claude discovery).** The Admin Trust Panel's "Live Source Research" tab runs a
+discovery **job**: Claude proposes candidate sources (scope: official domains only / any host), and
+the server checks every one itself — syntax, public address on every redirect hop, reachability,
+page identity — and classifies it by domain: `OFFICIAL` (`*.gov.in`, `*.nic.in`, statutory bodies),
+`TRUSTED_PUBLIC` (`*.ac.in`, `*.edu`, PRS), or `UNVERIFIED`. A redirect can lower trust, never raise it,
+and nothing is official because Claude said so. Results are stored in `research_runs` /
+`research_findings` (with the server's checks in `meta_json` and the full manifest, rejected
+candidates included, in `manifest_json`) and reviewed by a human (promote / reviewed / reject).
+"Fetch page text" is deterministic (the server fetches the finding's own URL); "Read with Claude"
+is a second, explicit job whose proposed values are kept only where their quotation is printed in that
+page text, and land as `pending` facts labelled "CLAUDE-ASSISTED · QUOTE VERIFIED". A "Claude jobs"
+panel shows state, safe errors, cancel and retry. Runs made by the earlier search provider stay,
+labelled `LEGACY_SEARCH`. Nothing from research reaches candidates as verified; promoting a finding
+records the decision, and adding it to `data.ts` with provenance remains a deliberate edit. The
+candidate-facing `AIAssistant` has **no** live web search any more (discovery is admin-only): for a
+question the register cannot place, and only when Claude is ready, it asks Claude to answer from that
+exam's server-built facts (`POST /api/claude/ask`), shows the answer under a "CLAUDE-ASSISTED · FROM GOVOS
+VERIFIED DATA" badge with its cited facts as Evidence, and falls back to the register's own reply with a
+note when Claude is off, signed out, slow (60 s) or its answer fails the server's checks. A matched
+fact, a "where is it" answer and a request for the candidate's details never go to Claude. Shared
+helpers: `researchTrustMeta`, `ClaudeSetupNotice`, `ClaudeJobsPanel`, `AdminTokenField`,
+`ClaudePracticePanel` (optional Claude-written practice on one verified syllabus topic, rendered beside
+every exam's own practice engine by `ExamPracticeRouter`, labelled GovOS-authored, never scored; every
+answer key is confirmed by a second, independent `SOLVE_PRACTICE` call that never sees the key, a
+question is dropped where the two disagree, and nothing is served if that check cannot run).
 
 `ResourceLibrary` is both **its own top-level tab** (the candidate-facing entry point — the
 user could not find it when it was only a guide sub-section) and guide section 08. Pass
@@ -1269,20 +1339,33 @@ background-checks new URLs) · `POST health/recheck {urls}` (immediate sweep, st
 `live_feed_cache` for 6 h, health in `resource_link_health` for 12 h; `_start_background_refresh()`
 runs the hourly daemon from `__main__`.
 
-Research pipeline (`/api/research/*`): `GET status` (configured?, run/pending counts,
-official domain list) · `POST search {query, mode, exam_id?, max_results?}` · `POST extract
-{urls, finding_id?}` · `GET history?limit` · `GET findings/<id>` · `POST findings/<id>/status`.
-Tavily is called with `urllib` (no SDK); the key is read from the environment or a minimal
-`.env` loader (`_load_dotenv`, no python-dotenv dependency) and sent both as a bearer header
-and in the body for API-version compatibility. `TAVILY_BASE_URL` can be overridden — the
-scratchpad `mock_tavily.py` used for testing relies on that. Without a key every research
-route returns 503 with a `setup` hint and the UI shows how to configure it.
-**Tavily's `include_domains` is advisory in practice** — a live OFFICIAL-scope run returned five
-coaching sites alongside one ssc.gov.in notice — so `research_search` enforces the scope
-server-side (only OFFICIAL-classified results are kept/stored) and returns `filteredOut`.
-The key lives in the gitignored `.env`; the user adds it themselves.
+Research pipeline (`/api/research/*`): `GET status` (Claude readiness, run/pending counts, official
+domain list, whether an admin token is required) · `POST search {query, mode, exam_id?, max_results?}`
+(admin; queues a `DISCOVER_SOURCES` job, `202` + poll URL, `503 CLAUDE_UNAVAILABLE` with a setup hint when
+Claude is not ready) · `GET runs/<id>` · `POST extract {finding_id}` (admin; the server fetches that
+finding's own URL, never an arbitrary one, through `fetch_checked`, and stores the text; a failed fetch or
+a scanned PDF is reported as a fetch fact, never as "not published") · `GET history?limit` ·
+`GET findings/<id>` · `POST findings/<id>/status` (admin) · `POST facts/extract` (admin; rule-based, or
+`{claude: true, finding_id}` for a Claude job) · `GET facts` · `POST facts/<id>/status` (admin).
+Scope is enforced server-side: in OFFICIAL mode only candidates the server classifies OFFICIAL are kept,
+and every proposed-but-rejected URL is recorded with its reasons. `_load_dotenv` (no python-dotenv)
+reads **only** `GOVOS_*` settings and `PORT` from `.env`, so no other secret is ever loaded into the
+process.
 
-Tables: `users`, `study_progress`, `research_runs`, `research_findings`, `resource_link_health`,
+Claude (`tools/claude_cli`, mounted as a blueprint): `GET /api/claude/health` · `POST|GET
+/api/claude/jobs` (admin) · `GET /api/claude/jobs/<id>` · `POST …/cancel` · `POST …/retry` (admin) ·
+`POST /api/claude/ask` and `/practice` (candidates; rate limited; per-job token). `POST /api/exams/build`
+is a job too (admin; `claude` defaults to false). `/api/llm/health` answers `410` naming
+`/api/claude/health`. Canonical-changing routes (syllabus revisions, resource additions, overlays, their
+retire routes, report status) and the research writes sit behind `admin_required`. CORS is limited to
+localhost origins. The hooks (`_persist_discovery`, `_load_finding`, `_ingest_claude_facts`) and the
+queue are created at import; `__main__` calls `ensure_started()` so jobs a dead process left `RUNNING`
+are recovered.
+
+Tables: `users`, `study_progress`, `research_runs` (+ `engine`, `job_id`, `manifest_json`),
+`research_findings` (+ `meta_json`), `research_facts`, `claude_jobs`, `claude_job_events`,
+`claude_invocations` (audit: never prompt or output text), `claude_decision_cache` (cache of valid decisions,
+keyed by input fingerprint + template version), `resource_link_health`,
 `live_feed_cache`, `resource_additions`, `mock_attempts` (with `details_json` holding
 `userAnswers` + the whole `paperData`), `bookmarked_resources`, `candidate_notes`,
 `audit_reports`, `tracked_exams`, `notification_preferences`, `candidate_notifications`.
@@ -1356,10 +1439,11 @@ so run it yourself.
 
 Remaining by design, not defects:
 
-- **Chats are context-aware but still deterministic.** They read the thread, the selected
-  exam and post, the profile and the stage — there is no model call and no generation. When
-  you add an intent, give it a `FACT_SUBJECTS` phrase too, or follow-ups after it will have
-  nothing to inherit.
+- **Chats are context-aware and deterministic first.** They read the thread, the selected
+  exam and post, the profile and the stage, and answer from the register without any model call.
+  The one exception is Ask GovOS AI for a question the register cannot place, which may go to Claude
+  (see the Claude section above). When you add an intent, give it a `FACT_SUBJECTS` phrase too, or
+  follow-ups after it will have nothing to inherit.
 - **Authored data yes, invented personalisation no.** The register (dates, posts, syllabus,
   resources, question bank) is authored on purpose and carries provenance — that is the
   product. What must never be hardcoded is anything presented as *the candidate's*:
@@ -1380,7 +1464,7 @@ Remaining by design, not defects:
   - Counts inside answer text are placeholders (`{posts}`, `{resources}`, `{syllabus}`,
     `{exam}`) filled by `fillCounts()` from the register, so "25 verified links" cannot
     survive the library growing to 38.
-- **The "AI" features are deterministic local logic.** `ResourceAIAssistant` is a ranked
+- **Most "AI" features are deterministic local logic, on purpose.** `ResourceAIAssistant` is a ranked
   search (`rankResourcesForQuery`: `readNavigatorQuery` extracts a format — pdf / video /
   channel / portal / tool — plus subjects from its own word lists and topics via
   `parseTestRequest`, then scores every resource on title, author, tag, subject and blurb,
@@ -1392,7 +1476,10 @@ Remaining by design, not defects:
   "english grammar video" returns the video above the channel; `AIAssistant` is an intent engine over `PLATFORM_MAP` + `SSC_CGL_EXAM`
   (`answerCandidateQuery`); the PracticeEngine chat is a written parser over
   `TOPIC_CATALOG`; the admin SHA-256 monitor and the PDF extraction sample are fixtures.
-  No model call anywhere. Preserve the framing; don't wire them to a model unasked.
+  None of these calls a model; the only Claude paths are the ones in the Claude section (Ask AI
+  fallback, Claude-written practice panel, Trust Panel discovery/reading, builder verification).
+  Preserve the framing; don't wire anything else to Claude unasked, and never to format a value the
+  register already holds.
   When you add a view or move a feature, update `PLATFORM_MAP` in the same edit — a stale
   map sends candidates to the wrong tab, which is worse than no answer.
 - **The past-paper corpus is 35 templates** (see `data.ts` above). Custom tests are not
@@ -1481,7 +1568,7 @@ Remaining by design, not defects:
   page errors back**, and the corrections would have to be applied again to the new record.
 - **Government hosts are intermittent from Indian networks; links must open for the candidate.**
   `ncert.nic.in` timed out in the user's own browser (ERR_CONNECTION_TIMED_OUT) even though it
-  answered Tavily, so every NCERT link now points at a host that answers: the question
+  answered from a server-side crawler, so every NCERT link now points at a host that answers: the question
   sources and the Exemplar entry use NCERT's own upload on the Internet Archive
   (`archive.org/download/ncert-jeep2/jeepNNN.pdf`, creator NCERT, collection ncert-textbooks —
   identical file codes), and the textbook-portal entry uses DIKSHA (`diksha.gov.in/ncert`,

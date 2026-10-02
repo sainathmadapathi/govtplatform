@@ -5,6 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prebuild": "node tools/export_authored_exams.mjs",
+    "export:authored": "node tools/export_authored_exams.mjs",
+    "check:frontend": "node tools/frontend_checks/run.mjs",
     "build": "vite build",
     "preview": "vite preview"
   },

@@ -351,7 +351,8 @@ def _first(pattern: re.Pattern, text: str) -> str:
 def _evidence(span: str, doc: SourceDocument, text: str, *, reading: str,
               page: int | None = None) -> SourceEvidence | None:
     """Evidence whose span is verbatim in the document, or nothing at all."""
-    ev = Evidence(span=span[:900], source_url=doc.url, document_title=doc.title,
+    # The whole span: evidence that stops short of the value it supports supports less of it.
+    ev = Evidence(span=span, source_url=doc.url, document_title=doc.title,
                   page=page or 1, reading=reading)
     if ev.verify(text) is not EvidenceStatus.VERIFIED:
         return None

@@ -541,9 +541,9 @@ def check_dates(items: list[dict], source_text: str, cycle: str) -> DateVerdict:
 
 
 def resolve_with_model_reply(item: dict, reply, source_text: str) -> tuple[bool, str]:
-    """May a model's role classification give an unresolved date its role? Only when the
-    model's verbatim evidence contains the date and an event cue of the role it names."""
-    from .verification.attribution_llm import validate_date
+    """May Claude's role classification give an unresolved date its role? Only when
+    Claude's verbatim evidence contains the date and an event cue of the role it names."""
+    from .verification.attribution_claude import validate_date
     ok, why = validate_date(item, reply, source_text, need_role=None)
     if not ok:
         return False, why
@@ -552,12 +552,12 @@ def resolve_with_model_reply(item: dict, reply, source_text: str) -> tuple[bool,
     stage = bool(_STAGE_LABEL.search(span) and not _NOT_A_STAGE.search(span))
     wanted = _ROLE_CUES.get(reply['role'], set())
     if not (kinds & wanted or (stage and reply['role'] == 'EXAM')):
-        return False, (f'the model names {reply["role"]}, but its evidence carries no cue for '
+        return False, (f'Claude names {reply["role"]}, but its evidence carries no cue for '
                        f'that event ({span[:100]!r})')
-    return True, f'role {reply["role"]} established by the model and its evidence\'s own cue'
+    return True, f'role {reply["role"]} established by Claude and its evidence\'s own cue'
 
 
-#: Model roles -> the event cues (dates.EVENT_CUES kinds) that may substantiate them. The model's
+#: Claude's roles -> the event cues (dates.EVENT_CUES kinds) that may substantiate them. Claude's
 #: roles are the reader's own kinds, so most map to themselves.
 _ROLE_CUES = {
     'APPLICATION_START': {'APPLICATION_WINDOW'}, 'APPLICATION_CLOSE': {'APPLICATION_WINDOW'},
@@ -568,7 +568,7 @@ _ROLE_CUES = {
     'DOCUMENT_VERIFICATION': {'DOCUMENT_VERIFICATION'}, 'INTERVIEW': {'INTERVIEW'},
     'NOTIFICATION': {'NOTIFICATION'}, 'OTHER_EVENT': {'OPTION_ENTRY', 'PHYSICAL_TEST'},
 }
-#: The model roles that agree with each role the evidence can establish (a runtime type or a
+#: Claude's roles that agree with each role the evidence can establish (a runtime type or a
 #: cue kind). A notice's own date may be read as cited: its dateline is "dated" by nature.
 _FITS = {
     'NOTIFICATION': {'NOTIFICATION', 'REFERENCE'},
@@ -587,6 +587,6 @@ _FITS = {
 
 
 def model_role_fits(item: dict, role: str) -> bool:
-    """Does a model's role agree with the role the evidence already established?"""
+    """Does Claude's role agree with the role the evidence already established?"""
     own = date_role(item)
     return bool(own) and role in _FITS.get(own, {own})

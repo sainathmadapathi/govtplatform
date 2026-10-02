@@ -1,35 +1,28 @@
-"""The strict, machine-validated contract for a verification. No free-form model text leaks
-past `VerificationResult.from_model_json`, which rejects anything malformed."""
+"""The strict, machine-validated contract for a verification. No free-form Claude text leaks
+past `VerificationResult.from_claude_output`, which refuses anything inconsistent. The shape of the
+reply itself was already validated by the Claude gateway against the operation's schema."""
 from __future__ import annotations
 
 import hashlib
-import json
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Optional
 
-VERIFIER_VERSION = 'gov-verify-1'
+from tools.claude_cli.schemas import InfraStatus
+
+VERIFIER_VERSION = 'gov-verify-2'
+
+#: What a result's `engine` field says produced it.
+ENGINE = 'claude-cli'
 
 
 class VerificationDecision(str, Enum):
-    """The LLM's semantic decision about whether evidence supports the claim."""
+    """Claude's semantic decision about whether evidence supports the claim."""
 
     SUPPORTED = 'SUPPORTED'
     CONTRADICTED = 'CONTRADICTED'
     INSUFFICIENT = 'INSUFFICIENT'
     ERROR = 'ERROR'          # not a factual decision -- see `infra`
-
-
-class InfraStatus(str, Enum):
-    """What happened to the model call. Deliberately NOT a factual state: an infrastructure
-    failure is never NOT_PUBLISHED and never VERIFIED."""
-
-    OK = 'OK'
-    LLM_DISABLED = 'LLM_DISABLED'
-    LLM_UNAVAILABLE = 'LLM_UNAVAILABLE'
-    LLM_TIMEOUT = 'LLM_TIMEOUT'
-    LLM_ERROR = 'LLM_ERROR'
-    LLM_INVALID_RESPONSE = 'LLM_INVALID_RESPONSE'
 
 
 @dataclass
@@ -63,7 +56,7 @@ class Claim:
 
 @dataclass
 class DeterministicResult:
-    """The Python checks that run before the LLM and are authoritative."""
+    """The Python checks that run before Claude and are authoritative."""
 
     source_ok: bool = False
     span_present: bool = False
@@ -83,63 +76,53 @@ class DeterministicResult:
 
 @dataclass
 class VerificationResult:
-    """The LLM verifier's structured, validated output."""
+    """The Claude verifier's structured, validated output."""
 
     decision: VerificationDecision
     identity_supported: bool
     evidence_supported: bool
     claim_supported: bool
     reason: str
-    model: str
+    engine: str
     verifier_version: str = VERIFIER_VERSION
     infra: InfraStatus = InfraStatus.OK
 
     @classmethod
-    def error(cls, infra: InfraStatus, reason: str, model: str = '') -> 'VerificationResult':
+    def error(cls, infra: InfraStatus, reason: str, engine: str = ENGINE) -> 'VerificationResult':
         """A non-factual failure. Decision is ERROR and can never be read as SUPPORTED."""
         return cls(decision=VerificationDecision.ERROR, identity_supported=False,
                    evidence_supported=False, claim_supported=False, reason=reason,
-                   model=model, infra=infra)
+                   engine=engine, infra=infra)
 
     @classmethod
-    def from_model_json(cls, raw: Any, *, model: str) -> 'VerificationResult':
-        """Parse and *validate* the model's JSON. Anything malformed is LLM_INVALID_RESPONSE
-        -- never a publishable decision."""
-        if isinstance(raw, str):
-            try:
-                raw = json.loads(raw)
-            except (ValueError, TypeError):
-                return cls.error(InfraStatus.LLM_INVALID_RESPONSE,
-                                 'model output was not valid JSON', model)
+    def from_claude_output(cls, raw: Any, *, engine: str = ENGINE) -> 'VerificationResult':
+        """Build a result from the gateway's schema-validated output, refusing an internally
+        inconsistent one: a SUPPORTED decision whose own booleans disagree is not trusted -- the
+        reply does not get to both support and not support."""
         if not isinstance(raw, dict):
-            return cls.error(InfraStatus.LLM_INVALID_RESPONSE,
-                             'model output was not a JSON object', model)
+            return cls.error(InfraStatus.CLAUDE_INVALID_OUTPUT, 'output was not a JSON object', engine)
         dec = raw.get('decision')
         if dec not in (d.value for d in VerificationDecision) or dec == 'ERROR':
-            return cls.error(InfraStatus.LLM_INVALID_RESPONSE,
-                             f'missing or invalid decision: {dec!r}', model)
+            return cls.error(InfraStatus.CLAUDE_SCHEMA_REJECTED, f'missing or invalid decision: {dec!r}', engine)
         for key in ('identity_supported', 'evidence_supported', 'claim_supported'):
             if not isinstance(raw.get(key), bool):
-                return cls.error(InfraStatus.LLM_INVALID_RESPONSE,
-                                 f'field {key} must be a boolean', model)
+                return cls.error(InfraStatus.CLAUDE_SCHEMA_REJECTED, f'field {key} must be a boolean', engine)
         reason = raw.get('reason')
         if not isinstance(reason, str):
             reason = ''
-        # A SUPPORTED decision whose own booleans do not agree is internally inconsistent and
-        # is refused rather than trusted -- the model does not get to both support and not.
         if dec == 'SUPPORTED' and not (raw['evidence_supported'] and raw['claim_supported']):
-            return cls.error(InfraStatus.LLM_INVALID_RESPONSE,
-                             'SUPPORTED but evidence/claim booleans disagree', model)
+            return cls.error(InfraStatus.CLAUDE_SCHEMA_REJECTED,
+                             'SUPPORTED but evidence/claim booleans disagree', engine)
         return cls(decision=VerificationDecision(dec),
                    identity_supported=raw['identity_supported'],
                    evidence_supported=raw['evidence_supported'],
-                   claim_supported=raw['claim_supported'], reason=reason[:600], model=model)
+                   claim_supported=raw['claim_supported'], reason=reason[:600], engine=engine)
 
     def as_dict(self) -> dict:
         return {'decision': self.decision.value, 'identitySupported': self.identity_supported,
                 'evidenceSupported': self.evidence_supported,
                 'claimSupported': self.claim_supported, 'reason': self.reason,
-                'model': self.model, 'verifierVersion': self.verifier_version,
+                'engine': self.engine, 'verifierVersion': self.verifier_version,
                 'infra': self.infra.value}
 
 
@@ -147,8 +130,8 @@ class VerificationResult:
 class Verdict:
     """The publication decision. `publishable` is VERIFIED; otherwise NEEDS_REVIEW.
 
-    The rule is deterministic and never keyed on a numeric LLM confidence:
-    VERIFIED  ==  deterministic.passed AND llm.decision == SUPPORTED.
+    The rule is deterministic and never keyed on a numeric confidence:
+    VERIFIED  ==  deterministic.passed AND claude.decision == SUPPORTED.
     Everything else -- a deterministic failure, a CONTRADICTED/INSUFFICIENT decision, or any
     infrastructure failure -- is NEEDS_REVIEW.
     """
@@ -156,7 +139,7 @@ class Verdict:
     publishable: bool
     status: str                        # 'VERIFIED' | 'NEEDS_REVIEW'
     deterministic: DeterministicResult
-    llm: Optional[VerificationResult]
+    claude: Optional[VerificationResult]
     infra: InfraStatus
     reason: str
     fingerprint: str = ''
@@ -174,4 +157,4 @@ class Verdict:
                     'valuePresent': self.deterministic.value_present,
                     'crossExamOk': self.deterministic.cross_exam_ok,
                     'reasons': self.deterministic.reasons},
-                'llm': self.llm.as_dict() if self.llm else None}
+                'claude': self.claude.as_dict() if self.claude else None}

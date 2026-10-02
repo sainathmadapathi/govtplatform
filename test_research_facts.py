@@ -1,6 +1,6 @@
 """Focused tests for the field-level research validation layer (RESEARCH_VALIDATION_DESIGN.md).
 
-No Tavily call and no network: findings are inserted directly (as research_search would have
+No Claude call and no network: findings are inserted directly (as research_search would have
 stored them) and reachability is stubbed, so the rules are exercised deterministically. The
 last group proves the existing pipeline (findings review, promote gate, resource_additions) is
 untouched by this layer.

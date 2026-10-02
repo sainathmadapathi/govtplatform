@@ -9,7 +9,7 @@ this module adds is the wiring, and it wires by *calling*, never by re-implement
     IDENTITY          identity.verify            (inside build.build)
     EXTRACTION        semantic.extract / X.*     (inside build.build)
     DETERMINISTIC     verification.deterministic (inside verification.verify)
-    QWEN (optional)   verification.verify        (this module, per FOUND field)
+    CLAUDE (optional) verification.verify        (this module, per FOUND field)
     MERGE/REVISION    merge.*                    (available; nothing to merge on a fresh build)
     SCHEMA/ISOLATION  exam_authoring.verify.run_all + gate.evaluate
     PUBLICATION GATE  gate.evaluate
@@ -30,7 +30,7 @@ Two safety rules shape the whole thing:
 
 Every distinct failure keeps its own state (Step 14): a search outage is not a silent
 authority, an ambiguous authority is not a resolution failure, a gate block is not a publish,
-and a Qwen outage never becomes a verified fact or a fabricated one.
+and a Claude outage never becomes a verified fact or a fabricated one.
 """
 from __future__ import annotations
 
@@ -52,7 +52,7 @@ from .identity import IdentityVerdict
 from .resolve import AmbiguousAuthority, SearchUnavailable
 from .verification.adapters import claim_from_field
 from .verification.schemas import InfraStatus, VerificationDecision, Verdict
-from .verification.verifier import verify as qwen_verify
+from .verification.verifier import verify as claude_verify
 
 
 class Stage(str, Enum):
@@ -64,7 +64,7 @@ class Stage(str, Enum):
     IDENTITY = 'IDENTITY'
     EXTRACTION = 'EXTRACTION'
     DETERMINISTIC = 'DETERMINISTIC'
-    QWEN = 'QWEN'
+    CLAUDE_VERIFICATION = 'CLAUDE_VERIFICATION'
     MERGE_REVISION = 'MERGE_REVISION'
     SCHEMA = 'SCHEMA'
     ISOLATION = 'ISOLATION'
@@ -125,8 +125,8 @@ class OrchestrationResult:
                          + (f' — {len(self.gate.blockers)} blocker(s)' if self.gate.blockers else ''))
         if self.verifications:
             sup = sum(1 for v in self.verifications.values()
-                      if v.llm and v.llm.decision is VerificationDecision.SUPPORTED)
-            lines.append(f'qwen:     {sup}/{len(self.verifications)} SUPPORTED')
+                      if v.claude and v.claude.decision is VerificationDecision.SUPPORTED)
+            lines.append(f'claude:   {sup}/{len(self.verifications)} SUPPORTED')
         if self.isolation_ok is not None:
             lines.append(f'isolated: {self.isolation_ok} (unrelated exams byte-identical)')
         if self.staging_path:
@@ -139,7 +139,7 @@ class OrchestrationResult:
 
 
 def orchestrate(exam_query: str = '', *, year: str = '', dry_run: bool = True,
-                use_llm: bool = False, provider=None, cache=None,
+                use_claude: bool = False, gateway=None, cache=None,
                 replay=None, siblings: Optional[list] = None, max_docs: int = 8,
                 data_ts: str = P.DATA_TS, typecheck: bool = True, allow_overwrite: bool = False,
                 allow_overlay: bool = False, overlay_store=None,
@@ -184,28 +184,28 @@ def orchestrate(exam_query: str = '', *, year: str = '', dry_run: bool = True,
     res.reached = Stage.EXTRACTION
     rec = br.record
 
-    # --- DETERMINISTIC + optional QWEN, per FOUND field ------------------------------------
+    # --- DETERMINISTIC + optional CLAUDE, per FOUND field ------------------------------------
     # Order is preserved by verify(): identity → evidence (span verbatim) → deterministic →
-    # Qwen. Qwen may only WITHHOLD: an explicit CONTRADICTED holds a field for review; a
+    # Claude. Claude may only WITHHOLD: an explicit CONTRADICTED holds a field for review; a
     # SUPPORTED/INSUFFICIENT/infra result never upgrades a field and never fabricates data.
-    if use_llm:
-        res.reached = Stage.QWEN
+    if use_claude:
+        res.reached = Stage.CLAUDE_VERIFICATION
         for name, f in list(rec.fields.items()):
             if f.status is not Status.FOUND or f.citation is None:
                 continue
             claim = claim_from_field(f, exam_id=rec.exam_id, official_name=rec.title,
                                      authority=rec.authority_name,
                                      cycle=(br.resolved.year or year))
-            v: Verdict = qwen_verify(claim, provider=provider, cache=cache)
+            v: Verdict = claude_verify(claim, gateway=gateway, cache=cache)
             res.verifications[name] = v
             if v.infra is not InfraStatus.OK:
-                rec.note(f'{name}: Qwen verification unavailable ({v.infra.value}); the field '
+                rec.note(f'{name}: Claude verification unavailable ({v.infra.value}); the field '
                          f'is left exactly as the build read it — never upgraded, never dropped.')
                 continue
-            if v.llm is not None and v.llm.decision is VerificationDecision.CONTRADICTED:
+            if v.claude is not None and v.claude.decision is VerificationDecision.CONTRADICTED:
                 rec.set(Field.needs_review(
                     name, f.value,
-                    'Qwen found the cited evidence contradicts this reading; held for review '
+                    'Claude found the cited evidence contradicts this reading; held for review '
                     'rather than published.', f.citation))
 
     # --- MERGE / REVISION -------------------------------------------------------------------
@@ -362,7 +362,7 @@ def _write_staging(res: OrchestrationResult) -> str:
             for n, f in (rec.fields.items() if rec else [])
         },
         'verification': {
-            n: {'status': v.status, 'decision': v.llm.decision.value if v.llm else None,
+            n: {'status': v.status, 'decision': v.claude.decision.value if v.claude else None,
                 'infra': v.infra.value, 'publishable': v.publishable}
             for n, v in res.verifications.items()
         },
@@ -394,14 +394,14 @@ def main(argv: Optional[list] = None) -> int:
         description='Run the universal build pipeline end to end for one exam (dry run by default).')
     ap.add_argument('exam', nargs='?', default='', help='the exam name, e.g. "UPSC CSE 2026"')
     ap.add_argument('--year', default='', help='override the year if the name has none')
-    ap.add_argument('--llm', action='store_true', help='also run optional Qwen verification')
+    ap.add_argument('--claude', action='store_true', help='also run the optional Claude CLI verification')
     ap.add_argument('--publish', action='store_true',
                     help='NOT a dry run: attempt an atomic publish (requires a renderer; the CLI '
                          'supplies none, so this stages unless the pipeline is extended)')
     args = ap.parse_args(argv)
     if not args.exam:
         ap.error('name an exam, e.g. "UPSC CSE 2026"')
-    res = orchestrate(args.exam, year=args.year, dry_run=not args.publish, use_llm=args.llm)
+    res = orchestrate(args.exam, year=args.year, dry_run=not args.publish, use_claude=args.claude)
     print(res.summary())
     return 0 if res.state in (OrchestrationState.PUBLISHED, OrchestrationState.STAGED) else 1
 

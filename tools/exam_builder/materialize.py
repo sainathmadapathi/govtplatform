@@ -1162,8 +1162,9 @@ def _slugify(text: str) -> str:
 
 
 def _subject_label(title: str) -> str:
+    # The subject is its heading as printed, whole; a long one wraps where it is shown.
     t = re.sub(r'\s+', ' ', (title or '').strip())
-    return (t[:58] + '…') if len(t) > 60 else (t or 'Syllabus')
+    return t or 'Syllabus'
 
 
 def flat_syllabus_from_tree(tree: list[dict]) -> list[dict]:
@@ -1187,7 +1188,7 @@ def flat_syllabus_from_tree(tree: list[dict]) -> list[dict]:
         subs = [s for s in subs if s and not _garbage_name(s)][:40]
         topics.append({
             'id': f'syltopic-{counter[0]}-{_slugify(title)}',
-            'subject': subject, 'tier': 'BOTH', 'topicName': title[:220],
+            'subject': subject, 'tier': 'BOTH', 'topicName': title,
             'subtopics': subs, 'weightagePercentage': 0, 'avgQuestions': 0,
             'isHighYield': False,
             'officialProvenance': node.get('provenance') or {},
@@ -1354,9 +1355,9 @@ def _result_next_steps(rec: ExamRecord) -> list[dict]:
     return out
 
 
-class _NoModel:
-    """Materialization never calls a model: the guidance it carries is the deterministic order
-    over verified topics, so a registration cannot depend on, or be changed by, a model reply."""
+class _NoClaude:
+    """Materialization never calls Claude: the guidance it carries is the deterministic order
+    over verified topics, so a registration cannot depend on, or be changed by, a Claude reply."""
     name = 'none'
 
     def is_enabled(self) -> bool:
@@ -1372,7 +1373,7 @@ def _study_guidance(rec: ExamRecord, syllabus: list[dict]) -> Optional[dict]:
         return None
     from .verification.roadmap_guidance import generate
     g = generate(rec.exam_id, syllabus, authority=rec.authority_name, exam_label=rec.title,
-                 provider=_NoModel())
+                 gateway=_NoClaude())
     if not g.available:
         return None
     out = g.as_dict()
@@ -1945,6 +1946,7 @@ class EngineState(str, Enum):
     MATERIALIZATION_INVALID = 'MATERIALIZATION_INVALID'   # gate passed but the payload fails the contract
     PROJECTION_LOSS = 'PROJECTION_LOSS'                   # a canonical FOUND fact did not survive into runtime
     REGISTRY_REJECTED = 'REGISTRY_REJECTED'               # e.g. an authored id, a missing cycle
+    CANCELLED = 'CANCELLED'                               # stopped on request before anything was registered
 
 
 _ORCH_TO_ENGINE = {
@@ -2007,10 +2009,10 @@ class EngineBuildResult:
 
 
 def build_exam(exam_query: str, year: str | int = '', *, registry: Optional[ExamRegistry] = None,
-               search_fn: Optional[Callable] = None, use_llm: bool = False, provider=None, cache=None,
+               search_fn: Optional[Callable] = None, use_claude: bool = False, gateway=None, cache=None,
                siblings: Optional[list] = None, max_docs: int = 8,
                data_ts: str = P.DATA_TS, reviews: Optional[list] = None,
-               replay=None) -> EngineBuildResult:
+               replay=None, should_continue: Optional[Callable[[], bool]] = None) -> EngineBuildResult:
     """The single generic engine entry point: name + cycle in, a registered runtime Exam out.
 
         build_exam("<an authored exam>", 2027)  ·  build_exam("Any Unknown Board Exam", 2028)
@@ -2021,7 +2023,7 @@ def build_exam(exam_query: str, year: str | int = '', *, registry: Optional[Exam
     a reason and registers nothing. No branch reads an exam or an authority name.
     """
     year = str(year or '')
-    res = orchestrate(exam_query, year=year, dry_run=True, use_llm=use_llm, provider=provider,
+    res = orchestrate(exam_query, year=year, dry_run=True, use_claude=use_claude, gateway=gateway,
                       cache=cache, siblings=siblings, max_docs=max_docs, data_ts=data_ts,
                       search_fn=search_fn, reviews=reviews, replay=replay)
     out = EngineBuildResult(query=exam_query, year=year, state=EngineState.BLOCKED_BY_GATE,
@@ -2043,12 +2045,20 @@ def build_exam(exam_query: str, year: str | int = '', *, registry: Optional[Exam
                            'fieldsNotExtracted': sum(1 for f in rec.fields.values() if f.status is Status.NOT_EXTRACTED),
                            'buildState': br.build_state.value}
         out.verification = {n: {'status': v.status, 'infra': v.infra.value,
-                                'decision': v.llm.decision.value if v.llm else None}
+                                'decision': v.claude.decision.value if v.claude else None}
                             for n, v in res.verifications.items()}
         out.completeness = br.completeness.to_dict() if getattr(br, 'completeness', None) else None
     if res.gate is not None:
         out.gate = {'decision': res.gate.decision.value,
                     'blockers': [str(b) for b in res.gate.blockers], 'allowedUnpublished': list(res.gate.allowed)}
+
+    # A cancelled build registers nothing, however far it got: the last chance to stop is here,
+    # before anything is materialized or written to the registry.
+    if should_continue is not None and not should_continue():
+        out.state = EngineState.CANCELLED
+        out.registry = {'status': 'NOT_REGISTERED'}
+        out.reason = 'cancelled on request; nothing was registered'
+        return out
 
     # Every non-passing outcome keeps its own state and registers nothing.
     if res.state is not OrchestrationState.STAGED or res.build is None or res.gate is None or not res.gate.may_publish:
@@ -2179,9 +2189,9 @@ def main(argv: Optional[list] = None) -> int:
     ap.add_argument('exam', help='the exam name, e.g. "RRB NTPC"')
     ap.add_argument('--year', default='', help='the cycle/year, e.g. 2027')
     ap.add_argument('--db', default='govos.db', help='registry SQLite file')
-    ap.add_argument('--llm', action='store_true', help='also run optional Qwen verification')
+    ap.add_argument('--claude', action='store_true', help='also run the optional Claude CLI verification')
     args = ap.parse_args(argv)
-    res = build_exam(args.exam, args.year, registry=ExamRegistry(args.db), use_llm=args.llm)
+    res = build_exam(args.exam, args.year, registry=ExamRegistry(args.db), use_claude=args.claude)
     print(res.summary())
     return 0 if res.registered else 1
 
