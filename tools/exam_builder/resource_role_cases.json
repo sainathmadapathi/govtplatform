@@ -1,0 +1,1207 @@
+{
+ "_doc": "The role each resource card plays (tools/exam_builder/resource_roles.py classify_resource_item, and resourceRoleOf in src/ui.tsx). Both are tested against this one table, so they cannot drift apart. Only STUDY_MATERIAL, LECTURE_VIDEO and PRACTICE_TOOL reach the Resource Library. Real cards are listed with the exam they come from; edge cases say what they pin. sectionForRole is the one placement model: where each role is shown on an exam's page (SECTION_FOR_ROLE in resource_roles.py, RESOURCE_SECTION in src/ui.tsx); null means never shown as a resource.",
+ "learningRoles": [
+  "STUDY_MATERIAL",
+  "LECTURE_VIDEO",
+  "PRACTICE_TOOL"
+ ],
+ "cases": [
+  {
+   "source": "exam-ssc-cgl-2026",
+   "item": {
+    "title": "SSC CGL 2026 Official Notice (Complete 132-page Notification)",
+    "type": "OFFICIAL_PDF",
+    "resourceFormat": "DIRECT_PDF",
+    "subject": "Official Gazette",
+    "officialTag": "SSC — PRIMARY NOTIFICATION (PDF, 1.2 MB)"
+   },
+   "role": "NOTIFICATION"
+  },
+  {
+   "source": "exam-ssc-cgl-2026",
+   "item": {
+    "title": "SSC CGL 2026 — Reopening of the Application Window (Official Notice)",
+    "type": "OFFICIAL_PDF",
+    "resourceFormat": "DIRECT_PDF",
+    "subject": "Official Gazette",
+    "officialTag": "SSC — AMENDMENT NOTICE (PDF)"
+   },
+   "role": "CORRIGENDUM"
+  },
+  {
+   "source": "exam-ssc-cgl-2026",
+   "item": {
+    "title": "SSC Previous Year Question Papers — Official Page",
+    "type": "OFFICIAL_PORTAL",
+    "resourceFormat": "OFFICIAL_PORTAL",
+    "subject": "Official Gazette",
+    "officialTag": "SSC — OFFICIAL PAPERS PAGE"
+   },
+   "role": "QUESTION_PAPER"
+  },
+  {
+   "source": "exam-ssc-cgl-2026",
+   "item": {
+    "title": "SSC Answer Keys, Question Papers & Response Sheets — Official Page",
+    "type": "OFFICIAL_PORTAL",
+    "resourceFormat": "OFFICIAL_PORTAL",
+    "subject": "Official Gazette",
+    "officialTag": "SSC — OFFICIAL ANSWER KEYS"
+   },
+   "role": "ANSWER_KEY"
+  },
+  {
+   "source": "exam-ssc-cgl-2026",
+   "item": {
+    "title": "SSC Annual Examination Calendar — Official Page",
+    "type": "OFFICIAL_PORTAL",
+    "resourceFormat": "OFFICIAL_PORTAL",
+    "subject": "Official Gazette",
+    "officialTag": "SSC — OFFICIAL CALENDAR"
+   },
+   "role": "CALENDAR"
+  },
+  {
+   "source": "exam-ssc-cgl-2026",
+   "item": {
+    "title": "The Constitution of India — Official Full Text (PDF)",
+    "type": "OFFICIAL_PDF",
+    "resourceFormat": "DIRECT_PDF",
+    "subject": "General Awareness & Static GK",
+    "officialTag": "MINISTRY OF LAW & JUSTICE — PRIMARY LEGAL TEXT (PDF, 2.6 MB)"
+   },
+   "role": "STUDY_MATERIAL"
+  },
+  {
+   "source": "exam-ssc-cgl-2026",
+   "item": {
+    "title": "NCERT Exemplar Problems — Class 10 Mathematics (NCERT's free edition)",
+    "type": "OFFICIAL_PORTAL",
+    "resourceFormat": "OFFICIAL_PORTAL",
+    "subject": "Quantitative Aptitude",
+    "officialTag": "NCERT — FREE OFFICIAL EXEMPLAR (ARCHIVE MIRROR)"
+   },
+   "role": "STUDY_MATERIAL"
+  },
+  {
+   "source": "exam-ssc-cgl-2026",
+   "item": {
+    "title": "SSC Official Portal — Notices, Admit Cards, Answer Keys & Results",
+    "type": "OFFICIAL_PORTAL",
+    "resourceFormat": "OFFICIAL_PORTAL",
+    "subject": "Official Gazette",
+    "officialTag": "STAFF SELECTION COMMISSION — PRIMARY SOURCE"
+   },
+   "role": "OFFICIAL_PORTAL"
+  },
+  {
+   "source": "exam-ssc-cgl-2026",
+   "item": {
+    "title": "NCERT Textbooks — Classes 6 to 12 on DIKSHA (Ministry of Education)",
+    "type": "OFFICIAL_PORTAL",
+    "resourceFormat": "OFFICIAL_PORTAL",
+    "subject": "Foundation Textbooks & Open Courses",
+    "officialTag": "GOVERNMENT OF INDIA — MINISTRY OF EDUCATION (DIKSHA)"
+   },
+   "role": "STUDY_MATERIAL"
+  },
+  {
+   "source": "exam-ssc-cgl-2026",
+   "item": {
+    "title": "Constitution of India — Official Text (Legislative Department)",
+    "type": "OFFICIAL_PORTAL",
+    "resourceFormat": "OFFICIAL_PORTAL",
+    "subject": "General Awareness & Static GK",
+    "officialTag": "PRIMARY LEGAL TEXT — MINISTRY OF LAW & JUSTICE"
+   },
+   "role": "STUDY_MATERIAL"
+  },
+  {
+   "source": "exam-ssc-cgl-2026",
+   "item": {
+    "title": "Press Information Bureau (PIB) — Official Government Releases",
+    "type": "OFFICIAL_PORTAL",
+    "resourceFormat": "OFFICIAL_PORTAL",
+    "subject": "Current Affairs & Governance",
+    "officialTag": "GOVERNMENT OF INDIA — DAILY OFFICIAL RELEASES"
+   },
+   "role": "STUDY_MATERIAL"
+  },
+  {
+   "source": "exam-ssc-cgl-2026",
+   "item": {
+    "title": "Gazette of India (e-Gazette) — Official Notifications Archive",
+    "type": "OFFICIAL_PORTAL",
+    "resourceFormat": "OFFICIAL_PORTAL",
+    "subject": "Official Gazette",
+    "officialTag": "PRIMARY OFFICIAL NOTIFICATION SOURCE"
+   },
+   "role": "OFFICIAL_PORTAL"
+  },
+  {
+   "source": "exam-ssc-cgl-2026",
+   "item": {
+    "title": "MoSPI — Ministry of Statistics & Programme Implementation",
+    "type": "OFFICIAL_PORTAL",
+    "resourceFormat": "OFFICIAL_PORTAL",
+    "subject": "General Awareness & Static GK",
+    "officialTag": "GOVERNMENT OF INDIA — OFFICIAL STATISTICS"
+   },
+   "role": "STUDY_MATERIAL"
+  },
+  {
+   "source": "exam-ssc-cgl-2026",
+   "item": {
+    "title": "Census of India — Official Demographic Data (via Open Government Data platform)",
+    "type": "OFFICIAL_PORTAL",
+    "resourceFormat": "OFFICIAL_PORTAL",
+    "subject": "General Awareness & Static GK",
+    "officialTag": "MINISTRY OF HOME AFFAIRS — OFFICIAL STATISTICS"
+   },
+   "role": "STUDY_MATERIAL"
+  },
+  {
+   "source": "exam-ssc-cgl-2026",
+   "item": {
+    "title": "National Portal of India — Schemes, Ministries & Citizen Services",
+    "type": "OFFICIAL_PORTAL",
+    "resourceFormat": "OFFICIAL_PORTAL",
+    "subject": "Current Affairs & Governance",
+    "officialTag": "GOVERNMENT OF INDIA — NATIONAL PORTAL"
+   },
+   "role": "STUDY_MATERIAL"
+  },
+  {
+   "source": "exam-ssc-cgl-2026",
+   "item": {
+    "title": "National Digital Library of India (NDLI)",
+    "type": "OFFICIAL_PORTAL",
+    "resourceFormat": "OFFICIAL_PORTAL",
+    "subject": "Foundation Textbooks & Open Courses",
+    "officialTag": "MINISTRY OF EDUCATION — FREE DIGITAL LIBRARY"
+   },
+   "role": "STUDY_MATERIAL"
+  },
+  {
+   "source": "exam-ssc-cgl-2026",
+   "item": {
+    "title": "SWAYAM — Free Online Courses by the Ministry of Education",
+    "type": "OFFICIAL_PORTAL",
+    "resourceFormat": "OFFICIAL_PORTAL",
+    "subject": "Foundation Textbooks & Open Courses",
+    "officialTag": "MINISTRY OF EDUCATION — FREE MOOCs"
+   },
+   "role": "STUDY_MATERIAL"
+  },
+  {
+   "source": "exam-ssc-cgl-2026",
+   "item": {
+    "title": "NIOS Open Schooling Study Material (Secondary & Senior Secondary)",
+    "type": "OFFICIAL_PORTAL",
+    "resourceFormat": "OFFICIAL_PORTAL",
+    "subject": "Foundation Textbooks & Open Courses",
+    "officialTag": "MINISTRY OF EDUCATION — OPEN SCHOOLING"
+   },
+   "role": "STUDY_MATERIAL"
+  },
+  {
+   "source": "exam-ssc-cgl-2026",
+   "item": {
+    "title": "60 Rules of Grammar for SSC CGL — Complete Session",
+    "type": "VIDEO_LECTURE",
+    "resourceFormat": "YOUTUBE_COURSE",
+    "subject": "English Comprehension",
+    "officialTag": "FREE ON YOUTUBE · GRAMMAR RULES"
+   },
+   "role": "LECTURE_VIDEO"
+  },
+  {
+   "source": "exam-ssc-cgl-2026",
+   "item": {
+    "title": "Full Geometry Revision — All Theorems & Formulas in One Video",
+    "type": "VIDEO_LECTURE",
+    "resourceFormat": "YOUTUBE_COURSE",
+    "subject": "Quantitative Aptitude",
+    "officialTag": "FREE ON YOUTUBE · GEOMETRY REVISION"
+   },
+   "role": "LECTURE_VIDEO"
+  },
+  {
+   "source": "exam-ssc-cgl-2026",
+   "item": {
+    "title": "Percentage (प्रतिशत) Part-01 — Maths Series Day 05",
+    "type": "VIDEO_LECTURE",
+    "resourceFormat": "YOUTUBE_COURSE",
+    "subject": "Quantitative Aptitude",
+    "officialTag": "FREE ON YOUTUBE · ONE TOPIC (PERCENTAGE)"
+   },
+   "role": "LECTURE_VIDEO"
+  },
+  {
+   "source": "exam-ssc-cgl-2026",
+   "item": {
+    "title": "SSC CGL GK 2026 — India & International Borders",
+    "type": "VIDEO_LECTURE",
+    "resourceFormat": "YOUTUBE_COURSE",
+    "subject": "General Awareness & Static GK",
+    "officialTag": "FREE ON YOUTUBE · ONE GK TOPIC (BORDERS)"
+   },
+   "role": "LECTURE_VIDEO"
+  },
+  {
+   "source": "exam-ssc-cgl-2026",
+   "item": {
+    "title": "Reasoning Marathon (RRB NTPC series) — shared reasoning topics",
+    "type": "VIDEO_LECTURE",
+    "resourceFormat": "YOUTUBE_COURSE",
+    "subject": "Reasoning",
+    "officialTag": "FREE ON YOUTUBE · RECORDED FOR RRB NTPC"
+   },
+   "role": "LECTURE_VIDEO"
+  },
+  {
+   "source": "exam-ssc-cgl-2026",
+   "item": {
+    "title": "Computer Revision & Chapter-wise Practice (Class 1)",
+    "type": "VIDEO_LECTURE",
+    "resourceFormat": "YOUTUBE_COURSE",
+    "subject": "Computer & Typing",
+    "officialTag": "FREE ON YOUTUBE · CLASS 1 OF A SERIES"
+   },
+   "role": "LECTURE_VIDEO"
+  },
+  {
+   "source": "exam-ssc-cgl-2026",
+   "item": {
+    "title": "Adda247 SSC — free full-syllabus classes and PYQ sessions",
+    "type": "VIDEO_LECTURE",
+    "resourceFormat": "YOUTUBE_CHANNEL",
+    "subject": "Foundation Textbooks & Open Courses",
+    "officialTag": "FREE ON YOUTUBE · ~11M SUBSCRIBERS · COACHING, NOT OFFICIAL"
+   },
+   "role": "LECTURE_VIDEO"
+  },
+  {
+   "source": "exam-ssc-cgl-2026",
+   "item": {
+    "title": "SSC Wallah (Physics Wallah) — free complete-syllabus batches",
+    "type": "VIDEO_LECTURE",
+    "resourceFormat": "YOUTUBE_CHANNEL",
+    "subject": "Foundation Textbooks & Open Courses",
+    "officialTag": "FREE ON YOUTUBE · ~2.5M SUBSCRIBERS · COACHING, NOT OFFICIAL"
+   },
+   "role": "LECTURE_VIDEO"
+  },
+  {
+   "source": "exam-ssc-cgl-2026",
+   "item": {
+    "title": "Gagan Pratap Maths — quantitative aptitude and advanced maths",
+    "type": "VIDEO_LECTURE",
+    "resourceFormat": "YOUTUBE_CHANNEL",
+    "subject": "Quantitative Aptitude",
+    "officialTag": "FREE ON YOUTUBE · ~5.7M SUBSCRIBERS · COACHING, NOT OFFICIAL"
+   },
+   "role": "LECTURE_VIDEO"
+  },
+  {
+   "source": "exam-ssc-cgl-2026",
+   "item": {
+    "title": "Rakesh Yadav — classroom-style maths from the basics",
+    "type": "VIDEO_LECTURE",
+    "resourceFormat": "YOUTUBE_CHANNEL",
+    "subject": "Quantitative Aptitude",
+    "officialTag": "FREE ON YOUTUBE · ~5.8M SUBSCRIBERS · COACHING, NOT OFFICIAL"
+   },
+   "role": "LECTURE_VIDEO"
+  },
+  {
+   "source": "exam-ssc-cgl-2026",
+   "item": {
+    "title": "SelectionWay SSC (Rankers Gurukul) — maths series by Aditya Ranjan",
+    "type": "VIDEO_LECTURE",
+    "resourceFormat": "YOUTUBE_CHANNEL",
+    "subject": "Quantitative Aptitude",
+    "officialTag": "FREE ON YOUTUBE · COACHING, NOT OFFICIAL"
+   },
+   "role": "LECTURE_VIDEO"
+  },
+  {
+   "source": "exam-ssc-cgl-2026",
+   "item": {
+    "title": "Reasoning By Piyush Varshney — full reasoning syllabus",
+    "type": "VIDEO_LECTURE",
+    "resourceFormat": "YOUTUBE_CHANNEL",
+    "subject": "Reasoning",
+    "officialTag": "FREE ON YOUTUBE · ~1.8M SUBSCRIBERS · COACHING, NOT OFFICIAL"
+   },
+   "role": "LECTURE_VIDEO"
+  },
+  {
+   "source": "exam-ssc-cgl-2026",
+   "item": {
+    "title": "English With Rani Mam — grammar rules and vocabulary",
+    "type": "VIDEO_LECTURE",
+    "resourceFormat": "YOUTUBE_CHANNEL",
+    "subject": "English Comprehension",
+    "officialTag": "FREE ON YOUTUBE · ~3.3M SUBSCRIBERS · COACHING, NOT OFFICIAL"
+   },
+   "role": "LECTURE_VIDEO"
+  },
+  {
+   "source": "exam-ssc-cgl-2026",
+   "item": {
+    "title": "PARMAR SSC — general awareness and previous-year GK",
+    "type": "VIDEO_LECTURE",
+    "resourceFormat": "YOUTUBE_CHANNEL",
+    "subject": "General Awareness & Static GK",
+    "officialTag": "FREE ON YOUTUBE · ~2.5M SUBSCRIBERS · COACHING, NOT OFFICIAL"
+   },
+   "role": "LECTURE_VIDEO"
+  },
+  {
+   "source": "exam-ssc-cgl-2026",
+   "item": {
+    "title": "India Code — official repository of Central Acts",
+    "type": "OFFICIAL_PORTAL",
+    "resourceFormat": "OFFICIAL_PORTAL",
+    "subject": "Official Gazette",
+    "officialTag": "GOVERNMENT OF INDIA — MINISTRY OF LAW AND JUSTICE"
+   },
+   "role": "STUDY_MATERIAL"
+  },
+  {
+   "source": "exam-ssc-cgl-2026",
+   "item": {
+    "title": "Parliament of India — Sansad official portal",
+    "type": "OFFICIAL_PORTAL",
+    "resourceFormat": "OFFICIAL_PORTAL",
+    "subject": "Current Affairs & Governance",
+    "officialTag": "PARLIAMENT OF INDIA — OFFICIAL"
+   },
+   "role": "STUDY_MATERIAL"
+  },
+  {
+   "source": "exam-ssc-cgl-2026",
+   "item": {
+    "title": "Reserve Bank of India — official website",
+    "type": "OFFICIAL_PORTAL",
+    "resourceFormat": "OFFICIAL_PORTAL",
+    "subject": "Banking & Financial Awareness",
+    "officialTag": "RESERVE BANK OF INDIA — OFFICIAL"
+   },
+   "role": "STUDY_MATERIAL"
+  },
+  {
+   "source": "exam-ssc-cgl-2026",
+   "item": {
+    "title": "NPTEL — free courses from the IITs and IISc",
+    "type": "OFFICIAL_PORTAL",
+    "resourceFormat": "OFFICIAL_PORTAL",
+    "subject": "Foundation Textbooks & Open Courses",
+    "officialTag": "GOVERNMENT OF INDIA — MINISTRY OF EDUCATION"
+   },
+   "role": "STUDY_MATERIAL"
+  },
+  {
+   "source": "exam-ssc-cgl-2026",
+   "item": {
+    "title": "PRS Legislative Research — bill and act summaries",
+    "type": "OFFICIAL_PORTAL",
+    "resourceFormat": "OFFICIAL_PORTAL",
+    "subject": "Current Affairs & Governance",
+    "officialTag": "INDEPENDENT NON-PROFIT · WIDELY CITED · NOT A GOVERNMENT SITE"
+   },
+   "role": "STUDY_MATERIAL"
+  },
+  {
+   "source": "exam-ssc-cgl-2026",
+   "item": {
+    "title": "10FastFingers Typing Speed Test (SSC DEST Keyboard Simulator)",
+    "type": "ONLINE_TOOL",
+    "resourceFormat": "ONLINE_TOOL",
+    "subject": "Computer & Typing",
+    "officialTag": "OFFICIAL DEST KEYBOARD SIMULATOR"
+   },
+   "role": "PRACTICE_TOOL"
+  },
+  {
+   "source": "exam-upsc-cse-2026",
+   "item": {
+    "title": "UPSC CSE 2026 — Examination Notice No. 05/2026-CSE (official PDF, 159 pages)",
+    "type": "OFFICIAL_PDF",
+    "resourceFormat": "DIRECT_PDF",
+    "subject": "Official Gazette",
+    "officialTag": "UPSC — PRIMARY NOTIFICATION (PDF, 2.9 MB)"
+   },
+   "role": "NOTIFICATION"
+  },
+  {
+   "source": "exam-upsc-cse-2026",
+   "item": {
+    "title": "UPSC Online Application Portal (upsconline.nic.in)",
+    "type": "OFFICIAL_PORTAL",
+    "resourceFormat": "OFFICIAL_PORTAL",
+    "subject": "Official Gazette",
+    "officialTag": "UPSC — APPLICATION, e-ADMIT CARD, QPReP"
+   },
+   "role": "APPLICATION_PORTAL"
+  },
+  {
+   "source": "exam-upsc-cse-2026",
+   "item": {
+    "title": "UPSC Previous Question Papers — official page (every stage, every year)",
+    "type": "OFFICIAL_PORTAL",
+    "resourceFormat": "OFFICIAL_PORTAL",
+    "subject": "Previous Year Papers",
+    "officialTag": "UPSC — QUESTION PAPER ARCHIVE"
+   },
+   "role": "QUESTION_PAPER"
+  },
+  {
+   "source": "exam-upsc-cse-2026",
+   "item": {
+    "title": "CSE 2026 Preliminary — General Studies Paper-I question booklet (official PDF)",
+    "type": "OFFICIAL_PDF",
+    "resourceFormat": "DIRECT_PDF",
+    "subject": "Previous Year Papers",
+    "officialTag": "UPSC — 2026 PAPER (100 questions, 200 marks, 2 hours)"
+   },
+   "role": "QUESTION_PAPER"
+  },
+  {
+   "source": "exam-upsc-cse-2026",
+   "item": {
+    "title": "CSE 2026 Preliminary — General Studies Paper-II (CSAT) question booklet (official PDF)",
+    "type": "OFFICIAL_PDF",
+    "resourceFormat": "DIRECT_PDF",
+    "subject": "Previous Year Papers",
+    "officialTag": "UPSC — 2026 PAPER (80 questions, 200 marks, 2 hours, qualifying 33%)"
+   },
+   "role": "QUESTION_PAPER"
+  },
+  {
+   "source": "exam-upsc-cse-2026",
+   "item": {
+    "title": "CSE 2026 Main — Essay paper (official PDF)",
+    "type": "OFFICIAL_PDF",
+    "resourceFormat": "DIRECT_PDF",
+    "subject": "Previous Year Papers",
+    "officialTag": "UPSC — 2026 MAIN PAPER I (250 marks)"
+   },
+   "role": "QUESTION_PAPER"
+  },
+  {
+   "source": "exam-upsc-cse-2026",
+   "item": {
+    "title": "CSE 2026 Main — General Studies Paper-I (official PDF)",
+    "type": "OFFICIAL_PDF",
+    "resourceFormat": "DIRECT_PDF",
+    "subject": "Previous Year Papers",
+    "officialTag": "UPSC — 2026 MAIN PAPER II (250 marks)"
+   },
+   "role": "QUESTION_PAPER"
+  },
+  {
+   "source": "exam-upsc-cse-2026",
+   "item": {
+    "title": "CSE 2026 Main — General Studies Paper-II (official PDF)",
+    "type": "OFFICIAL_PDF",
+    "resourceFormat": "DIRECT_PDF",
+    "subject": "Previous Year Papers",
+    "officialTag": "UPSC — 2026 MAIN PAPER III (250 marks)"
+   },
+   "role": "QUESTION_PAPER"
+  },
+  {
+   "source": "exam-upsc-cse-2026",
+   "item": {
+    "title": "CSE 2026 Main — General Studies Paper-III (official PDF)",
+    "type": "OFFICIAL_PDF",
+    "resourceFormat": "DIRECT_PDF",
+    "subject": "Previous Year Papers",
+    "officialTag": "UPSC — 2026 MAIN PAPER IV (250 marks)"
+   },
+   "role": "QUESTION_PAPER"
+  },
+  {
+   "source": "exam-upsc-cse-2026",
+   "item": {
+    "title": "CSE 2026 Main — General Studies Paper-IV, Ethics (official PDF)",
+    "type": "OFFICIAL_PDF",
+    "resourceFormat": "DIRECT_PDF",
+    "subject": "Previous Year Papers",
+    "officialTag": "UPSC — 2026 MAIN PAPER V (250 marks)"
+   },
+   "role": "QUESTION_PAPER"
+  },
+  {
+   "source": "exam-upsc-cse-2026",
+   "item": {
+    "title": "UPSC Cut-off Marks — official page and the 2025 sheet",
+    "type": "OFFICIAL_PORTAL",
+    "resourceFormat": "OFFICIAL_PORTAL",
+    "subject": "Official Gazette",
+    "officialTag": "UPSC — MINIMUM QUALIFYING MARKS, BY YEAR"
+   },
+   "role": "CUTOFF"
+  },
+  {
+   "source": "exam-upsc-cse-2026",
+   "item": {
+    "title": "UPSC Calendar of Examinations, 2027 (official PDF)",
+    "type": "OFFICIAL_PDF",
+    "resourceFormat": "DIRECT_PDF",
+    "subject": "Official Gazette",
+    "officialTag": "UPSC — NEXT CYCLE DATES (published 20 May 2026)"
+   },
+   "role": "CALENDAR"
+  },
+  {
+   "source": "exam-upsc-cse-2026",
+   "item": {
+    "title": "CSE 2026 — Main Examination press note (dates and QPReP window)",
+    "type": "OFFICIAL_PDF",
+    "resourceFormat": "DIRECT_PDF",
+    "subject": "Official Gazette",
+    "officialTag": "UPSC — PRESS NOTE, 19 AUG 2026"
+   },
+   "role": "NOTIFICATION"
+  },
+  {
+   "source": "exam-upsc-cse-2026",
+   "item": {
+    "title": "CSE 2026 — Preliminary result press note with the list of qualified candidates",
+    "type": "OFFICIAL_PDF",
+    "resourceFormat": "DIRECT_PDF",
+    "subject": "Official Gazette",
+    "officialTag": "UPSC — PRESS NOTE, 18 JUN 2026 (505 pages)"
+   },
+   "role": "RESULT"
+  },
+  {
+   "source": "exam-upsc-cse-2026",
+   "item": {
+    "title": "The Constitution of India — official full text (Legislative Department)",
+    "type": "OFFICIAL_PORTAL",
+    "resourceFormat": "OFFICIAL_PORTAL",
+    "subject": "Polity & Governance",
+    "officialTag": "GOVERNMENT OF INDIA — PRIMARY TEXT"
+   },
+   "role": "STUDY_MATERIAL"
+  },
+  {
+   "source": "exam-upsc-cse-2026",
+   "item": {
+    "title": "India Code — every Central Act, as amended",
+    "type": "OFFICIAL_PORTAL",
+    "resourceFormat": "OFFICIAL_PORTAL",
+    "subject": "Polity & Governance",
+    "officialTag": "GOVERNMENT OF INDIA — STATUTES"
+   },
+   "role": "STUDY_MATERIAL"
+  },
+  {
+   "source": "exam-upsc-cse-2026",
+   "item": {
+    "title": "Press Information Bureau — Government of India releases",
+    "type": "OFFICIAL_PORTAL",
+    "resourceFormat": "OFFICIAL_PORTAL",
+    "subject": "Current Affairs & Governance",
+    "officialTag": "GOVERNMENT OF INDIA — DAILY RELEASES"
+   },
+   "role": "STUDY_MATERIAL"
+  },
+  {
+   "source": "exam-upsc-cse-2026",
+   "item": {
+    "title": "Economic Survey of India — Ministry of Finance",
+    "type": "OFFICIAL_PORTAL",
+    "resourceFormat": "OFFICIAL_PORTAL",
+    "subject": "Economy",
+    "officialTag": "GOVERNMENT OF INDIA — ANNUAL SURVEY"
+   },
+   "role": "STUDY_MATERIAL"
+  },
+  {
+   "source": "exam-upsc-cse-2026",
+   "item": {
+    "title": "Reserve Bank of India — publications, reports and data",
+    "type": "OFFICIAL_PORTAL",
+    "resourceFormat": "OFFICIAL_PORTAL",
+    "subject": "Economy",
+    "officialTag": "REGULATOR — MONETARY POLICY & BANKING"
+   },
+   "role": "STUDY_MATERIAL"
+  },
+  {
+   "source": "exam-upsc-cse-2026",
+   "item": {
+    "title": "NITI Aayog — reports, indices and policy papers",
+    "type": "OFFICIAL_PORTAL",
+    "resourceFormat": "OFFICIAL_PORTAL",
+    "subject": "Economy",
+    "officialTag": "GOVERNMENT OF INDIA — POLICY THINK TANK"
+   },
+   "role": "STUDY_MATERIAL"
+  },
+  {
+   "source": "exam-upsc-cse-2026",
+   "item": {
+    "title": "Ministry of External Affairs — bilateral briefs and joint statements",
+    "type": "OFFICIAL_PORTAL",
+    "resourceFormat": "OFFICIAL_PORTAL",
+    "subject": "Current Affairs & Governance",
+    "officialTag": "GOVERNMENT OF INDIA — FOREIGN POLICY"
+   },
+   "role": "STUDY_MATERIAL"
+  },
+  {
+   "source": "exam-upsc-cse-2026",
+   "item": {
+    "title": "Sansad — Parliament of India digital portal (bills, debates, questions)",
+    "type": "OFFICIAL_PORTAL",
+    "resourceFormat": "OFFICIAL_PORTAL",
+    "subject": "Polity & Governance",
+    "officialTag": "PARLIAMENT OF INDIA — PRIMARY RECORDS"
+   },
+   "role": "STUDY_MATERIAL"
+  },
+  {
+   "source": "exam-upsc-cse-2026",
+   "item": {
+    "title": "PRS Legislative Research — bill summaries and analysis",
+    "type": "SIMPLIFIED_GUIDE",
+    "resourceFormat": "OFFICIAL_PORTAL",
+    "subject": "Polity & Governance",
+    "officialTag": "TRUSTED PUBLIC SOURCE — NOT GOVERNMENT"
+   },
+   "role": "STUDY_MATERIAL"
+  },
+  {
+   "source": "exam-upsc-cse-2026",
+   "item": {
+    "title": "NCERT textbooks, Classes VI–XII — DIKSHA (Ministry of Education)",
+    "type": "OFFICIAL_PORTAL",
+    "resourceFormat": "OFFICIAL_PORTAL",
+    "subject": "Foundation Textbooks & Open Courses",
+    "officialTag": "NCERT — FULL TEXTBOOKS, FREE"
+   },
+   "role": "STUDY_MATERIAL"
+  },
+  {
+   "source": "exam-upsc-cse-2026",
+   "item": {
+    "title": "e-Gazette of India — notifications as published",
+    "type": "OFFICIAL_PORTAL",
+    "resourceFormat": "OFFICIAL_PORTAL",
+    "subject": "Official Gazette",
+    "officialTag": "GOVERNMENT OF INDIA — GAZETTE"
+   },
+   "role": "OFFICIAL_PORTAL"
+  },
+  {
+   "source": "exam-upsc-cse-2026",
+   "item": {
+    "title": "Sansad TV — Parliament’s broadcaster (YouTube channel, 9.63M subscribers)",
+    "type": "VIDEO_LECTURE",
+    "resourceFormat": "YOUTUBE_CHANNEL",
+    "subject": "Current Affairs & Governance",
+    "officialTag": "OFFICIAL BROADCASTER — FREE"
+   },
+   "role": "LECTURE_VIDEO"
+  },
+  {
+   "source": "exam-upsc-cse-2026",
+   "item": {
+    "title": "StudyIQ IAS — YouTube channel (20.5M subscribers)",
+    "type": "VIDEO_LECTURE",
+    "resourceFormat": "YOUTUBE_CHANNEL",
+    "subject": "Current Affairs & Governance",
+    "officialTag": "FREE · COACHING · 20.5M SUBSCRIBERS (checked 2026-09-12)"
+   },
+   "role": "LECTURE_VIDEO"
+  },
+  {
+   "source": "exam-upsc-cse-2026",
+   "item": {
+    "title": "Drishti IAS — YouTube channel (12.9M subscribers)",
+    "type": "VIDEO_LECTURE",
+    "resourceFormat": "YOUTUBE_CHANNEL",
+    "subject": "History & Culture",
+    "officialTag": "FREE · COACHING · 12.9M SUBSCRIBERS (checked 2026-09-12)"
+   },
+   "role": "LECTURE_VIDEO"
+  },
+  {
+   "source": "exam-upsc-cse-2026",
+   "item": {
+    "title": "Mrunal Patel — YouTube channel (2.1M subscribers)",
+    "type": "VIDEO_LECTURE",
+    "resourceFormat": "YOUTUBE_CHANNEL",
+    "subject": "Economy",
+    "officialTag": "FREE · COACHING · 2.1M SUBSCRIBERS (checked 2026-09-12)"
+   },
+   "role": "LECTURE_VIDEO"
+  },
+  {
+   "source": "exam-upsc-cse-2026",
+   "item": {
+    "title": "Vision IAS — YouTube channel (1.82M subscribers)",
+    "type": "VIDEO_LECTURE",
+    "resourceFormat": "YOUTUBE_CHANNEL",
+    "subject": "Current Affairs & Governance",
+    "officialTag": "FREE · COACHING · 1.82M SUBSCRIBERS (checked 2026-09-12)"
+   },
+   "role": "LECTURE_VIDEO"
+  },
+  {
+   "source": "exam-upsc-cse-2026",
+   "item": {
+    "title": "Sleepy Classes IAS — YouTube channel (1.28M subscribers)",
+    "type": "VIDEO_LECTURE",
+    "resourceFormat": "YOUTUBE_CHANNEL",
+    "subject": "Ethics, Essay & Answer Writing",
+    "officialTag": "FREE · COACHING · 1.28M SUBSCRIBERS (checked 2026-09-12)"
+   },
+   "role": "LECTURE_VIDEO"
+  },
+  {
+   "source": "exam-upsc-cse-2026",
+   "item": {
+    "title": "Vajiram and Ravi Official — YouTube channel (689K subscribers)",
+    "type": "VIDEO_LECTURE",
+    "resourceFormat": "YOUTUBE_CHANNEL",
+    "subject": "Polity & Governance",
+    "officialTag": "FREE · COACHING · 689K SUBSCRIBERS (checked 2026-09-12)"
+   },
+   "role": "LECTURE_VIDEO"
+  },
+  {
+   "source": "exam-ibps-po-2026",
+   "item": {
+    "title": "IBPS CRP PO/MT Official Recruitment Portal",
+    "type": "OFFICIAL_PORTAL",
+    "resourceFormat": "OFFICIAL_PORTAL",
+    "subject": "Official Gazette",
+    "officialTag": "OFFICIAL IBPS PORTAL"
+   },
+   "role": "OFFICIAL_PORTAL"
+  },
+  {
+   "source": "exam-appsc-group1-2026",
+   "item": {
+    "title": "APPSC Group-I Official Information Portal",
+    "type": "OFFICIAL_PORTAL",
+    "resourceFormat": "OFFICIAL_PORTAL",
+    "subject": "Official Gazette",
+    "officialTag": "OFFICIAL STATE COMMISSION"
+   },
+   "role": "OFFICIAL_PORTAL"
+  },
+  {
+   "source": "exam-appsc-group2-2026",
+   "item": {
+    "title": "APPSC Group-II Official Syllabus & Scheme Handbook",
+    "type": "OFFICIAL_PORTAL",
+    "resourceFormat": "OFFICIAL_PORTAL",
+    "subject": "Official Gazette",
+    "officialTag": "OFFICIAL STATE COMMISSION"
+   },
+   "role": "SYLLABUS"
+  },
+  {
+   "source": "exam-websitenew-tgpsc-group-i-2024",
+   "item": {
+    "title": "TGPSC Group-I Services — Examination Notice (official PDF)",
+    "type": "OFFICIAL_PDF",
+    "resourceFormat": "DIRECT_PDF",
+    "subject": "Official Gazette",
+    "officialTag": "WEBSITENEW_TGPSC_GROUP_I_2024 — OFFICIAL NOTICE"
+   },
+   "role": "NOTIFICATION"
+  },
+  {
+   "source": "exam-websitenew-tgpsc-group-i-2024",
+   "item": {
+    "title": "Telangana Public Service Commission — Online Application Portal",
+    "type": "OFFICIAL_PORTAL",
+    "resourceFormat": "EXTERNAL_PORTAL",
+    "subject": "Official Portal",
+    "officialTag": "WEBSITENEW_TGPSC_GROUP_I_2024 — APPLY HERE"
+   },
+   "role": "APPLICATION_PORTAL"
+  },
+  {
+   "source": "exam-websitenew-tgpsc-group-i-2024",
+   "item": {
+    "title": "GROUP-I SERVICES RECRUITMENT - NOTIFICATION NO.02/2024 - PROVISIONAL SELECTION NOTIFICATION.",
+    "type": "OFFICIAL_PDF",
+    "resourceFormat": "DIRECT_PDF",
+    "subject": "Official Notices",
+    "officialTag": "WEBSITENEW_TGPSC_GROUP_I_2024 — OFFICIAL NOTICE (2025-09-24)"
+   },
+   "role": "NOTIFICATION"
+  },
+  {
+   "source": "exam-websitenew-tgpsc-group-i-2024",
+   "item": {
+    "title": "GROUP-I SERVICES RECRUITMENT - NOTIFICATION NO.02/2024 - SCHEDULE FOR VERIFICATION OF CERTIFICATES - NOTIFICATION.",
+    "type": "OFFICIAL_PDF",
+    "resourceFormat": "DIRECT_PDF",
+    "subject": "Official Notices",
+    "officialTag": "WEBSITENEW_TGPSC_GROUP_I_2024 — OFFICIAL NOTICE (2025-06-28)"
+   },
+   "role": "NOTIFICATION"
+  },
+  {
+   "source": "exam-websitenew-tgpsc-group-i-2024",
+   "item": {
+    "title": "GROUP-I SERVICES RECRUITMENT - NOTIFICATION NO.02/2024 - 3RD SPELL CERTIFICATE VERIFICATION - DAY-WISE SCHEDULE.",
+    "type": "OFFICIAL_PDF",
+    "resourceFormat": "DIRECT_PDF",
+    "subject": "Official Notices",
+    "officialTag": "WEBSITENEW_TGPSC_GROUP_I_2024 — OFFICIAL NOTICE (2025-06-10)"
+   },
+   "role": "NOTIFICATION"
+  },
+  {
+   "source": "exam-websitenew-tgpsc-group-i-2024",
+   "item": {
+    "title": "GROUP-I SERVICES RECRUITMENT - NOTIFICATION NO.02/2024 - SCHEDULE FOR THIRD SPELL VERIFICATION OF CERTIFICATES - NOTIFICATION.",
+    "type": "OFFICIAL_PDF",
+    "resourceFormat": "DIRECT_PDF",
+    "subject": "Official Notices",
+    "officialTag": "WEBSITENEW_TGPSC_GROUP_I_2024 — OFFICIAL NOTICE (2025-06-06)"
+   },
+   "role": "NOTIFICATION"
+  },
+  {
+   "source": "exam-websitenew-tgpsc-group-i-2024",
+   "item": {
+    "title": "GROUP-I SERVICES RECRUITMENT - NOTIFICATION NO.02/2024 - SCHEDULE OF 2ND SPELL CERTIFICATES VERIFICATION FOR VH AND HH CANDIDATES - NOTIFICATION.",
+    "type": "OFFICIAL_PDF",
+    "resourceFormat": "DIRECT_PDF",
+    "subject": "Official Notices",
+    "officialTag": "WEBSITENEW_TGPSC_GROUP_I_2024 — OFFICIAL NOTICE (2025-04-24)"
+   },
+   "role": "NOTIFICATION"
+  },
+  {
+   "source": "exam-websitenew-tgpsc-group-i-2024",
+   "item": {
+    "title": "GROUP-I SERVICES RECRUITMENT - NOTIFICATION NO.02/2024 - VERIFICATION OF CERTIFICATES - DAY-WISE SCHEDULE NOTIFICATION.",
+    "type": "OFFICIAL_PDF",
+    "resourceFormat": "DIRECT_PDF",
+    "subject": "Official Notices",
+    "officialTag": "WEBSITENEW_TGPSC_GROUP_I_2024 — OFFICIAL NOTICE (2025-04-10)"
+   },
+   "role": "NOTIFICATION"
+  },
+  {
+   "source": "exam-websitenew-tgpsc-group-i-2024",
+   "item": {
+    "title": "GROUP-I SERVICES RECRUITMENT - NOTIFICATION NO.02/2024 - VERIFICATION OF CERTIFICATES NOTIFICATION.",
+    "type": "OFFICIAL_PDF",
+    "resourceFormat": "DIRECT_PDF",
+    "subject": "Official Notices",
+    "officialTag": "WEBSITENEW_TGPSC_GROUP_I_2024 — OFFICIAL NOTICE (2025-04-09)"
+   },
+   "role": "NOTIFICATION"
+  },
+  {
+   "source": "exam-websitenew-tgpsc-group-i-2024",
+   "item": {
+    "title": "GROUP-I SERVICES RECRUITMENT - NOTIFICATION NO.02/2024 - VERIFICATION OF CERTIFICATES TO BE HELD ON 07-07-2025 - NOTIFICATION",
+    "type": "OFFICIAL_PDF",
+    "resourceFormat": "DIRECT_PDF",
+    "subject": "Official Notices",
+    "officialTag": "WEBSITENEW_TGPSC_GROUP_I_2024 — OFFICIAL NOTICE"
+   },
+   "role": "NOTIFICATION"
+  },
+  {
+   "source": "exam-websitenew-tgpsc-group-i-2024",
+   "item": {
+    "title": "GROUP-I SERVICES RECRUITMENT - NOTIFICATION NO.02/2024 - THIRD SPELL VERIFICATION OF CERTIFICATES - VERIFICATION MATERIAL",
+    "type": "OFFICIAL_PDF",
+    "resourceFormat": "DIRECT_PDF",
+    "subject": "Official Notices",
+    "officialTag": "WEBSITENEW_TGPSC_GROUP_I_2024 — OFFICIAL SOURCE"
+   },
+   "role": "NOTIFICATION"
+  },
+  {
+   "source": "exam-websitenew-tgpsc-group-i-2024",
+   "item": {
+    "title": "GROUP-I SERVICES RECRUITMENT - NOTIFICATION NO.02/2024 - MEDICAL EXAMINATION FOR ASSESSMENT OF PHYSICAL FITNESS AND VISION FOR UNIFORM SERVICES POSTS - DAYS 6, 7 AND RESERVE DAY - NOTIFICATION.",
+    "type": "OFFICIAL_PDF",
+    "resourceFormat": "DIRECT_PDF",
+    "subject": "Official Notices",
+    "officialTag": "WEBSITENEW_TGPSC_GROUP_I_2024 — OFFICIAL SOURCE"
+   },
+   "role": "NOTIFICATION"
+  },
+  {
+   "source": "exam-websitenew-tgpsc-group-i-2024",
+   "item": {
+    "title": "GROUP-I SERVICES RECRUITMENT - NOTIFICATION NO.02/2024 - MEDICAL EXAMINATION FOR ASSESSMENT OF PHYSICAL FITNESS AND VISION FOR UNIFORM SERVICES POSTS - DAYS 4 AND 5 - NOTIFICATION.",
+    "type": "OFFICIAL_PDF",
+    "resourceFormat": "DIRECT_PDF",
+    "subject": "Official Notices",
+    "officialTag": "WEBSITENEW_TGPSC_GROUP_I_2024 — OFFICIAL SOURCE"
+   },
+   "role": "NOTIFICATION"
+  },
+  {
+   "source": "exam-websitenew-tgpsc-group-i-2024",
+   "item": {
+    "title": "GROUP-I SERVICES RECRUITMENT - NOTIFICATION NO.02/2024 - MEDICAL EXAMINATION FOR ASSESSMENT OF PHYSICAL FITNESS AND VISION FOR UNIFORM SERVICES POSTS - NOTIFICATION.",
+    "type": "OFFICIAL_PDF",
+    "resourceFormat": "DIRECT_PDF",
+    "subject": "Official Notices",
+    "officialTag": "WEBSITENEW_TGPSC_GROUP_I_2024 — OFFICIAL SOURCE"
+   },
+   "role": "NOTIFICATION"
+  },
+  {
+   "source": "exam-websitenew-tgpsc-group-i-2024",
+   "item": {
+    "title": "GROUP-I SERVICES RECRUITMENT - NOTIFICATION NO.02/2024 - VERIFICATION OF CERTIFICATES - CONSOLIDATED BREAK-UP OF VACANCIES.",
+    "type": "OFFICIAL_PDF",
+    "resourceFormat": "DIRECT_PDF",
+    "subject": "Official Notices",
+    "officialTag": "WEBSITENEW_TGPSC_GROUP_I_2024 — OFFICIAL SOURCE"
+   },
+   "role": "NOTIFICATION"
+  },
+  {
+   "source": "exam-websitenew-tgpsc-group-i-2024",
+   "item": {
+    "title": "GROUP-I SERVICES RECRUITMENT - NOTIFICATION NO.02/2024 - VERIFICATION OF CERTIFICATES - VERIFICATION MATERIAL.",
+    "type": "OFFICIAL_PDF",
+    "resourceFormat": "DIRECT_PDF",
+    "subject": "Official Notices",
+    "officialTag": "WEBSITENEW_TGPSC_GROUP_I_2024 — OFFICIAL SOURCE"
+   },
+   "role": "NOTIFICATION"
+  },
+  {
+   "source": "exam-websitenew-tgpsc-group-i-2024",
+   "item": {
+    "title": "Notifications for All Recruitments",
+    "type": "OFFICIAL_PORTAL",
+    "resourceFormat": "EXTERNAL_PORTAL",
+    "subject": "Official Notices",
+    "officialTag": "WEBSITENEW_TGPSC_GROUP_I_2024 — OFFICIAL SOURCE"
+   },
+   "role": "NOTIFICATION"
+  },
+  {
+   "source": "exam-websitenew-tgpsc-group-i-2024",
+   "item": {
+    "title": "Search HallTicket For TGPSC Notifications",
+    "type": "OFFICIAL_PORTAL",
+    "resourceFormat": "EXTERNAL_PORTAL",
+    "subject": "Official Notices",
+    "officialTag": "WEBSITENEW_TGPSC_GROUP_I_2024 — OFFICIAL SOURCE"
+   },
+   "role": "ADMIT_CARD"
+  },
+  {
+   "source": "edge: a stated role wins over every rule",
+   "item": {
+    "title": "Anything at all",
+    "type": "OFFICIAL_PDF",
+    "resourceFormat": "DIRECT_PDF",
+    "subject": "Reasoning",
+    "role": "NOTIFICATION"
+   },
+   "role": "NOTIFICATION"
+  },
+  {
+   "source": "edge: a third-party list of papers is practice material, never a Resources entry",
+   "item": {
+    "title": "TSPSC Previous Question Papers (77 papers) — Manabadi",
+    "type": "THIRD_PARTY",
+    "resourceFormat": "EXTERNAL_PAGE",
+    "subject": "Previous Year Papers",
+    "officialTag": "ADDED 2026-10-01 · THIRD-PARTY · NOT OFFICIAL · NOT FACT-CHECKED"
+   },
+   "role": "QUESTION_PAPER"
+  },
+  {
+   "source": "edge: third-party notes are study material",
+   "item": {
+    "title": "Indian Polity — chapter notes",
+    "type": "THIRD_PARTY",
+    "resourceFormat": "EXTERNAL_PAGE",
+    "subject": "Polity & Governance"
+   },
+   "role": "STUDY_MATERIAL"
+  },
+  {
+   "source": "edge: a news video is a lead, not a lesson",
+   "item": {
+    "title": "Admit card released — download now",
+    "type": "VIDEO_LECTURE",
+    "resourceFormat": "YOUTUBE_COURSE",
+    "subject": "Current Affairs & Governance"
+   },
+   "role": "DISCOVERY_SIGNAL"
+  },
+  {
+   "source": "edge: an application walkthrough belongs with the application",
+   "item": {
+    "title": "How to fill the online application form step by step",
+    "type": "VIDEO_LECTURE",
+    "resourceFormat": "YOUTUBE_COURSE",
+    "subject": "Computer & Typing"
+   },
+   "role": "APPLICATION_GUIDE"
+  },
+  {
+   "source": "edge: an explanation of the exam is learning",
+   "item": {
+    "title": "Prelims exam pattern explained",
+    "type": "VIDEO_LECTURE",
+    "resourceFormat": "YOUTUBE_COURSE",
+    "subject": "CSAT & Aptitude"
+   },
+   "role": "LECTURE_VIDEO"
+  },
+  {
+   "source": "edge: a law's text is study material even under an official subject",
+   "item": {
+    "title": "The Constitution of India — official text",
+    "type": "OFFICIAL_PDF",
+    "resourceFormat": "DIRECT_PDF",
+    "subject": "Official Gazette"
+   },
+   "role": "STUDY_MATERIAL"
+  },
+  {
+   "source": "edge: a gazette holds every body's notifications",
+   "item": {
+    "title": "e-Gazette of India",
+    "type": "OFFICIAL_PORTAL",
+    "resourceFormat": "OFFICIAL_PORTAL",
+    "subject": "Official Gazette"
+   },
+   "role": "OFFICIAL_PORTAL"
+  },
+  {
+   "source": "edge: a card naming many kinds of document is a portal",
+   "item": {
+    "title": "Official Portal — Notices, Admit Cards, Answer Keys & Results",
+    "type": "OFFICIAL_PORTAL",
+    "resourceFormat": "OFFICIAL_PORTAL",
+    "subject": "Official Portal"
+   },
+   "role": "OFFICIAL_PORTAL"
+  },
+  {
+   "source": "edge: a PDF is not study material because it is a PDF",
+   "item": {
+    "title": "General Studies Paper I — question paper 2025",
+    "type": "OFFICIAL_PDF",
+    "resourceFormat": "DIRECT_PDF",
+    "subject": "History & Culture"
+   },
+   "role": "QUESTION_PAPER"
+  },
+  {
+   "source": "edge: a textbook is study material",
+   "item": {
+    "title": "NCERT Exemplar — Class 10 Mathematics",
+    "type": "OFFICIAL_PDF",
+    "resourceFormat": "DIRECT_PDF",
+    "subject": "Quantitative Aptitude"
+   },
+   "role": "STUDY_MATERIAL"
+  },
+  {
+   "source": "edge: a practice tool is learning",
+   "item": {
+    "title": "Typing speed practice tool",
+    "type": "ONLINE_TOOL",
+    "resourceFormat": "ONLINE_TOOL",
+    "subject": "Computer & Typing"
+   },
+   "role": "PRACTICE_TOOL"
+  },
+  {
+   "source": "edge: keys are practice material",
+   "item": {
+    "title": "Final answer keys",
+    "type": "OFFICIAL_PORTAL",
+    "resourceFormat": "OFFICIAL_PORTAL",
+    "subject": "Previous Year Papers"
+   },
+   "role": "ANSWER_KEY"
+  },
+  {
+   "source": "edge: registration belongs with the application",
+   "item": {
+    "title": "One Time Registration",
+    "type": "OFFICIAL_PORTAL",
+    "resourceFormat": "OFFICIAL_PORTAL",
+    "subject": "Official Portal"
+   },
+   "role": "OTR_PORTAL"
+  },
+  {
+   "source": "edge: a corrigendum is not study material",
+   "item": {
+    "title": "Corrigendum — extension of last date",
+    "type": "OFFICIAL_PDF",
+    "resourceFormat": "DIRECT_PDF",
+    "subject": "Official Notices"
+   },
+   "role": "CORRIGENDUM"
+  },
+  {
+   "source": "edge: a calendar is not study material",
+   "item": {
+    "title": "Examination calendar 2027",
+    "type": "OFFICIAL_PDF",
+    "resourceFormat": "DIRECT_PDF",
+    "subject": "Official Notices"
+   },
+   "role": "CALENDAR"
+  },
+  {
+   "source": "edge: cut-offs are not study material",
+   "item": {
+    "title": "Minimum qualifying marks (cut-off) 2025",
+    "type": "OFFICIAL_PDF",
+    "resourceFormat": "DIRECT_PDF",
+    "subject": "Official Notices"
+   },
+   "role": "CUTOFF"
+  }
+ ],
+ "sectionForRole": {
+  "ADMIT_CARD": "ADMIT_CARD",
+  "ANSWER_KEY": "PRACTICE",
+  "APPLICATION_GUIDE": "APPLICATION",
+  "APPLICATION_PORTAL": "APPLICATION",
+  "CALENDAR": "DATES",
+  "CORRIGENDUM": "CORRIGENDA",
+  "CUTOFF": "CUTOFFS",
+  "DISCOVERY_SIGNAL": null,
+  "EXAM_DAY_INSTRUCTIONS": "EXAM_DAY",
+  "EXAM_GUIDE": "OVERVIEW",
+  "EXAM_PAGE": "OFFICIAL_LINKS",
+  "EXAM_PATTERN": "PATTERN",
+  "LECTURE_VIDEO": "RESOURCES",
+  "NOTIFICATION": "OFFICIAL_LINKS",
+  "OFFICIAL_PORTAL": "OFFICIAL_LINKS",
+  "OTR_PORTAL": "APPLICATION",
+  "PRACTICE_TOOL": "RESOURCES",
+  "QUESTION_PAPER": "PRACTICE",
+  "RESULT": "RESULTS",
+  "STUDY_MATERIAL": "RESOURCES",
+  "SYLLABUS": "SYLLABUS",
+  "UNKNOWN": null
+ }
+}

@@ -44,6 +44,7 @@ import {
   DataProvenance,
   SyllabusRevision,
   SyllabusRevisionTopic,
+  DiscoveredSources,
   SyllabusTopic,
   SyllabusWatch,
   ResourceHealthSync,
@@ -2564,6 +2565,50 @@ export function applySyllabusRevisions(exam: Exam, revisions: SyllabusRevision[]
 
   return { ...exam, syllabus: topics };
 }
+
+/**
+ * Authority source discovery (tools/exam_builder/authority_discovery.py): what the latest bounded walk
+ * of an exam's authority found, projected onto that exam. Read-only for candidates; starting a walk is
+ * an admin job. Every call fails soft: offline means "not discovered here", never "not published".
+ */
+export const sourceDiscoveryService = {
+  async forExam(examId: string): Promise<DiscoveredSources | null> {
+    try {
+      const res = await fetch(`/api/sources/exam/${encodeURIComponent(examId)}`);
+      if (res.ok) return await res.json();
+    } catch {
+      // server offline: the sections show the register's own entries only
+    }
+    return null;
+  },
+
+  /** Queue a walk of this exam's authority from its official address. Admin only. */
+  async discover(examId: string, useClaude: boolean = false): Promise<ResearchOutcome<ClaudeJobTicket>> {
+    try {
+      const res = await fetch('/api/sources/discover', {
+        method: 'POST',
+        headers: jsonHeaders(),
+        body: JSON.stringify({ examId, useClaude })
+      });
+      return await researchOutcome<ClaudeJobTicket>(res);
+    } catch {
+      return { ok: false, error: 'Could not reach the GovOS server. Start "python app.py" and try again.' };
+    }
+  },
+
+  async runs(limit: number = 10): Promise<Array<{ id: string; estate: string; authorityName: string; startedAt: string; endedAt: string; jobId: string; nodes: number; exhaustive: boolean; repositories: number }>> {
+    try {
+      const res = await fetch(`/api/sources/runs?limit=${limit}`, { headers: adminHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.runs)) return data.runs;
+      }
+    } catch {
+      // server offline
+    }
+    return [];
+  }
+};
 
 export const resourceLiveService = {
   /** Register the library's links for scheduled checking; returns what the server knows now. */

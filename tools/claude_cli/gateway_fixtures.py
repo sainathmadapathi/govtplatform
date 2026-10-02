@@ -60,6 +60,9 @@ PAYLOADS: dict = {
     OP.GENERATE_PRACTICE: {'exam_title': 'Example Exam 2026', 'topic': 'Algebra', 'allowed_topics': ['Algebra', 'Ratio'],
                            'count': 3, 'difficulty': 'MEDIUM', 'pattern_note': 'Four options.'},
     OP.SOLVE_PRACTICE: {'questions': [{'stem': 'x + 1 = 3. x = ?', 'options': ['1', '2', '3', '4']}]},
+    OP.CLASSIFY_SOURCE: {'authority': 'Example Commission',
+                         'links': [{'index': 0, 'text': 'Previous papers', 'context': 'Candidate corner',
+                                    'path': '/oldpapers.jsp'}]},
 }
 
 # ------------------------------------------------------------------------- valid structured replies
@@ -89,6 +92,7 @@ VALID_OUTPUTS: dict = {
                                           'options': ['1', '2', '3', '4'], 'correct_index': 1,
                                           'explanation': 'Subtract one from both sides.'}]},
     OP.SOLVE_PRACTICE: {'solutions': [{'index': 0, 'choice': 1}]},
+    OP.CLASSIFY_SOURCE: {'links': [{'index': 0, 'role': 'QUESTION_PAPER', 'is_repository': True}]},
 }
 
 #: The payload keys each template places inside a delimited data block.
@@ -104,6 +108,7 @@ BLOCK_KEYS: dict = {
     OP.ANSWER_QUESTION: ('question',),
     OP.GENERATE_PRACTICE: ('topic', 'pattern_note'),
     OP.SOLVE_PRACTICE: ('questions',),
+    OP.CLASSIFY_SOURCE: ('links',),
 }
 
 #: A key of each payload that is NOT in a block (the template prints it inline).
@@ -118,6 +123,7 @@ INLINE_KEYS: dict = {
     OP.EXTRACT_FIELDS: ('exam', 'cycle', 'authority', 'source_title', 'source_url', 'fields'),
     OP.ANSWER_QUESTION: ('exam_title', 'authority'),
     OP.GENERATE_PRACTICE: ('exam_title', 'difficulty'),
+    OP.CLASSIFY_SOURCE: ('authority',),
 }
 
 

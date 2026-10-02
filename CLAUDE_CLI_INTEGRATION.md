@@ -147,7 +147,8 @@ inside a Flask request. A request creates a job and returns `202` with a poll UR
 | `POST /api/claude/practice` | candidate (rate limited 4/min) | practice questions on a verified syllabus topic |
 | `POST /api/research/search` | admin | discovery job |
 | `POST /api/research/facts/extract` with `"claude": true` | admin | reading one stored page for facts |
-| `POST /api/exams/build` | admin | gate-controlled exam build |
+| `POST /api/exams/build` | admin | gate-controlled exam build (`authorityDiscovery: true` walks the authority's site first) |
+| `POST /api/sources/discover` | admin | `DISCOVER_AUTHORITY`: a bounded walk of one exam's authority site, from that exam's official address |
 
 A job records its id, operation, exam and cycle, requester, sanitised input, input fingerprint,
 status, stage, result, error category and message, template version, timestamps, retry count, cancel
@@ -157,7 +158,7 @@ state, evidence links and audit metadata.
   a prompt, flags, tools, a working directory, a system prompt, a model or an executable path.
 * **Bounded concurrency** (`GOVOS_CLAUDE_MAX_CONCURRENCY`, 1-4). Identical *active* jobs from the same
   requester are de-duplicated. At most one build per exam and cycle runs at a time; different cycles
-  may run together.
+  may run together. At most one authority walk per exam runs at a time.
 * **Retries** only for infrastructure states, with backoff (5, 20, 60 seconds) and a per-operation bound.
 * **Cancellation.** A queued job is cancelled at once; a running job's CLI process tree is killed, and a
   cancelled build can never register anything.
@@ -180,6 +181,7 @@ state, evidence links and audit metadata.
 | Study-roadmap order | reorders the supplied verified topic ids (GovOS guidance, never official) | any invented/dropped id rejects the whole reply; the deterministic order stands |
 | **Ask AI** (candidate) | answers an unplaced question from a **server-built fact sheet of one exam** | the deterministic assistant answers everything it can place; cited fact ids must exist in the sheet, figures/URLs/other exam names must appear in it; otherwise the deterministic reply is shown |
 | **Practice questions** (candidate) | writes new questions on one verified syllabus topic (`GENERATE_PRACTICE`), then a **second, independent call** (`SOLVE_PRACTICE`) solves each one without being shown the key | topic must be in that exam's syllabus; four distinct options; no official-origin claims or links; an explanation that corrects itself is dropped; a question is served only where the independent solve reaches the key's option, and if that check cannot run nothing is served; always labelled `GOVOS_AUTHORED`, never a previous-year question; not scored or saved |
+| Authority source discovery (`CLASSIFY_SOURCE`, only when a walk asks for it) | names the role of official links whose own words the rules could not read ("Click here", "Downloads 2019"), from a fixed vocabulary, in one batched call | link extraction, the walk and its limits, every source class (official / trusted / secondary / lead), duplicate detection, exam identity (`discover.gate`) and the search states; a role outside the vocabulary or an index not asked about is ignored; disabled, slow or rejected leaves the role UNKNOWN; the walk itself never needs Claude |
 | Trust Panel | job status, safe errors, retry/cancel, evidence preview | human approval of every fact, finding and revision |
 
 Deliberately **not** sent to Claude: arithmetic, eligibility and age calculation, date comparison,

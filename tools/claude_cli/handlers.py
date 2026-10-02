@@ -115,7 +115,27 @@ def norm_build(inp: dict) -> dict:
     use = inp.get('useClaude', inp.get('claude', False))
     if isinstance(use, str):
         use = use.strip().lower() in ('1', 'true', 'yes', 'on')
-    return {'query': query, 'year': year, 'useClaude': bool(use)}
+    out = {'query': query, 'year': year, 'useClaude': bool(use)}
+    deep = inp.get('authorityDiscovery', False)
+    if isinstance(deep, str):
+        deep = deep.strip().lower() in ('1', 'true', 'yes', 'on')
+    if deep:
+        # Opt-in, and only present when asked for, so a plain build's input (and its dedupe key)
+        # is exactly what it always was.
+        out['authorityDiscovery'] = True
+    return out
+
+
+def norm_authority(inp: dict) -> dict:
+    """Authority source discovery starts only from an exam GovOS already holds: its root is that
+    exam's verified official address, never an address a request supplies."""
+    out = {'examId': _need_id(inp, 'examId')}
+    use = inp.get('useClaude', inp.get('claude', False))
+    if isinstance(use, str):
+        use = use.strip().lower() in ('1', 'true', 'yes', 'on')
+    if use:
+        out['useClaude'] = True
+    return out
 
 
 def norm_roadmap(inp: dict) -> dict:
@@ -255,13 +275,30 @@ def extract_fields(ctx: JobContext) -> JobOutcome:
 _INFRA_BUILD_STATES = ('INFRASTRUCTURE_FAILURE', 'SOURCE_FETCH_FAILURE')
 
 
+def _authority_run_for(ctx: JobContext) -> Callable:
+    """A build's authority walk: from the address the resolver verified, saved as its own run."""
+    def run_for(resolved):
+        from tools.exam_builder.authority_discovery import discover_authority
+        from tools.exam_builder.source_graph import SourceGraphStore
+        ctx.stage('DISCOVERING_AUTHORITY')
+        run = discover_authority([resolved.authority.domain], authority_name=resolved.authority.name,
+                                 should_continue=lambda: not ctx.cancelled)
+        SourceGraphStore(ctx.db_path).save(run, job_id=ctx.job.id)
+        ctx.stage('BUILDING')
+        return run
+    return run_for
+
+
 def build_exam_job(ctx: JobContext) -> JobOutcome:
     from tools.exam_builder.materialize import EngineState, ExamRegistry, build_exam
     inp = ctx.job.input
     ctx.stage('BUILDING')
+    extra = {}
+    if inp.get('authorityDiscovery'):
+        extra['authority_discovery'] = _authority_run_for(ctx)
     result = build_exam(inp['query'], inp['year'], registry=ExamRegistry(ctx.db_path),
                         use_claude=inp['useClaude'], gateway=ctx.hooks.claude() if ctx.hooks else None,
-                        should_continue=lambda: not ctx.cancelled)
+                        should_continue=lambda: not ctx.cancelled, **extra)
     data = result.to_dict()
     if result.state is EngineState.CANCELLED:
         return JobOutcome('CANCELLED', error_category='CANCELLED', result=data)
@@ -276,6 +313,48 @@ def build_exam_job(ctx: JobContext) -> JobOutcome:
     # A gate BLOCK is a finished, honest result (nothing was published), not a failed job.
     return JobOutcome('SUCCEEDED', result=data, evidence_links=links,
                       audit={'state': result.state.value, 'registered': result.registered})
+
+
+_CYCLE_IN_ID = re.compile(r'-(20[0-9]{2})(?:-[0-9]{2,4})?$')
+
+
+def discover_authority_job(ctx: JobContext) -> JobOutcome:
+    """Walk the exam's authority from its official address and keep the run as an audit record.
+
+    Deterministic: links are read from the pages themselves. Claude is asked only when the job
+    asks for it, only to classify links whose own words say nothing, and its answer never makes
+    anything official -- see authority_discovery.classify_ambiguous."""
+    from tools.exam_builder.authority_discovery import discover_authority, project_for_exam
+    from tools.exam_builder.source_graph import SourceGraphStore, coverage_report
+    from .discovery import validate_url_syntax
+    inp = ctx.job.input
+    exam = ctx.hooks.exam_store.get(inp['examId']) if ctx.hooks else None
+    if exam is None:
+        return JobOutcome('FAILED', error_category='EXAM_NOT_FOUND', error_message='No such exam.')
+    root = str(exam.get('officialDomain') or '').strip()
+    ok, _why = validate_url_syntax(root)
+    if not ok:
+        return JobOutcome('FAILED', error_category='NO_OFFICIAL_ADDRESS',
+                          error_message='This exam has no official address to start from.')
+    ctx.stage('DISCOVERING')
+    gateway = ctx.hooks.claude() if inp.get('useClaude') else None
+    run = discover_authority([root], authority_name=str(exam.get('authorityName') or ''), gateway=gateway,
+                             should_continue=lambda: not ctx.cancelled)
+    if run.cancelled:
+        return JobOutcome('CANCELLED', error_category='CANCELLED', error_message=SAFE_MESSAGES[InfraStatus.CANCELLED])
+    m = _CYCLE_IN_ID.search(inp['examId'])
+    projection = project_for_exam(run, exam_id=inp['examId'], title=str(exam.get('title') or ''),
+                                  authority_name=str(exam.get('authorityName') or ''), authority_domain=root,
+                                  cycle=str(exam.get('cycle') or (m.group(1) if m else '')))
+    ctx.stage('SAVING')
+    SourceGraphStore(ctx.db_path).save(run, job_id=ctx.job.id, coverage=coverage_report(run))
+    data = {'runId': run.id, 'examId': inp['examId'], 'estate': (run.estates or [''])[0],
+            'coverage': projection['coverage'], 'searchStates': projection['searchStates'],
+            'repositories': [{'title': r['title'], 'role': r['role'], 'itemsForThisExam': r['itemsForThisExam'],
+                              'itemCount': r['itemCount']} for r in projection['repositories']],
+            'claude': dict(run.claude)}
+    return JobOutcome('SUCCEEDED', result=data, evidence_links=[{'kind': 'SOURCE_RUN', 'runId': run.id}],
+                      audit={'pages': run.pages_fetched, 'documents': run.documents_fetched, 'nodes': len(run.graph)})
 
 
 # ===================================================================================== roadmap
@@ -441,6 +520,9 @@ def default_specs() -> dict:
         'DISCOVER_SOURCES': JobSpec('DISCOVER_SOURCES', discover_sources, norm_discover, max_retries=2),
         'EXTRACT_FIELDS': JobSpec('EXTRACT_FIELDS', extract_fields, norm_extract, max_retries=1),
         'BUILD_EXAM': JobSpec('BUILD_EXAM', build_exam_job, norm_build, max_retries=1, exclusive=_build_exclusive),
+        # One walk of an authority at a time per exam: a second would only fetch the same pages again.
+        'DISCOVER_AUTHORITY': JobSpec('DISCOVER_AUTHORITY', discover_authority_job, norm_authority, max_retries=1,
+                                      exclusive=lambda inp, exam_id, cycle: 'authority:' + inp['examId']),
         'ORDER_ROADMAP': JobSpec('ORDER_ROADMAP', order_roadmap, norm_roadmap, max_retries=1),
         'ANSWER_QUESTION': JobSpec('ANSWER_QUESTION', answer_question, norm_answer, candidate=True, max_retries=0),
         'GENERATE_PRACTICE': JobSpec('GENERATE_PRACTICE', generate_practice, norm_practice, candidate=True,

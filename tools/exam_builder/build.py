@@ -65,6 +65,8 @@ class BuildResult:
     #: What the completeness evaluation was told, kept so it can be re-run after a review.
     reacquisition_attempts: int = 0
     searched_not_found: frozenset = frozenset()
+    #: The authority discovery run this build was given, if any (source_graph.DiscoveryRun).
+    authority_run: object = None
 
 
 def _load(doc: DiscoveredDoc):
@@ -2172,12 +2174,18 @@ def _targeted_reacquire(
 def build(exam_query: str = '', *, year: str = '',
           sibling_exam_words: list[str] | None = None, max_docs: int = 8,
           replay: SourceManifest | None = None,
-          search_fn: Optional[Callable] = None) -> BuildResult:
+          search_fn: Optional[Callable] = None,
+          authority_discovery: Optional[Callable] = None) -> BuildResult:
     """Build one exam, either from fresh discovery or from a captured manifest.
 
     `replay` freezes which documents are used and nothing else: they are re-fetched and
     re-validated exactly as on a fresh build.
+
+    `authority_discovery`, when given, is called with the resolved exam and returns a
+    `source_graph.DiscoveryRun` over its authority; discovery then admits that run's official
+    items through the same gate. Off by default, so a build without it is unchanged.
     """
+    authority_run = None
     if replay is not None:
         resolved = ResolvedExam(
             query=replay.query,
@@ -2193,7 +2201,9 @@ def build(exam_query: str = '', *, year: str = '',
         exam_id = stable_exam_id(resolved)
         own = exam_aliases(resolved.query, resolved.official_name)
         siblings = [w for w in (sibling_exam_words or []) if w not in own]
-        sources = discover(resolved, exam_id=exam_id, sibling_exam_words=siblings)
+        if authority_discovery is not None:
+            authority_run = authority_discovery(resolved)
+        sources = discover(resolved, exam_id=exam_id, sibling_exam_words=siblings, authority_run=authority_run)
 
     rec = ExamRecord(
         exam_id=exam_id,
@@ -2370,4 +2380,5 @@ def build(exam_query: str = '', *, year: str = '',
     return BuildResult(resolved=resolved, sources=sources, coverage=coverage, record=rec,
                        build_state=state, identity=identity, manifest=snapshot,
                        changed_sources=changed, completeness=completeness_report,
-                       reacquisition_attempts=reacquire_attempts, searched_not_found=searched_not_found)
+                       reacquisition_attempts=reacquire_attempts, searched_not_found=searched_not_found,
+                       authority_run=authority_run)

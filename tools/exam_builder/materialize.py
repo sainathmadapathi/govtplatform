@@ -2012,7 +2012,8 @@ def build_exam(exam_query: str, year: str | int = '', *, registry: Optional[Exam
                search_fn: Optional[Callable] = None, use_claude: bool = False, gateway=None, cache=None,
                siblings: Optional[list] = None, max_docs: int = 8,
                data_ts: str = P.DATA_TS, reviews: Optional[list] = None,
-               replay=None, should_continue: Optional[Callable[[], bool]] = None) -> EngineBuildResult:
+               replay=None, should_continue: Optional[Callable[[], bool]] = None,
+               authority_discovery: Optional[Callable] = None) -> EngineBuildResult:
     """The single generic engine entry point: name + cycle in, a registered runtime Exam out.
 
         build_exam("<an authored exam>", 2027)  ·  build_exam("Any Unknown Board Exam", 2028)
@@ -2025,7 +2026,8 @@ def build_exam(exam_query: str, year: str | int = '', *, registry: Optional[Exam
     year = str(year or '')
     res = orchestrate(exam_query, year=year, dry_run=True, use_claude=use_claude, gateway=gateway,
                       cache=cache, siblings=siblings, max_docs=max_docs, data_ts=data_ts,
-                      search_fn=search_fn, reviews=reviews, replay=replay)
+                      search_fn=search_fn, reviews=reviews, replay=replay,
+                      authority_discovery=authority_discovery)
     out = EngineBuildResult(query=exam_query, year=year, state=EngineState.BLOCKED_BY_GATE,
                             reason=res.reason, orchestration=res)
     out.reviews = dict(res.reviews or {})

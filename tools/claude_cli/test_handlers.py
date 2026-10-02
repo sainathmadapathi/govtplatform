@@ -220,10 +220,10 @@ class NormaliserTests(unittest.TestCase):
 
 
 class DefaultSpecsTests(unittest.TestCase):
-    def test_only_the_six_allow_listed_operations_exist_and_only_two_are_open_to_candidates(self):
+    def test_only_the_seven_allow_listed_operations_exist_and_only_two_are_open_to_candidates(self):
         specs = default_specs()
         self.assertEqual(set(specs), {'DISCOVER_SOURCES', 'EXTRACT_FIELDS', 'BUILD_EXAM', 'ORDER_ROADMAP',
-                                      'ANSWER_QUESTION', 'GENERATE_PRACTICE'})
+                                      'ANSWER_QUESTION', 'GENERATE_PRACTICE', 'DISCOVER_AUTHORITY'})
         self.assertEqual({k for k, s in specs.items() if s.candidate}, {'ANSWER_QUESTION', 'GENERATE_PRACTICE'})
         for name, spec in specs.items():
             self.assertEqual(spec.name, name)
@@ -231,9 +231,10 @@ class DefaultSpecsTests(unittest.TestCase):
         for name in ('ANSWER_QUESTION', 'GENERATE_PRACTICE'):
             self.assertEqual(specs[name].max_retries, 0, 'a candidate request is never silently retried')
 
-    def test_only_builds_are_exclusive_and_the_key_names_exam_and_cycle(self):
+    def test_only_builds_and_authority_walks_are_exclusive_and_the_key_names_what_they_cover(self):
         specs = default_specs()
-        self.assertEqual([k for k, s in specs.items() if s.exclusive], ['BUILD_EXAM'])
+        self.assertEqual(sorted(k for k, s in specs.items() if s.exclusive), ['BUILD_EXAM', 'DISCOVER_AUTHORITY'])
+        self.assertEqual(specs['DISCOVER_AUTHORITY'].exclusive({'examId': 'exam-a-2031'}, '', ''), 'authority:exam-a-2031')
         norm = norm_build({'query': 'Example Commission: Assistant Officer!', 'year': '2031'})
         self.assertEqual(specs['BUILD_EXAM'].exclusive(norm, '', ''), 'build:example-commission-assistant-officer:2031')
         same = norm_build({'query': 'example commission assistant officer', 'year': '2031'})

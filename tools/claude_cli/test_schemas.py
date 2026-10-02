@@ -83,7 +83,7 @@ class InfraStatusTests(unittest.TestCase):
         from tools.claude_cli.prompts import TEMPLATES
         self.assertEqual(set(OPERATION_SCHEMAS), set(Operation))
         self.assertEqual(set(TEMPLATES), set(Operation))
-        self.assertEqual(len(Operation), 12)
+        self.assertEqual(len(Operation), 13)                  # + CLASSIFY_SOURCE (authority source discovery)
 
 
 class ValidatorTests(unittest.TestCase):

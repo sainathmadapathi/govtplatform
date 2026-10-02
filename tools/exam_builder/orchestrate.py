@@ -145,7 +145,8 @@ def orchestrate(exam_query: str = '', *, year: str = '', dry_run: bool = True,
                 allow_overlay: bool = False, overlay_store=None,
                 search_fn: Optional[Callable] = None,
                 render: Optional[Callable[[ExamRecord], str]] = None,
-                reviews: Optional[list] = None) -> OrchestrationResult:
+                reviews: Optional[list] = None,
+                authority_discovery: Optional[Callable] = None) -> OrchestrationResult:
 
     """Run the universal pipeline for one exam. Universal: the input is a name and a year and
     nothing authority-specific; every branch reads a *state*, never an exam or an authority.
@@ -161,7 +162,7 @@ def orchestrate(exam_query: str = '', *, year: str = '', dry_run: bool = True,
     # --- RESOLUTION → DISCOVERY → SOURCE CAPTURE → IDENTITY → EXTRACTION (existing build) ----
     try:
         br = build(exam_query, year=year, sibling_exam_words=siblings, max_docs=max_docs,
-                   replay=replay, search_fn=search_fn)
+                   replay=replay, search_fn=search_fn, authority_discovery=authority_discovery)
     except AmbiguousAuthority as exc:
         res.state = OrchestrationState.AMBIGUOUS_AUTHORITY
         res.reached = Stage.RESOLUTION

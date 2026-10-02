@@ -338,7 +338,7 @@ def read_notice(doc: SourceDocument, text: str, *, exam_id: str, headline: str =
         event.evidence = [e for f in (declared, event.next_step) if f for e in f.evidence]
         if ev is not None and ev not in event.evidence:
             event.evidence.insert(0, ev)
-        if not any(e.is_verbatim for e in event.evidence):
+        if not any(e.is_official_verbatim for e in event.evidence):
             event.status = Status.NEEDS_REVIEW
             event.note = ('no span of this declaration could be verified verbatim, so it is '
                           'not shown as the authority’s own')
@@ -412,11 +412,11 @@ def read_row(label: str, value: str, doc: SourceDocument, text: str, *, exam_id:
     src = event.published_at if event.published_at.has_value else (
         event.expected_at if event.expected_at.has_value else event.document_url)
     event.evidence = list(src.evidence)
-    if not any(e.is_verbatim for e in event.evidence):
+    if not any(e.is_official_verbatim for e in event.evidence):
         ev = _evidence(joined, doc, joined, reading=f'{kind.value} row')
         if ev:
             event.evidence.append(ev)
-    if not any(e.is_verbatim for e in event.evidence):
+    if not any(e.is_official_verbatim for e in event.evidence):
         event.status = Status.NEEDS_REVIEW
         event.note = 'the row was read but no span of it could be verified verbatim'
     return event

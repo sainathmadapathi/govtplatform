@@ -21,6 +21,8 @@ decided and why) so a discovery is auditable. Nothing here publishes anything.
 """
 from __future__ import annotations
 
+import hashlib
+
 import ipaddress
 import re
 import socket
@@ -148,6 +150,10 @@ class FetchResult:
     text: str = ''
     hops: list = field(default_factory=list)
     error: str = ''
+    #: SHA-256 (first 24 hex) of the bytes read, so one file reached at two addresses is one file.
+    content_hash: str = ''
+    #: True when the body reached `max_bytes`: the hash then covers the first `max_bytes` only.
+    truncated: bool = False
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -181,6 +187,8 @@ def fetch_checked(url: str, *, timeout: float = FETCH_TIMEOUT, max_bytes: int = 
                 out.content_type = (resp.headers.get('Content-Type') or '').split(';')[0].strip().lower()
                 body = resp.read(max_bytes)
                 out.ok = 200 <= out.status < 300
+                out.content_hash = hashlib.sha256(body).hexdigest()[:24] if body else ''
+                out.truncated = len(body) >= max_bytes
                 if 'html' in out.content_type or out.content_type.startswith('text/'):
                     out.text = body.decode('utf-8', 'replace')
                 return out

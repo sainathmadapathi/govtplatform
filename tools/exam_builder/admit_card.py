@@ -519,7 +519,7 @@ def read_notice(doc: SourceDocument, text: str, *, exam_id: str, headline: str =
                 event.credentials_required = Fact.verified(
                     [c.value for c in creds],
                     [e for c in creds for e in c.evidence][:2], confidence=0.8)
-            if not event.evidence or not any(e.is_verbatim for e in event.evidence):
+            if not event.evidence or not any(e.is_official_verbatim for e in event.evidence):
                 event.status = Status.NEEDS_REVIEW
                 event.note = ('no span of this event could be verified verbatim in the '
                               'document, so it is not shown as the authority’s own')
@@ -606,7 +606,7 @@ def read_row(label: str, value: str, doc: SourceDocument, text: str, *, exam_id:
             if d.iso == released.value:
                 event.released_precision = d.precision.value
                 break
-    if not any(e.is_verbatim for e in event.evidence):
+    if not any(e.is_official_verbatim for e in event.evidence):
         event.status = Status.NEEDS_REVIEW
         event.note = ('the row was read but no span of it could be verified verbatim in '
                       'the document')

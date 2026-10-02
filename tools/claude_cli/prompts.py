@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from typing import Callable
 
 from .schemas import (ATTRIBUTION_ROLES, DATE_ROLES, EXTRACTABLE_FIELDS, NAVIGATION_TARGETS,
-                      DISCOVERY_KINDS, Operation)
+                      DISCOVERY_KINDS, SOURCE_ROLES, Operation)
 
 #: Appended to every system prompt.
 DATA_RULES = (
@@ -392,6 +392,37 @@ _SOLVE_SYSTEM = (
 )
 
 
+
+# ============================================================================ source roles
+def _render_classify_source(p: dict, n: str) -> str:
+    links = p.get('links')
+    rows = [links] if isinstance(links, str) else []   # already-rendered text goes into the block unchanged
+    for link in (links if isinstance(links, list) else [])[:50]:
+        if not isinstance(link, dict):
+            continue
+        rows.append(f"[{link.get('index')}] text: {' '.join(str(link.get('text') or '').split())[:200]}"
+                    f" | listed under: {' '.join(str(link.get('context') or '').split())[:160]}"
+                    f" | path: {' '.join(str(link.get('path') or '').split())[:160]}")
+    return '\n'.join([
+        "TASK: For each LINK found on an official exam authority's website, name the role of the page or file "
+        'it points to, from ROLES only. If you cannot tell from the text, label and path alone, leave the '
+        'link out. Set is_repository when the link points to a page listing many items of that role.',
+        f'AUTHORITY: {_line(p, "authority")}',
+        'ROLES: ' + ', '.join(SOURCE_ROLES),
+        block('LINKS', '\n'.join(rows), n, 12_000),
+    ])
+
+
+_CLASSIFY_SOURCE_SYSTEM = (
+    "You classify links on a government exam authority's website by the role of what they point to "
+    "(a notification, a question paper, a registration portal, study material, and so on).\n"
+    "- Judge only from the link's text, the label it is listed under and its path. You have no other "
+    "information and must not assume any.\n"
+    "- Use only the roles listed. Never decide whether a source is official or trustworthy: that is not "
+    "your task. Never add links that were not given.\n"
+    "- Leave out every link you are not sure about. A missing answer is safe; a wrong one is not.\n" + DATA_RULES
+)
+
 # ====================================================================================== registry
 TEMPLATES: dict[Operation, PromptTemplate] = {
     Operation.VERIFY_CLAIM: PromptTemplate(
@@ -431,6 +462,9 @@ TEMPLATES: dict[Operation, PromptTemplate] = {
     Operation.SOLVE_PRACTICE: PromptTemplate(
         Operation.SOLVE_PRACTICE, 'solve-practice/1', _SOLVE_SYSTEM, _render_solve,
         required=('questions',), timeout_factor=1.5, max_input_chars=12_000),
+    Operation.CLASSIFY_SOURCE: PromptTemplate(
+        Operation.CLASSIFY_SOURCE, 'classify-source/1', _CLASSIFY_SOURCE_SYSTEM, _render_classify_source,
+        required=('links',), timeout_factor=1.0, max_input_chars=16_000, cacheable=True),
 }
 
 assert set(TEMPLATES) == set(Operation), 'every operation has exactly one template'

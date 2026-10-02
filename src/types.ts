@@ -575,6 +575,101 @@ export interface ResourceItem {
   isEssential?: boolean;
   /** Date (YYYY-MM-DD) the URL last returned a healthy HTTP response from GovOS's link check. */
   linkVerifiedDate?: string;
+  /** What the resource is for, where a record states it. Otherwise `resourceRoleOf` reads it from the entry. */
+  role?: ResourceRole;
+}
+
+/**
+ * What a resource is for, by its content role -- the one vocabulary of
+ * tools/exam_builder/discover.py (DocKind). Only STUDY_MATERIAL, LECTURE_VIDEO and PRACTICE_TOOL
+ * reach the Resource Library; a notification, a question paper or a portal is shown in the
+ * section it belongs to, whatever its file type.
+ */
+export type ResourceRole =
+  | 'EXAM_PAGE' | 'NOTIFICATION' | 'CORRIGENDUM' | 'SYLLABUS' | 'EXAM_PATTERN' | 'QUESTION_PAPER'
+  | 'ANSWER_KEY' | 'ADMIT_CARD' | 'RESULT' | 'APPLICATION_PORTAL' | 'CUTOFF' | 'CALENDAR'
+  | 'OTR_PORTAL' | 'OFFICIAL_PORTAL' | 'APPLICATION_GUIDE' | 'EXAM_GUIDE' | 'EXAM_DAY_INSTRUCTIONS'
+  | 'STUDY_MATERIAL' | 'LECTURE_VIDEO' | 'PRACTICE_TOOL' | 'DISCOVERY_SIGNAL' | 'UNKNOWN';
+
+/** How far a discovered source may be trusted (tools/exam_builder/source_graph.py). Officiality is not trust. */
+export type SourceClass = 'PRIMARY_OFFICIAL' | 'TRUSTED_SECONDARY' | 'SECONDARY' | 'DISCOVERY_ONLY' | 'UNVERIFIED';
+
+/** One resource an authority walk found, as an exam's page may show it. */
+export interface DiscoveredSourceItem {
+  title: string;
+  url: string;
+  context: string;
+  role: ResourceRole;
+  /** tools/exam_builder/resource_roles.py SECTION_FOR_ROLE; null for a lead or an unclassified link. */
+  section: 'OVERVIEW' | 'DATES' | 'APPLICATION' | 'PATTERN' | 'SYLLABUS' | 'RESOURCES' | 'PRACTICE' | 'ADMIT_CARD'
+    | 'EXAM_DAY' | 'RESULTS' | 'CUTOFFS' | 'CORRIGENDA' | 'OFFICIAL_LINKS' | null;
+  /** Plain words for a candidate: "Official source", "Trusted secondary source", ... */
+  sourceLabel: string;
+  sourceClass: SourceClass;
+  status: string;
+  /** False when GovOS could not open it; the link is still the authority's. */
+  obtainable: boolean;
+  foundOn: string;
+  foundOnTitle: string;
+  /** THIS_EXAM | THIS_EXAM_OTHER_CYCLE | OTHER_EXAM | NOT_THIS_EXAM | UNIDENTIFIABLE | '' */
+  relation: string;
+  identity: { cycle?: string; stage?: string; paper?: string; session?: string };
+  duplicateOf: string;
+  label?: string;
+  /** Who runs the host: its registered domain. */
+  owner?: string;
+  /** OWNED_BY_AUTHORITY | GOVERNMENT_HOST | LINKED_FROM_OFFICIAL | INDEPENDENT. A link from an
+   *  official page is a relationship, never ownership. */
+  relationship?: string;
+}
+
+/** A listing page of the authority's (old question papers, notifications, results), and what on it is this exam's. */
+export interface DiscoveredRepository {
+  title: string;
+  url: string;
+  role: ResourceRole;
+  section: DiscoveredSourceItem['section'];
+  sourceLabel: string;
+  /** Only the items that name this exam (this cycle or another). */
+  items: DiscoveredSourceItem[];
+  itemCount: number;
+  listedWithoutLink: string[];
+  itemsForThisExam: number;
+  status: string;
+  note: string;
+}
+
+export interface DiscoverySearchState {
+  /** FOUND_VERIFIED | FOUND_AMBIGUOUS | FOUND_UNREADABLE | NOT_FOUND_AFTER_DISCOVERY | SEARCH_INCOMPLETE | NOT_SEARCHED.
+   *  NOT_FOUND_AFTER_DISCOVERY only when every relevant listing and item found was read. */
+  state: string;
+  reason: string;
+  /** For SEARCH_INCOMPLETE / NOT_SEARCHED: how many relevant places were not read, by why
+   *  (skipped_due_to_file_budget, skipped_due_to_script_rendering, ...). */
+  notRead?: Record<string, number>;
+}
+
+/** GET /api/sources/exam/<id>: the latest authority walk, projected onto one exam. */
+export interface DiscoveredSources {
+  examId: string;
+  state: 'DISCOVERED' | 'NOT_DISCOVERED';
+  estate?: string;
+  note?: string;
+  runId?: string;
+  authorityName?: string;
+  discoveredAt?: string;
+  repositories?: DiscoveredRepository[];
+  portals?: DiscoveredSourceItem[];
+  practicalGuidance?: DiscoveredSourceItem[];
+  learning?: DiscoveredSourceItem[];
+  searchStates?: Record<string, DiscoverySearchState>;
+  exhaustive?: boolean;
+  coverage?: {
+    pagesFetched: number; officialResources: number; documentsFetched: number; skippedOutOfScope: number;
+    listedWithoutLink: number; exhaustive: boolean; fetchFailures: number; unexplored: number; pagesWithoutLinks: number;
+    /** Nodes found and not read, by why: skipped_due_to_file_budget, ..._page_budget, ..._depth, ... */
+    skipped?: Record<string, number>;
+  };
 }
 
 export type ResourceLinkStatus = 'HEALTHY' | 'REDIRECT' | 'BLOCKED' | 'BROKEN' | 'UNREACHABLE';

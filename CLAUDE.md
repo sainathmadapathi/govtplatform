@@ -45,6 +45,8 @@ npx tsc --noEmit           # type check (NOT part of build — currently clean, 
 npm run export:authored    # exam_data/authored_exams.json from src/data.ts (also runs before `npm run build`)
 npm run check:frontend     # headless checks of the Claude-facing frontend contract (assistant fallback, services fail soft)
 python -m pytest tools test_research_facts.py test_app_claude.py -q   # backend suite; never starts the real Claude CLI
+python -m tools.exam_builder.secondary_ingestion --source manabadi.co.in --exam exam-websitenew-tgpsc-group-i-2024 --walk
+                           # read one reviewed secondary source for one exam; read-only, writes exam_data/secondary/*.json
 
 ```
 
@@ -255,7 +257,8 @@ Four candidate-facing gaps on TGPSC, each fixed for every machine-read exam:
   1. **SSC's own notice board**, read from the portal's public API
      (`ssc.gov.in/api/general-website/portal/notice-boards` with the site's own attribute list;
      attachments become `ssc.gov.in/api/attachment/<path>` links). Shown as a "Latest from SSC's
-     notice board" shelf at the top of the SSC library, CGL-filtered by headline with an
+     notice board" shelf in section 12 Official Links (`OfficialNoticeBoards`; it used to sit at
+     the top of the library, but a notice is not study material), CGL-filtered by headline with an
      "All SSC notices" toggle. Official by construction — it is SSC's board — so it carries a
      LIVE · OFFICIAL badge and the fetch time. Cached 6 h.
   2. **Channel uploads** from each YouTube channel's public Atom feed
@@ -668,6 +671,158 @@ UPSC CSE 2026 two Preliminary written-result declarations; IBPS PO 2026 two sche
 rows; SSC CGL 2026 and LIC AAO 2027 nothing (only prior cycles / no result row); APPSC not
 read. No candidate-level data (roll numbers, names, ranks, marks) is published for any exam.
 
+### Authority source discovery: the authority first, then the exam
+
+Exam discovery (`discover.py`) looks for one exam's documents. `authority_discovery.py` looks at the
+authority first — its navigation, its repositories (old question papers, notifications, results,
+keys), its registration portal, the retired domain its pages still link to, its own channel and
+accounts — and records everything in a **source graph** (`source_graph.py`): `SourceNode` (one
+resource per normalised URL: role, node type, source class, status, content hash), `SourceEdge`
+(how it was reached: `OFFICIAL_LINK`, `OFFICIAL_ARCHIVE_LINK`, `REPOSITORY_ITEM`, `APPLICATION_LINK`,
+`REFERENCE_LINK`, `DISCOVERED_BY_SEARCH`, `SECONDARY_REFERENCE`, `DISCOVERY_SIGNAL`) and
+`DiscoveryRun` (limits, frontier left unexplored and why, fetch failures, leads, Claude use). Runs
+are stored whole in SQLite (`source_discovery_runs`, `SourceGraphStore`), never overwritten — an
+audit record, not a fact store. Nothing in these modules names an authority or an exam.
+
+- **Bounded and deterministic.** `<a href>` links are read from the HTML with the list label or
+  heading each sits under (`1.AE.` above `1.AE-CIVIL.`); items listed without a link are kept as
+  "listed, not obtainable". **A link in a table row keeps its row** (`Link.row`, `table_heading`):
+  TGPSC lists every recruitment as a row whose documents are all called "Addendum", so the link's own
+  words identify nothing and the row ("05/2026 - GROUP-I SERVICES …") is what the exam gate judges. A
+  row too long (600 chars) or carrying too many links (8) is layout or navigation and is not used. Limits: 2 links deep, 25 pages, 40 files, 600 nodes. Off the
+  authority's estate nothing is crawled except an archive one hop out; services (portals, logins),
+  videos and social links are recorded, never fetched; files are fetched only to hash them, so one
+  file at two addresses is one resource. Site chrome (About, RTI, Contact) is counted, not followed.
+- **Officiality is ownership, and is not trust.** `source_trust.classify_source` gives
+  `PRIMARY_OFFICIAL` only to the authority's estate and to a government host its own page links to (a
+  retired domain stays official). **Being linked from an official page makes nothing official**: a
+  file, page or account on anyone else's host keeps its owner — `TRUSTED_SECONDARY` through a reviewed
+  `SourceTrustProfile` for its named roles, `DISCOVERY_ONLY` for social posts, `SECONDARY` otherwise —
+  and `source_ownership` records `owner` and a `relationship` (OWNED_BY_AUTHORITY, GOVERNMENT_HOST,
+  LINKED_FROM_OFFICIAL, INDEPENDENT) on every node, shown to candidates as "Run by …, not by the
+  authority; the authority's own page links to it." (A file on another host used to be official by
+  its address; a Manabadi PDF on a TGPSC page would have been.) `UNVERIFIED` for refused addresses.
+  `source_trust_profiles.json` is the reviewed-source registry: GovOS invents no trusted list, and
+  popularity is never trust. It holds exactly the sources the owner has reviewed (manabadi.co.in, for
+  TGPSC, since 2026-10-02 — see "Trusted-secondary ingestion"), each a complete review record. A profile cannot make anything official. Live runs found two leaks this closes: an
+  item of an official repository was once read as "a file" and a coaching page became official with
+  every link on it.
+- **Roles** (`resource_roles.classify_link`) are read from the link's words, then `classify_kind`,
+  then the repository it sits in. Lone words misled live runs and are not cues: "SERVICES" (a
+  recruitment — it hid TGPSC's own Group-I notification), "Backward Classes" (a caste category,
+  read as lectures), "Notes", "Courses".
+- **Per exam, the existing gate decides.** `admit_for_exam` judges every official item with
+  `discover.gate()` on its own listing text (never the repository's, which is every exam's) and
+  `pyq.identity_from_text` for its cycle: THIS_EXAM / THIS_EXAM_OTHER_CYCLE / OTHER_EXAM /
+  NOT_THIS_EXAM / UNIDENTIFIABLE. `discover(..., authority_run=)` admits THIS_EXAM documents through
+  that gate *before* any search, so a kind the walk supplied is never searched for again; `build()`
+  takes an opt-in `authority_discovery` callable (the `BUILD_EXAM` job's `authorityDiscovery: true`),
+  off by default, so every existing build is unchanged. Everything admitted still goes through
+  identity, extraction, evidence, completeness and the publication gate.
+- **A service is offered to an exam only when it is that exam's, never for its role alone**
+  (`_serves_exam`, used by `project_for_exam`'s portal list, which feeds Application & Documents and
+  Official Links). It is offered when its listing identifies this exam in this cycle (THIS_EXAM), or
+  when it is the authority's own service for every recruitment. For that, its listing must name no exam
+  and no cycle, its own words or address must make it the service (not a role read from the row it sits
+  in), and the site must link to it as a service, not only as a listing entry. Live TGPSC showed why:
+  a "Web note" in the row "Notification No: 04/2026 … Online application" of the Departmental
+  Examinations table took APPLICATION_PORTAL from its row and was offered to Group-I 02/2024 as its
+  application portal. The genuine OTR links are NOT_THIS_EXAM by the gate too (their words identify a
+  service, not a recruitment), so the relation alone could not separate them. Anything left out stays
+  in the run for the audit, with its role unchanged. Tests: `test_exam_scoped_portals.py`.
+- **Six search states, never merged** (`role_search_state`): FOUND_VERIFIED, FOUND_AMBIGUOUS,
+  FOUND_UNREADABLE, NOT_FOUND_AFTER_DISCOVERY, SEARCH_INCOMPLETE and NOT_SEARCHED. **"Not found" means
+  every relevant listing and item discovered was read** (`unsearched()` is empty) and each names
+  something else. Anything relevant left unread — for the file, page or item budget, the depth limit,
+  a script-built page, a failed fetch or a refused address — makes it SEARCH_INCOMPLETE (some listings
+  read) or NOT_SEARCHED (none), never "not found". Every skip is recorded on its node (`skipped`, a
+  `SkipReason`) and counted as `skipped_due_to_<reason>` in the coverage and in the state's `notRead`;
+  candidates read "N listings and M items that could hold it were not read". An unread *item* whose own
+  words name another exam or cycle is ruled out; an unread *listing* never is. "Not found" is also
+  refused when any item on those listings names the exam under another role, or is listed without a link.
+- **Leads.** A social post or news item (`add_social_signal`) becomes a lead — "look for an
+  official admit-card notice" — that is `UNCONFIRMED` until an official source of that role is found;
+  never `HALL_TICKET_RELEASED = TRUE`. A post on an account the authority links to is still a lead
+  (DISCOVERY_ONLY, LINKED_FROM_OFFICIAL), not an official statement.
+- **Claims** (`claims.py`): every source's statement of a field is a `SourceClaim` whose quotation
+  must be in text GovOS fetched. The official value governs; a trusted source agreeing corroborates;
+  anyone disagreeing is recorded as a conflict, never a correction; a secondary value with no
+  official statement stays the source's claim (`NEEDS_REVIEW`, no value). Two official statements
+  that disagree publish nothing. Nothing is averaged, chosen by recency or arbitrated by Claude.
+  `SourceEvidence.source_class` (empty = the pipeline's own official reading) makes
+  `Fact.is_publishable` require **official** verbatim evidence.
+- **Claude, narrowly.** Only when a walk asks (`useClaude`), only for official links the rules left
+  UNKNOWN, one batched `CLASSIFY_SOURCE` call that may name a role from the vocabulary and nothing
+  else — never a source class, never a new link. Disabled, signed out, slow or schema-rejected:
+  the role stays UNKNOWN.
+- **Runtime.** `DISCOVER_AUTHORITY` job (admin; starts only from an exam GovOS already holds, at its
+  official address — a request can not supply an address), `POST /api/sources/discover`,
+  `GET /api/sources/exam/<id>` (the latest run for the exam's estate, projected per exam on read, so
+  a classification fix applies without walking again), `GET /api/sources/runs` and
+  `…/runs/<id>/coverage` (admin). The Trust Panel's Live Source Research tab has an "Authority source
+  discovery" card. Candidates see the projection in the section each role belongs to (the placement
+  model below), labelled by source, with the walk's coverage in words.
+
+TGPSC (live, 2026-10-02): 14 pages, 42 files, ~590 nodes; repositories Notifications (146),
+Notifications for All Recruitments (162), Scheme & Syllabus (8), Old Question Papers (22 + 1 listed
+without a link), Results/Keys/OMR (3) and others; Group-I: notification 02/2024 THIS_EXAM, 04/2022
+THIS_EXAM_OTHER_CYCLE, syllabus found, OTR and application portals found, question papers
+**SEARCH_INCOMPLETE**: the two listings read hold only other recruitments' papers, but two
+script-built listings and 24 items that could hold one were not read. (It used to say
+NOT_FOUND_AFTER_DISCOVERY, which the walk had not earned.) Tests: `test_authority_discovery.py`
+(the spec's 26 cases over `authority_fixture_site.py`, an invented commission),
+`test_authority_integration.py`, `test_app_sources.py`, and `test_candidate_trust_fixes.py` (a
+listing skipped for the file budget is never "not found", ownership over linking, row context,
+the placement table, the secondary status).
+
+### Trusted-secondary ingestion: a reviewed source's claims, never the authority's facts
+
+`secondary_ingestion.py` reads one **reviewed** secondary source for one exam and compares what it
+says with the official record. It is built on the frozen discovery layer and changes none of it
+(link reading, role and source classification, the exam gate, paper identity and `claims.reconcile`
+are reused as they are). It is manual — a CLI, no job, no schedule, no endpoint — and read-only: it
+writes only its JSON report. **The report says so itself**: its `status` is `TRUSTED_SECONDARY` /
+`COMMAND_LINE_ONLY` / `NOT_PUBLISHED`, every claim and resolution row carries the last two, and the
+CLI prints the line before its counts. Nothing in `app.py` or `src/` reads it (a test checks).
+
+- **Registry.** The source's profile in `source_trust_profiles.json` (REVIEWED, TRUSTED_SECONDARY,
+  authorities covered, roles trusted for, who reviewed it, when, on what basis) carries an
+  `ingestion` block: the source's own listings to read per authority, all on its own domain. A
+  review wrong anywhere (not REVIEWED, not TRUSTED_SECONDARY, a listing off-domain, an unknown role)
+  is refused whole. The frozen classifier ignores the block.
+- **Reading.** Only the configured listings and, within a page budget (8), the pages of this exam's
+  current cycle. A portal's "Group 1"/"Gp-2" is written as a designation ("Group-I") before the
+  existing gate judges it — never "Gr-1", which is a grade. Items of another cycle are recorded, not
+  read; another exam's are counted, not recorded. A link to the authority's own site is a **pointer**
+  (a lead for authority discovery), never official. A paged listing ("1 - 25 of 77" behind ASP.NET
+  page buttons) and a redirect off the source are reported as unexplored, never as absence.
+- **Classes.** Every resource and claim is TRUSTED_SECONDARY (a reviewed role) or SECONDARY (any
+  other role) — never PRIMARY_OFFICIAL, even if the classifier were to say so (it is downgraded).
+- **Claims** come from `Label | Value` table rows (a generic vocabulary: vacancies, notification,
+  application start/last date, edit window, preliminary/main exam, result date; an "Exam Date" row is
+  placed by its table's "Exam Name" row), from sentences stating a vacancy count that name the exam,
+  and from listing lines ("an answer key is listed"). Each keeps its exact words, re-checked against
+  the page text; a claim is compared only where it or its page names this exam's cycle.
+- **Cross-check** (`claims.reconcile`): official statements come from the exam record's
+  OFFICIALLY_VERIFIED provenance (dates, `vacanciesTotal` + `factEvidence`, result declarations) and,
+  with `--walk`, from a read-only walk of the authority's listings. A source repeating a superseded
+  official date is told so. Two official statements that disagree publish nothing.
+- **The rule, tested on every publication rule in the contract** (`Fact`, `AnswerEntry`,
+  `OfficialQuestion`, `AnswerKey`, `AdmitCardNotice`, `ResultDeclaration`, and `unsourced_facts`):
+  secondary evidence — trusted or not, any number of sources — never makes a value publishable;
+  beside official evidence it is corroboration.
+
+TGPSC Group-I 02/2024 against Manabadi (live, 2026-10-02): 3 listings (764 links, 12 naming
+Group-I), 12 resources, all TRUSTED_SECONDARY (3 for 2024, 1 whose cycle its listing does not state,
+8 of earlier cycles: 2022, 2017, 2016, 2011), 20 claims. **Corroborated (9):** 563 vacancies,
+notification 19/02/2024, applications open 23/02/2024, edit window 23–27/03/2024, Preliminary
+May/June 2024, Mains 21–27/10/2024 (start and end), a result listed. **Contested (2):** last date —
+Manabadi gives 14/03/2024, the date TGPSC first printed before extending it to 16/03/2024; result
+date — Manabadi says 10/03/2025, the record holds the General Ranking List of 30/03/2025 (possibly a
+different release the record lacks). **Secondary only (1):** a 2024 answer key — TGPSC's listings
+did not identify one; it stays a lead. The paper list shows 25 of 77; the rest is unexplored.
+Tests: `test_secondary_ingestion.py` over `secondary_fixture_site.py`.
+
 ### The syllabus, also as a map
 `SyllabusTreeMap` is section 06's **third view** — the switcher reads Post Study Plan ·
 Official Gazette Syllabus · Tree Map — not a card stacked under the others. It reads
@@ -986,6 +1141,32 @@ subject chips derived from the exam's own resources (so UPSC/IBPS never show emp
 filters), results grouped by subject, one primary action per card chosen by
 `resourceFormat`, bookmark toggle, per-card link-status badge, and a "Verify all links now"
 button that shows live HTTP results. The old `ResourceAIAssistant` sits inside it, collapsed.
+
+**The library lists learning material only, by content role, never by file type.**
+`resourceRoleOf(r)` (ui.tsx) reads what each card is *for* — the one vocabulary of
+`discover.DocKind` — and only `STUDY_MATERIAL`, `LECTURE_VIDEO` and `PRACTICE_TOOL` are listed. A
+notice PDF, a reopening notice, a previous-year paper, an answer-key page, a calendar, an
+application portal or the e-Gazette is not study material because it is a PDF or a link; each goes
+to the section a candidate would look in. **There is one placement model**: `RESOURCE_SECTION`
+(ui.tsx, role → section, with `SECTION_OF_PLACEMENT` giving each section's stable number and the
+label the page shows) mirrors `resource_roles.SECTION_FOR_ROLE`, and both are pinned to
+`resource_role_cases.json`'s `sectionForRole`. Question papers and keys → **Practice & PYQs**
+(`QuestionPaperSourcesPanel`, rendered by `ExamPracticeRouter` for every engine except on the Mock
+Tests door); OTR, application portal and how-to-apply → **Application & Documents**
+(`ApplicationSourcesPanel`); notifications, exam pages and portals → **Official Portals & Links**
+(`OfficialDocumentsPanel`); corrigenda/addenda → **Corrigenda Log**; admit card, results, syllabus,
+cut-offs, exam-day instructions, the calendar, the pattern and exam guides → their own sections
+(one `SectionSourcesPanel`, mounted once by `ExamDetailView` for whichever of those is open). Each
+entry appears in exactly one place, each row labelled "Official source" or "Third-party source — not
+verified". A news video is a lead and is shown nowhere. **The assistant routes the same way**:
+`namedResourceAnswer` says "I found it under **Corrigenda Log**" with a button to that section for
+anything not in the library — it used to say "the card in Resources shows …" for a notice that the
+Resource Library no longer lists. The Constitution's text stays: a law's text is study material for a polity paper.
+SSC 38 → 31 listed (7 moved), UPSC 32 → 17 (15 moved), IBPS/APPSC/TGPSC → 0 with an honest empty
+state. The Python twin is `resource_roles.classify_resource_item`; both are held to one table,
+`tools/exam_builder/resource_role_cases.json` (every real card plus edge cases), by the Python suite
+and `npm run check:frontend` — **change one and the table, never one alone**. `{resources}` in
+assistant text counts learning entries only.
 
 `ExamCalendar` is **time-aware and self-updating**. `relativeWhen(dateTimeStr, now)` turns a
 milestone into "in 16 days" / "today" / "3 days ago", and a one-minute interval re-reads the
@@ -1331,6 +1512,10 @@ Only GET results are trusted, because several portals answer HEAD with 404).
 Syllabus (`/api/syllabus/*`): `GET watch?exam_id=&since=` · `GET|POST revisions?exam_id=` ·
 `POST revisions/<id>/retire`. Table `syllabus_revisions`.
 
+Authority sources (`/api/sources/*`, see "Authority source discovery"): `POST discover {examId, useClaude?}`
+(admin; a `DISCOVER_AUTHORITY` job) · `GET exam/<id>` (candidates; the latest run projected onto the
+exam, or `NOT_DISCOVERED`) · `GET runs` · `GET runs/<id>/coverage` (admin). Table `source_discovery_runs`.
+
 Live resources (`/api/resources/*`): `POST health/sync {urls}` (register + current health,
 background-checks new URLs) · `POST health/recheck {urls}` (immediate sweep, stored) ·
 `GET live/ssc-notices?scope=cgl|all&limit=N` · `GET live/upsc-notices?scope=cse|all&limit=N` ·
@@ -1362,7 +1547,7 @@ localhost origins. The hooks (`_persist_discovery`, `_load_finding`, `_ingest_cl
 queue are created at import; `__main__` calls `ensure_started()` so jobs a dead process left `RUNNING`
 are recovered.
 
-Tables: `users`, `study_progress`, `research_runs` (+ `engine`, `job_id`, `manifest_json`),
+Tables: `users`, `study_progress`, `source_discovery_runs`, `research_runs` (+ `engine`, `job_id`, `manifest_json`),
 `research_findings` (+ `meta_json`), `research_facts`, `claude_jobs`, `claude_job_events`,
 `claude_invocations` (audit: never prompt or output text), `claude_decision_cache` (cache of valid decisions,
 keyed by input fingerprint + template version), `resource_link_health`,
@@ -1477,7 +1662,8 @@ Remaining by design, not defects:
   (`answerCandidateQuery`); the PracticeEngine chat is a written parser over
   `TOPIC_CATALOG`; the admin SHA-256 monitor and the PDF extraction sample are fixtures.
   None of these calls a model; the only Claude paths are the ones in the Claude section (Ask AI
-  fallback, Claude-written practice panel, Trust Panel discovery/reading, builder verification).
+  fallback, Claude-written practice panel, Trust Panel discovery/reading, builder verification, and an
+  authority walk's opt-in `CLASSIFY_SOURCE` for links the rules could not read).
   Preserve the framing; don't wire anything else to Claude unasked, and never to format a value the
   register already holds.
   When you add a view or move a feature, update `PLATFORM_MAP` in the same edit — a stale
