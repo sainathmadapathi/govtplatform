@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const outDir = join(here, '..', '..', 'exam_data');
 mkdirSync(outDir, { recursive: true });
-const CHECKS = ['claude_services_check.ts', 'resource_roles_check.ts'];
+const CHECKS = ['claude_services_check.ts', 'resource_roles_check.ts', 'assistant_practice_check.ts'];
 let status = 0;
 for (const check of CHECKS) {
   const out = join(outDir, `.${check.replace(/\.ts$/, '')}.cjs`);

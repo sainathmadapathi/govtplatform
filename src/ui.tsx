@@ -4705,11 +4705,55 @@ const RESOURCE_ROLE_LABEL: Record<ResourceRole, string> = {
 };
 
 /**
+ * What this exam's Practice & PYQs and Mock Tests hold, read from its own record: the paper and key
+ * documents its authority published, the authority's own questions GovOS holds, GovOS-written practice
+ * only where the practice bank is written to this exam, and marking only as its notice prints it. It used
+ * to give every exam SSC's answer -- "previous-year shift papers" with SSC's +2/−0.5 marking -- and those
+ * papers are GovOS-authored, not shift papers, even for SSC.
+ */
+const practiceAnswerFor = (exam: Exam): string => {
+  const authority = exam.authorityName.split(' (')[0];
+  const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+  const own = (exam.resources || []).filter(r => resourcePlacementOf(r) === 'PRACTICE' && sourceOfResource(r).tone === 'OFFICIAL');
+  const catalogued = exam.officialPapers?.length ?? 0;
+  const keys = exam.answerKeys?.length ?? 0;
+  const items = officialQuestionsForExam(exam.id);
+  const unkeyed = items.filter(q => q.officialAnswerKey === null).length;
+  const published = [own.length ? plural(own.length, 'paper or key link', 'paper and key links') : '',
+    catalogued ? plural(catalogued, 'catalogued paper', 'catalogued papers') : '',
+    keys ? plural(keys, 'answer key', 'answer keys') : ''].filter(Boolean);
+  const parts: string[] = [];
+  if (published.length) {
+    const named = own.slice(0, 3).map(r => `“${r.title}”`).join('; ');
+    parts.push(`**Practice & PYQs** has ${published.join(', ')} from ${authority} itself`
+      + `${named ? ` — ${named}${own.length > 3 ? `, and ${own.length - 3} more` : ''}` : ''}.`);
+  } else {
+    parts.push(`GovOS has no verified previous-year papers or answer keys for ${exam.title} yet; **Practice & PYQs** shows this exam's current state, never another exam's papers.`);
+  }
+  if (items.length) {
+    parts.push(`It also holds ${plural(items.length, 'question', 'questions')} from ${authority}'s own paper to attempt`
+      + `${unkeyed ? ` — recorded but not scored: ${authority} has published no answer key for ${unkeyed === items.length ? 'them' : `${unkeyed} of them`}` : ''}.`);
+  }
+  if (exam.id === PRACTICE_BANK_EXAM_ID) {
+    const stage = exam.stages.find(st => st.tier === 'TIER_1') || exam.stages[0];
+    const name = stage ? stage.stageName.split(':')[0] : exam.title;
+    parts.push(`GovOS has also written practice for ${exam.title}: full-length practice papers on the ${name} pattern, on a real CBT clock — GovOS-authored, not ${authority}'s own shift papers — plus subject sectionals and topic drills. **Mock Tests** has the chat that builds a paper to order, with worked solutions.`);
+    if (stage?.negativeMarking) parts.push(`They are scored the way ${authority}'s notice prints for ${name}: ${stage.negativeMarking}`);
+    parts.push('After you submit, the analysis names your weak topics, every solution shows the source it was written from, and the attempt is kept in Past Tests History.');
+  } else {
+    parts.push(`GovOS has not written practice questions for ${exam.title}${PRACTICE_ENGINES[exam.id] ? '' : ', and its practice section is not built yet'}.`);
+    if (exam.stages.length) parts.push('For its marking, see **Exam Pattern**.');
+  }
+  return parts.join('\n\n');
+};
+
+/**
  * Counts in answer text come from the register, not from whatever was true when the
  * sentence was written: {posts}, {resources}, {syllabus}, {exam}. {resources} counts only what the
- * Resource Library lists -- learning material.
+ * Resource Library lists -- learning material. {practice} is `practiceAnswerFor`.
  */
 const fillCounts = (text: string, exam: Exam): string => text
+  .replace(/\{practice\}/g, () => practiceAnswerFor(exam))
   .replace(/\{posts\}/g, String(exam.posts.length))
   .replace(/\{resources\}/g, String((exam.resources || []).filter(isLearningResource).length))
   .replace(/\{syllabus\}/g, String(exam.syllabus.length))
@@ -4898,7 +4942,7 @@ const PLATFORM_MAP: { keys: string[]; answer: string; action: AssistantAction }[
   },
   {
     keys: ['mock', 'practice', 'pyq', 'previous year', 'question paper', 'test series', 'drill', 'solve question', 'attempt test'],
-    answer: 'Practice lives inside the {exam} page, in two sections.\n\n**Practice & PYQs** has the full previous-year shift papers on a real CBT clock with SSC Tier-1 marking (+2 correct, −0.5 wrong), subject sectionals and topic drills.\n\n**Mock Tests** has the chat that builds a paper to order — say "12 questions on percentage" or "8 hard questions on time and work" and it generates exactly that, with worked solutions.\n\nEither way, after you submit the analysis names your weak topics, every solution shows the source it was written from, and the attempt is kept in Past Tests History for review.\n\nIf you meant practising the **application form** rather than questions, that is the Application Practice Simulator in Application & Documents.',
+    answer: 'Practice lives inside the {exam} page, in **Practice & PYQs** and **Mock Tests**.\n\n{practice}\n\nIf you meant practising the **application form** rather than questions, look in **Application & Documents** — it says whether a practice form exists for {exam}.',
     action: { label: 'Open Practice & PYQs', tab: 'EXAM_DETAIL', section: 9 }
   },
   {
@@ -5593,9 +5637,7 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
   if (factId === 'practice') {
     return {
       verified: true,
-      text: exam.id === PRACTICE_BANK_EXAM_ID
-        ? `**Practice & PYQs** has the full shift papers on a real CBT clock, subject sectionals and topic drills; **Mock Tests** has the chat that builds a paper to order.\n\nMarking is this exam's own scheme, and every attempt is saved so you can review it.`
-        : `**Practice & PYQs** and **Mock Tests** open ${exam.title}'s own practice engine. What it offers depends on what ${authority} has published — where GovOS has no verified questions for this exam it says so rather than showing another exam's paper.`,
+      text: practiceAnswerFor(exam),
       action: { label: 'Open Practice & PYQs', tab: 'EXAM_DETAIL', section: 9 }
     };
   }
