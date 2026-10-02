@@ -157,7 +157,8 @@ import {
   DiscoveryVerdict,
   ResourceRole,
   DiscoveredSources,
-  DiscoveredSourceItem
+  DiscoveredSourceItem,
+  DocumentSpecification
 } from './types';
 import {
   ALL_EXAMS,
@@ -4748,12 +4749,45 @@ const practiceAnswerFor = (exam: Exam): string => {
 };
 
 /**
+ * How to apply, read from this exam's own application guide: the portal it records, its registration
+ * steps, and only the rules the guide actually holds. It used to send every exam's candidates to SSC's
+ * portal at ssc.gov.in, and to promise certificate rules and rejection pitfalls the guide might not have.
+ */
+const applicationAnswerFor = (exam: Exam): string => {
+  const authority = exam.authorityName.split(' (')[0];
+  const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+  const g = exam.applicationGuide;
+  const hasRules = (spec?: DocumentSpecification) =>
+    !!spec && ((spec.rules || []).length > 0 || !!spec.dimensions || !!spec.fileFormat || !!spec.fileSize);
+  const parts: string[] = [];
+  parts.push(g?.officialPortal
+    ? `Applications for ${exam.title} are submitted on ${authority}'s own portal, ${g.officialPortal} — GovOS does not submit anything for you.`
+    : `GovOS has not recorded where applications for ${exam.title} are submitted; ${authority}'s notice says. GovOS does not submit anything for you.`);
+  const steps = g?.otrSteps?.length ?? 0;
+  if (steps) parts.push(`The guide lists ${plural(steps, 'registration step', 'registration steps')} before the form.`);
+  const pitfalls = g?.rejectionPitfalls?.length ?? 0;
+  const covered = [
+    hasRules(g?.photoRules) || hasRules(g?.signatureRules) ? 'the photograph and signature rules' : '',
+    g?.requiredDocuments?.length ? 'the documents the notice lists' : '',
+    g?.fee ? 'the fee as the notice prints it' : '',
+    g?.certificateRules?.length ? 'which certificates must be valid on the crucial date' : '',
+    pitfalls ? plural(pitfalls, 'mistake that gets applications rejected', 'mistakes that get applications rejected') : ''
+  ].filter(Boolean);
+  parts.push(covered.length
+    ? `**Application & Documents** (section 04) has ${covered.length > 1 ? `${covered.slice(0, -1).join(', ')} and ${covered[covered.length - 1]}` : covered[0]}.`
+    : `**Application & Documents** (section 04) has no step-by-step guide for ${exam.title} on record yet.`);
+  return parts.join('\n\n');
+};
+
+/**
  * Counts in answer text come from the register, not from whatever was true when the
  * sentence was written: {posts}, {resources}, {syllabus}, {exam}. {resources} counts only what the
- * Resource Library lists -- learning material. {practice} is `practiceAnswerFor`.
+ * Resource Library lists -- learning material. {practice} is `practiceAnswerFor`, {apply} is
+ * `applicationAnswerFor`.
  */
 const fillCounts = (text: string, exam: Exam): string => text
   .replace(/\{practice\}/g, () => practiceAnswerFor(exam))
+  .replace(/\{apply\}/g, () => applicationAnswerFor(exam))
   .replace(/\{posts\}/g, String(exam.posts.length))
   .replace(/\{resources\}/g, String((exam.resources || []).filter(isLearningResource).length))
   .replace(/\{syllabus\}/g, String(exam.syllabus.length))
@@ -4985,7 +5019,7 @@ const PLATFORM_MAP: { keys: string[]; answer: string; action: AssistantAction }[
   },
   {
     keys: ['apply', 'application form', 'how do i register', 'otr', 'one time registration', 'photo', 'signature', 'form fill'],
-    answer: 'Section 04 Application of the Exam Guide walks through the form: One Time Registration steps, the exact photo and signature specifications, which certificates must be valid on the crucial date, and the mistakes that get applications rejected.\n\nThe form itself is filled on SSC\'s own portal at ssc.gov.in — GovOS does not submit anything for you.',
+    answer: '{apply}',
     action: { label: 'Open the application guide', tab: 'EXAM_DETAIL', section: 4 }
   },
   {
@@ -5629,7 +5663,7 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
   if (factId === 'apply') {
     return {
       verified: true,
-      text: `Applications are submitted on ${authority}'s own portal, ${exam.applicationGuide.officialPortal}. ${exam.applicationGuide.otrSteps.length > 0 ? `One Time Registration comes first (${exam.applicationGuide.otrSteps.length} step${exam.applicationGuide.otrSteps.length === 1 ? '' : 's'} in the guide), then the exam form.` : 'One Time Registration comes first, then the exam form; the step-by-step breakdown is not on record for this exam yet.'}\n\nSection 04 gives the photo and signature specifications, the certificates that must be valid on the crucial date, and ${exam.applicationGuide.rejectionPitfalls.length} rejection pitfalls with how to avoid each.\n\nGovOS never submits anything on your behalf.`,
+      text: applicationAnswerFor(exam),
       action: { label: 'Open the application guide', tab: 'EXAM_DETAIL', section: 4 }
     };
   }
