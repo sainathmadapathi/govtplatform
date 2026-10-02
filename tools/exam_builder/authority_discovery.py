@@ -366,11 +366,20 @@ def discover_authority(roots: list, *, authority_name: str = '', estates: Option
             if getattr(result, 'truncated', False):
                 node.notes.append(f'hashed on its first {limits.max_content_bytes} bytes')
             continue
+        if expects_document and run.pages_fetched >= limits.max_pages:
+            # Expected a file, got a page, and the page budget is spent. The fetch is charged to the file
+            # budget that admitted it and the page is not read: a listing of pages must not read past the
+            # page limit by looking like a listing of files.
+            run.documents_fetched += 1
+            node.notes.append('fetched: a page, not a file; not read, the run’s page limit was reached')
+            _skip(run, node, SkipReason.PAGE_BUDGET, f'page limit ({limits.max_pages}) reached')
+            continue
         run.pages_fetched += 1
         if not _on_estate(run, node.host) and not _OFF_ESTATE_REPOSITORY.search(f'{node.title} {node.context}'):
             # A page off the authority's site, reached as a link to hash: recorded, not read further.
             node.node_type = NodeType.PAGE if node.node_type is NodeType.LINK else node.node_type
             node.status = NodeStatus.READ
+            node.skipped = SkipReason.LINKS_NOT_FOLLOWED.value
             node.notes.append('a page off the authority’s own site; recorded, its links not followed')
             continue
         _read_page(run, node, result, chrome, queue, later, registry)

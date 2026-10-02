@@ -142,6 +142,7 @@ class SkipReason(str, Enum):
     FETCH_FAILED = 'FETCH_FAILED'        # it could not be fetched
     REFUSED_ADDRESS = 'REFUSED_ADDRESS'  # the address was refused as unsafe or malformed
     NOT_OPENED = 'NOT_OPENED'            # recorded, never opened (a service, or off the authority's site)
+    LINKS_NOT_FOLLOWED = 'LINKS_NOT_FOLLOWED'  # a page opened, but nothing it links to was followed
 
     @property
     def coverage_key(self) -> str:
@@ -506,7 +507,8 @@ _STATUS_SKIP = {NodeStatus.READ_NO_LINKS: SkipReason.SCRIPT_RENDERED, NodeStatus
 _SKIP_WORDS = {SkipReason.FILE_BUDGET: 'file budget', SkipReason.PAGE_BUDGET: 'page budget',
                SkipReason.ITEM_BUDGET: 'item budget', SkipReason.DEPTH_LIMIT: 'depth limit',
                SkipReason.SCRIPT_RENDERED: 'built by script', SkipReason.FETCH_FAILED: 'could not be fetched',
-               SkipReason.REFUSED_ADDRESS: 'address refused', SkipReason.NOT_OPENED: 'not opened'}
+               SkipReason.REFUSED_ADDRESS: 'address refused', SkipReason.NOT_OPENED: 'not opened',
+               SkipReason.LINKS_NOT_FOLLOWED: 'links not followed'}
 
 
 def skip_reason(node: SourceNode) -> SkipReason:
@@ -517,6 +519,26 @@ def skip_reason(node: SourceNode) -> SkipReason:
         except ValueError:
             pass
     return _STATUS_SKIP.get(node.status, SkipReason.NOT_OPENED)
+
+
+def links_not_followed(run: DiscoveryRun, node: SourceNode) -> bool:
+    """A page the walk opened but went no further than: one off the authority's site (recorded, its links
+    not followed), or one read with nothing on it kept -- "Click here" to a file names nothing the walk
+    follows. Whatever it leads to was not reached, so it is never a listing read in full."""
+    if node.node_type is not NodeType.PAGE or node.status is not NodeStatus.READ:
+        return False
+    return node.skipped == SkipReason.LINKS_NOT_FOLLOWED.value or not run.graph.children(node.id)
+
+
+def _is_listing(run: DiscoveryRun, node: SourceNode) -> bool:
+    """A listing is never ruled out by its title; a page the walk went no further than is an item."""
+    return node.node_type in _HUB_TYPES and not links_not_followed(run, node)
+
+
+def _reaches_a_file(run: DiscoveryRun, page: SourceNode) -> bool:
+    return any(run.graph.nodes[e.target_id].node_type is NodeType.DOCUMENT
+               and run.graph.nodes[e.target_id].status in (NodeStatus.FETCHED, NodeStatus.UNREADABLE)
+               for e in run.graph.children(page.id) if e.target_id in run.graph.nodes)
 
 
 def _relevant_hubs(run: DiscoveryRun, role: DocKind) -> list[SourceNode]:
@@ -535,15 +557,18 @@ def unsearched(run: DiscoveryRun, role: DocKind, *, relation: Optional[dict] = N
     on_hubs = {e.target_id for h in hubs for e in run.graph.children(h.id)}
     out = []
     for n in run.graph.nodes.values():
-        if n.source_class is not SourceClass.PRIMARY_OFFICIAL or n.duplicate_of or n.status not in _UNREAD:
+        # A page opened but not followed is as unread as one never fetched: what it leads to was not reached.
+        unfollowed = links_not_followed(run, n)
+        if n.source_class is not SourceClass.PRIMARY_OFFICIAL or n.duplicate_of or (n.status not in _UNREAD
+                                                                                   and not unfollowed):
             continue
         if n.node_type in (NodeType.SOCIAL, NodeType.VIDEO, NodeType.PORTAL) or n.role in AUTHORITY_WIDE_ROLES:
             continue
         if n.role not in roles and n.id not in on_hubs:
             continue
-        if n.node_type not in _HUB_TYPES and relation and relation.get(n.id) in _RULED_OUT:
+        if not _is_listing(run, n) and relation and relation.get(n.id) in _RULED_OUT:
             continue
-        out.append((n, skip_reason(n)))
+        out.append((n, SkipReason.LINKS_NOT_FOLLOWED if unfollowed else skip_reason(n)))
     # Items the run's item budget kept from being recorded at all: known only from the frontier.
     for f in run.frontier:
         if f.get('skip') == SkipReason.ITEM_BUDGET.value and f.get('role') in {r.value for r in roles}:
@@ -577,28 +602,40 @@ def role_search_state(run: DiscoveryRun, role: DocKind, *, identified: Optional[
     official = [n for n in run.graph.of_role(role)
                 if n.source_class is SourceClass.PRIMARY_OFFICIAL and n.node_type not in _HUB_TYPES]
     hubs = _relevant_hubs(run, role)
-    read_hubs = [h for h in hubs if h.status is NodeStatus.READ]
+    # A listing read in full: a page the walk went no further than is not one, whatever its status says.
+    read_hubs = [h for h in hubs if h.status is NodeStatus.READ and not links_not_followed(run, h)]
     exam_level = identified is not None and role not in AUTHORITY_WIDE_ROLES
+    # A page of this role whose own listing names this exam is this exam's, found -- a paper's own page
+    # that links to the PDF is no less the paper's than the PDF. The identity check still decides.
+    pages_mine = [n for n in run.graph.of_role(role)
+                  if exam_level and n.id in identified and n.node_type is NodeType.PAGE
+                  and n.source_class is SourceClass.PRIMARY_OFFICIAL]
     if exam_level:
         # Anything on these listings that names the exam, whatever role it was read as, forbids a
         # "not found": the role may have been misread, the item cannot have been missed.
         listed = {e.target_id for h in hubs for e in run.graph.children(h.id)}
         named_elsewhere = [nid for nid in listed & identified if run.graph.nodes[nid].role is not role]
-        if named_elsewhere and not any(n.id in identified for n in official):
+        if named_elsewhere and not pages_mine and not any(n.id in identified for n in official):
             read_as = sorted({run.graph.nodes[nid].role.value.lower().replace('_', ' ') for nid in named_elsewhere})
             return (SearchState.FOUND_AMBIGUOUS,
                     f'{len(named_elsewhere)} item(s) on these listings name this exam and were read as '
                     f'{" / ".join(read_as)}; a person should check whether any of them is one')
-    if unlinked and role not in AUTHORITY_WIDE_ROLES and not any(n.id in (identified or set()) for n in official):
+    if unlinked and role not in AUTHORITY_WIDE_ROLES and not pages_mine \
+            and not any(n.id in (identified or set()) for n in official):
         listed = [i for h in hubs for i in unlinked.get(h.id, [])]
         if listed:
             return (SearchState.FOUND_UNREADABLE,
                     f'{len(listed)} item(s) naming this exam are listed by the authority without a link to the file')
-    if official:
+    if official or pages_mine:
         if exam_level:
             mine = [n for n in official if n.id in identified]
             if mine:
                 return SearchState.FOUND_VERIFIED, f'{len(mine)} identified as this exam'
+            if pages_mine:
+                unreached = [p for p in pages_mine if not _reaches_a_file(run, p)]
+                return (SearchState.FOUND_VERIFIED,
+                        f'{len(pages_mine)} identified as this exam, as a page on the authority’s site'
+                        + (f'; GovOS did not reach the file behind {len(unreached)} of them' if unreached else ''))
             thin = [n for n in official if n.id in (unidentifiable or set())]
             if thin:
                 return (SearchState.FOUND_AMBIGUOUS, f'{len(official)} item(s) found; none identified as this exam, '
@@ -609,7 +646,7 @@ def role_search_state(run: DiscoveryRun, role: DocKind, *, identified: Optional[
             return SearchState.FOUND_VERIFIED, f'{len(official)} official item(s) found'
     missing = unsearched(run, role, relation=relation if exam_level else None)
     if missing:
-        listings = sum(1 for what, _ in missing if isinstance(what, SourceNode) and what.node_type in _HUB_TYPES)
+        listings = sum(1 for what, _ in missing if isinstance(what, SourceNode) and _is_listing(run, what))
         others = len(missing) - listings
         what = ' and '.join(x for x in (f'{listings} listing(s)' if listings else '',
                                          f'{others} item(s)' if others else '') if x)
@@ -668,9 +705,10 @@ def coverage_report(run: DiscoveryRun, *, roles: Optional[list] = None, identifi
         states[role.value] = entry
     skipped: dict = {}
     for n in nodes:
-        if n.skipped:
-            key = skip_reason(n).coverage_key
-            skipped[key] = skipped.get(key, 0) + 1
+        reason = skip_reason(n) if n.skipped else (SkipReason.LINKS_NOT_FOLLOWED if links_not_followed(run, n)
+                                                   else None)
+        if reason is not None:
+            skipped[reason.coverage_key] = skipped.get(reason.coverage_key, 0) + 1
     budget_dropped = sum(1 for f in run.frontier if f.get('skip') == SkipReason.ITEM_BUDGET.value)
     if budget_dropped:
         skipped[SkipReason.ITEM_BUDGET.coverage_key] = budget_dropped

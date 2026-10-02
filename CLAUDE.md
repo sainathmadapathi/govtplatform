@@ -693,6 +693,9 @@ audit record, not a fact store. Nothing in these modules names an authority or a
   authority's estate nothing is crawled except an archive one hop out; services (portals, logins),
   videos and social links are recorded, never fetched; files are fetched only to hash them, so one
   file at two addresses is one resource. Site chrome (About, RTI, Contact) is counted, not followed.
+  **The limits are hard.** A link expected to be a file that turns out to be a page once the page
+  budget is spent is charged to the file budget and not read (PAGE_BUDGET); a listing of pages that
+  look like files once read 125 pages against the 25.
 - **Officiality is ownership, and is not trust.** `source_trust.classify_source` gives
   `PRIMARY_OFFICIAL` only to the authority's estate and to a government host its own page links to (a
   retired domain stays official). **Being linked from an official page makes nothing official**: a
@@ -740,6 +743,13 @@ audit record, not a fact store. Nothing in these modules names an authority or a
   candidates read "N listings and M items that could hold it were not read". An unread *item* whose own
   words name another exam or cycle is ruled out; an unread *listing* never is. "Not found" is also
   refused when any item on those listings names the exam under another role, or is listed without a link.
+  **A page can be the resource.** A page of the role whose own listing names this exam is this exam's,
+  found (FOUND_VERIFIED, saying when GovOS did not reach the file behind it) — the paper's own page that
+  links to the PDF used to be left out as a "page", and the state read NOT_FOUND_AFTER_DISCOVERY while the
+  panel listed that page as this exam's. A page the walk went no further than — off the authority's site
+  (recorded, links not followed), or read with nothing on it kept ("Click here" to a file) — is
+  `links_not_followed`: never a listing read in full, an unread item instead (LINKS_NOT_FOLLOWED), ruled
+  out only by its own words. Tests: `test_page_resource_states.py`.
 - **Leads.** A social post or news item (`add_social_signal`) becomes a lead — "look for an
   official admit-card notice" — that is `UNCONFIRMED` until an official source of that role is found;
   never `HALL_TICKET_RELEASED = TRUE`. A post on an account the authority links to is still a lead

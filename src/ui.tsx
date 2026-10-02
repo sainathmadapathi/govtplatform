@@ -4893,7 +4893,7 @@ const PLATFORM_MAP: { keys: string[]; answer: string; action: AssistantAction }[
   },
   {
     keys: ['resource', 'study material', 'material', 'book', 'pdf', 'video', 'lecture', 'notes', 'ncert', 'where should i study', 'what should i read', 'youtube', 'channel', 'channels', 'coaching', 'teacher', 'best channel'],
-    answer: 'Study material is **Resources**, inside the {exam} page — open the exam and pick Resources from its section row.\n\nIt lists learning material only — {resources} links to textbooks and references, video lessons and channels, and practice tools — each labelled with where it comes from; coaching content is marked as such, never as an official source. The authority\'s own documents are where they belong: notices, calendars and its live notice board in **Official Links**, question papers and answer keys in **Practice & PYQs**, and registration and application links in **Application & Documents**.\n\nGovOS stores no files. Every entry opens the publisher\'s own page, so you always get the current version. Use the "Start here" shelf if you are new, the subject chips to narrow down, the bookmark icon to keep something, and "Verify all links now" to see live which links are answering.',
+    answer: 'Study material is **Resources**, inside the {exam} page — open the exam and pick Resources from its section row.\n\nIt lists learning material only — {resources} links to textbooks and references, video lessons and channels, and practice tools — each labelled with where it comes from; coaching content is marked as such, never as an official source. The authority\'s own documents are where they belong: notices in **Official Links**, calendars and schedules in **Dates & Timeline**, question papers and answer keys in **Practice & PYQs**, and registration and application links in **Application & Documents**.\n\nGovOS stores no files. Every entry opens the publisher\'s own page, so you always get the current version. Use the "Start here" shelf if you are new, the subject chips to narrow down, the bookmark icon to keep something, and "Verify all links now" to see live which links are answering.',
     action: { label: 'Open Resources', tab: 'EXAM_DETAIL', section: 8 }
   },
   {
@@ -17604,7 +17604,7 @@ const SourceRow: React.FC<{
 
 const relationNote = (item: DiscoveredSourceItem): string => [
   item.relation === 'THIS_EXAM_OTHER_CYCLE'
-    ? `An earlier cycle of this exam${item.identity.cycle ? ` (${item.identity.cycle})` : ''} — not this cycle's document.`
+    ? `Another cycle of this exam${item.identity.cycle ? ` (${item.identity.cycle})` : ''} — not this cycle's document.`
     : item.obtainable ? '' : 'Listed by the authority, but GovOS could not open it.',
   // A link from the authority's own page is a relationship, never ownership.
   item.relationship === 'LINKED_FROM_OFFICIAL'
@@ -17652,7 +17652,8 @@ const NOT_READ_WORDS: Record<string, string> = {
   skipped_due_to_file_budget: 'not fetched (the walk’s file limit)', skipped_due_to_page_budget: 'not read (the walk’s page limit)',
   skipped_due_to_item_budget: 'not recorded (the walk’s item limit)', skipped_due_to_depth: 'too deep for the walk',
   skipped_due_to_script_rendering: 'built by script', skipped_due_to_fetch_failed: 'could not be opened',
-  skipped_due_to_refused_address: 'address refused', skipped_due_to_not_opened: 'not opened'
+  skipped_due_to_refused_address: 'address refused', skipped_due_to_not_opened: 'not opened',
+  skipped_due_to_links_not_followed: 'opened, but what they link to was not followed'
 };
 const notReadWords = (counts?: Record<string, number>): string =>
   Object.entries(counts || {}).map(([k, n]) => `${n} ${NOT_READ_WORDS[k] || k}`).join(', ');
@@ -18890,7 +18891,7 @@ const AnswerKeyPanel: React.FC<{
   if (keys.length === 0) return null;
   // This page's own cycle: the record's, or the year in its title.
   const examCycle = (exam as Exam & { cycle?: string }).cycle || (exam.title.match(/\b(20\d{2})\b/) || [])[1] || '';
-  const earlierOnly = examCycle !== '' && keys.every(k => k.identity.cycle && k.identity.cycle !== examCycle);
+  const otherCyclesOnly = examCycle !== '' && keys.every(k => k.identity.cycle && k.identity.cycle !== examCycle);
   const byPaper = new Map<string, ExamAnswerKey[]>();
   keys.forEach(k => {
     const list = byPaper.get(k.identity.describe);
@@ -18907,7 +18908,7 @@ const AnswerKeyPanel: React.FC<{
           Each key below names the exact paper it answers — the cycle, the stage and the sitting the
           authority printed. A later key does not replace an earlier one here: both are kept, because a
           candidate who challenged an answer needs to see what changed.
-          {earlierOnly && <> <strong>All of them belong to earlier cycles; GovOS has read no answer key for {examCycle}.</strong></>}
+          {otherCyclesOnly && <> <strong>All of them belong to other cycles; GovOS has read no answer key for {examCycle}.</strong></>}
         </p>
       </div>
       {[...byPaper.entries()].map(([describe, group]) => (
@@ -18916,7 +18917,7 @@ const AnswerKeyPanel: React.FC<{
             {describe}
             {group[0].identity.cycle && examCycle && group[0].identity.cycle !== examCycle && (
               <span className="badge badge-demo" style={{ fontSize: '0.62rem', marginLeft: '8px' }}>
-                Earlier cycle ({group[0].identity.cycle}) — not a {examCycle} key
+                Another cycle ({group[0].identity.cycle}) — not a {examCycle} key
               </span>
             )}
           </div>
