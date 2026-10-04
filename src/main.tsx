@@ -1,6 +1,6 @@
 // GovOS entry point: application shell, global modals and React root.
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import ReactDOM from 'react-dom/client';
 import {
   BookOpen,
@@ -38,6 +38,8 @@ import {
 import {
   AdminVerificationPanel,
   AIAssistant,
+  assistantDestination,
+  notificationDestination,
   GovOSTab,
   EligibilityCalculator,
   ExamCalendar,
@@ -52,11 +54,25 @@ import {
   ExamPracticeRouter,
   PreparationPlanner,
   ResourceLibrary,
-  ResourceReaderModal
+  ResourceReaderModal,
+  installRevealObserver,
+  installSmoothWheel,
+  useReplayOnChange
 } from './ui';
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<GovOSTab>('FINDER');
+
+  // Motion (presentation only): card reveals as they enter the viewport, a lerped wheel, and a short entrance
+  // whenever the view changes. Each is a no-op under prefers-reduced-motion. See ANIMATION_REVERSE_ENGINEERING.md.
+  const viewRef = useRef<HTMLElement>(null);
+  useReplayOnChange(viewRef, activeTab, 'view-enter');
+  useEffect(() => {
+    const root = document.getElementById('root');
+    const stopReveal = root ? installRevealObserver(root) : () => undefined;
+    const stopWheel = installSmoothWheel();
+    return () => { stopReveal(); stopWheel(); };
+  }, []);
   /** Guide section to open when something deep-links into the Exam Guide (1-16). */
   const [examSection, setExamSection] = useState<number>(1);
   const [resourceForReader, setResourceForReader] = useState<ResourceItem | null>(null);
@@ -77,15 +93,21 @@ export const App: React.FC = () => {
    * the registry is restored once the registry has loaded.
    */
   const [registryExams, setRegistryExams] = useState<Exam[]>([]);
+  /** An exam an alert or the saved session names that GovOS does not hold: said, never replaced by another. */
+  const [examNotice, setExamNotice] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
-    examRegistryService.load().then(found => {
-      if (cancelled) return;
+    examRegistryService.loadWithStatus().then(({ exams: found, status }) => {
+      if (cancelled || status === 'SUPERSEDED') return;
       setRegistryExams(found);
       const savedId = storageService.getCurrentExamId();
       if (savedId && !ALL_EXAMS.some(e => e.id === savedId)) {
         const restored = found.find(e => e.id === savedId);
         if (restored) setSelectedExam(restored);
+        // Not silently another exam: say the saved one is not here, and why, as far as GovOS can tell.
+        else setExamNotice(status === 'FAILED'
+          ? `The exam you last opened (${savedId}) is held on the GovOS server, which could not be reached. Nothing else was opened in its place; reload to try again.`
+          : `The exam you last opened (${savedId}) is no longer in GovOS's register. No other exam was opened in its place.`);
       }
     });
     return () => { cancelled = true; };
@@ -107,7 +129,18 @@ export const App: React.FC = () => {
     PLANNER: 7      // Study Roadmap
   };
 
-  const navigate = (tab: GovOSTab, section?: number) => {
+  const navigate = (tab: GovOSTab, section?: number, examId?: string) => {
+    // An assistant action names the exam its answer was about: open that exam, not the one open now.
+    const destination = assistantDestination({ tab, section, examId }, selectedExam, examUniverse);
+    if (!destination) {
+      console.warn(`[GovOS] An action for exam "${examId}" was not followed: that exam is not in the register.`);
+      setExamNotice(`That link refers to an exam GovOS does not hold (${examId}). Nothing was opened.`);
+      return;
+    }
+    if (destination.exam.id !== selectedExam.id) {
+      setSelectedExam(destination.exam);
+      storageService.setCurrentExamId(destination.exam.id);
+    }
     const movedTo = EXAM_SCOPED_TABS[tab];
     if (movedTo !== undefined) {
       setExamSection(section || movedTo);
@@ -131,8 +164,10 @@ export const App: React.FC = () => {
   const [syllabusReadCount, setSyllabusReadCount] = useState<number>(0);
   useEffect(() => {
     let cancelled = false;
-    syllabusLiveService.revisions(selectedExam.id).then(found => {
-      if (!cancelled) setSyllabusRevisions(found);
+    // A failed read keeps what was applied (applySyllabusRevisions only ever applies this exam's own):
+    // a network blip used to set this to [] and silently put the unrevised syllabus back on the page.
+    syllabusLiveService.revisionsOrNull(selectedExam.id).then(found => {
+      if (!cancelled && found !== null) setSyllabusRevisions(found);
     });
     return () => { cancelled = true; };
   }, [selectedExam.id, activeTab, syllabusReadCount]);
@@ -141,8 +176,8 @@ export const App: React.FC = () => {
   const [examOverlays, setExamOverlays] = useState<ExamFactOverlay[]>([]);
   useEffect(() => {
     let cancelled = false;
-    examOverlayService.getOverlays(selectedExam.id).then(found => {
-      if (!cancelled) setExamOverlays(found);
+    examOverlayService.getOverlaysOrNull(selectedExam.id).then(found => {
+      if (!cancelled && found !== null) setExamOverlays(found);
     });
     return () => { cancelled = true; };
   }, [selectedExam.id, activeTab]);
@@ -165,6 +200,7 @@ export const App: React.FC = () => {
   const [provenanceModalData, setProvenanceModalData] = useState<DataProvenance | null>(null);
   const [reportModalData, setReportModalData] = useState<{ open: boolean; entityType: string; entityId: string } | null>(null);
   const [reportSubmitted, setReportSubmitted] = useState<boolean>(false);
+  const reportSendingRef = useRef<boolean>(false);
   const [reportDelivered, setReportDelivered] = useState<boolean>(true);
   const [reportDescription, setReportDescription] = useState<string>('');
 
@@ -228,22 +264,17 @@ export const App: React.FC = () => {
    * honoured now, with a sensible section per action type as the fallback.
    */
   const handleNotificationAction = (notif: CandidateNotification) => {
-    const targetExam = examUniverse.find(e => e.id === notif.examId) || ALL_EXAMS[0];
-    setSelectedExam(targetExam);
-    storageService.setCurrentExamId(targetExam.id);
-
-    const byType: Record<CandidateNotification['actionType'], number> = {
-      EXAM_DETAIL: 1,
-      APPLICATION_GUIDE: 4,
-      CALENDAR: 2,
-      TIMELINE: 2,
-      ADMIT_CARD: 14,
-      RESULT: 16
-    };
-    const section = notif.actionPayload?.section || byType[notif.actionType] || 1;
-    navigate('EXAM_DETAIL', section);
-
+    // The exam the alert names, or nothing: it used to open the register's first exam (SSC CGL) for an alert
+    // whose exam GovOS no longer holds.
+    const destination = notificationDestination(notif, examUniverse);
     setIsNotificationsModalOpen(false);
+    if (!destination) {
+      setExamNotice(`This alert refers to an exam GovOS does not hold (${notif.examId || 'no exam named'}). Nothing was opened.`);
+      return;
+    }
+    setSelectedExam(destination.exam);
+    storageService.setCurrentExamId(destination.exam.id);
+    navigate('EXAM_DETAIL', destination.section, destination.exam.id);
   };
 
   const handleSelectExam = (exam: Exam) => {
@@ -269,12 +300,19 @@ export const App: React.FC = () => {
   };
 
   const handleSendReport = async () => {
-    if (!reportModalData) return;
-    const result = await storageService.submitReport({
-      entityType: reportModalData.entityType,
-      entityId: reportModalData.entityId,
-      description: reportDescription
-    });
+    // One report per send: a second click while the first is on its way used to file it twice.
+    if (!reportModalData || reportSendingRef.current) return;
+    reportSendingRef.current = true;
+    let result: { delivered: boolean };
+    try {
+      result = await storageService.submitReport({
+        entityType: reportModalData.entityType,
+        entityId: reportModalData.entityId,
+        description: reportDescription
+      });
+    } finally {
+      reportSendingRef.current = false;
+    }
     setReportDelivered(result.delivered);
     setReportSubmitted(true);
     setTimeout(() => {
@@ -297,8 +335,15 @@ export const App: React.FC = () => {
         onOpenTimeline={() => setActiveTab('CALENDAR')}
       />
 
+      {examNotice && (
+        <div role="alert" data-exam-notice="unresolved" style={{ margin: '0 auto 12px', maxWidth: '1200px', padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'var(--amber-soft)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontSize: '0.86rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+          <span>{examNotice}</span>
+          <button className="btn btn-secondary" onClick={() => setExamNotice(null)} style={{ fontSize: '0.78rem', padding: '4px 10px', flexShrink: 0 }}>Dismiss</button>
+        </div>
+      )}
+
       {/* View Render */}
-      <main style={{ paddingBottom: activeTab === 'EXAM_DETAIL' ? '0' : '60px' }}>
+      <main ref={viewRef} style={{ paddingBottom: activeTab === 'EXAM_DETAIL' ? '0' : '60px' }}>
         {activeTab === 'FINDER' && (
           <ExamFinder
             exams={examUniverse}
@@ -321,6 +366,10 @@ export const App: React.FC = () => {
 
         {activeTab === 'EXAM_DETAIL' && (
           <ExamDetailView
+            // One exam, one page: a switch while the page is open (a notification, the registry restoring
+            // the saved exam) mounts the next exam's page fresh at the section asked for. Each section also
+            // resets or reloads its own exam-scoped state on a switch, so this is not the only guard.
+            key={selectedExam.id}
             exam={liveExam}
             onSyllabusOpened={() => setSyllabusReadCount(n => n + 1)}
             onBackHome={() => navigate('FINDER')}
@@ -368,7 +417,9 @@ export const App: React.FC = () => {
           <MyExams
             exams={examUniverse}
             trackedExamIds={trackedExamIds}
-            currentExamId={selectedExam.id}
+            // The exam the candidate last opened, as stored -- not the shell's starting exam, which is SSC CGL
+            // for someone who has opened nothing and would put it on their shelf uninvited.
+            currentExamId={storageService.getCurrentExamId()}
             onSelectExam={handleSelectExam}
             onToggleTrackExam={handleToggleTrackExam}
             onFindExams={() => navigate('FINDER')}

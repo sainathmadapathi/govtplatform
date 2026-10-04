@@ -973,21 +973,53 @@ class ExtractRoute(AppCase):
 
 
 class FetchSourceText(AppCase):
-    """`_fetch_source_text` itself, with discovery's checked fetch and the document loader faked."""
+    """`_fetch_source_text` itself, with discovery's checked fetch and the bytes parser faked.
+
+    The page is fetched once, by the checked fetch, and the bytes it returned are what is parsed: the
+    URL is never handed to a loader (it used to go to `load_document`, which fetched it a second time
+    with certificate checks off). Both URL loaders are wired to fail the test if anything calls them."""
 
     def setUp(self):
         super().setUp()
         self.loaded = []
+        self.fetch_kwargs = []
+        from tools.exam_authoring import sources
+        self._patch(sources, 'load_document', mock.Mock(side_effect=AssertionError('the URL was fetched a second time')))
+        self._patch(sources, 'fetch', mock.Mock(side_effect=AssertionError('the URL was fetched a second time')))
 
     def stub(self, probe, loader=None):
-        self._patch(discovery, 'fetch_checked', lambda url, **kw: probe)
+        def checked(url, **kw):
+            self.fetch_kwargs.append(kw)
+            return probe
+        self._patch(discovery, 'fetch_checked', checked)
         from tools.exam_authoring import sources
 
-        def fake_loader(url, **kw):
-            self.loaded.append((url, kw))
+        def fake_parser(url, data):
+            self.loaded.append((url, data))
             return loader(url) if loader else None
 
-        self._patch(sources, 'load_document', fake_loader)
+        self._patch(sources, 'document_from_bytes', fake_parser)
+
+    def test_the_checked_fetch_keeps_the_body_and_bounds_it(self):
+        from tools.exam_authoring.sources import Document, SOURCE_MAX_BYTES
+        self.stub(FetchResult(ok=True, status=200, final_url='https://ssc.gov.in/x', content_type='text/html', body=b'<p>ok</p>'),
+                  lambda url: Document(url=url, kind='HTML', fetched_at='now', text='ok'))
+        govos._fetch_source_text('https://ssc.gov.in/x')
+        self.assertEqual(len(self.fetch_kwargs), 1)
+        self.assertIs(self.fetch_kwargs[0]['keep_body'], True)
+        self.assertEqual(self.fetch_kwargs[0]['max_bytes'], SOURCE_MAX_BYTES)
+        self.assertEqual(self.loaded, [('https://ssc.gov.in/x', b'<p>ok</p>')], 'the parser got the fetched bytes')
+
+    def test_an_oversized_or_unsupported_response_is_not_parsed(self):
+        for probe, words in ((FetchResult(ok=True, status=200, content_type='application/pdf', body=b'%PDF-1.7', truncated=True), 'larger than'),
+                             (FetchResult(ok=True, status=200, content_type='application/zip', body=b'PK\x03\x04'), 'not a PDF or a web page'),
+                             (FetchResult(ok=True, status=200, content_type='image/png', body=b'\x89PNG'), 'not a PDF or a web page')):
+            with self.subTest(words=words, ctype=probe.content_type):
+                self.stub(probe)
+                text, failure, reason = govos._fetch_source_text('https://ssc.gov.in/x')
+                self.assertEqual((text, failure), (None, 'SOURCE_FETCH_FAILURE'))
+                self.assertIn(words, reason)
+        self.assertEqual(self.loaded, [])
 
     def test_a_failed_page_check_reads_nothing(self):
         for probe, reason in ((FetchResult(ok=False, status=503, error='HTTP 503'), 'HTTP 503'),
@@ -1003,21 +1035,25 @@ class FetchSourceText(AppCase):
 
     def test_a_scan_is_reported_as_a_scan(self):
         from tools.exam_authoring.sources import Document
-        self.stub(FetchResult(ok=True, status=200, final_url='https://ssc.gov.in/final.pdf'),
+        self.stub(FetchResult(ok=True, status=200, final_url='https://ssc.gov.in/final.pdf', content_type='application/pdf',
+                              body=b'%PDF-1.7 scan'),
                   lambda url: Document(url=url, kind='PDF', fetched_at='now', pages=[''], is_scanned=True))
         self.assertEqual(govos._fetch_source_text('https://ssc.gov.in/x.pdf')[:2], (None, 'SCANNED_DOCUMENT'))
-        self.assertEqual(self.loaded[0][0], 'https://ssc.gov.in/final.pdf', 'the validated final hop is what is read')
-        self.assertIs(self.loaded[0][1].get('use_cache'), False)
+        self.assertEqual(self.loaded, [('https://ssc.gov.in/final.pdf', b'%PDF-1.7 scan')],
+                         'the validated final hop is what is cited, and its fetched bytes are what is read')
 
-    def test_a_loader_error_reports_its_type_only(self):
+    def test_a_parser_error_reports_its_type_only(self):
         def boom(url):
             raise RuntimeError('C:\\private\\path\\detail')
-        self.stub(FetchResult(ok=True, status=200, final_url='https://ssc.gov.in/x'), boom)
-        self.assertEqual(govos._fetch_source_text('https://ssc.gov.in/x'), (None, 'SOURCE_FETCH_FAILURE', 'RuntimeError'))
+        self.stub(FetchResult(ok=True, status=200, final_url='https://ssc.gov.in/x', content_type='text/html', body=b'<p>'), boom)
+        text, failure, reason = govos._fetch_source_text('https://ssc.gov.in/x')
+        self.assertEqual((text, failure), (None, 'SOURCE_FETCH_FAILURE'))
+        self.assertIn('RuntimeError', reason)
+        self.assertNotIn('private', reason)
 
     def test_readable_text_is_returned_and_bounded(self):
         from tools.exam_authoring.sources import Document
-        self.stub(FetchResult(ok=True, status=200, final_url='https://ssc.gov.in/x'),
+        self.stub(FetchResult(ok=True, status=200, final_url='https://ssc.gov.in/x', content_type='text/html', body=b'<p>y</p>'),
                   lambda url: Document(url=url, kind='HTML', fetched_at='now', text='y' * 200_000))
         text, failure, reason = govos._fetch_source_text('https://ssc.gov.in/x')
         self.assertEqual((failure, reason), (None, None))

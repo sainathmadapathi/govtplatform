@@ -319,6 +319,9 @@ export const SSC_CGL_EXAM: Exam = {
       minAge: 18,
       maxAge: 30,
       specialQualification: 'Essential: a Bachelor’s Degree from a recognized University or Institute. Desirable: Chartered Accountant, Cost & Management Accountant, Company Secretary, or Masters in Commerce, Business Studies, Business Administration (Finance) or Business Economics. Direct recruits must pass the Subordinate Audit/ Accounts Service Examination during probation (Para 8.1.1).',
+      ruleGroup: { id: 'rg-ssc-aao-central', operator: 'AND', rules: [
+        { id: 'rule-ssc-aao-central-deg', ruleType: 'DEGREE_REQUIRED', operator: '=', ruleValue: ['Bachelor Degree'], category: 'GENERAL', provenance: sscP_aao }
+      ] },
       provenance: sscNotice('prov-post-aao-central', 'Para 2.1 Pay Level-8 (₹ 47600 to 151100)', 2, '1 Assistant Audit Officer (Central Cadre) Indian Audit & Accounts Department under O/o Comptroller and Auditor General of India (C&AG) Group “B” Gazetted (Non-Ministerial) 18-30 years')
     },
     {
@@ -331,6 +334,10 @@ export const SSC_CGL_EXAM: Exam = {
       minAge: 18,
       maxAge: 30,
       specialQualification: 'Essential: a Bachelor’s Degree, and proficiency in the Regional/official language of the State at matriculation level, with a certificate from a recognised State/Central Board. Desirable: CA, CMA, CS, or Masters in Commerce, Business Studies, Business Administration (Finance) or Business Economics (Para 8.1.2–8.1.3).',
+      ruleGroup: { id: 'rg-ssc-aao-state', operator: 'AND', rules: [
+        { id: 'rule-ssc-aao-state-deg', ruleType: 'DEGREE_REQUIRED', operator: '=', ruleValue: ['Bachelor Degree'], category: 'GENERAL', provenance: sscP_aao },
+        { id: 'rule-ssc-aao-state-lang', ruleType: 'STATED_CONDITION', operator: '=', ruleValue: 'Regional/official language of the State', statedAs: 'proficiency in the Regional/official language of the State at matriculation level', category: 'GENERAL', provenance: sscP_aao_state }
+      ] },
       provenance: sscNotice('prov-post-aao-state', 'Para 2.1 Pay Level-8 (₹ 47600 to 151100)', 2, '2. Assistant Audit Officer (State Cadre) Indian Audit & Accounts Department under O/o Comptroller and Auditor General of India (C&AG) Group “B” Gazetted (Non-Ministerial) 18-30 years')
     },
     {
@@ -343,6 +350,10 @@ export const SSC_CGL_EXAM: Exam = {
       minAge: 18,
       maxAge: 30,
       specialQualification: 'Essential: a Bachelor’s Degree, and proficiency in the Regional/official language of the State at matriculation level, with a certificate from a recognised State/Central Board. Desirable: CA, CMA, CS, or Masters in Commerce, Business Studies, Business Administration (Finance) or Business Economics (Para 8.1.2–8.1.3).',
+      ruleGroup: { id: 'rg-ssc-aaco-state', operator: 'AND', rules: [
+        { id: 'rule-ssc-aaco-state-deg', ruleType: 'DEGREE_REQUIRED', operator: '=', ruleValue: ['Bachelor Degree'], category: 'GENERAL', provenance: sscP_aao },
+        { id: 'rule-ssc-aaco-state-lang', ruleType: 'STATED_CONDITION', operator: '=', ruleValue: 'Regional/official language of the State', statedAs: 'proficiency in the Regional/official language of the State at matriculation level', category: 'GENERAL', provenance: sscP_aao_state }
+      ] },
       provenance: sscNotice('prov-post-aaco-state', 'Para 2.1 Pay Level-8 (₹ 47600 to 151100)', 2, '3. Assistant Accounts Officer (State Cadre) Indian Audit & Accounts Department under O/o Comptroller and Auditor General of India (C&AG) Group “B” Gazetted (Non-Ministerial) 18-30 years')
     },
     {
@@ -632,6 +643,12 @@ export const SSC_CGL_EXAM: Exam = {
       minAge: 18,
       maxAge: 32,
       specialQualification: 'Bachelor’s Degree in any subject with at least 60% marks in Mathematics at 12th standard level; or a Bachelor’s Degree in any subject with Statistics as one of the subjects at degree level (Para 8.2.1).',
+      ruleGroup: { id: 'rg-ssc-jso', operator: 'AND', rules: [
+        { id: 'rule-ssc-jso-deg', ruleType: 'DEGREE_REQUIRED', operator: '=', ruleValue: ['Bachelor Degree'], category: 'GENERAL', provenance: sscP_jso }
+      ], childGroups: [{ id: 'rg-ssc-jso-alt', operator: 'OR', rules: [
+        { id: 'rule-ssc-jso-maths', ruleType: 'PERCENTAGE_MIN', operator: '>=', ruleValue: 60, subject: 'Mathematics', level: 'CLASS_12', category: 'GENERAL', provenance: sscP_jso },
+        { id: 'rule-ssc-jso-stats', ruleType: 'BRANCH_SPECIALIZATION', operator: 'IN', ruleValue: ['Statistics'], category: 'GENERAL', provenance: sscP_jso }
+      ] }] },
       provenance: sscNotice('prov-post-jso', 'Para 2.3 Pay Level-6 (₹ 35400 to 112400)', 3, '7 Junior Statistical Officer Ministry of Statistics & Programme Implementation. Group “B” 18-32 years')
     },
     {
@@ -646,6 +663,10 @@ export const SSC_CGL_EXAM: Exam = {
       minAge: 18,
       maxAge: 30,
       specialQualification: 'Bachelor degree in Statistics, Mathematics, Economics, Demography, Population Studies, Operation Research, Information Technology, Computer Science, Computer Engineering, Computer Technology, Computer Application, Data Science or Artificial Intelligence (Para 8.3.1).',
+      ruleGroup: { id: 'rg-ssc-si', operator: 'AND', rules: [
+        { id: 'rule-ssc-si-deg', ruleType: 'DEGREE_REQUIRED', operator: '=', ruleValue: ['Bachelor Degree'], category: 'GENERAL', provenance: sscP_si },
+        { id: 'rule-ssc-si-subject', ruleType: 'BRANCH_SPECIALIZATION', operator: 'IN', ruleValue: ['Statistics', 'Mathematics', 'Economics', 'Demography', 'Population Studies', 'Operation Research', 'Information Technology', 'Computer Science', 'Computer Engineering', 'Computer Technology', 'Computer Application', 'Data Science', 'Artificial Intelligence'], category: 'GENERAL', provenance: sscP_si }
+      ] },
       provenance: sscNotice('prov-post-stat-inv', 'Para 2.3 Pay Level-6 (₹ 35400 to 112400)', 3, '8 Statistical Investigator Grade-II Ministry of Home Affairs Group “B” 18-30 years')
     },
     {
@@ -977,6 +998,15 @@ export const SSC_CGL_EXAM: Exam = {
         ruleValue: ['Bachelor Degree', 'Graduation', 'B.E', 'B.Tech', 'B.Sc', 'B.Com', 'B.A', 'BBA', 'BCA'],
         category: 'GENERAL',
         provenance: sscP_degree
+      },
+      {
+        id: 'rule-ssc-final-year',
+        ruleType: 'APPEARING_ALLOWED',
+        operator: '=',
+        ruleValue: 'Bachelor Degree',
+        statedAs: 'they must possess the essential qualification as on 01.08.2026',
+        category: 'GENERAL',
+        provenance: sscP_final_year
       },
       {
         id: 'rule-ssc-nat',
@@ -1312,6 +1342,33 @@ provenance: sscNotice('prov-pattern-ssc-t2-p3', 'Para 13.9 — Scheme of Tier-II
       negativeMarking: '-1 mark per wrong answer in Sections I, II and III (Para 13.9.8)',
       mode: 'Computer Based Examination',
       qualifyingNature: 'Two sessions on one day: Session-I (2 h 15 min) holds Sections I–III, Session-II (15 min) holds Section-IV, the Data Entry Speed Test. Merit counts Section-I and Section-II (390 of the 450 marks); Section-III (Computer Knowledge Test) and Section-IV (DEST) are qualifying. Every Section must be qualified separately (Para 13.9.6).',
+      meritMarks: 390,
+      // Sections III and IV of Paper-I, as the notice states them. These standards used to be constants
+      // inside the Results engine, which showed them -- and the words CKT and DEST -- to other exams.
+      skillTest: {
+        name: 'Section-III (Computer Knowledge Test) and Section-IV (Data Entry Speed Test)',
+        description: 'Both are mandatory for all posts and qualifying in nature; their marks are not counted for the merit (Para 13.9.9, 13.9.10.3).',
+        qualifying: true,
+        requirements: ['Data Entry Speed Test: one data entry task, about 2000 key depressions in 15 minutes (Para 13.9.10.2)'],
+        sectionNames: ['Section-III: Computer Knowledge Test (qualifying)', 'Section-IV: Data Entry Speed Test (Session-II, qualifying)'],
+        metrics: [
+          {
+            key: 'computerKnowledgeMarks', label: 'Computer Knowledge Test (CKT, Section-III)', unit: 'marks', outOf: 60, direction: 'AT_LEAST',
+            standard: {
+              byCategory: [{ categories: ['UR'], value: 30 }, { categories: ['OBC', 'EWS'], value: 25 }], otherwise: 20, percentOfOutOf: true,
+              asPrinted: 'Minimum qualifying marks: UR 30%, OBC/EWS 25%, all other categories 20% (Para 16.1)', provenance: sscP_qualifying
+            }
+          },
+          {
+            key: 'destMistakesPercent', label: 'Data Entry Speed Test (DEST, Section-IV)', unit: '% errors', direction: 'AT_MOST',
+            standard: {
+              byCategory: [{ categories: ['UR'], value: 20 }, { categories: ['OBC', 'EWS'], value: 25 }], otherwise: 30,
+              asPrinted: 'Maximum errors allowed: UR 20%, OBC/EWS 25%, all other categories 30% (Para 16.2)', provenance: sscP_dest_errors
+            }
+          }
+        ],
+        provenance: sscP_ckt_qualifying
+      },
       sections: [
         { sectionName: 'Section-I: A. Mathematical Abilities, B. Reasoning and General Intelligence', modules: ['Mathematical Abilities (30 questions, 90 marks)', 'Reasoning and General Intelligence (30 questions, 90 marks)'], questions: 60, marks: 180, durationMinutes: 60, negativeMarking: '-1' },
         { sectionName: 'Section-II: A. English Language and Comprehension, B. General Awareness', modules: ['English Language and Comprehension (45 questions, 135 marks, 40 minutes)', 'General Awareness (25 questions, 75 marks, 20 minutes)'], questions: 70, marks: 210, durationMinutes: 60, negativeMarking: '-1' },
@@ -19808,6 +19865,48 @@ export interface MockPaper {
   generationNotes?: string[];
   /** One-line restatement of the request the generator acted on. */
   requestSummary?: string;
+  /** Marks for a right and off for a wrong answer, with the clause that sets them. Every paper states
+   *  its own: there is no default, so a paper of any exam is never scored by another exam's rule. */
+  marking: PaperMarking;
+}
+
+export interface PaperMarking { correct: number; wrong: number; clause: string }
+
+/** Para 13.8.2 of the SSC CGL 2026 notice, with 2 marks a question (Para 13.8). */
+export const SSC_TIER1_MARKING: PaperMarking = {
+  correct: 2, wrong: 0.5, clause: 'Tier-I: 2 marks a question; 0.50 off for each wrong answer (Para 13.8.2)'
+};
+
+/** Words that rank a paper against other papers. A paper may state its own level (`difficulty`, checked
+ *  against its own questions) but never call itself harder or easier than another. */
+const RELATIVE_DIFFICULTY_CLAIM = /\b(harder|hardest|easier|easiest|tougher|toughest|stiffer|more difficult|less difficult|harder mix|easier mix)\b/i;
+
+/**
+ * What a practice paper's metadata may claim, for any exam and any number of papers: everything it says
+ * about itself must follow from its own questions and its own marking. Returns the problems found
+ * (empty = consistent). Used by the checks over every paper GovOS holds; a new exam's papers are held
+ * to the same rules with no change here.
+ */
+export function mockPaperProblems(paper: MockPaper): string[] {
+  const problems: string[] = [];
+  const m = paper.marking;
+  if (!m || !(m.correct > 0) || !(m.wrong >= 0) || !m.clause) problems.push('marking: missing, or without its clause');
+  if (paper.totalQuestions !== paper.questions.length) problems.push(`totalQuestions ${paper.totalQuestions} but ${paper.questions.length} questions`);
+  if (m && m.correct > 0 && paper.totalMarks !== paper.questions.length * m.correct) {
+    problems.push(`totalMarks ${paper.totalMarks} but ${paper.questions.length} x ${m.correct}`);
+  }
+  if (new Set(paper.questions.map(q => q.id)).size !== paper.questions.length) problems.push('question ids repeat');
+  const claim = `${paper.title} ${paper.description}`.match(RELATIVE_DIFFICULTY_CLAIM);
+  if (claim) problems.push(`claims "${claim[0]}" relative to other papers`);
+  if (paper.difficulty !== 'ADAPTIVE') {
+    const counts: Record<string, number> = {};
+    for (const q of paper.questions) counts[q.difficulty] = (counts[q.difficulty] || 0) + 1;
+    const top = Math.max(0, ...Object.values(counts));
+    if ((counts[paper.difficulty] || 0) !== top) {
+      problems.push(`labelled ${paper.difficulty} but its questions are ${JSON.stringify(counts)}`);
+    }
+  }
+  return problems;
 }
 
 export interface CustomTestConfig {
@@ -21064,6 +21163,9 @@ function buildFullPaperQuestions(paperId: string, shiftInfo: string, year: numbe
 }
 
 // 1. OFFICIAL FULL-LENGTH SHIFT PAPERS (100 Qs each)
+// Every full paper below is the same template-cycled item set with the same difficulty mix (36 hard,
+// 32 medium, 32 easy; see buildFullPaperQuestions), so no paper may be titled, described or levelled
+// as harder or easier than another. Papers 9 and 12 were labelled "harder mix" with nothing behind it.
 export const OFFICIAL_10_MOCK_PAPERS: MockPaper[] = [
   {
     id: 'paper-cgl-2024-s1',
@@ -21076,6 +21178,7 @@ export const OFFICIAL_10_MOCK_PAPERS: MockPaper[] = [
     totalMarks: 200,
     durationMinutes: 60,
     difficulty: 'ADAPTIVE',
+    marking: SSC_TIER1_MARKING,
     description: 'GovOS practice paper written to the SSC CGL Tier-1 pattern. Its questions are GovOS-authored and recur across papers; it is not an SSC question paper and has no official answer key.',
     provenanceTag: 'GovOS practice paper',
     questions: buildFullPaperQuestions('cgl-2024-s1', 'GovOS practice paper 1', 2026)
@@ -21091,6 +21194,7 @@ export const OFFICIAL_10_MOCK_PAPERS: MockPaper[] = [
     totalMarks: 200,
     durationMinutes: 60,
     difficulty: 'ADAPTIVE',
+    marking: SSC_TIER1_MARKING,
     description: 'GovOS practice paper written to the SSC CGL Tier-1 pattern. Its questions are GovOS-authored and recur across papers; it is not an SSC question paper and has no official answer key.',
     provenanceTag: 'GovOS practice paper',
     questions: buildFullPaperQuestions('cgl-2024-s2', 'GovOS practice paper 2', 2026)
@@ -21106,6 +21210,7 @@ export const OFFICIAL_10_MOCK_PAPERS: MockPaper[] = [
     totalMarks: 200,
     durationMinutes: 60,
     difficulty: 'ADAPTIVE',
+    marking: SSC_TIER1_MARKING,
     description: 'GovOS practice paper written to the SSC CGL Tier-1 pattern. Its questions are GovOS-authored and recur across papers; it is not an SSC question paper and has no official answer key.',
     provenanceTag: 'GovOS practice paper',
     questions: buildFullPaperQuestions('cgl-2024-s3', 'GovOS practice paper 3', 2026)
@@ -21121,6 +21226,7 @@ export const OFFICIAL_10_MOCK_PAPERS: MockPaper[] = [
     totalMarks: 200,
     durationMinutes: 60,
     difficulty: 'ADAPTIVE',
+    marking: SSC_TIER1_MARKING,
     description: 'GovOS practice paper written to the SSC CGL Tier-1 pattern. Its questions are GovOS-authored and recur across papers; it is not an SSC question paper and has no official answer key.',
     provenanceTag: 'GovOS practice paper',
     questions: buildFullPaperQuestions('cgl-2024-s4', 'GovOS practice paper 4', 2026)
@@ -21136,6 +21242,7 @@ export const OFFICIAL_10_MOCK_PAPERS: MockPaper[] = [
     totalMarks: 200,
     durationMinutes: 60,
     difficulty: 'ADAPTIVE',
+    marking: SSC_TIER1_MARKING,
     description: 'GovOS practice paper written to the SSC CGL Tier-1 pattern. Its questions are GovOS-authored and recur across papers; it is not an SSC question paper and has no official answer key.',
     provenanceTag: 'GovOS practice paper',
     questions: buildFullPaperQuestions('cgl-2024-s5', 'GovOS practice paper 5', 2026)
@@ -21151,6 +21258,7 @@ export const OFFICIAL_10_MOCK_PAPERS: MockPaper[] = [
     totalMarks: 200,
     durationMinutes: 60,
     difficulty: 'ADAPTIVE',
+    marking: SSC_TIER1_MARKING,
     description: 'GovOS practice paper written to the SSC CGL Tier-1 pattern. Its questions are GovOS-authored and recur across papers; it is not an SSC question paper and has no official answer key.',
     provenanceTag: 'GovOS practice paper',
     questions: buildFullPaperQuestions('cgl-2023-s1', 'GovOS practice paper 6', 2026)
@@ -21166,6 +21274,7 @@ export const OFFICIAL_10_MOCK_PAPERS: MockPaper[] = [
     totalMarks: 200,
     durationMinutes: 60,
     difficulty: 'ADAPTIVE',
+    marking: SSC_TIER1_MARKING,
     description: 'GovOS practice paper written to the SSC CGL Tier-1 pattern. Its questions are GovOS-authored and recur across papers; it is not an SSC question paper and has no official answer key.',
     provenanceTag: 'GovOS practice paper',
     questions: buildFullPaperQuestions('cgl-2023-s2', 'GovOS practice paper 7', 2026)
@@ -21181,22 +21290,24 @@ export const OFFICIAL_10_MOCK_PAPERS: MockPaper[] = [
     totalMarks: 200,
     durationMinutes: 60,
     difficulty: 'ADAPTIVE',
+    marking: SSC_TIER1_MARKING,
     description: 'GovOS practice paper written to the SSC CGL Tier-1 pattern. Its questions are GovOS-authored and recur across papers; it is not an SSC question paper and has no official answer key.',
     provenanceTag: 'GovOS practice paper',
     questions: buildFullPaperQuestions('cgl-2023-s3', 'GovOS practice paper 8', 2026)
   },
   {
     id: 'paper-cgl-2023-t2',
-    title: 'Full-length practice paper 9 (Tier-2 Paper-I pattern)',
+    title: 'Full-length practice paper 9 (Tier-1 pattern)',
     category: 'FULL_SHIFT',
-    examTier: 'Tier-2',
+    examTier: 'Tier-1',
     year: 2026,
     shiftDate: 'GovOS practice paper — not an SSC shift',
     totalQuestions: 100,
     totalMarks: 200,
     durationMinutes: 60,
-    difficulty: 'HARD',
-    description: 'GovOS practice paper written to the SSC CGL Tier-2 Paper-I pattern. Its questions are GovOS-authored and recur across papers; it is not an SSC question paper and has no official answer key.',
+    difficulty: 'ADAPTIVE',
+    marking: SSC_TIER1_MARKING,
+    description: 'GovOS practice paper written to the SSC CGL Tier-1 pattern. Its questions are GovOS-authored and recur across papers; it is not an SSC question paper and has no official answer key.',
     provenanceTag: 'GovOS practice paper',
     questions: buildFullPaperQuestions('cgl-2023-t2', 'GovOS practice paper 9', 2026)
   },
@@ -21210,7 +21321,8 @@ export const OFFICIAL_10_MOCK_PAPERS: MockPaper[] = [
     totalQuestions: 100,
     totalMarks: 200,
     durationMinutes: 60,
-    difficulty: 'MEDIUM',
+    difficulty: 'ADAPTIVE',
+    marking: SSC_TIER1_MARKING,
     description: 'GovOS practice paper written to the SSC CGL Tier-1 pattern. Its questions are GovOS-authored and recur across papers; it is not an SSC question paper and has no official answer key.',
     provenanceTag: 'GovOS practice paper',
     questions: buildFullPaperQuestions('cgl-2022-s1', 'GovOS practice paper 10', 2026)
@@ -21229,23 +21341,25 @@ export const NEW_DISCOVERED_PAPERS: MockPaper[] = [
     totalQuestions: 100,
     totalMarks: 200,
     durationMinutes: 60,
-    difficulty: 'HARD',
+    difficulty: 'ADAPTIVE',
+    marking: SSC_TIER1_MARKING,
     description: 'GovOS practice paper written to the SSC CGL Tier-1 pattern. Its questions are GovOS-authored and recur across papers; it is not an SSC question paper and has no official answer key.',
     provenanceTag: 'GovOS practice paper',
     questions: buildFullPaperQuestions('cgl-2024-s6', 'GovOS practice paper 11', 2026)
   },
   {
     id: 'paper-cgl-2024-t2',
-    title: 'Full-length practice paper 12 (Tier-2 Paper-I pattern)',
+    title: 'Full-length practice paper 12 (Tier-1 pattern)',
     category: 'FULL_SHIFT',
-    examTier: 'Tier-2',
+    examTier: 'Tier-1',
     year: 2026,
     shiftDate: 'GovOS practice paper — not an SSC shift',
     totalQuestions: 100,
     totalMarks: 200,
     durationMinutes: 60,
-    difficulty: 'HARD',
-    description: 'GovOS practice paper written to the SSC CGL Tier-2 Paper-I pattern. Its questions are GovOS-authored and recur across papers; it is not an SSC question paper and has no official answer key.',
+    difficulty: 'ADAPTIVE',
+    marking: SSC_TIER1_MARKING,
+    description: 'GovOS practice paper written to the SSC CGL Tier-1 pattern. Its questions are GovOS-authored and recur across papers; it is not an SSC question paper and has no official answer key.',
     provenanceTag: 'GovOS practice paper',
     questions: buildFullPaperQuestions('cgl-2024-t2', 'GovOS practice paper 12', 2026)
   }
@@ -21263,6 +21377,7 @@ export const SUBJECT_MOCK_TESTS: MockPaper[] = [
     totalMarks: 50,
     durationMinutes: 25,
     difficulty: 'MEDIUM',
+    marking: SSC_TIER1_MARKING,
     description: 'Comprehensive 25-Question Quant section covering Arithmetic (CI/SI, Time-Work), Algebra identities, Geometry, and Trigonometry.',
     provenanceTag: 'TCS Quant Sectional Standard',
     questions: Array.from({ length: 25 }, (_, i) => {
@@ -21295,6 +21410,7 @@ export const SUBJECT_MOCK_TESTS: MockPaper[] = [
     totalMarks: 50,
     durationMinutes: 20,
     difficulty: 'EASY',
+    marking: SSC_TIER1_MARKING,
     description: 'High-speed 25-Question Reasoning test for practicing Syllogisms, Coded Blood Relations, Number Series, and Analogy.',
     provenanceTag: 'TCS Reasoning Sectional',
     questions: Array.from({ length: 25 }, (_, i) => {
@@ -21327,6 +21443,7 @@ export const SUBJECT_MOCK_TESTS: MockPaper[] = [
     totalMarks: 50,
     durationMinutes: 15,
     difficulty: 'MEDIUM',
+    marking: SSC_TIER1_MARKING,
     description: 'Rapid 15-Minute English test focusing on Error Spotting, Synonyms/Antonyms, One-Word Substitution, and Active-Passive Voice.',
     provenanceTag: 'TCS English Sectional',
     questions: Array.from({ length: 25 }, (_, i) => {
@@ -21359,6 +21476,7 @@ export const SUBJECT_MOCK_TESTS: MockPaper[] = [
     totalMarks: 50,
     durationMinutes: 12,
     difficulty: 'MEDIUM',
+    marking: SSC_TIER1_MARKING,
     description: '12-Minute GA speed test covering Indian Constitution Articles, Modern Freedom Movements, Static GK, and Science.',
     provenanceTag: 'TCS GA Sectional',
     questions: Array.from({ length: 25 }, (_, i) => {
@@ -21392,6 +21510,7 @@ export const SUBJECT_MOCK_TESTS: MockPaper[] = [
     durationMinutes: 15,
     difficulty: 'MEDIUM',
     description: 'Mandatory qualifying Computer module for CGL Tier-2 (CPT posts like ASO CSS and Inspector).',
+    marking: { correct: 3, wrong: 1, clause: 'Tier-II Paper-I Section-III: 20 questions, 20*3 = 60 marks (Para 13.9); 1 mark off for each wrong answer (Para 13.9.8)' },
     provenanceTag: 'SSC Tier-2 Computer Module',
     questions: Array.from({ length: 20 }, (_, i) => {
       const t = COMPUTER_TEMPLATES[i % COMPUTER_TEMPLATES.length];
@@ -21428,6 +21547,7 @@ export const TOPIC_DRILL_TESTS: MockPaper[] = [
     totalMarks: 30,
     durationMinutes: 15,
     difficulty: 'HARD',
+    marking: SSC_TIER1_MARKING,
     description: 'Triangle similarity, the altitude relation, rhombus diagonals and area ratios — drawn from the official NCERT Exemplar Class 10 exercises.',
     provenanceTag: 'High-Yield Topic Drill',
     questions: Array.from({ length: 15 }, (_, i) => {
@@ -21461,6 +21581,7 @@ export const TOPIC_DRILL_TESTS: MockPaper[] = [
     totalMarks: 30,
     durationMinutes: 12,
     difficulty: 'MEDIUM',
+    marking: SSC_TIER1_MARKING,
     description: 'Trigonometric ratios, complementary-angle identities, heights and distances, and recasting solids — drawn from the official NCERT Exemplar Class 10 exercises.',
     provenanceTag: 'High-Yield Topic Drill',
     questions: Array.from({ length: 15 }, (_, i) => {
@@ -21494,6 +21615,7 @@ export const TOPIC_DRILL_TESTS: MockPaper[] = [
     totalMarks: 30,
     durationMinutes: 8,
     difficulty: 'EASY',
+    marking: SSC_TIER1_MARKING,
     description: 'Fundamental Rights, Directive Principles, constitutional offices and the SSC CGL 2026 notice — every question written from the official text.',
     provenanceTag: 'High-Yield Topic Drill',
     questions: Array.from({ length: 15 }, (_, i) => {
@@ -21527,6 +21649,7 @@ export const TOPIC_DRILL_TESTS: MockPaper[] = [
     totalMarks: 30,
     durationMinutes: 10,
     difficulty: 'MEDIUM',
+    marking: SSC_TIER1_MARKING,
     description: 'Speed building with 3-statement and 3-conclusion Venn logic puzzles.',
     provenanceTag: 'High-Yield Topic Drill',
     questions: Array.from({ length: 15 }, (_, i) => {
@@ -21560,6 +21683,7 @@ export const TOPIC_DRILL_TESTS: MockPaper[] = [
     totalMarks: 30,
     durationMinutes: 10,
     difficulty: 'MEDIUM',
+    marking: SSC_TIER1_MARKING,
     description: 'Focus on Subject-Verb agreement, Conditionals, and Preposition placement.',
     provenanceTag: 'High-Yield Topic Drill',
     questions: Array.from({ length: 15 }, (_, i) => {
@@ -22695,9 +22819,12 @@ export function generateCustomMockTest(config: CustomTestConfig): MockPaper {
     category: 'CUSTOM_AI',
     examTier: 'Tier-1',
     totalQuestions: questions.length,
-    totalMarks: questions.length * 2,
+    totalMarks: questions.length * SSC_TIER1_MARKING.correct,
     durationMinutes,
     difficulty: config.difficulty,
+    // The generator draws from SSC CGL's own topic catalogue and Tier-I sections, so its tests are
+    // that exam's and are marked by its Tier-I rule -- stated on the paper, never assumed by a scorer.
+    marking: SSC_TIER1_MARKING,
     description: `${summary}. ${onRequestedTopic} of ${questions.length} questions are on the requested topic. ${notes.join(' ')}`,
     provenanceTag: generatedCount > 0 && bankCount === 0 ? `GovOS-generated (${durationMinutes} Mins)` : `AI Tailored (${durationMinutes} Mins)`,
     questions,

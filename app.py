@@ -10,10 +10,10 @@ import xml.etree.ElementTree as ET
 import base64
 import io
 import re
-import zlib
-from concurrent.futures import ThreadPoolExecutor
+from collections import OrderedDict
+from concurrent.futures import ThreadPoolExecutor, wait as _wait_futures
 from datetime import datetime
-from flask import Flask, send_from_directory, jsonify, request
+from flask import Flask, send_from_directory, jsonify, request, g, has_request_context
 from flask_cors import CORS
 from tools.claude_cli import ClaudeGateway, get_gateway, set_gateway
 from tools.claude_cli.audit import DecisionCache, SqliteAuditSink, init_audit_tables
@@ -21,6 +21,7 @@ from tools.claude_cli.context import ExamStore
 from tools.claude_cli.handlers import AppHooks
 from tools.claude_cli.jobs import init_job_tables
 from tools.exam_builder.source_graph import init_source_tables
+from tools.single_flight import SingleFlight
 from tools.claude_cli.routes import admin_denied, admin_required, create_blueprint
 from tools.claude_cli.security import admin_token_required
 
@@ -37,9 +38,21 @@ LEGACY_EXAM_ID_ALIASES = {
 }
 
 def get_db_connection():
-    """Get a connection to the local SQLite database."""
-    conn = sqlite3.connect(DB_FILE)
+    """Get a connection to the local SQLite database.
+
+    A writer that finds the database locked waits up to 30 s for it (the default is 5 s): the
+    hourly refresh, the job queue and request handlers all write, and a brief overlap used to
+    surface as a 500 "database is locked" instead of a short wait."""
+    conn = sqlite3.connect(DB_FILE, timeout=30)
     conn.row_factory = sqlite3.Row
+    # A connection opened for a request is closed when the request ends, whatever happened in it
+    # (_close_request_connections). A route that raised before its own close() used to keep its write
+    # transaction open, so the next write waited out the lock and failed: one re-sent attempt
+    # ("UNIQUE constraint failed") turned the following profile save into "database is locked".
+    if has_request_context():
+        if not hasattr(g, '_govos_conns'):
+            g._govos_conns = []
+        g._govos_conns.append(conn)
     return conn
 
 def init_database():
@@ -259,15 +272,11 @@ def init_database():
         cursor.execute('''
             INSERT INTO users (id, username, target_post_id, target_exam_id, category, qualification)
             VALUES (?, ?, ?, ?, ?, ?)
-        ''', ('default-candidate', 'Candidate Aspirant', 'post-aso-css', 'exam-ssc-cgl-2026', 'UR (Unreserved)', 'Bachelor Degree'))
-
-    # Seed default tracking for SSC CGL 2026 if no exams tracked yet
-    cursor.execute('SELECT COUNT(*) FROM tracked_exams WHERE user_id = ?', ('default-candidate',))
-    if cursor.fetchone()[0] == 0:
-        cursor.execute('''
-            INSERT OR IGNORE INTO tracked_exams (user_id, exam_id)
-            VALUES (?, ?)
-        ''', ('default-candidate', 'exam-ssc-cgl-2026'))
+        ''', ('default-candidate', 'Candidate', '', '', '', ''))
+    # A new database invents nothing about the candidate: no post, exam, category or qualification, and no
+    # tracked exam. It used to seed SSC CGL as tracked -- again whenever the candidate had untracked every
+    # exam -- and the app adopted that list, so every candidate "tracked" SSC CGL. An existing database
+    # keeps the rows it already holds.
 
     # --- live resources: link health, feed caches, verifier-added entries ---
     cursor.execute('''
@@ -425,13 +434,39 @@ def init_database():
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 DIST_DIR = os.path.join(BASE_DIR, 'dist')
-STATIC_DIR = DIST_DIR if os.path.exists(DIST_DIR) else BASE_DIR
 
-app = Flask(__name__, static_folder=STATIC_DIR)
+# No Flask static folder. It used to be `dist/`, or the repository root when `dist/` was missing (a fresh
+# clone: dist/ is gitignored), so /static/.env, /static/govos.db and /static/app.py were downloadable,
+# and the catch-all route below did the same at /.env. The built frontend is one self-contained
+# dist/index.html; only files inside dist/ are ever served (`_serve_frontend`).
+app = Flask(__name__, static_folder=None)
+
+
+@app.teardown_request
+def _close_request_connections(_exc=None):
+    """Close -- and so roll back anything uncommitted on -- every connection this request opened."""
+    for conn in getattr(g, '_govos_conns', []):
+        try:
+            conn.close()
+        except Exception:
+            pass
+    g._govos_conns = []
 # The API serves GovOS's own pages (same origin in production, the Vite proxy in development). It is
 # not a public API, so cross-origin access is limited to this machine: a web page on another origin
 # can not make the browser call the admin or Claude endpoints.
 CORS(app, origins=[r'^https?://(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$'])
+# No request body may exceed 16 MB (Flask answers 413). The largest legitimate one is a scorecard of up
+# to 8 MB sent as base64 in JSON (~11 MB); with no cap, sync-all and results/parse read any size into memory.
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+
+
+def _int_arg(name, default, lo, hi):
+    """A numeric query argument, clamped; a non-number is the default, never a 500."""
+    try:
+        value = int(request.args.get(name) or default)
+    except (TypeError, ValueError):
+        value = default
+    return max(lo, min(hi, value))
 
 # Ensure database tables exist on server startup
 init_database()
@@ -440,10 +475,7 @@ init_database()
 
 @app.route('/')
 def serve_index():
-    """Serve the single self-contained index.html from dist or root"""
-    if os.path.exists(os.path.join(DIST_DIR, 'index.html')):
-        return send_from_directory(DIST_DIR, 'index.html')
-    return send_from_directory(BASE_DIR, 'index.html')
+    return _serve_frontend('')
 
 # NOTE: GovOS deliberately stores no study material. Every PDF and video in the
 # Resource Library is a link to the official publisher's own server, so there is no
@@ -527,29 +559,40 @@ def handle_profile():
 
     elif request.method == 'POST':
         data = request.get_json(silent=True) or {}
-        username = data.get('username', 'Candidate')
-        target_post_id = data.get('target_post_id', 'post-aso-css')
-        target_exam_id = data.get('target_exam_id') or 'exam-ssc-cgl-2026'
-        category = data.get('category', 'UR (Unreserved)')
-        qualification = data.get('qualification', 'Bachelor Degree')
-        dob = data.get('dob', '')
-
-        cursor.execute('''
-            INSERT INTO users (id, username, target_post_id, target_exam_id, category, qualification, dob, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-            ON CONFLICT(id) DO UPDATE SET
-                username = excluded.username,
-                target_post_id = excluded.target_post_id,
-                target_exam_id = excluded.target_exam_id,
-                category = excluded.category,
-                qualification = excluded.qualification,
-                dob = excluded.dob,
-                updated_at = CURRENT_TIMESTAMP
-        ''', (user_id, username, target_post_id, target_exam_id, category, qualification, dob))
-        
+        updated = _upsert_profile(cursor, user_id, data)
         conn.commit()
         conn.close()
-        return jsonify({"status": "saved", "user_id": user_id, "target_post_id": target_post_id})
+        return jsonify({"status": "saved", "user_id": user_id, "updated": updated,
+                        "target_post_id": data.get('target_post_id')})
+
+
+#: The profile fields a client may set. A field absent from a request is left as stored.
+_PROFILE_FIELDS = ('username', 'target_post_id', 'target_exam_id', 'category', 'qualification', 'dob')
+
+
+def _upsert_profile(cursor, user_id, data):
+    """Write only the profile fields the request carries; return their names.
+
+    Every absent field used to be written as an SSC CGL default: the frontend saves the target post on its
+    own and the category and qualification on their own, so choosing a post reset the stored category to
+    "UR (Unreserved)" and the qualification to "Bachelor Degree", and saving the profile reset the post to
+    "post-aso-css". A legacy exam id is written as its canonical id."""
+    present = {k: data[k] for k in _PROFILE_FIELDS if k in data and data[k] is not None}
+    if 'target_exam_id' in present:
+        present['target_exam_id'] = LEGACY_EXAM_ID_ALIASES.get(present['target_exam_id'], present['target_exam_id'])
+    exists = cursor.execute('SELECT 1 FROM users WHERE id = ?', (user_id,)).fetchone()
+    if not exists:
+        row = {k: '' for k in _PROFILE_FIELDS}
+        row['username'] = 'Candidate'
+        row.update(present)
+        cursor.execute('INSERT INTO users (id, username, target_post_id, target_exam_id, category, qualification, dob, '
+                       'updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)',
+                       (user_id, *(row[k] for k in _PROFILE_FIELDS)))
+    elif present:
+        sets = ', '.join(f'{k} = ?' for k in present)
+        cursor.execute(f'UPDATE users SET {sets}, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+                       (*present.values(), user_id))
+    return sorted(present)
 
 @app.route('/api/sqlite/progress', methods=['GET', 'POST'])
 def handle_progress():
@@ -635,24 +678,83 @@ def handle_mock_attempts():
             return jsonify({"error": "exam_id is required on a practice attempt; it is never inferred"}), 400
         if exam_id in LEGACY_EXAM_ID_ALIASES:
             exam_id = LEGACY_EXAM_ID_ALIASES[exam_id]
-        topic_id = data.get('topic_id', '')
-        subject = data.get('subject', 'Full Mock')
-        score = float(data.get('score', 0))
-        total_marks = float(data.get('total_marks', 200))
-        correct_count = int(data.get('correct_count', 0))
-        incorrect_count = int(data.get('incorrect_count', 0))
-        unattempted_count = int(data.get('unattempted_count', 0))
-        time_taken_seconds = int(data.get('time_taken_seconds', 0))
-        details_json = json.dumps(data.get('details', {}))
-
-        cursor.execute('''
-            INSERT INTO mock_attempts (id, user_id, exam_id, topic_id, subject, score, total_marks, correct_count, incorrect_count, unattempted_count, time_taken_seconds, details_json)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (attempt_id, user_id, exam_id, topic_id, subject, score, total_marks, correct_count, incorrect_count, unattempted_count, time_taken_seconds, details_json))
-        
+        try:
+            outcome = _merge_attempt(cursor, user_id, dict(data, id=attempt_id), exam_id)
+        except (TypeError, ValueError) as e:
+            conn.close()
+            return jsonify({"error": f"invalid attempt: {e}"}), 400
+        if outcome == 'CONFLICT':
+            conn.close()
+            return jsonify({"error": "an attempt with this id is already stored under another exam or user; "
+                                     "it was not changed", "attempt_id": attempt_id}), 409
         conn.commit()
         conn.close()
-        return jsonify({"status": "saved", "attempt_id": attempt_id}), 201
+        # Sending the same attempt again (a retry, a double click) merges into the stored one: it used to
+        # fail with "UNIQUE constraint failed" and leave the database locked.
+        return jsonify({"status": "saved", "attempt_id": attempt_id, "outcome": outcome}), 201 if outcome == 'INSERTED' else 200
+
+#: The score fields of an attempt; one absent from a payload is left as stored (it used to become 0).
+_ATTEMPT_NUMBERS = (('score', float), ('total_marks', float), ('correct_count', int), ('incorrect_count', int),
+                    ('unattempted_count', int), ('time_taken_seconds', int))
+
+
+def _present(value):
+    """A value that says something: not None and not an empty container or string."""
+    return value is not None and not (isinstance(value, (dict, list, str)) and len(value) == 0)
+
+
+def _attempt_details(m):
+    """The details an incoming attempt actually carries, keyed as stored: `details` if present, plus the
+    top-level userAnswers / paperData an older client sent. Empty or null entries are dropped -- they
+    carry nothing, so they never replace stored data."""
+    details = m.get('details') if isinstance(m.get('details'), dict) else {}
+    out = {k: v for k, v in details.items() if _present(v)}
+    for key in ('userAnswers', 'paperData'):
+        if key not in out and _present(m.get(key)):
+            out[key] = m[key]
+    return out
+
+
+def _merge_attempt(cursor, user_id, m, exam_id):
+    """Insert an attempt, or merge it into the stored one with the same id. Returns INSERTED, MERGED or
+    CONFLICT.
+
+    The rule: an attempt id names one submitted attempt, so a later payload for it can add or correct what
+    it carries, never erase. Each details entry (the paper, the answers, ...) and each score field is
+    replaced only where the incoming payload has a present value; an absent, null or empty one keeps what is
+    stored. A payload whose `details` was {} used to store {"userAnswers": null, "paperData": null} over the
+    candidate's paper and answers, and one without a score set it to 0. An id already stored under another
+    exam or user is a CONFLICT and is left alone -- never re-filed."""
+    row = cursor.execute('SELECT user_id, exam_id, details_json FROM mock_attempts WHERE id = ?', (m['id'],)).fetchone()
+    incoming = _attempt_details(m)
+    numbers = {k: cast(m[k]) for k, cast in _ATTEMPT_NUMBERS if m.get(k) is not None}
+    if row is None:
+        cursor.execute(
+            'INSERT INTO mock_attempts (id, user_id, exam_id, topic_id, subject, score, total_marks, correct_count, '
+            'incorrect_count, unattempted_count, time_taken_seconds, details_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            (m['id'], user_id, exam_id, m.get('topic_id') or '', m.get('subject') or 'Full Mock',
+             numbers.get('score', 0.0), numbers.get('total_marks', 0.0), numbers.get('correct_count', 0),
+             numbers.get('incorrect_count', 0), numbers.get('unattempted_count', 0),
+             numbers.get('time_taken_seconds', 0), json.dumps(incoming) if incoming else None))
+        return 'INSERTED'
+    if row['user_id'] != user_id or LEGACY_EXAM_ID_ALIASES.get(row['exam_id'], row['exam_id']) != exam_id:
+        return 'CONFLICT'
+    try:
+        stored = json.loads(row['details_json']) if row['details_json'] else {}
+    except ValueError:
+        stored = {}
+    merged = dict(stored if isinstance(stored, dict) else {}, **incoming)
+    sets = {k: v for k, v in numbers.items()}
+    for key in ('topic_id', 'subject'):
+        if _present(m.get(key)):
+            sets[key] = m[key]
+    if merged != stored:
+        sets['details_json'] = json.dumps(merged)
+    if sets:
+        cursor.execute(f"UPDATE mock_attempts SET {', '.join(f'{k} = ?' for k in sets)} WHERE id = ?",
+                       (*sets.values(), m['id']))
+    return 'MERGED'
+
 
 @app.route('/api/sqlite/sync-all', methods=['POST'])
 def sync_all():
@@ -663,30 +765,15 @@ def sync_all():
     completed_modules = payload.get('completed_modules', {})
     mock_attempts = payload.get('mock_attempts', [])
     skipped_attempts = []
+    conflicting_attempts = []
 
     conn = get_db_connection()
     cursor = conn.cursor()
 
     try:
-        # 1. Update Profile
-        if profile:
-            cursor.execute('''
-                INSERT INTO users (id, username, target_post_id, target_exam_id, category, qualification, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-                ON CONFLICT(id) DO UPDATE SET
-                    target_post_id = excluded.target_post_id,
-                    target_exam_id = excluded.target_exam_id,
-                    category = excluded.category,
-                    qualification = excluded.qualification,
-                    updated_at = CURRENT_TIMESTAMP
-            ''', (
-                user_id,
-                profile.get('username', 'Candidate'),
-                profile.get('target_post_id', 'post-aso-css'),
-                profile.get('target_exam_id') or 'exam-ssc-cgl-2026',
-                profile.get('category', 'UR (Unreserved)'),
-                profile.get('qualification', 'Bachelor Degree')
-            ))
+        # 1. Profile: only the fields the payload carries (it carries the target post alone)
+        if isinstance(profile, dict) and profile:
+            _upsert_profile(cursor, user_id, profile)
 
         # 2. Batch Update Completed Modules
         for mod_id, is_done in completed_modules.items():
@@ -698,14 +785,9 @@ def sync_all():
                     completed_at = CURRENT_TIMESTAMP
             ''', (user_id, mod_id, 1 if is_done else 0))
 
-        # 3. Batch Insert or Update Mock Attempts with details_json
+        # 3. Mock attempts, each merged into what is stored by the one rule (_merge_attempt)
         for m in mock_attempts:
             if isinstance(m, dict) and m.get('id'):
-                details = m.get('details') or {
-                    'userAnswers': m.get('userAnswers'),
-                    'paperData': m.get('paperData')
-                }
-                details_json = json.dumps(details) if details else None
                 # An attempt must name its exam. This defaulted to 'ssc-cgl-2026', so a payload
                 # that omitted the field was filed under SSC - silently, and under a legacy id
                 # that matches no registered exam. Skipped and reported instead of guessed.
@@ -714,29 +796,8 @@ def sync_all():
                 if not attempt_exam_id:
                     skipped_attempts.append(m.get('id'))
                     continue
-                cursor.execute('''
-                    INSERT INTO mock_attempts (id, user_id, exam_id, topic_id, subject, score, total_marks, correct_count, incorrect_count, unattempted_count, time_taken_seconds, details_json)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ON CONFLICT(id) DO UPDATE SET
-                        details_json = COALESCE(excluded.details_json, mock_attempts.details_json),
-                        score = excluded.score,
-                        correct_count = excluded.correct_count,
-                        incorrect_count = excluded.incorrect_count,
-                        unattempted_count = excluded.unattempted_count
-                ''', (
-                    m['id'],
-                    user_id,
-                    attempt_exam_id,
-                    m.get('topic_id', ''),
-                    m.get('subject', 'General'),
-                    float(m.get('score', 0)),
-                    float(m.get('total_marks', 200)),
-                    int(m.get('correct_count', 0)),
-                    int(m.get('incorrect_count', 0)),
-                    int(m.get('unattempted_count', 0)),
-                    int(m.get('time_taken_seconds', 0)),
-                    details_json
-                ))
+                if _merge_attempt(cursor, user_id, m, attempt_exam_id) == 'CONFLICT':
+                    conflicting_attempts.append(m.get('id'))
 
         conn.commit()
         conn.close()
@@ -746,7 +807,8 @@ def sync_all():
             "status": "synchronized",
             "db_type": "SQLite 3",
             "user_id": user_id,
-            "skippedAttemptsWithoutExamId": skipped_attempts
+            "skippedAttemptsWithoutExamId": skipped_attempts,
+            "conflictingAttempts": conflicting_attempts
         })
     except Exception as e:
         conn.rollback()
@@ -866,25 +928,9 @@ def handle_notification_preferences():
                 "eventSubscriptions": json.loads(row["subscriptions_json"]),
                 "reminderSchedule": json.loads(row["schedule_json"])
             })
-        return jsonify({
-            "user_id": user_id,
-            "channels": { "inApp": True, "browserPush": False, "email": False, "whatsapp": False },
-            "contactInfo": { "email": "", "phone": "", "whatsappVerified": False },
-            "eventSubscriptions": {
-                "applicationOpening": True,
-                "applicationDeadlines": True,
-                "correctionWindows": True,
-                "admitCards": True,
-                "examDates": True,
-                "results": True
-            },
-            "reminderSchedule": {
-                "sevenDaysBefore": True,
-                "threeDaysBefore": True,
-                "oneDayBefore": True,
-                "lastDayHoursBefore": True
-            }
-        })
+        # Nothing stored is said as such. This used to answer with the defaults, which the app took as the
+        # candidate's saved choice and wrote over the preferences in their browser.
+        return jsonify({"user_id": user_id, "stored": False})
 
     elif request.method == 'POST':
         data = request.get_json(silent=True) or {}
@@ -1018,20 +1064,209 @@ def handle_bookmarks():
     return jsonify({"status": "updated", "user_id": user_id, "resource_ids": ids})
 
 
+# ---- Link checking, for an unauthenticated caller: every amount bounded ------------------------------
+# verify-links, health/sync and health/recheck answer anyone, so one request must never become an
+# unbounded -- or cheaply repeatable -- set of outbound fetches. They used to accept 40, 120 and 80 URLs
+# on any port, fetch them on a fresh pool of 8 threads per request with no rate limit, and store 120 new
+# URLs per call for the hourly sweep to re-check forever.
+#: URLs in one request. The largest library (SSC CGL) sends 38, plus any verifier additions.
+LINK_MAX_URLS = 60
+#: Seconds for each connect / read of a check (HEAD, then GET), and the longest a request waits for its
+#: batch: a check still running then is answered "timed out" while its worker finishes in the background.
+LINK_TIMEOUT_SECONDS = 6
+LINK_REQUEST_DEADLINE_SECONDS = 30
+#: Redirect hops followed, each one re-validated (urllib's own default is 10).
+LINK_MAX_REDIRECTS = 5
+#: All checks share one pool of this many workers, however many requests arrive.
+LINK_WORKERS = 8
+#: A URL checked this recently is answered from that check, not fetched again.
+LINK_REUSE_SECONDS = 300
+#: Fresh outbound checks allowed per minute across every caller (a token bucket).
+LINK_OUTBOUND_PER_MINUTE = 240
+#: Rows resource_link_health may hold; health/sync registers nothing new beyond it (5 libraries hold ~75).
+LINK_MAX_TRACKED = 1000
+#: Requests per client per minute. A library page load sends one sync, one follow-up 15 s later and one
+#: channel request; "Verify all links now" is one recheck.
+LINK_RATE = {'verify': 10, 'recheck': 4, 'sync': 20, 'channels': 30}
+_YOUTUBE_CHANNEL_ID = re.compile(r'UC[A-Za-z0-9_-]{22}')
+
+
+def _public_link(url):
+    """(True, '') when `url` is a public web address: GovOS's one URL rule (`validate_url_syntax`: http(s)
+    only, no credentials, no IP literal or legacy IPv4 form, no local name, port 80/443 only, at most
+    2048 characters) and a host that resolves only to public addresses (`resolves_public`).
+
+    Never raises. A malformed address -- an empty DNS label ("a..com"), an over-long label, a broken
+    IPv6 literal ("http://[x/") -- is refused like any other address that is not a public web page.
+    urlparse raises ValueError and the resolver UnicodeError for those, and that used to escape the
+    checker: verify-links answered 500 and one bad URL sank a whole link-health batch."""
+    from tools.claude_cli.discovery import resolves_public, validate_url_syntax
+    try:
+        ok, why = validate_url_syntax(url)
+        if not ok:
+            return False, why
+        return resolves_public(urlparse(url).hostname)
+    except (ValueError, TypeError, OSError) as exc:          # UnicodeError is a ValueError
+        return False, f'not a valid web address ({type(exc).__name__})'
+
+
+class _OutboundBudget:
+    """A token bucket: `take(n)` spends n of `per_minute` tokens, refilled continuously; False (and
+    nothing spent) when there are not n left."""
+
+    def __init__(self, per_minute, clock=time.monotonic):
+        self.capacity = float(per_minute)
+        self.tokens = float(per_minute)
+        self.clock = clock
+        self.stamp = clock()
+        self.lock = threading.Lock()
+
+    def take(self, n):
+        with self.lock:
+            now = self.clock()
+            self.tokens = min(self.capacity, self.tokens + (now - self.stamp) * self.capacity / 60.0)
+            self.stamp = now
+            if n > self.tokens:
+                return False
+            self.tokens -= n
+            return True
+
+
+_LINK_POOL = ThreadPoolExecutor(max_workers=LINK_WORKERS, thread_name_prefix='govos-linkcheck')
+_LINK_FLIGHTS = SingleFlight()
+_LINK_BUDGET = _OutboundBudget(LINK_OUTBOUND_PER_MINUTE)
+_recent_links = {}
+_recent_links_lock = threading.Lock()
+
+
+def _link_limiter():
+    from tools.claude_cli.security import RateLimiter
+    global _LINK_LIMITER
+    try:
+        return _LINK_LIMITER
+    except NameError:
+        _LINK_LIMITER = RateLimiter()
+        return _LINK_LIMITER
+
+
+def _link_rate_limited(scope):
+    """A 429 response when this client has made LINK_RATE[scope] such requests in the last minute; else None."""
+    allowed, wait = _link_limiter().allow('%s:%s' % (scope, request.remote_addr), LINK_RATE[scope], 60)
+    if allowed:
+        return None
+    resp = jsonify({"error": "RATE_LIMITED", "retryAfter": wait})
+    resp.status_code = 429
+    resp.headers['Retry-After'] = str(wait)
+    return resp
+
+
+def _link_urls_from_request():
+    """(urls, None) -- the request's http(s) URLs, de-duplicated in order -- or (None, error response)
+    when it sends more than LINK_MAX_URLS. Counted before anything is resolved or fetched."""
+    data = request.get_json(silent=True) or {}
+    raw = data.get('urls')
+    if not isinstance(raw, list) or not raw:
+        return None, (jsonify({"error": "urls[] is required"}), 400)
+    if len(raw) > LINK_MAX_URLS:
+        return None, (jsonify({"error": "TOO_MANY_URLS", "limit": LINK_MAX_URLS,
+                               "message": f"At most {LINK_MAX_URLS} links per request."}), 413)
+    seen, urls = set(), []
+    for u in raw:
+        if isinstance(u, str) and u.startswith(('http://', 'https://')) and u not in seen:
+            seen.add(u)
+            urls.append(u)
+    if not urls:
+        return None, (jsonify({"error": "urls[] is required"}), 400)
+    return urls, None
+
+
+def _recent_link(url):
+    with _recent_links_lock:
+        hit = _recent_links.get(url)
+    return hit[1] if hit and time.monotonic() - hit[0] < LINK_REUSE_SECONDS else None
+
+
+def _remember_link(result):
+    with _recent_links_lock:
+        _recent_links[result["url"]] = (time.monotonic(), result)
+        while len(_recent_links) > 4 * LINK_MAX_TRACKED:
+            _recent_links.pop(next(iter(_recent_links)))
+    return result
+
+
+def _check_link_once(url):
+    """One outbound check of `url` however many callers ask at once (they share its result)."""
+    return _LINK_FLIGHTS.do(('link', url), lambda: _remember_link(_check_one_link(url)))
+
+
+def _check_links(urls, spend_budget=True):
+    """Results for `urls`, in order: a check made in the last LINK_REUSE_SECONDS is reused, the rest are
+    fetched on the shared pool within LINK_REQUEST_DEADLINE_SECONDS. With `spend_budget` the fresh ones
+    must fit the outbound budget, else None (nothing is fetched)."""
+    results, fresh = {}, []
+    for u in urls:
+        hit = _recent_link(u)
+        if hit is not None:
+            results[u] = dict(hit, reused=True)
+        else:
+            fresh.append(u)
+    if fresh and spend_budget and not _LINK_BUDGET.take(len(fresh)):
+        return None
+    futures = {u: _LINK_POOL.submit(_check_link_once, u) for u in fresh}
+    if futures:
+        _wait_futures(list(futures.values()), timeout=LINK_REQUEST_DEADLINE_SECONDS)
+    stamp = datetime.now().isoformat(timespec='seconds')
+    for u, f in futures.items():
+        if f.done() and f.exception() is None:
+            results[u] = f.result()
+        else:
+            results[u] = {"url": u, "status": "UNREACHABLE", "httpCode": 0, "checkedAt": stamp, "refused": "timed out"}
+    return [results[u] for u in urls]
+
+
+def _budget_exhausted():
+    resp = jsonify({"error": "OUTBOUND_BUDGET", "retryAfter": 60,
+                    "message": "GovOS is checking many links right now; try again in a minute."})
+    resp.status_code = 429
+    resp.headers['Retry-After'] = '60'
+    return resp
+
+
+class _PublicRedirects(urllib.request.HTTPRedirectHandler):
+    """Follows a redirect only to a public address, and only LINK_MAX_REDIRECTS times."""
+
+    max_redirections = LINK_MAX_REDIRECTS
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        ok, why = _public_link(newurl)
+        if not ok:
+            raise urllib.error.URLError(f'redirect refused: {why}')
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
 def _check_one_link(url):
     """HEAD then GET with a browser-like UA and a cookie jar, so sites that bounce
-    through a session-cookie redirect (e.g. ASP.NET portals) resolve as a browser would."""
+    through a session-cookie redirect (e.g. ASP.NET portals) resolve as a browser would.
+
+    The checker answers any caller (verify-links, health/sync, health/recheck), so it reaches only
+    public addresses, on the first hop and on every redirect: it used to fetch whatever it was
+    given and report the status of hosts on the server's own network. Only the status line and
+    headers are read -- never the body -- so a huge response costs nothing; each socket operation
+    has LINK_TIMEOUT_SECONDS."""
+    checked_at = datetime.now().isoformat(timespec='seconds')
+    ok, why = _public_link(url)
+    if not ok:
+        return {"url": url, "status": "UNREACHABLE", "httpCode": 0, "checkedAt": checked_at, "refused": why}
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36 GovOS-LinkCheck/1.0",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "en-IN,en;q=0.9"
     }
-    checked_at = datetime.now().isoformat(timespec='seconds')
-    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor())
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(), _PublicRedirects())
     for method in ("HEAD", "GET"):
         try:
             req = urllib.request.Request(url, headers=headers, method=method)
-            with opener.open(req, timeout=10) as resp:
+            with opener.open(req, timeout=LINK_TIMEOUT_SECONDS) as resp:
                 code = resp.getcode()
                 status = "REDIRECT" if resp.geturl() != url and code in (301, 302, 303, 307, 308) else "HEALTHY"
                 return {"url": url, "status": status, "httpCode": code, "checkedAt": checked_at}
@@ -1050,13 +1285,15 @@ def _check_one_link(url):
 @app.route('/api/resources/verify-links', methods=['POST'])
 def verify_resource_links():
     """Live health check for study-resource URLs, run server-side (no browser CORS limits)."""
-    data = request.get_json(silent=True) or {}
-    urls = data.get('urls')
-    if not isinstance(urls, list) or not urls:
-        return jsonify({"error": "urls[] is required"}), 400
-    urls = [u for u in urls if isinstance(u, str) and u.startswith(('http://', 'https://'))][:40]
-    with ThreadPoolExecutor(max_workers=8) as pool:
-        results = list(pool.map(_check_one_link, urls))
+    limited = _link_rate_limited('verify')
+    if limited:
+        return limited
+    urls, error = _link_urls_from_request()
+    if error:
+        return error
+    results = _check_links(urls)
+    if results is None:
+        return _budget_exhausted()
     return jsonify({"results": results, "checked": len(results)})
 
 
@@ -1345,17 +1582,31 @@ def research_run_detail(run_id):
 
 
 def _fetch_source_text(url):
-    """Deterministic page text for one stored finding: the server fetches the page itself (every
-    redirect hop re-validated, public addresses only) and reads its text layer. No Claude call."""
+    """Deterministic page text for one stored finding. No Claude call.
+
+    The page is fetched exactly once, through the guarded fetch (every redirect hop validated and resolved
+    to a public address before connecting, TLS verified, at most SOURCE_MAX_BYTES within
+    SOURCE_MAX_SECONDS), and the bytes it returned are parsed locally. It used to check the URL with that
+    fetch, throw the body away and hand the URL to the document loader, which fetched it a second time
+    with certificate checks off, any redirect followed and no size limit -- so the check guarded nothing.
+    """
     from tools.claude_cli.discovery import fetch_checked
-    from tools.exam_authoring.sources import load_document
-    probe = fetch_checked(url)
+    from tools.exam_authoring.sources import SOURCE_MAX_BYTES, SOURCE_MAX_SECONDS, document_from_bytes
+    probe = fetch_checked(url, max_bytes=SOURCE_MAX_BYTES, keep_body=True, max_seconds=SOURCE_MAX_SECONDS)
     if not probe.ok:
+        if probe.error_kind == 'TLS':
+            return None, 'SOURCE_FETCH_FAILURE', f"the site's TLS certificate could not be verified ({probe.error})"
         return None, 'SOURCE_FETCH_FAILURE', probe.error or ('HTTP %s' % probe.status)
+    if probe.truncated:
+        return None, 'SOURCE_FETCH_FAILURE', f'the document is larger than {SOURCE_MAX_BYTES // (1024 * 1024)} MB, so it was not read'
+    body = probe.body or b''
+    ctype = probe.content_type or ''
+    if body[:5] != b'%PDF-' and not (ctype.startswith('text/') or 'html' in ctype or 'xml' in ctype):
+        return None, 'SOURCE_FETCH_FAILURE', f'the server sent {ctype or "an unknown type"}, not a PDF or a web page'
     try:
-        doc = load_document(probe.final_url or url, use_cache=False)
+        doc = document_from_bytes(probe.final_url or url, body)
     except Exception as exc:                                                   # noqa: BLE001
-        return None, 'SOURCE_FETCH_FAILURE', type(exc).__name__
+        return None, 'SOURCE_FETCH_FAILURE', f'the document could not be read ({type(exc).__name__})'
     if getattr(doc, 'is_scanned', False):
         return None, 'SCANNED_DOCUMENT', 'the document is a scan with no text layer; it was not read'
     return doc.all_text()[:MAX_SOURCE_TEXT_CHARS], None, None
@@ -1666,6 +1917,23 @@ def _fact_row(r):
     }
 
 
+def _reachability(urls):
+    """{url: reachable} for every url, checked in parallel -- before any write. The first INSERT of a
+    fact batch opens SQLite's write transaction; checking sources inside it (up to 20 s each) kept every
+    other writer waiting until it failed with "database is locked"."""
+    urls = sorted({u for u in urls if u})
+    if not urls:
+        return {}
+
+    def one(url):
+        try:
+            return url, _check_one_link(url)['status'] in ('HEALTHY', 'REDIRECT')
+        except Exception:  # noqa: BLE001
+            return url, False
+    with ThreadPoolExecutor(max_workers=min(8, len(urls))) as pool:
+        return dict(pool.map(one, urls))
+
+
 def _store_candidates(cursor, finding, exam_id, exam_name, candidates, reachable_cache, stored, summary):
     """Validate each candidate fact with the seven rules and store it for human review.
 
@@ -1782,8 +2050,9 @@ def _ingest_claude_facts(finding_id, accepted):
         run = cursor.fetchone()
         candidates = [c for c in (_claude_candidate(p) for p in accepted) if c]
         stored, summary = [], {'validated': 0, 'pending': 0, 'conflicting': 0, 'rejected': 0, 'duplicate': 0}
+        reachable_cache = _reachability([finding['url']] if candidates else [])
         _store_candidates(cursor, finding, run['exam_id'] if run else None, run['query'] if run else None,
-                          candidates, {}, stored, summary)
+                          candidates, reachable_cache, stored, summary)
         conn.commit()
         _read_back_facts(cursor, stored, summary)
         return {"stored": len(stored), "summary": summary, "factIds": stored}
@@ -1835,13 +2104,12 @@ def research_facts_extract():
         conn.close()
         return jsonify({"error": "no findings for that id"}), 404
 
-    reachable_cache = {}
     stored, summary = [], {'validated': 0, 'pending': 0, 'conflicting': 0, 'rejected': 0, 'duplicate': 0}
-    for f in findings:
-        finding = dict(f)
+    planned = [(dict(f), _extract_facts(dict(f))) for f in findings]
+    reachable_cache = _reachability([finding['url'] for finding, candidates in planned if candidates])
+    for finding, candidates in planned:
         cursor.execute("SELECT exam_id, query FROM research_runs WHERE id = ?", (finding['run_id'],))
         run = cursor.fetchone()
-        candidates = _extract_facts(finding)
         _store_candidates(cursor, finding, run['exam_id'] if run else None, run['query'] if run else None,
                           candidates, reachable_cache, stored, summary)
     conn.commit()
@@ -1997,6 +2265,14 @@ _LIVE_UA = {
 }
 _health_lock = threading.Lock()
 _health_running = False
+#: After a failed refresh a feed is not fetched again for this long (unless forced): while an
+#: upstream was down, every request used to retry it and wait out its 25 s timeout.
+FEED_RETRY_AFTER_FAILURE_SECONDS = 15 * 60
+#: A forced refresh (?refresh=1) of a copy younger than this serves the copy: no upstream hammering.
+FEED_MIN_FORCED_INTERVAL_SECONDS = 60
+#: One upstream fetch in flight per feed; requests that arrive while it runs share its outcome.
+_feed_flights = SingleFlight()
+_feed_failures: dict = {}          # cache key -> (epoch of the failed refresh, its error)
 
 
 def _now_iso():
@@ -2036,8 +2312,14 @@ def _fetch_ssc_notices():
     req = urllib.request.Request(SSC_NOTICE_API + '?' + urlencode(params), headers=_LIVE_UA)
     with urllib.request.urlopen(req, timeout=25) as resp:
         data = json.loads(resp.read().decode('utf-8', 'ignore'))
+    # Only a reply that carries the board's own list can say the board is empty. Anything else (an error
+    # body, a changed API) is a failed refresh, so the last good copy is kept: it used to be read as an
+    # empty board and stored over it.
+    rows = data.get('data') if isinstance(data, dict) else None
+    if not isinstance(rows, list):
+        raise ValueError('notice board reply carries no list of notices')
     items = []
-    for row in data.get('data') or []:
+    for row in rows:
         headline = ' '.join((row.get('headline') or '').split())
         files = []
         for att in row.get('attachments') or []:
@@ -2059,6 +2341,9 @@ def _fetch_channel_uploads(channel_id):
     req = urllib.request.Request(f'https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}', headers=_LIVE_UA)
     with urllib.request.urlopen(req, timeout=20) as resp:
         root = ET.fromstring(resp.read())
+    # A feed with no entries is a channel with no uploads; a reply that is not an Atom feed says nothing.
+    if root.tag != '{http://www.w3.org/2005/Atom}feed':
+        raise ValueError(f'channel reply is not an Atom feed ({root.tag})')
     ns = {'a': 'http://www.w3.org/2005/Atom', 'yt': 'http://www.youtube.com/xml/schemas/2015'}
     out = []
     for entry in root.findall('a:entry', ns)[:4]:
@@ -2072,20 +2357,78 @@ def _fetch_channel_uploads(channel_id):
     return out
 
 
-def _ssc_notices_cached(force=False):
-    cached = _cache_get('ssc-notices', FEED_MAX_AGE_SECONDS)
+def _feed_failed(cached, error):
+    """The last good copy, saying its refresh failed; or nothing, saying why."""
+    if cached:
+        cached["error"] = f'refresh failed: {error}'
+        return cached
+    return {"payload": [], "fetchedAt": None, "error": str(error), "stale": True}
+
+
+def _feed_record_failure(key, error):
+    """Start the back-off for `key`; failures whose back-off is over are dropped, so the table stays
+    bounded by the feeds failing now."""
+    now = time.time()
+    for k, (failed_at, _) in list(_feed_failures.items()):
+        if now - failed_at >= FEED_RETRY_AFTER_FAILURE_SECONDS:
+            _feed_failures.pop(k, None)
+    _feed_failures[key] = (now, str(error))
+
+
+def _feed_fetch(key, fetch, cached):
+    """Fetch one feed upstream now and store it; a failure is recorded for the back-off and answered
+    with the last good copy, or with nothing, saying why."""
+    latest = _cache_get(key, FEED_MAX_AGE_SECONDS)
+    if latest and not latest["stale"] and (not cached or latest["fetchedAt"] != cached["fetchedAt"]):
+        return latest                          # refreshed by a fetch that finished a moment ago
+    try:
+        items = fetch(cached["payload"] if cached else [])
+    except Exception as e:
+        _feed_record_failure(key, e)
+        return _feed_failed(cached, e)
+    _cache_put(key, items)
+    _feed_failures.pop(key, None)
+    return {"payload": items, "fetchedAt": _now_iso(), "error": None, "stale": False}
+
+
+def _feed_refresh(key, fetch, cached):
+    """One upstream fetch per feed at a time. A request that arrives while it runs waits for it and
+    gets its outcome -- a failure too -- instead of waiting its turn to fetch again: with the upstream
+    down and nothing cached, queued requests used to retry it one after another (up to 60 s of waiting
+    plus another 25 s fetch each). The wait is bounded by the one fetch's own timeout."""
+    return _feed_flights.do(key, lambda: _feed_fetch(key, fetch, cached))
+
+
+def _feed_refresh_behind(key, fetch, cached):
+    """Refresh a stale feed in the background, unless a fetch for it is already in flight."""
+    if not _feed_flights.in_flight(key):
+        threading.Thread(target=_feed_refresh, args=(key, fetch, cached), name=f'govos-feed-{key}',
+                         daemon=True).start()
+
+
+def _feed_cached(key, fetch, *, force=False, in_request=True):
+    """One upstream feed through its cache.
+
+    Fresh: served. Stale, in a request: the last good copy is served at once (marked stale, with
+    its fetch time) and refreshed behind it -- a request used to wait up to 25 s on the upstream.
+    No copy yet, forced, or the background loop: fetched now. A feed whose refresh failed recently
+    is not fetched again until FEED_RETRY_AFTER_FAILURE_SECONDS have passed."""
+    cached = _cache_get(key, FEED_MAX_AGE_SECONDS)
     if cached and not cached["stale"] and not force:
         return cached
-    try:
-        items = _fetch_ssc_notices()
-        _cache_put('ssc-notices', items)
-        return {"payload": items, "fetchedAt": _now_iso(), "error": None, "stale": False}
-    except Exception as e:
-        # keep serving the last good copy, but say it is stale
-        if cached:
-            cached["error"] = f'refresh failed: {e}'
-            return cached
-        return {"payload": [], "fetchedAt": None, "error": str(e), "stale": True}
+    if force and cached and _age_seconds(cached["fetchedAt"]) < FEED_MIN_FORCED_INTERVAL_SECONDS:
+        return cached
+    failed_at, error = _feed_failures.get(key, (0.0, ''))
+    if not force and time.time() - failed_at < FEED_RETRY_AFTER_FAILURE_SECONDS:
+        return _feed_failed(cached, error)
+    if cached and in_request and not force:
+        _feed_refresh_behind(key, fetch, cached)
+        return cached
+    return _feed_refresh(key, fetch, cached)
+
+
+def _ssc_notices_cached(force=False, in_request=True):
+    return _feed_cached('ssc-notices', lambda previous: _fetch_ssc_notices(), force=force, in_request=in_request)
 
 
 UPSC_WHATS_NEW_URL = 'https://www.upsc.gov.in/whats-new'
@@ -2101,6 +2444,10 @@ def _fetch_upsc_whatsnew(previous):
         page = resp.read().decode('utf-8', 'ignore')
     first_seen = {item["id"]: item.get("firstSeen") for item in (previous or []) if item.get("firstSeen")}
     today = _now_iso()[:10]
+    # The list is the page's views rows. A page without them (a maintenance page, a redesign) is a failed
+    # read, not an empty What's New, so the last good copy stays.
+    if 'class="views-row' not in page:
+        raise ValueError("What's New page carries no list rows")
     items = []
     for block in re.split(r'class="views-row', page)[1:]:
         block = block[:4000]
@@ -2131,45 +2478,23 @@ def _fetch_upsc_whatsnew(previous):
     return items
 
 
-def _upsc_whatsnew_cached(force=False):
-    cached = _cache_get('upsc-whatsnew', FEED_MAX_AGE_SECONDS)
-    if cached and not cached["stale"] and not force:
-        return cached
-    try:
-        items = _fetch_upsc_whatsnew(cached["payload"] if cached else [])
-        _cache_put('upsc-whatsnew', items)
-        return {"payload": items, "fetchedAt": _now_iso(), "error": None, "stale": False}
-    except Exception as e:
-        if cached:
-            cached["error"] = f'refresh failed: {e}'
-            return cached
-        return {"payload": [], "fetchedAt": None, "error": str(e), "stale": True}
+def _upsc_whatsnew_cached(force=False, in_request=True):
+    return _feed_cached('upsc-whatsnew', _fetch_upsc_whatsnew, force=force, in_request=in_request)
 
 
-def _channel_uploads_cached(channel_ids, force=False):
-    result = {}
-    to_fetch = []
-    for cid in channel_ids:
-        cached = _cache_get(f'yt-{cid}', FEED_MAX_AGE_SECONDS)
-        if cached and not cached["stale"] and not force:
-            result[cid] = {"items": cached["payload"], "fetchedAt": cached["fetchedAt"]}
-        else:
-            to_fetch.append((cid, cached))
-    if to_fetch:
-        def one(pair):
-            cid, cached = pair
-            try:
-                items = _fetch_channel_uploads(cid)
-                _cache_put(f'yt-{cid}', items)
-                return cid, {"items": items, "fetchedAt": _now_iso()}
-            except Exception as e:
-                if cached:
-                    return cid, {"items": cached["payload"], "fetchedAt": cached["fetchedAt"], "error": str(e)}
-                return cid, {"items": [], "fetchedAt": None, "error": str(e)}
-        with ThreadPoolExecutor(max_workers=8) as pool:
-            for cid, val in pool.map(one, to_fetch):
-                result[cid] = val
-    return result
+def _channel_uploads_cached(channel_ids, force=False, in_request=True):
+    """Each channel through its own cache entry (the same stale-while-refresh rules as the boards)."""
+    def one(cid):
+        got = _feed_cached(f'yt-{cid}', lambda previous, c=cid: _fetch_channel_uploads(c),
+                           force=force, in_request=in_request)
+        out = {"items": got["payload"], "fetchedAt": got["fetchedAt"]}
+        if got.get("error"):
+            out["error"] = got["error"]
+        return cid, out
+    if len(channel_ids) <= 1:
+        return dict(one(cid) for cid in channel_ids)
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        return dict(pool.map(one, channel_ids))
 
 
 def _health_rows(urls=None):
@@ -2200,8 +2525,7 @@ def _recheck_links(urls):
             return False
         _health_running = True
     try:
-        with ThreadPoolExecutor(max_workers=8) as pool:
-            results = list(pool.map(_check_one_link, urls))
+        results = _check_links(urls, spend_budget=False)
         _store_health(results)
         print(f"[LiveResources] link health: {len(results)} checked at {_now_iso()}")
         return True
@@ -2216,22 +2540,28 @@ def _health_due():
     return [r["url"] for r in rows if not r["checkedAt"] or _age_seconds(r["checkedAt"]) > HEALTH_MAX_AGE_SECONDS]
 
 
+def _background_channel_refresh():
+    conn = get_db_connection()
+    keys = [r["cache_key"][3:] for r in conn.execute("SELECT cache_key FROM live_feed_cache WHERE cache_key LIKE 'yt-%'").fetchall()]
+    conn.close()
+    if keys:
+        _channel_uploads_cached(keys, in_request=False)
+
+
 def _background_refresh_loop():
     time.sleep(20)  # let the server come up first
+    # Each step on its own: one failure (a locked database, an upstream down) used to skip every
+    # later step for the hour.
+    steps = (('link health', lambda: (lambda due: _recheck_links(due[:80]) if due else None)(_health_due())),
+             ('SSC notices', lambda: _ssc_notices_cached(in_request=False)),
+             ('UPSC What\'s New', lambda: _upsc_whatsnew_cached(in_request=False)),
+             ('channel uploads', _background_channel_refresh))
     while True:
-        try:
-            due = _health_due()
-            if due:
-                _recheck_links(due[:80])
-            _ssc_notices_cached()
-            _upsc_whatsnew_cached()
-            conn = get_db_connection()
-            keys = [r["cache_key"][3:] for r in conn.execute("SELECT cache_key FROM live_feed_cache WHERE cache_key LIKE 'yt-%'").fetchall()]
-            conn.close()
-            if keys:
-                _channel_uploads_cached(keys)
-        except Exception as e:
-            print(f"[LiveResources] background refresh error: {e}")
+        for name, step in steps:
+            try:
+                step()
+            except Exception as e:
+                print(f"[LiveResources] background refresh error ({name}): {e}")
         time.sleep(3600)  # re-evaluate hourly; each feed refreshes only once its own interval has passed
 
 
@@ -2259,20 +2589,32 @@ def live_resources_status():
 @app.route('/api/resources/health/sync', methods=['POST'])
 def resource_health_sync():
     """Register the library's URLs for scheduled checking and return what is known now.
-    New URLs are checked in the background; the client polls again shortly after."""
-    data = request.get_json(silent=True) or {}
-    urls = [u for u in (data.get('urls') or []) if isinstance(u, str) and u.startswith(('http://', 'https://'))][:120]
-    if not urls:
-        return jsonify({"error": "urls[] is required"}), 400
+    New URLs are checked in the background; the client polls again shortly after.
+
+    Only URLs that pass the URL rule are registered (a refused one would be re-checked hourly for
+    nothing), and none beyond LINK_MAX_TRACKED rows; the background check of new ones spends the
+    outbound budget like any other request, and waits for the hourly sweep when it is spent."""
+    from tools.claude_cli.discovery import validate_url_syntax
+    limited = _link_rate_limited('sync')
+    if limited:
+        return limited
+    urls, error = _link_urls_from_request()
+    if error:
+        return error
     conn = get_db_connection()
+    tracked = conn.execute('SELECT COUNT(*) FROM resource_link_health').fetchone()[0]
+    known = {r[0] for r in conn.execute('SELECT url FROM resource_link_health WHERE url IN (%s)' % ','.join('?' * len(urls)), urls)}
     for u in urls:
+        if u in known or tracked >= LINK_MAX_TRACKED or not validate_url_syntax(u)[0]:
+            continue
         conn.execute('INSERT OR IGNORE INTO resource_link_health (url, status, http_code, checked_at) VALUES (?, ?, ?, ?)', (u, 'PENDING', 0, None))
+        tracked += 1
     conn.commit()
     conn.close()
     rows = _health_rows(urls)
     pending = [r["url"] for r in rows if not r["checkedAt"]]
-    if pending and not _health_running:
-        threading.Thread(target=_recheck_links, args=(pending[:80],), daemon=True).start()
+    if pending and not _health_running and _LINK_BUDGET.take(len(pending)):
+        threading.Thread(target=_recheck_links, args=(pending,), daemon=True).start()
     checked = [r["checkedAt"] for r in rows if r["checkedAt"]]
     return jsonify({"results": [r for r in rows if r["checkedAt"]], "pending": len(pending),
                     "lastRun": max(checked) if checked else None, "intervalHours": HEALTH_MAX_AGE_SECONDS // 3600})
@@ -2280,21 +2622,25 @@ def resource_health_sync():
 
 @app.route('/api/resources/health/recheck', methods=['POST'])
 def resource_health_recheck():
-    """Force an immediate sweep of the given URLs (the library's "Verify all links now")."""
-    data = request.get_json(silent=True) or {}
-    urls = [u for u in (data.get('urls') or []) if isinstance(u, str) and u.startswith(('http://', 'https://'))][:80]
-    if not urls:
-        return jsonify({"error": "urls[] is required"}), 400
-    with ThreadPoolExecutor(max_workers=8) as pool:
-        results = list(pool.map(_check_one_link, urls))
-    _store_health(results)
+    """Force an immediate sweep of the given URLs (the library's "Verify all links now"). A URL checked in
+    the last LINK_REUSE_SECONDS is answered from that check."""
+    limited = _link_rate_limited('recheck')
+    if limited:
+        return limited
+    urls, error = _link_urls_from_request()
+    if error:
+        return error
+    results = _check_links(urls)
+    if results is None:
+        return _budget_exhausted()
+    _store_health([r for r in results if not r.get("refused")])
     return jsonify({"results": results, "checked": len(results)})
 
 
 @app.route('/api/resources/live/ssc-notices', methods=['GET'])
 def live_ssc_notices():
     scope = (request.args.get('scope') or 'cgl').lower()
-    limit = max(1, min(40, int(request.args.get('limit') or 8)))
+    limit = _int_arg('limit', 8, 1, 40)
     force = request.args.get('refresh') == '1'
     cached = _ssc_notices_cached(force=force)
     items = cached["payload"]
@@ -2308,7 +2654,7 @@ def live_ssc_notices():
 @app.route('/api/resources/live/upsc-notices', methods=['GET'])
 def live_upsc_notices():
     scope = (request.args.get('scope') or 'cse').lower()
-    limit = max(1, min(40, int(request.args.get('limit') or 8)))
+    limit = _int_arg('limit', 8, 1, 40)
     cached = _upsc_whatsnew_cached(force=request.args.get('refresh') == '1')
     items = cached["payload"]
     if scope == 'cse':
@@ -2321,7 +2667,14 @@ def live_upsc_notices():
 
 @app.route('/api/resources/live/channel-uploads', methods=['GET'])
 def live_channel_uploads():
-    ids = [i.strip() for i in (request.args.get('ids') or '').split(',') if i.strip().startswith('UC')][:16]
+    limited = _link_rate_limited('channels')
+    if limited:
+        return limited
+    requested = [i.strip() for i in (request.args.get('ids') or '').split(',') if i.strip()]
+    if len(requested) > 16:
+        return jsonify({"error": "TOO_MANY_CHANNELS", "limit": 16}), 413
+    # A real channel id only: each distinct id is one YouTube fetch and one failure-cache entry.
+    ids = list(dict.fromkeys(i for i in requested if _YOUTUBE_CHANNEL_ID.fullmatch(i)))
     if not ids:
         return jsonify({"channels": {}})
     return jsonify({"channels": _channel_uploads_cached(ids, force=request.args.get('refresh') == '1'),
@@ -2331,17 +2684,30 @@ def live_channel_uploads():
 _ADDITION_SOURCE_KIND = {'OFFICIAL': 'OFFICIAL', 'TRUSTED_PUBLIC': 'TRUSTED_PUBLIC', 'UNVERIFIED': 'THIRD_PARTY'}
 
 
-def _addition_source_kind(url):
-    """OFFICIAL, TRUSTED_PUBLIC or THIRD_PARTY, from the host of `url` by the server's own rule. It is computed
-    on every read and never stored or taken from a request, so a coaching site can not be added as official."""
-    return _ADDITION_SOURCE_KIND[_classify_trust(url)]
+def _addition_source_kind(url, exam_id=''):
+    """OFFICIAL, GOVERNMENT_SITE, TRUSTED_PUBLIC or THIRD_PARTY, by the server's own rule. It is computed on every
+    read and never stored or taken from a request, so a coaching site can not be added as official.
+
+    Officiality is ownership: OFFICIAL only for a link on the estate of the exam's own authority (its
+    officialDomain's registered domain). Any other Indian government host is GOVERNMENT_SITE -- a ministry's or
+    another commission's page is not this authority's statement. It used to be OFFICIAL for any .gov.in/.nic.in."""
+    from tools.exam_authoring.sources import estate_of
+    from tools.exam_builder.source_trust import bare_host
+    host_kind = _classify_trust(url)
+    exam = _sources_exam_store().get(exam_id) if exam_id else None
+    estate = _exam_estate(exam) if exam else ''
+    if estate and estate_of(bare_host(url)) == estate:
+        return 'OFFICIAL'
+    if host_kind == 'OFFICIAL':
+        return 'GOVERNMENT_SITE'
+    return _ADDITION_SOURCE_KIND[host_kind]
 
 
 def _addition_row(r):
     return {"id": r["id"], "title": r["title"], "url": r["url"], "subject": r["subject"],
             "resourceFormat": r["resource_format"], "author": r["author"], "description": r["description"],
             "addedAt": r["added_at"], "addedFrom": r["added_from"], "findingId": r["finding_id"],
-            "examId": r["exam_id"], "sourceKind": _addition_source_kind(r["url"])}
+            "examId": r["exam_id"], "sourceKind": _addition_source_kind(r["url"], r["exam_id"] or '')}
 
 
 @app.route('/api/resources/additions', methods=['GET', 'POST'])
@@ -2371,7 +2737,27 @@ def resource_additions():
         return jsonify({"error": "examId is required: a resource belongs to one exam's library"}), 400
     if not re.fullmatch(r'[A-Za-z0-9._:-]{1,120}', exam_id):
         return jsonify({"error": "examId must be a plain exam identifier"}), 400
-    kind = _addition_source_kind(url)
+    # An addition that says it comes from research must come from a finding a person promoted, and
+    # carry that finding's own link. The Trust Panel only offers the button for PROMOTED findings,
+    # but the server took any findingId -- or a different URL under a promoted one's number.
+    finding_id = data.get('findingId')
+    if finding_id is not None:
+        try:
+            finding_id = int(finding_id)
+        except (TypeError, ValueError):
+            return jsonify({"error": "findingId must be a research finding's number"}), 400
+        conn = get_db_connection()
+        finding = conn.execute('SELECT url, review_status FROM research_findings WHERE id = ?',
+                               (finding_id,)).fetchone()
+        conn.close()
+        if finding is None:
+            return jsonify({"error": f"there is no research finding #{finding_id}"}), 400
+        if finding["review_status"] != 'PROMOTED':
+            return jsonify({"error": "a research finding reaches candidates only after a person promotes it",
+                            "reviewStatus": finding["review_status"]}), 409
+        if (finding["url"] or '').strip() != url:
+            return jsonify({"error": "an addition from a finding must carry that finding's own link"}), 409
+    kind = _addition_source_kind(url, exam_id)
     lower = url.lower()
     # Only an official host may be filed as an official portal; anything else is an external page.
     fmt = data.get('resourceFormat') or ('DIRECT_PDF' if lower.endswith('.pdf')
@@ -2387,14 +2773,27 @@ def resource_additions():
         "author": (data.get('author') or urlparse(url).netloc)[:160],
         "description": (data.get('description') or (
             f'Added by the GovOS verifier from a live official-domain search on {_now_iso()[:10]}.' if kind == 'OFFICIAL'
+            else f'A government website added by the GovOS verifier on {_now_iso()[:10]}. It is not this exam\'s '
+                 f'authority\'s own site, so it is not the authority\'s statement, and GovOS has not fact-checked it.'
+            if kind == 'GOVERNMENT_SITE'
             else f'A third-party page added by the GovOS verifier on {_now_iso()[:10]}. It is not an official source '
                  f'and GovOS has not fact-checked what it publishes.'))[:1200],
         "added_at": _now_iso(),
         "added_from": data.get('addedFrom') or 'TRUST_PANEL',
-        "finding_id": data.get('findingId'),
+        "finding_id": finding_id,
         "exam_id": exam_id
     }
+    row["id"] = f"{row['id']}-{os.urandom(2).hex()}"     # two adds in one millisecond collided on the id
     conn = get_db_connection()
+    # The same link added to the same exam twice (a double click, a retried request) is one addition: the
+    # check and the insert share one write transaction, so two requests at once cannot both pass the check.
+    conn.execute('BEGIN IMMEDIATE')
+    same = conn.execute('SELECT * FROM resource_additions WHERE retired = 0 AND exam_id = ? AND url = ?',
+                        (exam_id, url)).fetchone()
+    if same is not None:
+        conn.rollback()
+        conn.close()
+        return jsonify({"addition": _addition_row(same), "deduplicated": True, "health": _health_rows([url])})
     conn.execute("""INSERT INTO resource_additions (id, title, url, subject, resource_format, author, description, added_at, added_from, finding_id, exam_id)
                     VALUES (:id, :title, :url, :subject, :resource_format, :author, :description, :added_at, :added_from, :finding_id, :exam_id)""", row)
     conn.commit()
@@ -2532,7 +2931,7 @@ def syllabus_revisions():
             "isHighYield": bool(topic.get('isHighYield')) if topic.get('isHighYield') is not None else None
         }
     row = {
-        "id": f"rev-{int(time.time() * 1000)}",
+        "id": f"rev-{int(time.time() * 1000)}-{os.urandom(2).hex()}",
         "exam_id": exam_id,
         "kind": kind,
         "topic_id": topic_id if kind != 'ADD' else None,
@@ -2545,6 +2944,16 @@ def syllabus_revisions():
         "applied_by": (data.get('appliedBy') or 'GovOS verifier')[:120]
     }
     conn = get_db_connection()
+    # An identical active revision is the same revision: a second ADD used to put the topic on the syllabus twice.
+    conn.execute('BEGIN IMMEDIATE')
+    same = conn.execute('SELECT * FROM syllabus_revisions WHERE retired = 0 AND exam_id = ? AND kind = ? '
+                        'AND topic_id IS ? AND topic_json IS ? AND notice_url IS ? AND note IS ?',
+                        (row["exam_id"], row["kind"], row["topic_id"], row["topic_json"], row["notice_url"],
+                         row["note"])).fetchone()
+    if same is not None:
+        conn.rollback()
+        conn.close()
+        return jsonify({"revision": _revision_row(same), "deduplicated": True})
     conn.execute("""INSERT INTO syllabus_revisions (id, exam_id, kind, topic_id, topic_json, note, notice_title, notice_url, notice_date, applied_at, applied_by)
                     VALUES (:id, :exam_id, :kind, :topic_id, :topic_json, :note, :notice_title, :notice_url, :notice_date, :applied_at, :applied_by)""", row)
     conn.commit()
@@ -2658,19 +3067,30 @@ def retire_exam_overlay(overlay_id):
 # through the server-side engine (build_exam), which runs the existing publication gate.
 # =============================================================================
 
+_exam_registries: dict = {}
+
+
+def _exam_registry():
+    """One registry object per database: constructing one runs its table DDL and a commit, which every
+    GET of the exam list used to do."""
+    from tools.exam_builder.materialize import ExamRegistry
+    registry = _exam_registries.get(DB_FILE)
+    if registry is None:
+        registry = _exam_registries[DB_FILE] = ExamRegistry(DB_FILE)
+    return registry
+
+
 @app.route('/api/exams', methods=['GET'])
 def list_runtime_exams():
-    from tools.exam_builder.materialize import ExamRegistry
-    records = ExamRegistry(DB_FILE).list_published()
+    records = _exam_registry().list_published()
     return jsonify({"exams": [r.exam for r in records], "origin": "MACHINE_ACQUIRED",
                     "count": len(records)})
 
 
 @app.route('/api/exams/<exam_id>', methods=['GET'])
 def get_runtime_exam(exam_id):
-    from tools.exam_builder.materialize import ExamRegistry
     cycle = request.args.get('cycle')
-    rec = ExamRegistry(DB_FILE).get(exam_id, cycle)
+    rec = _exam_registry().get(exam_id, cycle)
     if rec is None:
         return jsonify({"error": "no published runtime exam with that id" + (f" for cycle {cycle}" if cycle else ""),
                         "examId": exam_id}), 404
@@ -2761,27 +3181,61 @@ def queue_authority_discovery():
                     "pollUrl": "/api/claude/jobs/" + job.id}), 202
 
 
+_source_stores: dict = {}
+#: Projections of stored walks, keyed by (database, exam, run id, the exam inputs the projection reads).
+#: A run is never overwritten, so a key's projection never changes; a new walk is a new run id, and a
+#: restart (a classification fix) clears the memo. Every section of an exam page asks for this, and
+#: each request used to load and re-project the whole walk (~600 nodes for one commission).
+_projection_memo: "OrderedDict[tuple, dict]" = OrderedDict()
+_projection_memo_lock = threading.Lock()
+PROJECTION_MEMO_SIZE = 32
+
+
+def _source_store():
+    """One store per database: constructing one runs its table DDL and a commit."""
+    from tools.exam_builder.source_graph import SourceGraphStore
+    store = _source_stores.get(DB_FILE)
+    if store is None:
+        store = _source_stores[DB_FILE] = SourceGraphStore(DB_FILE)
+    return store
+
+
 @app.route('/api/sources/exam/<exam_id>', methods=['GET'])
 def exam_discovered_sources(exam_id):
     """What the latest walk of this exam's authority offers its sections, or an honest "not walked"."""
     from tools.exam_builder.authority_discovery import project_for_exam
-    from tools.exam_builder.source_graph import SourceGraphStore
     import re as _re
     exam = _sources_exam_store().get(exam_id)
     if exam is None:
         return jsonify({"error": "no such exam", "examId": exam_id}), 404
     estate = _exam_estate(exam)
-    run = SourceGraphStore(DB_FILE).latest(estate) if estate else None
-    if run is None:
+    store = _source_store()
+    run_id = store.latest_id(estate) if estate else None
+    if run_id is None:
         return jsonify({"examId": exam_id, "state": "NOT_DISCOVERED", "estate": estate,
                         "note": "GovOS has not walked this authority's site yet. That is a gap here, "
                                 "not a statement about what the authority publishes."})
     m = _re.search(r'-(20[0-9]{2})(?:-[0-9]{2,4})?$', exam_id)
-    projection = project_for_exam(run, exam_id=exam_id, title=str(exam.get('title') or ''),
-                                  authority_name=str(exam.get('authorityName') or ''),
-                                  authority_domain=str(exam.get('officialDomain') or ''),
-                                  cycle=str(exam.get('cycle') or (m.group(1) if m else '')))
-    projection.update({"state": "DISCOVERED", "estate": estate})
+    inputs = (str(exam.get('title') or ''), str(exam.get('authorityName') or ''),
+              str(exam.get('officialDomain') or ''), str(exam.get('cycle') or (m.group(1) if m else '')))
+    key = (DB_FILE, exam_id, run_id, estate) + inputs
+    with _projection_memo_lock:
+        projection = _projection_memo.get(key)
+        if projection is not None:
+            _projection_memo.move_to_end(key)
+    if projection is None:
+        run = store.get(run_id)
+        if run is None:
+            return jsonify({"examId": exam_id, "state": "NOT_DISCOVERED", "estate": estate,
+                            "note": "GovOS has not walked this authority's site yet. That is a gap here, "
+                                    "not a statement about what the authority publishes."})
+        projection = project_for_exam(run, exam_id=exam_id, title=inputs[0], authority_name=inputs[1],
+                                      authority_domain=inputs[2], cycle=inputs[3])
+        projection.update({"state": "DISCOVERED", "estate": estate})
+        with _projection_memo_lock:
+            _projection_memo[key] = projection
+            while len(_projection_memo) > PROJECTION_MEMO_SIZE:
+                _projection_memo.popitem(last=False)
     return jsonify(projection)
 
 
@@ -2820,121 +3274,15 @@ def source_run_coverage(run_id):
 
 MAX_UPLOAD_BYTES = 8 * 1024 * 1024
 
-def _pdf_text(blob):
-    """Visible text of a text-based PDF using PyMuPDF (fitz), with stream fallback."""
-    try:
-        import fitz
-        doc = fitz.open(stream=blob, filetype="pdf")
-        pages_text = []
-        for page in doc:
-            pages_text.append(page.get_text("text"))
-        doc.close()
-        full = "\n".join(pages_text).strip()
-        if full:
-            return full
-    except Exception as e:
-        print(f"[PDF] PyMuPDF extraction note: {e}")
-
-    # Fallback to stream regex if fitz is not available or encounters issues
-    out = []
-    for match in re.finditer(rb'stream\r?\n(.*?)\r?\nendstream', blob, re.S):
-        chunk = match.group(1)
-        try:
-            chunk = zlib.decompress(chunk)
-        except Exception:
-            pass
-        if b'Tj' not in chunk and b'TJ' not in chunk:
-            continue
-        text = chunk.decode('latin-1', 'ignore')
-        for segment in re.findall(r'\((?:\\.|[^()\\])*\)', text):
-            out.append(re.sub(r'\\([()\\])', r'\1', segment[1:-1]))
-        out.append('\n')
-    return ' '.join(out)
-
-
-# ---- OCR for scans and photos. ----------------------------------------------
-_OCR_ENGINE = None
-_OCR_STATE = {"checked": False, "available": False, "reason": None}
-
-
-def _ocr_available():
-    """True when rapidocr_onnxruntime and fitz/pypdfium2/PIL import; cached after the first look."""
-    global _OCR_ENGINE
-    if _OCR_STATE["checked"]:
-        return _OCR_STATE["available"]
-    _OCR_STATE["checked"] = True
-    try:
-        from rapidocr_onnxruntime import RapidOCR  # noqa: F401
-        import PIL  # noqa: F401
-        _OCR_ENGINE = RapidOCR()
-        _OCR_STATE["available"] = True
-    except Exception as exc:
-        _OCR_STATE["reason"] = str(exc)[:200]
-    return _OCR_STATE["available"]
+# Decoding an upload -- PDF text, OCR of a scan or a photo -- lives in tools/scorecard_decode.py: every
+# attacker-controlled size is bounded there (streamed, capped inflate; image dimensions checked before
+# any decode or upscale) and the third-party decoders run in a memory-capped, time-limited child process,
+# so no upload can exhaust this server's memory. Its module docstring has the limits and why.
+from tools.scorecard_decode import (UploadRejected, check_image_size, decode_isolated, image_header_size,
+                                    ocr_available as _ocr_available, preflight_pdf)
 
 
 OCR_INSTALL_HINT = "pip install rapidocr-onnxruntime pymupdf pillow numpy, then restart python app.py"
-
-
-def _ocr_image(pil_image):
-    """Text lines from one image, top to bottom, as RapidOCR read them."""
-    import numpy as np
-    from PIL import ImageEnhance
-    img = pil_image.convert('RGB')
-    if img.width < 1600:
-        ratio = 1600 / img.width
-        img = img.resize((1600, int(img.height * ratio)))
-    
-    # Slight contrast enhancement to make text distinct
-    try:
-        enhancer = ImageEnhance.Contrast(img)
-        img_contrasted = enhancer.enhance(1.2)
-        result, _ = _OCR_ENGINE(np.array(img_contrasted))
-    except Exception:
-        result = None
-    
-    if not result:
-        result, _ = _OCR_ENGINE(np.array(img))
-    if not result:
-        return []
-    
-    result.sort(key=lambda item: (round(item[0][0][1] / 15), item[0][0][0]))
-    return [item[1] for item in result if item[1] and item[1].strip()]
-
-
-def _ocr_pdf(blob, max_pages=3):
-    """Render the first pages of a scanned PDF at high quality and read them."""
-    try:
-        import fitz
-        from PIL import Image
-        doc = fitz.open(stream=blob, filetype="pdf")
-        lines = []
-        for index in range(min(len(doc), max_pages)):
-            page = doc[index]
-            pix = page.get_pixmap(dpi=200)
-            img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
-            lines.extend(_ocr_image(img))
-            lines.append('')
-        doc.close()
-        return lines
-    except Exception:
-        import pypdfium2 as pdfium
-        pdf = pdfium.PdfDocument(blob)
-        lines = []
-        try:
-            for index in range(min(len(pdf), max_pages)):
-                page = pdf[index]
-                bitmap = page.render(scale=2.2)
-                lines.extend(_ocr_image(bitmap.to_pil()))
-                lines.append('')
-        finally:
-            pdf.close()
-        return lines
-
-
-def _ocr_bytes_as_image(raw):
-    from PIL import Image
-    return _ocr_image(Image.open(io.BytesIO(raw)))
 
 
 def _clean_ocr_text(text):
@@ -3316,34 +3664,38 @@ def parse_result_document():
     if len(raw) > MAX_UPLOAD_BYTES:
         return jsonify({"ok": False, "reason": "TOO_LARGE", "message": "Scorecards are small files; this one is over 8 MB."}), 400
 
-    method = "TEXT_LAYER"
-    if raw[:4] != b'%PDF':
-        is_image = raw[:3] == b'\xff\xd8\xff' or raw[:8] == b'\x89PNG\r\n\x1a\n' or raw[:4] == b'RIFF' or filename.endswith(('.png', '.jpg', '.jpeg', '.webp'))
-        if not is_image:
-            return jsonify({"ok": False, "reason": "NOT_A_PDF",
-                            "message": "That is not a PDF or an image. Upload the scorecard PDF from the SSC portal, a photo of it, or type your marks in."}), 200
-        if not _ocr_available():
-            return jsonify({"ok": False, "reason": "OCR_NOT_INSTALLED",
-                            "message": f"This is a photo or screenshot, and the OCR engine is not installed on this GovOS server, so it cannot be read yet. To enable it: {OCR_INSTALL_HINT}. Until then, type your marks in."}), 200
-        try:
-            lines = _ocr_bytes_as_image(raw)
-        except Exception as exc:
-            return jsonify({"ok": False, "reason": "OCR_FAILED", "message": f"The image could not be read ({str(exc)[:120]}). Try a sharper, straighter photo, or type your marks in."}), 200
-        text = '\n'.join(lines)
-        method = "OCR"
-    else:
-        text = _pdf_text(raw)
-        if len(text.strip()) < 30:
-            # No text layer: a scan, or an image inside a PDF wrapper. Read the pixels.
+    def refused(answer):
+        return jsonify({"ok": False, "reason": answer.get('reason') or 'UNREADABLE',
+                        "message": answer.get('message') or 'That file could not be read.'}), int(answer.get('status') or 422)
+
+    try:
+        if raw[:4] != b'%PDF':
+            is_image = raw[:3] == b'\xff\xd8\xff' or raw[:8] == b'\x89PNG\r\n\x1a\n' or raw[:4] == b'RIFF' or filename.endswith(('.png', '.jpg', '.jpeg', '.webp'))
+            if not is_image:
+                return jsonify({"ok": False, "reason": "NOT_A_PDF",
+                                "message": "That is not a PDF or an image. Upload the scorecard PDF from the SSC portal, a photo of it, or type your marks in."}), 200
             if not _ocr_available():
                 return jsonify({"ok": False, "reason": "OCR_NOT_INSTALLED",
+                                "message": f"This is a photo or screenshot, and the OCR engine is not installed on this GovOS server, so it cannot be read yet. To enable it: {OCR_INSTALL_HINT}. Until then, type your marks in."}), 200
+            # Dimensions from the header, before a pixel is decoded: refuse what OCR would have to
+            # allocate an unreasonable image for (the 10 x 20000 strip, upscaled 160x).
+            width, height, _ = image_header_size(raw)
+            check_image_size(width, height)
+            answer = decode_isolated('image', raw, ocr=True)
+        else:
+            # Every compressed stream measured, with a capped streaming inflater, before any reader decodes it.
+            preflight_pdf(raw)
+            ocr = _ocr_available()
+            answer = decode_isolated('pdf', raw, ocr=ocr)
+            if answer.get('ok') and answer.get('method') == 'TEXT_LAYER' and len((answer.get('text') or '').strip()) < 30 and not ocr:
+                return jsonify({"ok": False, "reason": "OCR_NOT_INSTALLED",
                                 "message": f"This PDF holds no text — it is a scan or an image inside a PDF wrapper — and the OCR engine is not installed on this GovOS server. To enable it: {OCR_INSTALL_HINT}. Until then, type your marks in."}), 200
-            try:
-                lines = _ocr_pdf(raw)
-            except Exception as exc:
-                return jsonify({"ok": False, "reason": "OCR_FAILED", "message": f"The scan could not be read ({str(exc)[:120]}). Type your marks in instead."}), 200
-            text = '\n'.join(lines)
-            method = "OCR"
+    except UploadRejected as rej:
+        return jsonify({"ok": False, "reason": rej.reason, "message": rej.message}), rej.status
+    if not answer.get('ok'):
+        return refused(answer)
+    text = answer.get('text') or ''
+    method = answer.get('method') or 'TEXT_LAYER'
 
     if len(text.strip()) < 8:
         return jsonify({"ok": False, "reason": "NO_TEXT_FOUND",
@@ -3363,22 +3715,54 @@ def parse_result_document():
         "storedOnServer": False
     })
 
-# Fallback for SPA routing
+def _serve_frontend(path):
+    """The built frontend, and nothing else.
+
+    A file is served only from inside dist/ (`send_from_directory` refuses traversal). A path with no
+    file extension is a page of the app and gets index.html. Anything else -- /app.py, /govos.db, /.env,
+    a dotted segment, a file dist/ does not hold -- is a 404, never a file from the repository. With no
+    build, every page is a 503 saying so: it used to fall back to the repository root.
+    """
+    if not os.path.isfile(os.path.join(DIST_DIR, 'index.html')):
+        return jsonify({"error": "FRONTEND_NOT_BUILT",
+                        "message": "The GovOS frontend has not been built on this server. Run `npm run build`, "
+                                   "or use `npm run dev` for development; the API under /api/ is unaffected."}), 503
+    parts = [p for p in path.replace('\\', '/').split('/') if p]
+    if any(p.startswith('.') or ':' in p for p in parts):
+        return jsonify({"error": "NOT_FOUND"}), 404
+    if parts and os.path.isfile(os.path.join(DIST_DIR, *parts)):
+        return send_from_directory(DIST_DIR, '/'.join(parts))
+    if parts and '.' in parts[-1]:
+        return jsonify({"error": "NOT_FOUND"}), 404
+    return send_from_directory(DIST_DIR, 'index.html')
+
+
 @app.route('/<path:path>')
 def serve_static_or_fallback(path):
-    target_dir = DIST_DIR if os.path.exists(DIST_DIR) else BASE_DIR
-    file_path = os.path.join(target_dir, path)
-    if os.path.exists(file_path) and not os.path.isdir(file_path):
-        return send_from_directory(target_dir, path)
-    if os.path.exists(os.path.join(DIST_DIR, 'index.html')):
-        return send_from_directory(DIST_DIR, 'index.html')
-    return send_from_directory(BASE_DIR, 'index.html')
+    return _serve_frontend(path)
+
+
+_LOOPBACK_HOSTS = ('127.0.0.1', 'localhost', '::1')
+
+
+def _bind_host(env=None):
+    """The address `python app.py` listens on: this machine only (127.0.0.1) unless GOVOS_HOST says
+    otherwise. It used to be 0.0.0.0, which put every unauthenticated route -- candidate data, the link
+    checker, Claude ask -- on the LAN. A deployment that must listen publicly sets GOVOS_HOST=0.0.0.0 (in
+    .env or the environment) and should also set GOVOS_CLAUDE_ADMIN_TOKEN."""
+    env = os.environ if env is None else env
+    return (env.get('GOVOS_HOST') or '').strip() or '127.0.0.1'
+
 
 if __name__ == '__main__':
-    # 5000 matches the /api proxy target in vite.config.ts and avoids colliding
+    # 5000 matches the /api proxy target in vite.config.ts (127.0.0.1:5000) and avoids colliding
     # with the Vite dev server, which also listens on 3000.
     port = int(os.environ.get('PORT', 5000))
-    print(f"GovOS Unified Server + SQLite starting at http://localhost:{port}")
+    host = _bind_host()
+    print(f"GovOS Unified Server + SQLite starting at http://{'localhost' if host in _LOOPBACK_HOSTS else host}:{port}")
+    if host not in _LOOPBACK_HOSTS:
+        print(f"[security] Listening on {host}: reachable from other machines. The candidate API has no "
+              "authentication; set GOVOS_CLAUDE_ADMIN_TOKEN and put it behind a proxy you control.")
     _start_background_refresh()
     _claude_queue().ensure_started()      # recovers jobs a previous process left RUNNING
-    app.run(host='0.0.0.0', port=port, debug=False)
+    app.run(host=host, port=port, debug=False)

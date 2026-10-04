@@ -44,7 +44,7 @@ npm run build              # -> dist/index.html, fully self-contained
 npx tsc --noEmit           # type check (NOT part of build — currently clean, keep it so)
 npm run export:authored    # exam_data/authored_exams.json from src/data.ts (also runs before `npm run build`)
 npm run check:frontend     # headless checks of the Claude-facing frontend contract (assistant fallback, services fail soft)
-python -m pytest tools test_research_facts.py test_app_claude.py -q   # backend suite; never starts the real Claude CLI
+python -m pytest tools test_*.py -q   # backend suite (tools/ and every root test file); never starts the real Claude CLI
 python -m tools.exam_builder.secondary_ingestion --source manabadi.co.in --exam exam-websitenew-tgpsc-group-i-2024 --walk
                            # read one reviewed secondary source for one exam; read-only, writes exam_data/secondary/*.json
 
@@ -115,6 +115,10 @@ Rules that must survive any change:
 
 ## Architecture
 
+**`PIPELINE.md` is the map of the whole information pipeline** — collect (build time), store, live
+flows, serve, show — with every stage's code and the bottlenecks found and fixed on 2026-10-03 (and the
+ones found and left, with why). Read it before changing how a fact reaches a candidate.
+
 Two halves joined only by `fetch('/api/...')` calls, all of which live in `services.ts`.
 
 ```
@@ -170,6 +174,83 @@ Checks: `test_runtime_evidence` (the rules, on an invented authority), `test_tgp
 change to how evidence is shown can never hide a changed fact), and the scratchpad
 `evidence_ui_test.tsx` (every section of SSC and TGPSC renders only its own exam's evidence; the
 Direct/Reconciled/Derived panels; missing evidence is never a button or "verified").
+
+### Nothing stronger than the evidence (the evidence boundary)
+A candidate-facing statement may not claim more than GovOS holds for that exam and cycle. What was
+overclaiming, and the rule now:
+
+- **No default exam.** An alert, an assistant action or the restored session naming an exam GovOS does not
+  hold opens **nothing** and says so (`notificationDestination`, `assistantDestination`; `main.tsx`'s
+  `examNotice` banner, `data-exam-notice="unresolved"`). Alerts used to open `ALL_EXAMS[0]` (SSC CGL).
+  `getTrackedExams()` returns `[]` for nothing tracked — it returned SSC CGL, so every candidate "tracked"
+  it. The calendar's Guide button and the popular-exam cards never fall back to another exam by position.
+  My Exams' "the one you last opened" is the stored current exam, not the shell's starting exam (SSC CGL),
+  so a candidate who opened nothing sees the empty shelf.
+- **An alert says only what is true now.** `generatePersonalizedNotificationsForTrackedExams` used to emit
+  every reminder whatever the date, "sent" on hard-coded September 2026 times — a window closed in February
+  read "24 Hours Left", a result due next year read "Declared". Each reminder now shows only inside its own
+  window (7d: 7→3 days before, 3d: 3→1, 1d: the last 24 h, last day: that day), stamped with when it fell
+  due; "opened / released / declared" only once a **firm** date (exact, not tentative) has passed; a date
+  printed without a day is never counted down to. The text uses the milestone's own `label` and the
+  authority's name — not SSC's "Tier 1 City Intimation", "Computer Based Test" or "cut-off marks announced".
+  Two dates of one type (Prelims and Mains) no longer share an alert id.
+- **The exam badge counts.** `ExamVerifiedBadge` says "Officially verified" only when every displayed date and
+  post is VERIFIED by its own evidence; otherwise "N of M facts officially verified"; an exam with no dates or
+  posts gets no badge (0 of 0 is not verified). It used to need only that none was contradicted.
+- **A link check is not a content check.** Resource badges read "Link opened when checked <date>" /
+  "Link opens now · HTTP 200", never "Link verified".
+- **A failed read is not silence.** The syllabus watch has six states (`syllabusWatchState`): LOADING,
+  UNREACHABLE (server down — it used to spin "Reading…" forever), NO_BOARD, NOT_READ (a board never fetched
+  may not say "nothing published since"), NOTHING_NEW, NOTICES.
+- **No invented cycle.** Results has no `|| 2025` year: with no cut-off on record the benchmark reads "no
+  cut-off year on record", and the verdict says "GovOS holds no cut-off for this cycle", never "not published".
+- **The overview's About is labelled** as GovOS's summary (`data-fact-state="GOVOS_SUMMARY"`), not a quotation.
+- Additions, syllabus revisions and discovery relations: see their sections (ownership, UNDER_VERIFICATION,
+  THIS_EXAM_CYCLE_UNSTATED, Claude roles).
+
+Checks: `evidence_boundary_check.ts` (all five register exams plus the synthetic future exam, and source scans
+for `|| ALL_EXAMS[0]`, `|| 2025`, "Link verified"), the 1b banner cases in `exam_display_check.ts`,
+`EvidenceBoundaryTests` in `test_authority_discovery.py`, and the ownership cases in `test_resource_additions.py`.
+
+### Persistence: nothing the candidate saved is silently lost
+localStorage is the source of truth and SQLite its copy; there is no Firebase path (the dependency in
+`package-lock.json` is imported by nothing). Every defect below was reproduced on a scratch database first.
+
+- **One merge rule for an attempt** (`_merge_attempt`, both `POST /mock-attempts` and `sync-all`): an attempt
+  id is one submitted attempt, so a later payload may add or correct, never erase. A details entry (paper,
+  answers) or a score field is replaced only by a present value; absent, null or `{}` keeps what is stored.
+  `details: {}` used to store `{"userAnswers": null, "paperData": null}` over the paper, a payload without a
+  score set it to 0, and re-sending an id failed with `UNIQUE constraint failed` **and left the database
+  locked**, so the next unrelated save failed too. An id stored under another exam is a 409 / `conflictingAttempts`.
+- **Partial profile writes** (`_upsert_profile`): only the fields a request carries. Every absent field was
+  written as an SSC default, so choosing a target post reset the stored category and qualification.
+- **Server copies never overwrite the browser's choices.** Tracked exams: the browser's list stands and the
+  server is reconciled to it; the server's list is adopted only by a browser that never held one.
+  Preferences: a server with nothing stored answers `{stored: false}`, not the defaults the app used to take
+  as the candidate's choice. Attempts loaded from the server are laid over the local record, not swapped for it.
+- **Feeds.** A reply that lacks the source's own structure (SSC's `data` list, UPSC's views rows, an Atom
+  `<feed>`) is a failed refresh and keeps the last good copy; only a well-formed empty list is an empty board.
+- **Registry.** `examRegistryService.loadWithStatus()`: only the newest load writes the cache (a slower, older
+  one is SUPERSEDED), and a failed load returns the last good list, never `[]`; the saved-exam notice says
+  "removed" or "server unreachable" accordingly.
+- **Alerts.** A regenerated alert keeps a stored "sent" time only if it lies inside its own window; read
+  state carries over; an alert no longer due is not resurrected.
+- **Writes that can fail say so.** `saveMockAttempt` returns `{local, id}`, sends the server copy even when
+  the browser refuses the local write, and replaces a same-id record (one id per sitting, so a timer
+  auto-submit racing the button cannot duplicate it); the test, essay and Results screens show "not kept"
+  instead of "Saved", and the essay is not cleared. `readStoredJson` keeps unreadable JSON aside as
+  `<key>__corrupt` rather than letting the next write destroy it; ticks on a corrupt store are kept again.
+  `getCompletedModules()` is `{}` for a new candidate (it invented two completed modules).
+- **Repeated actions.** `syncAllToSQLite` is single-flight; an identical active resource addition or
+  syllabus revision returns the existing one (`deduplicated`) — a double-clicked ADD put a topic on the
+  syllabus twice.
+- **Extraction states.** Roadmap and Mock Tests take their weakest input's own state (`_derived_input_state`)
+  instead of "will activate once the pattern is officially released"; `nextSteps` is classified like every
+  field; a field whose reader raised is EXTRACTION_FAILED even when another document of the build was a scan.
+
+Checks: `test_persistence_integrity.py`, `tools/exam_builder/test_extraction_states.py`,
+`tools/frontend_checks/persistence_check.ts` (clock-controlled alerts, out-of-order registry loads, refused
+writes, corrupt stores).
 
 ### A machine-read exam, looked at as a candidate would
 Four candidate-facing gaps on TGPSC, each fixed for every machine-read exam:
@@ -273,20 +354,33 @@ Four candidate-facing gaps on TGPSC, each fixed for every machine-read exam:
      Trust Panel (`POST /api/resources/additions`, admin). **An addition belongs to one exam**
      (`resource_additions.exam_id`, required on every new addition; `GET ?exam_id=` filters, and the
      library asks for its own exam's only) — it used to appear in every exam's library. The server
-     derives the **source kind from the URL's host on every read** (`_addition_source_kind`:
-     OFFICIAL / TRUSTED_PUBLIC / THIRD_PARTY) and never stores or accepts it from a client, so a
-     coaching site can not be filed as official. OFFICIAL appears via `additionToResource()` labelled
-     "ADDED <date> · VERIFIER-APPROVED FROM LIVE SOURCE RESEARCH"; anything else is `type: THIRD_PARTY`
+     derives the **source kind from the URL and the addition's exam on every read** (`_addition_source_kind`)
+     and never stores or accepts it from a client, so a coaching site can not be filed as official.
+     **Officiality is ownership, not a domain suffix:** OFFICIAL only on the exam's own authority's estate
+     (`estate_of` of its `officialDomain`); any other government host is GOVERNMENT_SITE ("GOVERNMENT SITE ·
+     NOT THIS AUTHORITY'S OWN"), so pib.gov.in or ssc.gov.in added to UPSC is never UPSC's source, and an
+     exam GovOS does not hold has no official estate at all; then TRUSTED_PUBLIC / THIRD_PARTY. OFFICIAL
+     appears via `additionToResource()` labelled "ADDED <date> · VERIFIER-APPROVED FROM LIVE SOURCE
+     RESEARCH", with `UNDER_VERIFICATION` provenance, no excerpt and no publication date — adding a link
+     quotes nothing from it (it used to be OFFICIALLY_VERIFIED with GovOS's own sentence as the quote and
+     the day added as "published"); anything else is `type: THIRD_PARTY`
      (`resourceFormat: EXTERNAL_PAGE`, "Third-party (not official)" filter group, amber "THIRD-PARTY LINK"
      card, tag "THIRD-PARTY · NOT OFFICIAL · NOT FACT-CHECKED", `RECOMMENDATION` / `UNDER_VERIFICATION`
      provenance, never counted among "official government sources"). Its link joins the health schedule.
      First use: the Manabadi.com list of 77 TSPSC papers was added to TGPSC Group-I on 2026-10-01 (none
      of them is the 02/2024 paper; its description says so).
      `…/retire` hides it again. This is the only path by which research reaches candidates,
-     and it is a deliberate second click after Promote.
+     and it is a deliberate second click after Promote — **enforced by the server**: an addition
+     naming a `findingId` must name a PROMOTED finding and carry that finding's own link (the UI
+     only hid the button), and one made without a finding does not claim to come from research.
   The background loop wakes hourly and refreshes only what is past its own interval, so
   upstream sites are not hammered; a failed refresh keeps serving the last good copy and says
-  so (`stale`/`error`). Everything lives in three tables: `resource_link_health`,
+  so (`stale`/`error`). **A request never waits on an upstream** (`_feed_cached`): a stale copy is
+  served at once and refreshed behind it, one fetch runs per feed at a time, a failed upstream is
+  not retried for 15 minutes, and a forced `?refresh=1` of a copy under a minute old serves the
+  copy. Each step of the hourly loop runs on its own, so one failure no longer skips the rest. The
+  link checker answers anyone, so it reaches **only public addresses**, on every redirect hop
+  (`_public_link`). Everything lives in three tables: `resource_link_health`,
   `live_feed_cache`, `resource_additions`. The static list in `data.ts` remains the seed and
   the fallback when the server is down.
 - **`YOUTUBE_CHANNEL` vs `YOUTUBE_COURSE`.** A channel has no single video to embed, so it
@@ -573,7 +667,11 @@ any of them, and **a revision must say it revises the syllabus**: a notice whose
 ends "Rev" is not a corrigendum, and treating it as one nearly superseded two topics.
 `compat.syllabus_tree()` projects it into `Exam.syllabusTree`, which section 06's Official
 Syllabus view renders above the flat topic list — the list stays, because the checkboxes,
-the weightage, the tree map and the verifier's revisions are all built on it.
+the weightage, the tree map and the verifier's revisions are all built on it. The projection
+makes node ids unique, but UPSC CSE's tree in `data.ts` predates that and repeats ids among
+siblings (119 repeats, e.g. 18 `…-section-a` under its Main Examination), so the renderer keys
+each level with `syllabusNodeKeys` (the id; a repeat becomes `id~2`, `id~3`), never the bare id.
+Check: `syllabus_tree_keys_check.ts`.
 
 **An exam whose authority publishes no syllabus gets no tree and says so.** Two of the four
 publish none; the section states that in words and points at the Exam Pattern section, which
@@ -716,8 +814,12 @@ audit record, not a fact store. Nothing in these modules names an authority or a
   read as lectures), "Notes", "Courses".
 - **Per exam, the existing gate decides.** `admit_for_exam` judges every official item with
   `discover.gate()` on its own listing text (never the repository's, which is every exam's) and
-  `pyq.identity_from_text` for its cycle: THIS_EXAM / THIS_EXAM_OTHER_CYCLE / OTHER_EXAM /
-  NOT_THIS_EXAM / UNIDENTIFIABLE. `discover(..., authority_run=)` admits THIS_EXAM documents through
+  `pyq.identity_from_text` for its cycle: THIS_EXAM / THIS_EXAM_CYCLE_UNSTATED / THIS_EXAM_OTHER_CYCLE /
+  OTHER_EXAM / NOT_THIS_EXAM / UNIDENTIFIABLE. **An item naming the exam but no cycle is
+  THIS_EXAM_CYCLE_UNSTATED**, not THIS_EXAM: it still goes to the pipeline (whose gates read the cycle from the
+  document), but it is not `identified`, its role's search state is FOUND_AMBIGUOUS ("name this exam but not
+  its cycle"), and it proves no section banner. It used to be THIS_EXAM, so an undated listing proved the
+  current cycle's section. `discover(..., authority_run=)` admits THIS_EXAM documents through
   that gate *before* any search, so a kind the walk supplied is never searched for again; `build()`
   takes an opt-in `authority_discovery` callable (the `BUILD_EXAM` job's `authorityDiscovery: true`),
   off by default, so every existing build is unchanged. Everything admitted still goes through
@@ -764,7 +866,11 @@ audit record, not a fact store. Nothing in these modules names an authority or a
 - **Claude, narrowly.** Only when a walk asks (`useClaude`), only for official links the rules left
   UNKNOWN, one batched `CLASSIFY_SOURCE` call that may name a role from the vocabulary and nothing
   else — never a source class, never a new link. Disabled, signed out, slow or schema-rejected:
-  the role stays UNKNOWN.
+  the role stays UNKNOWN. **A role Claude assigned is a reading, never evidence**: the node carries
+  `role_reason = CLAUDE_ROLE_REASON` (`role_by_claude()`), `role_search_state` counts it only as
+  FOUND_AMBIGUOUS ("only Claude read them as this kind of document"), the projection marks the item
+  `roleFrom: 'CLAUDE'`, and `provesSection` (ui.tsx) refuses it. Tests: `EvidenceBoundaryTests` in
+  `test_authority_discovery.py` (cases A, C, D, E and a foreign government host).
 - **Runtime.** `DISCOVER_AUTHORITY` job (admin; starts only from an exam GovOS already holds, at its
   official address — a request can not supply an address), `POST /api/sources/discover`,
   `GET /api/sources/exam/<id>` (the latest run for the exam's estate, projected per exam on read, so
@@ -966,9 +1072,29 @@ answer inside a `factId` branch, every noun must come from `exam`** — the bran
   visible. The navigator applies the same test on its own reading: a query naming a format
   but no subject ("any video on that?", "pdf instead") inherits.
 - **Switching exam is detected and announced.** `examNamedIn()` spots another exam from
-  `ALL_EXAMS` in the message; the answer is given for that exam with a one-line note. The
-  components clear their channel's history when `exam.id` changes, because "it" no longer
-  refers to the same thing.
+  `ALL_EXAMS` in the message; the answer is given for that exam with a one-line note. Ask GovOS
+  AI clears its thread (stored and on screen) when `exam.id` changes and greets with the exam in
+  hand (it used to greet with SSC CGL whatever was open). The practice and resources chats keep
+  one thread per exam: `buildChatContext` hands them only turns whose `examId` is this exam's.
+- **Exam-scoped state stays with its exam.** `ExamDetailView` is keyed by the exam id in
+  `main.tsx`, and each section also resets or reloads its own exam-scoped state on a switch, during
+  render (no frame shows the previous exam's): the open section and panels, the Application tab,
+  the planner's goals and track, the Exam-Day ticks (`examChecklistKey` — the ticks are held with
+  the key they were read from; they used to be written under the next exam's key), and the Ask AI
+  thread. A scorecard read is applied only if it is the latest and was started on the exam on screen
+  (`isCurrentScorecardRequest`); a switch invalidates it. Global by design: the profile, tracked
+  exams, the current exam, bookmarks (one list of resource ids, each library counting its own).
+  The app has no URL/history model, so browser Back/Forward does not move between exams.
+  Check: `exam_isolation_check.ts`; the A → B → A transitions on one mounted component were run in the
+  dev server's browser (`exam_data/isolation_harness.tsx`, gitignored).
+- **An action opens the exam its answer was about.** `AssistantAction.examId` is stamped at
+  generation (`actionForExam`, at the end of `answerCandidateQuery` and in `claudeAnswerAction`)
+  on every action into a view that shows one exam (`EXAM_BOUND_TABS`), and `main.tsx`'s
+  `navigate(tab, section, examId)` resolves it with `assistantDestination` — that exam, never
+  the one open at click time; an exam not in the register opens nothing. Actions to Compare or
+  the Trust Panel carry no exam and leave the current one alone. It used to be `{tab, section}`
+  only, so an SSC answer given while UPSC was open opened UPSC's section.
+  Check: `assistant_action_exam_check.ts`.
 - **Context changes the answer, not just the wording.** Eligibility runs the candidate's
   saved profile through `evaluateCandidateEligibility` and names their target post's age
   band; with no profile it asks for date of birth, degree and category rather than answering
@@ -1006,8 +1132,11 @@ runtime through the same two-step rule as resource additions, never from a scrap
    the exam page, practice engine, planner, library and assistant, so the syllabus count in
    a chat answer and the weights in the practice analysis agree with the Syllabus section.
    A revised topic carries a REVISED / ADDED badge linking the notice and provenance naming
-   the verifier; a revision with a notice URL is `OFFICIALLY_VERIFIED`, one on a note alone
-   `UNDER_VERIFICATION`. `applySyllabusRevisions` returns the same object when there is
+   the verifier. **Every revision is `UNDER_VERIFICATION`, with or without a notice URL** — a URL is a
+   pointer, and nothing deterministic has checked the notice's words against the change; the verifier's
+   note is never printed as the notice's excerpt, and a note-only revision cites no document ("Verifier note
+   (no notice cited)", no URL, no date) instead of borrowing the seed's citation or the homepage. The notice
+   date is the publication date; nothing else is. `applySyllabusRevisions` returns the same object when there is
    nothing to apply, so nothing re-renders for no reason.
 
 ### `src/services.ts`
@@ -1025,8 +1154,27 @@ runtime through the same two-step rule as resource additions, never from a scrap
   `eventSubscriptions` + `reminderSchedule`, and preserves `isRead`/`createdAt` across
   regeneration by id.
 - `evaluateEligibility` / `evaluatePostEligibility` — per-post age vs `maxAge + relaxation`,
-  degree normalization, the JSO 60%-maths-or-statistics rule, Statistical Investigator rule,
-  physical/colour-blindness restrictions; aggregates to `ELIGIBLE | CONDITIONAL | INELIGIBLE`.
+  physical/colour-blindness restrictions, and **the educational qualification the record declares**
+  (`evaluateQualification`): the post's own `ruleGroup`, else the exam's `globalRuleGroup`. There is no
+  default degree. It used to require a Bachelor's of every post (a Class 12 post rejected a Class 12
+  candidate) and to carry SSC's JSO / Statistical Investigator rules as `post.id === …` branches; those
+  rules are now SSC record data (Para 8.1–8.5). `DEGREE_REQUIRED` is read as a level (a Class 12 post
+  accepts a graduate), `BRANCH_SPECIALIZATION` as degree subjects, `PERCENTAGE_MIN` by `subject`/`level`,
+  `APPEARING_ALLOWED` lets a final-year candidate in only where the notice says so (SSC Para 8.5; UPSC's
+  record quotes no such clause yet, so a final-year UPSC candidate is NOT DETERMINED), and
+  `STATED_CONDITION` is a condition no profile answers (SSC's state-cadre language rule). No rule, an
+  unanswerable rule or an unreadable qualification is `qualStatus: 'UNKNOWN'` → `postVerdictState` NOT
+  DETERMINED, never a fail and never a pass. The calculator asks the Mathematics / Statistics questions
+  only where a rule reads them (`qualificationQuestionsFor`). Aggregates to `ELIGIBLE | CONDITIONAL |
+  INELIGIBLE | NOT_EVALUABLE`.
+- **A cut-off is the candidate's category's or none.** `matchCutoffRow(rows, category)`: the exact label,
+  else the one category code both sides name in `CATEGORY_WORDINGS` ("UR", "General (UR)" and the
+  profile's "GENERAL" are one), a category's own row before a combined one ("SC/ST"); otherwise
+  NO_ROW_FOR_CATEGORY / AMBIGUOUS / NO_CATEGORY / NO_CUTOFFS, and Results says "Cut-off not available for
+  your selected category". Results used to fall back to the year's first row (SSC's SC row for a "General"
+  candidate) and to start every candidate on that row's category; it now starts on the saved entry's or
+  the profile's category, else none, and offers only categories with a stage cut-off
+  (`verdictCutoffRows`). Check: `eligibility_cutoffs_check.ts`.
 - `calculateAge`, `calculateDetailedAge`, `getCategoryAgeRelaxation`
   (OBC +3, SC/ST +5, PwBD +10).
 - `researchService` — `getStatus`, `startSearch(query, mode, examId?)` (queues a discovery job),
@@ -1132,10 +1280,20 @@ labelled `LEGACY_SEARCH`. Nothing from research reaches candidates as verified; 
 records the decision, and adding it to `data.ts` with provenance remains a deliberate edit. The
 candidate-facing `AIAssistant` has **no** live web search any more (discovery is admin-only): for a
 question the register cannot place, and only when Claude is ready, it asks Claude to answer from that
-exam's server-built facts (`POST /api/claude/ask`), shows the answer under a "CLAUDE-ASSISTED · FROM GOVOS
-VERIFIED DATA" badge with its cited facts as Evidence, and falls back to the register's own reply with a
+exam's server-built facts (`POST /api/claude/ask`), shows the answer with each cited fact's own state and
+Evidence, and falls back to the register's own reply with a
 note when Claude is off, signed out, slow (60 s) or its answer fails the server's checks. A matched
-fact, a "where is it" answer and a request for the candidate's details never go to Claude. Shared
+fact, a "where is it" answer and a request for the candidate's details never go to Claude. **Verified is
+a property of a fact's evidence, never of Claude's `basis`.** Each fact on the sheet carries a `claim` and a
+state from `context.fact_verification` — VERIFIED only for an OFFICIALLY_VERIFIED, unsuperseded provenance
+with a URL and a page or quote *whose quoted words contain the claim*; otherwise UNSUPPORTED,
+UNDER_VERIFICATION, SUPERSEDED or UNVERIFIED (no source at all: the exam's name, cycle, "About"). The
+answer's `verification` is VERIFIED only when every cited fact is, PARTLY_VERIFIED when some are; only
+VERIFIED earns "FROM GOVOS VERIFIED DATA". The page re-derives each state itself (`factVerification`,
+`citationVerification`) and never shows a fact verified on the server's word alone. The rule is one table,
+`tools/claude_cli/fact_verification_cases.json`, run by `test_ask_verification.py` and
+`ask_verification_check.ts`; on SSC CGL's sheet 11 of 94 facts are VERIFIED — the composites (a post with
+its age band and pay) are UNSUPPORTED because their quotes print only part of them. Shared
 helpers: `researchTrustMeta`, `ClaudeSetupNotice`, `ClaudeJobsPanel`, `AdminTokenField`,
 `ClaudePracticePanel` (optional Claude-written practice on one verified syllabus topic, rendered beside
 every exam's own practice engine by `ExamPracticeRouter`, labelled GovOS-authored, never scored; every
@@ -1187,6 +1345,57 @@ it says the cycle is complete rather than showing a wall of old dates. All Exams
 defaults to Upcoming (All and Completed are one click away), and the month chips are derived
 from the events actually present — the old hardcoded `['FEB','MAR',…]` list with a "2026"
 label could not survive the year turning.
+
+## Adding an exam is adding data, never a branch
+
+GovOS keeps adding exams, so a fix is a data-driven rule or it is not done. Before writing
+`if (exam.id === …)` ask what the model is missing, and add that instead. What this looks like today:
+
+- **Assistant answers read the record's fields.** `skillTestInRecord` finds a typing test in a stage's
+  section, name or mode with `SKILL_TEST_WORDS` (no authority's acronym in it); IBPS needed no branch,
+  only reading the `mode` its record already had.
+- **Section banners read evidence, not exams.** `resolveSectionState(exam, sectionNum, discovered)`:
+  exam id → section id → evidence roles (`sectionStates[id].evidenceRoles` from the record, else
+  `SECTION_EVIDENCE_ROLES` by section id) → an item of that role, official, `THIS_EXAM`, openable, in a
+  projection whose `examId` is this exam's. A new section declares its roles in the record.
+- **A paper states its own marking.** `MockPaper.marking` is required; there is no default, so no exam's
+  paper can be scored by another's rule. `mockPaperProblems(paper)` holds every paper of every exam to the
+  same rules (marking with clause, totals = questions × marks, no "harder/easier" claim, a stated level
+  equal to most of its own questions).
+- **Open vocabularies.** `SyllabusSubject` and `SyllabusTopic.tier` accept any authority's words.
+- **Results & Next Steps renders the record.** A skill test exists only where a stage carries
+  `ExamStage.skillTest` (`SkillTestSpec`: name, description, qualifying, duration, requirements, the
+  stage sections it is made of, and `metrics` with the standard *as printed*, by category). The pure
+  `skillTestsOf` / `evaluateSkillTest` / `skillStandardFor` / `skillScoreOf` interpret it; `SkillTestCard`
+  shows it and names what the record does not state ("NOT STATED", never a pass). A candidate's figures
+  live in `MultiTierResultEntry.skillScores` by metric key, and a scorecard reading's fields are kept only
+  where this exam's metrics declare them. `ExamStage.meritMarks` is the merit maximum (SSC Tier-II
+  Paper-I: 390 of 450), and next steps name the stage's merit sections (`meritSectionsOf`) and its skill
+  test. SSC's CKT (Para 16.1) and DEST (Para 16.2) standards are SSC record data now; the engine used to
+  hold them as constants, decide skill stages by a stage-name regex, and showed the CKT/DEST card to any
+  exam with "typing" in a section name. The CSE's bespoke engine and the IBPS PO scorecard fields are
+  chosen by exact id (`RESULT_SCHEMES`), never by "UPSC"/"IBPS"/"civil services" in a code or title.
+  Check: `results_skill_check.ts` (register exams plus future exams A/B/C, scans the engine).
+- **The next-step pathways are built from the record too.** Every exam but the UPSC CSE gets five tabs (the
+  stage-two plan, after both stages, the stage-two gap, the stage-one comeback, the skill test). Their panels
+  were deleted with the CSE engine (b473776) and the tabs opened onto nothing; the panels they lost were SSC
+  CGL's prose ("298+ out of 390", CKT/DEST, an invented document list). `resultPathway(exam, id, standing)`
+  rebuilds each one from the exam's stages (marks, time, penalty and how it counts as printed, merit
+  sections), recorded cut-offs for the candidate's category, the syllabus topics tied to the stage's tier,
+  later stages, declared next steps, certificate rules, listed documents, posts' printed physical standards,
+  eligibility highlights and next-cycle dates; `ResultPathwayPanel` renders it with Evidence, and a block
+  the record cannot fill says what is missing instead of borrowing. Check: `results_pathways_check.ts`.
+- **The proof is `future_exam_check.ts`.** It runs an invented exam (`future_exam_fixture.ts`, typed
+  against `Exam` by `check:frontend`) through the unchanged assistant, banners, exam page and paper rules,
+  checks no other exam's words or evidence reach it, and scans the functions above for exam ids,
+  constants and authority names. Add a case there when you add a generic rule.
+
+Still exam-keyed by design, not by accident: `PRACTICE_ENGINES` (an interactive engine is registered by
+id; an unregistered exam gets `UnavailablePracticeEngine` plus its own pattern), `PRACTICE_BANK_EXAM_ID`
+(the authored bank is SSC's), SSC's bespoke application simulator, and `RESULT_SCHEMES` (the CSE's
+three-stage result engine and the IBPS PO scorecard fields). The scorecard reader in `app.py`
+(`/api/results/parse`) still extracts SSC-, UPSC- and IBPS-named fields; the frontend keeps only the
+fields the exam's own record declares, so they cannot surface on another exam.
 
 ## The exam is the unit of navigation
 
@@ -1372,7 +1581,9 @@ Overview.
 
 `PracticeEngine` is the largest component: six views (`PAPERS_LIST`, `SUBJECT_TESTS`,
 `TOPIC_DRILLS`, `AI_CHAT_ASSISTANT`, `ACTIVE_TEST`, `PAST_ANALYTICS`), a real CBT clock that
-auto-submits at zero, a question palette, SSC Tier-1 scoring (**+2 correct, −0.5 incorrect**),
+auto-submits at zero, a question palette, scoring by **the paper's own marking** (`MockPaper.marking`
+with the clause that sets it; SSC Tier-I's +2 / −0.5 by default, the Tier-II computer module's
++3 / −1 from Para 13.9 and 13.9.8),
 weak/medium/strong topic diagnosis, a derived daily-study-hours plan, and five-layer
 solutions. `handleReviewPastAttempt` reconstructs old attempts through a 7-step fallback
 chain so review never crashes.
@@ -1385,6 +1596,65 @@ anything deep-link into an Exam Guide section, the resource reader modal, the pr
 modal, the report-error modal, the two notification modals, and the React root.
 `handleAssistantNavigate(tab, section?)` is what the assistant's "take me there" buttons
 call.
+
+### Motion and type (presentation only)
+`ANIMATION_REVERSE_ENGINEERING.md` records how the Aardvark Book Club site's motion is built (GSAP, Lenis and
+Barba call-sites, read from its own unminified script); GovOS takes the *timing and choreography*, not the library
+or the content, and adds no dependency.
+
+- **One easing family** (`:root` in `index.html`): `--ease-osmo` for travel, `--ease-energy` for small UI,
+  `--ease-elastic` (a CSS `linear()` sampled from elastic-out, GovOS's own) for anything that lands,
+  `--ease-bounce` / `--ease-soft-overshoot` for hover recoveries.
+- **Reveals** — `installRevealObserver` (ui.tsx, installed once by `main.tsx`): every `.glass-card`, `.stat-tile`,
+  `.feature-*-card`, `.popular-exam-card` and `[data-reveal]` fades and rises once, the first time it enters the
+  viewport, staggered 55 ms when several mount together. Only the outermost card reveals; overlays, the top bar and
+  `[data-no-reveal]` never wait. Content is hidden only by `.rv-wait`, which only that observer adds and always
+  removes, so a server render, a check or a failed script never hides anything.
+- **Lerped wheel** — `installSmoothWheel`: lerp 0.2 per 60 Hz frame for the document and for panes marked
+  `data-smooth-scroll` (the exam page's two panes). It leaves native scrolling alone for ctrl/meta (the syllabus
+  map's pinch), horizontal wheels, nested scrollers that can still move, modals, keyboard/scrollbar, touch and
+  reduced motion, and it hands over at once if anything else moves the scroller.
+- **Transitions** — `useReplayOnChange(ref, key, class)` replays `view-enter` on `<main>` when the tab changes and
+  `section-enter` on the exam page's section card when the section changes, **without remounting** anything
+  inside (keying the wrapper would have reset component state). One-shot animations use `backwards` fill, so no
+  transform lingers to become a containing block for fixed-position children.
+- **Hero** — `SplitWords` springs the title in word by word (88 ms stagger, elastic), then the eyebrow, paragraph,
+  search, chips and CTAs rise (`.hero-in`, `--hi`); the illustration opens with a clip-path ellipse and drifts on a
+  CSS scroll timeline (no script). `JiggleLabel` makes a CTA's letters squash and spring on hover/focus. Split text
+  keeps one `.sr-only` copy for screen readers.
+- **Buttons** squash fast and recover with overshoot (`scale` plus its exact inverse `transform`); interactive cards
+  lift with a bounce onto `--shadow-stage`. Hover motion runs only on a fine pointer.
+- **Type** — `h1`/`h2` use Bricolage Grotesque (`--font-display`); `.accent-serif` is Instrument Serif italic for a
+  single accent word. Body text stays Plus Jakarta Sans.
+- **`prefers-reduced-motion` turns all of it off** (and the runtime never installs). Windows' Settings →
+  Accessibility → Visual effects → *Animation effects* off makes every browser report reduced motion — the
+  development machine had it off, which is why the motion was verified in headless Edge with the media feature
+  emulated.
+
+**Composition (the visual redesign).** Presentation only; every handler, data source and flow is the one it was.
+- **Visual system** (`index.html`, "GOVOS VISUAL SYSTEM"): ink `#0b1430` and saffron (the wordmark's blue and orange,
+  deepened), white cards on a cool paper ground. Five authority **tones** (`.pass-ink|saffron|jade|plum|tide`) are
+  picked by `passToneOf(authorityName)` — one per authority in the register, a hash for others — and shared by
+  an exam's pass and its command stage, so an exam keeps its colour. Every tone clears 4.5:1 for white text at
+  85 % opacity (the faintest small text placed on one).
+- **Home** is told in chapters (`ChapterHeader`: numbered eyebrow, display title, one line): `CinematicHero` (a dark
+  layered stage; the next milestones the register holds float over the illustration as buttons into their exams,
+  with counts read from the records; pointer depth via `usePointerDepth`, scroll exit on a CSS view timeline) →
+  `ExamPassRail` (the same five popular exams and handlers, as passes with the next milestone and a pointer tilt;
+  a horizontal snap rail under 1100 px) → eligibility (`ExamDiscovery`, unchanged inside) → `JourneyStory` (seven
+  steps with a scroll-filled line; it carries the four old action cards' actions) → `PullQuote` → the
+  recommendation and discovery engines, each opened by a chapter header. `nextMilestoneOf` never counts down to a
+  date printed without a day.
+- **Exam page:** the header is a dark **command stage** (`.exam-hero` on the exam's tone): authority, title, badges,
+  "Next on record" from the live dates, a **stage rail** read from `exam.stages` (works for any exam, no rail
+  with fewer than two), and the same actions. The four date tiles are one ticket strip; the description is an
+  editorial lead; the current part in the side navigation sits on ink. `.exam-main-content > *` never shrinks
+  (the pane is a fixed-height flex column on a desktop, and an `overflow: hidden` child collapsed to nothing).
+- **Shell:** the top bar is sticky and condenses once the page scrolls (`data-scrolled`); under 600 px it wraps,
+  with the navigation as a full-width swipeable row.
+
+Checks after touching any of this: the 375/768/1024/1440 overflow sweep over every section of every exam, the
+contrast sweep, and `npm run check:frontend`.
 
 ### Styling
 All CSS lives in `index.html`'s `<style>` block. The look is the light, card-based design
@@ -1506,9 +1776,12 @@ selection process from `exam.stages`, official site) and **Latest Updates** (cor
 dates, most recently published first, then upcoming nearest first). No component logic moved.
 
 ### `app.py`
-Flask + flask-cors, no ORM, no auth. Creates 9 tables on startup and seeds a single
-`default-candidate` user tracking SSC CGL. **Every endpoint takes `user_id` from a query
-param defaulting to `'default-candidate'`** — single-user by design.
+Flask + flask-cors, no ORM, no auth. Creates its tables on startup and, on a new database, a
+`default-candidate` user with no post, exam, category or qualification and no tracked exam (it
+used to seed SSC CGL as tracked). **Every endpoint takes `user_id` from a query
+param defaulting to `'default-candidate'`** — single-user by design. Every connection a request
+opens is closed at teardown (`_close_request_connections`), so a route that raises never leaves a
+write transaction holding the database.
 
 `/` and `/<path>` serve `dist/index.html` (SPA fallback); `/resources/<file>` serves the
 PDFs. API: `/api/sqlite/status`, `/profile`, `/progress`, `/mock-attempts`, `/sync-all`,

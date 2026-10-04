@@ -44,6 +44,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
+from ..single_flight import SingleFlight
 from .audit import AuditSink, DecisionCache, now_iso
 from .config import ClaudeConfig, load_config
 from .prompts import TEMPLATES, PromptTemplate, new_nonce
@@ -160,6 +161,11 @@ class ClaudeGateway:
         self._caps: dict = {}
         self._auth: dict = {}
         self._lock = threading.Lock()
+        #: One CLI probe (--help/--version, auth status) in flight per executable: health() runs inside
+        #: candidate requests, and requests that arrive while a probe runs share its outcome -- an
+        #: unusable or timed-out one too -- instead of each starting a probe of their own (up to ~30 s
+        #: each, one after another). Nothing failed is kept: the next request after it probes again.
+        self._probes = SingleFlight()
 
     # ------------------------------------------------------------------------ configuration
     @property
@@ -226,6 +232,15 @@ class ClaudeGateway:
         with self._lock:
             if key in self._caps:
                 return self._caps[key]
+
+        def probe() -> Capabilities:
+            with self._lock:
+                if key in self._caps:              # probed by a call that finished a moment ago
+                    return self._caps[key]
+            return self._probe_capabilities(cfg, resolved, key)
+        return self._probes.do(('capabilities', key), probe)
+
+    def _probe_capabilities(self, cfg: ClaudeConfig, resolved: '_Resolved', key) -> Capabilities:
         help_out = self._quick(cfg, resolved.path, ['--help'])
         ver_out = self._quick(cfg, resolved.path, ['--version'], timeout=10.0)
         flags = frozenset(m.lower() for m in re.findall(r'(?<![\w-])(--[A-Za-z][A-Za-z0-9-]*)',
@@ -251,6 +266,17 @@ class ClaudeGateway:
             cached = self._auth.get(key)
             if cached and now < cached[1]:
                 return cached[0]
+
+        def probe() -> Optional[bool]:
+            with self._lock:
+                cached = self._auth.get(key)
+                if cached and self._clock() < cached[1]:   # probed by a call that finished a moment ago
+                    return cached[0]
+            return self._probe_auth(cfg, path, key)
+        return self._probes.do(('auth', key), probe)
+
+    def _probe_auth(self, cfg: ClaudeConfig, path: str, key) -> Optional[bool]:
+        now = self._clock()
         state: Optional[bool] = None
         try:
             out = self._quick(cfg, path, ['auth', 'status'], timeout=20.0)

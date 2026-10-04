@@ -45,8 +45,10 @@ B_PORTAL = 'https://jobs.sample-board.nic.in/portal'
 
 
 def prov(evidence_id: str, url: str, excerpt: str, page: int = 2, level: str = 'OFFICIALLY_VERIFIED') -> dict:
-    return {'sourceDocument': 'Notice of Examination', 'officialUrl': url, 'page': page, 'clause': '',
-            'excerpt': excerpt, 'taxonomyType': 'FACT', 'verificationLevel': level,
+    # The record's own DataProvenance keys (src/types.ts), as every authored and runtime exam carries them;
+    # the fixture used to say page/excerpt/sourceDocument, which no real record does.
+    return {'documentTitle': 'Notice of Examination', 'officialUrl': url, 'pageNumber': page, 'clauseNumber': '',
+            'excerptText': excerpt, 'taxonomyType': 'FACT', 'verificationLevel': level,
             'evidenceType': 'DIRECT', 'evidenceId': evidence_id}
 
 

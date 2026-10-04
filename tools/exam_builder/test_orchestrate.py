@@ -332,6 +332,40 @@ class TestOrchestration(unittest.TestCase):
                         r"if\s+.*['\"]UPSC['\"]", r"if\s+.*['\"]IBPS['\"]", r"if\s+.*['\"]APPSC['\"]"):
             self.assertIsNone(re.search(pattern, code), f'forbidden branch {pattern!r} in orchestrator')
 
+    # --- 23: a build without Claude never reaches it, even where Claude is enabled -----------
+    def test_23_build_gets_the_jobs_gateway(self):
+        seen = []
+
+        def capture(*a, **k):
+            seen.append(k.get('gateway'))
+            return _build(_rec())
+        patch_build(self, capture)
+        O.orchestrate('SSC CGL 2026', use_claude=False, gateway=ForbiddenClaude())
+        self.assertFalse(seen[-1].is_enabled())
+        O.orchestrate('SSC CGL 2026', use_claude=True, gateway=_Stub(_json('SUPPORTED')))
+        self.assertIsNone(seen[-1])        # unchanged: the build's steps use the process-wide gateway
+
+    def test_24_every_build_step_uses_the_runs_gateway(self):
+        # Identity, completeness and date checks resolve their gateway through the run's one; a
+        # process-wide gateway that is enabled is never reached while the run's is NoClaude.
+        from . import build as B
+        from tools.claude_cli.testing import use_gateway
+        forbidden = ForbiddenClaude()
+        with use_gateway(forbidden):
+            token = B._RUN_GATEWAY.set(B.NoClaude())
+            try:
+                self.assertFalse(B._run_gateway().is_enabled())
+                held = Field.found('dates', [{'type': 'APPLICATION_CLOSE', 'label': 'Last date',
+                                              'dateTimeStr': '2026-05-20 00:00:00',
+                                              'provenance': {'excerptText': 'Last date 20.05.2026'}}],
+                                   Citation(document_title='Notice', url='https://ssc.gov.in/notice',
+                                            page=1, excerpt='Last date 20.05.2026'))
+                B._vet_dates(held, {}, _rec(), cycle='2026')
+            finally:
+                B._RUN_GATEWAY.reset(token)
+            self.assertIs(B._run_gateway(), forbidden)
+        self.assertEqual(forbidden.attempts, 0)
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

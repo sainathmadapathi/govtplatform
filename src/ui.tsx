@@ -95,6 +95,9 @@ import {
 } from 'lucide-react';
 import {
   ClaudeAnswerResult,
+  ClaudeAnswerCitation,
+  FactVerification,
+  AnswerVerification,
   ClaudeHealth,
   ClaudeJob,
   ClaudePracticeResult,
@@ -158,7 +161,9 @@ import {
   ResourceRole,
   DiscoveredSources,
   DiscoveredSourceItem,
-  DocumentSpecification
+  DocumentSpecification,
+  SkillTestMetric,
+  SkillTestSpec
 } from './types';
 import {
   ALL_EXAMS,
@@ -174,6 +179,7 @@ import {
   matchTopicByName,
   OFFICIAL_10_MOCK_PAPERS,
   SSC_NOTICE_URL,
+  SSC_TIER1_MARKING,
   parseTestRequest,
   QUANT_TEMPLATES,
   REASONING_TEMPLATES,
@@ -208,11 +214,14 @@ import {
   discoveryProfileFromUserProfile,
   evaluateCandidateEligibility,
   evaluateEligibility,
+  postVerdictState,
+  qualificationQuestionsFor,
   examDayChecklistStatus,
   getCategoryAgeRelaxation,
   findAgeRelaxation,
   MockAttemptRecord,
   storageService,
+  matchCutoffRow,
   getExamCycle,
   INTERACTION_WEIGHTS,
   INTERACTION_HALF_LIVES_HOURS,
@@ -329,6 +338,12 @@ export function unsupportedClaims(exam: Pick<Exam, 'dates' | 'posts'>): number {
   return dates.length + posts.length;
 }
 
+/** Each displayed date's and post's own verification state (superseded dates are not displayed facts). */
+export const examFactStates = (exam: Pick<Exam, 'dates' | 'posts'>): FactVerification[] => [
+  ...exam.dates.filter(d => d.status !== 'SUPERSEDED').map(d => factVerification(d.provenance, dateClaim(d))),
+  ...exam.posts.map(p => factVerification(p.provenance, p.postName)),
+];
+
 /** A source a candidate can open, or the words themselves. */
 export const provenanceHasEvidence = (p?: DataProvenance | null): p is DataProvenance =>
   !!p && (/^https?:\/\//.test(p.officialUrl || '') || !!(p.excerptText || '').trim());
@@ -338,6 +353,45 @@ export const provenanceHasEvidence = (p?: DataProvenance | null): p is DataProve
 export const provenanceIsVerified = (p?: DataProvenance | null): boolean =>
   !!p && !p.claimNotInQuote && p.verificationLevel === 'OFFICIALLY_VERIFIED' && /^https?:\/\//.test(p.officialUrl || '')
   && (!!p.pageNumber || !!(p.excerptText || '').trim());
+
+/**
+ * One fact's verification state -- the server's rule (tools/claude_cli/context.py fact_verification), here
+ * so the page can hold the server to it. VERIFIED exactly when the Evidence panel, opened on this
+ * provenance against this claim, says "Officially verified". Both are pinned to one table of cases,
+ * tools/claude_cli/fact_verification_cases.json: change the rule in both or neither.
+ */
+export function factVerification(p: DataProvenance | null | undefined, claim: ClaimValue): FactVerification {
+  if (!provenanceHasEvidence(p)) return 'UNVERIFIED';
+  if (p.claimNotInQuote) return 'UNSUPPORTED';
+  if (p.verificationLevel === 'SUPERSEDED' || p.supersededBy) return 'SUPERSEDED';
+  if (p.verificationLevel !== 'OFFICIALLY_VERIFIED') return 'UNDER_VERIFICATION';
+  if (!(/^https?:\/\//.test(p.officialUrl || '') && (!!p.pageNumber || !!(p.excerptText || '').trim()))) return 'UNVERIFIED';
+  return claimInQuote(p, claim) ? 'VERIFIED' : 'UNSUPPORTED';
+}
+
+/** A cited fact's state: the server's, and only while the page's own reading of its evidence agrees --
+ *  a fact is never shown as verified on the server's word alone. */
+export const citationVerification = (c: ClaudeAnswerCitation): FactVerification => {
+  const own = factVerification(c.provenance, c.claim && c.claim.length ? c.claim : c.text);
+  if (own !== 'VERIFIED') return own;
+  return c.verification === 'VERIFIED' ? 'VERIFIED' : (c.verification || 'UNVERIFIED');
+};
+
+/** An answer is VERIFIED only when the server says so and every fact it cites is verified here too. */
+export const answerVerification = (a: Pick<ClaudeAnswerResult, 'verification' | 'citations'>): AnswerVerification => {
+  const states = (a.citations || []).map(citationVerification);
+  if (a.verification === 'VERIFIED' && states.length > 0 && states.every(s => s === 'VERIFIED')) return 'VERIFIED';
+  return states.some(s => s === 'VERIFIED') ? 'PARTLY_VERIFIED' : 'NOT_VERIFIED';
+};
+
+/** The candidate-facing words for a fact's state. Only VERIFIED is ever "officially verified". */
+export const FACT_VERIFICATION_TEXT: Record<FactVerification, { text: string; color: string }> = {
+  VERIFIED: { text: 'Officially verified', color: 'var(--emerald)' },
+  UNSUPPORTED: { text: 'Not in the quoted words — not verified', color: '#a55a05' },
+  UNDER_VERIFICATION: { text: 'Source found — verification pending', color: '#a55a05' },
+  SUPERSEDED: { text: 'Superseded — not the governing statement', color: '#a55a05' },
+  UNVERIFIED: { text: 'No official source on record — not verified', color: 'var(--text-muted)' },
+};
 
 /** What kind of evidence this is: the builder states it; an authored record's is read from the
  *  links and taxonomy it already carries, never assumed to be a quotation. */
@@ -377,6 +431,199 @@ export interface EvidenceButtonProps {
  */
 const SHOW_DEV_FIXTURES: boolean = !!(import.meta as any).env?.DEV;
 
+// =============================================================================================
+// Motion: entrance reveals, a lerped wheel, and replayed transitions. Presentation only -- no state,
+// no data, nothing a check or a screen reader depends on. Everything here is skipped under
+// prefers-reduced-motion, and content is never hidden unless the reveal observer is running
+// (the CSS only hides `.rv-wait`, which this code adds and always removes).
+// The timings follow ANIMATION_REVERSE_ENGINEERING.md: once-only entrances at the viewport's lower edge,
+// lerp 0.2 scrolling, staggers of a few tens of milliseconds.
+// =============================================================================================
+
+const prefersReducedMotion = (): boolean =>
+  typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/** What the reveal observer animates without being told: the app's card surfaces, plus anything marked data-reveal. */
+const REVEAL_SELECTOR = '[data-reveal], .glass-card, .stat-tile, .feature-action-card, .popular-exam-card, .feature-card';
+/** Surfaces that must never wait for a reveal: overlays and anything inside them, the shell itself. */
+const REVEAL_EXEMPT = '.modal-overlay, .topbar, [data-no-reveal]';
+
+/**
+ * Reveal each card surface once, the first time it enters the viewport (an IntersectionObserver per app, bound to
+ * new nodes as React mounts them). Cards already on screen when they mount reveal at once, staggered by a few
+ * tens of milliseconds, so a page assembles in one gesture instead of popping in. Returns a cleanup.
+ */
+export function installRevealObserver(root: HTMLElement): () => void {
+  if (prefersReducedMotion() || typeof IntersectionObserver === 'undefined' || typeof MutationObserver === 'undefined') {
+    return () => undefined;
+  }
+  document.documentElement.classList.add('motion-ok');
+  const bound = new WeakSet<Element>();
+  let batch = 0;
+  let batchReset = 0;
+  const reveal = (el: HTMLElement) => {
+    // Stagger what appears in the same frame; a lone card later in the page gets no delay.
+    el.style.setProperty('--rv-i', String(Math.min(batch++, 8)));
+    window.clearTimeout(batchReset);
+    batchReset = window.setTimeout(() => { batch = 0; }, 120);
+    el.classList.remove('rv-wait');
+    el.classList.add('rv-in', 'rv-seen');
+    // Drop the animation once played, so a later hover transform or a re-render is never fighting it. Only this
+    // element's own animation counts: animationend bubbles up from children that animate inside it.
+    const done = (e: AnimationEvent) => {
+      if (e.target !== el) return;
+      el.classList.remove('rv-in');
+      el.removeEventListener('animationend', done);
+    };
+    el.addEventListener('animationend', done);
+  };
+  const io = new IntersectionObserver(entries => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue;
+      io.unobserve(entry.target);
+      reveal(entry.target as HTMLElement);
+    }
+  }, { rootMargin: '0px 0px -6% 0px', threshold: 0.01 });
+  let scheduled = 0;
+  const scan = () => {
+    scheduled = 0;
+    root.querySelectorAll<HTMLElement>(REVEAL_SELECTOR).forEach(el => {
+      if (bound.has(el)) return;
+      bound.add(el);
+      if (el.closest(REVEAL_EXEMPT)) return;
+      // A card nested in a card would replay inside an already-revealed parent: only the outermost reveals.
+      const parent = el.parentElement?.closest(REVEAL_SELECTOR);
+      if (parent && !parent.closest(REVEAL_EXEMPT)) return;
+      el.classList.add('rv-wait');
+      io.observe(el);
+    });
+  };
+  const mo = new MutationObserver(() => { if (!scheduled) scheduled = requestAnimationFrame(scan); });
+  mo.observe(root, { childList: true, subtree: true });
+  scan();
+  return () => {
+    mo.disconnect();
+    io.disconnect();
+    if (scheduled) cancelAnimationFrame(scheduled);
+    root.querySelectorAll('.rv-wait').forEach(el => el.classList.remove('rv-wait'));
+    document.documentElement.classList.remove('motion-ok');
+  };
+}
+
+/**
+ * A lerped mouse wheel for the page and for the panes marked data-smooth-scroll (the exam page scrolls inside
+ * its own panes on a desktop). Each wheel step moves a target; the scroller eases toward it at lerp 0.2 per
+ * 60 Hz frame, frame-rate independent. It steps aside -- native scrolling, untouched -- for ctrl/meta zoom
+ * (the syllabus map's pinch), horizontal wheels, anything inside a nested scroller that can still scroll that
+ * way (chats, lists, modals), touch, keyboard and scrollbar dragging, and reduced motion. Returns a cleanup.
+ */
+export function installSmoothWheel(): () => void {
+  if (prefersReducedMotion() || typeof window === 'undefined') return () => undefined;
+  if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return () => undefined;
+  const LERP = 0.2;
+  type Run = { el: Element; target: number; current: number; raf: number; last: number; lastSet: number };
+  const runs = new Map<Element, Run>();
+  const page = document.scrollingElement || document.documentElement;
+  const maxOf = (el: Element) => el.scrollHeight - el.clientHeight;
+  const canScroll = (el: Element, dy: number) => {
+    // The document scrolls whatever its computed overflow says; any other element only if it is a scroll container.
+    if (el !== page && !/(auto|scroll|overlay)/.test(getComputedStyle(el).overflowY)) return false;
+    if (el.scrollHeight <= el.clientHeight + 1) return false;
+    return dy > 0 ? el.scrollTop < maxOf(el) - 1 : el.scrollTop > 0;
+  };
+  /** The scroller this wheel belongs to, or null to leave it native. */
+  const scrollerFor = (start: Element | null, dy: number): Element | null => {
+    for (let el = start; el && el !== document.body && el !== document.documentElement; el = el.parentElement) {
+      if (el.closest('.modal-overlay')) return null;
+      if ((el as HTMLElement).dataset?.smoothScroll !== undefined) return canScroll(el, dy) ? el : null;
+      if (canScroll(el, dy)) return null;                 // a nested scroller: native
+    }
+    // A run already under way keeps its scroller to the end of its travel.
+    return canScroll(page, dy) || runs.has(page) ? page : null;
+  };
+  const step = (run: Run, now: number) => {
+    const el = run.el;
+    // Someone else moved it (keyboard, scrollbar, scrollIntoView): stop and let them have it.
+    if (Math.abs(el.scrollTop - run.lastSet) > 2) { runs.delete(el); return; }
+    const dt = Math.min(64, now - run.last || 16.7);
+    run.last = now;
+    const k = 1 - Math.pow(1 - LERP, dt / 16.7);
+    run.current += (run.target - run.current) * k;
+    if (Math.abs(run.target - run.current) < 0.5) run.current = run.target;
+    el.scrollTop = run.current;
+    run.lastSet = el.scrollTop;
+    if (run.current === run.target) { runs.delete(el); return; }
+    run.raf = requestAnimationFrame(t => step(run, t));
+  };
+  const onWheel = (e: WheelEvent) => {
+    if (e.defaultPrevented || e.ctrlKey || e.metaKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+    const dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * window.innerHeight : e.deltaY;
+    if (!dy) return;
+    const el = scrollerFor(e.target as Element, dy);
+    if (!el) return;
+    e.preventDefault();
+    let run = runs.get(el);
+    if (!run) {
+      run = { el, target: el.scrollTop, current: el.scrollTop, raf: 0, last: performance.now(), lastSet: el.scrollTop };
+      runs.set(el, run);
+      const r = run;
+      run.raf = requestAnimationFrame(t => step(r, t));
+    }
+    run.target = Math.max(0, Math.min(maxOf(el), run.target + dy));
+  };
+  window.addEventListener('wheel', onWheel, { passive: false });
+  return () => {
+    window.removeEventListener('wheel', onWheel);
+    runs.forEach(r => cancelAnimationFrame(r.raf));
+    runs.clear();
+  };
+}
+
+/** Replay an entrance animation on `ref` whenever `key` changes, without remounting anything inside it. */
+export function useReplayOnChange(ref: React.RefObject<HTMLElement>, key: unknown, className: string): void {
+  const first = useRef(true);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (first.current) { first.current = false; return; }
+    if (prefersReducedMotion()) return;
+    el.classList.remove(className);
+    void el.offsetWidth;            // restart the animation
+    el.classList.add(className);
+    const done = (e: AnimationEvent) => { if (e.target === el) el.classList.remove(className); };
+    el.addEventListener('animationend', done);
+    return () => el.removeEventListener('animationend', done);
+  }, [key]);                        // eslint-disable-line react-hooks/exhaustive-deps
+}
+
+/** A line split into words for the hero's spring-in (CSS staggers on --wi). The text stays one readable string. */
+export const SplitWords: React.FC<{ text: string; start?: number; className?: string }> = ({ text, start = 0, className }) => (
+  <span className={className}>
+    <span className="sr-only">{text}</span>
+    {text.split(' ').map((w, i) => (
+      <React.Fragment key={i}>
+        <span className="split-word" aria-hidden="true" style={{ ['--wi' as any]: start + i }}>{w}</span>
+        {i < text.split(' ').length - 1 ? ' ' : ''}
+      </React.Fragment>
+    ))}
+  </span>
+);
+
+/** A button label whose letters jiggle on hover/focus (CSS keyframes staggered on --ci). Reads as one word. */
+export const JiggleLabel: React.FC<{ text: string }> = ({ text }) => {
+  const chars = Array.from(text);
+  return (
+    <span className="jiggle">
+      <span className="sr-only">{text}</span>
+      {chars.map((c, i) => (
+        <span key={i} aria-hidden="true" className="jiggle-char" style={{ ['--ci' as any]: chars.length > 1 ? i / (chars.length - 1) : 0 }}>
+          {c === ' ' ? ' ' : c}
+        </span>
+      ))}
+    </span>
+  );
+};
+
 const DevFixtureNote: React.FC = () => (
   <div data-dev-fixture="true" style={{ marginBottom: '14px', padding: '8px 12px', borderRadius: 'var(--radius-sm)', background: 'var(--amber-soft)', color: '#a55a05', fontSize: '0.8rem', fontWeight: 700 }}>
     Development fixture — sample data, not detected from any live source. Hidden in the production build.
@@ -388,6 +635,23 @@ const DevFixtureNote: React.FC = () => (
 export const ExamVerifiedBadge: React.FC<{ exam: Pick<Exam, 'dates' | 'posts'>; compact?: boolean }> = ({ exam, compact }) => {
   const n = unsupportedClaims(exam);
   const size = compact ? 11 : 14;
+  // "Officially verified" only where every displayed date and post is verified by its own evidence. It used
+  // to need only that none was contradicted, so dates with no source or posts still under verification
+  // counted as verified.
+  const shown = examFactStates(exam);
+  const verified = shown.filter(s => s === 'VERIFIED').length;
+  // Nothing shown, nothing verified: an exam with no dates or posts on record earns no badge at all.
+  if (shown.length === 0 && n === 0) return null;
+  if (n === 0 && verified < shown.length) {
+    const text = `${verified} of ${shown.length} facts officially verified`;
+    return (
+      <span className="badge" data-verified-facts={`${verified}/${shown.length}`}
+        title="Some dates or posts carry no official source, or one still under verification. Only the facts marked so are officially verified."
+        style={{ background: 'var(--surface-2)', color: 'var(--text-secondary)', border: '1px solid var(--border-color)', ...(compact ? { fontSize: '0.62rem' } : {}) }}>
+        <Info size={size} /> {compact ? text : text.toUpperCase()}
+      </span>
+    );
+  }
   if (n === 0) {
     return compact
       ? <span className="badge badge-verified" style={{ fontSize: '0.62rem' }}><ShieldCheck size={size} /> Officially verified</span>
@@ -882,6 +1146,14 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
+  // The bar condenses once the page has scrolled, so content gets the room and the bar stays in reach.
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 24);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   useEffect(() => {
     if (!isProfileOpen) return;
@@ -905,7 +1177,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   const link = (tab: HeaderProps['activeTab'], label: React.ReactNode, extra?: string, onClick?: () => void) => (
     <button
-      className={`nav-link ${activeTab === tab ? 'active' : ''} ${extra || ''}`}
+      className={`nav-link ${activeTab === tab && extra !== 'not-current' ? 'active' : ''} ${extra || ''}`}
       onClick={() => { if (onClick) onClick(); setActiveTab(tab); }}
     >
       {label}
@@ -913,9 +1185,9 @@ export const Header: React.FC<HeaderProps> = ({
   );
   const examShort = selectedExamTitle ? selectedExamTitle.replace(/\s*\(.*?\)\s*/g, ' ').replace(/Combined Graduate Level|Civil Services Examination|Probationary Officer/g, '').replace(/\s+/g, ' ').trim() : 'My Exam';
   return (
-    <header className="topbar">
+    <header className="topbar" data-scrolled={scrolled ? 'true' : 'false'}>
       <div className="brand" onClick={() => setActiveTab('FINDER')} style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', textDecoration: 'none' }}>
-        <div style={{ fontSize: '1.65rem', fontWeight: 800, letterSpacing: '-0.025em', lineHeight: 1.05 }}>
+        <div className="brand-word">
           <span style={{ color: '#1d4ed8' }}>Gov</span><span style={{ color: '#c0480a' }}>OS</span>
         </div>
         <span style={{ fontSize: '0.62rem', fontWeight: 600, color: '#63738a', letterSpacing: '0.01em', marginTop: '1px' }}>
@@ -947,7 +1219,7 @@ export const Header: React.FC<HeaderProps> = ({
         ) : (
           link('FINDER', <><Home size={15} /> Home</>)
         )}
-        {link('FINDER', 'Exam Finder', undefined, () => setTimeout(() => document.getElementById('exam-finder-engine')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60))}
+        {link('FINDER', 'Exam Finder', 'not-current', () => setTimeout(() => document.getElementById('exam-finder-engine')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60))}
         {/* My Exams is a global destination, so it is always reachable — it used to render
             only while it was already open, which made it unreachable from the bar. */}
         {link('MY_EXAMS', <>My Exams{trackedCount > 0 && <span className="badge badge-verified" style={{ fontSize: '0.6rem', padding: '1px 7px' }}>{trackedCount}</span>}</>)}
@@ -1012,7 +1284,7 @@ export const Header: React.FC<HeaderProps> = ({
                 border: '1.5px solid #fff'
               }} title="Active Admin" />
             </div>
-            <span style={{ fontSize: '0.88rem', fontWeight: 600, color: '#1e293b' }}>Hi, Sainath</span>
+            <span className="profile-name" style={{ fontSize: '0.88rem', fontWeight: 600, color: '#1e293b' }}>Hi, Sainath</span>
             <ChevronDown size={14} color="#63738a" style={{ transform: isProfileOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }} />
           </button>
 
@@ -1370,7 +1642,7 @@ export const ExamDiscovery: React.FC<ExamDiscoveryProps> = ({ exams, onSelectExa
             <option value="Final year of a Bachelor's degree">Final year of a bachelor's degree</option>
             <option value="Bachelor's degree">Bachelor's degree or higher</option>
           </select>
-          <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '4px' }}>Why we ask: every post here requires a bachelor's degree, or its final year.</div>
+          <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '4px' }}>Why we ask: each post is checked against the qualification its own notice states.</div>
         </div>
       </div>
 
@@ -1386,7 +1658,7 @@ export const ExamDiscovery: React.FC<ExamDiscoveryProps> = ({ exams, onSelectExa
       )}
 
       <div>
-        <button className="btn-primary" onClick={run} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+        <button className="btn btn-primary" onClick={run} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
           <Search size={16} /> {result ? 'Check again' : 'See exams you may be eligible for'}
         </button>
       </div>
@@ -1490,6 +1762,269 @@ interface ExamFinderProps {
   onToggleTrackExam?: (examId: string) => void;
 }
 
+// =============================================================================================
+// Home composition (presentation only). Every number and date on these surfaces is read from the exam
+// records at render time; every button calls a handler ExamFinder already owned.
+// =============================================================================================
+
+/** The next milestone an exam's own record states, or null. A date printed without a day is shown as
+ *  printed and never counted down to (the same rule as the timeline). */
+export function nextMilestoneOf(exam: Exam, now: number = Date.now()): { label: string; when: string; days: number | null } | null {
+  const upcoming = exam.dates
+    .filter(d => d.status !== 'SUPERSEDED')
+    .map(d => ({ d, at: Date.parse(d.dateTimeStr.replace(' ', 'T')) }))
+    .filter(x => Number.isFinite(x.at) && x.at >= now)
+    .sort((a, b) => a.at - b.at)[0];
+  if (!upcoming) return null;
+  const exact = !upcoming.d.displayWhen;
+  return {
+    label: upcoming.d.label,
+    when: statedWhen(upcoming.d),
+    days: exact ? Math.max(0, Math.ceil((upcoming.at - now) / 86400000)) : null
+  };
+}
+
+/** One of five GovOS pass tones, picked from the authority's name so an exam keeps its colour everywhere. */
+const PASS_TONES = ['ink', 'saffron', 'jade', 'plum', 'tide'] as const;
+export const passToneOf = (seed: string): typeof PASS_TONES[number] => {
+  const authorities = Array.from(new Set(ALL_EXAMS.map(e => e.authorityName)));
+  const at = authorities.indexOf(seed);
+  if (at >= 0) return PASS_TONES[at % PASS_TONES.length];
+  let h = 0;
+  for (const ch of seed) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return PASS_TONES[h % PASS_TONES.length];
+};
+
+/** Pointer depth for a layered stage: sets --mx / --my (-1..1) on the element, throttled to animation frames.
+ *  Fine pointers only; nothing under reduced motion. */
+function usePointerDepth(ref: React.RefObject<HTMLElement>): void {
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || prefersReducedMotion() || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+    let raf = 0;
+    let x = 0, y = 0;
+    const apply = () => { raf = 0; el.style.setProperty('--mx', x.toFixed(3)); el.style.setProperty('--my', y.toFixed(3)); };
+    const onMove = (e: PointerEvent) => {
+      const r = el.getBoundingClientRect();
+      x = ((e.clientX - r.left) / r.width) * 2 - 1;
+      y = ((e.clientY - r.top) / r.height) * 2 - 1;
+      if (!raf) raf = requestAnimationFrame(apply);
+    };
+    const onLeave = () => { x = 0; y = 0; if (!raf) raf = requestAnimationFrame(apply); };
+    el.addEventListener('pointermove', onMove);
+    el.addEventListener('pointerleave', onLeave);
+    return () => { el.removeEventListener('pointermove', onMove); el.removeEventListener('pointerleave', onLeave); if (raf) cancelAnimationFrame(raf); };
+  }, [ref]);
+}
+
+/** A chapter opening between home sections: a numbered eyebrow, a display title, one line of context. */
+export const ChapterHeader: React.FC<{ index: string; eyebrow: string; title: React.ReactNode; sub?: string; action?: React.ReactNode }> = ({ index, eyebrow, title, sub, action }) => (
+  <header className="chapter-header" data-reveal>
+    <div className="chapter-eyebrow"><span className="chapter-index">{index}</span>{eyebrow}</div>
+    <div className="chapter-row">
+      <h2 className="chapter-title">{title}</h2>
+      {action}
+    </div>
+    {sub && <p className="chapter-sub">{sub}</p>}
+  </header>
+);
+
+interface CinematicHeroProps {
+  exams: Exam[];
+  searchQuery: string;
+  onSearch: (value: string) => void;
+  onFind: () => void;
+  onExplore: () => void;
+  onOpenExam: (exam: Exam) => void;
+}
+
+/** The home's opening stage: the promise in large type, the search, and -- floating over GovOS's illustration --
+ *  the next milestones the register actually holds, each one clickable into its exam. */
+export const CinematicHero: React.FC<CinematicHeroProps> = ({ exams, searchQuery, onSearch, onFind, onExplore, onOpenExam }) => {
+  const stageRef = useRef<HTMLElement>(null);
+  usePointerDepth(stageRef);
+  const now = Date.now();
+  const milestones = exams
+    .map(exam => ({ exam, next: nextMilestoneOf(exam, now) }))
+    .filter((m): m is { exam: Exam; next: NonNullable<ReturnType<typeof nextMilestoneOf>> } => !!m.next)
+    .sort((a, b) => (a.next.days ?? 9999) - (b.next.days ?? 9999))
+    .slice(0, 3);
+  const officialMilestones = exams.reduce((n, e) => n + e.dates.filter(d => d.status !== 'SUPERSEDED').length, 0);
+  const authorities = new Set(exams.map(e => e.authorityName)).size;
+  return (
+    <section className="cine-hero" ref={stageRef} aria-labelledby="cine-hero-title">
+      <div className="cine-grid" aria-hidden="true" />
+      <div className="cine-glow" aria-hidden="true" />
+
+      <div className="cine-copy">
+        <div className="cine-eyebrow hero-in" style={{ ['--hi' as any]: 0 }}>
+          <span className="cine-dot" /> India's exam &amp; career navigation
+        </div>
+        <h1 id="cine-hero-title" className="hero-title cine-title">
+          <SplitWords text="Government exams." />
+          <br />
+          <span className="split-word accent-serif" aria-hidden="true" style={{ ['--wi' as any]: 2 }}>Simplified</span>
+          <span className="sr-only">Simplified</span>{' '}
+          <SplitWords text="for you." start={3} />
+        </h1>
+        <p className="cine-lede hero-in" style={{ ['--hi' as any]: 1 }}>
+          Find exams, get reliable information, prepare smarter, and never miss an important date — every fact traced to the authority that published it.
+        </p>
+
+        <div className="cine-search hero-in" style={{ ['--hi' as any]: 2 }}>
+          <Search size={20} aria-hidden="true" />
+          <input
+            type="text"
+            aria-label="Search exams"
+            placeholder="Search exams — SSC CGL, UPSC, IBPS…"
+            value={searchQuery}
+            onChange={e => onSearch(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') onFind(); }}
+          />
+          <button className="cine-search-go" onClick={onFind} aria-label="Search"><ArrowRight size={18} /></button>
+        </div>
+
+        <div className="cine-chips hero-in" style={{ ['--hi' as any]: 3 }}>
+          <span>Popular</span>
+          {['SSC CGL', 'UPSC CSE', 'RRB NTPC', 'IBPS PO', 'State PSC'].map(name => (
+            <button key={name} className="chip cine-chip" onClick={() => onSearch(name)}>{name}</button>
+          ))}
+        </div>
+
+        <div className="cine-actions hero-in" style={{ ['--hi' as any]: 4 }}>
+          <button className="btn cine-cta" onClick={onFind}>
+            <JiggleLabel text="Find My Exam" /> <ArrowRight size={18} />
+          </button>
+          <button className="btn cine-ghost" onClick={onExplore}>
+            <Compass size={17} /> Explore Exams
+          </button>
+        </div>
+      </div>
+
+      <div className="cine-visual" aria-hidden="false">
+        <figure className="cine-window">
+          <img src={heroIllustration} alt="An aspirant looking out over a government building at sunrise" />
+        </figure>
+        {milestones.map((m, i) => (
+          <button
+            key={m.exam.id}
+            className={`cine-milestone cine-milestone-${i}`}
+            style={{ ['--mi' as any]: i }}
+            onClick={() => onOpenExam(m.exam)}
+            title={`Open ${m.exam.title}`}
+          >
+            <span className="cine-milestone-code">{examDisplayCode(m.exam)}</span>
+            <span className="cine-milestone-label">{m.next.label}</span>
+            <span className="cine-milestone-when">
+              {m.next.days !== null ? <><strong>{m.next.days}</strong> {m.next.days === 1 ? 'day' : 'days'} · {m.next.when}</> : m.next.when}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      <dl className="cine-stats hero-in" style={{ ['--hi' as any]: 5 }}>
+        <div><dt>Exams in the register</dt><dd>{exams.length}</dd></div>
+        <div><dt>Authorities</dt><dd>{authorities}</dd></div>
+        <div><dt>Milestones on record</dt><dd>{officialMilestones}</dd></div>
+      </dl>
+    </section>
+  );
+};
+
+interface ExamPassItem { name: string; sub: string; exam?: Exam; onClick: () => void }
+
+/** The exams as passes: the code set large, the authority, and the next milestone its own record states.
+ *  A pass whose exam GovOS does not hold says so and searches instead. */
+export const ExamPassRail: React.FC<{ items: ExamPassItem[] }> = ({ items }) => {
+  const now = Date.now();
+  return (
+    <div className="pass-rail">
+      {items.map((item, i) => {
+        const next = item.exam ? nextMilestoneOf(item.exam, now) : null;
+        const tone = passToneOf(item.exam?.authorityName || item.name);
+        return (
+          <button
+            key={item.name}
+            className={`popular-exam-card pass pass-${tone}${item.exam ? '' : ' pass-missing'}`}
+            style={{ ['--pi' as any]: i }}
+            onClick={item.onClick}
+            onPointerMove={e => {
+              if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+              const r = e.currentTarget.getBoundingClientRect();
+              e.currentTarget.style.setProperty('--tx', (((e.clientX - r.left) / r.width) * 2 - 1).toFixed(3));
+              e.currentTarget.style.setProperty('--ty', (((e.clientY - r.top) / r.height) * 2 - 1).toFixed(3));
+            }}
+            onPointerLeave={e => { e.currentTarget.style.setProperty('--tx', '0'); e.currentTarget.style.setProperty('--ty', '0'); }}
+          >
+            <span className="pass-top">
+              <span className="pass-kicker">{item.exam ? item.exam.authorityName.match(/\(([^)]+)\)/)?.[1] || 'Exam' : 'Not in GovOS yet'}</span>
+              <ArrowUpRight size={18} className="pass-arrow" />
+            </span>
+            <span className="pass-code">{item.name}</span>
+            <span className="pass-sub">{item.sub}</span>
+            <span className="pass-perf" aria-hidden="true" />
+            <span className="pass-foot">
+              {item.exam
+                ? next
+                  ? <>
+                      <span className="pass-next-label">Next · {next.label}</span>
+                      <span className="pass-next-when">{next.days !== null ? <><strong>{next.days}</strong> {next.days === 1 ? 'day' : 'days'}</> : next.when}</span>
+                    </>
+                  : <span className="pass-next-label">No upcoming milestone on record</span>
+                : <span className="pass-next-label">Search GovOS for it →</span>}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+};
+
+interface JourneyStep { verb: string; title: string; text: string; action?: { label: string; run: () => void } }
+
+/** The candidate's journey, told as the page scrolls: each step lights up as it reaches the middle of the screen,
+ *  and a line fills alongside them. The steps that GovOS can take you to carry that action. */
+export const JourneyStory: React.FC<{ steps: JourneyStep[] }> = ({ steps }) => (
+  <section className="journey" aria-label="How GovOS works">
+    <div className="journey-sticky">
+      <div className="chapter-eyebrow"><span className="chapter-index">03</span>How GovOS works</div>
+      <h2 className="journey-title">From the first <span className="accent-serif">notification</span> to the final list.</h2>
+      <p className="chapter-sub">One path, seven steps. Each one is a part of every exam's workspace.</p>
+    </div>
+    <ol className="journey-steps">
+      <span className="journey-line" aria-hidden="true"><span className="journey-line-fill" /></span>
+      {steps.map((s, i) => (
+        <li key={s.verb} className="journey-step" data-reveal style={{ ['--si' as any]: i }}>
+          <span className="journey-num">{String(i + 1).padStart(2, '0')}</span>
+          <div className="journey-body">
+            <div className="journey-verb">{s.verb}</div>
+            <h3 className="journey-step-title">{s.title}</h3>
+            <p className="journey-text">{s.text}</p>
+            {s.action && (
+              <button className="journey-link" onClick={s.action.run}>
+                {s.action.label} <ArrowRight size={15} />
+              </button>
+            )}
+          </div>
+        </li>
+      ))}
+    </ol>
+  </section>
+);
+
+/** A typographic pause between chapters; its words settle in as it scrolls into view. */
+export const PullQuote: React.FC<{ text: string }> = ({ text }) => (
+  <figure className="pull-quote" data-reveal>
+    <Quote size={34} aria-hidden="true" />
+    <blockquote className="accent-serif">
+      <span className="sr-only">{text}</span>
+      {text.split(' ').map((w, i) => (
+        <span key={i} className="pq-word" aria-hidden="true" style={{ ['--qi' as any]: i }}>{w} </span>
+      ))}
+    </blockquote>
+  </figure>
+);
+
 export const ExamFinder: React.FC<ExamFinderProps> = ({
   exams = ALL_EXAMS,
   onOpenProvenanceModal,
@@ -1531,6 +2066,15 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
     const updated = storageService.toggleBookmarkExam(examId);
     setBookmarkedIds(updated);
     refreshRecommendations();
+  };
+
+  /** A popular-exam card opens that authority's exam where GovOS holds one, and otherwise searches for it —
+   *  never another exam by its position in the register. */
+  const openPopular = (idPart: string) => {
+    const held = ALL_EXAMS.find(e => e.id.includes(idPart));
+    if (held) { onSelectExam(held); return; }
+    handleSearchChange(idPart.toUpperCase());
+    document.getElementById('exam-finder-engine')?.scrollIntoView({ behavior: 'smooth' });
   };
 
   const handleSearchChange = (val: string) => {
@@ -1709,434 +2253,82 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
 
   return (
     <div className="homepage animate-fade-in" style={{ position: 'relative', width: '100%' }}>
-      {/* Cohesive Ambient Background Layer */}
-      <div className="homepage-bg-layer" aria-hidden="true">
-        <div className="bg-mesh-sky" />
-        <div className="bg-mesh-sun" />
-      </div>
+      <div className="homepage-content-layer" style={{ display: 'flex', flexDirection: 'column', gap: '0', position: 'relative', zIndex: 1 }}>
 
-      <div className="homepage-content-layer" style={{ display: 'flex', flexDirection: 'column', gap: '28px', position: 'relative', zIndex: 1 }}>
-        
-        {/* Seamless Hero Section */}
-        <section className="hero-seamless">
-          <div className="hero-content-seamless">
-            <div style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              background: '#e8f8ee',
-              border: '1px solid #bbf7d0',
-              borderRadius: '9999px',
-              padding: '6px 14px',
-              fontSize: '0.78rem',
-              fontWeight: 700,
-              color: '#137638',
-              letterSpacing: '0.04em',
-              textTransform: 'uppercase',
-              marginBottom: '18px'
-            }}>
-              <Sparkles size={14} color="#137638" /> YOUR PATH. A BRIGHTER TOMORROW.
-            </div>
+        {/* 01 — the opening stage */}
+        <CinematicHero
+          exams={exams}
+          searchQuery={searchQuery}
+          onSearch={handleSearchChange}
+          onFind={() => document.getElementById('exam-finder-engine')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          onExplore={() => document.getElementById('featured-exams')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          onOpenExam={onSelectExam}
+        />
 
-            <h1 style={{
-              fontSize: '3.1rem',
-              fontWeight: 800,
-              lineHeight: 1.12,
-              letterSpacing: '-0.035em',
-              color: '#0f172a',
-              margin: '0 0 16px'
-            }}>
-              Government Exams.<br />
-              <span style={{ color: '#235ddd' }}>Simplified</span> for You.
-            </h1>
-
-            <p style={{
-              color: '#475569',
-              fontSize: '1.05rem',
-              lineHeight: 1.6,
-              maxWidth: '520px',
-              margin: '0 0 24px'
-            }}>
-              Find exams, get reliable information, prepare smarter, and never miss an important date.
-            </p>
-
-            {/* Pill Search Bar with Blue Circular Search Button */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              background: '#ffffff',
-              border: '1px solid #e2e8f0',
-              borderRadius: '9999px',
-              padding: '6px 8px 6px 18px',
-              boxShadow: '0 10px 28px -6px rgba(0, 0, 0, 0.05)',
-              maxWidth: '520px',
-              marginBottom: '18px'
-            }}>
-              <Search size={18} color="#63738a" style={{ flexShrink: 0, marginRight: '10px' }} />
-              <input
-                type="text"
-                placeholder="Search exams (e.g., SSC CGL, UPSC, RRB...)"
-                value={searchQuery}
-                onChange={(e) => handleSearchChange(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    document.getElementById('exam-finder-engine')?.scrollIntoView({ behavior: 'smooth' });
-                  }
-                }}
-                style={{
-                  flex: 1,
-                  border: 'none',
-                  outline: 'none',
-                  fontSize: '0.95rem',
-                  color: '#0f172a',
-                  background: 'transparent'
-                }}
-              />
-              <button
-                onClick={() => document.getElementById('exam-finder-engine')?.scrollIntoView({ behavior: 'smooth' })}
-                style={{
-                  width: '38px',
-                  height: '38px',
-                  borderRadius: '50%',
-                  background: '#235ddd',
-                  color: '#ffffff',
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                  boxShadow: '0 4px 12px rgba(37, 99, 235, 0.35)',
-                  transition: 'all 0.2s ease'
-                }}
-                aria-label="Search"
-              >
-                <Search size={16} />
+        {/* 02 — the exams, as passes (the same five, the same handlers as the old Popular Exams row) */}
+        <section id="featured-exams" className="home-chapter">
+          <ChapterHeader
+            index="01"
+            eyebrow="Popular exams"
+            title={<>Pick an exam. <span className="accent-serif">Open</span> its workspace.</>}
+            sub="Each pass opens everything GovOS holds for that exam — dates, eligibility, application, syllabus, practice and results."
+            action={
+              <button className="chapter-link" onClick={() => document.getElementById('exam-finder-engine')?.scrollIntoView({ behavior: 'smooth' })}>
+                View all exams <ArrowRight size={15} />
               </button>
-            </div>
-
-            {/* Popular Exam Chips */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '24px' }}>
-              <span style={{ fontSize: '0.84rem', color: '#63738a', fontWeight: 600 }}>Popular:</span>
-              {['SSC CGL', 'UPSC CSE', 'RRB NTPC', 'IBPS PO', 'State PSC'].map(name => (
-                <button
-                  key={name}
-                  onClick={() => handleSearchChange(name)}
-                  style={{
-                    background: '#ffffff',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '9999px',
-                    padding: '5px 14px',
-                    fontSize: '0.82rem',
-                    fontWeight: 600,
-                    color: '#334155',
-                    cursor: 'pointer',
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  {name}
-                </button>
-              ))}
-            </div>
-
-            {/* Action Buttons */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
-              <button
-                onClick={() => document.getElementById('exam-finder-engine')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  background: '#235ddd',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: '9999px',
-                  padding: '12px 24px',
-                  fontSize: '0.95rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  boxShadow: '0 8px 20px -4px rgba(37, 99, 235, 0.4)',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                <Search size={16} /> Find My Exam <ArrowRight size={16} />
-              </button>
-              <button
-                onClick={() => document.getElementById('featured-exams')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  background: '#ffffff',
-                  color: '#1e293b',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '9999px',
-                  padding: '12px 22px',
-                  fontSize: '0.95rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                <Compass size={16} color="#235ddd" /> Explore Exams
-              </button>
-            </div>
-          </div>
-
-          {/* Right Hero Illustration */}
-          <div className="hero-art-seamless" aria-hidden="true">
-            <img src={heroIllustration} alt="GovOS Aspirant Journey" />
-          </div>
+            }
+          />
+          <ExamPassRail items={[
+            { name: 'SSC CGL', sub: 'Staff Selection Commission', exam: ALL_EXAMS.find(e => e.id.includes('ssc')), onClick: () => openPopular('ssc') },
+            { name: 'UPSC CSE', sub: 'Union Public Service Commission', exam: ALL_EXAMS.find(e => e.id.includes('upsc')), onClick: () => openPopular('upsc') },
+            { name: 'IBPS PO', sub: 'Institute of Banking Personnel', exam: ALL_EXAMS.find(e => e.id.includes('ibps')), onClick: () => openPopular('ibps') },
+            { name: 'State PSC', sub: 'State Public Service Commission', exam: ALL_EXAMS.find(e => e.id.includes('appsc')), onClick: () => openPopular('appsc') },
+            {
+              name: 'RRB NTPC', sub: 'Railway Recruitment Board', onClick: () => {
+                handleSearchChange('RRB NTPC');
+                document.getElementById('exam-finder-engine')?.scrollIntoView({ behavior: 'smooth' });
+              }
+            }
+          ]} />
         </section>
 
-        {/* Naive-student discovery: the exams the student can consider, and why */}
-        <ExamDiscovery exams={exams} onSelectExam={onSelectExam} onOpenProvenanceModal={onOpenProvenanceModal} />
+        {/* 03 — who can sit what: the eligibility discovery, unchanged inside */}
+        <section className="home-chapter">
+          <ChapterHeader
+            index="02"
+            eyebrow="Eligibility"
+            title={<>Which exams are <span className="accent-serif">yours</span> to sit?</>}
+            sub="Three facts about you, checked against the published rule of every exam GovOS holds."
+          />
+          <ExamDiscovery exams={exams} onSelectExam={onSelectExam} onOpenProvenanceModal={onOpenProvenanceModal} />
+        </section>
 
-        {/* 4 Feature Action Cards */}
-        <div className="feature-grid-4">
-          {[
-            {
-              title: 'Find the Right Exam',
-              desc: 'Discover exams that match your profile',
-              bg: '#f4fcf7',
-              borderColor: 'rgba(16, 185, 129, 0.15)',
-              iconBg: '#d1fae5',
-              icon: <Search size={20} color="#059669" />,
-              onClick: () => document.getElementById('exam-discovery')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-            },
-            {
-              title: 'Track Important Dates',
-              desc: 'Never miss a deadline again',
-              bg: '#fff8f6',
-              borderColor: 'rgba(225, 29, 72, 0.15)',
-              iconBg: '#ffe4e6',
-              icon: <Calendar size={20} color="#e11d48" />,
-              onClick: () => onNavigate ? onNavigate('CALENDAR') : onSelectExam(ALL_EXAMS[0])
-            },
-            {
-              title: 'Verified Resources',
-              desc: 'Study from trusted sources only',
-              bg: '#faf6fe',
-              borderColor: 'rgba(124, 58, 237, 0.15)',
-              iconBg: '#ede9fe',
-              icon: <BookOpen size={20} color="#7c3aed" />,
-              onClick: () => onNavigate ? onNavigate('EXAM_DETAIL', 8) : onSelectExam(ALL_EXAMS[0])
-            },
-            {
-              title: 'Practice & Improve',
-              desc: 'PYQs, mocks and smart analysis',
-              bg: '#f4fbf8',
-              borderColor: 'rgba(13, 148, 136, 0.15)',
-              iconBg: '#ccfbf1',
-              icon: <BarChart2 size={20} color="#0d9488" />,
-              onClick: () => onNavigate ? onNavigate('EXAM_DETAIL', 9) : onSelectExam(ALL_EXAMS[0])
-            }
-          ].map(card => (
-            <div
-              key={card.title}
-              className="feature-action-card"
-              onClick={card.onClick}
-              style={{ background: card.bg, borderColor: card.borderColor }}
-            >
-              <div>
-                <div style={{
-                  width: '42px',
-                  height: '42px',
-                  borderRadius: '12px',
-                  background: card.iconBg,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: '14px'
-                }}>
-                  {card.icon}
-                </div>
-                <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a', margin: '0 0 6px' }}>{card.title}</h4>
-                <p style={{ fontSize: '0.84rem', color: '#63738a', margin: 0, lineHeight: 1.45 }}>{card.desc}</p>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '14px' }}>
-                <ArrowRight size={18} color="#0f172a" />
-              </div>
-            </div>
-          ))}
-        </div>
+        {/* 04 — the journey, told as the page scrolls (it carries the four old action cards' actions) */}
+        <JourneyStory steps={[
+          { verb: 'Discover', title: 'Find the right exam', text: 'Search the register, or let your age, category and qualification narrow it down.',
+            action: { label: 'Check eligibility', run: () => document.getElementById('exam-discovery')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) } },
+          { verb: 'Understand', title: 'Read what the notice actually says', text: 'Posts, age bands, attempts, fees and the scheme — each with the clause it came from.' },
+          { verb: 'Apply', title: 'Apply without surprises', text: 'The portal, the documents and the traps the notice warns about, before the window closes.' },
+          { verb: 'Prepare', title: 'Study from trusted sources', text: 'The syllabus as the authority printed it, and resources that are official or clearly labelled.',
+            ...(onNavigate ? { action: { label: 'Open resources', run: () => onNavigate('EXAM_DETAIL', 8) } } : {}) },
+          { verb: 'Practice', title: 'Practice and improve', text: 'Previous papers where the authority publishes them, drills, mocks and honest analysis.',
+            ...(onNavigate ? { action: { label: 'Open practice', run: () => onNavigate('EXAM_DETAIL', 9) } } : {}) },
+          { verb: 'Track', title: 'Never miss a date', text: 'Every milestone on one timeline, with reminders only while they are still true.',
+            ...(onNavigate ? { action: { label: 'Open my timeline', run: () => onNavigate('CALENDAR') } } : {}) },
+          { verb: 'Act', title: 'Know what comes next', text: 'Results, cut-offs and the next stage, read from what the authority declared.' }
+        ]} />
 
-        {/* How GovOS Works + Motivational Quote */}
-        <div style={{ marginTop: '16px' }}>
-          <div style={{ marginBottom: '16px' }}>
-            <h3 style={{ fontSize: '1.45rem', fontWeight: 800, color: '#0f172a', margin: '0 0 4px' }}>How GovOS Works</h3>
-            <p style={{ fontSize: '0.92rem', color: '#63738a', margin: 0 }}>A simple way to stay ahead in your government exam journey.</p>
-          </div>
-          
-          <div className="how-grid">
-            {/* 3-Step Process Card */}
-            <div style={{
-              background: '#ffffff',
-              border: '1px solid #f1f5f9',
-              borderRadius: '20px',
-              padding: '24px 28px',
-              boxShadow: '0 4px 20px -4px rgba(0, 0, 0, 0.04)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: '16px'
-            }}>
-              {/* Step 1 */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: '1 1 210px', minWidth: 0 }}>
-                <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#dbeafe', color: '#235ddd', fontWeight: 800, fontSize: '0.82rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>1</div>
-                <div style={{ width: '38px', height: '38px', borderRadius: '12px', background: '#e0f2fe', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <Search size={18} color="#0272ab" />
-                </div>
-                <div>
-                  <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.92rem' }}>Find Your Exam</div>
-                  <div style={{ fontSize: '0.78rem', color: '#63738a', lineHeight: 1.4 }}>Search and select the exam that matches your goals.</div>
-                </div>
-              </div>
-              <ArrowRight size={18} color="#94a3b8" style={{ flexShrink: 0 }} />
-
-              {/* Step 2 */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: '1 1 210px', minWidth: 0 }}>
-                <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#d1fae5', color: '#059669', fontWeight: 800, fontSize: '0.82rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>2</div>
-                <div style={{ width: '38px', height: '38px', borderRadius: '12px', background: '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <FileText size={18} color="#059669" />
-                </div>
-                <div>
-                  <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.92rem' }}>Get Verified Information</div>
-                  <div style={{ fontSize: '0.78rem', color: '#63738a', lineHeight: 1.4 }}>Access accurate and up-to-date details from official sources.</div>
-                </div>
-              </div>
-              <ArrowRight size={18} color="#94a3b8" style={{ flexShrink: 0 }} />
-
-              {/* Step 3 */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: '1 1 210px', minWidth: 0 }}>
-                <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#ffedd5', color: '#c0480a', fontWeight: 800, fontSize: '0.82rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>3</div>
-                <div style={{ width: '38px', height: '38px', borderRadius: '12px', background: '#fff7ed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <BarChart2 size={18} color="#c0480a" />
-                </div>
-                <div>
-                  <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.92rem' }}>Prepare and Track</div>
-                  <div style={{ fontSize: '0.78rem', color: '#63738a', lineHeight: 1.4 }}>Use resources, practice, and track your progress in one place.</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Motivational Quote Card */}
-            <div style={{
-              background: '#ffffff',
-              border: '1px solid #f1f5f9',
-              borderRadius: '20px',
-              padding: '24px 26px',
-              boxShadow: '0 4px 20px -4px rgba(0, 0, 0, 0.04)',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
-              position: 'relative'
-            }}>
-              <Quote size={28} color="#c0480a" style={{ opacity: 0.85, marginBottom: '6px' }} />
-              <p style={{ fontSize: '0.92rem', fontWeight: 600, color: '#334155', lineHeight: 1.5, margin: '0 0 10px' }}>
-                A small step towards preparation can create a big opportunity tomorrow.
-              </p>
-              <div style={{ width: '40px', height: '3px', borderRadius: '2px', background: '#c0480a', opacity: 0.8 }} />
-            </div>
-          </div>
-        </div>
-
-        {/* Popular Exams Row */}
-        <div id="featured-exams" style={{ marginTop: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: '16px' }}>
-            <div>
-              <h3 style={{ fontSize: '1.45rem', fontWeight: 800, color: '#0f172a', margin: '0 0 4px' }}>Popular Exams</h3>
-              <p style={{ fontSize: '0.92rem', color: '#63738a', margin: 0 }}>Explore the most sought-after government exams in India.</p>
-            </div>
-            <button
-              onClick={() => document.getElementById('exam-finder-engine')?.scrollIntoView({ behavior: 'smooth' })}
-              style={{ background: 'none', border: 'none', color: '#235ddd', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-            >
-              View All Exams <ArrowRight size={15} />
-            </button>
-          </div>
-
-          <div className="popular-exams-row">
-            {[
-              {
-                name: 'SSC CGL',
-                sub: 'Staff Selection Commission',
-                badgeBg: '#b91c1c',
-                badgeBorder: '#fef08a',
-                icon: <ShieldCheck size={20} color="#fef08a" />,
-                onClick: () => onSelectExam(ALL_EXAMS.find(e => e.id.includes('ssc')) || ALL_EXAMS[0])
-              },
-              {
-                name: 'UPSC CSE',
-                sub: 'Union Public Service Commission',
-                badgeBg: 'linear-gradient(135deg, #fef3c7, #fde68a)',
-                badgeBorder: '#a55a05',
-                icon: <Award size={20} color="#af5109" />,
-                onClick: () => onSelectExam(ALL_EXAMS.find(e => e.id.includes('upsc')) || ALL_EXAMS[1])
-              },
-              {
-                name: 'RRB NTPC',
-                sub: 'Railway Recruitment Board',
-                badgeBg: '#b71f1f',
-                badgeBorder: '#ffffff',
-                icon: <Activity size={20} color="#ffffff" />,
-                onClick: () => {
-                  handleSearchChange('RRB NTPC');
-                  document.getElementById('exam-finder-engine')?.scrollIntoView({ behavior: 'smooth' });
-                }
-              },
-              {
-                name: 'IBPS PO',
-                sub: 'Institute of Banking Personnel',
-                badgeBg: '#1e40af',
-                badgeBorder: '#bfdbfe',
-                icon: <Building size={18} color="#ffffff" />,
-                onClick: () => onSelectExam(ALL_EXAMS.find(e => e.id.includes('ibps')) || ALL_EXAMS[2])
-              },
-              {
-                name: 'State PSC',
-                sub: 'State Public Service Commission',
-                badgeBg: '#0f766e',
-                badgeBorder: '#99f6e4',
-                icon: <Layers size={18} color="#ffffff" />,
-                onClick: () => onSelectExam(ALL_EXAMS.find(e => e.id.includes('appsc')) || ALL_EXAMS[3])
-              }
-            ].map(exam => (
-              <div
-                key={exam.name}
-                className="popular-exam-card"
-                onClick={exam.onClick}
-              >
-                <div style={{
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: '50%',
-                  background: exam.badgeBg,
-                  border: `1.5px solid ${exam.badgeBorder}`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.08)'
-                }}>
-                  {exam.icon}
-                </div>
-                <div style={{ minWidth: 0 }}>
-                  <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a', margin: '0 0 2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{exam.name}</h4>
-                  {/* The authority's full name is the point of this line, so it wraps to a
-                      second line rather than being cut off mid-word in a 5-up grid. */}
-                  <p style={{ fontSize: '0.78rem', color: '#63738a', margin: 0, lineHeight: 1.3 }}>{exam.sub}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <PullQuote text="A small step towards preparation can create a big opportunity tomorrow." />
 
       {/* Recommended for You Shelf (Time-Decayed BPR) */}
-      <div id="exam-finder-engine" />
+      <div id="exam-finder-engine" className="home-chapter">
+        <ChapterHeader
+          index="04"
+          eyebrow="Recommended"
+          title={<>A shortlist that <span className="accent-serif">learns</span> from you.</>}
+          sub="Ranked from what you search, open, save and read in GovOS — never a prediction of selection."
+        />
+      </div>
       <div className="glass-card" style={{ padding: '28px', border: '1px solid rgba(99, 102, 241, 0.35)', background: 'linear-gradient(135deg, #ffffff 0%, #eef2ff 100%)' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px', marginBottom: '20px' }}>
           <div>
@@ -2552,6 +2744,14 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
       )}
 
       {/* Discovery Filter Engine: "I am a..." + "What do you want?" */}
+      <div className="home-chapter">
+        <ChapterHeader
+          index="05"
+          eyebrow="Browse"
+          title={<>Every exam, <span className="accent-serif">filtered</span> your way.</>}
+          sub="Start from who you are and what you want; the register answers with what it holds."
+        />
+      </div>
       <div className="glass-card" style={{ padding: '28px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
           <Filter size={22} color="var(--primary)" />
@@ -2828,12 +3028,14 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
     colorBlind: false
   });
 
-  const [postFilter, setPostFilter] = useState<'ALL' | 'ELIGIBLE' | 'INELIGIBLE' | 'PHYSICAL'>('ALL');
+  const [postFilter, setPostFilter] = useState<'ALL' | 'ELIGIBLE' | 'INELIGIBLE' | 'UNDETERMINED' | 'PHYSICAL'>('ALL');
 
   const selectedExam = exam;
   const examShort = selectedExam.code.replace(/_/g, ' ');
-  // SSC-specific checks only where the exam has posts that need them.
-  const hasStatisticsPosts = selectedExam.posts.some(p => /statistic|JSO/i.test(p.postName) || !!p.specialQualification);
+  // A qualification question is asked only where one of this exam's rules reads the answer (it used to be
+  // asked wherever a post's name matched /statistic|JSO/).
+  const questions = qualificationQuestionsFor(selectedExam);
+  const hasStatisticsPosts = questions.mathsIn12th || questions.degreeSubject;
   const hasPhysicalPosts = selectedExam.posts.some(p => p.physicalRequired);
   const diagnostic: EligibilityDiagnostic = evaluateEligibility(selectedExam, profile);
   const detailedAge = selectedExam.crucialEligibilityDate
@@ -2846,7 +3048,8 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
 
   const filteredPosts = diagnostic.postVerdicts.filter(post => {
     if (postFilter === 'ELIGIBLE') return post.eligible;
-    if (postFilter === 'INELIGIBLE') return !post.eligible;
+    if (postFilter === 'INELIGIBLE') return postVerdictState(post) === 'NOT_ELIGIBLE';
+    if (postFilter === 'UNDETERMINED') return postVerdictState(post) === 'NOT_DETERMINED';
     if (postFilter === 'PHYSICAL') {
       const pReq = selectedExam.posts.find(p => p.id === post.postId);
       return pReq?.physicalRequired;
@@ -2968,7 +3171,7 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
-                  Graduation Degree
+                  Highest qualification
                 </label>
                 <select
                   value={profile.degree}
@@ -2990,7 +3193,8 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
                   <option value="BBA">BBA / Management</option>
                   <option value="BCA">BCA (Computer Applications)</option>
                   <option value="Final Year">Final Year Degree (Appearing)</option>
-                  <option value="12th Pass">12th Pass Only (Ineligible)</option>
+                  <option value="12th Pass">12th Pass</option>
+                  <option value="Master's Degree">Master's / Post-graduate</option>
                 </select>
               </div>
 
@@ -3016,32 +3220,32 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
               </div>
             </div>
 
-            {/* Special Academic Criteria (JSO & Statistical Investigator) — only where the exam has such posts */}
+            {/* Questions a post's own qualification rule reads -- only where one does */}
             {hasStatisticsPosts && (
             <div style={{ padding: '16px', borderRadius: 'var(--radius-md)', background: 'var(--surface-3)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#235ddd', textTransform: 'uppercase' }}>
                 Specialized Academic Criteria Checks
               </span>
 
-              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.88rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+              {questions.mathsIn12th && <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.88rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
                 <input
                   type="checkbox"
                   checked={profile.mathsIn12thWith60Percent}
                   onChange={(e) => setProfile({ ...profile, mathsIn12thWith60Percent: e.target.checked })}
                   style={{ width: '16px', height: '16px' }}
                 />
-                <span>Secured <strong>60%+ in Mathematics</strong> in 12th standard (JSO eligibility)</span>
-              </label>
+                <span>Secured <strong>60% or more in Mathematics</strong> in Class 12</span>
+              </label>}
 
-              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.88rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+              {questions.degreeSubject && <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.88rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
                 <input
                   type="checkbox"
                   checked={profile.statisticsInDegree}
                   onChange={(e) => setProfile({ ...profile, statisticsInDegree: e.target.checked })}
                   style={{ width: '16px', height: '16px' }}
                 />
-                <span>Studied <strong>Statistics</strong> in all 3 years / semesters of Degree (Statistical Investigator Gr II)</span>
-              </label>
+                <span>Studied <strong>Statistics</strong> as a subject in your degree</span>
+              </label>}
             </div>
             )}
 
@@ -3140,8 +3344,17 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
               className={`btn ${postFilter === 'INELIGIBLE' ? 'btn-primary' : 'btn-secondary'}`}
               style={{ fontSize: '0.82rem', padding: '6px 12px' }}
             >
-              Ineligible ({diagnostic.totalAvailablePosts - diagnostic.totalEligiblePosts})
+              Ineligible ({diagnostic.postVerdicts.filter(v => postVerdictState(v) === 'NOT_ELIGIBLE').length})
             </button>
+            {diagnostic.postVerdicts.some(v => postVerdictState(v) === 'NOT_DETERMINED') && (
+              <button
+                onClick={() => setPostFilter('UNDETERMINED')}
+                className={`btn ${postFilter === 'UNDETERMINED' ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ fontSize: '0.82rem', padding: '6px 12px' }}
+              >
+                Not determined ({diagnostic.postVerdicts.filter(v => postVerdictState(v) === 'NOT_DETERMINED').length})
+              </button>
+            )}
             <button
               onClick={() => setPostFilter('PHYSICAL')}
               className={`btn ${postFilter === 'PHYSICAL' ? 'btn-primary' : 'btn-secondary'}`}
@@ -3155,13 +3368,15 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '550px', overflowY: 'auto', paddingRight: '4px' }}>
             {filteredPosts.map(post => {
               const pReq = selectedExam.posts.find(p => p.id === post.postId);
+              const state = postVerdictState(post);
               return (
                 <div
                   key={post.postId}
                   className="glass-card"
+                  data-post-state={state}
                   style={{
                     padding: '16px 20px',
-                    borderLeft: post.eligible ? '4px solid var(--emerald)' : '4px solid var(--rose)',
+                    borderLeft: `4px solid ${state === 'ELIGIBLE' ? 'var(--emerald)' : state === 'NOT_ELIGIBLE' ? 'var(--rose)' : 'var(--amber)'}`,
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '8px'
@@ -3177,12 +3392,12 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
                       </div>
                     </div>
 
-                    <span className={post.eligible ? 'badge badge-verified' : 'badge badge-superseded'} style={{ fontSize: '0.75rem' }}>
-                      {post.eligible ? 'ELIGIBLE' : 'DISQUALIFIED'}
+                    <span className={state === 'ELIGIBLE' ? 'badge badge-verified' : state === 'NOT_ELIGIBLE' ? 'badge badge-superseded' : 'badge badge-pending'} style={{ fontSize: '0.75rem' }}>
+                      {state === 'ELIGIBLE' ? 'ELIGIBLE' : state === 'NOT_ELIGIBLE' ? 'NOT ELIGIBLE' : 'NOT DETERMINED'}
                     </span>
                   </div>
 
-                  <div style={{ fontSize: '0.85rem', color: post.eligible ? 'var(--text-secondary)' : '#b71f1f', lineHeight: 1.4 }}>
+                  <div style={{ fontSize: '0.85rem', color: state === 'NOT_ELIGIBLE' ? '#b71f1f' : 'var(--text-secondary)', lineHeight: 1.4 }}>
                     {post.reason}
                   </div>
 
@@ -3213,6 +3428,27 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
 // ==========================================================================
 interface ExamCompareProps {
   onSelectExam: (exam: Exam) => void;
+}
+
+/**
+ * What the syllabus watch can honestly say. "Nothing published since" needs a board that was actually read;
+ * a request that failed, or a board never fetched, is said as such — never as silence from the authority.
+ */
+export type SyllabusWatchState = 'LOADING' | 'UNREACHABLE' | 'NO_BOARD' | 'NOT_READ' | 'NOTHING_NEW' | 'NOTICES';
+export function syllabusWatchState(watch: SyllabusWatch | null | undefined): SyllabusWatchState {
+  if (watch === undefined) return 'LOADING';
+  if (watch === null) return 'UNREACHABLE';
+  if (watch.source === null) return 'NO_BOARD';
+  if (watch.items.length > 0) return 'NOTICES';
+  return watch.fetchedAt ? 'NOTHING_NEW' : 'NOT_READ';
+}
+export function syllabusWatchMessage(watch: SyllabusWatch | null | undefined): string {
+  switch (syllabusWatchState(watch)) {
+    case 'UNREACHABLE': return 'GovOS could not reach its server to read the notice board, so it cannot say whether anything newer was published. The syllabus shown is the last verified version.';
+    case 'NOT_READ': return `The notice board has not been read yet${watch?.error ? ` (${watch.error})` : ''}, so GovOS cannot say whether anything newer was published. The syllabus shown is the last verified version.`;
+    case 'NO_BOARD': return `${watch?.note || 'No live notice board is wired for this exam yet.'} The syllabus shown is the register's verified version.`;
+    default: return '';
+  }
 }
 
 export const ExamCompare: React.FC<ExamCompareProps> = ({ onSelectExam }) => {
@@ -3817,7 +4053,7 @@ export const ExamCalendar: React.FC<ExamCalendarProps> = ({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {filteredEvents.map(ev => {
                 const isTracked = trackedExamIds.includes(ev.examId);
-                const matchedExam = ALL_EXAMS.find(e => e.id === ev.examId) || ALL_EXAMS[0];
+                const matchedExam = ALL_EXAMS.find(e => e.id === ev.examId); // the event's own exam, never another
 
                 return (
                   <div 
@@ -3878,7 +4114,8 @@ export const ExamCalendar: React.FC<ExamCalendarProps> = ({
 
                       <button 
                         className="btn btn-outline"
-                        onClick={() => onSelectExam(matchedExam)}
+                        onClick={() => matchedExam && onSelectExam(matchedExam)}
+                        disabled={!matchedExam}
                         style={{ fontSize: '0.8rem', padding: '6px 14px' }}
                       >
                         Guide <ChevronRight size={14} />
@@ -3987,7 +4224,7 @@ const AuthoritySourceDiscoveryCard: React.FC<{ examId: string; onQueued?: () => 
   const [busy, setBusy] = useState(false);
   const [useClaude, setUseClaude] = useState(false);
   const [message, setMessage] = useState<{ text: string; tone: 'info' | 'error' } | null>(null);
-  const load = async () => setFound(await sourceDiscoveryService.forExam(examId));
+  const load = async () => setFound(await sourceDiscoveryService.forExam(examId, { fresh: true }));
   useEffect(() => { setFound(null); setMessage(null); load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [examId]);
 
   const walk = async () => {
@@ -4157,14 +4394,67 @@ const AdminTokenField: React.FC<{ required: boolean }> = ({ required }) => {
   );
 };
 
-/** The label on an answer Claude wrote from an exam's verified facts. Never the "official record" badge. */
-const ClaudeAnswerBadge: React.FC<{ answer: ClaudeAnswerResult }> = ({ answer }) => {
-  const grounded = answer.basis === 'VERIFIED_DATA';
+/** The label on an answer Claude wrote from an exam's record. "From GovOS verified data" only when every
+ *  fact it cites is verified (answerVerification) -- it used to follow Claude's own `basis` alone, so an
+ *  answer citing a fact with no source, or one still under verification, was badged verified. */
+export const claudeAnswerBadgeText = (answer: ClaudeAnswerResult): string => {
+  if (answer.basis === 'NEEDS_CLARIFICATION') return 'CLAUDE-ASSISTED · NEEDS YOUR DETAILS';
+  if (answer.basis !== 'VERIFIED_DATA') return 'CLAUDE-ASSISTED · NOT IN THE VERIFIED RECORD';
+  const v = answerVerification(answer);
+  return v === 'VERIFIED' ? 'CLAUDE-ASSISTED · FROM GOVOS VERIFIED DATA'
+    : v === 'PARTLY_VERIFIED' ? 'CLAUDE-ASSISTED · PARTLY VERIFIED — SEE EACH FACT'
+      : 'CLAUDE-ASSISTED · FROM THE EXAM RECORD · NOT VERIFIED';
+};
+
+export const ClaudeAnswerBadge: React.FC<{ answer: ClaudeAnswerResult }> = ({ answer }) => {
+  const verified = answer.basis === 'VERIFIED_DATA' && answerVerification(answer) === 'VERIFIED';
   const clarify = answer.basis === 'NEEDS_CLARIFICATION';
   return (
-    <span className={`badge ${grounded ? 'badge-demo' : clarify ? 'badge-pending' : 'badge-changed'}`} style={{ fontSize: '0.65rem' }}>
-      <Bot size={12} /> {grounded ? 'CLAUDE-ASSISTED · FROM GOVOS VERIFIED DATA' : clarify ? 'CLAUDE-ASSISTED · NEEDS YOUR DETAILS' : 'CLAUDE-ASSISTED · NOT IN THE VERIFIED RECORD'}
+    <span data-answer-verification={answer.basis === 'VERIFIED_DATA' ? answerVerification(answer) : answer.basis}
+      className={`badge ${verified ? 'badge-demo' : clarify ? 'badge-pending' : 'badge-changed'}`} style={{ fontSize: '0.65rem' }}>
+      <Bot size={12} /> {claudeAnswerBadgeText(answer)}
     </span>
+  );
+};
+
+/** The facts a Claude answer cites, each with its own state and its Evidence opened against its own claim:
+ *  an answer is never verified as a whole when only some of what it rests on is. */
+export const ClaudeAnswerFacts: React.FC<{ answer: ClaudeAnswerResult; onOpenProvenanceModal?: (p: DataProvenance) => void }> = ({ answer, onOpenProvenanceModal }) => {
+  const v = answerVerification(answer);
+  return (
+    <>
+      {answer.citations.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <div style={{ fontSize: '0.66rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            Facts used ({answer.citations.length}) · from this exam's record
+          </div>
+          {answer.citations.map(c => {
+            const state = citationVerification(c);
+            return (
+              <div key={c.id} data-fact-verification={state} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                <span style={{ minWidth: 0, flex: 1 }}>
+                  <strong>{c.label}:</strong> {c.text}
+                  <span style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: FACT_VERIFICATION_TEXT[state].color }}>{FACT_VERIFICATION_TEXT[state].text}</span>
+                </span>
+                {c.provenance && (
+                  <EvidenceButton provenance={c.provenance} onOpen={onOpenProvenanceModal}
+                    claim={c.claim && c.claim.length ? c.claim : c.text} />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+        {answer.basis !== 'VERIFIED_DATA'
+          ? 'Written by Claude from this exam\'s record; the server checked it against that record. It is not an official statement.'
+          : v === 'VERIFIED'
+            ? 'Written by Claude from this exam\'s record. Every fact it cites is officially verified and states what it is cited for; the server checked every figure against them. The wording is Claude\'s, not an official statement.'
+            : v === 'PARTLY_VERIFIED'
+              ? 'Written by Claude from this exam\'s record. Only the facts marked "Officially verified" are verified; check the others in the official documents. It is not an official statement.'
+              : 'Written by Claude from this exam\'s record, but none of the facts it cites is officially verified. Check them in the official documents. It is not an official statement.'}
+      </div>
+    </>
   );
 };
 
@@ -4187,6 +4477,12 @@ const CLAUDE_NAV_SECTIONS: Record<string, { section: number; label: string }> = 
   EXAM_DAY: { section: 15, label: 'Open Exam Day' },
   RESULTS: { section: 16, label: 'Open Results & Next Steps' },
   MOCKS: { section: 17, label: 'Open Mock Tests' }
+};
+
+/** The button under a Claude answer: the section Claude named, in the exam the answer was written for. */
+export const claudeAnswerAction = (navigateTo: string, examId: Exam['id']): AssistantAction | undefined => {
+  const target = CLAUDE_NAV_SECTIONS[navigateTo];
+  return target ? actionForExam({ label: target.label, tab: 'EXAM_DETAIL', section: target.section }, examId) : undefined;
 };
 
 /**
@@ -4322,7 +4618,62 @@ export interface AssistantAction {
   tab: GovOSTab;
   /** Exam Guide section 1-16, when the destination is inside the guide. */
   section?: number;
+  /**
+   * The exam the answer was about, on every action whose destination shows one exam (EXAM_BOUND_TABS).
+   * The answer can be about another exam than the one open ("and for upsc?"), so the destination is
+   * that exam, never whichever exam the page has open when the button is clicked. Absent on actions
+   * that show no exam (Compare, the Trust Panel).
+   */
+  examId?: Exam['id'];
 }
+
+/** The views main.tsx renders with the current exam: an action into one of them belongs to an exam. */
+export const EXAM_BOUND_TABS: ReadonlySet<GovOSTab> = new Set<GovOSTab>(['EXAM_DETAIL', 'ELIGIBILITY', 'PLANNER', 'PRACTICE', 'RESOURCES', 'AI_ASSISTANT']);
+
+/** An action, stamped with the exam it was generated for when its destination shows one exam. */
+export const actionForExam = (action: AssistantAction | undefined, examId: Exam['id']): AssistantAction | undefined =>
+  action && EXAM_BOUND_TABS.has(action.tab) ? { ...action, examId } : action;
+
+/**
+ * Where an assistant action goes. An action that names its exam opens that exam -- the one the answer was
+ * about -- whatever exam is open now; one into a view that shows no exam leaves the current exam alone.
+ * An action naming an exam GovOS does not hold goes nowhere (null) rather than to the exam that is open.
+ */
+export function assistantDestination(
+  action: { tab: GovOSTab; section?: number; examId?: string },
+  currentExam: Exam,
+  exams: Exam[]
+): { exam: Exam; tab: GovOSTab; section?: number } | null {
+  if (!action.examId || !EXAM_BOUND_TABS.has(action.tab)) return { exam: currentExam, tab: action.tab, section: action.section };
+  const exam = action.examId === currentExam.id ? currentExam : exams.find(e => e.id === action.examId);
+  return exam ? { exam, tab: action.tab, section: action.section } : null;
+}
+
+/** Where an alert opens: the exam it names and the section its kind belongs to, or null when GovOS does not hold
+ *  that exam. Never the register's first exam in its place. */
+export function notificationDestination(
+  notif: Pick<CandidateNotification, 'examId' | 'actionType' | 'actionPayload'>,
+  exams: Exam[]
+): { exam: Exam; section: number } | null {
+  const exam = notif.examId ? exams.find(e => e.id === notif.examId) : undefined;
+  if (!exam) return null;
+  const byType: Record<CandidateNotification['actionType'], number> = { EXAM_DETAIL: 1, APPLICATION_GUIDE: 4, CALENDAR: 2, TIMELINE: 2, ADMIT_CARD: 14, RESULT: 16 };
+  return { exam, section: notif.actionPayload?.section || byType[notif.actionType] || 1 };
+}
+
+/** The "take me there" button under an answer. Hands its whole action -- exam included -- to the navigator. */
+export const AssistantActionButton: React.FC<{ action: AssistantAction; onNavigate: (tab: GovOSTab, section?: number, examId?: string) => void }> = ({ action, onNavigate }) => (
+  <button
+    className="btn btn-primary"
+    data-action-tab={action.tab}
+    data-action-section={action.section}
+    data-action-exam={action.examId}
+    onClick={() => onNavigate(action.tab, action.section, action.examId)}
+    style={{ fontSize: '0.78rem', padding: '7px 14px' }}
+  >
+    <ArrowRight size={14} /> {action.label}
+  </button>
+);
 
 /**
  * What sort of claim an answer is — the safety rule in one field.
@@ -4717,9 +5068,15 @@ const practiceAnswerFor = (exam: Exam): string => {
   const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
   const own = (exam.resources || []).filter(r => resourcePlacementOf(r) === 'PRACTICE' && sourceOfResource(r).tone === 'OFFICIAL');
   const catalogued = exam.officialPapers?.length ?? 0;
-  const keys = exam.answerKeys?.length ?? 0;
+  // A key with answers in the record is an answer key; one with none is the authority's notice that a
+  // key was issued -- SSC serves the answers through each candidate's login. Counting those notices
+  // as "answer keys" (8 of them, all of 2024-2025) promised answers GovOS does not have.
+  const allKeys = exam.answerKeys || [];
+  const keys = allKeys.filter(k => (k.entries || []).length > 0).length;
+  const notices = allKeys.filter(k => (k.entries || []).length === 0);
   const items = officialQuestionsForExam(exam.id);
   const unkeyed = items.filter(q => q.officialAnswerKey === null).length;
+  const unchecked = items.filter(q => q.provenance?.verificationLevel === 'UNDER_VERIFICATION').length;
   const published = [own.length ? plural(own.length, 'paper or key link', 'paper and key links') : '',
     catalogued ? plural(catalogued, 'catalogued paper', 'catalogued papers') : '',
     keys ? plural(keys, 'answer key', 'answer keys') : ''].filter(Boolean);
@@ -4728,12 +5085,22 @@ const practiceAnswerFor = (exam: Exam): string => {
     const named = own.slice(0, 3).map(r => `“${r.title}”`).join('; ');
     parts.push(`**Practice & PYQs** has ${published.join(', ')} from ${authority} itself`
       + `${named ? ` — ${named}${own.length > 3 ? `, and ${own.length - 3} more` : ''}` : ''}.`);
-  } else {
-    parts.push(`GovOS has no verified previous-year papers or answer keys for ${exam.title} yet; **Practice & PYQs** shows this exam's current state, never another exam's papers.`);
+  } else if (!notices.length) {
+    parts.push(`GovOS has no verified previous-year papers or answer keys for ${exam.title} yet; **Practice & PYQs** says what was looked for and where.`);
+  }
+  if (notices.length) {
+    const thisCycle = getExamCycle(exam);
+    const cycles = Array.from(new Set(notices.map(k => k.identity?.cycle || '').filter(c => c && c !== thisCycle))).sort();
+    const login = notices.some(k => /log\s*-?\s*in/i.test(k.access || ''));
+    parts.push(`${published.length ? 'It also lists' : '**Practice & PYQs** lists'} ${plural(notices.length, 'answer-key notice', 'answer-key notices')}`
+      + `${cycles.length ? ` from the ${cycles.join(' and ')} cycle${cycles.length === 1 ? '' : 's'}` : ''}: `
+      + `${authority} announced those keys, but their answers are not in GovOS's record`
+      + `${login ? ` — ${authority} serves them only through each candidate's own login` : ''}.`);
   }
   if (items.length) {
     parts.push(`It also holds ${plural(items.length, 'question', 'questions')} from ${authority}'s own paper to attempt`
-      + `${unkeyed ? ` — recorded but not scored: ${authority} has published no answer key for ${unkeyed === items.length ? 'them' : `${unkeyed} of them`}` : ''}.`);
+      + `${unkeyed ? ` — recorded but not scored: ${authority} has published no answer key for ${unkeyed === items.length ? 'them' : `${unkeyed} of them`}` : ''}.`
+      + `${unchecked ? ` ${unchecked === items.length ? 'They are' : `${unchecked} of them are`} still being checked against the original paper.` : ''}`);
   }
   if (exam.id === PRACTICE_BANK_EXAM_ID) {
     const stage = exam.stages.find(st => st.tier === 'TIER_1') || exam.stages[0];
@@ -4780,14 +5147,94 @@ const applicationAnswerFor = (exam: Exam): string => {
 };
 
 /**
+ * Typing practice, read from this exam's own record: the library's typing tool if it has one, and the
+ * stage or section that is a typing or data-entry test if the exam has one. It used to tell every exam
+ * that the Data Entry Speed Test "is Section III Module 2 of Tier-2" -- SSC's test, misplaced even for
+ * SSC (the 2026 notice makes it Section-IV of Tier-II Paper-I) -- and to promise a link many exams'
+ * libraries do not have.
+ */
+/** Words any authority uses for a keyboard skill test. No authority's own acronym belongs here: a record
+ *  is read for what it says ("Data Entry Speed Test" already says data entry). */
+export const SKILL_TEST_WORDS = /\b(typing|data[- ]entry|skill test|keyboard skill)/i;
+
+type StageOf = Exam['stages'][number];
+
+export type SkillTestInRecord =
+  | { where: 'SECTION'; stage: StageOf; section: StageOf['sections'][number] }
+  | { where: 'STAGE'; stage: StageOf }
+  | { where: 'MODE'; stage: StageOf }
+  | null;
+
+/**
+ * Where an exam's own record states a typing / data-entry test, most specific first: a section of a
+ * stage (its name or its modules), a stage's name, or only a stage's mode. Reads the record's fields and
+ * nothing else, so a new exam is handled by its data. (IBPS PO states it only as its Mains mode, "Online
+ * CBT + Typing Test"; reading names alone told its candidates the record had none.)
+ */
+export const skillTestInRecord = (exam: Exam): SkillTestInRecord => {
+  const says = (s?: string) => SKILL_TEST_WORDS.test(s || '');
+  for (const stage of exam.stages) {
+    const section = (stage.sections || []).find(sec => says(sec.sectionName) || (sec.modules || []).some(says));
+    if (section) return { where: 'SECTION', stage, section };
+  }
+  const named = exam.stages.find(st => says(st.stageName));
+  if (named) return { where: 'STAGE', stage: named };
+  const byMode = exam.stages.find(st => says(st.mode));
+  return byMode ? { where: 'MODE', stage: byMode } : null;
+};
+
+const typingAnswerFor = (exam: Exam): string => {
+  const authority = exam.authorityName.split(' (')[0];
+  const tool = (exam.resources || []).find(r => isLearningResource(r)
+    && /typing|data entry|keyboard/i.test(`${r.title} ${r.description}`));
+  const found = skillTestInRecord(exam);
+  const section = found?.where === 'SECTION' ? { st: found.stage, sec: found.section } : undefined;
+  const named = found?.where === 'STAGE' ? found.stage : undefined;
+  const byMode = found?.where === 'MODE' ? found.stage : undefined;
+  const parts: string[] = [];
+  parts.push(tool
+    ? `${exam.title}'s Resource Library has a typing practice tool: **${tool.title}** (${tool.author}), under ${tool.subject}.`
+    : `${exam.title}'s Resource Library has no typing practice tool.`);
+  if (section) {
+    parts.push(`${authority}'s typing test is ${section.sec.sectionName}, in ${section.st.stageName.split(' (')[0]}.`
+      + `${section.sec.negativeMarking ? ` ${section.sec.negativeMarking}` : ''}`);
+  } else if (named) {
+    parts.push(`${authority}'s typing test is ${named.stageName}.${named.qualifyingNature ? ` ${named.qualifyingNature}` : ''}`);
+  } else if (byMode) {
+    // The record says a typing test is part of this stage and says no more: quote it, add nothing.
+    parts.push(`${authority}'s record lists ${byMode.stageName} as "${byMode.mode}". It gives no separate typing `
+      + `section, duration or marks; see **Exam Pattern** (section 05) for what the record does give.`);
+  } else {
+    parts.push(`${exam.title}'s record has no typing or data-entry test, so typing practice is not part of its selection.`);
+  }
+  return parts.join('\n\n');
+};
+
+/** Where this exam's syllabus is, and what is in it -- never weightage the record does not hold. */
+const syllabusAnswerFor = (exam: Exam): string => {
+  const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+  const topics = exam.syllabus.length;
+  const subjects = new Set(exam.syllabus.map(t => t.subject)).size;
+  const weighted = exam.syllabus.some(t => t.weightagePercentage > 0);
+  if (!topics) {
+    return `GovOS has no syllabus topics on record for ${exam.title} yet. **Syllabus** (section 06) says what the authority's own documents provide, and **Exam Pattern** (section 05) has the papers.`;
+  }
+  return `${exam.title}'s syllabus is in **Syllabus** (section 06): ${plural(topics, 'topic', 'topics')} under ${plural(subjects, 'subject', 'subjects')}`
+    + `${weighted ? ', with GovOS\'s estimate of each topic\'s weight from past papers' : ''}.`
+    + `\n\nYou can tick topics off as you finish them — progress is saved on this device.`;
+};
+
+/**
  * Counts in answer text come from the register, not from whatever was true when the
  * sentence was written: {posts}, {resources}, {syllabus}, {exam}. {resources} counts only what the
  * Resource Library lists -- learning material. {practice} is `practiceAnswerFor`, {apply} is
- * `applicationAnswerFor`.
+ * `applicationAnswerFor`, {typing} is `typingAnswerFor` and {syllabusWhere} is `syllabusAnswerFor`.
  */
 const fillCounts = (text: string, exam: Exam): string => text
   .replace(/\{practice\}/g, () => practiceAnswerFor(exam))
   .replace(/\{apply\}/g, () => applicationAnswerFor(exam))
+  .replace(/\{typing\}/g, () => typingAnswerFor(exam))
+  .replace(/\{syllabusWhere\}/g, () => syllabusAnswerFor(exam))
   .replace(/\{posts\}/g, String(exam.posts.length))
   .replace(/\{resources\}/g, String((exam.resources || []).filter(isLearningResource).length))
   .replace(/\{syllabus\}/g, String(exam.syllabus.length))
@@ -4986,7 +5433,7 @@ const PLATFORM_MAP: { keys: string[]; answer: string; action: AssistantAction }[
   },
   {
     keys: ['syllabus', 'topic list', 'what to study', 'chapters'],
-    answer: 'The syllabus is in the Exam Guide, section 06 Study Plan & Syllabus.\n\nEvery topic is listed by subject with its weightage, and you can tick topics off as you finish them — progress is saved on this device.',
+    answer: '{syllabusWhere}',
     action: { label: 'Open the syllabus', tab: 'EXAM_DETAIL', section: 6 }
   },
   {
@@ -4999,7 +5446,7 @@ const PLATFORM_MAP: { keys: string[]; answer: string; action: AssistantAction }[
   },
   {
     keys: ['typing', 'typing test', 'typing speed', 'typing practice', 'typing tool', 'dest', 'data entry speed test', 'keyboard', 'wpm', 'key depressions'],
-    answer: 'Here is the typing practice tool — the link below opens it directly.\n\nIt is what you want for the Data Entry Speed Test, which is Section III Module 2 of Tier-2 and qualifying. The full card, with the link check date, is in Resources under Computer & Typing.',
+    answer: '{typing}',
     action: { label: 'Open Resources', tab: 'EXAM_DETAIL', section: 8 }
   },
   {
@@ -5200,7 +5647,9 @@ export function answerCandidateQuery(query: string, context?: ChatContext): Assi
   if (switched) {
     prefix.push(`(Switching to ${switched.title}. Name ${base.title.split(' ')[0]} again to go back.)`);
   }
-  // The turn records which exam it answered about, so the next message can stay there.
+  // The turn records which exam it answered about, so the next message can stay there -- and so does its
+  // action, so the button opens that exam and not whichever one is open when it is clicked.
+  if (reply.action) reply = { ...reply, action: actionForExam(reply.action, activeExam.id) };
   const withExam: AssistantReply = activeExam.id !== ctx.exam.id ? { ...reply, switchedExamId: activeExam.id } : reply;
   return prefix.length > 0 ? { ...withExam, text: `${prefix.join('\n')}\n\n${withExam.text}` } : withExam;
 }
@@ -5545,10 +5994,14 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
   if (factId === 'syllabus') {
     const bySubject = new Map<string, number>();
     exam.syllabus.forEach(t => bySubject.set(t.subject, (bySubject.get(t.subject) || 0) + 1));
-    const summary = Array.from(bySubject.entries()).map(([sub, n]) => `• ${sub}: ${n} topics`).join('\n');
+    const summary = Array.from(bySubject.entries()).map(([sub, n]) => `• ${sub}: ${n} topic${n === 1 ? '' : 's'}`).join('\n');
+    if (!exam.syllabus.length) {
+      return { verified: true, text: syllabusAnswerFor(exam), action: { label: 'Open the syllabus', tab: 'EXAM_DETAIL', section: 6 } };
+    }
+    const weighted = exam.syllabus.some(t => t.weightagePercentage > 0);
     return {
       verified: true,
-      text: `The syllabus on record has ${exam.syllabus.length} topics:\n\n${summary}\n\nThe Syllabus section lists each topic with its weightage and lets you tick off what you have finished. For practice on any one of them, ask the test creator in Mock Tests.`,
+      text: `The syllabus on record has ${exam.syllabus.length} topics:\n\n${summary}\n\nThe Syllabus section lists each topic${weighted ? ' with GovOS\'s weightage estimate' : ''} and lets you tick off what you have finished. For practice on any one of them, ask the test creator in Mock Tests.`,
       action: { label: 'Open the syllabus', tab: 'EXAM_DETAIL', section: 6 }
     };
   }
@@ -5707,8 +6160,9 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
 // ==========================================================================
 interface AIAssistantProps {
   onOpenProvenanceModal: (provenance: any) => void;
-  /** Switch the app to another view (and optionally an Exam Guide section). */
-  onNavigate?: (tab: GovOSTab, section?: number) => void;
+  /** Switch the app to another view (and optionally an Exam Guide section); `examId`, set on an action
+   *  into one exam's views, opens that exam. */
+  onNavigate?: (tab: GovOSTab, section?: number, examId?: string) => void;
   /** The exam the candidate is looking at; answers and follow-ups are scoped to it. */
   exam?: Exam;
 }
@@ -5741,14 +6195,14 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal,
   // Questions Claude is working on. The candidate can stop waiting and keep the register's own reply.
   const pendingClaude = useRef<Map<string, { abort: AbortController; fallback: AIChatMessage; settle: (text: string) => void; jobId?: string; token?: string }>>(new Map());
 
-  const [messages, setMessages] = useState<AIChatMessage[]>([
-    {
-      id: 'm-1',
-      sender: 'AI',
-      text: 'Hello. I answer from the verified GovOS register for SSC CGL 2026 — eligibility, dates, pattern, posts, syllabus, application, admit card and cutoffs — and I can take you to the right part of the platform. I do not guess, and I do not search unverified websites.\n\nTry: "where do I check my eligibility", "where are the resources", "what is the last date to apply", or "is there negative marking".',
-      isVerified: true
-    }
-  ]);
+  // The greeting names the exam in hand; it named SSC CGL 2026 whatever exam was open.
+  const greeting = (forExam: Exam): AIChatMessage => ({
+    id: `m-1-${forExam.id}`,
+    sender: 'AI',
+    text: `Hello. I answer from the verified GovOS register for ${forExam.title} — eligibility, dates, pattern, posts, syllabus, application, admit card and cutoffs — and I can take you to the right part of the platform. I do not guess, and I do not search unverified websites.\n\nTry: "where do I check my eligibility", "where are the resources", "what is the last date to apply", or "is there negative marking".`,
+    isVerified: true
+  });
+  const [messages, setMessages] = useState<AIChatMessage[]>(() => [greeting(exam)]);
 
   const replaceMessage = (id: string, next: AIChatMessage) =>
     setMessages(prev => prev.map(m => (m.id === id ? next : m)));
@@ -5792,10 +6246,9 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal,
     }
     pendingClaude.current.delete(id);
     const result = job.result;
-    const target = CLAUDE_NAV_SECTIONS[result.navigateTo];
     replaceMessage(id, {
       id, sender: 'AI', text: result.answer, isVerified: false, claudeAnswer: result,
-      action: target ? { label: target.label, tab: 'EXAM_DETAIL', section: target.section } : undefined
+      action: claudeAnswerAction(result.navigateTo, examId)
     });
     settle(result.answer);
   };
@@ -5868,8 +6321,11 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal,
 
   // A different exam means "it" no longer refers to the same thing: start the thread again, and stop
   // waiting on any answer that was being written for the exam we just left.
+  const chatExamId = useRef(exam.id);
   useEffect(() => {
     conversationService.clear('ASSISTANT');
+    // The thread on screen was about the exam just left: start this exam's own.
+    if (chatExamId.current !== exam.id) { chatExamId.current = exam.id; setMessages([greeting(exam)]); }
     return () => {
       pendingClaude.current.forEach((h, id) => {
         h.abort.abort();
@@ -5911,7 +6367,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal,
               Strictly Grounded AI Guidance Assistant
             </h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-              Answers come from the verified GovOS register and its rule engine. When the register has no direct answer, Claude may read this exam's verified facts to help; its answer is labelled, cited and checked against the record, and if Claude is unavailable you get the register's own reply.
+              Answers come from the verified GovOS register and its rule engine. When the register has no direct answer, Claude may read this exam's record to help; its answer is labelled and cited, each fact it uses shows whether it is officially verified, and if Claude is unavailable you get the register's own reply.
             </p>
           </div>
         </div>
@@ -5984,7 +6440,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal,
               {msg.claudeAsking && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                   <RefreshCw size={14} className="animate-spin" />
-                  <span style={{ fontSize: '0.88rem', color: 'var(--text-secondary)' }}>The register has no direct answer. Asking Claude about {exam.title}'s verified data…</span>
+                  <span style={{ fontSize: '0.88rem', color: 'var(--text-secondary)' }}>The register has no direct answer. Asking Claude about {exam.title}'s record…</span>
                   <button className="btn btn-secondary" onClick={() => stopWaiting(msg.id)} style={{ fontSize: '0.74rem', padding: '4px 10px' }}>
                     Use the register's reply instead
                   </button>
@@ -6001,22 +6457,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal,
                   {msg.claudeAnswer.followUp && (
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>To answer fully: {msg.claudeAnswer.followUp}</div>
                   )}
-                  {msg.claudeAnswer.citations.length > 0 && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      <div style={{ fontSize: '0.66rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                        Facts used ({msg.claudeAnswer.citations.length}) · from this exam's verified record
-                      </div>
-                      {msg.claudeAnswer.citations.map(c => (
-                        <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-                          <span style={{ minWidth: 0, flex: 1 }}><strong>{c.label}:</strong> {c.text}</span>
-                          {c.provenance && <EvidenceButton provenance={c.provenance} onOpen={onOpenProvenanceModal} />}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                    Written by Claude from this exam's verified facts only; the server checked every cited fact and figure against them. It is not an official statement.
-                  </div>
+                  <ClaudeAnswerFacts answer={msg.claudeAnswer} onOpenProvenanceModal={onOpenProvenanceModal} />
                 </div>
               )}
 
@@ -6043,13 +6484,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal,
 
               {msg.action && onNavigate && (
                 <div style={{ marginTop: '12px' }}>
-                  <button
-                    className="btn btn-primary"
-                    onClick={() => onNavigate(msg.action!.tab, msg.action!.section)}
-                    style={{ fontSize: '0.78rem', padding: '7px 14px' }}
-                  >
-                    <ArrowRight size={14} /> {msg.action.label}
-                  </button>
+                  <AssistantActionButton action={msg.action} onNavigate={onNavigate} />
                 </div>
               )}
 
@@ -6135,7 +6570,7 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
   );
   const syllabusExam = revisableExams.find(e => e.id === syllabusExamId) || revisableExams[0] || SSC_CGL_EXAM;
   const syllabusVerifiedOn = syllabusExam.syllabus[0]?.officialProvenance?.verifiedDate || '';
-  const [syllabusWatch, setSyllabusWatch] = useState<SyllabusWatch | null>(null);
+  const [syllabusWatch, setSyllabusWatch] = useState<SyllabusWatch | null | undefined>(undefined);
   const [syllabusRevisions, setSyllabusRevisions] = useState<SyllabusRevision[]>([]);
   const [revisionBusy, setRevisionBusy] = useState<boolean>(false);
   const [revisionError, setRevisionError] = useState<string | null>(null);
@@ -6772,8 +7207,10 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
               <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>
                 Notices since {syllabusVerifiedOn} {syllabusWatch ? `· checked ${formatFetched(syllabusWatch.fetchedAt)}` : ''}
               </div>
-              {syllabusWatch === null ? (
+              {syllabusWatchState(syllabusWatch) === 'LOADING' ? (
                 <div style={{ fontSize: '0.84rem', color: 'var(--text-muted)' }}>Reading the notice board…</div>
+              ) : !syllabusWatch || syllabusWatchState(syllabusWatch) === 'UNREACHABLE' || syllabusWatchState(syllabusWatch) === 'NOT_READ' || syllabusWatchState(syllabusWatch) === 'NO_BOARD' ? (
+                <div data-watch-state={syllabusWatchState(syllabusWatch)} style={{ fontSize: '0.84rem', color: 'var(--text-muted)' }}>{syllabusWatchMessage(syllabusWatch)}</div>
               ) : syllabusWatch.items.length === 0 ? (
                 <div style={{ padding: '14px', borderRadius: 'var(--radius-md)', background: 'rgba(16, 185, 129, 0.06)', border: '1px solid rgba(16, 185, 129, 0.25)', fontSize: '0.84rem', color: '#137638', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <CheckCircle2 size={15} /> Nothing about this exam has been published since the syllabus was verified.{syllabusWatch.error ? ` (Board refresh failed: ${syllabusWatch.error}; showing the last good copy.)` : ''}
@@ -9034,7 +9471,8 @@ export const ResourceAIAssistant: React.FC<ResourceAIAssistantProps> = ({
       && firstTry.reading.topicLabels.length === 0
       && firstTry.reading.terms.length === 0;
     if (firstTry.results.length === 0 || namesNoSubject) {
-      const expanded = resolveWithHistory(textToSend, conversationService.history('RESOURCES'));
+      // Only this exam's own turns: "any video on that?" must not inherit another exam's subject.
+      const expanded = resolveWithHistory(textToSend, conversationService.history('RESOURCES').filter(t => t.examId === exam?.id));
       if (expanded) {
         const retry = rankResourcesForQuery(expanded.text, resources, 6);
         if (retry.results.length > 0) {
@@ -9508,6 +9946,16 @@ export const PreparationPlanner: React.FC<PreparationPlannerProps> = ({ exam }) 
     setCompletedGoals(storageService.toggleRoadmapGoal(exam.id, goalKey));
   };
 
+  // Another exam's goals, track and open phase are not this exam's: reloaded during render on a switch,
+  // so no frame shows them, and a tick can only land on the exam on screen.
+  const [plannerExamId, setPlannerExamId] = useState<string>(exam.id);
+  if (plannerExamId !== exam.id) {
+    setPlannerExamId(exam.id);
+    setCompletedGoals(storageService.getRoadmapGoals(exam.id));
+    setSelectedTrackId((exam.roadmapTracks || [])[0]?.id || 'TRACK_90_DAYS');
+    setExpandedPhase(1);
+  }
+
   // No authored track, but a study order over the verified syllabus: shown as what it is --
   // GovOS guidance with no durations -- grouped by the syllabus's own papers.
   if (!currentTrack && (exam.studyGuidance?.steps?.length ?? 0) > 0) {
@@ -9794,7 +10242,8 @@ export const PostStudyPathEngine: React.FC<PostStudyPathEngineProps> = ({
     setSyncStatus('Syncing with govos.db...');
     const result = await storageService.syncAllToSQLite();
     setIsSyncing(false);
-    setSyncStatus(result.success ? 'Synced to SQLite (govos.db)' : 'Offline Local Storage Active');
+    // Say what happened: "offline" was shown for a reachable server that refused some attempts too.
+    setSyncStatus(result.success ? 'Synced to SQLite (govos.db)' : result.message);
   };
 
   const getProvenanceBadge = (type: RequirementProvenanceType) => {
@@ -10494,6 +10943,10 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
   const [userAnswers, setUserAnswers] = useState<Record<number, number>>({});
   const [markedForReview, setMarkedForReview] = useState<Record<number, boolean>>({});
   const [isSubmittedTest, setIsSubmittedTest] = useState<boolean>(false);
+  /** One id per sitting, fixed when the test starts: a second submit of the same sitting (the timer reaching
+   *  zero as the button is pressed) replaces the first record instead of adding a duplicate attempt. */
+  const sittingIdRef = useRef<string>('');
+  const [saveWarning, setSaveWarning] = useState<string | null>(null);
   const [timerSeconds, setTimerSeconds] = useState<number>(3600);
   const [isTimerPaused, setIsTimerPaused] = useState<boolean>(false);
   
@@ -10611,6 +11064,8 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
     setActiveSection('ALL');
     setSolutionFilter('ALL');
     setSolutionSectionFilter('ALL');
+    sittingIdRef.current = `attempt-${Date.now()}`;
+    setSaveWarning(null);
     setIsTestStarted(true);
     setActivePracticeTab('ACTIVE_TEST');
   };
@@ -10701,7 +11156,10 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
     }
   });
 
-  const marksEarned = (correctCount * 2) - (incorrectCount * 0.5);
+  // Each paper by its own marking: the Tier-II computer module (3 a question, 1 off) used to be
+  // scored at Tier-I's +2/−0.50, so its 60 marks could never be reached. Every paper states it.
+  const paperMarking = selectedPaper.marking;
+  const marksEarned = (correctCount * paperMarking.correct) - (incorrectCount * paperMarking.wrong);
   const totalPossibleMarks = selectedPaper.totalMarks;
   const accuracyPercentage = (correctCount + incorrectCount) > 0
     ? Math.round((correctCount / (correctCount + incorrectCount)) * 100)
@@ -10815,7 +11273,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
     setIsSubmittedTest(true);
     setReviewingAttempt(null);
     const newAttempt: MockAttemptRecord = {
-      id: `attempt-${Date.now()}`,
+      id: sittingIdRef.current || `attempt-${Date.now()}`,
       exam_id: exam.id,
       topic_id: selectedPaper.id,
       subject: selectedPaper.title,
@@ -10830,7 +11288,10 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
       paperData: selectedPaper
     };
 
-    storageService.saveMockAttempt(newAttempt);
+    const kept = storageService.saveMockAttempt(newAttempt);
+    if (!kept.local) {
+      setSaveWarning('This attempt could not be kept in this browser (its storage is full). It was sent to the GovOS server if that is reachable; your results are shown below either way.');
+    }
     setPastAttempts(storageService.getMockAttempts(exam.id));
   };
 
@@ -10892,6 +11353,8 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
           totalMarks: 100,
           durationMinutes: 10,
           difficulty: 'EASY',
+          // The simulator scores passed checks out of 100, nothing off: four checks of 25.
+          marking: { correct: 25, wrong: 0, clause: 'GovOS application drill: 25 marks a check, nothing off for a failed one' },
           description: 'Application drill written by GovOS from the notice’s rules on photo and signature, fee exemptions, post preferences and eligibility.',
           provenanceTag: 'GovOS drill — from the notice’s rules',
           questions: [
@@ -11067,6 +11530,12 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
       const storedAnswers = att.userAnswers || att.details?.userAnswers;
       const hasRecordedAnswers = storedAnswers && Object.keys(storedAnswers).length > 0;
 
+      // An attempt stored before papers carried their marking: take the bank paper's own, by id. Every
+      // such attempt is of this bank (the engine serves one exam), whose papers are all Tier-I-marked.
+      if (!targetPaper.marking) {
+        const own = allRepositoryPapers.find(p => p && p.id === targetPaper!.id)?.marking;
+        targetPaper = { ...targetPaper, marking: own || SSC_TIER1_MARKING };
+      }
       setSelectedPaper(targetPaper);
       setUserAnswers(hasRecordedAnswers ? { ...storedAnswers } : {});
       setReviewingAttempt(att);
@@ -11633,7 +12102,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                   </div>
 
                   <span style={{ fontSize: '0.8rem', color: '#137638', fontWeight: 700 }}>
-                    +2.0 Marks / -0.50 Neg
+                    +{paperMarking.correct.toFixed(1)} Marks / -{paperMarking.wrong.toFixed(2)} Neg
                   </span>
                 </div>
 
@@ -11775,7 +12244,12 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
 
             /* 🎯 ENHANCED CLARITY POST-TEST DASHBOARD & ANIMATED STEP-BY-STEP SOLUTIONS */
             <div className="glass-card animate-fade-in" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '26px' }}>
-              
+              {saveWarning && !reviewingAttempt && (
+                <div role="alert" data-save-state="not-kept" style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'var(--amber-soft)', color: 'var(--text-primary)', fontSize: '0.84rem' }}>
+                  {saveWarning}
+                </div>
+              )}
+
               {/* Review Mode Banner */}
               {reviewingAttempt && (
                 <div style={{
@@ -12245,7 +12719,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
                                   border: isCorrect ? '1px solid #10b981' : isUnattempted ? '1px solid #f59e0b' : '1px solid #b33333'
                                 }}
                               >
-                                {isCorrect ? '✅ Correct (+2.0 M)' : isUnattempted ? '⚠️ Unattempted (0.0 M)' : '❌ Incorrect (-0.50 M)'}
+                                {isCorrect ? `✅ Correct (+${paperMarking.correct.toFixed(1)} M)` : isUnattempted ? '⚠️ Unattempted (0.0 M)' : `❌ Incorrect (-${paperMarking.wrong.toFixed(2)} M)`}
                               </span>
                             )}
                             <span className="glass-pill" style={{ fontSize: '0.82rem', padding: '5px 12px', color: '#235ddd', fontWeight: 600 }}>
@@ -14209,6 +14683,17 @@ export const ApplicationGuide: React.FC<ApplicationGuideProps> = ({
   const [certificateIssueDate, setCertificateIssueDate] = useState<string>('2025-06-15');
   const [certValidityResult, setCertValidityResult] = useState<{ valid: boolean; message: string } | null>(null);
 
+  // A tab, step or certificate check chosen on one exam is not another's: a switch starts this exam afresh.
+  // Adjusted during render, so no frame shows the previous exam's tab.
+  const [guideExamId, setGuideExamId] = useState<string>(examId);
+  if (guideExamId !== examId) {
+    setGuideExamId(examId);
+    setApplicationMode(hasSimulator && !hasOfficialInstructions ? 'PRACTICE_SIMULATOR' : 'INSTRUCTIONS');
+    setActiveTab(initialTab || 'OTR_STEPS');
+    setExpandedStep(1);
+    setCertValidityResult(null);
+  }
+
   const handleCheckCertificate = () => {
     if (!certificateIssueDate) {
       setCertValidityResult({ valid: false, message: 'Please select a valid certificate issue date.' });
@@ -15328,8 +15813,27 @@ interface ExamDayChecklistSectionProps {
   onOpenProvenanceModal?: (p: DataProvenance) => void;
 }
 
+/** One exam's exam-day ticks, under that exam's own key. */
+export const examChecklistKey = (examId: string) => `govos_checklist_${examId}`;
+export const readExamChecklist = (key: string): Record<string, boolean> => {
+  try {
+    const saved = localStorage.getItem(key);
+    if (saved) return JSON.parse(saved);
+  } catch (e) {
+    console.warn('Checklist localstorage read error:', e);
+  }
+  return {};
+};
+const writeExamChecklist = (key: string, ids: Record<string, boolean>) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(ids));
+  } catch (e) {
+    console.warn('Checklist localstorage save error:', e);
+  }
+};
+
 export const ExamDayChecklistSection: React.FC<ExamDayChecklistSectionProps> = ({ exam, onOpenProvenanceModal }) => {
-  const storageKey = `govos_checklist_${exam.id}`;
+  const storageKey = examChecklistKey(exam.id);
 
   // Section 12 renders ONLY the exam's own authored exam-day instructions. It holds no
   // generic checklist of its own: showing generic CBT content under an official badge for
@@ -15340,29 +15844,28 @@ export const ExamDayChecklistSection: React.FC<ExamDayChecklistSectionProps> = (
   const items = exam.examDayChecklist ?? [];
   const authority = exam.authorityName ? exam.authorityName.split(' (')[0] : 'the authority';
 
-  const [checkedIds, setCheckedIds] = useState<Record<string, boolean>>(() => {
-    try {
-      const saved = localStorage.getItem(storageKey);
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.warn('Checklist localstorage read error:', e);
-    }
-    return {};
-  });
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(checkedIds));
-    } catch (e) {
-      console.warn('Checklist localstorage save error:', e);
-    }
-  }, [checkedIds, storageKey]);
+  // The ticks are held together with the key they were read from. They used to be read once, at mount,
+  // and saved on every change of `storageKey` -- so an exam switch with the section open wrote exam A's
+  // ticks under exam B's key. Now a new key reloads that exam's own ticks, and a save only ever writes
+  // ticks under the key they belong to.
+  const [checklist, setChecklist] = useState<{ key: string; ids: Record<string, boolean> }>(
+    () => ({ key: storageKey, ids: readExamChecklist(storageKey) }));
+  if (checklist.key !== storageKey) setChecklist({ key: storageKey, ids: readExamChecklist(storageKey) });
+  const checkedIds = checklist.key === storageKey ? checklist.ids : {};
 
   const toggleCheck = (id: string) => {
-    setCheckedIds(prev => ({ ...prev, [id]: !prev[id] }));
+    setChecklist(prev => {
+      if (prev.key !== storageKey) return prev;
+      const ids = { ...prev.ids, [id]: !prev.ids[id] };
+      writeExamChecklist(prev.key, ids);
+      return { key: prev.key, ids };
+    });
   };
 
-  const handleResetChecklist = () => setCheckedIds({});
+  const handleResetChecklist = () => {
+    writeExamChecklist(storageKey, {});
+    setChecklist({ key: storageKey, ids: {} });
+  };
 
   // Honest empty state: no exam-day instructions have been extracted for this exam. GovOS
   // will not fill the gap with generic content dressed up as this exam's official protocol.
@@ -15553,6 +16056,44 @@ export const ExamDayChecklistSection: React.FC<ExamDayChecklistSectionProps> = (
 };
 
 
+/** One skill test, as its exam's record states it. Renders what is there and names what is not. */
+const SkillTestCard: React.FC<{ result: SkillTestResult; position: number; category: string; onOpenProvenanceModal?: (p: DataProvenance) => void }> = ({ result, position, category, onOpenProvenanceModal }) => {
+  const { test, metrics, allPassed, notStated } = result;
+  const badge = allPassed === true ? { text: '✅ STANDARDS MET', color: '#137638' }
+    : allPassed === false ? { text: '❌ BELOW A STANDARD', color: '#b71f1f' }
+    : test.qualifying === true ? { text: 'QUALIFYING', color: '#63738a' }
+    : test.qualifying === false ? { text: 'COUNTED FOR MERIT', color: '#63738a' }
+    : { text: 'NOT STATED', color: '#63738a' };
+  const fmt = (v: number, m: SkillTestMetric) => `${v}${m.unit.startsWith('%') ? '' : ' '}${m.unit}${m.outOf ? ` / ${m.outOf}` : ''}`;
+  return (
+    <div data-skill-test={test.name} style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: allPassed ? 'rgba(16,185,129,0.08)' : 'var(--surface-2)', border: '1px solid var(--surface-3)' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', marginBottom: '6px' }}>
+        <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, color: '#63738a' }}>Stage {position}: {test.name}</span>
+        <span style={{ fontSize: '0.7rem', fontWeight: 800, color: badge.color, whiteSpace: 'nowrap' }}>{badge.text}</span>
+      </div>
+      {test.description && <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>{test.description}</div>}
+      {test.durationMinutes !== undefined && <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Duration: {test.durationMinutes} minutes</div>}
+      {(test.requirements || []).map(req => <div key={req} style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>• {req}</div>)}
+      {metrics.map(({ metric, score, standard, passed }) => (
+        <div key={metric.key} style={{ fontSize: '0.84rem', color: 'var(--text-primary)', fontWeight: 600, marginTop: '4px' }}>
+          {metric.label}: <strong style={{ color: passed === false ? '#b71f1f' : passed ? '#137638' : 'var(--text-primary)' }}>{score !== null ? fmt(score, metric) : 'not entered'}</strong>
+          <div style={{ fontSize: '0.72rem', color: '#63738a', fontWeight: 400 }}>
+            {!metric.standard ? 'The record states no qualifying standard for this.'
+              : standard ? `${metric.direction === 'AT_LEAST' ? 'At least' : 'At most'} ${fmt(standard.value, metric)} for ${category}${standard.computed ? ' (computed from the printed percentage)' : ''} — ${metric.standard.asPrinted}`
+              : metric.standard.asPrinted}
+          </div>
+        </div>
+      ))}
+      {notStated.length > 0 && (
+        <div style={{ fontSize: '0.72rem', color: '#63738a', marginTop: '6px' }}>
+          The record does not state {notStated.join(', ')}; check the notice. GovOS does not fill this in from another exam.
+        </div>
+      )}
+      {test.provenance && onOpenProvenanceModal && <div style={{ marginTop: '6px' }}><EvidenceButton provenance={test.provenance} onOpen={onOpenProvenanceModal} /></div>}
+    </div>
+  );
+};
+
 // ==========================================================================
 // ResultNextStepsSection.tsx — Dynamic Multi-Exam Result Evaluation & Next Steps
 // Maintains exam-isolated scorecards & patterns (UPSC CSE, SSC CGL, IBPS PO)
@@ -15565,7 +16106,359 @@ interface ResultNextStepsSectionProps {
   onOpenProvenanceModal?: (provenance: DataProvenance) => void;
 }
 
-type CandidateResultStatus = 
+// ---- Result interpretation, from the exam's record alone (pure; no exam is named here) ----
+
+/** The stages whose record states a skill test (`ExamStage.skillTest`). Nothing else makes one: not a
+ *  stage's name, not its mode, not another exam's test. */
+export const skillTestsOf = (exam: Exam): { stage: StageOf; test: SkillTestSpec }[] =>
+  exam.stages.filter(st => !!st.skillTest).map(st => ({ stage: st, test: st.skillTest as SkillTestSpec }));
+
+/** A candidate's figure for one metric: `skillScores[key]`, or an entry stored before that field
+ *  existed, which kept it at the top level under the same key. */
+export const skillScoreOf = (entry: MultiTierResultEntry | null, key: string): number | null => {
+  if (!entry) return null;
+  const own = entry.skillScores?.[key];
+  if (typeof own === 'number') return own;
+  const legacy = (entry as unknown as Record<string, unknown>)[key];
+  return typeof legacy === 'number' ? legacy : null;
+};
+
+/** The standard that applies to a category, as printed: the first row naming one of its words, else
+ *  "all other categories". Null where the record states no standard or no category is chosen. */
+export const skillStandardFor = (metric: SkillTestMetric, category: string): { value: number; computed: boolean } | null => {
+  const st = metric.standard;
+  if (!st || !category.trim()) return null;
+  const words = category.toUpperCase().split(/[^A-Z]+/).filter(Boolean);
+  const row = st.byCategory.find(r => r.categories.some(c => words.includes(c.toUpperCase())));
+  const printed = row ? row.value : st.otherwise;
+  if (printed === undefined) return null;
+  if (!st.percentOfOutOf) return { value: printed, computed: false };
+  if (!metric.outOf) return null;
+  return { value: +((printed / 100) * metric.outOf).toFixed(2), computed: true };
+};
+
+export interface SkillMetricResult {
+  metric: SkillTestMetric;
+  score: number | null;
+  standard: { value: number; computed: boolean } | null;
+  passed: boolean | null;
+}
+export interface SkillTestResult {
+  stage: StageOf;
+  test: SkillTestSpec;
+  metrics: SkillMetricResult[];
+  /** True only when every metric has a figure and a standard and meets it. */
+  allPassed: boolean | null;
+  /** What the record does not state about this test, in words, so the card can say so. */
+  notStated: string[];
+}
+
+/** One skill test judged against the candidate's figures and category, on the record's standards only. */
+export const evaluateSkillTest = (stage: StageOf, test: SkillTestSpec, entry: MultiTierResultEntry | null, category: string): SkillTestResult => {
+  const metrics = (test.metrics || []).map(metric => {
+    const score = skillScoreOf(entry, metric.key);
+    const standard = skillStandardFor(metric, category);
+    const passed = score === null || standard === null ? null
+      : metric.direction === 'AT_LEAST' ? score >= standard.value : score <= standard.value;
+    return { metric, score, standard, passed };
+  });
+  const notStated = [
+    ...(test.qualifying === undefined ? ['whether it is qualifying'] : []),
+    ...(test.durationMinutes === undefined && !(test.requirements || []).length ? ['its duration or what it involves'] : []),
+    ...(!metrics.length ? ['how it is scored'] : metrics.some(m => !m.metric.standard) ? ['the standard that qualifies'] : []),
+  ];
+  const allPassed = metrics.length && metrics.every(m => m.passed !== null) ? metrics.every(m => m.passed) : null;
+  return { stage, test, metrics, allPassed, notStated };
+};
+
+/** The sections of a stage its merit is counted on: all of them, less any that make up its skill test. */
+export const meritSectionsOf = (stage: StageOf | undefined): string[] => {
+  if (!stage) return [];
+  const skill = new Set(stage.skillTest?.sectionNames || []);
+  return (stage.sections || []).map(sec => sec.sectionName).filter(n => !skill.has(n));
+};
+
+/** The marks a stage's merit is counted on, where the record states them; 0 means not stated. */
+export const meritMaxOf = (stage: StageOf | undefined): number =>
+  !stage ? 0 : stage.meritMarks ?? ((stage.unstatedFields || []).includes('totalMarks') ? 0 : stage.totalMarks);
+
+/**
+ * Exams this file holds a bespoke result engine or scorecard scheme for, by stable id. Matched exactly,
+ * never by a code or title substring: "UPSC" in a code or "civil services" in a title handed any such
+ * exam the CSE's GS-I / CSAT / 1750 / 275 engine, and "IBPS" any IBPS exam the PO's scorecard fields.
+ */
+const RESULT_SCHEMES: Readonly<Record<string, 'UPSC_CSE' | 'IBPS_PO'>> = {
+  [UPSC_CSE_EXAM.id]: 'UPSC_CSE',
+  [IBPS_PO_EXAM.id]: 'IBPS_PO',
+};
+
+/**
+ * The next-step pathways every exam but the UPSC CSE offers in Results & Next Steps. Their panels were
+ * deleted with the CSE engine (b473776, 2026-09-12): the tabs stayed and opened onto nothing, for SSC CGL,
+ * IBPS PO, both APPSC exams and every machine-read exam. The panels they lost were SSC CGL's own prose
+ * ("298+ out of 390", CKT/DEST, "Ministry allocation", an invented document list), so they are rebuilt
+ * here from the exam's record instead: each pathway names only what that exam's stages, cut-offs,
+ * syllabus, posts, documents and declarations state, cites it, and says what the record does not hold.
+ */
+export type ResultPathwayId = 'TIER2_PREP' | 'BOTH_PASSED_SELECTION' | 'TIER2_MISSED_RECOVERY' | 'TIER1_FAILED_RECOVERY' | 'SKILL_TEST';
+export interface ResultPathwayItem { title: string; body?: string; provenance?: DataProvenance }
+export interface ResultPathwayAction { label: string; section?: number; practice?: true; pathway?: ResultPathwayId }
+export interface ResultPathwayBlock {
+  key: string;
+  heading: string;
+  items: ResultPathwayItem[];
+  /** Said instead of items when the record holds none: what is missing, never filled from another exam. */
+  missing: string;
+  action?: ResultPathwayAction;
+}
+export interface ResultPathway { id: ResultPathwayId; title: string; summary: string; blocks: ResultPathwayBlock[]; actions: ResultPathwayAction[] }
+/** Where the candidate stands on one stage, as the section computed it from what they entered. */
+export interface ResultStanding { score: number | null; cutoff: number | null; margin: number | null }
+
+/** The tab a status belongs to: the statuses the verdict sets map onto the five pathways. */
+export const resultPathwayOf = (status: string): ResultPathwayId | null =>
+  status === 'TIER2_PREP' || status === 'QUALIFIED_TIER2' ? 'TIER2_PREP'
+    : status === 'BOTH_PASSED_SELECTION' || status === 'DOC_VERIFICATION' ? 'BOTH_PASSED_SELECTION'
+    : status === 'TIER2_MISSED_RECOVERY' ? 'TIER2_MISSED_RECOVERY'
+    : status === 'TIER1_FAILED_RECOVERY' || status === 'NOT_QUALIFIED' ? 'TIER1_FAILED_RECOVERY'
+    : status === 'SKILL_TEST' ? 'SKILL_TEST'
+    : null;
+
+const stageShortName = (st: StageOf | undefined, fallback: string) => (st ? st.stageName.split(/[:—(]/)[0].trim() || fallback : fallback);
+const minutesText = (m: number) => (m >= 60 ? `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''}` : `${m} min`);
+
+/** A stage as its notice sets it out: marks, time, penalty, how it counts, and the sections its merit is on. */
+const stageFactItems = (st: StageOf): ResultPathwayItem[] => {
+  const unstated = st.unstatedFields || [];
+  const max = meritMaxOf(st);
+  const merit = new Set(meritSectionsOf(st));
+  const sections = (st.sections || []).filter(sec => merit.has(sec.sectionName))
+    .map(sec => [sec.sectionName.split(' (')[0], sec.questions ? `${sec.questions} questions` : '', sec.marks ? `${sec.marks} marks` : ''].filter(Boolean).join(' · '));
+  return [
+    ...(max > 0 ? [{ title: 'Marks', body: st.meritMarks ? `${st.meritMarks} counted for the merit, of ${st.totalMarks} in all` : `${st.totalMarks}`, provenance: st.provenance }] : []),
+    ...(st.durationMinutes > 0 && !unstated.includes('durationMinutes') ? [{ title: 'Time', body: minutesText(st.durationMinutes), provenance: st.provenance }] : []),
+    ...((st.negativeMarking || '').trim() ? [{ title: 'Wrong answers', body: st.negativeMarking, provenance: st.provenance }] : []),
+    ...((st.qualifyingNature || '').trim() ? [{ title: 'How it counts', body: st.qualifyingNature, provenance: st.provenance }] : []),
+    ...(sections.length ? [{ title: 'Sections its merit is counted on', body: sections.join('; '), provenance: st.provenance }] : []),
+  ];
+};
+
+/** The syllabus topics the record ties to a stage (its tier, or both), high-yield first. */
+const stageTopicItems = (exam: Exam, st: StageOf): ResultPathwayItem[] =>
+  exam.syllabus.filter(t => t.tier === st.tier || t.tier === 'BOTH')
+    .sort((a, b) => Number(b.isHighYield) - Number(a.isHighYield) || (b.weightagePercentage || 0) - (a.weightagePercentage || 0))
+    .slice(0, 8)
+    .map(t => ({ title: t.topicName, body: `${t.subject}${t.isHighYield ? ' · marked high-yield in this record' : ''}`, provenance: t.officialProvenance }));
+
+/** Recorded cut-offs of one stage for the candidate's category, newest first: in each year, the row
+ *  matchCutoffRow picks for this category, or none -- never another category's row. */
+const cutoffItems = (exam: Exam, category: string, which: 'tier1Cutoff' | 'tier2Cutoff'): ResultPathwayItem[] =>
+  Array.from(new Set(exam.cutoffsHistory.map(c => c.year))).sort((a, b) => b - a)
+    .map(year => matchCutoffRow(exam.cutoffsHistory.filter(c => c.year === year && c[which] != null), category))
+    .flatMap(m => (m.status === 'MATCHED' ? [m.row] : []))
+    .map(c => ({ title: `${c.year} · ${c.category}`, body: `${c[which]} marks${c.postsEligible ? ` (${c.postsEligible})` : ''}`, provenance: c.provenance }));
+
+/** The rows a stage verdict can be read from: this year's rows that carry a stage cut-off. A row with
+ *  only a post- or section-level `value` (SSC's JSO rows, its Tier-II sectional minimums) is not one. */
+export const verdictCutoffRows = (exam: Exam, year: number) =>
+  exam.cutoffsHistory.filter(c => c.year === year && (c.tier1Cutoff != null || c.tier2Cutoff != null));
+
+/** The category a candidate starts on: theirs if saved, else their profile's where a row is recorded for
+ *  it, else none chosen. It used to be the first row's category -- SSC's is SC. */
+export const startingResultCategory = (exam: Exam, year: number, saved: { category?: string } | null | undefined, profileCategory?: string | null) => {
+  if (saved?.category) return saved.category;
+  const m = matchCutoffRow(verdictCutoffRows(exam, year), profileCategory);
+  return m.status === 'MATCHED' ? m.row.category : '';
+};
+
+export function resultPathway(
+  exam: Exam,
+  id: ResultPathwayId,
+  ctx: { category: string; year?: number; stageOne: ResultStanding; stageTwo: ResultStanding; now?: Date }
+): ResultPathway {
+  const [stageOne, stageTwo] = exam.stages;
+  const s1 = stageShortName(stageOne, 'Stage 1');
+  const s2 = stageShortName(stageTwo, 'Stage 2');
+  const authority = exam.authorityName.split(' (')[0];
+  const year = ctx.year ? `${ctx.year}'s` : 'the recorded';
+  const { stageOne: one, stageTwo: two } = ctx;
+  const noStageTwo = `The record states only one stage, so there is no ${s2} to describe.`;
+  const practice: ResultPathwayAction = { label: 'Open Practice & PYQs', practice: true };
+  const syllabus: ResultPathwayAction = { label: 'Open the syllabus', section: 6 };
+
+  const howStage = (st: StageOf | undefined, name: string): ResultPathwayBlock => ({
+    key: `how-${st?.id || name}`,
+    heading: `${name}, as ${authority}'s notice sets it out`,
+    items: st ? stageFactItems(st) : [],
+    missing: st ? `The record states nothing about how ${name} is marked; check the notice.` : noStageTwo,
+    action: { label: 'Open the exam pattern', section: 5 },
+  });
+  const topics = (st: StageOf | undefined, name: string): ResultPathwayBlock => ({
+    key: `topics-${st?.id || name}`,
+    heading: `Syllabus topics the record ties to ${name}`,
+    items: st ? stageTopicItems(exam, st) : [],
+    missing: `The record ties no syllabus topic to ${name}.`,
+    action: syllabus,
+  });
+  const cutoffs = (which: 'tier1Cutoff' | 'tier2Cutoff', name: string): ResultPathwayBlock => ({
+    key: `cutoffs-${which}`,
+    heading: `Recorded ${name} cut-offs for ${ctx.category}`,
+    items: cutoffItems(exam, ctx.category, which),
+    missing: `No ${name} cut-off for ${ctx.category} is on record. GovOS sets no target of its own.`,
+    action: { label: 'Open cut-off history', section: 10 },
+  });
+  const skillTestsAt = (st: StageOf | undefined): ResultPathwayItem[] => skillTestsOf(exam).filter(t => !st || t.stage === st)
+    .map(t => ({
+      title: t.test.name,
+      body: [t.test.qualifying === true ? 'Qualifying' : t.test.qualifying === false ? 'Counted for the merit' : '',
+        t.test.durationMinutes !== undefined ? minutesText(t.test.durationMinutes) : '', `part of ${stageShortName(t.stage, 'its stage')}`]
+        .filter(Boolean).join(' · '),
+      provenance: t.test.provenance || t.stage.provenance,
+    }));
+  const laterStages: ResultPathwayItem[] = exam.stages.slice(2).map(st => ({ title: stageShortName(st, `Stage ${st.stageNumber}`), body: st.qualifyingNature || undefined, provenance: st.provenance }));
+  // A missing cut-off is said first: "compare them with the recorded cut-off" promised one the record lacks.
+  const standingLine = (st: ResultStanding, name: string, cut: string) =>
+    st.cutoff === null ? `No ${name} cut-off for ${ctx.category} is on record${st.score !== null ? ` to compare your ${st.score} with` : ''}.`
+      : st.score === null ? `Enter your ${name} marks above to compare them with ${cut}.`
+      : st.margin !== null && st.margin >= 0 ? `Your ${name} score of ${st.score} is +${st.margin} above ${year} ${ctx.category} cut-off of ${st.cutoff}.`
+      : `Your ${name} score of ${st.score} is ${Math.abs(st.margin ?? 0)} below ${year} ${ctx.category} cut-off of ${st.cutoff}.`;
+
+  switch (id) {
+    case 'TIER2_PREP': {
+      const skills = skillTestsAt(stageTwo);
+      return {
+        id, title: `${s2} plan`,
+        summary: `${standingLine(one, s1, `${s1}'s recorded cut-off`)} ${stageTwo ? `This is ${s2} as ${authority}'s notice sets it out; ${authority}'s own result decides who is shortlisted.` : noStageTwo}`,
+        blocks: [
+          howStage(stageTwo, s2),
+          cutoffs('tier2Cutoff', s2),
+          ...(skills.length ? [{ key: 'skill', heading: `Skill tests in ${s2}`, items: skills, missing: '', action: { label: 'See the skill-test standards', pathway: 'SKILL_TEST' as const } }] : []),
+          topics(stageTwo, s2),
+          ...(laterStages.length ? [{ key: 'later', heading: 'The record\'s other stages', items: laterStages, missing: '' }] : []),
+        ],
+        actions: [practice],
+      };
+    }
+    case 'BOTH_PASSED_SELECTION': {
+      const declarations = (exam.resultDeclarations || []).filter(d => d.lifecycle !== 'SUPERSEDED' && d.nextStep)
+        .map(d => ({ title: d.label, body: d.nextStep, provenance: d.provenance }));
+      const guide = exam.applicationGuide;
+      const certificates = (guide?.certificateRules || []).map(r => ({
+        title: r.title,
+        body: [r.financialYearValidity, r.crucialDate ? `as on ${r.crucialDate}` : '', r.officialAnnexure ? `format: ${r.officialAnnexure}` : ''].filter(Boolean).join(' · ') || undefined,
+      }));
+      const documents = (guide?.requiredDocuments || []).map(d => ({ title: d.name, body: d.specifications.join('; ') || undefined, provenance: d.provenance }));
+      const byNote = new Map<string, typeof exam.posts>();
+      exam.posts.filter(p => p.physicalRequired && (p.physicalNote || '').trim())
+        .forEach(p => byNote.set(p.physicalNote!, [...(byNote.get(p.physicalNote!) || []), p]));
+      const physical = [...byNote].map(([note, posts]) => ({
+        title: posts.length > 3 ? `${posts.slice(0, 3).map(p => p.postName).join(', ')} and ${posts.length - 3} more` : posts.map(p => p.postName).join(', '),
+        body: note, provenance: posts[0].provenance,
+      }));
+      return {
+        id, title: `After ${s2}: what the record says comes next`,
+        summary: `${standingLine(one, s1, `${s1}'s recorded cut-off`)} ${stageTwo ? standingLine(two, s2, `${s2}'s recorded cut-off`) : ''} ${stageTwo?.qualifyingNature ? `${authority}'s notice on ${s2}: ${stageTwo.qualifyingNature}` : ''}`.replace(/\s+/g, ' ').trim(),
+        blocks: [
+          { key: 'later', heading: `Stages the record lists after ${s1}`, items: laterStages, missing: `The record lists no stage after ${stageTwo ? s2 : s1}. ${authority}'s result notice names what follows; GovOS does not assume an interview or verification round.` },
+          { key: 'declared', heading: `Next steps ${authority} has declared`, items: declarations, missing: `GovOS has not read a result declaration for this cycle that names a next step.`, action: { label: 'Open results', section: 16 } },
+          { key: 'certificates', heading: 'Certificates the record says will be checked', items: certificates, missing: 'The record holds no certificate-validity rules for this exam.', action: { label: 'Open Application & Documents', section: 4 } },
+          ...(documents.length ? [{ key: 'documents', heading: 'Documents the notice lists', items: documents, missing: '' }] : []),
+          { key: 'physical', heading: 'Physical standards printed for posts', items: physical, missing: 'No post in this record carries a physical standard.', action: { label: 'Open Eligibility & Posts', section: 3 } },
+        ],
+        actions: [],
+      };
+    }
+    case 'TIER2_MISSED_RECOVERY':
+      return {
+        id, title: `Bridging the ${s2} gap`,
+        summary: stageTwo ? `${standingLine(two, s2, `${s2}'s recorded cut-off`)} The plan below is ${s2} as the notice counts it, so the gap is worked where marks are counted.` : noStageTwo,
+        blocks: [howStage(stageTwo, s2), cutoffs('tier2Cutoff', s2), topics(stageTwo, s2)],
+        actions: [practice],
+      };
+    case 'TIER1_FAILED_RECOVERY': {
+      const now = ctx.now || new Date();
+      const upcoming = exam.dates.filter(d => d.status !== 'SUPERSEDED' && (d.type === 'NOTIFICATION' || d.type === 'APPLICATION_OPEN')
+        && new Date(d.dateTimeStr.replace(' ', 'T')) > now)
+        .map(d => ({ title: d.label, body: `${d.displayWhen || d.dateTimeStr.split(' ')[0]}${d.isTentative ? ' (tentative)' : ''}`, provenance: d.provenance }));
+      return {
+        id, title: `${s1} comeback plan`,
+        summary: `${standingLine(one, s1, `${s1}'s recorded cut-off`)} Below is ${s1} as ${authority}'s notice sets it out, its recorded cut-offs, and what the record says about the next cycle.`,
+        blocks: [
+          howStage(stageOne, s1),
+          cutoffs('tier1Cutoff', s1),
+          topics(stageOne, s1),
+          { key: 'eligibility', heading: 'Staying eligible for the next attempt', items: (exam.eligibilityHighlights || []).map(h => ({ title: h.title, body: h.body, provenance: h.provenance })), missing: 'The record carries no eligibility summary; check the age band and attempts for your posts.', action: { label: 'Open Eligibility & Posts', section: 3 } },
+          { key: 'next-cycle', heading: 'The next cycle, where the record has it', items: upcoming, missing: `The record holds no date for ${authority}'s next notification yet.`, action: { label: 'Open Dates & Timeline', section: 2 } },
+        ],
+        actions: [practice],
+      };
+    }
+    case 'SKILL_TEST': {
+      const skills = skillTestsAt(undefined);
+      return {
+        id, title: skills.length === 1 ? skills[0].title : 'Skill tests',
+        summary: skills.length ? `As ${authority}'s notice states ${skills.length === 1 ? 'it' : 'them'}: what is measured and the standard that qualifies, for your category where the notice prints one.` : 'The record states no skill test for this exam.',
+        blocks: [{ key: 'skill', heading: 'Where the record places it', items: skills, missing: 'The record states no skill test for this exam.' }],
+        actions: [],
+      };
+    }
+  }
+}
+
+/** One pathway, rendered from `resultPathway`. Holds no exam's words of its own. */
+export const ResultPathwayPanel: React.FC<{
+  pathway: ResultPathway;
+  onNavigateSection: (section: number) => void;
+  onNavigatePractice?: () => void;
+  onSelectPathway: (id: ResultPathwayId) => void;
+  onOpenProvenanceModal?: (p: DataProvenance) => void;
+  children?: React.ReactNode;
+}> = ({ pathway, onNavigateSection, onNavigatePractice, onSelectPathway, onOpenProvenanceModal, children }) => {
+  const run = (a: ResultPathwayAction) => (a.pathway ? onSelectPathway(a.pathway) : a.practice ? onNavigatePractice?.() : a.section !== undefined ? onNavigateSection(a.section) : undefined);
+  const button = (a: ResultPathwayAction, primary = false) => (a.practice && !onNavigatePractice) ? null : (
+    <button key={a.label} className={`btn ${primary ? 'btn-primary' : 'btn-secondary'}`} onClick={() => run(a)}
+      style={{ fontSize: '0.8rem', padding: '7px 13px', display: 'inline-flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+      {a.label} <ArrowRight size={14} />
+    </button>
+  );
+  return (
+    <div className="animate-fade-in" data-result-pathway={pathway.id} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div className="glass-card" style={{ padding: '20px', borderLeft: '4px solid var(--primary)' }}>
+        <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px' }}>{pathway.title}</h4>
+        <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.55 }}>{pathway.summary}</p>
+        {pathway.actions.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '12px' }}>{pathway.actions.map(a => button(a, true))}</div>}
+      </div>
+      {children}
+      {pathway.blocks.map(block => (
+        <div key={block.key} className="glass-card" data-pathway-block={block.key} data-pathway-block-empty={block.items.length === 0 ? 'true' : undefined} style={{ padding: '18px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <h5 style={{ fontSize: '0.98rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>{block.heading}</h5>
+          {block.items.length === 0 ? (
+            <div style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{block.missing}</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {block.items.map((item, i) => (
+                <div key={`${item.title}-${i}`} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px', padding: '10px 12px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--surface-3)' }}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)' }}>{item.title}</div>
+                    {item.body && <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '2px', lineHeight: 1.5 }}>{item.body}</div>}
+                  </div>
+                  {item.provenance && onOpenProvenanceModal && <EvidenceButton provenance={item.provenance} onOpen={onOpenProvenanceModal} compact />}
+                </div>
+              ))}
+            </div>
+          )}
+          {block.action && <div>{button(block.action)}</div>}
+        </div>
+      ))}
+    </div>
+  );
+};
+
+/** Whether a finished scorecard read may still be applied: it is the latest read, started on the exam on screen. */
+export const isCurrentScorecardRequest = (request: number, latest: number, originExamId: string, currentExamId: string) =>
+  request === latest && originExamId === currentExamId;
+
+type CandidateResultStatus =
   // SSC & Generic statuses
   | 'TIER2_PREP' 
   | 'BOTH_PASSED_SELECTION' 
@@ -15598,9 +16491,9 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
 }) => {
   // ---- Exam Pattern Identification ----
   const isAuthored = exam.origin !== 'MACHINE_ACQUIRED';
-  const isUPSC = isAuthored && (exam.code?.includes('UPSC') || exam.id?.includes('upsc') || exam.title?.toLowerCase().includes('civil services'));
-  const isIBPS = isAuthored && (exam.code?.includes('IBPS') || exam.id?.includes('ibps'));
-  const isSSC = isAuthored && (exam.code?.includes('SSC') || exam.id?.includes('ssc'));
+  const scheme = isAuthored ? RESULT_SCHEMES[exam.id] : undefined;
+  const isUPSC = scheme === 'UPSC_CSE';
+  const isIBPS = scheme === 'IBPS_PO';
 
   /**
    * Stage names for this exam, from its own record. This panel used to label every exam's
@@ -15613,23 +16506,25 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
     st ? st.stageName.split(/[:—(]/)[0].trim() || fallback : fallback;
   const stageOneName = shortStage(stageOne, 'Stage 1');
   const stageTwoName = shortStage(stageTwo, 'Stage 2');
-  /** Only an exam whose record actually carries a skill/typing stage gets that tab. */
-  const hasSkillStage = exam.stages.some(st => /skill|typing|dest|computer proficiency/i.test(st.stageName))
-    || exam.stages.some(st => (st.sections || []).some(sec => /skill|typing|dest/i.test(sec.sectionName)));
+  /** Skill tests come from the record's `ExamStage.skillTest` and nothing else. A stage-name regex used
+   *  to decide this and then show every such exam SSC CGL's CKT / DEST card and thresholds. */
+  const skillTests = skillTestsOf(exam);
+  const hasSkillStage = skillTests.length > 0;
 
   // Available benchmark cycles from cutoffs history
   const availableYears = Array.from(new Set(exam.cutoffsHistory.map(c => c.year))).sort((a, b) => b - a);
 
   // ---- Exam-Isolated State Loading ----
   const [entry, setEntry] = useState<MultiTierResultEntry | null>(() => storageService.getResultEntry(exam.id));
+  /** The browser refused to keep the entry: it is shown, but will not survive a reload, and the page says so. */
+  const [entryNotKept, setEntryNotKept] = useState<boolean>(false);
   const [selectedYear, setSelectedYear] = useState<number>(() => {
     const saved = storageService.getResultEntry(exam.id);
-    return saved?.examYear && availableYears.includes(saved.examYear) ? saved.examYear : (availableYears[0] || 2025);
+    return saved?.examYear && availableYears.includes(saved.examYear) ? saved.examYear : (availableYears[0] || 0); // 0: no cut-off year on record — never a made-up one
   });
   const [categoryInput, setCategoryInput] = useState<string>(() => {
     const saved = storageService.getResultEntry(exam.id);
-    const cutoffRows = exam.cutoffsHistory.filter(c => c.year === (saved?.examYear || availableYears[0] || 2025));
-    return saved?.category || (cutoffRows[0]?.category || (isUPSC ? 'General' : 'UR'));
+    return startingResultCategory(exam, saved?.examYear || availableYears[0] || 0, saved, storageService.getProfile()?.category);
   });
 
   // UPSC Specific Inputs
@@ -15674,26 +16569,33 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
     return saved?.ibpsInterviewMarks !== undefined ? String(saved.ibpsInterviewMarks) : '';
   });
 
-  const [selectedStatus, setSelectedStatus] = useState<CandidateResultStatus>(
-    isUPSC ? 'UPSC_MAINS_PREP' : isIBPS ? 'IBPS_MAINS_PREP' : 'TIER2_PREP'
-  );
+  // IBPS PO is judged by the stage engine below, whose tabs are the stage statuses; 'IBPS_MAINS_PREP'
+  // selected a tab that does not exist.
+  const [selectedStatus, setSelectedStatus] = useState<CandidateResultStatus>(isUPSC ? 'UPSC_MAINS_PREP' : 'TIER2_PREP');
   const [statusChosenManually, setStatusChosenManually] = useState<boolean>(false);
   const [parsing, setParsing] = useState<boolean>(false);
   const [parsed, setParsed] = useState<{ ok: boolean; reason?: string; message?: string; confidence?: string; method?: 'TEXT_LAYER' | 'OCR'; fields?: any; notes?: string[]; excerpt?: string } | null>(null);
+
+  // A scorecard read belongs to the exam it was started on: every switch (and unmount) invalidates the
+  // read in flight, so its result can be applied neither to the next exam nor over newer marks later.
+  const scorecardRequest = useRef(0);
+  const currentExamId = useRef(exam.id);
+  currentExamId.current = exam.id;
+  useEffect(() => () => { scorecardRequest.current++; }, [exam.id]);
 
   // ---- CRITICAL: Reload isolated state when candidate switches exam ----
   useEffect(() => {
     const saved = storageService.getResultEntry(exam.id);
     setEntry(saved);
     setParsed(null);
+    setParsing(false);
     setStatusChosenManually(false);
 
     const years = Array.from(new Set(exam.cutoffsHistory.map(c => c.year))).sort((a, b) => b - a);
-    const targetYear = saved?.examYear && years.includes(saved.examYear) ? saved.examYear : (years[0] || 2025);
+    const targetYear = saved?.examYear && years.includes(saved.examYear) ? saved.examYear : (years[0] || 0);
     setSelectedYear(targetYear);
 
-    const rows = exam.cutoffsHistory.filter(c => c.year === targetYear);
-    setCategoryInput(saved?.category || rows[0]?.category || (isUPSC ? 'General' : 'UR'));
+    setCategoryInput(startingResultCategory(exam, targetYear, saved, storageService.getProfile()?.category));
 
     if (isUPSC) {
       setUpscGs1Input(saved?.upscPrelimsGs1Marks !== undefined ? String(saved.upscPrelimsGs1Marks) : (saved?.tier1Marks !== undefined ? String(saved.tier1Marks) : ''));
@@ -15705,7 +16607,9 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
       setIbpsPrelimsInput(saved?.ibpsPrelimsMarks !== undefined ? String(saved.ibpsPrelimsMarks) : (saved?.tier1Marks !== undefined ? String(saved.tier1Marks) : ''));
       setIbpsMainsInput(saved?.ibpsMainsMarks !== undefined ? String(saved.ibpsMainsMarks) : (saved?.tier2Marks !== undefined ? String(saved.tier2Marks) : ''));
       setIbpsInterviewInput(saved?.ibpsInterviewMarks !== undefined ? String(saved.ibpsInterviewMarks) : '');
-      setSelectedStatus('IBPS_MAINS_PREP');
+      setTier1Input(saved?.tier1Marks !== undefined ? String(saved.tier1Marks) : (saved ? String(saved.marks) : ''));
+      setTier2Input(saved?.tier2Marks !== undefined ? String(saved.tier2Marks) : '');
+      setSelectedStatus('TIER2_PREP');
     } else {
       setTier1Input(saved?.tier1Marks !== undefined ? String(saved.tier1Marks) : (saved ? String(saved.marks) : ''));
       setTier2Input(saved?.tier2Marks !== undefined ? String(saved.tier2Marks) : '');
@@ -15713,14 +16617,12 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
     }
   }, [exam.id]);
 
-  // Current year cutoffs
-  const cutoffRows = exam.cutoffsHistory.filter(c => c.year === selectedYear);
+  // This year's rows a stage verdict can be read from, and the one that is this candidate's category's.
+  // No row for the category means no cut-off -- it used to fall back to the year's first row.
+  const cutoffRows = verdictCutoffRows(exam, selectedYear);
   const activeCategory = entry?.category || categoryInput;
-  const matchedCutoff = cutoffRows.find(r => {
-    const catA = activeCategory.toUpperCase();
-    const catB = r.category.toUpperCase();
-    return catA === catB || catB.includes(catA.split(' ')[0]) || catA.includes(catB.split(' ')[0]);
-  }) || cutoffRows[0];
+  const cutoffMatch = matchCutoffRow(cutoffRows, activeCategory);
+  const matchedCutoff = cutoffMatch.status === 'MATCHED' ? cutoffMatch.row : undefined;
 
   // Apply typed entries for UPSC
   const applyUpscEntry = (
@@ -15752,30 +16654,36 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
       allocatedService: entry?.allocatedService,
       allocatedPost: entry?.allocatedService
     };
-    storageService.setResultEntry(next, exam.id);
+    setEntryNotKept(!storageService.setResultEntry(next, exam.id));
     setEntry(next);
     setStatusChosenManually(false);
+  };
+
+  // The candidate's skill figures for this exam's own metrics -- never another exam's fields.
+  const skillKeys = skillTests.flatMap(t => (t.test.metrics || []).map(m => m.key));
+  const currentSkillScores = (from: MultiTierResultEntry | null): Record<string, number> | undefined => {
+    const scores = Object.fromEntries(skillKeys.map(k => [k, skillScoreOf(from, k)]).filter(([, v]) => v !== null)) as Record<string, number>;
+    return Object.keys(scores).length ? scores : undefined;
   };
 
   // Apply typed entries for SSC / Generic
   const applyMultiTierEntry = (t1Val: number | null, t2Val: number | null, catVal: string, yrVal: number) => {
     const next: MultiTierResultEntry = {
       examId: exam.id,
-      examType: isSSC ? 'SSC_CGL' : 'GENERIC',
+      examType: scheme ?? 'GENERIC',
       marks: t1Val ?? (t2Val ?? 0),
       category: catVal,
       source: entry?.source || 'TYPED',
       declared: entry?.declared,
       tier1Marks: t1Val ?? undefined,
       tier2Marks: t2Val ?? undefined,
-      computerKnowledgeMarks: entry?.computerKnowledgeMarks,
-      destMistakesPercent: entry?.destMistakesPercent,
+      skillScores: currentSkillScores(entry),
       examYear: yrVal,
       rollNumber: entry?.rollNumber,
       candidateName: entry?.candidateName,
       allocatedPost: entry?.allocatedPost
     };
-    storageService.setResultEntry(next, exam.id);
+    setEntryNotKept(!storageService.setResultEntry(next, exam.id));
     setEntry(next);
     setStatusChosenManually(false);
   };
@@ -15800,9 +16708,13 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
   // Scorecard parser handler
   const handleScorecard = async (file: File | undefined) => {
     if (!file) return;
+    const request = ++scorecardRequest.current;
+    const origin = exam.id;
     setParsing(true);
     setParsed(null);
     const result = await storageService.parseResultDocument(file, exam.id);
+    // The page may have moved to another exam, or a newer upload started, while this one was read.
+    if (!isCurrentScorecardRequest(request, scorecardRequest.current, origin, currentExamId.current)) return;
     setParsed(result);
     if (result.ok) {
       const f = result.fields || {};
@@ -15812,14 +16724,12 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
         setSelectedYear(f.examYear);
       }
 
-      const currentRows = exam.cutoffsHistory.filter(c => c.year === targetYear);
       let detectedCat = categoryInput;
       if (f.category) {
-        const matched = currentRows.find(r => 
-          r.category.toUpperCase() === f.category!.toUpperCase() ||
-          r.category.toUpperCase().includes(f.category!.toUpperCase()) ||
-          f.category!.toUpperCase().includes(r.category.toUpperCase())
-        )?.category || f.category;
+        // The printed category, written as the record's own label where one is this category's
+        // (matchCutoffRow), else kept as printed -- never a label that merely contains its letters.
+        const m = matchCutoffRow(verdictCutoffRows(exam, targetYear), f.category);
+        const matched = m.status === 'MATCHED' ? m.row.category : f.category;
         if (matched) {
           detectedCat = matched;
           setCategoryInput(matched);
@@ -15888,8 +16798,10 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
       } else {
         const t1 = f.tier1Marks ?? f.marks;
         const t2 = f.tier2Marks;
-        const ckt = f.computerKnowledgeMarks;
-        const dest = f.destMistakesPercent;
+        // A scorecard reading may report fields named for another exam's tests; only the metrics this
+        // exam's record declares are kept.
+        const read = f as Record<string, unknown>;
+        const skillScores = Object.fromEntries(skillKeys.filter(k => typeof read[k] === 'number').map(k => [k, read[k] as number]));
         const alloc = f.allocatedPost;
 
         if (t1 !== undefined) setTier1Input(String(t1));
@@ -15897,15 +16809,14 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
 
         autoEntry = {
           examId: exam.id,
-          examType: isSSC ? 'SSC_CGL' : 'GENERIC',
+          examType: scheme ?? 'GENERIC',
           marks: t1 ?? (t2 ?? 0),
           category: detectedCat,
           source: 'SCORECARD',
           declared: f.declared,
           tier1Marks: t1,
           tier2Marks: t2,
-          computerKnowledgeMarks: ckt,
-          destMistakesPercent: dest,
+          skillScores: Object.keys(skillScores).length ? skillScores : undefined,
           examYear: targetYear,
           rollNumber: f.rollNumber,
           candidateName: f.candidateName,
@@ -15913,7 +16824,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
         };
       }
 
-      storageService.setResultEntry(autoEntry, exam.id);
+      setEntryNotKept(!storageService.setResultEntry(autoEntry, exam.id));
       setEntry(autoEntry);
       setStatusChosenManually(false);
     }
@@ -16081,8 +16992,6 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
   // =========================================================================
   const candidateT1 = entry?.tier1Marks !== undefined ? entry.tier1Marks : (parseFloat(tier1Input) || (entry && !isUPSC ? entry.marks : null));
   const candidateT2 = entry?.tier2Marks !== undefined ? entry.tier2Marks : (parseFloat(tier2Input) || null);
-  const candidateCKT = entry?.computerKnowledgeMarks ?? null;
-  const candidateDEST = entry?.destMistakesPercent ?? null;
   const allocatedPost = entry?.allocatedPost ?? null;
 
   const t1Cutoff = matchedCutoff?.tier1Cutoff ?? null;
@@ -16094,54 +17003,70 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
   const t2Margin = candidateT2 !== null && t2Cutoff !== null ? +(candidateT2 - t2Cutoff).toFixed(2) : null;
   const t2Passed = t2Margin !== null && t2Margin >= 0;
 
-  // Para 16.1-16.2 of the SSC CGL 2026 notice: CKT 30% / 25% / 20% of 60 marks; DEST at most
-  // 20% / 25% / 30% errors, for UR / OBC-EWS / all other categories.
-  const catUpper = activeCategory.toUpperCase();
-  const qualifyingBand = catUpper.includes('UR') || catUpper.includes('GEN') ? 0 : /OBC|EWS/.test(catUpper) ? 1 : 2;
-  const cktCutoff = [18.0, 15.0, 12.0][qualifyingBand];
-  const cktPassed = candidateCKT !== null ? candidateCKT >= cktCutoff : null;
-  const destMaxAllowed = [20.0, 25.0, 30.0][qualifyingBand];
-  const destPassed = candidateDEST !== null ? candidateDEST <= destMaxAllowed : null;
+  // Each skill test the record states, on its own printed standards for this category.
+  const skillResults = skillTests.map(({ stage, test }) => evaluateSkillTest(stage, test, entry, activeCategory));
+  const skillAllPassed = skillResults.length > 0 && skillResults.every(r => r.allPassed === true);
+
+  // Engine B judges every exam that is not the UPSC CSE (IBPS PO and both APPSC exams reach it with
+  // their own Prelims cut-offs), so its words come from this exam's own stages. It used to tell all of
+  // them about "Tier-1", "Tier-2 Paper-I", CKT and DEST, "Ministry allocation" and a 298-mark target --
+  // SSC CGL's notice, and a target no record holds. Those clauses are now said only for SSC CGL, the
+  // skill-test ones only where the record has a skill stage, and a target only where a cut-off is recorded.
+  const s1 = stageOneName, s2 = stageTwoName;
+  // A stage's merit maximum as the record states it (`meritMarks` where a stage has qualifying
+  // sections, as SSC CGL's Tier-II Paper-I does); 0 means not stated, and nothing is shown.
+  const stageOneMax = meritMaxOf(stageOne);
+  const stageTwoMax = meritMaxOf(stageTwo);
+  const S1 = s1.toUpperCase(), S2 = s2.toUpperCase();
+  const skillWords = skillAllPassed ? ' and met the skill-test standards' : '';
+  // What to work on, named from the record: the sections each stage's merit is counted on, and the
+  // skill tests it holds. These replaced SSC CGL's own sentences, which were written into this engine.
+  const listOf = (names: string[]) => names.map(n => n.split(' (')[0]).join('; ');
+  const s1Sections = meritSectionsOf(stageOne);
+  const s2Sections = meritSectionsOf(stageTwo);
+  // "qualifying" only where the record says the test is: a name alone states nothing about its status.
+  const skillNames = skillTests.filter(t => t.stage === stageTwo).map(t => `the ${t.test.qualifying === true ? 'qualifying ' : ''}${t.test.name}`);
+  const authorityShort = exam.authorityName.split(' (')[0];
 
   if (!isUPSC && candidateT1 !== null && t1Cutoff !== null) {
     if (candidateT2 !== null && t2Cutoff !== null) {
       if (t1Passed && t2Passed) {
         unifiedVerdict = {
           status: 'SELECTED',
-          badgeText: '🏆 CLEARED ALL TIERS · FINAL SELECTION ZONE',
+          badgeText: `🏆 ABOVE BOTH ${selectedYear} CUT-OFFS`,
           badgeBg: 'rgba(16, 185, 129, 0.2)',
           badgeColor: '#137638',
           borderColor: '#10b981',
-          headline: `Merit Selection Achieved for ${selectedYear} (${activeCategory})`,
-          summaryText: `You successfully cleared Tier-1 by +${t1Margin} marks and cleared the final Tier-2 merit cutoff by +${t2Margin} marks.`,
-          conclusion: `Comprehensive Multi-Tier Conclusion: Candidate demonstrated top-tier merit across both examination tiers. With positive margins in Tier-1 (+${t1Margin}) and Tier-2 (+${t2Margin}), you are in the final appointment zone for All-India Ministry allocation.`,
-          nextAction: 'Action Plan: Prepare your original document dossiers (OBC/EWS crucial dates, 10th/12th/Degree certificates) for physical Document Verification.',
+          headline: `Above ${selectedYear}'s final cut-off (${activeCategory})`,
+          summaryText: `Your ${s1} score is +${t1Margin} marks above ${selectedYear}'s cut-off, and your ${s2} score +${t2Margin} marks above its final merit cut-off.`,
+          conclusion: `On ${selectedYear}'s cut-offs, positive margins in ${s1} (+${t1Margin}) and ${s2} (+${t2Margin}) would have put you in the final selection zone. GovOS holds no cut-off for this cycle; ${exam.authorityName.split(' (')[0]}'s own result decides.`,
+          nextAction: 'Action Plan: Keep your original documents ready (category certificates valid on the crucial date, 10th/12th and degree certificates) for document verification.',
           recommendedTab: 'BOTH_PASSED_SELECTION'
         };
       } else if (t1Passed && !t2Passed) {
         unifiedVerdict = {
           status: 'MISSED_TIER2',
-          badgeText: '⚠️ CLEARED TIER-1 · MISSED FINAL TIER-2 ALLOCATION',
+          badgeText: `⚠️ ABOVE THE ${S1} CUT-OFF · BELOW THE ${S2} CUT-OFF`,
           badgeBg: 'rgba(245, 158, 11, 0.2)',
           badgeColor: '#af5109',
           borderColor: '#f59e0b',
-          headline: `Qualified Tier-1 & Skill Test, but missed final post merit in ${selectedYear}`,
-          summaryText: `You cleared Tier-1 by +${t1Margin} marks (Cutoff: ${t1Cutoff}) and met all skill test standards. However, your Tier-2 score of ${candidateT2} fell short of the final merit cutoff of ${t2Cutoff} by ${Math.abs(t2Margin!)} marks.`,
-          conclusion: `Comprehensive Multi-Tier Conclusion: The candidate established qualifying capability by clearing Tier-1 (+${t1Margin} margin) and meeting all Computer and Typing thresholds. The rejection for final post allocation was solely due to the Tier-2 merit shortfall (-${Math.abs(t2Margin!)} marks below the ${selectedYear} ${activeCategory} cutoff of ${t2Cutoff}). Consequently, no post was allocated in this cycle.`,
-          nextAction: `Strategic Next Step: Your prelims base is already sound. In the upcoming cycle, focus strictly on Tier-2 Paper-I high-weightage sections (Section 1 Maths/Reasoning and Section 2 General Awareness) to bridge the ${Math.abs(t2Margin!)} mark gap.`,
+          headline: `Above the ${s1} cut-off, below ${s2}'s final merit cut-off in ${selectedYear}`,
+          summaryText: `Your ${s1} score is +${t1Margin} marks above the cut-off (${t1Cutoff})${skillWords}, but your ${s2} score of ${candidateT2} is ${Math.abs(t2Margin!)} marks below the final merit cut-off of ${t2Cutoff}.`,
+          conclusion: `On ${selectedYear}'s cut-offs the shortfall is in ${s2} alone: ${Math.abs(t2Margin!)} marks below the ${activeCategory} cut-off of ${t2Cutoff}.`,
+          nextAction: `Strategic Next Step: Your ${s1} base is sound. Work on ${s2Sections.length ? `the ${s2} sections its merit is counted on (${listOf(s2Sections)})` : `the ${s2} papers`} to bridge the ${Math.abs(t2Margin!)} mark gap.`,
           recommendedTab: 'TIER2_MISSED_RECOVERY'
         };
       } else {
         unifiedVerdict = {
           status: 'MISSED_TIER1',
-          badgeText: '❌ MISSED TIER-1 CUTOFF',
+          badgeText: `❌ BELOW THE ${S1} CUT-OFF`,
           badgeBg: 'rgba(239, 68, 68, 0.2)',
           badgeColor: '#b71f1f',
           borderColor: '#b33333',
-          headline: `Did Not Clear Tier-1 Prelims in ${selectedYear}`,
-          summaryText: `Your Tier-1 score of ${candidateT1} was ${Math.abs(t1Margin!)} marks below the ${selectedYear} cutoff (${t1Cutoff}) for ${activeCategory}.`,
-          conclusion: `Comprehensive Multi-Tier Conclusion: Candidate did not meet the prelims threshold required to appear in subsequent tiers.`,
-          nextAction: 'Action Plan: Strengthen foundation concepts across Quantitative Aptitude and English Comprehension, and explore parallel exams with overlapping syllabi (RRB NTPC, SSC CHSL).',
+          headline: `Below ${selectedYear}'s ${s1} cut-off`,
+          summaryText: `Your ${s1} score of ${candidateT1} was ${Math.abs(t1Margin!)} marks below the ${selectedYear} cutoff (${t1Cutoff}) for ${activeCategory}.`,
+          conclusion: `On ${selectedYear}'s cut-off, this score would not have qualified for the next stage.`,
+          nextAction: `Action Plan: Strengthen the sections of the ${s1} paper${s1Sections.length ? ` (${listOf(s1Sections)})` : ''} and practise full-length timed papers.`,
           recommendedTab: 'TIER1_FAILED_RECOVERY'
         };
       }
@@ -16149,27 +17074,28 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
       if (t1Passed) {
         unifiedVerdict = {
           status: 'CLEARED_TIER1_AWAITING_TIER2',
-          badgeText: '✅ CLEARED TIER-1 · SHORTLISTED FOR TIER-2',
+          badgeText: `✅ ABOVE ${selectedYear}'S ${S1} CUT-OFF`,
           badgeBg: 'rgba(56, 189, 248, 0.2)',
           badgeColor: '#0272ab',
           borderColor: '#0272ab',
-          headline: `Through to Tier-2 (Target Cutoff: ${t2Cutoff || '298+'} Marks)`,
-          summaryText: `Your Tier-1 score of ${candidateT1} cleared the ${selectedYear} cutoff (${t1Cutoff}) by +${t1Margin} marks.`,
-          conclusion: `Comprehensive Multi-Tier Conclusion: Candidate is officially shortlisted for Tier-2 examination. Tier-1 is qualifying; final all-India merit and Ministry allocation will be decided entirely by Tier-2 score.`,
-          nextAction: `Tier-2 Target: You must target at least ${t2Cutoff || 298} marks in Tier-2 Paper-I (Section 1 Maths/Reasoning + Section 2 English/GA) plus qualifying CKT & DEST to secure final selection.`,
+          headline: `Above the ${s1} cut-off${t2Cutoff !== null ? ` · ${s2} cut-off last time: ${t2Cutoff} marks` : ''}`,
+          summaryText: `Your ${s1} score of ${candidateT1} cleared the ${selectedYear} cutoff (${t1Cutoff}) by +${t1Margin} marks.`,
+          // The stage's own qualifying statement, where the record has one, says what clearing it means.
+          conclusion: `On ${selectedYear}'s cut-off you would be shortlisted for ${s2}.${stageOne?.qualifyingNature ? ` ${authorityShort}'s notice: ${stageOne.qualifyingNature}` : ''} ${authorityShort}'s own result for this cycle decides who is.`,
+          nextAction: `Next: prepare for ${s2}${s2Sections.length ? ` (${listOf(s2Sections)})` : ''}${t2Cutoff !== null ? `, aiming above last cycle's ${t2Cutoff} marks` : ''}${skillNames.length ? `, plus ${skillNames.join(' and ')}` : ''}.`,
           recommendedTab: 'TIER2_PREP'
         };
       } else {
         unifiedVerdict = {
           status: 'MISSED_TIER1',
-          badgeText: '❌ MISSED TIER-1 CUTOFF',
+          badgeText: `❌ BELOW THE ${S1} CUT-OFF`,
           badgeBg: 'rgba(239, 68, 68, 0.2)',
           badgeColor: '#b71f1f',
           borderColor: '#b33333',
-          headline: `Did Not Clear Tier-1 Prelims in ${selectedYear}`,
-          summaryText: `Your Tier-1 score of ${candidateT1} is ${Math.abs(t1Margin!)} marks below the ${selectedYear} cutoff (${t1Cutoff}) for ${activeCategory}.`,
-          conclusion: `Comprehensive Multi-Tier Conclusion: Candidate did not clear the prelims cutoff for ${activeCategory}.`,
-          nextAction: 'Action Plan: Target high-frequency scoring topics in Tier-1 and practice full-length timed mock tests.',
+          headline: `Below ${selectedYear}'s ${s1} cut-off`,
+          summaryText: `Your ${s1} score of ${candidateT1} is ${Math.abs(t1Margin!)} marks below the ${selectedYear} cutoff (${t1Cutoff}) for ${activeCategory}.`,
+          conclusion: `On ${selectedYear}'s cut-off, this score would not have cleared ${s1} for ${activeCategory}.`,
+          nextAction: `Action Plan: Target the high-frequency topics of the ${s1} syllabus and practise full-length timed papers.`,
           recommendedTab: 'TIER1_FAILED_RECOVERY'
         };
       }
@@ -16402,6 +17328,17 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
             </p>
           </div>
 
+          {!matchedCutoff && (
+            <div data-cutoff-state={cutoffMatch.status} style={{ padding: '10px 16px', borderRadius: 'var(--radius-md)', background: 'var(--amber-soft)', border: '1px solid var(--border-color)', maxWidth: '380px', fontSize: '0.82rem', color: 'var(--text-primary)', lineHeight: 1.5 }}>
+              <strong>{cutoffMatch.status === 'NO_CATEGORY' ? 'Choose your category' : 'Cut-off not available for your selected category'}</strong>
+              <div style={{ color: 'var(--text-secondary)', marginTop: '2px' }}>
+                {cutoffMatch.status === 'NO_CATEGORY' ? `Your marks are compared only with the cut-off recorded for your own category.`
+                  : cutoffMatch.status === 'NO_CUTOFFS' ? `No stage cut-off is on record for ${exam.title}${availableYears.length ? ` in ${selectedYear}` : ''}. GovOS does not set a threshold of its own.`
+                  : cutoffMatch.status === 'AMBIGUOUS' ? `More than one recorded ${selectedYear} cut-off could be ${activeCategory}'s (${('recorded' in cutoffMatch ? cutoffMatch.recorded : []).join(', ')}); choose the exact category.`
+                  : `The record has no ${selectedYear} cut-off for ${activeCategory}; it lists ${('recorded' in cutoffMatch ? cutoffMatch.recorded : []).join(', ')}. GovOS does not use another category's figure.`}
+              </div>
+            </div>
+          )}
           {matchedCutoff && (
             <div style={{ padding: '10px 16px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', textAlign: 'right' }}>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Cutoffs Benchmark ({selectedYear} · {activeCategory})</div>
@@ -16418,6 +17355,12 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
           )}
         </div>
       </div>
+
+      {entryNotKept && (
+        <div role="alert" data-save-state="not-kept" style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'var(--amber-soft)', color: 'var(--text-primary)', fontSize: '0.84rem' }}>
+          Your marks are shown but could not be kept in this browser (its storage is full or blocked); they will be gone after a reload. Your earlier saved entry, if any, is unchanged.
+        </div>
+      )}
 
       {/* Scorecard & Marks Input Card */}
       <div className="glass-card" style={{ padding: '22px', border: '1px solid rgba(99,102,241,0.3)' }}>
@@ -16506,7 +17449,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
           ) : (
             <>
               <div>
-                <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', fontWeight: 700 }}>Tier-1 Marks (Prelims)</label>
+                <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', fontWeight: 700 }}>{s1} marks</label>
                 <input
                   type="number" step="0.01" min={0} max={700}
                   value={tier1Input}
@@ -16517,7 +17460,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', fontWeight: 700 }}>Tier-2 Marks (Mains / Paper-I)</label>
+                <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', fontWeight: 700 }}>{s2} marks</label>
                 <input
                   type="number" step="0.01" min={0} max={700}
                   value={tier2Input}
@@ -16536,6 +17479,11 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
               onChange={e => setCategoryInput(e.target.value)}
               style={{ padding: '9px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontSize: '0.9rem', minWidth: '160px' }}
             >
+              <option value="">Choose your category</option>
+              {/* The candidate's own category stays visible even where no cut-off is recorded for it. */}
+              {categoryInput && !distinctCategories(cutoffRows).includes(categoryInput) && (
+                <option value={categoryInput}>{categoryInput} (no cut-off recorded)</option>
+              )}
               {distinctCategories(cutoffRows).map(cat => (
                 <option key={cat} value={cat}>{cat}</option>
               ))}
@@ -16571,7 +17519,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
             }}
             style={{ fontSize: '0.85rem', padding: '10px 16px' }}
           >
-            {entry ? 'Update & Evaluate' : isUPSC ? 'Evaluate UPSC Scores' : 'Evaluate All Tiers'}
+            {entry ? 'Update & Evaluate' : isUPSC ? 'Evaluate UPSC Scores' : 'Evaluate All Stages'}
           </button>
 
           <label className="btn btn-secondary" style={{ fontSize: '0.85rem', padding: '10px 16px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
@@ -16655,14 +17603,11 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                     <div>• {stageOneName}: <strong style={{ color: '#0272ab' }}>{parsed.fields.tier1Marks}</strong></div>
                   )}
                   {parsed.fields?.tier2Marks !== undefined && (
-                    <div>• Tier-2 Total: <strong style={{ color: '#4f46e5' }}>{parsed.fields.tier2Marks}</strong></div>
+                    <div>• {stageTwoName}: <strong style={{ color: '#4f46e5' }}>{parsed.fields.tier2Marks}</strong></div>
                   )}
-                  {parsed.fields?.computerKnowledgeMarks !== undefined && (
-                    <div>• CKT: <strong style={{ color: '#af5109' }}>{parsed.fields.computerKnowledgeMarks} / 60</strong></div>
-                  )}
-                  {parsed.fields?.destMistakesPercent !== undefined && (
-                    <div>• DEST: <strong style={{ color: '#137638' }}>{parsed.fields.destMistakesPercent}% Error</strong></div>
-                  )}
+                  {skillTests.flatMap(t => t.test.metrics || []).filter(m => typeof parsed.fields?.[m.key] === 'number').map(m => (
+                    <div key={m.key}>• {m.label}: <strong style={{ color: '#af5109' }}>{parsed.fields[m.key]}{m.unit.startsWith('%') ? '' : ' '}{m.unit}{m.outOf ? ` / ${m.outOf}` : ''}</strong></div>
+                  ))}
                   {parsed.fields?.allocatedPost && (
                     <div>• Allocated Post: <strong style={{ color: parsed.fields.allocatedPost === 'NOT_ALLOCATED' ? '#b71f1f' : '#137638' }}>{parsed.fields.allocatedPost}</strong></div>
                   )}
@@ -16708,7 +17653,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                   {unifiedVerdict.headline}
                 </h4>
                 <div style={{ fontSize: '0.86rem', color: '#334155' }}>
-                  Candidate: <strong>{entry?.candidateName || 'Candidate'}</strong> · Roll No: <strong>{entry?.rollNumber || '—'}</strong> · Category: <strong>{activeCategory}</strong> · Benchmark Cycle: <strong>{selectedYear}</strong>
+                  Candidate: <strong>{entry?.candidateName || 'Candidate'}</strong> · Roll No: <strong>{entry?.rollNumber || '—'}</strong> · Category: <strong>{activeCategory}</strong> · Benchmark Cycle: <strong>{selectedYear || 'no cut-off year on record'}</strong>
                 </div>
               </div>
 
@@ -16800,72 +17745,61 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                 </div>
               </div>
             ) : (
-              // SSC CGL / GENERIC PIPELINE
+              // Every exam but the UPSC CSE: the stages, their maximum marks and any qualifying skill test
+              // are this exam's own. The grid used to show SSC CGL's "Tier-1 CBT / 200", "Tier-2 CBT /
+              // 390" and a CKT/DEST card to IBPS PO and both APPSC exams, and to say "NOT ALLOCATED"
+              // for a post allocation the candidate had simply not entered.
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))', gap: '12px', marginBottom: '18px' }}>
-                {/* Stage 1: Tier-1 */}
+                {/* Stage 1 */}
                 <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: t1Passed ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)', border: `1px solid ${t1Passed ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}` }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                    <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, color: '#63738a' }}>Stage 1: Tier-1 CBT</span>
+                    <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, color: '#63738a' }}>Stage 1: {s1}</span>
                     <span style={{ fontSize: '0.7rem', fontWeight: 800, color: t1Passed ? '#137638' : '#b71f1f' }}>
                       {t1Passed ? '✅ CLEARED' : '❌ MISSED'}
                     </span>
                   </div>
                   <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-                    {candidateT1 !== null ? candidateT1 : '—'} <span style={{ fontSize: '0.75rem', color: '#63738a' }}>/ 200</span>
+                    {candidateT1 !== null ? candidateT1 : '—'} {stageOneMax > 0 && <span style={{ fontSize: '0.75rem', color: '#63738a' }}>/ {stageOneMax}</span>}
                   </div>
                   <div style={{ fontSize: '0.75rem', color: '#334155', marginTop: '4px' }}>
                     Cutoff: <strong>{t1Cutoff}</strong> ({t1Margin !== null && t1Margin >= 0 ? `+${t1Margin} margin` : `${t1Margin} margin`})
                   </div>
                 </div>
 
-                {/* Stage 2: Tier-2 */}
+                {/* Stage 2 */}
                 <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: t2Cutoff ? (t2Passed ? 'rgba(16,185,129,0.08)' : candidateT2 !== null ? 'rgba(239,68,68,0.08)' : 'rgba(56,189,248,0.08)') : 'var(--surface-2)', border: `1px solid ${t2Cutoff ? (t2Passed ? 'rgba(16,185,129,0.3)' : candidateT2 !== null ? 'rgba(239,68,68,0.3)' : 'rgba(56,189,248,0.3)') : 'var(--surface-3)'}` }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                    <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, color: '#63738a' }}>Stage 2: Tier-2 CBT</span>
+                    <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, color: '#63738a' }}>Stage 2: {s2}</span>
                     <span style={{ fontSize: '0.7rem', fontWeight: 800, color: t2Cutoff ? (t2Passed ? '#137638' : candidateT2 !== null ? '#b71f1f' : '#0272ab') : '#63738a' }}>
                       {t2Cutoff ? (t2Passed ? '✅ CLEARED' : candidateT2 !== null ? '❌ MISSED MERIT' : '⏳ AWAITING') : 'N/A'}
                     </span>
                   </div>
                   <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-                    {candidateT2 !== null ? candidateT2 : (t2Cutoff ? `Target: ${t2Cutoff}` : '—')} <span style={{ fontSize: '0.75rem', color: '#63738a' }}>/ 390</span>
+                    {candidateT2 !== null ? candidateT2 : (t2Cutoff ? `Target: ${t2Cutoff}` : '—')} {stageTwoMax > 0 && <span style={{ fontSize: '0.75rem', color: '#63738a' }}>/ {stageTwoMax}</span>}
                   </div>
                   <div style={{ fontSize: '0.75rem', color: '#334155', marginTop: '4px' }}>
                     Cutoff: <strong>{t2Cutoff || '—'}</strong> ({t2Margin !== null ? (t2Margin >= 0 ? `+${t2Margin} margin` : `${t2Margin} margin`) : 'Target Merit Score'})
                   </div>
                 </div>
 
-                {/* Stage 3: Modules */}
-                <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: (candidateCKT !== null || candidateDEST !== null) ? 'rgba(16,185,129,0.08)' : 'var(--surface-2)', border: '1px solid var(--surface-3)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                    <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, color: '#63738a' }}>Stage 3: Modules</span>
-                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#137638' }}>
-                      {(candidateCKT !== null || candidateDEST !== null) ? '✅ QUALIFIED' : 'QUALIFYING'}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 600 }}>
-                    CKT: <strong style={{ color: '#af5109' }}>{candidateCKT !== null ? `${candidateCKT} / 60` : 'Min 15.0'}</strong>
-                  </div>
-                  <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 600, marginTop: '2px' }}>
-                    DEST: <strong style={{ color: '#137638' }}>{candidateDEST !== null ? `${candidateDEST}% Error` : 'Max 20%'}</strong>
-                  </div>
-                  <div style={{ fontSize: '0.72rem', color: '#63738a', marginTop: '4px' }}>
-                    {cktPassed && destPassed ? 'All qualifying thresholds met' : 'Non-merit qualifying stage'}
-                  </div>
-                </div>
+                {/* One card per skill test the record states: its own name, figures and printed standards. */}
+                {skillResults.map((r, i) => (
+                  <SkillTestCard key={r.stage.id} result={r} position={3 + i} category={activeCategory} onOpenProvenanceModal={onOpenProvenanceModal} />
+                ))}
 
                 {/* Stage 4: Post Allocation */}
                 <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: allocatedPost && allocatedPost !== 'NOT_ALLOCATED' ? 'rgba(16,185,129,0.08)' : 'var(--surface-2)', border: '1px solid var(--surface-3)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                    <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, color: '#63738a' }}>Stage 4: Post Allocation</span>
+                    <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, color: '#63738a' }}>Stage {3 + skillResults.length}: Post Allocation</span>
                     <span style={{ fontSize: '0.7rem', fontWeight: 800, color: allocatedPost && allocatedPost !== 'NOT_ALLOCATED' ? '#137638' : '#b71f1f' }}>
-                      {allocatedPost && allocatedPost !== 'NOT_ALLOCATED' ? 'ALLOCATED' : 'NOT ALLOCATED'}
+                      {!allocatedPost ? 'NOT ENTERED' : allocatedPost !== 'NOT_ALLOCATED' ? 'ALLOCATED' : 'NOT ALLOCATED'}
                     </span>
                   </div>
                   <div style={{ fontSize: '1.05rem', fontWeight: 800, color: allocatedPost && allocatedPost !== 'NOT_ALLOCATED' ? '#137638' : '#334155' }}>
-                    {allocatedPost && allocatedPost !== 'NOT_ALLOCATED' ? allocatedPost : 'None (No Post Allocated)'}
+                    {!allocatedPost ? '—' : allocatedPost !== 'NOT_ALLOCATED' ? allocatedPost : 'None (No Post Allocated)'}
                   </div>
                   <div style={{ fontSize: '0.72rem', color: '#63738a', marginTop: '4px' }}>
-                    Matches {selectedYear} Merit Result
+                    {allocatedPost ? `As entered from the ${selectedYear} result` : 'From your own result, once it is declared'}
                   </div>
                 </div>
               </div>
@@ -17047,7 +17981,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                       <span style={{ fontSize: '0.62rem', background: '#137638', color: '#0f172a', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>ACTIVE</span>
                     )}
                   </div>
-                  <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>Next step if both tiers passed</div>
+                  <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>Next step if both stages passed</div>
                 </div>
               </button>
 
@@ -17087,8 +18021,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                 </div>
               </button>
 
-              {/* Only where the exam's own record carries a skill/typing stage. SSC CGL has
-                  DEST; IBPS and APPSC do not, and were being offered it. */}
+              {/* Only where the exam's own record states a skill test, under the record's own name. */}
               {hasSkillStage && (
               <button 
                 className={`btn ${selectedStatus === 'SKILL_TEST' ? 'btn-primary' : 'btn-secondary'}`}
@@ -17097,8 +18030,8 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
               >
                 <Keyboard size={18} color={selectedStatus === 'SKILL_TEST' ? 'var(--text-primary)' : '#a855f7'} />
                 <div>
-                  <div style={{ fontWeight: 700 }}>Skill Test / DEST</div>
-                  <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>Typing speed & error standards</div>
+                  <div style={{ fontWeight: 700 }}>{skillTests.length === 1 ? skillTests[0].test.name.split(' (')[0] : 'Skill tests'}</div>
+                  <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>{skillTests.some(t => (t.test.metrics || []).some(m => m.standard)) ? 'Qualifying standards from the notice' : 'What the notice states'}</div>
                 </div>
               </button>
               )}
@@ -17106,6 +18039,36 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
           )}
         </div>
       </div>
+
+      {/* Every other exam's pathway: built from its own record (resultPathway). These tabs used to open
+          onto nothing -- their panels went with the CSE engine's arrival. */}
+      {!isUPSC && (() => {
+        const pathwayId = resultPathwayOf(selectedStatus);
+        if (!pathwayId) return null;
+        const pathway = resultPathway(exam, pathwayId, {
+          category: activeCategory,
+          year: matchedCutoff?.year,
+          stageOne: { score: candidateT1, cutoff: t1Cutoff, margin: t1Margin },
+          stageTwo: { score: candidateT2, cutoff: t2Cutoff, margin: t2Margin },
+        });
+        return (
+          <ResultPathwayPanel
+            pathway={pathway}
+            onNavigateSection={onNavigateSection}
+            onNavigatePractice={onNavigatePractice}
+            onSelectPathway={id => { setSelectedStatus(id); setStatusChosenManually(true); }}
+            onOpenProvenanceModal={onOpenProvenanceModal}
+          >
+            {pathwayId === 'SKILL_TEST' && skillResults.length > 0 && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(260px, 100%), 1fr))', gap: '12px' }}>
+                {skillResults.map((r, i) => (
+                  <SkillTestCard key={r.stage.id} result={r} position={i + 1} category={activeCategory} onOpenProvenanceModal={onOpenProvenanceModal} />
+                ))}
+              </div>
+            )}
+          </ResultPathwayPanel>
+        );
+      })()}
 
       {/* ===================================================================== */}
       {/* UPSC SPECIFIC PATHWAY VIEWS                                           */}
@@ -17542,7 +18505,7 @@ const formatFetched = (iso: string | null | undefined): string =>
   iso ? new Date(iso).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'not yet';
 
 /** A verifier-added entry rendered through the same card as the static library. */
-const additionToResource = (a: ResourceAddition): ResourceItem => {
+export const additionToResource = (a: ResourceAddition): ResourceItem => {
   const date = a.addedAt.slice(0, 10);
   // The server decides the kind from the URL's host. Anything it did not call official is never shown as official.
   const kind = a.sourceKind || 'THIRD_PARTY';
@@ -17563,36 +18526,45 @@ const additionToResource = (a: ResourceAddition): ResourceItem => {
         : a.resourceFormat === 'YOUTUBE_COURSE' || a.resourceFormat === 'YOUTUBE_CHANNEL'
           ? 'VIDEO_LECTURE'
           : 'OFFICIAL_PORTAL',
-      recommendedFor: 'Added after a live official-domain search and a verifier\'s review. Open it to confirm it fits what you need.',
-      officialTag: `ADDED ${date} · VERIFIER-APPROVED FROM LIVE SOURCE RESEARCH`,
+      recommendedFor: 'On the authority\'s own site; added by a GovOS verifier. Open it to confirm it fits what you need.',
+      // Only an addition made from a promoted research finding says it came from research.
+      officialTag: a.findingId ? `ADDED ${date} · VERIFIER-APPROVED FROM LIVE SOURCE RESEARCH` : `ADDED ${date} · BY A GOVOS VERIFIER`,
+      // The link is the authority's own (the server checked its host against the exam's estate); nothing in it
+      // was quoted or read. So no excerpt, no publication date (the day it was added is not one), and not
+      // "officially verified": it used to be OFFICIALLY_VERIFIED with GovOS's own sentence as its quote.
       provenance: {
         id: `prov-${a.id}`,
         documentTitle: a.title,
         officialUrl: a.url,
-        publishedDate: date,
+        publishedDate: '',
         verifiedDate: date,
-        verifiedBy: 'GovOS verifier — promoted in the Trust Panel after a live official-domain search',
-        taxonomyType: 'FACT',
-        verificationLevel: 'OFFICIALLY_VERIFIED',
-        excerptText: `Added to the library at runtime from Live Source Research${a.findingId ? ` finding #${a.findingId}` : ''}, not from a code edit. The GovOS server re-checks this link on its schedule; the badge on the card shows the latest result.`
+        verifiedBy: `GovOS verifier — added ${a.findingId ? `from Live Source Research finding #${a.findingId}` : 'in the Trust Panel'} on ${date}; the link is on the authority's own site, its content was not quoted`,
+        taxonomyType: 'EXPLANATION',
+        verificationLevel: 'UNDER_VERIFICATION'
       }
     };
   }
   const academic = kind === 'TRUSTED_PUBLIC';
+  // A government site that is not this exam's authority: a public body's page, never this authority's statement.
+  const government = kind === 'GOVERNMENT_SITE';
   return {
     ...common,
     type: 'THIRD_PARTY',
-    recommendedFor: academic
+    recommendedFor: government
+      ? 'A government website, but not this exam\'s authority\'s own. A GovOS verifier added it; where it disagrees with the authority\'s notice, the notice governs.'
+      : academic
       ? 'An academic or public-body page a GovOS verifier added. Open it to confirm it fits what you need.'
       : 'Orientation only. GovOS did not write it, no authority published it, and GovOS has not fact-checked it. Where it disagrees with the official notice or paper, the official one governs.',
-    officialTag: academic
+    officialTag: government
+      ? `ADDED ${date} · GOVERNMENT SITE · NOT THIS AUTHORITY'S OWN · NOT FACT-CHECKED`
+      : academic
       ? `ADDED ${date} · ACADEMIC / PUBLIC BODY · NOT AN OFFICIAL SOURCE`
       : `ADDED ${date} · THIRD-PARTY · NOT OFFICIAL · NOT FACT-CHECKED`,
     provenance: {
       id: `prov-${a.id}`,
       documentTitle: a.title,
       officialUrl: a.url,
-      publishedDate: date,
+      publishedDate: '',
       verifiedDate: date,
       verifiedBy: `GovOS verifier — added in the Trust Panel on ${date}; the link is checked, the content is not`,
       taxonomyType: 'RECOMMENDATION',
@@ -17681,7 +18653,10 @@ const SourceRow: React.FC<{
 const relationNote = (item: DiscoveredSourceItem): string => [
   item.relation === 'THIS_EXAM_OTHER_CYCLE'
     ? `Another cycle of this exam${item.identity.cycle ? ` (${item.identity.cycle})` : ''} — not this cycle's document.`
-    : item.obtainable ? '' : 'Listed by the authority, but GovOS could not open it.',
+    : item.relation === 'THIS_EXAM_CYCLE_UNSTATED'
+      ? 'Names this exam but not its cycle — not confirmed as this cycle\'s document.'
+      : item.obtainable ? '' : 'Listed by the authority, but GovOS could not open it.',
+  item.roleFrom === 'CLAUDE' ? 'What kind of document this is was read by Claude, not confirmed by GovOS\'s own rules.' : '',
   // A link from the authority's own page is a relationship, never ownership.
   item.relationship === 'LINKED_FROM_OFFICIAL'
     ? `Run by ${item.owner || 'another site'}, not by the authority; the authority's own page links to it.`
@@ -18224,12 +19199,13 @@ export const ResourceLibrary: React.FC<ResourceLibraryProps> = ({ exam, onOpenRe
     const check = linkChecks[r.url];
     if (check) {
       const ok = check.status === 'HEALTHY' || check.status === 'REDIRECT';
-      if (ok) return { text: `Live now · HTTP ${check.httpCode}`, color: '#137638', bg: 'rgba(16,185,129,0.12)' };
+      if (ok) return { text: `Link opens now · HTTP ${check.httpCode}`, color: '#137638', bg: 'rgba(16,185,129,0.12)' };
       if (check.status === 'BLOCKED') return { text: 'Blocks automated checks · open to confirm', color: '#af5109', bg: 'rgba(245,158,11,0.12)' };
       if (check.status === 'UNREACHABLE') return { text: 'Could not reach automatically · open to confirm', color: '#af5109', bg: 'rgba(245,158,11,0.12)' };
       return { text: `Link broken · HTTP ${check.httpCode}`, color: '#b71f1f', bg: 'rgba(239,68,68,0.12)' };
     }
-    if (r.linkVerifiedDate) return { text: `Link verified ${formatVerifiedDate(r.linkVerifiedDate)}`, color: '#137638', bg: 'rgba(16,185,129,0.1)' };
+    // An HTTP check proves the link opened that day, nothing about what it says: "verified" read as the content.
+    if (r.linkVerifiedDate) return { text: `Link opened when checked ${formatVerifiedDate(r.linkVerifiedDate)}`, color: '#137638', bg: 'rgba(16,185,129,0.1)' };
     if (r.provenance?.verificationLevel === 'UNDER_VERIFICATION') return { text: 'Link check pending', color: '#af5109', bg: 'rgba(245,158,11,0.1)' };
     return null;
   };
@@ -18804,6 +19780,26 @@ const PatternNodeCard: React.FC<{
  * children the authority did not publish, and it renders as one rather than as an empty
  * shell: nothing here invents a topic to make a branch look complete.
  */
+/**
+ * React keys for one level of a published syllabus tree. A key is the node's id, and only a repeat is
+ * qualified (`id~2`, `id~3`, …) -- keys need be unique only among siblings. The builder makes ids unique
+ * (syllabus._make_ids_unique, compat.syllabus_tree), but a record projected before that rule still repeats
+ * them: UPSC CSE's tree has eighteen siblings called `…-section-a` under its Main Examination, and React
+ * may then attach one node's open/closed state to another.
+ */
+export const syllabusNodeKeys = (nodes: ExamSyllabusNode[]): string[] => {
+  const used = new Set<string>();
+  const ids = new Set(nodes.map(n => n.id));
+  return nodes.map(n => {
+    const id = n.id || 'node';
+    let key = id;
+    // A repeat takes the first `id~n` that is neither taken nor some sibling's own id.
+    for (let i = 2; used.has(key) || (key !== id && ids.has(key)); i++) key = `${id}~${i}`;
+    used.add(key);
+    return key;
+  });
+};
+
 const SyllabusNodeCard: React.FC<{
   node: ExamSyllabusNode;
   depth: number;
@@ -18869,8 +19865,8 @@ const SyllabusNodeCard: React.FC<{
       </div>
       {open && kids.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: depth === 0 ? '8px' : '4px' }}>
-          {kids.map(child => (
-            <SyllabusNodeCard key={child.id} node={child} depth={depth + 1} onOpenProvenanceModal={onOpenProvenanceModal} />
+          {syllabusNodeKeys(kids).map((key, i) => (
+            <SyllabusNodeCard key={key} node={kids[i]} depth={depth + 1} onOpenProvenanceModal={onOpenProvenanceModal} />
           ))}
         </div>
       )}
@@ -18886,7 +19882,7 @@ const SyllabusNodeCard: React.FC<{
  * does publish. A syllabus GovOS has not read yet is a gap here, and the section says that
  * instead. Neither is filled with another exam's syllabus.
  */
-const PublishedSyllabusPanel: React.FC<{
+export const PublishedSyllabusPanel: React.FC<{
   exam: Exam;
   onOpenProvenanceModal: (p: DataProvenance) => void;
 }> = ({ exam, onOpenProvenanceModal }) => {
@@ -18919,8 +19915,8 @@ const PublishedSyllabusPanel: React.FC<{
         The syllabus as {exam.authorityName.split(' (')[0]} published it — {count} entries at the depth its own
         document uses. Each one opens the clause it was read from.
       </div>
-      {tree.map(root => (
-        <SyllabusNodeCard key={root.id} node={root} depth={0} onOpenProvenanceModal={onOpenProvenanceModal} />
+      {syllabusNodeKeys(tree).map((key, i) => (
+        <SyllabusNodeCard key={key} node={tree[i]} depth={0} onOpenProvenanceModal={onOpenProvenanceModal} />
       ))}
     </div>
   );
@@ -19272,9 +20268,9 @@ const UpscEssayPractice: React.FC<{ exam: Exam; onOpenProvenanceModal: (p: DataP
   const submit = () => {
     if (!active) return;
     const seconds = Math.max(1, Math.floor((Date.now() - startedAt) / 1000));
-    storageService.saveMockAttempt({
+    const kept = storageService.saveMockAttempt({
       // The exam is taken from the question's own record, never from the screen or the title.
-      id: `upsc-essay-${active.id}-${Date.now()}`,
+      id: `upsc-essay-${active.id}-${startedAt}`,
       exam_id: active.examId,
       subject: `${active.paperName} — Q${active.questionNumber}: ${active.promptEnglish.slice(0, 48)}`,
       score: 0,
@@ -19285,9 +20281,14 @@ const UpscEssayPractice: React.FC<{ exam: Exam; onOpenProvenanceModal: (p: DataP
       time_taken_seconds: seconds,
       details: { words, answer, questionId: active.id, notScored: true }
     });
-    setSaved(`Saved — ${words} words in ${hhmmss(seconds)}. Not scored: an essay has no official key.`);
+    // "Saved" only when it was: a full browser storage used to lose the essay under a "Saved" message.
+    setSaved(kept.local
+      ? `Saved — ${words} words in ${hhmmss(seconds)}. Not scored: an essay has no official key.`
+      : `Not saved in this browser (its storage is full) — ${words} words in ${hhmmss(seconds)}. It was sent to the GovOS server if that is reachable; copy your answer before you leave.`);
     // Tell this exam's history panel to re-read, so the attempt shows without a remount.
     window.dispatchEvent(new CustomEvent('govos:attempt-saved'));
+    // The essay stays on screen unless it was kept: clearing it after a refused save lost the candidate's text.
+    if (!kept.local) return;
     setActive(null);
     setAnswer('');
   };
@@ -19295,6 +20296,11 @@ const UpscEssayPractice: React.FC<{ exam: Exam; onOpenProvenanceModal: (p: DataP
   if (active) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        {saved && saved.startsWith('Not saved') && (
+          <div role="alert" data-save-state="not-kept" style={{ padding: '10px 14px', borderRadius: 'var(--radius-sm)', background: 'var(--amber-soft)', color: 'var(--text-primary)', fontSize: '0.84rem', fontWeight: 600 }}>
+            {saved}
+          </div>
+        )}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
           <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 700 }}>
             {active.paperName} · {active.section} · Q{active.questionNumber} · {active.marks} marks
@@ -19343,7 +20349,7 @@ const UpscEssayPractice: React.FC<{ exam: Exam; onOpenProvenanceModal: (p: DataP
           mark it, because an essay has no official key and the Commission marks it by examiner assessment.
         </p>
       </div>
-      {saved && (
+      {saved && saved.startsWith('Saved') && (
         <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-sm)', background: 'var(--emerald-soft)', color: '#065f46', fontSize: '0.84rem', fontWeight: 600 }}>
           {saved}
         </div>
@@ -20426,13 +21432,88 @@ const SECTION_STATE_WORDING: Record<string, { tone: 'info' | 'warn' | 'guide'; l
   EXTRACTION_FAILED: { tone: 'warn', label: "GovOS couldn't read this", text: "A document covering this was read, but GovOS could not extract it reliably. That is a gap in GovOS, not a statement that the authority is silent." },
   NEEDS_REVIEW: { tone: 'warn', label: 'Under review', text: 'Part of this was read from the notice but is held for review before it is shown.' },
   INFRASTRUCTURE_FAILURE: { tone: 'warn', label: 'Check incomplete', text: 'GovOS could not finish checking the official sources. This says nothing about whether the authority has published it.' },
+  // A build's "not found", read against the latest walk of the authority's site (resolveSectionState).
+  SEARCH_INCOMPLETE: { tone: 'info', label: 'Search incomplete', text: "GovOS has not found this, but its walk of the authority's site did not read every listing or item that could hold it, so it cannot say this is not published. Check the official site." },
+  LISTED_NOT_CONFIRMED: { tone: 'info', label: 'Not confirmed', text: "The authority's site lists documents of this kind, but none could be tied to this exam from its own wording. They are listed below for you to check." },
+  FOUND_AFTER_BUILD: { tone: 'info', label: 'Found on the official site', text: "This page's record was built without it, but GovOS's later walk of the authority's site found it. It is listed below with its source." },
 };
 
-const SectionStateNote: React.FC<{ exam: Exam; sectionNum: number }> = ({ exam, sectionNum }) => {
+/**
+ * The platform's default evidence roles per section: the walk roles whose documents are, by themselves,
+ * evidence for it -- keyed by section id (completeness.py GOVOS_17_SECTIONS, the key of
+ * `exam.sectionStates`), never by exam, and deliberately NOT every role the placement model happens to
+ * show on that section's page. Practice & PYQs is `officialPapers`: an answer key shown beside the papers
+ * is a sibling, not a paper. A section with no entry (Overview, Dates, Eligibility, Pattern, Exam Day,
+ * FAQs, ...) has nothing a walk can prove or disprove, so its build state stands. A record may state its
+ * own (`sectionStates[id].evidenceRoles`), which is how a section this table does not know is handled.
+ */
+export const SECTION_EVIDENCE_ROLES: Readonly<Record<string, readonly ResourceRole[]>> = {
+  pyqs: ['QUESTION_PAPER'],
+  cutoffs: ['CUTOFF'],
+  results: ['RESULT'],
+  'admit-card': ['ADMIT_CARD'],
+  syllabus: ['SYLLABUS'],
+  corrigenda: ['CORRIGENDUM'],
+  application: ['APPLICATION_PORTAL'],
+  'official-links': ['NOTIFICATION'],
+};
+
+/** Every item the walk lists for this exam, wherever the projection files it. */
+const discoveredItems = (d: DiscoveredSources): DiscoveredSourceItem[] => [
+  ...(d.repositories || []).flatMap(r => r.items || []),
+  ...(d.portals || []), ...(d.practicalGuidance || []), ...(d.learning || []),
+];
+
+/**
+ * An item that proves a section by itself: of the section's own role, the authority's own, tied to this
+ * exam in this cycle by its own wording, and openable -- so the "listed below" the banner promises is
+ * true. A sibling role, another cycle or exam, an authority-wide service (OTR is NOT_THIS_EXAM), a
+ * secondary source and an item listed without a working link all fail here.
+ */
+const provesSection = (item: DiscoveredSourceItem, roles: readonly ResourceRole[]): boolean =>
+  roles.includes(item.role) && item.relation === 'THIS_EXAM' && item.sourceClass === 'PRIMARY_OFFICIAL'
+  && item.obtainable && !!item.url && !item.duplicateOf
+  // A role only Claude proposed is a reading, never evidence that this is the section's document.
+  && item.roleFrom !== 'CLAUDE';
+
+/**
+ * The state a section's banner shows: the build's state, except that a build's "not found after
+ * search" is read against the latest walk of the authority's site, which is later -- and only against
+ * that section's own evidence. The walk's per-role search state is authority-wide (an application
+ * portal is "found" whenever the authority has any portal), so it can withhold "not found" but never
+ * grant "found": FOUND_AFTER_BUILD needs an item of the section's own role that proves it. Anything
+ * short of that the walk did not rule out is SEARCH_INCOMPLETE. NOT_YET_PUBLISHED, EXTRACTION_FAILED
+ * and the rest are the build's findings about a document and are never rewritten here. A projection of
+ * another exam's walk (the frame before a switched exam's read lands) is ignored.
+ * Returns null where the exam carries no state for the section.
+ */
+export const resolveSectionState = (exam: Exam, sectionNum: number, discovered: DiscoveredSources | null): string | null => {
+  const found = Object.entries(exam.sectionStates || {}).find(([, s]) => s.sectionNum === sectionNum);
+  if (!found) return null;
+  const [sectionId, entry] = found;
+  if (entry.state !== 'SOURCE_NOT_FOUND_AFTER_SEARCH') return entry.state;
+  if (!discovered || discovered.state !== 'DISCOVERED' || discovered.examId !== exam.id) return entry.state;
+  const roles = entry.evidenceRoles ?? SECTION_EVIDENCE_ROLES[sectionId] ?? [];
+  if (roles.length === 0) return entry.state;
+  const ofRoles = discoveredItems(discovered).filter(i => roles.includes(i.role));
+  if (ofRoles.some(i => provesSection(i, roles))) return 'FOUND_AFTER_BUILD';
+  // What the walk says about each of the section's roles; a role it never tracked says nothing.
+  const walked = roles.map(r => discovered.searchStates?.[r]?.state).filter((s): s is string => !!s);
+  const open = walked.filter(s => s !== 'NOT_FOUND_AFTER_DISCOVERY');
+  if (open.length === 0) return entry.state;
+  // Listed, but nothing listed could be tied to this exam: say so only where such items are shown.
+  if (open.includes('FOUND_AMBIGUOUS') && ofRoles.some(i => i.relation === 'UNIDENTIFIABLE' && i.sourceClass === 'PRIMARY_OFFICIAL')) {
+    return 'LISTED_NOT_CONFIRMED';
+  }
+  return 'SEARCH_INCOMPLETE';
+};
+
+const SectionStateNote: React.FC<{ exam: Exam; sectionNum: number; discovered?: DiscoveredSources | null }> = ({ exam, sectionNum, discovered = null }) => {
   if (exam.origin !== 'MACHINE_ACQUIRED' || !exam.sectionStates) return null;
   const entry = Object.values(exam.sectionStates).find(s => s.sectionNum === sectionNum);
-  if (!entry || entry.state === 'VERIFIED_AVAILABLE') return null;
-  const wording = SECTION_STATE_WORDING[entry.state];
+  const state = resolveSectionState(exam, sectionNum, discovered);
+  if (!entry || !state || state === 'VERIFIED_AVAILABLE') return null;
+  const wording = SECTION_STATE_WORDING[state];
   if (!wording) return null;
   const palette = wording.tone === 'warn'
     ? { bg: 'var(--amber-soft)', border: 'rgba(180, 83, 9, 0.3)', color: '#92400e' }
@@ -20531,21 +21612,28 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
   onSelectAlternativeExam
 }) => {
   const [activeSection, setActiveSection] = useState<number>(initialSection || 1);
+  const sectionCardRef = useRef<HTMLDivElement>(null);
+  useReplayOnChange(sectionCardRef, activeSection, 'section-enter');
   // This exam's timeline is read against the real clock, re-read every minute, so a deadline
-  // moves from tomorrow to today to done with the page left open.
+  // moves from tomorrow to today to done with the page left open. Only Dates & Timeline reads
+  // it; ticking on every section re-rendered the whole exam page once a minute for nothing.
   const [nowTs, setNowTs] = useState<number>(() => Date.now());
   useEffect(() => {
+    if (activeSection !== 2) return;
+    setNowTs(Date.now());
     const tick = setInterval(() => setNowTs(Date.now()), 60000);
     return () => clearInterval(tick);
-  }, []);
+  }, [activeSection]);
   const [showPastDates, setShowPastDates] = useState<boolean>(false);
+  // The latest walk of this exam's authority, for the section banner; shared with the section panels.
+  const discoveredForBanner = useDiscoveredSources(exam.id);
 
   // What SSC has published since this syllabus was verified. Read, shown, never applied here.
   const syllabusVerifiedOn = exam.syllabus[0]?.officialProvenance?.verifiedDate || '';
-  const [syllabusWatch, setSyllabusWatch] = useState<SyllabusWatch | null>(null);
+  const [syllabusWatch, setSyllabusWatch] = useState<SyllabusWatch | null | undefined>(undefined);
   useEffect(() => {
     let cancelled = false;
-    setSyllabusWatch(null);
+    setSyllabusWatch(undefined);
     syllabusLiveService.watch(exam.id, syllabusVerifiedOn).then(found => {
       if (!cancelled) setSyllabusWatch(found);
     });
@@ -20561,6 +21649,18 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
   }, [initialSection]);
   const [isGuideIndexOpen, setIsGuideIndexOpen] = useState<boolean>(false);
   const [selectedResourceForModal, setSelectedResourceForModal] = useState<ResourceItem | null>(null);
+  // A switch to another exam opens it where the caller asked, never on the section, the past-dates fold
+  // or the panel the previous exam had open: `initialSection` alone re-syncs only when its number
+  // changes, so a notification to the same number left exam B on whatever section exam A was showing.
+  // Adjusted during render, so no frame ever shows the previous exam's section.
+  const [pageExamId, setPageExamId] = useState<string>(exam.id);
+  if (pageExamId !== exam.id) {
+    setPageExamId(exam.id);
+    setActiveSection(initialSection || 1);
+    setShowPastDates(false);
+    setIsGuideIndexOpen(false);
+    setSelectedResourceForModal(null);
+  }
   /**
    * Section 06 opens on the view this exam has something to show in. Post-wise study paths
    * exist only where posts differ in papers (SSC CGL); defaulting every exam to that view made
@@ -20683,21 +21783,26 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
     tileFor(['EXAM_TIER2'], stageLabel(1, 'Exam — Stage 2'))
   ];
   const headerInitials = examInitials(exam);
+  const headerNext = nextMilestoneOf({ ...exam, dates: liveDates } as Exam);
+  // The stages as the record names them, in its order; a record with none shows no rail.
+  const stageRail = Array.from(new Set(exam.stages.map(st => st.stageName.split(' — ')[0].split(':')[0].trim()).filter(Boolean)));
+  // Ordered by the ISO day, shown as printed: a date printed as "May/June 2024" or as a range used
+  // to be compared as text against today's ISO date, so every such date sorted as still ahead.
+  const updatesToday = new Date().toISOString().slice(0, 10);
   const latestUpdates = [
-    ...exam.corrigendums.map(c => ({ id: c.id, title: c.title, date: c.publishedDate, isNew: true })),
-    ...liveDates.map(d => ({ id: d.id, title: d.label, date: shownWhen(d), isNew: false }))
+    ...exam.corrigendums.map(c => ({ id: c.id, title: c.title, date: c.publishedDate, on: (c.publishedDate || '').slice(0, 10), isNew: true })),
+    ...liveDates.map(d => ({ id: d.id, title: d.label, date: shownWhen(d), on: (d.dateTimeStr || '').slice(0, 10), isNew: false }))
   ].sort((x, y) => {
     // most recently published first; what is still ahead follows, nearest first
-    const today = new Date().toISOString().slice(0, 10);
-    const xPast = x.date <= today, yPast = y.date <= today;
+    const xPast = x.on <= updatesToday, yPast = y.on <= updatesToday;
     if (xPast !== yPast) return xPast ? -1 : 1;
-    return xPast ? y.date.localeCompare(x.date) : x.date.localeCompare(y.date);
+    return xPast ? y.on.localeCompare(x.on) : x.on.localeCompare(y.on);
   }).slice(0, 5);
 
   return (
     <div className="animate-fade-in exam-layout">
       {/* ================= SIDEBAR: the 13 parts, then the reference sections ================= */}
-      <aside className="glass-card side-nav">
+      <aside className="glass-card side-nav" data-smooth-scroll>
         <button className="side-link" onClick={onBackHome} style={{ color: 'var(--text-muted)' }}>
           <ArrowLeft size={15} /> Back to Home
         </button>
@@ -20729,17 +21834,18 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
         </div>
       </aside>
 
-      <div className="exam-main-content" style={{ display: 'flex', flexDirection: 'column', gap: '20px', minWidth: 0 }}>
+      <div className="exam-main-content" data-smooth-scroll style={{ display: 'flex', flexDirection: 'column', gap: '20px', minWidth: 0 }}>
 
-      {/* Exam Header Title Banner */}
-      <div className="glass-card" style={{ padding: '22px 24px' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
-          <div style={{ display: 'flex', gap: '14px', alignItems: 'center', minWidth: 0 }}>
+      {/* Exam command stage: identity, state and the next thing that happens, on a dark stage (index.html, .exam-hero) */}
+      <div className={`glass-card exam-hero pass-${passToneOf(exam.authorityName)}`}>
+        <div className="exam-hero-grid" aria-hidden="true" />
+        <div className="exam-hero-main">
+          <div className="exam-hero-id">
             <div className="exam-logo">{headerInitials}</div>
             <div style={{ minWidth: 0 }}>
-              <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0, lineHeight: 1.2 }}>{exam.title}</h2>
-              <div style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '2px' }}>{exam.authorityName}</div>
-              <div style={{ marginTop: '6px', display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+              <div className="exam-hero-kicker">{exam.authorityName}</div>
+              <h2>{exam.title}</h2>
+              <div className="exam-hero-badges">
                 <ExamVerifiedBadge exam={exam} compact />
                 {isTracked && <span className="badge badge-pending" style={{ fontSize: '0.62rem' }}><Bell size={11} /> Tracking active</span>}
                 {exam.vacanciesTotal && <span className="badge badge-demo" style={{ fontSize: '0.62rem' }}>{exam.vacanciesTotal}</span>}
@@ -20747,31 +21853,53 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-            {onToggleTrack && (
-              <button className={`btn ${isTracked ? 'btn-emerald' : 'btn-secondary'}`} onClick={onToggleTrack} style={{ fontSize: '0.85rem', padding: '8px 14px' }} title={isTracked ? 'Currently tracked in My Timeline' : 'Track this exam for deadline notifications'}>
-                {isTracked ? <><Check size={15} /> Tracking</> : <><Bell size={15} /> Track Exam</>}
-              </button>
+          <div className="exam-hero-next" aria-live="polite">
+            <div className="exam-hero-next-label">Next on record</div>
+            {headerNext ? (
+              <>
+                <div className="exam-hero-next-value">
+                  {headerNext.days !== null ? <><span className="exam-hero-days">{headerNext.days}</span> {headerNext.days === 1 ? 'day' : 'days'}</> : headerNext.when}
+                </div>
+                <div className="exam-hero-next-what">{headerNext.label}{headerNext.days !== null ? ` · ${headerNext.when}` : ''}</div>
+              </>
+            ) : (
+              <div className="exam-hero-next-what">No upcoming milestone in this exam's record.</div>
             )}
-            <a href={exam.officialDomain} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ fontSize: '0.85rem', padding: '8px 14px' }}
-              onClick={() => storageService.recordInteraction({ type: 'RESOURCE_ACCESS', examId: exam.id, metadata: { target: exam.officialDomain, action: 'Opened Official Domain Portal' } })}>
-              <ExternalLink size={15} /> Official Website
-            </a>
-            <button className="btn btn-secondary" onClick={() => onOpenReportModal('Exam', exam.id)} style={{ fontSize: '0.85rem', padding: '8px 14px' }}>
-              <Flag size={15} /> Report Error
-            </button>
-            <button className="icon-btn" onClick={handleToggleBookmark} title={isBookmarked ? 'Exam saved in bookmarks' : 'Bookmark this exam'} style={{ color: isBookmarked ? '#af5109' : undefined, background: isBookmarked ? 'var(--amber-soft)' : undefined }}>
-              <Bookmark size={16} fill={isBookmarked ? 'currentColor' : 'none'} />
-            </button>
-            <button className="icon-btn" onClick={onAskAI} title="Ask GovOS AI about this exam" style={{ color: 'var(--primary)', background: 'var(--primary-soft)' }}>
-              <Bot size={16} />
-            </button>
           </div>
+        </div>
+
+        {stageRail.length > 1 && (
+          <ol className="exam-stage-rail" aria-label="Stages of this examination">
+            {stageRail.map((name, i) => (
+              <li key={name} style={{ ['--ri' as any]: i }}><span className="exam-stage-dot">{i + 1}</span>{name}</li>
+            ))}
+          </ol>
+        )}
+
+        <div className="exam-hero-actions">
+          {onToggleTrack && (
+            <button className={`btn ${isTracked ? 'btn-emerald' : 'btn-secondary'}`} onClick={onToggleTrack} style={{ fontSize: '0.85rem', padding: '8px 14px' }} title={isTracked ? 'Currently tracked in My Timeline' : 'Track this exam for deadline notifications'}>
+              {isTracked ? <><Check size={15} /> Tracking</> : <><Bell size={15} /> Track Exam</>}
+            </button>
+          )}
+          <a href={exam.officialDomain} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ fontSize: '0.85rem', padding: '8px 14px' }}
+            onClick={() => storageService.recordInteraction({ type: 'RESOURCE_ACCESS', examId: exam.id, metadata: { target: exam.officialDomain, action: 'Opened Official Domain Portal' } })}>
+            <ExternalLink size={15} /> Official Website
+          </a>
+          <button className="btn btn-secondary" onClick={() => onOpenReportModal('Exam', exam.id)} style={{ fontSize: '0.85rem', padding: '8px 14px' }}>
+            <Flag size={15} /> Report Error
+          </button>
+          <button className="icon-btn" onClick={handleToggleBookmark} title={isBookmarked ? 'Exam saved in bookmarks' : 'Bookmark this exam'} aria-label={isBookmarked ? 'Remove bookmark' : 'Bookmark this exam'} style={{ color: isBookmarked ? '#af5109' : undefined, background: isBookmarked ? 'var(--amber-soft)' : undefined }}>
+            <Bookmark size={16} fill={isBookmarked ? 'currentColor' : 'none'} />
+          </button>
+          <button className="icon-btn" onClick={onAskAI} title="Ask GovOS AI about this exam" aria-label="Ask GovOS AI about this exam" style={{ color: 'var(--primary)', background: 'var(--primary-soft)' }}>
+            <Bot size={16} />
+          </button>
         </div>
       </div>
 
       {/* The four milestones a candidate looks for first */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(190px, 100%), 1fr))', gap: '12px' }}>
+      <div className="tile-strip">
         {tiles.map(t => (
           <div key={t.label} className="stat-tile">
             <div className="tile-icon"><Calendar size={17} /></div>
@@ -20813,11 +21941,11 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
         </div>
       )}
 
-      {/* Section Content Views */}
-      <div className="glass-card" style={{ padding: '28px' }}>
+      {/* Section Content Views. A section change replays a short entrance on this card -- nothing inside remounts. */}
+      <div className="glass-card" ref={sectionCardRef} style={{ padding: '28px' }}>
 
         {/* The engine's honest state for this section of a machine-acquired exam. */}
-        <SectionStateNote exam={exam} sectionNum={activeSection} />
+        <SectionStateNote exam={exam} sectionNum={activeSection} discovered={discoveredForBanner} />
 
         {/* Section 01: Overview & Posts */}
         {activeSection === 1 && (
@@ -20872,6 +22000,11 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
             <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
               {exam.overviewDescription}
             </p>
+            {/* No provenance is recorded for the summary itself, so it is labelled rather than presented as the
+                notice's words; the headline facts below carry their own evidence. */}
+            <div data-fact-state="GOVOS_SUMMARY" style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '-6px' }}>
+              GovOS's summary of this exam, not quoted from {exam.authorityName.split(' (')[0]}'s notice. The facts below each carry their own evidence.
+            </div>
 
             {/* Each headline fact beside its own evidence. The overview used to cite the first
                 post's row for the whole profile; a total is not a post. */}
@@ -21418,9 +22551,13 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
 
                 {/* The notice board, read against the verified date. A notice here is a reason to
                     check, not a change: the syllabus below changes only when a verifier applies one. */}
-                {syllabusWatch === null ? (
+                {syllabusWatchState(syllabusWatch) === 'LOADING' ? (
                   <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <RefreshCw size={13} className="animate-spin" /> Reading the official notice board for anything newer than this syllabus…
+                  </div>
+                ) : !syllabusWatch || syllabusWatchState(syllabusWatch) === 'UNREACHABLE' || syllabusWatchState(syllabusWatch) === 'NOT_READ' ? (
+                  <div data-watch-state={syllabusWatchState(syllabusWatch)} style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Info size={13} /> {syllabusWatchMessage(syllabusWatch)}
                   </div>
                 ) : syllabusWatch.source === null ? (
                   <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -21483,9 +22620,13 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                               🔥 HIGH-YIELD TOPIC
                             </span>
                           )}
-                          <span className="badge badge-verified">
-                            Weightage: ~{topic.weightagePercentage}% (~{topic.avgQuestions} Qs/Shift)
-                          </span>
+                          {/* Every exam's syllabus renders here: "per shift" was SSC's CBT word, and a topic
+                              with no recorded weightage (a verifier's ADD) read "~0%". */}
+                          {topic.weightagePercentage > 0 && (
+                            <span className="badge badge-verified" title="GovOS's count of past papers, not an official figure">
+                              Weightage: ~{topic.weightagePercentage}%{topic.avgQuestions > 0 ? ` (~${topic.avgQuestions} Qs per paper)` : ''}
+                            </span>
+                          )}
                           {topic.revision && (
                             <a
                               href={topic.revision.noticeUrl || undefined}

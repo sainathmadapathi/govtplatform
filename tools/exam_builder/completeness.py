@@ -464,6 +464,11 @@ def _classify_field_status(rec: ExamRecord, field_name: str,
     if st_val == 'NOT_PUBLISHED':
         if infra_failed:
             return CompletenessState.INFRASTRUCTURE_FAILURE, 'Pipeline could not finish search'
+        if (f.note or '').startswith('No document of kind'):
+            # Discovery found no document of the kinds that state this field (build.py's NO_SOURCE).
+            # That is a search that came up empty, not the authority's own listing showing none, so
+            # candidates must not read "the authority has not published this".
+            return CompletenessState.SOURCE_NOT_FOUND_AFTER_SEARCH, f.note
         return CompletenessState.NOT_YET_PUBLISHED, f.note or 'Not published by authority'
     if st_val == 'NOT_EXTRACTED':
         # A reading a person withheld (review.py) is held back, not failed and not absent:
@@ -472,16 +477,53 @@ def _classify_field_status(rec: ExamRecord, field_name: str,
             return CompletenessState.NEEDS_REVIEW, f.note
         if infra_failed:
             return CompletenessState.INFRASTRUCTURE_FAILURE, 'Infrastructure failure during build'
-        if unreadable_docs:
-            return CompletenessState.SOURCE_UNREADABLE, 'Source document text was unreadable'
+        # The reader raising is evidence about this field's own document (it had text to fail on); the
+        # unreadable flag is about the build's documents as a whole, so it comes second.
         if _reader_raised(rec, field_name):
             return CompletenessState.EXTRACTION_FAILED, 'Reader failed on a document that carries this section'
+        if unreadable_docs:
+            return CompletenessState.SOURCE_UNREADABLE, 'Source document text was unreadable'
         if field_name in searched_not_found:
             return (CompletenessState.SOURCE_NOT_FOUND_AFTER_SEARCH,
                     'Readers found no such clause and a search of the authority domain found no document for it')
         return CompletenessState.EXTRACTION_FAILED, f.note or 'Extractor found nothing and no search was made'
 
     return CompletenessState.EXTRACTION_FAILED, 'Unknown field state'
+
+
+#: Weakest first: a derived section takes the state of its least-ready input.
+_INPUT_STATE_ORDER = (
+    CompletenessState.INFRASTRUCTURE_FAILURE,
+    CompletenessState.SOURCE_UNREADABLE,
+    CompletenessState.EXTRACTION_FAILED,
+    CompletenessState.NEEDS_REVIEW,
+    CompletenessState.SOURCE_NOT_FOUND_AFTER_SEARCH,
+    CompletenessState.NOT_YET_PUBLISHED,
+    CompletenessState.NOT_APPLICABLE,
+)
+
+_DERIVED_SUMMARY = {
+    CompletenessState.INFRASTRUCTURE_FAILURE: 'Connection error while reading the official documents {what} is built from',
+    CompletenessState.SOURCE_UNREADABLE: '{what} waits on an official document that was found but could not be read',
+    CompletenessState.EXTRACTION_FAILED: '{what} waits on an official document GovOS found but could not extract',
+    CompletenessState.NEEDS_REVIEW: '{what} waits on official information that is under verification',
+    CompletenessState.SOURCE_NOT_FOUND_AFTER_SEARCH: '{what} waits on official information GovOS has not located yet',
+    CompletenessState.NOT_YET_PUBLISHED: '{what} will activate once the authority publishes what it is built from',
+    CompletenessState.NOT_APPLICABLE: '{what} does not apply to this examination',
+}
+
+
+def _derived_input_state(rec, needs, infra_failed, unreadable_docs, searched_not_found, not_applicable):
+    """The state of a derived section's weakest unverified input, with a note naming it."""
+    found = []
+    for fn in needs:
+        state, note = _classify_field_status(rec, fn, infra_failed, unreadable_docs, searched_not_found, not_applicable)
+        if state is not CompletenessState.VERIFIED_AVAILABLE:
+            found.append((state, f'{fn}: {note}'))
+    if not found:                       # verified but not FOUND-status (should not happen); never claim absence
+        return CompletenessState.NEEDS_REVIEW, 'Inputs present but not in a verified state'
+    found.sort(key=lambda sn: _INPUT_STATE_ORDER.index(sn[0]) if sn[0] in _INPUT_STATE_ORDER else 0)
+    return found[0][0], '; '.join(n for _, n in found)
 
 
 def evaluate_completeness(rec: ExamRecord, sources: Any,
@@ -527,39 +569,35 @@ def evaluate_completeness(rec: ExamRecord, sources: Any,
             pat_ok = pat_f and getattr(pat_f, 'status', None) == RecordStatus.FOUND
             syl_ok = syl_f and getattr(syl_f, 'status', None) == RecordStatus.FOUND
 
-            if s_def.id == 'roadmap':
-                if pat_ok and syl_ok:
+            if s_def.id in ('roadmap', 'mock-tests'):
+                needs = ['examPattern', 'syllabus'] if s_def.id == 'roadmap' else ['examPattern']
+                ready = pat_ok and (syl_ok or s_def.id == 'mock-tests')
+                what = 'Study roadmap' if s_def.id == 'roadmap' else 'Mock test simulator'
+                if ready:
                     final_state = CompletenessState.SUPPORTED_AND_PROJECTED
-                    student_summary = 'Study roadmap derived from verified pattern and syllabus topics'
-                    tech_note = 'Generated dynamically from verified examPattern and syllabus trees'
+                    student_summary = ('Study roadmap derived from verified pattern and syllabus topics'
+                                       if s_def.id == 'roadmap' else
+                                       'Interactive mock simulator configured from verified exam pattern')
+                    tech_note = 'Generated from verified ' + ' and '.join(needs)
                     derived_cnt += 1
-                elif infra_failed:
-                    final_state = CompletenessState.INFRASTRUCTURE_FAILURE
-                    student_summary = 'Connection error during official document acquisition'
-                    tech_note = 'Infrastructure failure prevented acquiring syllabus/pattern'
-                    failure_cnt += 1
                 else:
-                    final_state = CompletenessState.NOT_YET_PUBLISHED
-                    student_summary = 'Awaiting verified syllabus and pattern to generate roadmap'
-                    tech_note = 'Prerequisite factual fields not yet verified'
-                    not_yet_published_cnt += 1
-
-            elif s_def.id == 'mock-tests':
-                if pat_ok:
-                    final_state = CompletenessState.SUPPORTED_AND_PROJECTED
-                    student_summary = 'Interactive mock simulator configured from verified exam pattern'
-                    tech_note = 'Runtime simulator ready with verified stages/marking scheme'
-                    derived_cnt += 1
-                elif infra_failed:
-                    final_state = CompletenessState.INFRASTRUCTURE_FAILURE
-                    student_summary = 'Connection error during official document acquisition'
-                    tech_note = 'Infrastructure failure prevented acquiring exam pattern'
-                    failure_cnt += 1
-                else:
-                    final_state = CompletenessState.NOT_YET_PUBLISHED
-                    student_summary = 'Mock test simulator will activate once exam pattern is officially released'
-                    tech_note = 'Awaiting verified examPattern'
-                    not_yet_published_cnt += 1
+                    # The section is as far along as its weakest input, in that input's own state. It used to
+                    # be NOT_YET_PUBLISHED ("will activate once the pattern is officially released") whenever
+                    # an input was missing -- including a pattern that was found but unreadable, or that the
+                    # reader failed on, which said something about the authority no source had said.
+                    final_state, tech_note = _derived_input_state(rec, needs, infra_failed, unreadable_docs,
+                                                                  searched_not_found, not_applicable)
+                    student_summary = _DERIVED_SUMMARY[final_state].format(what=what)
+                    if final_state is CompletenessState.NOT_YET_PUBLISHED:
+                        not_yet_published_cnt += 1
+                    elif final_state is CompletenessState.NEEDS_REVIEW:
+                        needs_review_cnt += 1
+                    elif final_state is CompletenessState.SOURCE_NOT_FOUND_AFTER_SEARCH:
+                        source_not_found_cnt += 1
+                    elif final_state is CompletenessState.NOT_APPLICABLE:
+                        not_applicable_cnt += 1
+                    else:
+                        failure_cnt += 1
             else:
                 final_state = CompletenessState.NOT_YET_PUBLISHED
                 student_summary = 'Runtime derived capability'
@@ -612,8 +650,15 @@ def evaluate_completeness(rec: ExamRecord, sources: Any,
                     states_list.append(CompletenessState.VERIFIED_AVAILABLE)
                     ev_count += 1
                 else:
-                    field_states[fn] = 'NOT_YET_PUBLISHED'
-                    states_list.append(CompletenessState.NOT_YET_PUBLISHED)
+                    # Classified like every other field. It used to be NOT_YET_PUBLISHED whenever absent.
+                    state, note = _classify_field_status(rec, fn, infra_failed, unreadable_docs,
+                                                         searched_not_found, not_applicable)
+                    if state is CompletenessState.VERIFIED_AVAILABLE:     # found, but empty
+                        state, note = CompletenessState.SOURCE_NOT_FOUND_AFTER_SEARCH, 'The record holds no next steps'
+                    field_states[fn] = state.value
+                    states_list.append(state)
+                    if note:
+                        notes.append(note)
                 continue
 
             state, note = _classify_field_status(rec, fn, infra_failed, unreadable_docs,

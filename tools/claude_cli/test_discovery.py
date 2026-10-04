@@ -308,7 +308,10 @@ class FetchCheckedTests(NetCase):
         r = self.run_fetch(OFFICIAL, web_, max_bytes=40)
         self.assertTrue(r.ok)
         self.assertEqual(r.text, '')
-        self.assertEqual(web_.responses[0].read_sizes, [40])
+        # At most one byte past the limit is ever asked for -- enough to tell "exactly 40" from "more".
+        self.assertLessEqual(sum(web_.responses[0].read_sizes), 41)
+        self.assertTrue(r.truncated)
+        self.assertEqual(r.body, b'', 'the body is kept only when the caller asks for it')
         self.assertEqual(web_.timeouts, [discovery.FETCH_TIMEOUT])
 
     def test_a_host_that_resolves_to_a_private_address_is_never_contacted(self):

@@ -17,7 +17,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, Callable, Optional
 
-from .context import (ExamStore, build_fact_sheet, citations, clean_text, syllabus_topics, validate_answer,
+from .context import (ExamStore, answer_verification, build_fact_sheet, citations, clean_text, syllabus_topics, validate_answer,
                       MAX_QUESTION_CHARS)
 from .discovery import DiscoveryUnavailable, classify_url, discover
 from .jobs import JobContext, JobOutcome, JobSpec
@@ -393,8 +393,13 @@ def answer_question(ctx: JobContext) -> JobOutcome:
                           template_version=res.template_version, audit={'problems': problems[:6]})
     out = res.output
     cited = citations(out, sheet) if out['basis'] == 'VERIFIED_DATA' else []
+    # `basis` is what Claude says it answered from; `verification` is what GovOS can prove: VERIFIED only
+    # when every fact the answer cites is officially verified and states what it is cited for. A fact with
+    # no source, one under verification, or one whose quoted words do not state it never makes an answer
+    # "verified" -- the badge used to follow `basis` alone.
     return JobOutcome('SUCCEEDED', result={
         'answer': out['answer'], 'basis': out['basis'], 'uncertainty': out['uncertainty'],
+        'verification': answer_verification(cited),
         'navigateTo': out['navigate_to'], 'followUp': out['follow_up'], 'citations': cited,
         'label': LABEL_ASSISTED, 'engine': ENGINE, 'examId': inp['examId'],
         'factsSupplied': len(sheet.facts), 'factsTruncated': sheet.truncated},

@@ -118,12 +118,33 @@ export interface PostRequirement {
   provenance: DataProvenance;
 }
 
+/**
+ * One eligibility condition as the notice states it. The qualification rules are what the eligibility
+ * engine checks a candidate against -- a post's own `ruleGroup` where it has one, else the exam's
+ * `globalRuleGroup` -- and nothing else: there is no default degree.
+ *
+ *   DEGREE_REQUIRED       ruleValue: the qualifications the notice accepts; read as the educational
+ *                         level they share (a Class 12 post accepts a graduate).
+ *   BRANCH_SPECIALIZATION ruleValue: the subjects the degree must be in, or include.
+ *   PERCENTAGE_MIN        ruleValue: the minimum percentage, in `subject` at `level` where stated.
+ *   APPEARING_ALLOWED     the notice lets a candidate appearing in the final year of `ruleValue` (a
+ *                         qualification) apply, on the condition in `statedAs`. Absent: not stated.
+ *   STATED_CONDITION      a condition GovOS cannot check from a profile (a language at matriculation
+ *                         level, say), in the notice's words in `statedAs`; it leaves the post undetermined.
+ */
 export interface EligibilityRule {
   id: string;
-  ruleType: 'AGE_MIN' | 'AGE_MAX' | 'DOB_CUTOFF' | 'DEGREE_REQUIRED' | 'BRANCH_SPECIALIZATION' | 'PERCENTAGE_MIN' | 'NATIONALITY' | 'CATEGORY_RELAXATION';
+  ruleType: 'AGE_MIN' | 'AGE_MAX' | 'DOB_CUTOFF' | 'DEGREE_REQUIRED' | 'BRANCH_SPECIALIZATION' | 'PERCENTAGE_MIN' | 'NATIONALITY' | 'CATEGORY_RELAXATION'
+    | 'APPEARING_ALLOWED' | 'STATED_CONDITION';
   operator: '>=' | '<=' | '=' | 'IN' | 'BETWEEN';
   ruleValue: string | number | string[];
   category: 'GENERAL' | 'OBC' | 'SC' | 'ST' | 'PwBD' | 'EWS';
+  /** PERCENTAGE_MIN: the subject the percentage is in. */
+  subject?: string;
+  /** PERCENTAGE_MIN: the level it is measured at. */
+  level?: ExamQualificationLevel;
+  /** The notice's own words for the condition, where the rule needs them shown. */
+  statedAs?: string;
   provenance: DataProvenance;
 }
 
@@ -158,8 +179,10 @@ export interface RuleGroup {
 }
 
 /**
- * Every subject a syllabus topic may belong to. The first six are SSC CGL's sections; the
- * rest are the areas UPSC's notice names for the Preliminary and Main examinations.
+ * The subject a syllabus topic belongs to, in its authority's own words. The names listed are the
+ * authored exams' (SSC CGL's six sections, then UPSC's areas) and stay for completion; any other
+ * authority's subject is a string too, so a new exam records its own subjects without a change here
+ * (a machine-read exam always did, at runtime, while the type pretended otherwise).
  */
 export type SyllabusSubject =
   | 'Quantitative Aptitude' | 'Reasoning & General Intelligence' | 'English Comprehension'
@@ -167,7 +190,8 @@ export type SyllabusSubject =
   | 'History & Culture' | 'Geography' | 'Polity & Governance' | 'Economy'
   | 'Environment & Ecology' | 'Science & Technology' | 'Current Affairs'
   | 'CSAT (Aptitude & Reasoning)' | 'Ethics, Integrity & Aptitude' | 'Essay & Answer Writing'
-  | 'International Relations & Security' | 'Optional Subject' | 'Indian Language & English (Qualifying)';
+  | 'International Relations & Security' | 'Optional Subject' | 'Indian Language & English (Qualifying)'
+  | (string & {});
 
 /**
  * One node of a syllabus as its authority published it, at whatever depth that is.
@@ -202,7 +226,9 @@ export interface ExamSyllabusNode {
 export interface SyllabusTopic {
   id: string;
   subject: SyllabusSubject;
-  tier: 'TIER_1' | 'TIER_2' | 'BOTH';
+  /** The stage the topic belongs to, as the exam's own stage labels name it (ExamStage.tier is a
+   *  string for the same reason); TIER_1 / TIER_2 / BOTH are the authored exams' values. */
+  tier: 'TIER_1' | 'TIER_2' | 'BOTH' | (string & {});
   topicName: string;
   parentId?: string;
   subtopics?: string[];
@@ -299,6 +325,12 @@ export interface ExamStage {
   unstatedFields?: string[];
   /** 'patternTree' when this stage is a compatibility projection of the authoritative tree. */
   derivedFrom?: string;
+  /** The marks the merit is counted on, where the notice says it is fewer than `totalMarks` (a stage
+   *  with qualifying sections). Absent: the merit is on `totalMarks`. */
+  meritMarks?: number;
+  /** A qualifying skill test this stage holds, as the authority states it. Its presence is the only
+   *  thing that gives an exam a skill-test card; nothing is read from a stage's name. */
+  skillTest?: SkillTestSpec;
   sections: {
     sectionName: string;
     modules: string[];
@@ -384,6 +416,51 @@ export interface CutoffEntry {
   provenance: DataProvenance;
 }
 
+/**
+ * A skill test as the exam's own notice states it. Every field is optional except the name, because
+ * authorities print different amounts: the Results engine renders what is here and says what is not,
+ * and never fills a gap from another exam.
+ */
+export interface SkillTestSpec {
+  /** The authority's own name for it. */
+  name: string;
+  description?: string;
+  /** True: qualifying only (not counted for the merit); false: counted; absent: not stated. */
+  qualifying?: boolean;
+  durationMinutes?: number;
+  /** What the candidate must do, in the notice's words. */
+  requirements?: string[];
+  /** The sections of this stage that make up the test, by `sectionName`; the stage's other
+   *  sections are the ones its merit is counted on. */
+  sectionNames?: string[];
+  /** What is measured and the standard that qualifies; absent where the notice states none. */
+  metrics?: SkillTestMetric[];
+  provenance?: DataProvenance;
+}
+
+export interface SkillTestMetric {
+  /** The name a candidate's figure is stored and read under (`MultiTierResultEntry.skillScores`, and
+   *  the field a scorecard reading reports it as). */
+  key: string;
+  /** The authority's own name for what is measured. */
+  label: string;
+  /** What the figure is: "marks", "% errors", "words a minute". */
+  unit: string;
+  outOf?: number;
+  /** Whether the standard is a minimum to reach or a maximum not to exceed. */
+  direction: 'AT_LEAST' | 'AT_MOST';
+  standard?: {
+    /** As printed, by category; a candidate's category matches a row on any of its words. */
+    byCategory: { categories: string[]; value: number }[];
+    /** "All other categories", where the notice says so. */
+    otherwise?: number;
+    /** The notice prints a percentage of `outOf`, not a figure: the figure is computed and shown as such. */
+    percentOfOutOf?: boolean;
+    asPrinted: string;
+    provenance?: DataProvenance;
+  };
+}
+
 export interface MultiTierResultEntry {
   marks: number;
   category: string;
@@ -394,8 +471,11 @@ export interface MultiTierResultEntry {
   // SSC specific
   tier1Marks?: number;
   tier2Marks?: number;
+  /** Kept only so entries stored before `skillScores` still read; new entries use `skillScores`. */
   computerKnowledgeMarks?: number;
   destMistakesPercent?: number;
+  /** The candidate's figure for each of the exam's skill-test metrics, by `SkillTestMetric.key`. */
+  skillScores?: Record<string, number>;
   // UPSC specific
   upscPrelimsGs1Marks?: number;
   upscPrelimsCsatMarks?: number;
@@ -611,8 +691,10 @@ export interface DiscoveredSourceItem {
   obtainable: boolean;
   foundOn: string;
   foundOnTitle: string;
-  /** THIS_EXAM | THIS_EXAM_OTHER_CYCLE | OTHER_EXAM | NOT_THIS_EXAM | UNIDENTIFIABLE | '' */
+  /** THIS_EXAM | THIS_EXAM_CYCLE_UNSTATED | THIS_EXAM_OTHER_CYCLE | OTHER_EXAM | NOT_THIS_EXAM | UNIDENTIFIABLE | '' */
   relation: string;
+  /** Where the item's role came from: GovOS's rules, or only Claude's reading (never proof by itself). */
+  roleFrom?: 'RULES' | 'CLAUDE';
   identity: { cycle?: string; stage?: string; paper?: string; session?: string };
   duplicateOf: string;
   label?: string;
@@ -865,6 +947,15 @@ export type ClaudeOutcome<T> =
   | { ok: true; data: T }
   | { ok: false; error: string; status?: string; fallback?: boolean; retryAfter?: number };
 
+/**
+ * One cited fact's state, decided on the server (tools/claude_cli/context.py fact_verification) by the
+ * rule the Evidence panel applies (provenanceIsVerified + withClaim): VERIFIED only when the source is
+ * OFFICIALLY_VERIFIED, has an address and a place, and its quoted words state the fact's own claim.
+ */
+export type FactVerification = 'VERIFIED' | 'UNSUPPORTED' | 'UNDER_VERIFICATION' | 'SUPERSEDED' | 'UNVERIFIED';
+/** An answer: VERIFIED only when every fact it cites is. */
+export type AnswerVerification = 'VERIFIED' | 'PARTLY_VERIFIED' | 'NOT_VERIFIED';
+
 export interface ClaudeAnswerCitation {
   id: string;
   section: string;
@@ -872,11 +963,17 @@ export interface ClaudeAnswerCitation {
   text: string;
   /** The exam record's own provenance for this fact, opened as Evidence. */
   provenance?: DataProvenance;
+  /** What the fact asserts, in the forms its evidence may print it; the Evidence opens against it. */
+  claim?: string[];
+  verification?: FactVerification;
 }
 
 export interface ClaudeAnswerResult {
   answer: string;
+  /** What Claude says it answered from. Not a verification: see `verification`. */
   basis: 'VERIFIED_DATA' | 'NOT_IN_RECORD' | 'NEEDS_CLARIFICATION';
+  /** What GovOS can prove about the facts the answer cites. Absent (an older result): not verified. */
+  verification?: AnswerVerification;
   uncertainty: 'NONE' | 'PARTIAL' | 'UNKNOWN';
   navigateTo: string;
   followUp: string;
@@ -1471,7 +1568,13 @@ export interface Exam {
    * section id (e.g. 'syllabus'). `state` is engine metadata so the UI can tell an honest
    * absence from an unpublished one; it is never rendered as raw enum text.
    */
-  sectionStates?: Record<string, { state: string; nature: string; studentStatusSummary: string; sectionNum: number; isApplicable: boolean }>;
+  sectionStates?: Record<string, {
+    state: string; nature: string; studentStatusSummary: string; sectionNum: number; isApplicable: boolean;
+    /** The source roles whose documents are, by themselves, evidence for this section. Where the record
+     *  states them they govern; otherwise the platform's default for the section id applies
+     *  (SECTION_EVIDENCE_ROLES, ui.tsx). A new section needs this, not a code change. */
+    evidenceRoles?: ResourceRole[];
+  }>;
   /**
    * The materializer's ledger for a machine-acquired exam: what it held back from display and
    * why (e.g. a document list read where posts were expected). Audit data; never a fact.
@@ -1508,7 +1611,9 @@ export interface PostVerdict {
   ageStatus: 'OK' | 'EXCEEDED' | 'UNDERAGE' | 'UNKNOWN';
   calculatedAge: number;
   maxPermissibleAge: number;
-  qualStatus: 'OK' | 'DISQUALIFIED';
+  /** UNKNOWN: the record states no qualification for this post, states one GovOS cannot check from a
+   *  profile, or the candidate's own qualification could not be read. Never read as a pass or a fail. */
+  qualStatus: 'OK' | 'DISQUALIFIED' | 'UNKNOWN';
   physicalStatus: 'OK' | 'RESTRICTED';
   reason: string;
   officialClause: string;
@@ -1682,8 +1787,9 @@ export interface ResourceAddition {
   findingId?: number | null;
   /** The one exam whose library shows this addition. */
   examId?: string | null;
-  /** Decided by the server from the URL's host on every read: OFFICIAL, TRUSTED_PUBLIC (academic) or THIRD_PARTY. */
-  sourceKind?: 'OFFICIAL' | 'TRUSTED_PUBLIC' | 'THIRD_PARTY';
+  /** OFFICIAL: on the exam's own authority's estate. GOVERNMENT_SITE: another government host -- not this
+   *  authority's statement. Decided by the server from the URL and the exam, never by a client. */
+  sourceKind?: 'OFFICIAL' | 'GOVERNMENT_SITE' | 'TRUSTED_PUBLIC' | 'THIRD_PARTY';
 }
 
 /** The fields a verifier may set when adding or amending a syllabus topic. */

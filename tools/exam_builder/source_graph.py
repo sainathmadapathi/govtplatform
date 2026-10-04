@@ -583,6 +583,15 @@ def _unread_words(missing: list) -> str:
     return ', '.join(f'{n} {_SKIP_WORDS[r]}' for r, n in sorted(counts.items(), key=lambda kv: -kv[1]))
 
 
+#: The `role_reason` a role Claude proposed carries. Its role is a reading, never deterministic evidence.
+CLAUDE_ROLE_REASON = 'classified by Claude from its text and address (the source class is GovOS’s own rule)'
+
+
+def role_by_claude(node: 'SourceNode') -> bool:
+    """Whether a node's role came only from Claude's CLASSIFY_SOURCE reading."""
+    return (getattr(node, 'role_reason', '') or '').startswith('classified by Claude')
+
+
 def role_search_state(run: DiscoveryRun, role: DocKind, *, identified: Optional[set] = None,
                       unidentifiable: Optional[set] = None, unlinked: Optional[dict] = None,
                       relation: Optional[dict] = None) -> tuple[SearchState, str]:
@@ -601,6 +610,10 @@ def role_search_state(run: DiscoveryRun, role: DocKind, *, identified: Optional[
     """
     official = [n for n in run.graph.of_role(role)
                 if n.source_class is SourceClass.PRIMARY_OFFICIAL and n.node_type not in _HUB_TYPES]
+    # A role only Claude proposed is a reading, not evidence: it never earns FOUND_VERIFIED by itself.
+    by_rules = [n for n in official if not role_by_claude(n)]
+    # Items whose listing names this exam but no cycle: never "found" for this cycle, never ruled out either.
+    cycle_unstated = {nid for nid, rel in (relation or {}).items() if rel == 'THIS_EXAM_CYCLE_UNSTATED'}
     hubs = _relevant_hubs(run, role)
     # A listing read in full: a page the walk went no further than is not one, whatever its status says.
     read_hubs = [h for h in hubs if h.status is NodeStatus.READ and not links_not_followed(run, h)]
@@ -609,12 +622,12 @@ def role_search_state(run: DiscoveryRun, role: DocKind, *, identified: Optional[
     # that links to the PDF is no less the paper's than the PDF. The identity check still decides.
     pages_mine = [n for n in run.graph.of_role(role)
                   if exam_level and n.id in identified and n.node_type is NodeType.PAGE
-                  and n.source_class is SourceClass.PRIMARY_OFFICIAL]
+                  and n.source_class is SourceClass.PRIMARY_OFFICIAL and not role_by_claude(n)]
     if exam_level:
         # Anything on these listings that names the exam, whatever role it was read as, forbids a
         # "not found": the role may have been misread, the item cannot have been missed.
         listed = {e.target_id for h in hubs for e in run.graph.children(h.id)}
-        named_elsewhere = [nid for nid in listed & identified if run.graph.nodes[nid].role is not role]
+        named_elsewhere = [nid for nid in listed & (identified | cycle_unstated) if run.graph.nodes[nid].role is not role]
         if named_elsewhere and not pages_mine and not any(n.id in identified for n in official):
             read_as = sorted({run.graph.nodes[nid].role.value.lower().replace('_', ' ') for nid in named_elsewhere})
             return (SearchState.FOUND_AMBIGUOUS,
@@ -628,9 +641,19 @@ def role_search_state(run: DiscoveryRun, role: DocKind, *, identified: Optional[
                     f'{len(listed)} item(s) naming this exam are listed by the authority without a link to the file')
     if official or pages_mine:
         if exam_level:
-            mine = [n for n in official if n.id in identified]
+            mine = [n for n in by_rules if n.id in identified]
             if mine:
                 return SearchState.FOUND_VERIFIED, f'{len(mine)} identified as this exam'
+            claude_only = [n for n in official if n.id in identified and role_by_claude(n)]
+            if claude_only and not pages_mine:
+                return (SearchState.FOUND_AMBIGUOUS,
+                        f'{len(claude_only)} item(s) name this exam, but only Claude read them as this kind of '
+                        f'document; GovOS\'s own rules did not confirm it')
+            undated = [n for n in official if n.id in cycle_unstated]
+            if undated and not pages_mine:
+                return (SearchState.FOUND_AMBIGUOUS,
+                        f'{len(undated)} item(s) name this exam but not its cycle; a person should check whether '
+                        f'any is this cycle\'s')
             if pages_mine:
                 unreached = [p for p in pages_mine if not _reaches_a_file(run, p)]
                 return (SearchState.FOUND_VERIFIED,
@@ -643,7 +666,10 @@ def role_search_state(run: DiscoveryRun, role: DocKind, *, identified: Optional[
         else:
             if all(n.status in (NodeStatus.FETCH_FAILED, NodeStatus.UNREADABLE) for n in official):
                 return SearchState.FOUND_UNREADABLE, f'{len(official)} found; none could be read'
-            return SearchState.FOUND_VERIFIED, f'{len(official)} official item(s) found'
+            if not by_rules:
+                return (SearchState.FOUND_AMBIGUOUS, f'{len(official)} official item(s) only Claude read as this kind '
+                                                     f'of document; GovOS\'s own rules did not confirm it')
+            return SearchState.FOUND_VERIFIED, f'{len(by_rules)} official item(s) found'
     missing = unsearched(run, role, relation=relation if exam_level else None)
     if missing:
         listings = sum(1 for what, _ in missing if isinstance(what, SourceNode) and _is_listing(run, what))
@@ -777,6 +803,13 @@ class SourceGraphStore:
         with self._conn() as conn:
             row = conn.execute('SELECT run_json FROM source_discovery_runs WHERE id = ?', (run_id,)).fetchone()
         return DiscoveryRun.from_dict(json.loads(row['run_json'])) if row else None
+
+    def latest_id(self, estate: str) -> Optional[str]:
+        """The id of the latest run over `estate`, without loading the run itself."""
+        with self._conn() as conn:
+            row = conn.execute('SELECT id FROM source_discovery_runs WHERE estate = ? '
+                               'ORDER BY ended_at DESC, rowid DESC LIMIT 1', (estate,)).fetchone()
+        return row['id'] if row else None
 
     def latest(self, estate: str) -> Optional[DiscoveryRun]:
         with self._conn() as conn:

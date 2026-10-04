@@ -309,6 +309,26 @@ class TestModelOnlyWithholdsDates(unittest.TestCase):
         self.assertTrue(model_role_fits(edit, 'CORRECTION_WINDOW'))
         self.assertFalse(model_role_fits(board, 'RESULT'))
 
+    def test_the_model_cannot_overrule_a_role_mismatch(self):
+        # The row says it is the closing date, but the date in it is stated for the examination.
+        # That is held deterministically, and Claude naming the examination -- with an examination
+        # cue in its evidence -- must not publish the date as the row's APPLICATION_CLOSE. It
+        # used to: the rescue validated Claude's role with no reference to the row's own.
+        rows = (('Closing Date for Online Registration of Applications',
+                 'Online Examination will be held on May 20, 2031'),)
+        reply = self.reply(role='EXAM', evidence_span='Online Examination will be held on May 20, 2031')
+        got = read('dates', text_of(*rows), html=table(*rows), gateway=FakeProvider(reply))
+        closes = [d for d in (got.value or []) if published(got) and d.get('type') == 'APPLICATION_CLOSE']
+        self.assertEqual(closes, [], (got.status, got.note))
+
+    def test_a_disputed_role_is_not_undone_by_asking_again(self):
+        # Claude disputing a role the evidence established holds the date; the rescue asks the
+        # same question again (a cached reply) and must not then accept the role it disputed.
+        text = text_of(*self.ROWS) + ' The Online Examination is on May 20, 2031.'
+        reply = self.reply(role='EXAM', evidence_span='The Online Examination is on May 20, 2031')
+        got = read('dates', text, html=self.TABLE, gateway=FakeProvider(reply))
+        self.assertFalse(published(got), (got.status, got.value))
+
     def test_the_model_can_establish_a_role_only_with_a_cue_in_its_evidence(self):
         from .attribution import resolve_with_model_reply
         item = row('Officers in Grade II - Economics Stream', 'June 13, 2031')

@@ -361,6 +361,101 @@ class UnsupportedCliTests(unittest.TestCase):
         self.assertEqual(sum('--help' in c['argv'] for c in runner.calls), 1)
         self.assertEqual(sum('--version' in c['argv'] for c in runner.calls), 1)
 
+    def test_concurrent_health_checks_share_one_probe(self):
+        """[HEALTH] health() runs inside candidate requests; requests arriving together while the
+        cached answer is missing wait for one probe instead of each spawning --help, --version and
+        auth status."""
+        import threading
+        import time as _time
+
+        class SlowProbe(Runner):
+            def __init__(self):
+                self.scripted = ScriptedRunner((VALID_OUTPUTS[VERIFY],))
+                self.probes = []
+
+            def run(self, argv, **kw):
+                if '--help' in argv or 'status' in argv:
+                    self.probes.append('help' if '--help' in argv else 'auth')
+                    _time.sleep(0.2)
+                return self.scripted.run(argv, **kw)
+
+        runner = SlowProbe()
+        gw = ClaudeGateway(ClaudeConfig(enabled=True, cli_path=sys.executable), runner=runner)
+        results = []
+        threads = [threading.Thread(target=lambda: results.append(gw.health()['status'])) for _ in range(6)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(results, ['OK'] * 6)
+        self.assertEqual((runner.probes.count('help'), runner.probes.count('auth')), (1, 1), runner.probes)
+
+    # ----------------------------------------------- a failed probe is shared, not retried in turn
+    class _ProbeRunner(Runner):
+        """--help / auth status take `delay` seconds; --help answers `help_outcome` (None: a usable help)."""
+
+        def __init__(self, help_outcome=None, delay=0.3):
+            self.scripted = ScriptedRunner((VALID_OUTPUTS[VERIFY],))
+            self.help_outcome, self.delay, self.probes = help_outcome, delay, []
+
+        def run(self, argv, **kw):
+            import time as _time
+            if '--help' in argv:
+                self.probes.append('help')
+                _time.sleep(self.delay)
+                if self.help_outcome is not None:
+                    return self.help_outcome
+            elif 'status' in argv:
+                self.probes.append('auth')
+                _time.sleep(self.delay)
+            return self.scripted.run(argv, **kw)
+
+    def concurrent_health(self, gw, n=6):
+        import threading
+        import time as _time
+        results = []
+        started = _time.monotonic()
+        threads = [threading.Thread(target=lambda: results.append(gw.health()['status'])) for _ in range(n)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        return results, _time.monotonic() - started
+
+    def test_a_failed_probe_is_shared_by_every_waiting_request(self):
+        """[HEALTH] An empty --help or a timed-out one, with six requests waiting: one probe runs, every
+        request gets its outcome, and the wait is one probe long -- not six probes one after another."""
+        for name, outcome in (('empty --help', ProcessOutcome(returncode=0, stdout='')),
+                              ('timed out', ProcessOutcome(timed_out=True)),
+                              ('failed', ProcessOutcome(returncode=1, stderr='boom'))):
+            with self.subTest(probe=name):
+                runner = self._ProbeRunner(help_outcome=outcome, delay=0.3)
+                gw = ClaudeGateway(ClaudeConfig(enabled=True, cli_path=sys.executable), runner=runner)
+                results, took = self.concurrent_health(gw)
+                self.assertEqual(results, ['CLAUDE_CLI_UNSUPPORTED'] * 6)
+                self.assertEqual(runner.probes.count('help'), 1, runner.probes)
+                self.assertLess(took, 1.2, f'requests waited {took:.2f}s: probes ran one after another')
+
+    def test_a_later_request_probes_again_after_a_failure(self):
+        """[HEALTH] Nothing failed is kept: once the failed probe is over, the next request probes again
+        and the gateway recovers."""
+        runner = self._ProbeRunner(help_outcome=ProcessOutcome(returncode=0, stdout=''), delay=0.05)
+        gw = ClaudeGateway(ClaudeConfig(enabled=True, cli_path=sys.executable), runner=runner)
+        self.assertEqual(self.concurrent_health(gw, n=4)[0], ['CLAUDE_CLI_UNSUPPORTED'] * 4)
+        runner.help_outcome = None                         # the CLI answers now
+        self.assertEqual(gw.health()['status'], 'OK')
+        self.assertEqual(runner.probes.count('help'), 2, runner.probes)
+
+    def test_concurrent_auth_probes_share_one_outcome(self):
+        """[HEALTH] auth status is single-flight too, whatever it answers, and independently of --help."""
+        runner = self._ProbeRunner(delay=0.3)
+        runner.scripted.authenticated = False
+        gw = ClaudeGateway(ClaudeConfig(enabled=True, cli_path=sys.executable), runner=runner)
+        results, took = self.concurrent_health(gw)
+        self.assertEqual(results, ['CLAUDE_CLI_NOT_AUTHENTICATED'] * 6)
+        self.assertEqual((runner.probes.count('help'), runner.probes.count('auth')), (1, 1), runner.probes)
+        self.assertLess(took, 1.5)
+
 
 class ShimTests(unittest.TestCase):
     def test_cmd_bat_and_ps1_shims_are_refused_without_running_anything(self):

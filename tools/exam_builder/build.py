@@ -11,6 +11,7 @@ statements apart — "the authority published nothing that could answer this" (N
 """
 from __future__ import annotations
 
+import contextvars
 import re
 import time
 from dataclasses import dataclass, field as dc_field
@@ -38,6 +39,31 @@ from .identity import ExamIdentity, IdentityCheck, IdentityVerdict, field_is_att
 from .manifest import SourceManifest, content_hash, from_source_set, to_source_set
 from .resolve import Authority, ResolvedExam, resolve, stable_exam_id
 from .evidence import normalise_ws
+#: The gateway every step of one `build()` run uses. `orchestrate` sets a disabled one when the job
+#: did not ask for Claude: identity, completeness and date checks used to reach the process-wide
+#: gateway directly, so a `useClaude: false` build still called Claude whenever it was enabled
+#: globally -- and, signed out, held fields as "Claude could not check".
+_RUN_GATEWAY: contextvars.ContextVar = contextvars.ContextVar('build_gateway', default=None)
+
+
+class NoClaude:
+    """A gateway that is never enabled: every Claude step takes its deterministic path."""
+    name = 'none'
+
+    def is_enabled(self) -> bool:
+        return False
+
+
+def _run_gateway(explicit=None):
+    """The gateway a build step uses: its caller's, else this run's, else the process-wide one."""
+    if explicit is not None:
+        return explicit
+    current = _RUN_GATEWAY.get()
+    if current is not None:
+        return current
+    from tools.claude_cli import get_gateway
+    return get_gateway()
+
 from .schema import SourceDocument, SourceKind, Status as SchemaStatus
 
 
@@ -303,7 +329,6 @@ def _establish_designation(target: ExamIdentity, sources: SourceSet, loaded: dic
     """
     from dataclasses import replace
     from .designation import establish_canonical, query_designation
-    from tools.claude_cli import get_gateway
     from .verification.designation_claude import extract_designation
 
     want = query_designation(target.query, target.official_name, target.authority_aliases,
@@ -325,7 +350,7 @@ def _establish_designation(target: ExamIdentity, sources: SourceSet, loaded: dic
         text = document.all_text() if hasattr(document, 'all_text') else ''
         if text.strip():
             notifications.append((doc.url, text))
-    gateway = gateway or get_gateway()
+    gateway = _run_gateway(gateway)
     enabled = gateway.is_enabled()
     canonical, notes = establish_canonical(
         want, target.year, notifications, authority_name=target.authority_name,
@@ -355,9 +380,8 @@ def _identify(text: str, target: ExamIdentity, *, source_url: str = '', document
             or check.verdict is not IdentityVerdict.MATCH):
         return check
     from .designation import TITLE_BLOCK_CHARS
-    from tools.claude_cli import get_gateway
     from .verification.designation_claude import confirm_same_recruitment, validate_confirmation
-    gateway = gateway or get_gateway()
+    gateway = _run_gateway(gateway)
     if not gateway.is_enabled():
         check.reasons.append('designation judged deterministically; Claude is not enabled')
         return check
@@ -618,6 +642,31 @@ def _unread_by_us(name: str, docs, loaded: dict) -> Optional[Field]:
     return Field(name=name, status=RecordStatus.NOT_EXTRACTED,
                  note=f'{what}; nothing could be read, which is a gap here, not a statement that the '
                       f'authority published none.')
+
+
+#: Wording that shows a document speaks of a field the structured reader could not read.
+_PHOTO_SIGNATURE_WORDING = re.compile(r'[^.\n]{0,160}\b(?:photo(?:graph)?s?|signatures?)\b[^.\n]{0,160}', re.I)
+_UPLOAD_DOCUMENT_WORDING = re.compile(
+    r'[^.\n]{0,160}\b(?:upload\w*|certificates?|documents?\s+(?:required|to\s+be\s+(?:uploaded|submitted|produced)))'
+    r'\b[^.\n]{0,160}', re.I)
+
+
+def _missed_by_us(name: str, docs, loaded: dict, wording: re.Pattern, what: str) -> Optional[Field]:
+    """NOT_EXTRACTED when a readable document speaks of `what` and the reader matched nothing.
+
+    The structured reader not matching is GovOS's gap; only a document set that never mentions
+    `what` at all is evidence the authority published none. None when nothing mentions it."""
+    for doc in docs:
+        document = loaded.get(doc.url)
+        text = document.all_text() if document is not None and hasattr(document, 'all_text') else ''
+        m = wording.search(text or '')
+        if m:
+            said = normalise_ws(m.group(0))[:200]
+            return Field(name=name, status=RecordStatus.NOT_EXTRACTED,
+                         note=f'{doc.title or doc.url} speaks of {what} ("{said}"), but GovOS could not read '
+                              f'them reliably; that is a gap here, not a statement that the authority '
+                              f'published none.')
+    return None
 
 
 def _extract_html_tables(html: str) -> list[list[list[str]]]:
@@ -916,8 +965,7 @@ def _vet_completeness(field_name: str, got: Field, loaded: dict, rec: ExamRecord
         return held('; '.join(f'{label}: {c.reason}' for label, c in cut[:3])
                     + (f' (and {len(cut) - 3} more)' if len(cut) > 3 else '') + '.')
 
-    from tools.claude_cli import get_gateway
-    gateway = gateway or get_gateway()
+    gateway = _run_gateway(gateway)
     if not gateway.is_enabled():
         return got
     from .verification.completeness_claude import classify, validate
@@ -965,8 +1013,7 @@ def _vet_dates(got: Field, loaded: dict, rec: ExamRecord, *, cycle: str = '',
     held = list(v.unresolved) + list(v.conflicts)
     kept = list(v.kept)
 
-    from tools.claude_cli import get_gateway
-    gateway = gateway or get_gateway()
+    gateway = _run_gateway(gateway)
     if gateway.is_enabled():
         from .verification.attribution_claude import classify_date, validate_date
 
@@ -988,6 +1035,13 @@ def _vet_dates(got: Field, loaded: dict, rec: ExamRecord, *, cycle: str = '',
         still = []
         for item, why in held:
             if 'rival' in why or 'two different live dates' in why or 'could not check' in why:
+                still.append((item, why))
+                continue
+            # Claude may only give a role to a date whose evidence names none. A date that has a
+            # role is held because its evidence states it for another event, or because Claude
+            # disputed that role; publishing it would keep the row's role under a date Claude
+            # read as something else. Those stay held for a person.
+            if ATT.date_role(item):
                 still.append((item, why))
                 continue
             raw, infra, detail = classify_date(item, context(item), gateway)
@@ -1069,8 +1123,7 @@ def _vet_attribution(field_name: str, got: Field, loaded: dict, rec: ExamRecord,
     elif not verdict.ok:
         return held('; '.join(verdict.reasons))
 
-    from tools.claude_cli import get_gateway
-    gateway = gateway or get_gateway()
+    gateway = _run_gateway(gateway)
     if not gateway.is_enabled():
         return got
     from .verification.attribution_claude import classify, validate
@@ -1917,7 +1970,10 @@ def _dispatch_domain_extraction_raw(
             except Exception as exc:
                 rec.note(f'extract_required_documents failed on {doc.url}: {exc!r}')
 
-        return _unread_by_us('requiredDocuments', candidate_docs, loaded) or Field.not_published('requiredDocuments', 'No specific upload documents announced in notice')
+        return (_unread_by_us('requiredDocuments', candidate_docs, loaded)
+                or _missed_by_us('requiredDocuments', candidate_docs, loaded, _UPLOAD_DOCUMENT_WORDING,
+                                 'documents or certificates to upload')
+                or Field.not_published('requiredDocuments', 'No specific upload documents announced in notice'))
 
     elif cf.name == 'photoSignatureGuidelines':
         for doc in candidate_docs:
@@ -1939,7 +1995,10 @@ def _dispatch_domain_extraction_raw(
             except Exception as exc:
                 rec.note(f'extract_photo_signature_guidelines failed on {doc.url}: {exc!r}')
 
-        return _unread_by_us('photoSignatureGuidelines', candidate_docs, loaded) or Field.not_published('photoSignatureGuidelines', 'No distinct photograph/signature guidelines published')
+        return (_unread_by_us('photoSignatureGuidelines', candidate_docs, loaded)
+                or _missed_by_us('photoSignatureGuidelines', candidate_docs, loaded, _PHOTO_SIGNATURE_WORDING,
+                                 'photographs or signatures')
+                or Field.not_published('photoSignatureGuidelines', 'No distinct photograph/signature guidelines published'))
 
     elif cf.name == 'faqs':
         # An FAQ document for this exam first; failing that, the notice's own procedure
@@ -2175,7 +2234,8 @@ def build(exam_query: str = '', *, year: str = '',
           sibling_exam_words: list[str] | None = None, max_docs: int = 8,
           replay: SourceManifest | None = None,
           search_fn: Optional[Callable] = None,
-          authority_discovery: Optional[Callable] = None) -> BuildResult:
+          authority_discovery: Optional[Callable] = None,
+          gateway=None) -> BuildResult:
     """Build one exam, either from fresh discovery or from a captured manifest.
 
     `replay` freezes which documents are used and nothing else: they are re-fetched and
@@ -2184,7 +2244,24 @@ def build(exam_query: str = '', *, year: str = '',
     `authority_discovery`, when given, is called with the resolved exam and returns a
     `source_graph.DiscoveryRun` over its authority; discovery then admits that run's official
     items through the same gate. Off by default, so a build without it is unchanged.
+
+    `gateway`, when given, is the Claude gateway every step of this build uses (`NoClaude()` for
+    none); otherwise each step uses the process-wide gateway, as before.
     """
+    token = _RUN_GATEWAY.set(gateway)
+    try:
+        return _build(exam_query, year=year, sibling_exam_words=sibling_exam_words,
+                      max_docs=max_docs, replay=replay, search_fn=search_fn,
+                      authority_discovery=authority_discovery)
+    finally:
+        _RUN_GATEWAY.reset(token)
+
+
+def _build(exam_query: str = '', *, year: str = '',
+           sibling_exam_words: list[str] | None = None, max_docs: int = 8,
+           replay: SourceManifest | None = None,
+           search_fn: Optional[Callable] = None,
+           authority_discovery: Optional[Callable] = None) -> BuildResult:
     authority_run = None
     if replay is not None:
         resolved = ResolvedExam(

@@ -37,6 +37,10 @@ import {
   NotificationPreference,
   PostRequirement,
   PostVerdict,
+  EligibilityRule,
+  ExamQualificationLevel,
+  RuleGroup,
+  CutoffEntry,
   UserProfile,
   ChannelUploadFeed,
   LiveResourceStatus,
@@ -197,6 +201,51 @@ export function findAgeRelaxation(
     || null;
 }
 
+// ---- Cut-off rows, matched to a candidate's category without borrowing ----
+// Results used to take the first row whose label shared a substring with the category, and failing
+// that `cutoffRows[0]` -- so a "General" candidate on an exam that prints "UR" was compared with the SC
+// row, and a generic "PwBD" candidate with "PwBD-OH". A row is used now only where it is this
+// category's: by its exact label, or by the one category code both sides name (CATEGORY_WORDINGS --
+// "UR", "General (UR)" and "GENERAL" are one category). Anything else is said, never substituted.
+
+export type CutoffMatch =
+  | { status: 'MATCHED'; row: CutoffEntry; how: 'EXACT_LABEL' | 'SAME_CATEGORY' }
+  | { status: 'NO_CATEGORY' }
+  | { status: 'NO_CUTOFFS' }
+  | { status: 'NO_ROW_FOR_CATEGORY'; recorded: string[] }
+  | { status: 'AMBIGUOUS'; recorded: string[] };
+
+/** The categories a printed label names, as codes: "General (UR)" -> GENERAL; "SC/ST" -> SC, ST;
+ *  "PwBD-OH" -> none (a sub-category the table does not equate with anything). */
+export function categoryCodesOf(label: string): Set<string> {
+  const codes = new Set<string>();
+  if (CATEGORY_WORDINGS[label]) codes.add(label);
+  const parts = [label, ...label.split(/[,/()&]/)].map(p => p.toLowerCase().replace(/\s+/g, ' ').trim()).filter(Boolean);
+  for (const [code, words] of Object.entries(CATEGORY_WORDINGS)) {
+    if (parts.some(p => words.includes(p))) codes.add(code);
+  }
+  return codes;
+}
+
+export function matchCutoffRow(rows: CutoffEntry[], category: string | null | undefined): CutoffMatch {
+  if (!rows.length) return { status: 'NO_CUTOFFS' };
+  const cat = (category || '').trim();
+  if (!cat) return { status: 'NO_CATEGORY' };
+  const norm = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
+  const recorded = Array.from(new Set(rows.map(r => r.category)));
+  const exact = rows.filter(r => norm(r.category) === norm(cat));
+  if (exact.length === 1) return { status: 'MATCHED', row: exact[0], how: 'EXACT_LABEL' };
+  if (exact.length > 1) return { status: 'AMBIGUOUS', recorded };
+  const own = categoryCodesOf(cat);
+  if (own.size !== 1) return { status: 'NO_ROW_FOR_CATEGORY', recorded };
+  const [code] = Array.from(own);
+  const naming = rows.map(r => ({ r, codes: categoryCodesOf(r.category) })).filter(x => x.codes.has(code));
+  const only = naming.filter(x => x.codes.size === 1);
+  const pick = only.length ? only : naming;
+  if (pick.length === 1) return { status: 'MATCHED', row: pick[0].r, how: 'SAME_CATEGORY' };
+  return pick.length > 1 ? { status: 'AMBIGUOUS', recorded } : { status: 'NO_ROW_FOR_CATEGORY', recorded };
+}
+
 /**
  * Years to add to this exam's upper age limit for this candidate, from the exam's own
  * notice. Zero when the authority published nothing — callers must not describe that as a
@@ -238,6 +287,138 @@ export function normalizeDegree(value: string): string {
   return normalized;
 }
 
+// ---- Educational qualification, read from the record's own rules ----
+// The engine used to require a Bachelor's degree of every post (a Class 12 post would reject a Class 12
+// candidate) and to carry two SSC posts' special rules as `post.id === 'post-jso'` branches. It now
+// checks only what the record declares: the post's own `ruleGroup`, else the exam's `globalRuleGroup`.
+// No rule, a rule no profile can answer, or a qualification it cannot read leaves the post UNKNOWN.
+
+/** A candidate's (or a notice's) qualification as a level. APPEARING: in the final year of a degree;
+ *  BELOW_CLASS_12: has not passed Class 12. Null: not recognisable -- never guessed. */
+export type QualificationLevel = ExamQualificationLevel | 'GRADUATION_APPEARING' | 'BELOW_CLASS_12';
+const LEVEL_RANK: Record<ExamQualificationLevel, number> = { CLASS_10: 1, CLASS_12: 2, GRADUATION: 3, POST_GRADUATION: 4 };
+export const QUALIFICATION_LEVEL_WORDS: Record<ExamQualificationLevel, string> = {
+  CLASS_10: 'Class 10 pass', CLASS_12: 'Class 12 pass', GRADUATION: "a Bachelor's degree", POST_GRADUATION: "a Master's degree",
+};
+
+export function qualificationLevelOf(text: string | null | undefined): QualificationLevel | null {
+  const t = ` ${(text || '').toLowerCase().replace(/[’']/g, "'")} `;
+  if (!t.trim()) return null;
+  if (/\bbelow (class )?12|\bnot passed (class )?12/.test(t)) return 'BELOW_CLASS_12';
+  if (/final[- ]year|appearing|pursuing|result awaited/.test(t)) return 'GRADUATION_APPEARING';
+  if (/\b(master'?s?|post[- ]?graduat\w*|pg\b|m\.?\s?a\b|m\.?\s?sc\b|m\.?\s?com\b|mba\b|m\.?\s?tech\b|mca\b|ph\.?\s?d\b)/.test(t)) return 'POST_GRADUATION';
+  if (/\b(bachelor'?s?|graduat\w*|degree|b\.?\s?a\b|b\.?\s?sc\b|b\.?\s?com\b|bba\b|bca\b|b\.?\s?tech\b|b\.?\s?e\b|mbbs\b|llb\b|engineering)/.test(t)) return 'GRADUATION';
+  if (/\b(12th|class 12|xii\b|intermediate|higher secondary|senior secondary|10\s?\+\s?2|hsc\b)/.test(t)) return 'CLASS_12';
+  if (/\b(10th|class 10|matric\w*|secondary school)/.test(t)) return 'CLASS_10';
+  return null;
+}
+
+type QualOutcome = { status: 'OK' | 'DISQUALIFIED' | 'UNKNOWN'; reasons: string[] };
+const QUALIFICATION_RULES: EligibilityRule['ruleType'][] = ['DEGREE_REQUIRED', 'BRANCH_SPECIALIZATION', 'PERCENTAGE_MIN', 'STATED_CONDITION'];
+const clauseOf = (rule: EligibilityRule) => rule.provenance?.clauseNumber ? ` (${rule.provenance.clauseNumber})` : '';
+const hasQualificationRule = (g: RuleGroup | undefined): boolean =>
+  !!g && (g.rules.some(r => QUALIFICATION_RULES.includes(r.ruleType)) || (g.childGroups || []).some(hasQualificationRule));
+const findRule = (g: RuleGroup | undefined, type: EligibilityRule['ruleType']): EligibilityRule | undefined =>
+  !g ? undefined : g.rules.find(r => r.ruleType === type) || (g.childGroups || []).map(c => findRule(c, type)).find(Boolean);
+const wordsOf = (s: string) => s.toLowerCase().split(/[^a-z]+/).filter(w => w.length >= 4).map(w => w.slice(0, 4));
+
+function evaluateQualificationRule(rule: EligibilityRule, profile: UserProfile, appearing: EligibilityRule | undefined): QualOutcome {
+  const values = Array.isArray(rule.ruleValue) ? rule.ruleValue.map(String) : [String(rule.ruleValue)];
+  switch (rule.ruleType) {
+    case 'DEGREE_REQUIRED': {
+      const levels = values.map(qualificationLevelOf).filter((l): l is ExamQualificationLevel => !!l && l in LEVEL_RANK);
+      if (!levels.length) return { status: 'UNKNOWN', reasons: [`Qualification not evaluated: the record's requirement (${values.join(', ')}) is not one GovOS can compare`] };
+      const required = levels.reduce((a, b) => (LEVEL_RANK[a] <= LEVEL_RANK[b] ? a : b));
+      const needs = `${QUALIFICATION_LEVEL_WORDS[required]}${clauseOf(rule)}`;
+      const own = qualificationLevelOf(profile.degree);
+      if (!own) return { status: 'UNKNOWN', reasons: [`Qualification not evaluated: requires ${needs}, and your qualification ("${profile.degree || 'not given'}") could not be read`] };
+      if (own === 'BELOW_CLASS_12') {
+        return LEVEL_RANK[required] >= LEVEL_RANK.CLASS_12
+          ? { status: 'DISQUALIFIED', reasons: [`Qualification: requires ${needs}; you have not passed Class 12`] }
+          : { status: 'UNKNOWN', reasons: [`Qualification not evaluated: requires ${needs}, which your answer does not settle`] };
+      }
+      if (own === 'GRADUATION_APPEARING') {
+        if (LEVEL_RANK[required] <= LEVEL_RANK.CLASS_12) return { status: 'OK', reasons: [`Qualification: requires ${needs}; met (you are in the final year of a degree)`] };
+        if (required === 'POST_GRADUATION') return { status: 'DISQUALIFIED', reasons: [`Qualification: requires ${needs}; a final-year Bachelor's candidate does not hold it`] };
+        return appearing
+          ? { status: 'OK', reasons: [`Qualification: requires ${needs}; final-year candidates may apply${clauseOf(appearing)}${appearing.statedAs ? ` — ${appearing.statedAs}` : ''}`] }
+          : { status: 'UNKNOWN', reasons: [`Qualification not evaluated: requires ${needs}, and the record does not state whether a candidate in the final year may apply`] };
+      }
+      return LEVEL_RANK[own] >= LEVEL_RANK[required]
+        ? { status: 'OK', reasons: [`Qualification: requires ${needs}; your ${profile.degree} meets it`] }
+        : { status: 'DISQUALIFIED', reasons: [`Qualification: requires ${needs}; your ${profile.degree} does not meet it`] };
+    }
+    case 'BRANCH_SPECIALIZATION': {
+      const branch = (profile.branch || '').trim();
+      const own = new Set([...wordsOf(branch), ...(profile.statisticsInDegree ? wordsOf('Statistics') : [])]);
+      const needs = `a degree in or with ${values.join(', ')}${clauseOf(rule)}`;
+      if (!own.size) return { status: 'UNKNOWN', reasons: [`Qualification not evaluated: requires ${needs}; your degree subject is needed`] };
+      const hit = values.find(v => wordsOf(v).length > 0 && wordsOf(v).every(w => own.has(w)));
+      return hit
+        ? { status: 'OK', reasons: [`Qualification: requires ${needs}; your ${branch || 'degree'} includes ${hit}`] }
+        : { status: 'DISQUALIFIED', reasons: [`Qualification: requires ${needs}; your ${branch || 'degree subject'} is not among them`] };
+    }
+    case 'PERCENTAGE_MIN': {
+      const min = Number(values[0]);
+      const where = [rule.subject, rule.level ? QUALIFICATION_LEVEL_WORDS[rule.level].replace(' pass', '') : ''].filter(Boolean).join(' at ');
+      const needs = `at least ${min}%${where ? ` in ${where}` : ''}${clauseOf(rule)}`;
+      // The profile records exactly one percentage fact: Class 12 Mathematics at 60% or more.
+      const answers = /math/i.test(rule.subject || '') && rule.level === 'CLASS_12' ? profile.mathsIn12thWith60Percent : undefined;
+      if (answers === true && min <= 60) return { status: 'OK', reasons: [`Qualification: requires ${needs}; met`] };
+      if (answers === false && min >= 60) return { status: 'DISQUALIFIED', reasons: [`Qualification: requires ${needs}; not met`] };
+      return { status: 'UNKNOWN', reasons: [`Qualification not evaluated: requires ${needs}, which your profile does not answer`] };
+    }
+    case 'STATED_CONDITION':
+      return { status: 'UNKNOWN', reasons: [`Qualification not evaluated: the notice also requires ${rule.statedAs || values.join(', ')}${clauseOf(rule)}, which GovOS cannot check from your profile`] };
+    default:
+      return { status: 'OK', reasons: [] };
+  }
+}
+
+function evaluateQualificationGroup(group: RuleGroup, profile: UserProfile, appearing: EligibilityRule | undefined): QualOutcome {
+  const parts = [
+    ...group.rules.filter(r => QUALIFICATION_RULES.includes(r.ruleType)).map(r => evaluateQualificationRule(r, profile, appearing)),
+    ...(group.childGroups || []).filter(hasQualificationRule).map(c => evaluateQualificationGroup(c, profile, appearing)),
+  ];
+  const any = (s: QualOutcome['status']) => parts.filter(p => p.status === s);
+  if (group.operator === 'OR') {
+    const ok = any('OK'); if (ok.length) return { status: 'OK', reasons: ok[0].reasons };
+    const unknown = any('UNKNOWN'); if (unknown.length) return { status: 'UNKNOWN', reasons: parts.flatMap(p => p.reasons) };
+    return { status: 'DISQUALIFIED', reasons: [`Qualification: none of the alternatives the notice allows is met — ${parts.flatMap(p => p.reasons).join('; ')}`] };
+  }
+  const failed = any('DISQUALIFIED'); if (failed.length) return { status: 'DISQUALIFIED', reasons: failed.flatMap(p => p.reasons) };
+  const unknown = any('UNKNOWN'); if (unknown.length) return { status: 'UNKNOWN', reasons: parts.flatMap(p => p.reasons) };
+  return { status: 'OK', reasons: parts.flatMap(p => p.reasons) };
+}
+
+/** The educational qualification verdict for one post, from the post's own rules, else the exam's. */
+export function evaluateQualification(post: PostRequirement, profile: UserProfile, exam?: Exam | null): QualOutcome {
+  const own = hasQualificationRule(post.ruleGroup) ? post.ruleGroup : undefined;
+  const group = own || (hasQualificationRule(exam?.globalRuleGroup) ? exam!.globalRuleGroup : undefined);
+  if (!group) return { status: 'UNKNOWN', reasons: [`Qualification not evaluated: the record states no educational qualification for ${post.postName}`] };
+  const appearing = findRule(post.ruleGroup, 'APPEARING_ALLOWED') || findRule(exam?.globalRuleGroup, 'APPEARING_ALLOWED');
+  return evaluateQualificationGroup(group, profile, appearing);
+}
+
+/** A post's verdict in three states: a pass, a fail on a stated rule, or not determined from the record. */
+export function postVerdictState(v: PostVerdict): 'ELIGIBLE' | 'NOT_ELIGIBLE' | 'NOT_DETERMINED' {
+  if (v.eligible) return 'ELIGIBLE';
+  const failed = v.ageStatus === 'EXCEEDED' || v.ageStatus === 'UNDERAGE' || v.qualStatus === 'DISQUALIFIED' || v.physicalStatus === 'RESTRICTED';
+  return failed ? 'NOT_ELIGIBLE' : 'NOT_DETERMINED';
+}
+
+/** Which qualification questions this exam's rules can use: asked only where some rule reads the answer. */
+export function qualificationQuestionsFor(exam: Exam): { mathsIn12th: boolean; degreeSubject: boolean } {
+  const all: EligibilityRule[] = [];
+  const walk = (g?: RuleGroup) => { if (!g) return; all.push(...g.rules); (g.childGroups || []).forEach(walk); };
+  walk(exam.globalRuleGroup);
+  exam.posts.forEach(p => walk(p.ruleGroup));
+  return {
+    mathsIn12th: all.some(r => r.ruleType === 'PERCENTAGE_MIN' && /math/i.test(r.subject || '') && r.level === 'CLASS_12'),
+    degreeSubject: all.some(r => r.ruleType === 'BRANCH_SPECIALIZATION'),
+  };
+}
+
 export function evaluatePostEligibility(
   post: PostRequirement,
   profile: UserProfile,
@@ -250,11 +431,9 @@ export function evaluatePostEligibility(
   const relaxationEntry = findAgeRelaxation(exam, profile.category, post.id);
   const relaxation = getCategoryAgeRelaxation(exam, profile.category, post.id);
   const maxPermissibleAge = post.maxAge + relaxation;
-  const userDegreeNorm = normalizeDegree(profile.degree);
-  const isBachelor = userDegreeNorm.includes('bachelor') || userDegreeNorm.includes('degree');
 
   let ageStatus: 'OK' | 'EXCEEDED' | 'UNDERAGE' | 'UNKNOWN' = 'OK';
-  let qualStatus: 'OK' | 'DISQUALIFIED' = 'OK';
+  let qualStatus: PostVerdict['qualStatus'] = 'OK';
   let physicalStatus: 'OK' | 'RESTRICTED' = 'OK';
   const reasons: string[] = [];
 
@@ -282,37 +461,10 @@ export function evaluatePostEligibility(
     );
   }
 
-  // 2. Educational Qualification Verification
-  if (!isBachelor && !profile.degree.toLowerCase().includes('final year')) {
-    qualStatus = 'DISQUALIFIED';
-    reasons.push(`Qualification: Requires Bachelor's Degree from recognized university`);
-  } else {
-    // Check post-specific specialized qualifications
-    if (post.id === 'post-jso') {
-      const hasMaths = profile.mathsIn12thWith60Percent === true;
-      const hasStats = profile.statisticsInDegree === true || (profile.branch || '').toLowerCase().includes('stat');
-      if (!hasMaths && !hasStats) {
-        qualStatus = 'DISQUALIFIED';
-        reasons.push(`JSO Special Criteria: Requires 60% in Maths in 12th OR Statistics as a subject in Degree`);
-      } else {
-        reasons.push(`JSO Criteria Satisfied: ${hasMaths ? '60%+ in 12th Maths' : 'Statistics in Degree'} verified`);
-      }
-    } else if (post.id === 'post-stat-inv') {
-      // SSC CGL 2026 notice, Para 8.3.1: a Bachelor degree in any of these subjects.
-      const branch = (profile.branch || '').toLowerCase();
-      const SI_SUBJECTS = ['stat', 'math', 'economic', 'demograph', 'population', 'operation research', 'information technology',
-        'computer', 'data science', 'artificial intelligence'];
-      const hasQualifyingDegree = profile.statisticsInDegree === true || SI_SUBJECTS.some(sub => branch.includes(sub));
-      if (!hasQualifyingDegree) {
-        qualStatus = 'DISQUALIFIED';
-        reasons.push(`Statistical Investigator Gr II: requires a Bachelor degree in Statistics, Mathematics, Economics, Demography, Population Studies, Operation Research, IT, Computer Science/Engineering/Technology/Application, Data Science or AI (Para 8.3.1)`);
-      } else {
-        reasons.push(`Statistical Investigator Gr II: degree subject is among those listed in Para 8.3.1`);
-      }
-    } else {
-      reasons.push(`Essential Qualification: Bachelor's Degree verified`);
-    }
-  }
+  // 2. Educational qualification: the post's own rules, else the exam's -- never a default degree.
+  const qualification = evaluateQualification(post, profile, exam);
+  qualStatus = qualification.status;
+  reasons.push(...qualification.reasons);
 
   // 3. Physical Standards Check
   if (post.physicalRequired) {
@@ -376,7 +528,13 @@ export function evaluateEligibility(exam: Exam, profile: UserProfile): Eligibili
 
   const eligibleCount = postVerdicts.filter(p => p.eligible).length;
   const totalCount = postVerdicts.length;
-  const unknownCount = postVerdicts.filter(p => p.ageStatus === 'UNKNOWN').length;
+  // Undetermined: nothing failed, but the age or the qualification could not be evaluated from the record.
+  const failed = (p: PostVerdict) => p.ageStatus === 'EXCEEDED' || p.ageStatus === 'UNDERAGE' || p.qualStatus === 'DISQUALIFIED' || p.physicalStatus === 'RESTRICTED';
+  const unknownCount = postVerdicts.filter(p => !p.eligible && !failed(p)).length;
+  const qualUnknown = postVerdicts.some(p => !p.eligible && !failed(p) && p.qualStatus === 'UNKNOWN');
+  const unknownWhy = qualUnknown && postVerdicts.some(p => !p.eligible && !failed(p) && p.ageStatus === 'UNKNOWN')
+    ? 'an age limit or a qualification the record does not state, or that GovOS cannot check'
+    : qualUnknown ? 'a qualification the record does not state, or that GovOS cannot check from your profile' : 'no published age limit in the record';
   const evaluableCount = totalCount - unknownCount;
 
   let status: EligibilityDiagnostic['status'] = 'INELIGIBLE';
@@ -390,15 +548,15 @@ export function evaluateEligibility(exam: Exam, profile: UserProfile): Eligibili
       ? `The ${exam.title} record carries no posts yet, so eligibility cannot be evaluated. Read the notice's own eligibility clauses.`
       : !crucialDate
         ? `The ${exam.title} record states no date on which age is reckoned, so eligibility cannot be evaluated.`
-        : `None of the ${totalCount} posts on record carries a published age limit, so eligibility cannot be evaluated.`;
+        : `None of the ${totalCount} posts on record could be evaluated: each has ${unknownWhy} — see each post below.`;
   } else if (eligibleCount === totalCount) {
     status = 'ELIGIBLE';
     plainEnglishExplanation = `On the rules in the ${exam.title} record you meet the age and qualification conditions for all ${totalCount} posts, with your age of ${detailedAge.formatted} as on ${crucialDate}.`;
   } else if (eligibleCount > 0 || unknownCount > 0) {
     status = eligibleCount > 0 ? 'CONDITIONAL' : 'NOT_EVALUABLE';
     plainEnglishExplanation = eligibleCount > 0
-      ? `You meet the conditions for ${eligibleCount} of ${totalCount} posts in the ${exam.title} record.${unknownCount ? ` ${unknownCount} post(s) have no published age limit in the record and were not evaluated.` : ' The others set age limits or subject requirements you do not meet — see each post below.'}`
-      : `You do not meet the published conditions for the ${evaluableCount} post(s) whose rules the record carries; ${unknownCount} other post(s) have no published age limit and were not evaluated.`;
+      ? `You meet the conditions for ${eligibleCount} of ${totalCount} posts in the ${exam.title} record.${unknownCount ? ` ${unknownCount} post(s) were not evaluated: ${unknownWhy}.` : ' The others set age limits or subject requirements you do not meet — see each post below.'}`
+      : `You do not meet the published conditions for the ${evaluableCount} post(s) whose rules could be checked; ${unknownCount} other post(s) were not evaluated: ${unknownWhy}.`;
   } else {
     status = 'INELIGIBLE';
     const minAge = Math.min(...exam.posts.map(p => p.minAge).filter(a => a > 0));
@@ -500,6 +658,74 @@ export interface MockAttemptRecord {
   };
 }
 
+/** The largest request body the server accepts (app.py `MAX_CONTENT_LENGTH`). */
+export const SYNC_REQUEST_LIMIT_BYTES = 16 * 1024 * 1024;
+/** A sync-all request carries at most this much JSON: a long history goes as a few requests, each far
+ *  under the server's limit. Measured on the serialized payload, never assumed from an attempt count. */
+export const SYNC_BATCH_BUDGET_BYTES = 4 * 1024 * 1024;
+
+const jsonBytes = (value: unknown): number => new TextEncoder().encode(JSON.stringify(value)).length;
+
+/**
+ * One attempt as the server stores it: its own fields, with its answers and its paper once, under
+ * `details` -- the one place both /api/sqlite/mock-attempts and /api/sqlite/sync-all read them.
+ * Attempts used to be sent as `{...attempt, details: {userAnswers, paperData}}`, so every paper went
+ * twice. An attempt loaded back from the server also carries a stored `details`; its other keys are kept.
+ */
+export function attemptSyncPayload(att: MockAttemptRecord): Record<string, unknown> {
+  const { userAnswers, paperData, details, ...fields } = att;
+  const { userAnswers: storedAnswers, paperData: storedPaper, ...otherDetails } = details || {};
+  return {
+    ...fields,
+    details: { ...otherDetails, userAnswers: userAnswers ?? storedAnswers, paperData: paperData ?? storedPaper }
+  };
+}
+
+export interface AttemptSyncPlan {
+  /** Clean attempt payloads, in order, each in exactly one batch. */
+  batches: Record<string, unknown>[][];
+  /** Attempts that alone exceed what the server accepts: reported, never sent, never silently dropped. */
+  oversized: string[];
+}
+
+/**
+ * Attempts split greedily, in order, into batches whose serialized size stays within `budget`. An
+ * attempt larger than the budget but within the server's limit travels alone.
+ */
+export function planAttemptSyncBatches(attempts: MockAttemptRecord[], budget: number = SYNC_BATCH_BUDGET_BYTES,
+                                       limit: number = SYNC_REQUEST_LIMIT_BYTES - 64 * 1024): AttemptSyncPlan {
+  const batches: Record<string, unknown>[][] = [];
+  const oversized: string[] = [];
+  let current: Record<string, unknown>[] = [];
+  let size = 0;
+  for (const att of attempts) {
+    const payload = attemptSyncPayload(att);
+    const bytes = jsonBytes(payload) + 1;
+    if (bytes > limit) {
+      oversized.push(att.id);
+      continue;
+    }
+    if (current.length > 0 && size + bytes > budget) {
+      batches.push(current);
+      current = [];
+      size = 0;
+    }
+    current.push(payload);
+    size += bytes;
+  }
+  if (current.length > 0) batches.push(current);
+  return { batches, oversized };
+}
+
+export interface SyncAllResult {
+  success: boolean;
+  message: string;
+  requests?: number;
+  syncedAttempts?: number;
+  /** Attempts not stored by this run (a failed request, or too large to send). */
+  failedAttemptIds?: string[];
+}
+
 const STORAGE_KEYS = {
   CURRENT_EXAM: 'govos_current_exam_id',
   TARGET_POST: 'govos_target_post_id',
@@ -546,8 +772,59 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreference = {
   }
 };
 
+/**
+ * Read one localStorage JSON value. Unreadable JSON, or a value of the wrong shape, is copied aside under
+ * `<key>__corrupt` before the caller starts afresh -- so a later write replaces only that one key, never
+ * anything else, and what was there can still be inspected. Every corrupt read used to fall back to a
+ * default that the next write then stored over the original.
+ */
+export function readStoredJson<T>(key: string, isValid: (v: unknown) => boolean, fallback: T): T {
+  let raw: string | null = null;
+  try {
+    raw = localStorage.getItem(key);
+  } catch {
+    return fallback;
+  }
+  if (raw === null) return fallback;
+  try {
+    const parsed = JSON.parse(raw);
+    if (isValid(parsed)) return parsed as T;
+  } catch {
+    // fall through: kept aside below
+  }
+  try {
+    localStorage.setItem(`${key}__corrupt`, raw);
+  } catch {
+    // no room to keep a copy; the original stays in place until a successful write replaces it
+  }
+  console.warn(`[GovOS] ${key} could not be read; a copy was kept as ${key}__corrupt.`);
+  return fallback;
+}
+
+const isPlainObject = (v: unknown): v is Record<string, any> => !!v && typeof v === 'object' && !Array.isArray(v);
+
+/** Write one localStorage value; false (and the previous value intact) when the browser refuses it. */
+export function writeStored(key: string, value: string): boolean {
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch (e) {
+    console.warn(`[GovOS] ${key} could not be saved in this browser:`, e);
+    return false;
+  }
+}
+
+/** The outcome of saving one practice attempt: where it was kept, never "saved" when it was not. */
+export interface AttemptSaveResult {
+  /** Kept in this browser. */
+  local: boolean;
+  /** The id it was kept under (the same id on a repeated save: a resubmission replaces, never duplicates). */
+  id: string;
+}
+
 class StorageService {
   private userId: string = 'default-candidate';
+  private syncAllInFlight: Promise<SyncAllResult> | null = null;
 
   // --- 1. Target Post Persistence ---
   /** The post the candidate chose, or '' — never an invented default. */
@@ -591,13 +868,15 @@ class StorageService {
     }
   }
 
-  setResultEntry(entry: MultiTierResultEntry | null, examId?: string): void {
+  /** False when the browser refused the save; the previously saved entry is then left as it was. */
+  setResultEntry(entry: MultiTierResultEntry | null, examId?: string): boolean {
+    const key = examId ? `${STORAGE_KEYS.RESULT_ENTRY}_${examId}` : STORAGE_KEYS.RESULT_ENTRY;
+    if (entry) return writeStored(key, JSON.stringify(entry));
     try {
-      const key = examId ? `${STORAGE_KEYS.RESULT_ENTRY}_${examId}` : STORAGE_KEYS.RESULT_ENTRY;
-      if (entry) localStorage.setItem(key, JSON.stringify(entry));
-      else localStorage.removeItem(key);
-    } catch (e) {
-      console.warn('LocalStorage save error:', e);
+      localStorage.removeItem(key);
+      return true;
+    } catch {
+      return false;
     }
   }
 
@@ -651,7 +930,17 @@ class StorageService {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ filename: file.name, contentBase64: btoa(binary), examId: examId || '' })
       });
-      return await res.json();
+      try {
+        return await res.json();
+      } catch {
+        // The server answered, but not with a reading (too large, a proxy error page): say what it answered.
+        return {
+          ok: false, reason: res.status === 413 ? 'FILE_TOO_LARGE' : 'SERVER_ERROR',
+          message: res.status === 413
+            ? 'The file is larger than GovOS accepts. Type your marks in instead, or upload a smaller scan.'
+            : `The GovOS server could not read the file (HTTP ${res.status}). Type your marks in instead.`
+        };
+      }
     } catch (e: any) {
       return { ok: false, reason: 'SERVER_UNREACHABLE', message: `Could not reach the GovOS server to read the file (${e?.message || 'network error'}). Type your marks in instead.` };
     }
@@ -691,21 +980,9 @@ class StorageService {
 
   // --- 2. Completed Study Modules Progress ---
   getCompletedModules(): Record<string, boolean> {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEYS.COMPLETED_MODULES);
-      if (raw) {
-        return JSON.parse(raw);
-      }
-    } catch (e) {
-      console.warn('LocalStorage parse error:', e);
-    }
-    // Default initial baseline
-    return {
-      'mod-t1-reas': true,
-      'mod-t1-ga': true,
-      'mod-t1-quant': false,
-      'mod-t1-eng': false
-    };
+    // Nothing done is nothing done. A new candidate used to be shown Reasoning and General Awareness as
+    // completed (an invented "baseline"), and sync-all wrote that progress to the server as theirs.
+    return readStoredJson<Record<string, boolean>>(STORAGE_KEYS.COMPLETED_MODULES, isPlainObject, {});
   }
 
   setCompletedModule(moduleId: string, isCompleted: boolean): Record<string, boolean> {
@@ -737,13 +1014,8 @@ class StorageService {
    * than a missing row.
    */
   getMockAttempts(examId?: string): MockAttemptRecord[] {
-    let all: MockAttemptRecord[] = [];
-    try {
-      const raw = localStorage.getItem(STORAGE_KEYS.MOCK_ATTEMPTS);
-      if (raw) all = JSON.parse(raw);
-    } catch (e) {
-      console.warn('LocalStorage mock parse error:', e);
-    }
+    const stored = readStoredJson<unknown[]>(STORAGE_KEYS.MOCK_ATTEMPTS, Array.isArray, []);
+    const all = stored.filter((a): a is MockAttemptRecord => isPlainObject(a) && typeof (a as any).id === 'string');
     if (!examId) return all;
     const wanted = canonicalExamId(examId);
     const mine = all.filter(a => canonicalExamId(a.exam_id) === wanted);
@@ -754,15 +1026,17 @@ class StorageService {
     return mine;
   }
 
-  saveMockAttempt(attempt: MockAttemptRecord): void {
-    const attempts = this.getMockAttempts();
-    attempts.unshift(attempt);
-    try {
-      localStorage.setItem(STORAGE_KEYS.MOCK_ATTEMPTS, JSON.stringify(attempts.slice(0, 50)));
-      this.syncMockAttemptToSQLite(attempt);
-    } catch (e) {
-      console.warn('LocalStorage save error:', e);
-    }
+  /**
+   * Keep an attempt in this browser and send it to the server. A second save of the same id (a double
+   * click, an auto-submit racing the button) replaces the first instead of adding a duplicate. The
+   * server copy is sent even when the browser refuses the local write (storage full) -- that used to
+   * skip both, losing the attempt without a word -- and the result says where it was kept.
+   */
+  saveMockAttempt(attempt: MockAttemptRecord): AttemptSaveResult {
+    const others = this.getMockAttempts().filter(a => a.id !== attempt.id);
+    const local = writeStored(STORAGE_KEYS.MOCK_ATTEMPTS, JSON.stringify([attempt, ...others].slice(0, 50)));
+    void this.syncMockAttemptToSQLite(attempt);
+    return { local, id: attempt.id };
   }
 
   async loadMockAttemptsFromSQLite(examId?: string): Promise<MockAttemptRecord[]> {
@@ -785,14 +1059,17 @@ class StorageService {
             currentLocal.forEach(att => map.set(att.id, att));
             loaded.forEach(att => {
               const existing = map.get(att.id);
+              // The server row is laid over the local record, not swapped for it: fields only the browser
+              // holds used to be dropped, and an empty server value never replaces a local one.
               map.set(att.id, {
+                ...(existing || {}),
                 ...att,
                 userAnswers: att.userAnswers || existing?.userAnswers,
                 paperData: att.paperData || existing?.paperData
-              });
+              } as MockAttemptRecord);
             });
             const merged = Array.from(map.values());
-            localStorage.setItem(STORAGE_KEYS.MOCK_ATTEMPTS, JSON.stringify(merged.slice(0, 50)));
+            writeStored(STORAGE_KEYS.MOCK_ATTEMPTS, JSON.stringify(merged.slice(0, 50)));
             // The store holds every exam; the caller only ever receives the exam it asked for.
             return this.getMockAttempts(examId);
           }
@@ -807,19 +1084,11 @@ class StorageService {
   // --- 4. Candidate Tracked Exams ("My Exam Timeline") ---
 
   getTrackedExams(): string[] {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEYS.TRACKED_EXAMS);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
-        }
-      }
-    } catch (e) {
-      console.warn('LocalStorage parse error for tracked exams:', e);
-    }
-    // Default initial tracking: SSC CGL 2026
-    return ['exam-ssc-cgl-2026'];
+    const list = readStoredJson<unknown[]>(STORAGE_KEYS.TRACKED_EXAMS, Array.isArray, []);
+    if (list.length) return list.filter((id): id is string => typeof id === 'string');
+    // Nothing tracked is nothing tracked. It used to return SSC CGL, so a candidate who tracked no exam
+    // (or untracked every one) was silently given SSC CGL's alerts.
+    return [];
   }
 
   setTrackedExams(examIds: string[]): void {
@@ -905,19 +1174,46 @@ class StorageService {
     return updated;
   }
 
+  /**
+   * The browser's list is the candidate's (localStorage is the source of truth). The server's list is adopted
+   * only by a browser that has never held one; otherwise the server is brought in line with the browser.
+   * The server's list used to replace the browser's whenever it was non-empty, so a track or untrack made
+   * while the server was unreachable was undone at the next start -- and a new server's seeded SSC CGL
+   * became every candidate's tracked exam.
+   */
   async loadTrackedExamsFromSQLite(): Promise<string[]> {
+    let hasLocal = false;
+    try {
+      hasLocal = localStorage.getItem(STORAGE_KEYS.TRACKED_EXAMS) !== null;
+    } catch {
+      hasLocal = false;
+    }
     try {
       const res = await fetch('/api/sqlite/tracked-exams');
       if (res.ok) {
         const data = await res.json();
-        const list = data.tracked_exam_ids || data.tracked_exams;
-        if (Array.isArray(list) && list.length > 0) {
-          this.setTrackedExams(list);
-          return list;
+        const remote = data.tracked_exam_ids || data.tracked_exams;
+        if (Array.isArray(remote)) {
+          if (!hasLocal) {
+            if (remote.length > 0) this.setTrackedExams(remote);
+            return this.getTrackedExams();
+          }
+          const local = this.getTrackedExams();
+          const changes = [
+            ...local.filter(id => !remote.includes(id)).map(id => ({ exam_id: id, is_tracked: true })),
+            ...remote.filter((id: string) => !local.includes(id)).map((id: string) => ({ exam_id: id, is_tracked: false }))
+          ];
+          for (const change of changes) {
+            await fetch('/api/sqlite/tracked-exams', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(change)
+            }).catch(() => undefined);
+          }
         }
       }
     } catch {
-      // Offline fallback
+      // Offline: the browser's list stands
     }
     return this.getTrackedExams();
   }
@@ -957,13 +1253,25 @@ class StorageService {
     }
   }
 
+  /**
+   * Preferences the candidate set in this browser stand. The server's copy is adopted only where the
+   * browser holds none and the server says it stored some; a server with nothing stored used to answer
+   * with the defaults, which replaced the candidate's own choices at every start.
+   */
   async loadNotificationPreferencesFromSQLite(): Promise<NotificationPreference> {
+    let hasLocal = false;
+    try {
+      hasLocal = localStorage.getItem(STORAGE_KEYS.NOTIFICATION_PREFERENCES) !== null;
+    } catch {
+      hasLocal = false;
+    }
+    if (hasLocal) return this.getNotificationPreferences();
     try {
       const res = await fetch('/api/sqlite/notifications/preferences');
       if (res.ok) {
         const data = await res.json();
         const raw = data.preferences || data;
-        if (raw && (raw.channels || raw.eventSubscriptions)) {
+        if (raw && raw.stored !== false && (raw.channels || raw.eventSubscriptions)) {
           const loaded = {
             ...DEFAULT_NOTIFICATION_PREFERENCES,
             ...raw,
@@ -985,15 +1293,8 @@ class StorageService {
   // --- 6. Candidate Notifications Queue & History ---
 
   getNotifications(): CandidateNotification[] {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEYS.NOTIFICATIONS);
-      if (raw) {
-        return JSON.parse(raw);
-      }
-    } catch (e) {
-      console.warn('LocalStorage error for notifications:', e);
-    }
-    return [];
+    const list = readStoredJson<unknown[]>(STORAGE_KEYS.NOTIFICATIONS, Array.isArray, []);
+    return list.filter((n): n is CandidateNotification => isPlainObject(n) && typeof (n as any).id === 'string');
   }
 
   saveNotifications(notifs: CandidateNotification[]): void {
@@ -1053,245 +1354,186 @@ class StorageService {
 
     const generated: CandidateNotification[] = [];
 
+    // An alert says only what is true *now*. Every reminder used to be generated whatever the date, with "sent"
+    // times hard-coded to September 2026, so a window that closed in February still read "24 Hours Left", and a
+    // result scheduled for next year read "Declared". A reminder is shown inside its own window (from when it
+    // falls due until the event), and "released" / "declared" only once a firm, exactly dated event has passed.
+    const now = Date.now();
+    // Wall-clock, as the record's own dateTimeStr is written -- an ISO (UTC) stamp printed 10:00 IST as 04:30.
+    const stamp = (ms: number) => {
+      const t = new Date(ms);
+      const p2 = (x: number) => String(x).padStart(2, '0');
+      return `${t.getFullYear()}-${p2(t.getMonth() + 1)}-${p2(t.getDate())} ${p2(t.getHours())}:${p2(t.getMinutes())}:${p2(t.getSeconds())}`;
+    };
+    const DAY = 864e5;
+
     allExams.forEach(exam => {
       // Only generate personalized alerts for exams the candidate is actively tracking
       if (!trackedExamIds.includes(exam.id)) {
         return;
       }
+      const authority = exam.authorityName.split(' (')[0];
 
       exam.dates.forEach(d => {
         if (d.status === 'SUPERSEDED') return;
+        const at = Date.parse(d.dateTimeStr.replace(' ', 'T'));
+        if (!Number.isFinite(at)) return;
+        // A date printed without a day ("May/June 2024") or as a range is never counted down to.
+        const exact = !d.displayWhen;
+        // Firm: exact and not tentative -- only then may an alert say a thing has happened.
+        const firm = exact && !d.isTentative;
+        // `from` is when the alert falls due (-Infinity for an announcement shown while its event is ahead),
+        // `until` when it stops being true; `sentAt` the time it is stamped with when first raised.
+        const push = (n: Omit<CandidateNotification, 'createdAt' | 'scheduledDateStr' | 'isRead' | 'channelsDelivered' | 'examId' | 'examCode' | 'examTitle'>,
+                      from: number, until?: number, sentAt: number = from) => {
+          if (from > now || (until !== undefined && now >= until)) return;
+          // Two stages of one type (Prelims and Mains are both EXAM_TIER1) shared one id; the second is keyed by its date.
+          const id = generated.some(g => g.id === n.id) ? `${n.id}-${d.dateTimeStr.slice(0, 10)}` : n.id;
+          // A stored "sent" time is kept only if it lies inside this alert's own window and is not in the future;
+          // one stamped by an earlier generator (September 2026 for a February deadline) is replaced.
+          const prior = existingMap.get(id);
+          const priorAt = prior ? Date.parse(String(prior.createdAt).replace(' ', 'T')) : NaN;
+          const keepPrior = Number.isFinite(priorAt) && priorAt >= from && priorAt <= now && (until === undefined || priorAt < until);
+          generated.push({ ...n, id, examId: exam.id, examCode: exam.code, examTitle: exam.title, channelsDelivered: channels,
+            createdAt: keepPrior ? prior!.createdAt : stamp(sentAt), scheduledDateStr: d.dateTimeStr,
+            isRead: !!prior?.isRead });
+        };
 
         // 1. Application Opening Event
-        if (d.type === 'APPLICATION_OPEN' && prefs.eventSubscriptions.applicationOpening) {
-          const id = `notif-${exam.id}-app-open`;
-          generated.push({
-            id,
-            examId: exam.id,
-            examCode: exam.code,
-            examTitle: exam.title,
+        if (d.type === 'APPLICATION_OPEN' && prefs.eventSubscriptions.applicationOpening && firm) {
+          push({
+            id: `notif-${exam.id}-app-open`,
             eventType: 'APPLICATION_OPEN',
-            title: `📢 ${exam.title}: Application Portal Open!`,
-            message: `Online application submission is now open on the official portal (${exam.officialDomain}). Ensure your documents and OTR details are verified before applying.`,
-            channelsDelivered: channels,
+            title: `📢 ${exam.title}: applications opened`,
+            message: `${authority} opened online applications on ${statedWhen(d, true)} (${exam.officialDomain}). Check the last date in Dates & Timeline before you apply.`,
             actionType: 'EXAM_DETAIL',
             actionPayload: { section: 4 },
-            priority: 'HIGH',
-            createdAt: d.dateTimeStr,
-            scheduledDateStr: d.dateTimeStr,
-            isRead: false
-          });
+            priority: 'HIGH'
+          }, at);
         }
 
-        // 2. Application Deadlines (Multi-stage reminders)
-        if (d.type === 'APPLICATION_CLOSE' && prefs.eventSubscriptions.applicationDeadlines) {
-          // 7 Days Before
+        // 2. Application Deadlines (Multi-stage reminders), each only inside its own window
+        if (d.type === 'APPLICATION_CLOSE' && prefs.eventSubscriptions.applicationDeadlines && exact) {
           if (prefs.reminderSchedule.sevenDaysBefore) {
-            const id = `notif-${exam.id}-deadline-7d`;
-            generated.push({
-              id,
-              examId: exam.id,
-              examCode: exam.code,
-              examTitle: exam.title,
+            push({
+              id: `notif-${exam.id}-deadline-7d`,
               eventType: 'APPLICATION_DEADLINE',
               title: `⏳ 7 Days Left: ${exam.title} Application Deadline`,
-              message: `Only 7 days remaining until online application closes on ${statedWhen(d, true)}. Complete your fee payment and submit before the final rush.`,
-              channelsDelivered: channels,
+              message: `Online applications close on ${statedWhen(d, true)}. Complete your fee payment and submit before the final rush.`,
               actionType: 'EXAM_DETAIL',
               actionPayload: { section: 4 },
-              priority: 'HIGH',
-              createdAt: new Date(Date.parse(d.dateTimeStr.replace(' ', 'T')) - 7 * 864e5).toISOString().slice(0, 19).replace('T', ' '),
-              scheduledDateStr: d.dateTimeStr,
-              isRead: false
-            });
+              priority: 'HIGH'
+            }, at - 7 * DAY, at - 3 * DAY);
           }
-
-          // 3 Days Before
           if (prefs.reminderSchedule.threeDaysBefore) {
-            const id = `notif-${exam.id}-deadline-3d`;
-            generated.push({
-              id,
-              examId: exam.id,
-              examCode: exam.code,
-              examTitle: exam.title,
+            push({
+              id: `notif-${exam.id}-deadline-3d`,
               eventType: 'APPLICATION_DEADLINE',
               title: `🚨 Urgent: 3 Days Left for ${exam.title}!`,
-              message: `Application closes in 3 days (${statedWhen(d, true)}). Check that your live photograph, running signature, and category certificates are compliant.`,
-              channelsDelivered: channels,
+              message: `Applications close on ${statedWhen(d, true)}. Check every upload and certificate against ${authority}'s notice before you submit.`,
               actionType: 'EXAM_DETAIL',
               actionPayload: { section: 4 },
-              priority: 'CRITICAL',
-              createdAt: '2026-09-24 10:00:00',
-              scheduledDateStr: d.dateTimeStr,
-              isRead: false
-            });
+              priority: 'CRITICAL'
+            }, at - 3 * DAY, at - DAY);
           }
-
-          // 1 Day Before
           if (prefs.reminderSchedule.oneDayBefore) {
-            const id = `notif-${exam.id}-deadline-1d`;
-            generated.push({
-              id,
-              examId: exam.id,
-              examCode: exam.code,
-              examTitle: exam.title,
+            push({
+              id: `notif-${exam.id}-deadline-1d`,
               eventType: 'APPLICATION_DEADLINE',
               title: `⚠️ 24 Hours Left: Final Call for ${exam.title}`,
-              message: `The application portal closes tomorrow (${statedWhen(d, true)})! Confirm payment status and download your application acknowledgment receipt immediately.`,
-              channelsDelivered: channels,
+              message: `Applications close at ${statedWhen(d, true)}. Confirm your payment status and download your application acknowledgment.`,
               actionType: 'EXAM_DETAIL',
               actionPayload: { section: 4 },
-              priority: 'CRITICAL',
-              createdAt: '2026-09-26 10:00:00',
-              scheduledDateStr: d.dateTimeStr,
-              isRead: false
-            });
+              priority: 'CRITICAL'
+            }, at - DAY, at);
           }
-
-          // Final Day / Closing Hours
           if (prefs.reminderSchedule.lastDayHoursBefore) {
-            const id = `notif-${exam.id}-deadline-lastday`;
-            generated.push({
-              id,
-              examId: exam.id,
-              examCode: exam.code,
-              examTitle: exam.title,
+            const dayStart = Date.parse(`${d.dateTimeStr.slice(0, 10)}T00:00:00`);
+            push({
+              id: `notif-${exam.id}-deadline-lastday`,
               eventType: 'APPLICATION_DEADLINE',
-              title: `🔥 Final Hours: ${exam.title} Closes Tonight!`,
-              message: `The application window terminates strictly at ${d.dateTimeStr.split(' ')[1] || '23:59'} IST today. No extensions are guaranteed. Finish submission now!`,
-              channelsDelivered: channels,
+              title: `🔥 Final Hours: ${exam.title} closes today`,
+              message: `The application window closes at ${statedWhen(d, true)}, as ${authority} printed it. Finish your submission now.`,
               actionType: 'EXAM_DETAIL',
               actionPayload: { section: 4 },
-              priority: 'CRITICAL',
-              createdAt: `${d.dateTimeStr.slice(0, 10)} 00:00:00`,
-              scheduledDateStr: d.dateTimeStr,
-              isRead: false
-            });
+              priority: 'CRITICAL'
+            }, dayStart, at);
           }
         }
 
         // 3. Correction Window
-        if (d.type === 'CORRECTION_WINDOW' && prefs.eventSubscriptions.correctionWindows) {
-          const id = `notif-${exam.id}-correction`;
-          generated.push({
-            id,
-            examId: exam.id,
-            examCode: exam.code,
-            examTitle: exam.title,
+        if (d.type === 'CORRECTION_WINDOW' && prefs.eventSubscriptions.correctionWindows && firm) {
+          push({
+            id: `notif-${exam.id}-correction`,
             eventType: 'CORRECTION_WINDOW',
-            title: `✏️ Correction Window Open: ${exam.title}`,
-            message: `The official application correction facility is active from ${statedWhen(d, true)}. Review your uploaded photograph, post preferences, and exam center choices.`,
-            channelsDelivered: channels,
+            title: `✏️ Correction window: ${exam.title}`,
+            message: `${d.label}: ${statedWhen(d, true)}. Check its closing date in Dates & Timeline before you change anything.`,
             actionType: 'EXAM_DETAIL',
             actionPayload: { section: 4 },
-            priority: 'HIGH',
-            createdAt: d.dateTimeStr,
-            scheduledDateStr: d.dateTimeStr,
-            isRead: false
-          });
+            priority: 'HIGH'
+          }, at);
         }
 
-        // 4. Admit Card / City Slip
-        if (d.type === 'ADMIT_CARD' && prefs.eventSubscriptions.admitCards) {
-          const id = `notif-${exam.id}-admit-card`;
-          generated.push({
-            id,
-            examId: exam.id,
-            examCode: exam.code,
-            examTitle: exam.title,
+        // 4. Admit card: in the authority's own words for the milestone, never SSC's "Tier 1 City Intimation".
+        if (d.type === 'ADMIT_CARD' && prefs.eventSubscriptions.admitCards && firm) {
+          push({
+            id: `notif-${exam.id}-admit-card`,
             eventType: 'ADMIT_CARD',
-            title: `🎟️ Admit Card & City Slip: ${exam.title}`,
-            message: `Tier 1 Exam City Intimation & e-Admit Card released on ${statedWhen(d, true)}. Check your examination date, shift time, and exam center address.`,
-            channelsDelivered: channels,
-            actionType: 'CALENDAR',
-            actionPayload: { examCode: exam.code },
-            priority: 'CRITICAL',
-            createdAt: d.dateTimeStr,
-            scheduledDateStr: d.dateTimeStr,
-            isRead: false
-          });
+            title: `🎟️ ${d.label}: ${exam.title}`,
+            message: `${d.label} — ${statedWhen(d, true)}. ${authority} serves it through each candidate's own login; GovOS cannot see yours.`,
+            actionType: 'EXAM_DETAIL',
+            actionPayload: { section: 14 },
+            priority: 'CRITICAL'
+          }, at);
         }
 
-        // 5. Exam Date
+        // 5. Exam Date: announced while it is still ahead.
         if (d.type === 'EXAM_TIER1' && prefs.eventSubscriptions.examDates) {
-          const id = `notif-${exam.id}-exam-tier1`;
-          generated.push({
-            id,
-            examId: exam.id,
-            examCode: exam.code,
-            examTitle: exam.title,
+          push({
+            id: `notif-${exam.id}-exam-tier1`,
             eventType: 'EXAM_DATE',
-            title: `🎯 Exam Day Announcement: ${exam.title}`,
+            title: `🎯 Exam date: ${exam.title}`,
             message: d.displayWhen
               // Printed without a day: say so, and do not name one.
               ? `${d.label}: ${d.displayWhen}${d.isTentative ? ' (tentative)' : ''}. No exact date has been announced yet; GovOS will show it when ${exam.authorityName} publishes it.`
-              : `The Computer Based Test commences on ${statedWhen(d, true)}. Remember to carry your original Photo ID, two passport photos, and printed Admit Card.`,
-            channelsDelivered: channels,
+              : `${d.label}: ${statedWhen(d, true)}${d.isTentative ? ' (tentative)' : ''}. Carry what your admit card lists.`,
             actionType: 'EXAM_DETAIL',
             actionPayload: { section: 5 },
-            priority: 'HIGH',
-            createdAt: d.dateTimeStr,
-            scheduledDateStr: d.dateTimeStr,
-            isRead: false
-          });
+            priority: 'HIGH'
+          }, -Infinity, at + DAY, Math.min(now, at));
         }
 
         // 6. Answer Key
-        if (d.type === 'ANSWER_KEY' && prefs.eventSubscriptions.results) {
-          const id = `notif-${exam.id}-anskey`;
-          generated.push({
-            id,
-            examId: exam.id,
-            examCode: exam.code,
-            examTitle: exam.title,
+        if (d.type === 'ANSWER_KEY' && prefs.eventSubscriptions.results && firm) {
+          push({
+            id: `notif-${exam.id}-anskey`,
             eventType: 'ANSWER_KEY',
-            title: `🔑 Tentative Answer Key Released: ${exam.title}`,
-            message: `Response sheet and tentative answer keys are available on ${statedWhen(d, true)}. Calculate your score and raise challenges if questions contain errors.`,
-            channelsDelivered: channels,
+            title: `🔑 ${d.label}: ${exam.title}`,
+            message: `${d.label} — ${statedWhen(d, true)}. Read ${authority}'s own notice for the challenge window.`,
             actionType: 'EXAM_DETAIL',
             actionPayload: { section: 9 },
-            priority: 'NORMAL',
-            createdAt: d.dateTimeStr,
-            scheduledDateStr: d.dateTimeStr,
-            isRead: false
-          });
+            priority: 'NORMAL'
+          }, at);
         }
 
-        // 7. Result
-        if (d.type === 'RESULT' && prefs.eventSubscriptions.results) {
-          const id = `notif-${exam.id}-result`;
-          generated.push({
-            id,
-            examId: exam.id,
-            examCode: exam.code,
-            examTitle: exam.title,
+        // 7. Result: "declared" only once its firm date has passed, and nothing about cut-offs it does not hold.
+        if (d.type === 'RESULT' && prefs.eventSubscriptions.results && firm) {
+          push({
+            id: `notif-${exam.id}-result`,
             eventType: 'RESULT',
-            title: `🏆 Official Result Declared: ${exam.title}`,
-            message: `Official shortlisted roll numbers and category cut-off marks announced on ${statedWhen(d, true)}. Check your merit status for the next stage!`,
-            channelsDelivered: channels,
+            title: `🏆 ${d.label}: ${exam.title}`,
+            message: `${d.label} — ${statedWhen(d, true)}. Check ${authority}'s own result notice for your status.`,
             actionType: 'EXAM_DETAIL',
-            actionPayload: { section: 10 },
-            priority: 'CRITICAL',
-            createdAt: d.dateTimeStr,
-            scheduledDateStr: d.dateTimeStr,
-            isRead: false
-          });
+            actionPayload: { section: 16 },
+            priority: 'CRITICAL'
+          }, at);
         }
       });
     });
 
-    // Merge: preserve isRead and original createdAt for existing notifications
-    const mergedList: CandidateNotification[] = generated.map(notif => {
-      const existing = existingMap.get(notif.id);
-      if (existing) {
-        return {
-          ...notif,
-          isRead: existing.isRead,
-          createdAt: existing.createdAt
-        };
-      }
-      return notif;
-    });
+    // isRead and a still-valid "sent" time were carried over in push(); nothing else is taken from the store,
+    // so an alert no longer due is not resurrected and an old timestamp is not kept.
+    const mergedList: CandidateNotification[] = [...generated];
 
     // Preserve any custom test alerts sent by the user
     currentNotifs.forEach(n => {
@@ -1327,12 +1569,9 @@ class StorageService {
 
   getCompletedTopics(examId: string): Record<string, boolean> {
     try {
-      const raw = localStorage.getItem(STORAGE_KEYS.COMPLETED_TOPICS);
-      if (raw) {
-        const all = JSON.parse(raw);
-        if (all && typeof all === 'object' && all[examId]) {
-          return all[examId];
-        }
+      const all = readStoredJson<Record<string, any>>(STORAGE_KEYS.COMPLETED_TOPICS, isPlainObject, {});
+      if (isPlainObject(all[examId])) {
+        return all[examId];
       }
     } catch (e) {
       console.warn('LocalStorage parse error for completed topics:', e);
@@ -1344,8 +1583,8 @@ class StorageService {
     const current = this.getCompletedTopics(examId);
     const next = { ...current, [topicId]: !current[topicId] };
     try {
-      const raw = localStorage.getItem(STORAGE_KEYS.COMPLETED_TOPICS);
-      const all = raw ? JSON.parse(raw) : {};
+      // A corrupt store used to throw here, so the tick showed on screen and was never kept.
+      const all = readStoredJson<Record<string, any>>(STORAGE_KEYS.COMPLETED_TOPICS, isPlainObject, {});
       all[examId] = next;
       localStorage.setItem(STORAGE_KEYS.COMPLETED_TOPICS, JSON.stringify(all));
       // Reuse the study_progress table so topic ticks survive a browser reset too.
@@ -1360,12 +1599,9 @@ class StorageService {
 
   getRoadmapGoals(examId: string): Record<string, boolean> {
     try {
-      const raw = localStorage.getItem(STORAGE_KEYS.ROADMAP_GOALS);
-      if (raw) {
-        const all = JSON.parse(raw);
-        if (all && typeof all === 'object' && all[examId]) {
-          return all[examId];
-        }
+      const all = readStoredJson<Record<string, any>>(STORAGE_KEYS.ROADMAP_GOALS, isPlainObject, {});
+      if (isPlainObject(all[examId])) {
+        return all[examId];
       }
     } catch (e) {
       console.warn('LocalStorage parse error for roadmap goals:', e);
@@ -1377,8 +1613,8 @@ class StorageService {
     const current = this.getRoadmapGoals(examId);
     const next = { ...current, [goalKey]: !current[goalKey] };
     try {
-      const raw = localStorage.getItem(STORAGE_KEYS.ROADMAP_GOALS);
-      const all = raw ? JSON.parse(raw) : {};
+      // A corrupt store used to throw here, so the tick showed on screen and was never kept.
+      const all = readStoredJson<Record<string, any>>(STORAGE_KEYS.ROADMAP_GOALS, isPlainObject, {});
       all[examId] = next;
       localStorage.setItem(STORAGE_KEYS.ROADMAP_GOALS, JSON.stringify(all));
       this.syncProgressToSQLite(`goal:${examId}:${goalKey}`, next[goalKey]);
@@ -1577,13 +1813,7 @@ class StorageService {
 
   private async syncMockAttemptToSQLite(attempt: MockAttemptRecord): Promise<void> {
     try {
-      const payload = {
-        ...attempt,
-        details: {
-          userAnswers: attempt.userAnswers,
-          paperData: attempt.paperData
-        }
-      };
+      const payload = attemptSyncPayload(attempt);
       await fetch('/api/sqlite/mock-attempts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1594,38 +1824,68 @@ class StorageService {
     }
   }
 
-  async syncAllToSQLite(): Promise<{ success: boolean; message: string }> {
-    try {
-      const payload = {
-        user_id: this.userId,
-        profile: {
-          target_post_id: this.getTargetPost()
-        },
-        completed_modules: this.getCompletedModules(),
-        mock_attempts: this.getMockAttempts().map(att => ({
-          ...att,
-          details: {
-            userAnswers: att.userAnswers,
-            paperData: att.paperData
-          }
-        })),
-        tracked_exams: this.getTrackedExams(),
-        notification_preferences: this.getNotificationPreferences()
-      };
-
-      const res = await fetch('/api/sqlite/sync-all', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      if (res.ok) {
-        return { success: true, message: 'All LocalStorage state synced to SQLite database (govos.db)' };
-      }
-      return { success: false, message: 'SQLite endpoint reachable but returned error' };
-    } catch (e: any) {
-      return { success: false, message: `SQLite sync offline: ${e.message}` };
+  /**
+   * Everything local, to the server, in size-bounded requests: the first carries the profile, the
+   * completed modules and the first batch of attempts; each later one only `user_id` and its batch
+   * (the server skips an empty profile and empty modules). Requests go one at a time, each attempt in
+   * exactly one of them and none repeated; a failed request is reported by attempt id, not retried,
+   * and the server's upsert on the attempt id makes running the whole sync again safe.
+   */
+  /** One sync at a time: a second call while one runs gets that run's result instead of sending everything twice. */
+  syncAllToSQLite(): Promise<SyncAllResult> {
+    if (!this.syncAllInFlight) {
+      this.syncAllInFlight = this.runSyncAll().finally(() => { this.syncAllInFlight = null; });
     }
+    return this.syncAllInFlight;
+  }
+
+  private async runSyncAll(): Promise<SyncAllResult> {
+    const { batches, oversized } = planAttemptSyncBatches(this.getMockAttempts());
+    const requests = batches.length > 0 ? batches : [[]];      // an empty history still syncs the profile
+    const failed: string[] = [...oversized];
+    let synced = 0;
+    let reached = false;
+    let offline = '';
+    for (let i = 0; i < requests.length; i++) {
+      const payload = i === 0
+        ? {
+            user_id: this.userId,
+            profile: { target_post_id: this.getTargetPost() },
+            completed_modules: this.getCompletedModules(),
+            mock_attempts: requests[0],
+            tracked_exams: this.getTrackedExams(),
+            notification_preferences: this.getNotificationPreferences()
+          }
+        : { user_id: this.userId, mock_attempts: requests[i] };
+      try {
+        const res = await fetch('/api/sqlite/sync-all', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        reached = true;
+        if (res.ok) {
+          synced += requests[i].length;
+          continue;
+        }
+      } catch (e: any) {
+        offline = e?.message || 'network error';
+      }
+      failed.push(...requests[i].map(a => String(a.id)));
+      if (i === 0 && requests[0].length === 0) failed.push('(profile and modules)');
+    }
+    const result = { requests: requests.length, syncedAttempts: synced, failedAttemptIds: failed };
+    if (failed.length === 0) {
+      return { success: true, message: 'All LocalStorage state synced to SQLite database (govos.db)', ...result };
+    }
+    if (!reached) return { success: false, message: `SQLite sync offline: ${offline}`, ...result };
+    const total = synced + failed.filter(id => id !== '(profile and modules)').length;
+    return {
+      success: false,
+      message: `SQLite endpoint reachable but returned error: ${synced} of ${total} attempt(s) synced; `
+        + `${failed.length} not stored${oversized.length ? ` (${oversized.length} larger than the server accepts)` : ''}`,
+      ...result
+    };
   }
 
   // --- 8. Behavioral Interaction History & Recommendations (Time-Decayed BPR) ---
@@ -2450,6 +2710,11 @@ export const syllabusLiveService = {
   },
 
   async revisions(examId: string): Promise<SyllabusRevision[]> {
+    return (await syllabusLiveService.revisionsOrNull(examId)) || [];
+  },
+
+  /** null when the server could not be read, so the page can keep what it already applied. */
+  async revisionsOrNull(examId: string): Promise<SyllabusRevision[] | null> {
     try {
       const res = await fetch(`/api/syllabus/revisions?exam_id=${encodeURIComponent(examId)}`);
       if (res.ok) {
@@ -2457,9 +2722,9 @@ export const syllabusLiveService = {
         if (Array.isArray(data.revisions)) return data.revisions;
       }
     } catch {
-      // server offline: the seed stands
+      // server offline: the caller keeps what it has (the seed, on a first read)
     }
-    return [];
+    return null;
   },
 
   async addRevision(input: {
@@ -2511,16 +2776,19 @@ export function applySyllabusRevisions(exam: Exam, revisions: SyllabusRevision[]
 
   const provenanceFor = (r: SyllabusRevision): DataProvenance => ({
     id: `prov-${r.id}`,
-    documentTitle: r.noticeTitle || seedProvenance?.documentTitle || `${exam.title} notice`,
-    officialUrl: r.noticeUrl || seedProvenance?.officialUrl || exam.officialDomain,
+    // Only what the revision itself cites: no notice named is "no notice", never the seed's notice, and the
+    // day it was applied is not a publication date.
+    documentTitle: r.noticeTitle || 'Verifier note (no notice cited)',
+    officialUrl: r.noticeUrl || '',
     clauseNumber: 'Syllabus revision recorded by the GovOS verifier',
-    publishedDate: r.noticeDate || r.appliedAt.slice(0, 10),
+    publishedDate: r.noticeDate || '',
     verifiedDate: r.appliedAt.slice(0, 10),
     verifiedBy: r.appliedBy,
-    taxonomyType: 'FACT',
-    // A change with a notice behind it is verified; a change on a note alone is not yet.
-    verificationLevel: r.noticeUrl ? 'OFFICIALLY_VERIFIED' : 'UNDER_VERIFICATION',
-    excerptText: r.note || `Applied at runtime from ${r.noticeTitle || 'a verifier note'}, not from a code edit.`
+    // Under verification, always: a URL (official-looking or not) and a verifier's note quote nothing from the
+    // notice, and no text of it was read. It used to be OFFICIALLY_VERIFIED for any http(s) noticeUrl, with the
+    // verifier's note shown as the notice's "supporting text".
+    taxonomyType: 'EXPLANATION',
+    verificationLevel: 'UNDER_VERIFICATION'
   });
 
   mine.forEach(r => {
@@ -2567,19 +2835,51 @@ export function applySyllabusRevisions(exam: Exam, revisions: SyllabusRevision[]
 }
 
 /**
+ * One shared, short-lived copy of a read that many panels make. Every section of an exam page asks
+ * for the same discovery projection and the same additions; each section switch used to fetch both
+ * again (and the server re-projected the stored walk every time). A read in flight is shared, a
+ * result is kept for `ttlMs`, and a failed read (null) is not kept, so the next panel retries.
+ */
+export const sharedRead = <T>(ttlMs: number) => {
+  const cache = new Map<string, { at: number; value: Promise<T | null> }>();
+  return {
+    get(key: string, load: () => Promise<T | null>, fresh: boolean = false): Promise<T | null> {
+      const hit = cache.get(key);
+      if (!fresh && hit && Date.now() - hit.at < ttlMs) return hit.value;
+      const value: Promise<T | null> = load().then(v => {
+        if (v === null && cache.get(key)?.value === value) cache.delete(key);
+        return v;
+      });
+      cache.set(key, { at: Date.now(), value });
+      return value;
+    },
+    clear(key?: string) {
+      if (key === undefined) cache.clear();
+      else cache.delete(key);
+    }
+  };
+};
+
+const discoveryReads = sharedRead<DiscoveredSources>(120_000);
+const additionReads = sharedRead<ResourceAddition[]>(120_000);
+
+/**
  * Authority source discovery (tools/exam_builder/authority_discovery.py): what the latest bounded walk
  * of an exam's authority found, projected onto that exam. Read-only for candidates; starting a walk is
  * an admin job. Every call fails soft: offline means "not discovered here", never "not published".
  */
 export const sourceDiscoveryService = {
-  async forExam(examId: string): Promise<DiscoveredSources | null> {
-    try {
-      const res = await fetch(`/api/sources/exam/${encodeURIComponent(examId)}`);
-      if (res.ok) return await res.json();
-    } catch {
-      // server offline: the sections show the register's own entries only
-    }
-    return null;
+  /** Shared across the page's panels for two minutes; `fresh` reads it again (after a walk). */
+  async forExam(examId: string, opts: { fresh?: boolean } = {}): Promise<DiscoveredSources | null> {
+    return discoveryReads.get(examId, async () => {
+      try {
+        const res = await fetch(`/api/sources/exam/${encodeURIComponent(examId)}`);
+        if (res.ok) return await res.json();
+      } catch {
+        // server offline: the sections show the register's own entries only
+      }
+      return null;
+    }, !!opts.fresh);
   },
 
   /** Queue a walk of this exam's authority from its official address. Admin only. */
@@ -2693,18 +2993,22 @@ export const resourceLiveService = {
     return {};
   },
 
-  /** The verifier-added entries for ONE exam (or every exam's, for the Trust Panel, when no exam is given). */
+  /** The verifier-added entries for ONE exam (or every exam's, for the Trust Panel, when no exam is given).
+   *  One exam's are shared across its page's panels for two minutes; an add or retire here clears them. */
   async additions(examId?: string): Promise<ResourceAddition[]> {
-    try {
-      const res = await fetch(examId ? `/api/resources/additions?exam_id=${encodeURIComponent(examId)}` : '/api/resources/additions');
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data.additions)) return data.additions;
+    const read = async (): Promise<ResourceAddition[] | null> => {
+      try {
+        const res = await fetch(examId ? `/api/resources/additions?exam_id=${encodeURIComponent(examId)}` : '/api/resources/additions');
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.additions)) return data.additions;
+        }
+      } catch {
+        // server offline
       }
-    } catch {
-      // server offline
-    }
-    return [];
+      return null;
+    };
+    return (await (examId ? additionReads.get(examId, read) : read())) || [];
   },
 
   async addResource(payload: { title: string; url: string; examId: string; subject?: string; resourceFormat?: string; author?: string; description?: string; findingId?: number; addedFrom?: string }): Promise<ResourceAddition | null> {
@@ -2716,6 +3020,7 @@ export const resourceLiveService = {
       });
       if (res.ok) {
         const data = await res.json();
+        additionReads.clear();
         return data.addition || null;
       }
     } catch {
@@ -2727,6 +3032,7 @@ export const resourceLiveService = {
   async retireResource(id: string): Promise<boolean> {
     try {
       const res = await fetch(`/api/resources/additions/${encodeURIComponent(id)}/retire`, { method: 'POST', headers: adminHeaders() });
+      if (res.ok) additionReads.clear();
       return res.ok;
     } catch {
       return false;
@@ -2856,7 +3162,12 @@ export function buildChatContext(exam: Exam, channel: ChatChannel): ChatContext 
     profile: storageService.getProfile(),
     stage: deriveCandidateStage(exam),
     daysToApplicationClose: daysToApplicationClose(exam),
-    history: conversationService.history(channel)
+    // The practice and resources chats hold one thread per exam: a turn made on another exam (its topics,
+    // its "that") is not this exam's. Ask GovOS AI keeps the whole thread -- it is cleared on every exam
+    // change, and within it a turn may name another exam on purpose ("and for upsc?").
+    history: channel === 'ASSISTANT'
+      ? conversationService.history(channel)
+      : conversationService.history(channel).filter(t => t.examId === exam.id)
   };
 }
 
@@ -2866,6 +3177,11 @@ export function buildChatContext(exam: Exam, channel: ChatChannel): ChatContext 
 
 export const examOverlayService = {
   async getOverlays(examId: string, cycle?: string, domain?: string): Promise<ExamFactOverlay[]> {
+    return (await examOverlayService.getOverlaysOrNull(examId, cycle, domain)) || [];
+  },
+
+  /** null when the server could not be read, so the page can keep what it already applied. */
+  async getOverlaysOrNull(examId: string, cycle?: string, domain?: string): Promise<ExamFactOverlay[] | null> {
     try {
       let url = `/api/exams/${encodeURIComponent(examId)}/overlays`;
       const params = new URLSearchParams();
@@ -2874,11 +3190,11 @@ export const examOverlayService = {
       const qs = params.toString();
       if (qs) url += `?${qs}`;
       const res = await fetch(url);
-      if (!res.ok) return [];
+      if (!res.ok) return null;
       const data = await res.json();
-      return Array.isArray(data.overlays) ? data.overlays : [];
+      return Array.isArray(data.overlays) ? data.overlays : null;
     } catch {
-      return [];
+      return null;
     }
   },
 
@@ -2920,19 +3236,32 @@ export const examOverlayService = {
 // ==========================================================================
 
 let runtimeRegistryExams: Exam[] = [];
+/** Incremented by every registry load; only the newest may replace the cache. */
+let registryLoadGeneration = 0;
 
 export const examRegistryService = {
-  /** Every published runtime exam. Caches the result for getExamUniverse(); [] on any failure. */
+  /**
+   * Every published runtime exam, cached for getExamUniverse(). Only the most recently started load may
+   * replace the cache: a slower, older one finishing later is discarded rather than overwriting it. A load
+   * that fails, or whose reply carries no exam list, keeps and returns the last good list (status says so)
+   * -- it used to return [] and the caller replaced the registry with nothing.
+   */
   async load(): Promise<Exam[]> {
+    return (await examRegistryService.loadWithStatus()).exams;
+  },
+
+  async loadWithStatus(): Promise<{ exams: Exam[]; status: 'FRESH' | 'SUPERSEDED' | 'FAILED' }> {
+    const generation = ++registryLoadGeneration;
     try {
       const res = await fetch('/api/exams');
-      if (!res.ok) return [];
+      if (!res.ok) return { exams: runtimeRegistryExams, status: 'FAILED' };
       const data = await res.json();
-      const exams: Exam[] = Array.isArray(data.exams) ? data.exams : [];
-      runtimeRegistryExams = exams.map(e => ({ ...e, origin: 'MACHINE_ACQUIRED' as const }));
-      return runtimeRegistryExams;
+      if (!Array.isArray(data?.exams)) return { exams: runtimeRegistryExams, status: 'FAILED' };
+      if (generation !== registryLoadGeneration) return { exams: runtimeRegistryExams, status: 'SUPERSEDED' };
+      runtimeRegistryExams = (data.exams as Exam[]).map(e => ({ ...e, origin: 'MACHINE_ACQUIRED' as const }));
+      return { exams: runtimeRegistryExams, status: 'FRESH' };
     } catch {
-      return [];
+      return { exams: runtimeRegistryExams, status: 'FAILED' };
     }
   },
 
@@ -3388,8 +3717,10 @@ function discoveryPost(exam: Exam, post: PostRequirement, profile: DiscoveryProf
         provenance: cite(post.provenance)
       });
     } else {
+      // UNKNOWN is the record's gap (no qualification stated, or one no profile answers), never a fail.
       reasons.push({
-        rule: 'QUALIFICATION', outcome: v.qualStatus === 'OK' ? 'PASS' : 'FAIL', missingFields: [],
+        rule: 'QUALIFICATION', outcome: v.qualStatus === 'OK' ? 'PASS' : v.qualStatus === 'UNKNOWN' ? 'UNKNOWN' : 'FAIL', missingFields: [],
+        ...(v.qualStatus === 'UNKNOWN' ? { ruleNotPublished: true } : {}),
         text: discoverySplitReasons(v).QUALIFICATION.join(' '),
         provenance: cite(post.provenance)
       });

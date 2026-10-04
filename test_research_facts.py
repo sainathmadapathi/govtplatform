@@ -66,6 +66,30 @@ class _Base(unittest.TestCase):
 
 
 class TestExtraction(_Base):
+    def test_sources_are_checked_before_the_write_transaction_opens(self):
+        # A source check takes up to 20 s. Inside the write transaction it kept every other writer
+        # waiting until "database is locked"; each check here tries to take the write lock itself.
+        import sqlite3
+        seen = []
+
+        def check(url):
+            probe = sqlite3.connect(govos.DB_FILE, timeout=0.2)
+            try:
+                probe.execute('BEGIN IMMEDIATE')
+                probe.rollback()
+                seen.append('free')
+            except sqlite3.OperationalError:
+                seen.append('locked')
+            finally:
+                probe.close()
+            return {'url': url, 'status': 'HEALTHY', 'httpCode': 200, 'checkedAt': 'now'}
+        govos._check_one_link = check
+        run = self._run()
+        self._finding(run, 'https://ssc.gov.in/a', 'The last date to apply is 15/07/2026 for all candidates.')
+        self._finding(run, 'https://ssc.gov.in/b', 'The last date to apply is 16/07/2026 for all candidates.')
+        self.assertEqual(self._extract(run_id=run).status_code, 200)
+        self.assertEqual(seen, ['free', 'free'])
+
     def test_a_valid_fact_extraction(self):
         run = self._run()
         self._finding(run, 'https://ssc.gov.in/notice',
