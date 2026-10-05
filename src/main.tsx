@@ -56,6 +56,8 @@ import {
   ResourceLibrary,
   ResourceReaderModal,
   installRevealObserver,
+  ClubIntro,
+  PageWipe,
   installSmoothWheel,
   useReplayOnChange
 } from './ui';
@@ -323,7 +325,11 @@ export const App: React.FC = () => {
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
   return (
-    <div className="app-container" style={activeTab === 'EXAM_DETAIL' ? { paddingBottom: '12px' } : undefined}>
+    <div className="app-container" data-view={activeTab} style={activeTab === 'EXAM_DETAIL' ? { paddingBottom: '12px' } : undefined}>
+      {/* First visit only: the intro field and ribbon wipe (never under reduced motion). */}
+      <ClubIntro />
+      {/* A ribbon sweeps off the screen when the top-level view changes. */}
+      <PageWipe token={activeTab} />
       {/* Top Header */}
       <Header 
         activeTab={activeTab}

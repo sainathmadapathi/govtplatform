@@ -1,9 +1,8 @@
 /// <reference types="vite/client" />
 // GovOS UI: every candidate-facing and admin component, in dependency order.
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import heroIllustration from './hero-illustration.png';
 import {
   Activity,
   AlertCircle,
@@ -520,9 +519,10 @@ export function installRevealObserver(root: HTMLElement): () => void {
 export function installSmoothWheel(): () => void {
   if (prefersReducedMotion() || typeof window === 'undefined') return () => undefined;
   if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return () => undefined;
-  const LERP = 0.2;
+  const LERP = 0.22;
   type Run = { el: Element; target: number; current: number; raf: number; last: number; lastSet: number };
   const runs = new Map<Element, Run>();
+  let fineUntil = 0;
   const page = document.scrollingElement || document.documentElement;
   const maxOf = (el: Element) => el.scrollHeight - el.clientHeight;
   const canScroll = (el: Element, dy: number) => {
@@ -555,10 +555,31 @@ export function installSmoothWheel(): () => void {
     if (run.current === run.target) { runs.delete(el); return; }
     run.raf = requestAnimationFrame(t => step(run, t));
   };
+  /** A zone marked data-scroll-rate that fills the screen (a pinned scene) slows the page's scroll inside it. */
+  const rateAt = (): number => {
+    const zones = document.querySelectorAll<HTMLElement>('[data-scroll-rate]');
+    for (const z of Array.from(zones)) {
+      const r = z.getBoundingClientRect();
+      if (r.top <= 1 && r.bottom >= window.innerHeight - 1) return Math.min(1, Math.max(0.2, parseFloat(z.dataset.scrollRate || '1') || 1));
+    }
+    return 1;
+  };
   const onWheel = (e: WheelEvent) => {
     if (e.defaultPrevented || e.ctrlKey || e.metaKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
     const dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * window.innerHeight : e.deltaY;
     if (!dy) return;
+    // A touchpad (or a smooth-scrolling mouse) already sends small, eased pixel deltas with the system's own inertia;
+    // smoothing them again made scrolling lag behind the fingers. Only a wheel's notches (40 px and up) are eased, and
+    // once fine deltas are seen the stream stays native until it pauses.
+    const now = performance.now();
+    if (e.deltaMode === 0 && Math.abs(dy) < 40) fineUntil = now + 300;
+    const rate = rateAt();
+    if (now < fineUntil) {
+      runs.forEach(r => cancelAnimationFrame(r.raf)); runs.clear();
+      // Inside a slowed zone the touchpad's own movement is kept, only scaled; nested scrollers stay untouched.
+      if (rate < 1 && scrollerFor(e.target as Element, dy) === page) { e.preventDefault(); window.scrollBy(0, dy * rate); }
+      return;
+    }
     const el = scrollerFor(e.target as Element, dy);
     if (!el) return;
     e.preventDefault();
@@ -569,7 +590,7 @@ export function installSmoothWheel(): () => void {
       const r = run;
       run.raf = requestAnimationFrame(t => step(r, t));
     }
-    run.target = Math.max(0, Math.min(maxOf(el), run.target + dy));
+    run.target = Math.max(0, Math.min(maxOf(el), run.target + dy * (el === page ? rate : 1)));
   };
   window.addEventListener('wheel', onWheel, { passive: false });
   return () => {
@@ -1155,6 +1176,56 @@ export const Header: React.FC<HeaderProps> = ({
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
+  // The bar takes the colour of whatever sits under it, so it blends into each field instead of floating as a
+  // white strip; on a dark field its own type turns light. Sampled on scroll (one read per frame) and on a view change.
+  const barRef = useRef<HTMLElement>(null);
+  const [surface, setSurface] = useState<{ rgb: string; dark: boolean }>({ rgb: '255, 250, 242', dark: false });
+  useEffect(() => {
+    let raf = 0;
+    const colourOf = (el: Element): number[] | null => {
+      const read = (c: string) => { const m = c.match(/rgba?\(([^)]+)\)/); if (!m) return null; const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return (p[3] ?? 1) >= 0.5 ? p : null; };
+      // Only a field the width of the screen counts (a hero, a band, the page itself) -- a card or a row passing
+      // under the bar must not make it flicker.
+      const wide = (n: Element) => n === document.body || n === document.documentElement || n.getBoundingClientRect().width >= window.innerWidth * 0.9;
+      if (el instanceof SVGElement && !(el instanceof SVGSVGElement) && el.ownerSVGElement && wide(el.ownerSVGElement)) { const f = read(getComputedStyle(el).fill); if (f) return f; }
+      for (let n: Element | null = el; n; n = n.parentElement) { if (!wide(n)) continue; const b = read(getComputedStyle(n).backgroundColor); if (b) return b; }
+      return null;
+    };
+    const sample = () => {
+      raf = 0;
+      const bar = barRef.current;
+      if (!bar) return;
+      const r = bar.getBoundingClientRect();
+      const under = document.elementsFromPoint(r.left + r.width / 2, Math.min(window.innerHeight - 1, r.bottom + 6))
+        .find(el => !bar.contains(el) && !(el as HTMLElement).closest?.('.club-intro, .page-wipe'));
+      const c = under ? colourOf(under) : null;
+      if (!c) return;
+      const rgb = `${c[0]}, ${c[1]}, ${c[2]}`;
+      const dark = (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) / 255 < 0.5;
+      setSurface(prev => (prev.rgb === rgb ? prev : { rgb, dark }));
+    };
+    let lastSample = 0;
+    let trail = 0;
+    const schedule = () => {
+      const now = performance.now();
+      if (now - lastSample >= 90) { if (!raf) raf = requestAnimationFrame(() => { lastSample = performance.now(); sample(); }); }
+      else if (!trail) trail = window.setTimeout(() => { trail = 0; schedule(); }, 100);
+    };
+    schedule();
+    const early = window.setTimeout(schedule, 120);
+    const late = window.setTimeout(schedule, 450);
+    const mid = window.setTimeout(schedule, 1200);
+    const later = window.setTimeout(schedule, 2600);
+    window.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule);
+    return () => {
+      window.removeEventListener('scroll', schedule);
+      window.removeEventListener('resize', schedule);
+      window.clearTimeout(early); window.clearTimeout(late); window.clearTimeout(mid); window.clearTimeout(later); window.clearTimeout(trail);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [activeTab]);
+
   useEffect(() => {
     if (!isProfileOpen) return;
     const handleClickOutside = (e: MouseEvent) => {
@@ -1185,12 +1256,12 @@ export const Header: React.FC<HeaderProps> = ({
   );
   const examShort = selectedExamTitle ? selectedExamTitle.replace(/\s*\(.*?\)\s*/g, ' ').replace(/Combined Graduate Level|Civil Services Examination|Probationary Officer/g, '').replace(/\s+/g, ' ').trim() : 'My Exam';
   return (
-    <header className="topbar" data-scrolled={scrolled ? 'true' : 'false'}>
+    <header ref={barRef} className="topbar" data-scrolled={scrolled ? 'true' : 'false'} data-surface={surface.dark ? 'dark' : 'light'} style={{ ['--bar-rgb' as any]: surface.rgb }}>
       <div className="brand" onClick={() => setActiveTab('FINDER')} style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', textDecoration: 'none' }}>
         <div className="brand-word">
-          <span style={{ color: '#1d4ed8' }}>Gov</span><span style={{ color: '#c0480a' }}>OS</span>
+          <span className="brand-gov">Gov</span><span className="brand-os">OS</span>
         </div>
-        <span style={{ fontSize: '0.62rem', fontWeight: 600, color: '#63738a', letterSpacing: '0.01em', marginTop: '1px' }}>
+        <span className="brand-tag" style={{ fontSize: '0.62rem', fontWeight: 600, letterSpacing: '0.01em', marginTop: '1px' }}>
           Exams Today. A Better Tomorrow.
         </span>
       </div>
@@ -1493,48 +1564,64 @@ export const MyExams: React.FC<MyExamsProps> = ({ exams = ALL_EXAMS, trackedExam
     return exam.dates.filter(d => d.status !== 'SUPERSEDED' && new Date(d.dateTimeStr.replace(' ', 'T')).getTime() >= now)
       .sort((a, b) => a.dateTimeStr.localeCompare(b.dateTimeStr))[0];
   };
+  const trackedCount = mine.filter(e => trackedExamIds.includes(e.id)).length;
   return (
-    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-      <div className="glass-card" style={{ padding: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
-        <div>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>My Exams</h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: '4px 0 0' }}>The exams you track or bookmarked, and the one you last opened. Each opens its own workspace.</p>
-        </div>
-        <button className="btn btn-primary" onClick={onFindExams}><Compass size={16} /> Find more exams</button>
-      </div>
+    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+      <PageStage
+        eyebrow="My Exams"
+        colour="yellow"
+        title={<>Your exams, <span className="accent-serif">one shelf</span>.</>}
+        lede="The exams you track or bookmarked, and the one you last opened. Each opens its own workspace — nothing from one reaches another."
+        actions={<button className="btn stage-cta" onClick={onFindExams}><Compass size={17} /> Find more exams</button>}
+        stats={mine.length > 0 ? [
+          { label: 'On this shelf', value: mine.length },
+          { label: 'Tracking', value: trackedCount },
+          { label: 'Bookmarked', value: mine.filter(e => bookmarked.includes(e.id)).length }
+        ] : undefined}
+      />
       {mine.length === 0 ? (
-        <div className="glass-card" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-          Nothing here yet. Track an exam from the Exam Finder and it appears on this shelf.
+        <div className="empty-stage">
+          <div className="empty-stage-mark" aria-hidden="true"><Bookmark size={26} /></div>
+          <h3>Nothing on your shelf yet</h3>
+          <p>Track an exam from the Exam Finder, or bookmark one from its workspace, and it appears here.</p>
+          <button className="btn btn-primary" onClick={onFindExams}><Compass size={16} /> Find an exam</button>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(300px, 100%), 1fr))', gap: '16px' }}>
-          {mine.map(exam => {
+        <div className="shelf-grid">
+          {mine.map((exam, i) => {
             const tracked = trackedExamIds.includes(exam.id);
             const next = nextDate(exam);
+            const countdown = nextMilestoneOf(exam);
             return (
-              <div key={exam.id} className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                  <div className="exam-logo" style={{ width: '44px', height: '44px', fontSize: '0.72rem' }}>{examInitials(exam)}</div>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.2 }}>{exam.title}</div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{exam.authorityName}</div>
-                  </div>
+              <article key={exam.id} className={`shelf-pass pass-${passToneOf(exam.authorityName)}`} style={{ ['--pi' as any]: i }} data-reveal>
+                <div className="shelf-pass-top">
+                  <span className="pass-kicker">{exam.authorityName}</span>
+                  <span className="shelf-pass-flags">
+                    {exam.id === currentExamId && <span className="shelf-flag">Last opened</span>}
+                    {tracked && <span className="shelf-flag shelf-flag-on"><Bell size={11} /> Tracking</span>}
+                    {bookmarked.includes(exam.id) && <span className="shelf-flag"><Bookmark size={11} /> Saved</span>}
+                  </span>
                 </div>
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                  {exam.id === currentExamId && <span className="badge badge-demo" style={{ fontSize: '0.6rem' }}>Last opened</span>}
-                  {tracked && <span className="badge badge-verified" style={{ fontSize: '0.6rem' }}>Tracking active</span>}
-                  {bookmarked.includes(exam.id) && <span className="badge badge-changed" style={{ fontSize: '0.6rem' }}>Bookmarked</span>}
+                <div className="shelf-pass-code">{examDisplayCode(exam)}</div>
+                <div className="pass-sub">{exam.title}</div>
+                <span className="pass-perf" aria-hidden="true" />
+                <div className="shelf-pass-next">
+                  {next ? (
+                    <>
+                      <span className="pass-next-label">Next · {next.label}</span>
+                      <span className="pass-next-when">
+                        {countdown && countdown.days !== null ? <><strong>{countdown.days}</strong> {countdown.days === 1 ? 'day' : 'days'} · {shownWhen(next)}</> : shownWhen(next)}
+                      </span>
+                    </>
+                  ) : <span className="pass-next-label">No upcoming date on record.</span>}
                 </div>
-                <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                  {next ? <>Next: <strong style={{ color: 'var(--text-primary)' }}>{next.label}</strong> · {shownWhen(next)}</> : 'No upcoming date on record.'}
-                </div>
-                <div style={{ display: 'flex', gap: '8px', marginTop: 'auto' }}>
-                  <button className="btn btn-primary" style={{ fontSize: '0.85rem', padding: '8px 14px' }} onClick={() => onSelectExam(exam)}>Open workspace <ChevronRight size={14} /></button>
-                  <button className={`btn ${tracked ? 'btn-emerald' : 'btn-secondary'}`} style={{ fontSize: '0.85rem', padding: '8px 14px' }} onClick={() => onToggleTrackExam(exam.id)}>
+                <div className="shelf-pass-actions">
+                  <button className="btn stage-cta" onClick={() => onSelectExam(exam)}>Open workspace <ArrowRight size={15} /></button>
+                  <button className={`btn stage-ghost${tracked ? ' is-on' : ''}`} onClick={() => onToggleTrackExam(exam.id)} aria-pressed={tracked}>
                     {tracked ? <><Check size={14} /> Tracking</> : <><Bell size={14} /> Track</>}
                   </button>
                 </div>
-              </div>
+              </article>
             );
           })}
         </div>
@@ -1829,156 +1916,40 @@ export const ChapterHeader: React.FC<{ index: string; eyebrow: string; title: Re
   </header>
 );
 
-interface CinematicHeroProps {
-  exams: Exam[];
-  searchQuery: string;
-  onSearch: (value: string) => void;
-  onFind: () => void;
-  onExplore: () => void;
-  onOpenExam: (exam: Exam) => void;
-}
-
-/** The home's opening stage: the promise in large type, the search, and -- floating over GovOS's illustration --
- *  the next milestones the register actually holds, each one clickable into its exam. */
-export const CinematicHero: React.FC<CinematicHeroProps> = ({ exams, searchQuery, onSearch, onFind, onExplore, onOpenExam }) => {
-  const stageRef = useRef<HTMLElement>(null);
-  usePointerDepth(stageRef);
-  const now = Date.now();
-  const milestones = exams
-    .map(exam => ({ exam, next: nextMilestoneOf(exam, now) }))
-    .filter((m): m is { exam: Exam; next: NonNullable<ReturnType<typeof nextMilestoneOf>> } => !!m.next)
-    .sort((a, b) => (a.next.days ?? 9999) - (b.next.days ?? 9999))
-    .slice(0, 3);
-  const officialMilestones = exams.reduce((n, e) => n + e.dates.filter(d => d.status !== 'SUPERSEDED').length, 0);
-  const authorities = new Set(exams.map(e => e.authorityName)).size;
-  return (
-    <section className="cine-hero" ref={stageRef} aria-labelledby="cine-hero-title">
-      <div className="cine-grid" aria-hidden="true" />
-      <div className="cine-glow" aria-hidden="true" />
-
-      <div className="cine-copy">
-        <div className="cine-eyebrow hero-in" style={{ ['--hi' as any]: 0 }}>
-          <span className="cine-dot" /> India's exam &amp; career navigation
-        </div>
-        <h1 id="cine-hero-title" className="hero-title cine-title">
-          <SplitWords text="Government exams." />
-          <br />
-          <span className="split-word accent-serif" aria-hidden="true" style={{ ['--wi' as any]: 2 }}>Simplified</span>
-          <span className="sr-only">Simplified</span>{' '}
-          <SplitWords text="for you." start={3} />
-        </h1>
-        <p className="cine-lede hero-in" style={{ ['--hi' as any]: 1 }}>
-          Find exams, get reliable information, prepare smarter, and never miss an important date — every fact traced to the authority that published it.
-        </p>
-
-        <div className="cine-search hero-in" style={{ ['--hi' as any]: 2 }}>
-          <Search size={20} aria-hidden="true" />
-          <input
-            type="text"
-            aria-label="Search exams"
-            placeholder="Search exams — SSC CGL, UPSC, IBPS…"
-            value={searchQuery}
-            onChange={e => onSearch(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') onFind(); }}
-          />
-          <button className="cine-search-go" onClick={onFind} aria-label="Search"><ArrowRight size={18} /></button>
-        </div>
-
-        <div className="cine-chips hero-in" style={{ ['--hi' as any]: 3 }}>
-          <span>Popular</span>
-          {['SSC CGL', 'UPSC CSE', 'RRB NTPC', 'IBPS PO', 'State PSC'].map(name => (
-            <button key={name} className="chip cine-chip" onClick={() => onSearch(name)}>{name}</button>
-          ))}
-        </div>
-
-        <div className="cine-actions hero-in" style={{ ['--hi' as any]: 4 }}>
-          <button className="btn cine-cta" onClick={onFind}>
-            <JiggleLabel text="Find My Exam" /> <ArrowRight size={18} />
-          </button>
-          <button className="btn cine-ghost" onClick={onExplore}>
-            <Compass size={17} /> Explore Exams
-          </button>
-        </div>
+/** The opening of every top-level page (Compare, My Timeline, Ask AI, My Exams, Trust Panel): a dark stage with
+ *  an eyebrow, a display title, one lede and the page's own actions. Presentation only -- each page passes the
+ *  buttons and figures it already had. */
+export const PageStage: React.FC<{
+  eyebrow: string;
+  title: React.ReactNode;
+  lede?: React.ReactNode;
+  icon?: React.ReactNode;
+  actions?: React.ReactNode;
+  stats?: { label: string; value: React.ReactNode }[];
+  children?: React.ReactNode;
+  /** The field's colour; each top-level page keeps its own. */
+  colour?: 'yellow' | 'pink' | 'cyan' | 'periwinkle' | 'green';
+}> = ({ eyebrow, title, lede, icon, actions, stats, children, colour = 'yellow' }) => (
+  <section className={`page-stage stage-${colour}`}>
+    <ClubWaves className="stage-waves" />
+    <div className="page-stage-row">
+      <div className="page-stage-copy">
+        <div className="page-stage-eyebrow">{icon ? <span className="page-stage-icon" aria-hidden="true">{icon}</span> : <span className="cine-dot" />}{eyebrow}</div>
+        <h1 className="page-stage-title">{title}</h1>
+        {lede && <p className="page-stage-lede">{lede}</p>}
       </div>
-
-      <div className="cine-visual" aria-hidden="false">
-        <figure className="cine-window">
-          <img src={heroIllustration} alt="An aspirant looking out over a government building at sunrise" />
-        </figure>
-        {milestones.map((m, i) => (
-          <button
-            key={m.exam.id}
-            className={`cine-milestone cine-milestone-${i}`}
-            style={{ ['--mi' as any]: i }}
-            onClick={() => onOpenExam(m.exam)}
-            title={`Open ${m.exam.title}`}
-          >
-            <span className="cine-milestone-code">{examDisplayCode(m.exam)}</span>
-            <span className="cine-milestone-label">{m.next.label}</span>
-            <span className="cine-milestone-when">
-              {m.next.days !== null ? <><strong>{m.next.days}</strong> {m.next.days === 1 ? 'day' : 'days'} · {m.next.when}</> : m.next.when}
-            </span>
-          </button>
-        ))}
-      </div>
-
-      <dl className="cine-stats hero-in" style={{ ['--hi' as any]: 5 }}>
-        <div><dt>Exams in the register</dt><dd>{exams.length}</dd></div>
-        <div><dt>Authorities</dt><dd>{authorities}</dd></div>
-        <div><dt>Milestones on record</dt><dd>{officialMilestones}</dd></div>
-      </dl>
-    </section>
-  );
-};
-
-interface ExamPassItem { name: string; sub: string; exam?: Exam; onClick: () => void }
-
-/** The exams as passes: the code set large, the authority, and the next milestone its own record states.
- *  A pass whose exam GovOS does not hold says so and searches instead. */
-export const ExamPassRail: React.FC<{ items: ExamPassItem[] }> = ({ items }) => {
-  const now = Date.now();
-  return (
-    <div className="pass-rail">
-      {items.map((item, i) => {
-        const next = item.exam ? nextMilestoneOf(item.exam, now) : null;
-        const tone = passToneOf(item.exam?.authorityName || item.name);
-        return (
-          <button
-            key={item.name}
-            className={`popular-exam-card pass pass-${tone}${item.exam ? '' : ' pass-missing'}`}
-            style={{ ['--pi' as any]: i }}
-            onClick={item.onClick}
-            onPointerMove={e => {
-              if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
-              const r = e.currentTarget.getBoundingClientRect();
-              e.currentTarget.style.setProperty('--tx', (((e.clientX - r.left) / r.width) * 2 - 1).toFixed(3));
-              e.currentTarget.style.setProperty('--ty', (((e.clientY - r.top) / r.height) * 2 - 1).toFixed(3));
-            }}
-            onPointerLeave={e => { e.currentTarget.style.setProperty('--tx', '0'); e.currentTarget.style.setProperty('--ty', '0'); }}
-          >
-            <span className="pass-top">
-              <span className="pass-kicker">{item.exam ? item.exam.authorityName.match(/\(([^)]+)\)/)?.[1] || 'Exam' : 'Not in GovOS yet'}</span>
-              <ArrowUpRight size={18} className="pass-arrow" />
-            </span>
-            <span className="pass-code">{item.name}</span>
-            <span className="pass-sub">{item.sub}</span>
-            <span className="pass-perf" aria-hidden="true" />
-            <span className="pass-foot">
-              {item.exam
-                ? next
-                  ? <>
-                      <span className="pass-next-label">Next · {next.label}</span>
-                      <span className="pass-next-when">{next.days !== null ? <><strong>{next.days}</strong> {next.days === 1 ? 'day' : 'days'}</> : next.when}</span>
-                    </>
-                  : <span className="pass-next-label">No upcoming milestone on record</span>
-                : <span className="pass-next-label">Search GovOS for it →</span>}
-            </span>
-          </button>
-        );
-      })}
+      {actions && <div className="page-stage-actions">{actions}</div>}
     </div>
-  );
-};
+    {stats && stats.length > 0 && (
+      <dl className="page-stage-stats">
+        {stats.map(s => <div key={s.label}><dt>{s.label}</dt><dd>{s.value}</dd></div>)}
+      </dl>
+    )}
+    {children && <div className="page-stage-foot">{children}</div>}
+  </section>
+);
+
+interface ExamPassItem { name: string; sub: string; exam?: Exam; onClick: () => void; sketch?: AuthoritySketch }
 
 interface JourneyStep { verb: string; title: string; text: string; action?: { label: string; run: () => void } }
 
@@ -1987,7 +1958,7 @@ interface JourneyStep { verb: string; title: string; text: string; action?: { la
 export const JourneyStory: React.FC<{ steps: JourneyStep[] }> = ({ steps }) => (
   <section className="journey" aria-label="How GovOS works">
     <div className="journey-sticky">
-      <div className="chapter-eyebrow"><span className="chapter-index">03</span>How GovOS works</div>
+      <div className="chapter-eyebrow"><span className="chapter-index">02</span>How GovOS works</div>
       <h2 className="journey-title">From the first <span className="accent-serif">notification</span> to the final list.</h2>
       <p className="chapter-sub">One path, seven steps. Each one is a part of every exam's workspace.</p>
     </div>
@@ -2023,6 +1994,811 @@ export const PullQuote: React.FC<{ text: string }> = ({ text }) => (
       ))}
     </blockquote>
   </figure>
+);
+
+// =============================================================================================
+// The club composition (presentation only): flat colour fields, wavy grounds, stacked display type and
+// handwritten asides. Every figure is read from the exam records; every button calls a handler the page owned.
+// =============================================================================================
+
+/** GovOS's own mark: a ring and a bold G with a tick for its crossbar. Drawn here; no outside asset. */
+export const GovOSMark: React.FC<{ size?: number }> = ({ size = 56 }) => (
+  <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden="true">
+    <circle cx="32" cy="32" r="29" fill="none" stroke="currentColor" strokeWidth="4" />
+    <path d="M44 22.5A14 14 0 1 0 46 34H33" fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M33 34l4.5 4.5L46 28" fill="none" stroke="currentColor" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+/** The first-visit intro: a violet field, the mark pops in and out, then a violet ribbon sweeps off the page.
+ *  Once per session, never under reduced motion, and it removes itself whatever happens. */
+export const ClubIntro: React.FC = () => {
+  const [show, setShow] = useState<boolean>(() => {
+    try { return !prefersReducedMotion() && !sessionStorage.getItem('govos_intro_seen'); } catch { return false; }
+  });
+  useEffect(() => {
+    if (!show) return;
+    try { sessionStorage.setItem('govos_intro_seen', '1'); } catch { /* private mode: plays again next time */ }
+    const html = document.documentElement;
+    html.classList.add('intro-run');
+    const done = window.setTimeout(() => setShow(false), 2300);
+    const settle = window.setTimeout(() => html.classList.remove('intro-run'), 4200);
+    return () => { window.clearTimeout(done); window.clearTimeout(settle); };
+  }, [show]);
+  if (!show) return null;
+  return (
+    <div className="club-intro" aria-hidden="true">
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+        <path className="club-intro-ribbon" pathLength={100} d="M -30 70 C 0 -10, 25 120, 50 50 S 85 -20, 130 40" />
+      </svg>
+      <span className="club-intro-logo"><GovOSMark size={92} /></span>
+    </div>
+  );
+};
+
+/** Between top-level views: a ribbon that already covers the screen when the new view is painted, and sweeps
+ *  off it. Set before paint (layout effect), so the swap itself is never seen; never under reduced motion. */
+export const PageWipe: React.FC<{ token: string }> = ({ token }) => {
+  const prev = useRef(token);
+  const [run, setRun] = useState(0);
+  useLayoutEffect(() => {
+    if (prev.current === token) return;
+    prev.current = token;
+    if (prefersReducedMotion()) return;
+    setRun(n => n + 1);
+  }, [token]);
+  useEffect(() => {
+    if (!run) return;
+    const t = window.setTimeout(() => setRun(0), 950);
+    return () => window.clearTimeout(t);
+  }, [run]);
+  if (!run) return null;
+  return (
+    <div className="page-wipe" key={run} aria-hidden="true">
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+        <path className="page-wipe-ribbon" pathLength={100} d="M -30 30 C 10 110, 40 -20, 60 60 S 95 110, 130 50" />
+      </svg>
+    </div>
+  );
+};
+
+/** Hand-lettered aside whose letters drop in one by one. */
+export const Handwritten: React.FC<{ text: string; className?: string }> = ({ text, className }) => {
+  let ci = 0;
+  return (
+    <span className={`handwritten ${className || ''}`}>
+      <span className="sr-only">{text}</span>
+      {text.split(' ').map((word, w) => (
+        <React.Fragment key={w}>
+          <span className="hw-word" aria-hidden="true">
+            {Array.from(word).map((c, i) => <span key={i} className="hw-char" style={{ ['--ci' as any]: ci++ }}>{c}</span>)}
+          </span>
+          {w < text.split(' ').length - 1 ? ' ' : ''}
+        </React.Fragment>
+      ))}
+    </span>
+  );
+};
+
+/** Layered wavy ground for a colour field (three bands, drawn here). */
+const ClubWaves: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={`club-waves ${className || ''}`} viewBox="0 0 1440 360" preserveAspectRatio="none" aria-hidden="true">
+    <g className="g1"><path className="w1" d="M0 170 C 140 90, 260 60, 360 150 S 560 300, 720 190 S 980 40, 1120 150 S 1340 260, 1440 180 L1440 400 L0 400 Z" /></g>
+    <g className="g2"><path className="w2" d="M0 250 C 160 170, 300 200, 420 250 S 640 330, 760 260 S 1000 140, 1160 230 S 1380 320, 1440 280 L1440 400 L0 400 Z" /></g>
+    <g className="g3"><path className="w3" d="M0 310 C 200 270, 330 300, 520 320 S 840 280, 980 310 S 1300 350, 1440 320 L1440 400 L0 400 Z" /></g>
+  </svg>
+);
+
+/** The journey, happening: a candidate walks the road to the gate of a government building at dawn, and each
+ *  moment every recruitment has — Discover, Apply, Exam, Result — lights up as he reaches it, while the camera
+ *  eases forward and the road fills in under his feet. One clock drives all of it (walk, camera, road, milestones),
+ *  so nothing can drift out of step; it runs only while the hero is on screen, and under reduced motion the
+ *  finished journey is shown, still. Drawn here; every colour comes from the hero palette. */
+const JOURNEY_STAGES = ['Discover', 'Apply', 'Exam', 'Result'];
+const ROAD_D = 'M40 548 C 130 516, 120 478, 222 467 S 332 444, 330 414';
+// Where each milestone stands (share of the road's length) and its post on the roadside (the road's left-hand
+// normal, 24 units out) — measured from the path. He stops a step short of each post, so he never covers its label.
+const MILESTONE_AT = [0.10, 0.40, 0.68, 0.98];
+const JOURNEY_STOPS = [0.03, 0.355, 0.635, 0.935];
+const MILESTONE_POSTS = [{ x: 61, y: 513 }, { x: 148, y: 460 }, { x: 246, y: 440 }, { x: 306, y: 421 }];
+const CAMERA_ORIGIN = { x: 330, y: 430 };
+const LOOP_S = 17;
+// [start, end, from stop, to stop] of each walk, in seconds of the loop; arrival lights the next milestone.
+const WALKS: [number, number, number, number][] = [[1.6, 4.8, 0, 1], [6.0, 9.2, 1, 2], [10.4, 13.6, 2, 3]];
+const easeInOut = (t: number) => 0.5 - Math.cos(Math.PI * Math.min(1, Math.max(0, t))) / 2;
+
+/** The moment of the loop: where he is on the road, how far the camera has come, which milestones are lit. */
+function journeyAt(t: number): { f: number; stage: number; walking: boolean; camera: number; fade: number } {
+  if (t < 0.5) return { f: JOURNEY_STOPS[0], stage: -1, walking: false, camera: 1, fade: Math.min(1, t / 0.5) };
+  let f = JOURNEY_STOPS[0], stage = 0, walking = false;
+  for (const [a, b, from, to] of WALKS) {
+    if (t >= b) { f = JOURNEY_STOPS[to]; stage = to; continue; }
+    if (t > a) { f = JOURNEY_STOPS[from] + (JOURNEY_STOPS[to] - JOURNEY_STOPS[from]) * easeInOut((t - a) / (b - a)); walking = true; }
+    break;
+  }
+  // the camera pushes in a little with each step of the journey, and settles back as the loop closes
+  const target = 1 + 0.045 * Math.max(0, stage) + (walking ? 0.015 : 0);
+  const close = t > LOOP_S - 1.2 ? easeInOut((t - (LOOP_S - 1.2)) / 1.2) : 0;
+  const camera = target + (1 - target) * close;
+  const fade = t > LOOP_S - 0.9 ? 1 - easeInOut((t - (LOOP_S - 0.9)) / 0.9) : 1;
+  return { f, stage, walking, camera, fade };
+}
+
+/** The candidate: a boy with a backpack and the notice under his arm, facing the gate. Feet at (0, 0). */
+const SkyWalker: React.FC = () => (
+  <g className="boy">
+    <ellipse cx="0" cy="1" rx="11" ry="2.6" fill="rgba(0, 0, 0, 0.35)" />
+    <g className="boy-leg boy-leg-back"><rect x="-4" y="-31" width="7" height="29" rx="3.2" fill="#2f4c7e" /><rect x="-5" y="-4" width="12" height="5" rx="2.5" fill="#0b1633" /></g>
+    <g className="boy-leg boy-leg-front"><rect x="-3" y="-31" width="7" height="29" rx="3.2" fill="#3d5f94" /><rect x="-4" y="-4" width="12" height="5" rx="2.5" fill="#14213d" /></g>
+    <g className="boy-body">
+      <rect x="-18" y="-57" width="12" height="23" rx="4.5" fill="#3b82f6" />
+      <rect x="-16" y="-50" width="8" height="4" rx="2" fill="#f4b942" />
+      <rect x="-9" y="-58" width="18" height="29" rx="7" fill="#e8eef5" />
+      <path d="M-6 -57 L3 -42" stroke="#3b82f6" strokeWidth="2.6" strokeLinecap="round" />
+      <g className="boy-arm">
+        <rect x="-1" y="-55" width="6" height="21" rx="3" fill="#d5deea" />
+        <circle cx="2" cy="-34" r="3.2" fill="#c98b5a" />
+        <rect x="4" y="-44" width="10" height="12" rx="1.6" fill="#ffffff" stroke="#f4b942" strokeWidth="1.3" />
+      </g>
+      <circle cx="1" cy="-66" r="8.5" fill="#c98b5a" />
+      <path d="M-7.5 -67 Q-7 -77 2 -76.5 Q11 -76 9.5 -67 Q6 -71.5 0 -70.5 Q-4 -70 -7.5 -67 Z" fill="#0b1633" />
+      <circle cx="6.2" cy="-66" r="1.1" fill="#0b1633" />
+    </g>
+  </g>
+);
+
+const ClubSkyline: React.FC<{ live?: boolean }> = ({ live = true }) => {
+  const [moving] = useState(() => !prefersReducedMotion());
+  // Under reduced motion the journey is shown complete: every milestone lit, the road walked, him at the gate.
+  const [stage, setStage] = useState(moving ? -1 : 3);
+  const [walking, setWalking] = useState(false);
+  const roadRef = useRef<SVGPathElement>(null);
+  const travelledRef = useRef<SVGPathElement>(null);
+  const walkerRef = useRef<SVGGElement>(null);
+  const cameraRef = useRef<SVGGElement>(null);
+  const clock = useRef({ elapsed: 0, last: 0, started: false });
+
+  const place = (f: number, camera: number, fade: number) => {
+    const road = roadRef.current, walker = walkerRef.current;
+    if (!road || !walker) return;
+    const p = road.getPointAtLength(f * road.getTotalLength());
+    const scale = 0.96 - 0.44 * f; // nearer is larger
+    walker.setAttribute('transform', `translate(${p.x.toFixed(2)} ${p.y.toFixed(2)}) scale(${scale.toFixed(3)})`);
+    walker.style.opacity = fade.toFixed(3);
+    travelledRef.current?.style.setProperty('stroke-dashoffset', (1 - f).toFixed(4));
+    cameraRef.current?.setAttribute('transform',
+      `translate(${CAMERA_ORIGIN.x} ${CAMERA_ORIGIN.y}) scale(${camera.toFixed(4)}) translate(${-CAMERA_ORIGIN.x} ${-CAMERA_ORIGIN.y})`);
+  };
+
+  // reduced motion (or before the first frame): the finished journey / the starting line, placed once
+  useLayoutEffect(() => {
+    if (moving) place(JOURNEY_STOPS[0], 1, 1); else place(JOURNEY_STOPS[3], 1, 1);
+  }, [moving]);
+
+  useEffect(() => {
+    if (!moving || !live) return;
+    let raf = 0;
+    const lead = document.documentElement.classList.contains('intro-run') ? 2.6 : 1.5; // after the scene has risen
+    const tick = (now: number) => {
+      const c = clock.current;
+      if (c.last) c.elapsed += Math.min(0.1, (now - c.last) / 1000); // a background tab does not jump the story
+      c.last = now;
+      if (!c.started) { if (c.elapsed < lead) { raf = requestAnimationFrame(tick); return; } c.started = true; c.elapsed = 0; }
+      const t = c.elapsed % LOOP_S;
+      const j = journeyAt(t);
+      place(j.f, j.camera, j.fade);
+      setStage(prev => (prev === j.stage ? prev : j.stage));
+      setWalking(prev => (prev === j.walking ? prev : j.walking));
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => { cancelAnimationFrame(raf); clock.current.last = 0; };
+  }, [moving, live]);
+
+  return (
+  <div className="sky-scene" aria-hidden="true" data-stage={stage} data-walking={walking ? 'true' : 'false'}>
+    <svg viewBox="0 0 600 560" preserveAspectRatio="xMidYMax meet">
+      <defs>
+        <radialGradient id="skySun" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#fff3cf" />
+          <stop offset="50%" stopColor="#f8cd6a" />
+          <stop offset="100%" stopColor="#f4b942" />
+        </radialGradient>
+        <radialGradient id="skyGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#f4b942" stopOpacity="0.45" />
+          <stop offset="100%" stopColor="#f4b942" stopOpacity="0" />
+        </radialGradient>
+        <radialGradient id="skyPinGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#f4b942" stopOpacity="0.85" />
+          <stop offset="100%" stopColor="#f4b942" stopOpacity="0" />
+        </radialGradient>
+        <linearGradient id="skyStone" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#16244f" />
+          <stop offset="100%" stopColor="#101b3d" />
+        </linearGradient>
+        <linearGradient id="skyLawn" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#1d4675" />
+          <stop offset="100%" stopColor="#173b68" />
+        </linearGradient>
+      </defs>
+
+      <g ref={cameraRef}>
+        {/* the sun, rising behind the dome */}
+        <g className="sky-depth" style={{ ['--d' as any]: 4 }}>
+          <g className="sky-sun">
+            <circle cx="330" cy="250" r="190" fill="url(#skyGlow)" />
+            <circle cx="330" cy="250" r="96" fill="url(#skySun)" />
+          </g>
+        </g>
+
+        {/* a far city, faint */}
+        <g className="sky-depth" style={{ ['--d' as any]: 7 }}>
+          <g className="sky-far">
+            <path d="M150 430 L150 352 L520 352 L520 326 L532 304 L544 326 L544 352 L560 352 L560 430 Z" fill="#245b86" opacity="0.4" />
+          </g>
+        </g>
+
+        {/* the gate arch */}
+        <g className="sky-depth" style={{ ['--d' as any]: 11 }}>
+          <g className="sky-rise" style={{ ['--ri' as any]: 0 }}>
+            <path fill="url(#skyStone)" d="M60 410 L60 292 L54 292 L54 278 L176 278 L176 292 L170 292 L170 410 L136 410 L136 352 Q115 318 94 352 L94 410 Z" />
+            <rect x="70" y="264" width="90" height="14" rx="3" fill="#101b3d" />
+            <rect x="96" y="252" width="38" height="12" rx="3" fill="#101b3d" />
+            <path className="sky-rim" d="M94 352 Q115 318 136 352" fill="none" stroke="#f4b942" strokeWidth="2" />
+          </g>
+        </g>
+
+        {/* the domed building, backlit */}
+        <g className="sky-depth" style={{ ['--d' as any]: 14 }}>
+          <g className="sky-rise" style={{ ['--ri' as any]: 1 }}>
+            <rect x="196" y="338" width="268" height="74" rx="4" fill="url(#skyStone)" />
+            <rect x="190" y="330" width="280" height="12" rx="3" fill="#101b3d" />
+            {Array.from({ length: 13 }).map((_, i) => (
+              <rect key={i} x={208 + i * 19.5} y="346" width="5" height="58" rx="2" fill="#22356b" />
+            ))}
+            {[218, 256, 294, 366, 404, 442].map((x, i) => (
+              <rect key={x} className="sky-window" style={{ ['--wi' as any]: i }} x={x} y="358" width="10" height="16" rx="2" />
+            ))}
+            <path d="M214 330 Q232 300 250 330 Z" fill="#101b3d" />
+            <path d="M410 330 Q428 300 446 330 Z" fill="#101b3d" />
+            <rect x="230" y="292" width="4" height="10" fill="#101b3d" />
+            <rect x="426" y="292" width="4" height="10" fill="#101b3d" />
+            <rect x="282" y="268" width="96" height="62" rx="4" fill="url(#skyStone)" />
+            {Array.from({ length: 6 }).map((_, i) => (
+              <rect key={i} x={290 + i * 15} y="276" width="5" height="46" rx="2" fill="#22356b" />
+            ))}
+            <path d="M268 272 Q330 166 392 272 Z" fill="#101b3d" />
+            <path className="sky-rim sky-dome-rim" d="M268 272 Q330 166 392 272" fill="none" stroke="#f4b942" strokeWidth="2.5" />
+            <path d="M300 412 L360 412 L370 420 L290 420 Z" fill="#22356b" />
+          </g>
+        </g>
+
+        {/* the flag on the dome: a finial on the dome's apex (y 219), the pole rising from it, the tricolour at 3:2
+            with a 24-spoke Ashoka Chakra (diameter three quarters of the white band), in the flag's own colours */}
+        <g className="sky-depth" style={{ ['--d' as any]: 14 }}>
+          <g className="sky-rise" style={{ ['--ri' as any]: 1 }}>
+            <rect x="323" y="207" width="14" height="13" rx="2" fill="#101b3d" />
+            <path className="sky-rim" d="M323 207 L337 207" stroke="#f4b942" strokeWidth="1.5" />
+            <circle cx="330" cy="202" r="5" fill="#101b3d" stroke="#f4b942" strokeOpacity="0.8" strokeWidth="1.2" />
+            <rect x="328.6" y="104" width="2.8" height="96" rx="1.2" fill="#e8eef5" />
+            <circle cx="330" cy="103" r="3" fill="#f4b942" />
+            <g className="sky-flag">
+              <g filter="drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.35))">
+                <rect x="331.4" y="106" width="54" height="12" fill="#ff9933" />
+                <rect x="331.4" y="118" width="54" height="12" fill="#ffffff" />
+                <rect x="331.4" y="130" width="54" height="12" fill="#138808" />
+              </g>
+              <g transform="translate(358.4 124)">
+                <circle r="4.5" fill="none" stroke="#000080" strokeWidth="0.9" />
+                <circle r="0.9" fill="#000080" />
+                {Array.from({ length: 24 }).map((_, i) => {
+                  const a = (i * 15 * Math.PI) / 180;
+                  return <line key={i} x1="0" y1="0" x2={(4.4 * Math.cos(a)).toFixed(2)} y2={(4.4 * Math.sin(a)).toFixed(2)} stroke="#000080" strokeWidth="0.35" />;
+                })}
+              </g>
+            </g>
+          </g>
+        </g>
+
+        {/* birds over the city */}
+        <g className="sky-birds">
+          <path className="sky-bird" d="M0 0 q6 -6 12 0 q6 -6 12 0" fill="none" stroke="#f8d58a" strokeWidth="2" strokeLinecap="round" />
+          <path className="sky-bird sky-bird-2" d="M0 0 q5 -5 10 0 q5 -5 10 0" fill="none" stroke="#f8d58a" strokeWidth="2" strokeLinecap="round" />
+        </g>
+
+        {/* the ground and the road: faint ahead of him, walked behind him */}
+        <g className="sky-depth" style={{ ['--d' as any]: 20 }}>
+          <g className="sky-rise" style={{ ['--ri' as any]: 2 }}>
+            <path d="M-420 560 L-420 452 Q-200 430 80 420 Q200 404 330 412 Q470 400 600 414 Q820 432 1020 452 L1020 560 Z" fill="url(#skyLawn)" />
+            <path ref={roadRef} d={ROAD_D} fill="none" stroke="#e8eef5" strokeOpacity="0.2" strokeWidth="26" strokeLinecap="round" />
+            <path ref={travelledRef} className="sky-road-travelled" pathLength={1} d={ROAD_D} fill="none" stroke="#e8eef5" strokeWidth="26" strokeLinecap="round" />
+            <path className="sky-road-line" pathLength={1} d={ROAD_D} fill="none" stroke="#f4b942" strokeWidth="2.5" strokeDasharray="0.025 0.03" strokeLinecap="round" />
+
+            {/* the milestones, on the roadside */}
+            {MILESTONE_POSTS.map((p, i) => {
+              const k = 1.06 - MILESTONE_AT[i] * 0.3; // further away is smaller
+              const lit = stage >= i;
+              return (
+                <g key={JOURNEY_STAGES[i]} className={`sky-mile${lit ? ' is-lit' : ''}${i === 3 ? ' is-goal' : ''}`} transform={`translate(${p.x} ${p.y}) scale(${k.toFixed(3)})`}>
+                  <circle className="sky-mile-glow" cx="0" cy="-30" r="34" fill="url(#skyPinGlow)" />
+                  <circle className="sky-mile-ring" cx="0" cy="-30" r="16" fill="none" stroke="#f4b942" strokeWidth="2.5" />
+                  <g className="sky-mile-body">
+                    <path d="M0 0 C -11 -14, -15 -22, -15 -30 A 15 15 0 1 1 15 -30 C 15 -22, 11 -14, 0 0 Z" className="sky-mile-pin" stroke="#0b1633" strokeWidth="2.5" />
+                    <circle cx="0" cy="-30" r="6" fill="#0b1633" />
+                    <rect x="-36" y="-76" width="72" height="23" rx="11.5" className="sky-mile-pill" />
+                    <text x="0" y="-60" textAnchor="middle" className="sky-mile-label">{JOURNEY_STAGES[i]}</text>
+                  </g>
+                </g>
+              );
+            })}
+
+            {/* the result, celebrated */}
+            <g className="sky-sparks" transform={`translate(${MILESTONE_POSTS[3].x} ${MILESTONE_POSTS[3].y - 34})`}>
+              {[[-30, -18], [28, -22], [-20, 20], [32, 14], [0, -40], [-40, 2]].map(([x, y], i) => (
+                <path key={i} className="sky-spark" style={{ ['--si' as any]: i }} transform={`translate(${x} ${y})`} d="M0 -6 L1.6 -1.6 L6 0 L1.6 1.6 L0 6 L-1.6 1.6 L-6 0 L-1.6 -1.6 Z" fill="#f4b942" />
+              ))}
+            </g>
+
+            <g ref={walkerRef} className="sky-walker"><SkyWalker /></g>
+          </g>
+        </g>
+      </g>
+    </svg>
+
+    {/* an official notice, its key line marked and tied to its evidence */}
+    <div className="sky-notice">
+      <div className="sky-notice-head"><span className="sky-notice-seal"><GovOSMark size={16} /></span> Official notice</div>
+      <span className="sky-notice-line" />
+      <span className="sky-notice-line short" />
+      <span className="sky-notice-line is-marked"><span className="sky-notice-mark" /></span>
+      <span className="sky-notice-line" />
+      <span className="sky-notice-tag">Evidence ✓</span>
+    </div>
+  </div>
+  );
+};
+
+interface ClubHeroProps {
+  exams: Exam[];
+  searchQuery: string;
+  onSearch: (value: string) => void;
+  onFind: () => void;
+  onExplore: () => void;
+  onOpenExam: (exam: Exam) => void;
+}
+
+/** The home's opening field: three stacked lines, the search, and a guide book with the next milestones the register
+ *  actually holds floating beside it (each opens its exam). */
+export const ClubHero: React.FC<ClubHeroProps> = ({ exams, searchQuery, onSearch, onFind, onExplore, onOpenExam }) => {
+  const stageRef = useRef<HTMLElement>(null);
+  usePointerDepth(stageRef);
+  const [live, setLive] = useState(false);
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver(([entry]) => setLive(entry.isIntersecting), { threshold: 0.05 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  const now = Date.now();
+  const milestones = exams
+    .map(exam => ({ exam, next: nextMilestoneOf(exam, now) }))
+    .filter((m): m is { exam: Exam; next: NonNullable<ReturnType<typeof nextMilestoneOf>> } => !!m.next)
+    .sort((a, b) => (a.next.days ?? 9999) - (b.next.days ?? 9999))
+    .slice(0, 2);
+  const officialMilestones = exams.reduce((n, e) => n + e.dates.filter(d => d.status !== 'SUPERSEDED').length, 0);
+  const authorities = new Set(exams.map(e => e.authorityName)).size;
+  return (
+    <section className="club-hero bleed" ref={stageRef} data-live={live ? 'true' : 'false'} aria-labelledby="club-hero-title">
+      <span className="club-stars" aria-hidden="true" />
+      <span className="club-sun" aria-hidden="true"><span className="club-sun-disc" /></span>
+      <ClubWaves />
+      <div className="club-hero-inner">
+        <div className="club-hero-copy">
+          <h1 id="club-hero-title" className="hero-title club-title">
+            <SplitWords text="Government exams," />
+            <br />
+            <SplitWords text="simplified" start={2} className="club-title-accent" />
+            <br />
+            <SplitWords text="for you." start={3} />
+          </h1>
+          <p className="club-lede club-in" style={{ ['--hi' as any]: 0 }}>
+            Find exams, get reliable information, prepare smarter and never miss a date — every fact traced to the authority that published it.
+          </p>
+          <div className="club-search club-in" style={{ ['--hi' as any]: 1 }}>
+            <Search size={19} aria-hidden="true" />
+            <input
+              type="text"
+              aria-label="Search exams"
+              placeholder="Search SSC CGL, UPSC, IBPS…"
+              value={searchQuery}
+              onChange={e => onSearch(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') onFind(); }}
+            />
+          </div>
+          <div className="club-actions club-in" style={{ ['--hi' as any]: 2 }}>
+            <button className="btn club-cta" onClick={onFind}><JiggleLabel text="Find my exam" /></button>
+            <button className="btn club-ghost" onClick={onExplore}><JiggleLabel text="Explore exams" /></button>
+          </div>
+          <div className="club-chips club-in" style={{ ['--hi' as any]: 3 }}>
+            {['SSC CGL', 'UPSC CSE', 'RRB NTPC', 'IBPS PO', 'State PSC'].map(name => (
+              <button key={name} className="chip club-chip" onClick={() => onSearch(name)}>{name}</button>
+            ))}
+          </div>
+          <dl className="club-figures club-in" style={{ ['--hi' as any]: 4 }}>
+            <div><dt>exams</dt><dd>{exams.length}</dd></div>
+            <div><dt>authorities</dt><dd>{authorities}</dd></div>
+            <div><dt>dates on record</dt><dd>{officialMilestones}</dd></div>
+          </dl>
+        </div>
+
+        <div className="club-hero-visual">
+          <ClubSkyline live={live} />
+          <Handwritten className="club-note" text="every date, from the notice itself" />
+          {milestones.map((m, i) => (
+            <button key={m.exam.id} className={`club-sticker club-sticker-${i}`} onClick={() => onOpenExam(m.exam)} title={`Open ${m.exam.title}`}>
+              <span className="club-sticker-code">{examDisplayCode(m.exam)}</span>
+              <span className="club-sticker-label">{m.next.label}</span>
+              <span className="club-sticker-when">{m.next.days !== null ? <><strong>{m.next.days}</strong> {m.next.days === 1 ? 'day' : 'days'}</> : m.next.when}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+};
+
+const CLUB_TONE: Record<ReturnType<typeof passToneOf>, string> = { ink: 'violet', saffron: 'yellow', jade: 'green', plum: 'pink', tide: 'cyan' };
+
+/** Line-art sketches of each authority's world, drawn here in one ink. They are not the authorities' logos or the
+ *  State Emblem: those are protected marks, and on a non-government site they would read as an endorsement. */
+export type AuthoritySketch = 'selection' | 'civil' | 'banking' | 'state' | 'railway';
+const INK = '#14213d';
+const SKETCH_LINE = { fill: 'none', stroke: INK, strokeWidth: 3, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+const AuthorityArt: React.FC<{ kind: AuthoritySketch }> = ({ kind }) => (
+  <svg viewBox="0 0 180 130" className="deck-art" aria-hidden="true">
+    {kind === 'selection' && (
+      <g>
+        {/* folders behind, the selection clipboard in front, ticks being made */}
+        <path {...SKETCH_LINE} d="M24 46 h30 l8 8 h40 v58 h-78 z" fill="#ffffff" />
+        <path {...SKETCH_LINE} d="M16 56 h30 l8 8 h40 v52 h-78 z" fill={INK} />
+        <rect {...SKETCH_LINE} x="78" y="20" width="62" height="96" rx="7" fill="#ffffff" />
+        <rect x="96" y="12" width="26" height="14" rx="4" fill={INK} />
+        {[40, 62, 84].map((y, i) => (
+          <g key={y}>
+            <rect {...SKETCH_LINE} x="88" y={y} width="12" height="12" rx="2.5" />
+            <path {...SKETCH_LINE} strokeWidth={3.4} d={`M90 ${y + 6} l3.5 4 l7 -9`} className={`deck-tick deck-tick-${i}`} />
+            <path {...SKETCH_LINE} d={`M106 ${y + 6} h${i === 2 ? 18 : 26}`} />
+          </g>
+        ))}
+        <path {...SKETCH_LINE} d="M150 86 l18 -40 l8 4 l-18 40 l-10 6 z" fill="#ffffff" />
+        <path {...SKETCH_LINE} d="M164 50 l8 4" />
+      </g>
+    )}
+    {kind === 'civil' && (
+      <g>
+        {/* a colonnaded building with a pediment and a flag; a briefcase at the steps */}
+        <path {...SKETCH_LINE} d="M90 6 v22" />
+        <path d="M91 7 h22 l-5 6 l5 6 h-22 z" fill={INK} />
+        <path {...SKETCH_LINE} d="M30 44 L90 24 L150 44 Z" fill="#ffffff" />
+        <circle cx="90" cy="37" r="5" fill={INK} />
+        <rect {...SKETCH_LINE} x="28" y="44" width="124" height="9" fill={INK} />
+        {[38, 58, 78, 98, 118, 138].map(x => <rect key={x} {...SKETCH_LINE} x={x - 4} y="53" width="8" height="46" fill="#ffffff" />)}
+        <rect {...SKETCH_LINE} x="24" y="99" width="132" height="8" fill="#ffffff" />
+        <rect {...SKETCH_LINE} x="16" y="107" width="148" height="9" fill={INK} />
+        <rect {...SKETCH_LINE} x="122" y="86" width="30" height="22" rx="4" fill="#ffffff" />
+        <path {...SKETCH_LINE} d="M131 86 v-5 h12 v5 M122 96 h30" />
+      </g>
+    )}
+    {kind === 'banking' && (
+      <g>
+        {/* a bank front, stacked coins and a chart that climbs */}
+        <path {...SKETCH_LINE} d="M14 46 L52 26 L90 46 Z" fill={INK} />
+        <rect {...SKETCH_LINE} x="16" y="46" width="72" height="6" fill="#ffffff" />
+        {[24, 40, 56, 72].map(x => <rect key={x} {...SKETCH_LINE} x={x - 3} y="52" width="6" height="40" />)}
+        <rect {...SKETCH_LINE} x="12" y="92" width="80" height="8" fill="#ffffff" />
+        {[0, 1, 2, 3].map(i => (
+          <g key={i} transform={`translate(0 ${-i * 9})`}>
+            <path {...SKETCH_LINE} d="M104 114 v-9 a18 6 0 0 1 36 0 v9 a18 6 0 0 1 -36 0 z" fill={i % 2 ? INK : '#ffffff'} />
+          </g>
+        ))}
+        <ellipse {...SKETCH_LINE} cx="122" cy="78" rx="18" ry="6" fill="#ffffff" />
+        <text x="122" y="82" textAnchor="middle" className="deck-art-glyph">₹</text>
+        <path {...SKETCH_LINE} d="M128 56 L144 40 L154 48 L172 22" className="deck-chart" />
+        <path {...SKETCH_LINE} d="M162 22 h10 v10" />
+      </g>
+    )}
+    {kind === 'state' && (
+      <g>
+        {/* a secretariat with a clock tower, a pin over it: the state's own commission */}
+        <path {...SKETCH_LINE} d="M90 4 c-9 0 -15 7 -15 15 c0 11 15 22 15 22 s15 -11 15 -22 c0 -8 -6 -15 -15 -15 z" fill={INK} />
+        <circle cx="90" cy="19" r="5" fill="#ffffff" />
+        <rect {...SKETCH_LINE} x="76" y="46" width="28" height="44" fill="#ffffff" />
+        <circle {...SKETCH_LINE} cx="90" cy="60" r="8" />
+        <path {...SKETCH_LINE} d="M90 55 v5 l4 3" />
+        <rect {...SKETCH_LINE} x="22" y="72" width="54" height="40" fill="#ffffff" />
+        <rect {...SKETCH_LINE} x="104" y="72" width="54" height="40" fill="#ffffff" />
+        {[32, 46, 60, 114, 128, 142].map(x => <rect key={x} x={x - 3} y="82" width="7" height="12" rx="1.5" fill={INK} />)}
+        <rect {...SKETCH_LINE} x="70" y="90" width="40" height="22" fill={INK} />
+        <path {...SKETCH_LINE} d="M10 114 h160" />
+      </g>
+    )}
+    {kind === 'railway' && (
+      <g>
+        {/* a locomotive coming down the line */}
+        <path {...SKETCH_LINE} d="M40 22 h100 a14 14 0 0 1 14 14 v62 h-128 v-62 a14 14 0 0 1 14 -14 z" fill="#ffffff" />
+        <rect {...SKETCH_LINE} x="46" y="34" width="88" height="30" rx="6" fill={INK} />
+        <path d="M58 38 l14 22 M80 38 l10 16" stroke="#ffffff" strokeWidth="3" strokeLinecap="round" opacity="0.5" />
+        <circle {...SKETCH_LINE} cx="52" cy="80" r="7" fill="#ffffff" className="deck-lamp" />
+        <circle {...SKETCH_LINE} cx="128" cy="80" r="7" fill="#ffffff" className="deck-lamp" />
+        <rect {...SKETCH_LINE} x="74" y="74" width="32" height="12" rx="3" />
+        <path {...SKETCH_LINE} d="M70 12 h40 v10 h-40 z" fill={INK} />
+        <path {...SKETCH_LINE} d="M26 98 h128 l8 10 h-144 z" fill={INK} />
+        <path {...SKETCH_LINE} d="M6 124 L64 108 M174 124 L116 108 M22 124 h136" />
+      </g>
+    )}
+  </svg>
+);
+
+/** The exams as a fanned deck: overlapping cards in each authority's colour, each with its sketch, the exam set
+ *  large and what its record says. Point at one and it slides out to its full width, lifts and straightens while the
+ *  others tuck under (a CSS flex accordion; keyboard focus does the same). A card whose exam GovOS does not hold says
+ *  so and searches instead. */
+export const ExamPassRail: React.FC<{ items: ExamPassItem[] }> = ({ items }) => {
+  const now = Date.now();
+  return (
+    <div className="deck" role="list">
+      {items.map((item, i) => {
+        const next = item.exam ? nextMilestoneOf(item.exam, now) : null;
+        const colour = item.exam ? CLUB_TONE[passToneOf(item.exam.authorityName)] : 'blank';
+        const tags = item.exam ? [
+          item.exam.stages.length > 0 ? `${item.exam.stages.length} stage${item.exam.stages.length === 1 ? '' : 's'}` : '',
+          item.exam.posts.length > 0 ? `${item.exam.posts.length} post${item.exam.posts.length === 1 ? '' : 's'}` : '',
+          item.exam.minimumQualification === 'GRADUATION' ? 'Graduates' : item.exam.minimumQualification === 'CLASS_12' ? 'Class 12' : item.exam.minimumQualification === 'CLASS_10' ? 'Class 10' : ''
+        ].filter(Boolean) : ['Not in GovOS yet'];
+        const sign = i % 2 === 0 ? -1 : 1;
+        const authority = item.exam ? item.exam.authorityName.match(/\(([^)]+)\)/)?.[1] || item.exam.authorityName : item.sub;
+        return (
+          <div key={item.name} className="deck-slot" role="listitem" style={{ ['--pi' as any]: i }}>
+            <button
+              className={`popular-exam-card deck-card deck-${colour}`}
+              style={{ ['--tilt' as any]: `${(sign * (1.6 + ((i * 0.9) % 1.6))).toFixed(2)}deg`, ['--lift' as any]: `${i % 2 === 0 ? 0 : 14}px` }}
+              onClick={item.onClick}
+            >
+              <span className="deck-kicker">{item.exam ? `by ${authority}` : 'coming to GovOS'}</span>
+              {item.sketch && <AuthorityArt kind={item.sketch} />}
+              <span className="deck-title">{item.name}</span>
+              <span className="deck-sub">{item.sub}</span>
+              <span className="deck-tags">{tags.map(t => <span key={t}>{t}</span>)}</span>
+              <span className="deck-next">
+                {item.exam
+                  ? next
+                    ? <>Next · {next.label} — {next.days !== null ? <strong>{next.days} {next.days === 1 ? 'day' : 'days'}</strong> : next.when}</>
+                    : 'No upcoming milestone on record'
+                  : 'Search GovOS for it →'}
+              </span>
+              <span className="deck-pop" aria-hidden="true">Open <ArrowUpRight size={14} /></span>
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+/** "Choose from": every exam in the register and every career field the records name, stacked large on a bright
+ *  field and moving with the scroll, with small exam covers floating at the edges. An exam line opens that exam;
+ *  a field line filters the browse engine by it. */
+export const ClubCategories: React.FC<{ exams: Exam[]; onOpenExam: (exam: Exam) => void; onField: (field: string) => void; onFind: () => void }> = ({ exams, onOpenExam, onField, onFind }) => {
+  const examLines = exams.map(e => ({ key: e.id, text: examDisplayCode(e), run: () => onOpenExam(e) }));
+  const fieldLines = Array.from(new Set(exams.flatMap(e => e.careerFields || []))).map(f => ({ key: `f-${f}`, text: f, run: () => onField(f) }));
+  const lines: { key: string; text: string; run: () => void }[] = [];
+  for (let i = 0; i < Math.max(examLines.length, fieldLines.length); i++) {
+    if (examLines[i]) lines.push(examLines[i]);
+    if (fieldLines[i]) lines.push(fieldLines[i]);
+  }
+  // A pinned scene: the section is tall, its stage sticks to the screen, and the page's own scroll moves the list one
+  // line at a time — dwelling on each (a smoothstep between lines) with the centre line full size and the rest
+  // dimmed. One read of the section's position per frame, written straight to the DOM (no React render per frame).
+  // Under reduced motion the section is an ordinary block listing every line.
+  const [motion] = useState(() => !prefersReducedMotion());
+  const sectionRef = useRef<HTMLElement>(null);
+  const windowRef = useRef<HTMLDivElement>(null);
+  const reelRef = useRef<HTMLUListElement>(null);
+  useEffect(() => {
+    if (!motion) return;
+    const sec = sectionRef.current, win = windowRef.current, reel = reelRef.current;
+    if (!sec || !win || !reel) return;
+    const items = Array.from(reel.children) as HTMLElement[];
+    if (items.length === 0) return;
+    let centres: number[] = [];
+    let raf = 0;
+    let shown = -1;
+    const measure = () => { centres = items.map(li => li.offsetTop + li.offsetHeight / 2); };
+    const update = () => {
+      raf = 0;
+      const r = sec.getBoundingClientRect();
+      const travel = sec.offsetHeight - window.innerHeight;
+      const p = travel > 0 ? Math.min(1, Math.max(0, -r.top / travel)) : 0;
+      const raw = p * (items.length - 1);
+      const i0 = Math.min(items.length - 1, Math.floor(raw));
+      const f = raw - i0;
+      const eased = f * f * (3 - 2 * f);                  // dwell on each line, glide between them
+      const pos = i0 + eased;
+      const i1 = Math.min(items.length - 1, i0 + 1);
+      const c = centres[i0] + (centres[i1] - centres[i0]) * eased;
+      reel.style.transform = `translate3d(0, ${(win.clientHeight / 2 - c).toFixed(1)}px, 0)`;
+      sec.style.setProperty('--p', p.toFixed(4));
+      items.forEach((li, i) => li.style.setProperty('--d', Math.min(2, Math.abs(i - pos)).toFixed(3)));
+      const active = Math.round(pos);
+      if (active !== shown) { items[shown]?.removeAttribute('data-active'); items[active]?.setAttribute('data-active', ''); shown = active; }
+    };
+    // When the scroll stops between two lines, glide on to the next line in the direction it was going (once it has
+    // gone 15% of the way), else back — so a line is never left half-way and one wheel notch steps one line.
+    let settle = 0;
+    let lastY = window.scrollY;
+    let dir = 0;
+    const settleToLine = () => {
+      settle = 0;
+      const r = sec.getBoundingClientRect();
+      const travel = sec.offsetHeight - window.innerHeight;
+      if (travel <= 0 || r.top > 0 || -r.top >= travel) return;   // only while pinned
+      const raw = (-r.top / travel) * (items.length - 1);
+      const k = dir > 0 ? Math.ceil(raw - 0.15) : dir < 0 ? Math.floor(raw + 0.15) : Math.round(raw);
+      const line = Math.min(items.length - 1, Math.max(0, k));
+      const target = window.scrollY + r.top + (line / (items.length - 1)) * travel;
+      if (Math.abs(target - window.scrollY) > 3) window.scrollTo({ top: target, behavior: 'smooth' });
+    };
+    const schedule = () => {
+      const y = window.scrollY;
+      if (Math.abs(y - lastY) > 0.5) { dir = y > lastY ? 1 : -1; lastY = y; }
+      if (!raf) raf = requestAnimationFrame(update);
+      if (settle) window.clearTimeout(settle);
+      settle = window.setTimeout(settleToLine, 220);
+    };
+    measure(); update();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => { measure(); schedule(); }) : null;
+    ro?.observe(reel);
+    window.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule);
+    document.fonts?.ready.then(() => { measure(); schedule(); });
+    return () => {
+      window.removeEventListener('scroll', schedule);
+      window.removeEventListener('resize', schedule);
+      ro?.disconnect();
+      if (raf) cancelAnimationFrame(raf);
+      if (settle) window.clearTimeout(settle);
+    };
+  }, [motion, lines.length]);
+  return (
+    <section ref={sectionRef} className="club-categories cat-scene bleed" data-motion={motion ? 'on' : 'off'} data-scroll-rate={motion ? '0.55' : undefined}
+      style={{ ['--lines' as any]: lines.length }} aria-label="Exams and career fields in GovOS">
+      <div className="cat-stage">
+        <div className="club-cat-covers" aria-hidden="true">
+          {exams.slice(0, 6).map((e, i) => (
+            <span key={e.id} className={`club-mini club-${CLUB_TONE[passToneOf(e.authorityName)]} club-mini-${i}`}>{examDisplayCode(e)}</span>
+          ))}
+        </div>
+        <Handwritten className="club-cat-eyebrow" text="choose from" />
+        <div className="club-cat-window" ref={windowRef}>
+          <ul className="club-cat-reel" ref={reelRef}>
+            {lines.map(l => (
+              <li key={l.key}>
+                <button className={l.key.startsWith('f-') ? 'is-script' : ''} onClick={l.run}>{l.text}</button>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <p className="club-cat-more">and every exam GovOS reads next.</p>
+        <button className="club-cat-sticker" onClick={onFind}>
+          <span>Not sure where to start?</span>
+          <strong>Find my exam</strong>
+        </button>
+      </div>
+    </section>
+  );
+};
+
+/** A band under a morning sky: the headline in label strips, one line, and the two actions. */
+export const ClubBand: React.FC<{ onEligibility: () => void; onTimeline?: () => void }> = ({ onEligibility, onTimeline }) => (
+  <section className="club-band bleed" aria-labelledby="club-band-title">
+    <div className="club-band-inner">
+      <div className="club-band-copy">
+        <h2 id="club-band-title" className="club-label-title" data-reveal>
+          <span>Think inside</span><br /><span>the notice.</span>
+        </h2>
+        <p>Every rule, date and fee in GovOS is read from the authority's own document — and you can open the page it came from.</p>
+        <div className="club-actions">
+          <button className="btn club-cta" onClick={onEligibility}><JiggleLabel text="Check my eligibility" /></button>
+          {onTimeline && <button className="btn club-ghost" onClick={onTimeline}><JiggleLabel text="Open my timeline" /></button>}
+        </div>
+      </div>
+    </div>
+  </section>
+);
+
+interface ClubFaqItem { q: string; a: string }
+const CLUB_FAQ: { key: string; label: string; colour: string; items: ClubFaqItem[] }[] = [
+  { key: 'evidence', label: 'Evidence', colour: 'pink', items: [
+    { q: 'Where does GovOS get its dates and rules?', a: "From each authority's own notices and examination pages. Every cited value has an Evidence button that shows the document, the page and the words it was read from." },
+    { q: 'What does "Officially verified" mean?', a: 'That the value is in the quoted words of an official source GovOS holds, with a link and a page or quotation. Anything else says what it is: verification pending, not in its quoted source, or no official source on record.' },
+    { q: 'What happens when a notice changes a date?', a: 'The later official statement governs. The earlier date stays listed, struck through, beside the corrigendum that replaced it.' }
+  ] },
+  { key: 'dates', label: 'Dates & alerts', colour: 'orange', items: [
+    { q: 'When do reminders appear?', a: 'Only for exams you track, and only inside their own window: a week before, three days before, the last day. A date printed without a day is shown as printed and never counted down to.' },
+    { q: 'How do I track an exam?', a: 'Open the exam and press Track Exam, or press Track beside any date in the calendar. Tracked exams appear on My Timeline and My Exams.' }
+  ] },
+  { key: 'eligibility', label: 'Eligibility', colour: 'green', items: [
+    { q: 'How does GovOS decide whether I am eligible?', a: "It applies the rules the exam's own record states — each post's age band with your category's relaxation, and the qualification that post asks for. Where your details cannot answer a rule, it says not determined, never pass or fail." },
+    { q: 'Where is my profile kept?', a: "In this browser, with a copy in the GovOS database on the server that runs it. The eligibility check itself runs on the page." }
+  ] },
+  { key: 'practice', label: 'Practice', colour: 'periwinkle', items: [
+    { q: 'Are the practice questions from past papers?', a: 'Only where they say so. Questions GovOS wrote are labelled "GovOS practice question"; questions taken from an official document name it and link to it.' },
+    { q: 'Why can some exams not be practised here?', a: 'Some authorities publish no papers or answer keys, or only scanned ones. GovOS says so instead of inventing questions or answers.' }
+  ] },
+  { key: 'ask', label: 'Ask AI', colour: 'cyan', items: [
+    { q: 'Does Ask GovOS AI make things up?', a: "It answers from the exam's record first. When Claude helps, the answer is labelled and every fact it cites shows its own verification state; if Claude is off you get the record's own reply." },
+    { q: 'Can it take me to the right page?', a: 'Yes. Ask "where is…" and the answer comes with a button that opens that part of the exam.' }
+  ] }
+];
+
+/** Questions about how GovOS works, by category: a sticky list of categories, each group in its own colour,
+ *  each question a row that opens in place. */
+export const ClubFAQ: React.FC = () => {
+  const [open, setOpen] = useState<string | null>(null);
+  return (
+    <section className="club-faq" aria-labelledby="club-faq-title">
+      <aside className="club-faq-cats">
+        <div className="club-faq-cats-label">Categories</div>
+        {CLUB_FAQ.map(g => (
+          <a key={g.key} href={`#faq-${g.key}`} className={`club-faq-cat club-dot-${g.colour}`}
+            onClick={e => { e.preventDefault(); document.getElementById(`faq-${g.key}`)?.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' }); }}>
+            {g.label}
+          </a>
+        ))}
+      </aside>
+      <div className="club-faq-main">
+        <h2 id="club-faq-title" className="club-section-title">Questions, <span className="accent-serif">answered</span>.</h2>
+        {CLUB_FAQ.map(g => (
+          <div key={g.key} id={`faq-${g.key}`} className={`club-faq-group club-faq-${g.colour}`}>
+            <h3>{g.label}</h3>
+            {g.items.map((it, i) => {
+              const id = `${g.key}-${i}`;
+              const isOpen = open === id;
+              return (
+                <div key={id} className={`club-faq-row${isOpen ? ' is-open' : ''}`}>
+                  <button aria-expanded={isOpen} aria-controls={`faq-a-${id}`} onClick={() => setOpen(isOpen ? null : id)}>
+                    <span>{it.q}</span>
+                    <Plus size={18} aria-hidden="true" />
+                  </button>
+                  <div id={`faq-a-${id}`} className="club-faq-answer" role="region" aria-label={it.q} aria-hidden={!isOpen}>
+                    <div><p>{it.a}</p></div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+};
+
+/** The home's last field: the wordmark set huge on violet over a yellow wave. */
+export const ClubFooter: React.FC<{ onTop: () => void }> = ({ onTop }) => (
+  <footer className="club-footer bleed">
+    <svg className="club-footer-wave" viewBox="0 0 1440 120" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M0 60 C 240 0, 420 120, 720 60 S 1200 0, 1440 60 L1440 0 L0 0 Z" />
+    </svg>
+    <div className="club-footer-inner">
+      <span className="club-footer-mark"><GovOSMark size={64} /></span>
+      <p className="club-footer-line">Exams today. A better tomorrow.</p>
+      <div className="club-footer-word" aria-hidden="true" data-reveal>
+        {Array.from('GovOS').map((c, i) => <span key={i} className="cf-char" style={{ ['--ci' as any]: i }}>{c}</span>)}
+      </div>
+      <button className="btn club-ghost club-footer-top" onClick={onTop}>Back to top <ArrowUpRight size={15} /></button>
+    </div>
+  </footer>
 );
 
 export const ExamFinder: React.FC<ExamFinderProps> = ({
@@ -2255,8 +3031,8 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
     <div className="homepage animate-fade-in" style={{ position: 'relative', width: '100%' }}>
       <div className="homepage-content-layer" style={{ display: 'flex', flexDirection: 'column', gap: '0', position: 'relative', zIndex: 1 }}>
 
-        {/* 01 — the opening stage */}
-        <CinematicHero
+        {/* The opening field */}
+        <ClubHero
           exams={exams}
           searchQuery={searchQuery}
           onSearch={handleSearchChange}
@@ -2265,26 +3041,22 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
           onOpenExam={onSelectExam}
         />
 
-        {/* 02 — the exams, as passes (the same five, the same handlers as the old Popular Exams row) */}
-        <section id="featured-exams" className="home-chapter">
-          <ChapterHeader
-            index="01"
-            eyebrow="Popular exams"
-            title={<>Pick an exam. <span className="accent-serif">Open</span> its workspace.</>}
-            sub="Each pass opens everything GovOS holds for that exam — dates, eligibility, application, syllabus, practice and results."
-            action={
-              <button className="chapter-link" onClick={() => document.getElementById('exam-finder-engine')?.scrollIntoView({ behavior: 'smooth' })}>
-                View all exams <ArrowRight size={15} />
-              </button>
-            }
-          />
+        {/* The exams, as colour cards (the same five, the same handlers as the old Popular Exams row) */}
+        <section id="featured-exams" className="club-shelf">
+          <div className="club-shelf-head">
+            <h2 className="club-section-title" data-reveal>Pick an exam. <span className="accent-serif">Open</span> its workspace.</h2>
+            <Handwritten className="club-shelf-note" text="dates, rules, syllabus — all in one place" />
+            <button className="chapter-link" onClick={() => document.getElementById('exam-finder-engine')?.scrollIntoView({ behavior: 'smooth' })}>
+              View all exams <ArrowRight size={15} />
+            </button>
+          </div>
           <ExamPassRail items={[
-            { name: 'SSC CGL', sub: 'Staff Selection Commission', exam: ALL_EXAMS.find(e => e.id.includes('ssc')), onClick: () => openPopular('ssc') },
-            { name: 'UPSC CSE', sub: 'Union Public Service Commission', exam: ALL_EXAMS.find(e => e.id.includes('upsc')), onClick: () => openPopular('upsc') },
-            { name: 'IBPS PO', sub: 'Institute of Banking Personnel', exam: ALL_EXAMS.find(e => e.id.includes('ibps')), onClick: () => openPopular('ibps') },
-            { name: 'State PSC', sub: 'State Public Service Commission', exam: ALL_EXAMS.find(e => e.id.includes('appsc')), onClick: () => openPopular('appsc') },
+            { name: 'SSC CGL', sub: 'Staff Selection Commission', sketch: 'selection', exam: ALL_EXAMS.find(e => e.id.includes('ssc')), onClick: () => openPopular('ssc') },
+            { name: 'UPSC CSE', sub: 'Union Public Service Commission', sketch: 'civil', exam: ALL_EXAMS.find(e => e.id.includes('upsc')), onClick: () => openPopular('upsc') },
+            { name: 'IBPS PO', sub: 'Institute of Banking Personnel', sketch: 'banking', exam: ALL_EXAMS.find(e => e.id.includes('ibps')), onClick: () => openPopular('ibps') },
+            { name: 'State PSC', sub: 'State Public Service Commission', sketch: 'state', exam: ALL_EXAMS.find(e => e.id.includes('appsc')), onClick: () => openPopular('appsc') },
             {
-              name: 'RRB NTPC', sub: 'Railway Recruitment Board', onClick: () => {
+              name: 'RRB NTPC', sub: 'Railway Recruitment Board', sketch: 'railway', onClick: () => {
                 handleSearchChange('RRB NTPC');
                 document.getElementById('exam-finder-engine')?.scrollIntoView({ behavior: 'smooth' });
               }
@@ -2292,10 +3064,27 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
           ]} />
         </section>
 
-        {/* 03 — who can sit what: the eligibility discovery, unchanged inside */}
+        {/* Every exam and authority GovOS holds, on a bright field */}
+        <ClubCategories
+          exams={exams}
+          onOpenExam={onSelectExam}
+          onField={field => {
+            setSelectedInterest(field);
+            document.getElementById('exam-browse')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }}
+          onFind={() => document.getElementById('exam-finder-engine')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+        />
+
+        {/* Where the facts come from */}
+        <ClubBand
+          onEligibility={() => document.getElementById('exam-discovery')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          onTimeline={onNavigate ? () => onNavigate('CALENDAR') : undefined}
+        />
+
+        {/* Who can sit what: the eligibility discovery, unchanged inside */}
         <section className="home-chapter">
           <ChapterHeader
-            index="02"
+            index="01"
             eyebrow="Eligibility"
             title={<>Which exams are <span className="accent-serif">yours</span> to sit?</>}
             sub="Three facts about you, checked against the published rule of every exam GovOS holds."
@@ -2303,7 +3092,7 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
           <ExamDiscovery exams={exams} onSelectExam={onSelectExam} onOpenProvenanceModal={onOpenProvenanceModal} />
         </section>
 
-        {/* 04 — the journey, told as the page scrolls (it carries the four old action cards' actions) */}
+        {/* The journey, told as the page scrolls (it carries the four old action cards' actions) */}
         <JourneyStory steps={[
           { verb: 'Discover', title: 'Find the right exam', text: 'Search the register, or let your age, category and qualification narrow it down.',
             action: { label: 'Check eligibility', run: () => document.getElementById('exam-discovery')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) } },
@@ -2318,12 +3107,10 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
           { verb: 'Act', title: 'Know what comes next', text: 'Results, cut-offs and the next stage, read from what the authority declared.' }
         ]} />
 
-        <PullQuote text="A small step towards preparation can create a big opportunity tomorrow." />
-
       {/* Recommended for You Shelf (Time-Decayed BPR) */}
       <div id="exam-finder-engine" className="home-chapter">
         <ChapterHeader
-          index="04"
+          index="03"
           eyebrow="Recommended"
           title={<>A shortlist that <span className="accent-serif">learns</span> from you.</>}
           sub="Ranked from what you search, open, save and read in GovOS — never a prediction of selection."
@@ -2569,7 +3356,7 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
           <button
             className="btn btn-secondary"
             onClick={() => setShowInteractionsModal(true)}
-            style={{ fontSize: '0.74rem', padding: '5px 12px', background: 'rgba(99, 102, 241, 0.15)', borderColor: 'rgba(99, 102, 241, 0.35)', color: '#4f46e5', display: 'inline-flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}
+            style={{ fontSize: '0.74rem', padding: '5px 12px', background: 'rgba(99, 102, 241, 0.15)', borderColor: 'rgba(99, 102, 241, 0.35)', color: '#3b308f', display: 'inline-flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}
           >
             <Activity size={13} />
             Diagnostics &amp; Formula
@@ -2744,9 +3531,9 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
       )}
 
       {/* Discovery Filter Engine: "I am a..." + "What do you want?" */}
-      <div className="home-chapter">
+      <div className="home-chapter" id="exam-browse">
         <ChapterHeader
-          index="05"
+          index="04"
           eyebrow="Browse"
           title={<>Every exam, <span className="accent-serif">filtered</span> your way.</>}
           sub="Start from who you are and what you want; the register answers with what it holds."
@@ -2992,6 +3779,9 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
           ))}
         </div>
       </div>
+
+        <ClubFAQ />
+        <ClubFooter onTop={() => window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? 'auto' : 'smooth' })} />
       </div>
     </div>
   );
@@ -3553,82 +4343,84 @@ export const ExamCompare: React.FC<ExamCompareProps> = ({ onSelectExam }) => {
     }
   ];
 
+  const sides = [
+    { exam: exam1, id: exam1Id, set: setExam1Id, label: 'First exam' },
+    { exam: exam2, id: exam2Id, set: setExam2Id, label: 'Second exam' }
+  ];
+
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
-      
-      {/* Header */}
-      <div className="glass-card" style={{ padding: '24px', background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, #ffffff 100%)', borderColor: 'rgba(168, 85, 247, 0.3)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--purple)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-primary)' }}>
-            <Scale size={24} />
-          </div>
-          <div>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 800 }}>
-              Side-by-Side Exam Comparison Matrix
-            </h2>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-              Every row below is read directly from the verified exam register — no figure is hardcoded.
-            </p>
-          </div>
-        </div>
+      <PageStage
+        eyebrow="Compare exams"
+        colour="pink"
+        title={<>Two exams, <span className="accent-serif">side by side</span>.</>}
+        lede="Every row is read from the two exams' own records when you open this page — ages, posts, stages, cut-offs and dates. Nothing here is typed in by hand."
+      />
+
+      {/* The two exams, as passes facing each other */}
+      <div className="vs-deck">
+        {sides.map((side, i) => {
+          const next = nextMilestoneOf(side.exam);
+          return (
+            <React.Fragment key={side.label}>
+              {i === 1 && <div className="vs-disc" aria-hidden="true">vs</div>}
+              <div className={`vs-pass pass-${passToneOf(side.exam.authorityName)}`}>
+                <label className="vs-select">
+                  <span className="pass-kicker">{side.label}</span>
+                  <select value={side.id} onChange={e => side.set(e.target.value)} aria-label={`Choose the ${side.label.toLowerCase()}`}>
+                    {ALL_EXAMS.map(e => <option key={e.id} value={e.id}>{e.title}</option>)}
+                  </select>
+                  <ChevronDown size={16} aria-hidden="true" />
+                </label>
+                <div className="vs-code">{examDisplayCode(side.exam)}</div>
+                <div className="pass-sub">{side.exam.authorityName}</div>
+                <span className="pass-perf" aria-hidden="true" />
+                <div className="vs-foot">
+                  <span className="pass-next-label">{next ? <>Next · {next.label}</> : 'No upcoming milestone on record'}</span>
+                  {next && <span className="pass-next-when">{next.days !== null ? <><strong>{next.days}</strong> {next.days === 1 ? 'day' : 'days'}</> : next.when}</span>}
+                </div>
+              </div>
+            </React.Fragment>
+          );
+        })}
       </div>
 
-      {/* Selectors */}
-      <div className="grid-2">
-        <div>
-          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px' }}>
-            Select Exam 1
-          </label>
-          <select value={exam1Id} onChange={(e) => setExam1Id(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: 'var(--radius-md)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontWeight: 600 }}>
-            {ALL_EXAMS.map(e => <option key={e.id} value={e.id}>{e.title}</option>)}
-          </select>
-        </div>
-
-        <div>
-          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px' }}>
-            Select Exam 2
-          </label>
-          <select value={exam2Id} onChange={(e) => setExam2Id(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: 'var(--radius-md)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontWeight: 600 }}>
-            {ALL_EXAMS.map(e => <option key={e.id} value={e.id}>{e.title}</option>)}
-          </select>
-        </div>
-      </div>
-
-      {/* Comparison Matrix Table */}
-      <div className="glass-card" style={{ padding: '24px', overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+      {/* The matrix: a table on a wide screen, one card per attribute on a phone */}
+      <div className="glass-card cmp-card">
+        <table className="cmp-matrix">
           <thead>
-            <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
-              <th style={{ padding: '16px', color: 'var(--text-secondary)', fontSize: '0.9rem', width: '25%' }}>ATTRIBUTE</th>
-              <th style={{ padding: '16px', color: 'var(--text-primary)', fontSize: '1.1rem', width: '37.5%' }}>{exam1.title}</th>
-              <th style={{ padding: '16px', color: 'var(--text-primary)', fontSize: '1.1rem', width: '37.5%' }}>{exam2.title}</th>
+            <tr>
+              <th scope="col" className="cmp-attr">Attribute</th>
+              {sides.map(side => (
+                <th scope="col" key={side.label}>
+                  <span className={`cmp-dot pass-${passToneOf(side.exam.authorityName)}`} aria-hidden="true" />
+                  {side.exam.title}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
             {rows.map(row => (
-              <tr key={row.label} style={{ borderBottom: '1px solid var(--surface-2)' }}>
-                <td style={{ padding: '16px', fontWeight: 600, color: 'var(--text-secondary)', verticalAlign: 'top' }}>{row.label}</td>
-                <td style={{ padding: '16px', verticalAlign: 'top' }}>{row.render(exam1)}</td>
-                <td style={{ padding: '16px', verticalAlign: 'top' }}>{row.render(exam2)}</td>
+              <tr key={row.label}>
+                <th scope="row" className="cmp-attr">{row.label}</th>
+                {sides.map(side => (
+                  <td key={side.label} data-exam={examDisplayCode(side.exam)}>{row.render(side.exam)}</td>
+                ))}
               </tr>
             ))}
-            <tr>
-              <td style={{ padding: '16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Action</td>
-              <td style={{ padding: '16px' }}>
-                <button className="btn btn-primary" onClick={() => onSelectExam(exam1)} style={{ fontSize: '0.8rem', padding: '6px 12px' }}>
-                  Explore {exam1.title.split(' ')[0]} <ChevronRight size={14} />
-                </button>
-              </td>
-              <td style={{ padding: '16px' }}>
-                <button className="btn btn-primary" onClick={() => onSelectExam(exam2)} style={{ fontSize: '0.8rem', padding: '6px 12px' }}>
-                  Explore {exam2.title.split(' ')[0]} <ChevronRight size={14} />
-                </button>
-              </td>
+            <tr className="cmp-actions">
+              <th scope="row" className="cmp-attr">Open</th>
+              {sides.map(side => (
+                <td key={side.label} data-exam={examDisplayCode(side.exam)}>
+                  <button className="btn btn-primary" onClick={() => onSelectExam(side.exam)} style={{ fontSize: '0.85rem', padding: '8px 14px' }}>
+                    Explore {examDisplayCode(side.exam)} <ChevronRight size={14} />
+                  </button>
+                </td>
+              ))}
             </tr>
           </tbody>
         </table>
       </div>
-
     </div>
   );
 };
@@ -3705,9 +4497,14 @@ export const ExamCalendar: React.FC<ExamCalendarProps> = ({
         whenText: when.text,
         id: `${exam.id}-${d.id || index}`,
         examId: exam.id,
-        examCode: exam.code,
+        examCode: examDisplayCode(exam),
         examTitle: exam.title,
         authority: exam.authorityName.split(' ')[0],
+        authorityName: exam.authorityName,
+        day,
+        exact: !d.displayWhen,
+        // The date's own evidence decides what it is called; this list used to label every live date VERIFIED.
+        factState: (d.status === 'SUPERSEDED' ? 'SUPERSEDED' : factVerification(d.provenance, dateClaim(d))) as FactVerification,
         type: d.type,
         label: d.label,
         dateStr: formattedDate,
@@ -3736,85 +4533,76 @@ export const ExamCalendar: React.FC<ExamCalendarProps> = ({
 
   const trackedExams = ALL_EXAMS.filter(e => trackedExamIds.includes(e.id));
 
+  // Agenda: the filtered events grouped by the month they fall in, in time order.
+  const agenda: { key: string; label: string; events: typeof filteredEvents }[] = [];
+  filteredEvents.forEach(ev => {
+    const last = agenda[agenda.length - 1];
+    if (last && last.key === ev.monthKey) last.events.push(ev);
+    else agenda.push({ key: ev.monthKey, label: ev.monthLabel, events: [ev] });
+  });
+
+  const STATE_CHIP: Record<FactVerification, { text: string; cls: string }> = {
+    VERIFIED: { text: 'Officially verified', cls: 'is-verified' },
+    UNDER_VERIFICATION: { text: 'Verification pending', cls: 'is-pending' },
+    UNSUPPORTED: { text: 'Not in its quoted source', cls: 'is-pending' },
+    UNVERIFIED: { text: 'No official source on record', cls: 'is-muted' },
+    SUPERSEDED: { text: 'Superseded', cls: 'is-superseded' }
+  };
+
+  const typeTag = (type: ImportantDate['type']) => {
+    if (type === 'APPLICATION_CLOSE') return 'tag-close';
+    if (type === 'ADMIT_CARD') return 'tag-admit';
+    if (type === 'EXAM_TIER1' || type === 'EXAM_TIER2' || type === 'INTERVIEW') return 'tag-exam';
+    if (type === 'RESULT' || type === 'ANSWER_KEY') return 'tag-result';
+    return 'tag-other';
+  };
+  // Plain words for the kind of milestone. The internal EXAM_TIER1 / EXAM_TIER2 buckets are not an exam's own stage
+  // names, so they read as "examination"; the label beside them carries the authority's own words.
+  const TYPE_WORDS: Record<ImportantDate['type'], string> = {
+    NOTIFICATION: 'notification', APPLICATION_OPEN: 'applications open', APPLICATION_CLOSE: 'last date',
+    CORRECTION_WINDOW: 'correction window', ADMIT_CARD: 'admit card', EXAM_TIER1: 'examination', EXAM_TIER2: 'examination',
+    ANSWER_KEY: 'answer key', RESULT: 'result', INTERVIEW: 'interview', OTHER: 'milestone'
+  };
+  const typeWords = (type: ImportantDate['type']) => TYPE_WORDS[type] || 'milestone';
+
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
-      
-      {/* Header Banner */}
-      <div className="glass-card" style={{ padding: '26px', background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.12) 0%, #ffffff 100%)', borderColor: 'rgba(6, 182, 212, 0.3)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'var(--cyan)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', boxShadow: '0 0 16px rgba(6,182,212,0.4)' }}>
-              <CalendarIcon size={26} />
-            </div>
-            <div>
-              <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 4px' }}>
-                Government Exam Timeline & Verified Calendar (2026)
-              </h2>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0 }}>
-                Never miss an application deadline, correction window, or admit card release.
-              </p>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <button 
-              className="btn btn-secondary"
-              onClick={onOpenPreferences}
-              style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}
-            >
-              <Settings size={16} /> Notification Channels
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Mode Switcher Tabs */}
-      <div className="glass-card" style={{ padding: '12px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button 
-            className={`btn ${activeTab === 'TIMELINE' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setActiveTab('TIMELINE')}
-            style={{ fontSize: '0.9rem', padding: '9px 18px', display: 'flex', alignItems: 'center', gap: '8px' }}
-          >
-            <Star size={16} color={activeTab === 'TIMELINE' ? 'var(--text-primary)' : '#f59e0b'} />
-            My Exam Timeline ({trackedExams.length})
+      <PageStage
+        eyebrow="My Timeline"
+        colour="cyan"
+        title={<>Every date that <span className="accent-serif">matters</span>, counted down.</>}
+        lede="Only what each exam's own record states. A date printed without a day is shown as printed and never counted down to, and the clock is re-read every minute."
+        actions={
+          <button className="btn stage-ghost" onClick={onOpenPreferences}>
+            <Settings size={16} /> Notification channels
           </button>
-          <button 
-            className={`btn ${activeTab === 'CALENDAR' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setActiveTab('CALENDAR')}
-            style={{ fontSize: '0.9rem', padding: '9px 18px', display: 'flex', alignItems: 'center', gap: '8px' }}
-          >
-            <CalendarIcon size={16} /> All Exams Calendar ({allCalendarEvents.length} Milestones)
+        }
+        stats={[
+          { label: 'Exams you track', value: trackedExams.length },
+          { label: 'Milestones ahead', value: upcomingCount },
+          { label: 'Exams in the calendar', value: ALL_EXAMS.length }
+        ]}
+      >
+        <div className="seg" role="group" aria-label="Timeline view">
+          <button className={activeTab === 'TIMELINE' ? 'on' : ''} aria-pressed={activeTab === 'TIMELINE'} onClick={() => setActiveTab('TIMELINE')}>
+            <Star size={15} /> My exam timeline <span className="seg-count">{trackedExams.length}</span>
+          </button>
+          <button className={activeTab === 'CALENDAR' ? 'on' : ''} aria-pressed={activeTab === 'CALENDAR'} onClick={() => setActiveTab('CALENDAR')}>
+            <CalendarIcon size={15} /> All exams calendar <span className="seg-count">{allCalendarEvents.length}</span>
           </button>
         </div>
-
-        <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-          {activeTab === 'TIMELINE' 
-            ? 'Personalized deadline countdowns for your tracked exams'
-            : 'Explore schedules for Central & State Government recruitments'}
-        </div>
-      </div>
+      </PageStage>
 
       {/* TAB 1: MY EXAM TIMELINE */}
       {activeTab === 'TIMELINE' && (
         <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           {trackedExams.length === 0 ? (
-            <div className="glass-card" style={{ padding: '60px 24px', textAlign: 'center' }}>
-              <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(99, 102, 241, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', color: 'var(--primary)' }}>
-                <Bell size={30} />
-              </div>
-              <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px' }}>
-                No Exams Tracked in Your Timeline
-              </h3>
-              <p style={{ color: 'var(--text-secondary)', maxWidth: '460px', margin: '0 auto 24px', fontSize: '0.92rem', lineHeight: 1.5 }}>
-                Track exams you are preparing for to get live deadline countdowns, multi-stage reminders, and personalized alerts.
-              </p>
-              <button 
-                className="btn btn-primary"
-                onClick={() => setActiveTab('CALENDAR')}
-                style={{ padding: '10px 22px', fontSize: '0.9rem', display: 'inline-flex', alignItems: 'center', gap: '8px' }}
-              >
-                Browse All Exams Calendar <ArrowRight size={16} />
+            <div className="empty-stage">
+              <div className="empty-stage-mark" aria-hidden="true"><Bell size={26} /></div>
+              <h3>No exams tracked yet</h3>
+              <p>Track the exams you are preparing for and their deadlines, windows and stages line up here, each counted down from its own record.</p>
+              <button className="btn btn-primary" onClick={() => setActiveTab('CALENDAR')}>
+                Browse the all-exams calendar <ArrowRight size={16} />
               </button>
             </div>
           ) : (
@@ -3825,161 +4613,82 @@ export const ExamCalendar: React.FC<ExamCalendarProps> = ({
               const completed = activeDates.filter(d => relativeWhen(d.dateTimeStr, now).isPast);
               const pastOpen = !!showPastFor[exam.id];
               // Ahead of the candidate by default; what has passed only when they ask.
-              const visibleDates = pastOpen ? [...upcoming, ...completed] : upcoming;
+              const visibleDates = pastOpen ? [...completed, ...upcoming] : upcoming;
               const nextUp = upcoming[0];
+              // A date printed without a day is shown as printed, never counted down to.
+              const nextWhen = nextUp ? (nextUp.displayWhen ? null : relativeWhen(nextUp.dateTimeStr, now)) : null;
               return (
-                <div 
-                  key={exam.id}
-                  className="glass-card"
-                  style={{
-                    padding: '28px',
-                    borderLeft: '4px solid var(--primary)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '20px'
-                  }}
-                >
-                  {/* Card Top Header */}
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                        <ExamVerifiedBadge exam={exam} />
-                        <span className="badge badge-demo" style={{ background: 'rgba(99,102,241,0.2)', color: '#4f46e5' }}>
-                          {examDisplayCode(exam)}
-                        </span>
-                        {exam.vacanciesTotal && (
-                          <span className="badge" style={{ background: 'rgba(16,185,129,0.15)', color: '#137638' }}>
-                            {exam.vacanciesTotal}
-                          </span>
-                        )}
+                <article key={exam.id} className="tl-exam" data-reveal>
+                  <header className={`tl-exam-head pass-${passToneOf(exam.authorityName)}`}>
+                    <div className="tl-exam-id">
+                      <span className="pass-kicker">{exam.authorityName}</span>
+                      <h3>{exam.title}</h3>
+                      <div className="tl-exam-badges">
+                        <ExamVerifiedBadge exam={exam} compact />
+                        {exam.vacanciesTotal && <span className="badge badge-demo" style={{ fontSize: '0.62rem' }}>{exam.vacanciesTotal}</span>}
+                        <span className="tl-exam-crucial">Eligibility judged on <strong>{exam.crucialEligibilityDate}</strong></span>
                       </div>
-                      <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 4px' }}>
-                        {exam.title}
-                      </h3>
-                      <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>
-                        Authority: <strong style={{ color: 'var(--text-primary)' }}>{exam.authorityName}</strong> | Crucial Cut-off: <code style={{ color: 'var(--cyan)' }}>{exam.crucialEligibilityDate}</code>
-                      </p>
                     </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <button 
-                        className="btn btn-emerald"
-                        onClick={() => onToggleTrackExam(exam.id)}
-                        style={{ fontSize: '0.85rem', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '6px' }}
-                      >
-                        <Check size={16} /> Tracking Active
-                      </button>
-                      <button 
-                        className="btn btn-primary"
-                        onClick={() => onSelectExam(exam)}
-                        style={{ fontSize: '0.85rem', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '6px' }}
-                      >
-                        View Full Exam Guide <ArrowRight size={14} />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Milestone Horizontal Progression Grid */}
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '14px' }}>
-                      <h4 style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>
-                        {upcoming.length > 0 ? `Still ahead — ${upcoming.length} milestone${upcoming.length === 1 ? '' : 's'}` : 'This cycle is complete'}
-                      </h4>
-                      {completed.length > 0 && (
-                        <button
-                          className="btn btn-secondary"
-                          onClick={() => setShowPastFor(prev => ({ ...prev, [exam.id]: !prev[exam.id] }))}
-                          style={{ fontSize: '0.76rem', padding: '5px 12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                        >
-                          <Clock size={12} /> {pastOpen ? 'Hide' : 'Show'} {completed.length} completed
-                        </button>
+                    <div className="tl-exam-next">
+                      {nextUp ? (
+                        <>
+                          <span className="exam-hero-next-label">Next</span>
+                          <span className="tl-exam-next-value">
+                            {nextWhen && nextWhen.days >= 0
+                              ? <><span className="exam-hero-days">{nextWhen.days}</span> {nextWhen.days === 1 ? 'day' : 'days'}</>
+                              : shownWhen(nextUp)}
+                          </span>
+                          <span className="tl-exam-next-what">{nextUp.label}{nextWhen ? ` · ${shownWhen(nextUp)}` : ''}</span>
+                        </>
+                      ) : (
+                        <span className="tl-exam-next-what">Every milestone on record has passed.</span>
                       )}
                     </div>
+                  </header>
 
-                    {nextUp && (
-                      <div style={{ padding: '12px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.35)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                        <span className="badge badge-verified" style={{ fontSize: '0.65rem' }}>NEXT</span>
-                        <strong style={{ color: 'var(--text-primary)', fontSize: '0.92rem' }}>{nextUp.label}</strong>
-                        <span style={{ color: '#4f46e5', fontSize: '0.85rem' }}>
-                          {nextUp.dateTimeStr.split(' ')[0]} · {relativeWhen(nextUp.dateTimeStr, now).text}
-                        </span>
+                  <div className="tl-exam-body">
+                    <div className="tl-exam-bar">
+                      <h4>{upcoming.length > 0 ? `Still ahead — ${upcoming.length} milestone${upcoming.length === 1 ? '' : 's'}` : 'This cycle is complete'}</h4>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        {completed.length > 0 && (
+                          <button className="btn btn-secondary" onClick={() => setShowPastFor(prev => ({ ...prev, [exam.id]: !prev[exam.id] }))} style={{ fontSize: '0.78rem', padding: '6px 12px' }}>
+                            <Clock size={13} /> {pastOpen ? 'Hide' : 'Show'} {completed.length} completed
+                          </button>
+                        )}
+                        <button className="btn btn-emerald" onClick={() => onToggleTrackExam(exam.id)} style={{ fontSize: '0.78rem', padding: '6px 12px' }}>
+                          <Check size={14} /> Tracking
+                        </button>
+                        <button className="btn btn-primary" onClick={() => onSelectExam(exam)} style={{ fontSize: '0.78rem', padding: '6px 12px' }}>
+                          Open workspace <ArrowRight size={14} />
+                        </button>
                       </div>
-                    )}
+                    </div>
 
                     {upcoming.length === 0 && completed.length > 0 && !pastOpen && (
-                      <div style={{ padding: '14px 16px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', fontSize: '0.86rem', marginBottom: '12px' }}>
-                        Every milestone on record for this exam has passed. No dates for a later cycle are on record.
-                      </div>
+                      <p className="tl-exam-note">Every milestone on record for this exam has passed. No dates for a later cycle are on record.</p>
                     )}
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: '12px' }}>
-                      {visibleDates.map(date => {
-                        const when = relativeWhen(date.dateTimeStr, now);
-                        const isClose = date.type === 'APPLICATION_CLOSE';
-                        const isAdmit = date.type === 'ADMIT_CARD';
-                        const isExam = date.type === 'EXAM_TIER1' || date.type === 'EXAM_TIER2';
-                        const isResult = date.type === 'RESULT';
-
-                        let accentColor = 'var(--surface-2)';
-                        let borderColor = 'var(--border-color)';
-                        let tagColor = 'var(--text-muted)';
-
-                        if (isClose) {
-                          accentColor = 'rgba(239, 68, 68, 0.08)';
-                          borderColor = 'rgba(239, 68, 68, 0.3)';
-                          tagColor = '#b71f1f';
-                        } else if (isAdmit) {
-                          accentColor = 'rgba(168, 85, 247, 0.08)';
-                          borderColor = 'rgba(168, 85, 247, 0.3)';
-                          tagColor = '#7c3aed';
-                        } else if (isExam) {
-                          accentColor = 'rgba(245, 158, 11, 0.08)';
-                          borderColor = 'rgba(245, 158, 11, 0.3)';
-                          tagColor = '#af5109';
-                        } else if (isResult) {
-                          accentColor = 'rgba(16, 185, 129, 0.08)';
-                          borderColor = 'rgba(16, 185, 129, 0.3)';
-                          tagColor = '#137638';
-                        }
-
-                        return (
-                          <div 
-                            key={date.id}
-                            style={{
-                              padding: '14px',
-                              borderRadius: 'var(--radius-md)',
-                              background: when.isPast ? 'var(--surface-2)' : accentColor,
-                              border: `1px solid ${when.isPast ? 'var(--border-color)' : borderColor}`,
-                              opacity: when.isPast ? 0.62 : 1,
-                              display: 'flex',
-                              flexDirection: 'column',
-                              justifyContent: 'space-between',
-                              gap: '8px'
-                            }}
-                          >
-                            <div>
-                              <span style={{ fontSize: '0.7rem', fontWeight: 700, color: when.isPast ? 'var(--text-muted)' : tagColor, textTransform: 'uppercase' }}>
-                                {date.type.replace('_', ' ')}{when.isPast ? ' · done' : ''}
+                    {visibleDates.length > 0 && (
+                      <ol className="tl-track">
+                        {visibleDates.map(date => {
+                          const when = relativeWhen(date.dateTimeStr, now);
+                          const isNext = nextUp && date.id === nextUp.id;
+                          return (
+                            <li key={date.id} className={`tl-stop ${typeTag(date.type)}${when.isPast ? ' is-past' : ''}${isNext ? ' is-next' : ''}`}>
+                              <span className="tl-stop-dot" aria-hidden="true" />
+                              <span className="tl-stop-type">{isNext ? 'Next · ' : ''}{typeWords(date.type)}{when.isPast ? ' · done' : ''}</span>
+                              <span className="tl-stop-label">{date.label}</span>
+                              <span className="tl-stop-when">{shownWhen(date)}</span>
+                              <span className="tl-stop-rel">
+                                {date.displayWhen ? (date.isTentative ? 'tentative' : 'as printed') : when.text}
                               </span>
-                              <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px', lineHeight: 1.3 }}>
-                                {date.label}
-                              </div>
-                            </div>
-
-                            <div style={{ borderTop: '1px solid var(--surface-2)', paddingTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                              <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#235ddd' }}>
-                                {shownWhen(date)}
-                              </div>
-                              <span style={{ fontSize: '0.7rem', color: when.isPast ? 'var(--text-muted)' : '#af5109', fontWeight: when.isPast ? 400 : 700 }}>
-                                {when.text || (date.displayWhen ? (date.isTentative ? 'tentative' : '') : date.dateTimeStr.split(' ')[1]) || 'IST'}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                            </li>
+                          );
+                        })}
+                      </ol>
+                    )}
                   </div>
-                </div>
+                </article>
               );
             })
           )}
@@ -3989,146 +4698,90 @@ export const ExamCalendar: React.FC<ExamCalendarProps> = ({
       {/* TAB 2: ALL EXAMS CALENDAR */}
       {activeTab === 'CALENDAR' && (
         <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          
+
           {/* Upcoming / past, then the months that actually have events */}
-          <div className="glass-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)' }}>SHOW:</span>
+          <div className="agenda-filters">
+            <div className="seg seg-light" role="group" aria-label="Which milestones">
               {([
-                { key: 'UPCOMING' as const, label: `Upcoming (${upcomingCount})` },
-                { key: 'ALL' as const, label: `All (${allCalendarEvents.length})` },
-                { key: 'PAST' as const, label: `Completed (${pastCount})` }
+                { key: 'UPCOMING' as const, label: 'Upcoming', count: upcomingCount },
+                { key: 'ALL' as const, label: 'All', count: allCalendarEvents.length },
+                { key: 'PAST' as const, label: 'Completed', count: pastCount }
               ]).map(opt => (
-                <button
-                  key={opt.key}
-                  className={`btn ${timeFilter === opt.key ? 'btn-primary' : 'btn-secondary'}`}
-                  onClick={() => { setTimeFilter(opt.key); setSelectedMonth('ALL'); }}
-                  style={{ fontSize: '0.85rem', padding: '8px 16px' }}
-                >
-                  {opt.label}
+                <button key={opt.key} className={timeFilter === opt.key ? 'on' : ''} aria-pressed={timeFilter === opt.key}
+                  onClick={() => { setTimeFilter(opt.key); setSelectedMonth('ALL'); }}>
+                  {opt.label} <span className="seg-count">{opt.count}</span>
                 </button>
               ))}
             </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflowX: 'auto' }}>
-              <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', marginRight: '4px' }}>MONTH:</span>
-              <button
-                className={`btn ${selectedMonth === 'ALL' ? 'btn-primary' : 'btn-secondary'}`}
-                onClick={() => setSelectedMonth('ALL')}
-                style={{ fontSize: '0.85rem', padding: '8px 18px' }}
-              >
-                All Months
-              </button>
+            <div className="agenda-months" role="group" aria-label="Month">
+              <button className={`chip${selectedMonth === 'ALL' ? ' active' : ''}`} aria-pressed={selectedMonth === 'ALL'} onClick={() => setSelectedMonth('ALL')}>All months</button>
               {monthOptions.map(([key, label]) => (
-                <button
-                  key={key}
-                  className={`btn ${selectedMonth === key ? 'btn-primary' : 'btn-secondary'}`}
-                  onClick={() => setSelectedMonth(key)}
-                  style={{ fontSize: '0.85rem', padding: '8px 18px', whiteSpace: 'nowrap' }}
-                >
-                  {label}
-                </button>
+                <button key={key} className={`chip${selectedMonth === key ? ' active' : ''}`} aria-pressed={selectedMonth === key} onClick={() => setSelectedMonth(key)}>{label}</button>
               ))}
             </div>
           </div>
 
-          {/* Timeline List */}
-          <div className="glass-card" style={{ padding: '28px' }}>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '6px' }}>
-              {timeFilter === 'PAST' ? 'Completed milestones' : timeFilter === 'ALL' ? 'All milestones' : 'Upcoming milestones'}
-              {selectedMonth !== 'ALL' ? ` in ${monthOptions.find(([key]) => key === selectedMonth)?.[1] || ''}` : ''} ({filteredEvents.length})
-            </h3>
-            <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '20px' }}>
-              Dates that have passed drop out of this list on their own; the clock is re-read every minute.
-            </p>
+          <div className="glass-card agenda">
+            <div className="agenda-head">
+              <h3>
+                {timeFilter === 'PAST' ? 'Completed milestones' : timeFilter === 'ALL' ? 'All milestones' : 'Upcoming milestones'}
+                {selectedMonth !== 'ALL' ? ` in ${monthOptions.find(([key]) => key === selectedMonth)?.[1] || ''}` : ''}
+                <span className="agenda-count">{filteredEvents.length}</span>
+              </h3>
+              <p>Dates that have passed drop out of this list on their own; the clock is re-read every minute. Each date says what its own evidence supports.</p>
+            </div>
 
             {filteredEvents.length === 0 && (
-              <div style={{ padding: '22px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+              <p className="tl-exam-note">
                 {timeFilter === 'UPCOMING'
                   ? 'Nothing ahead on record: every milestone GovOS holds has passed. Switch to Completed to see them, or check the Trust Panel for a live official check.'
                   : 'No milestones match this filter.'}
-              </div>
+              </p>
             )}
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {filteredEvents.map(ev => {
-                const isTracked = trackedExamIds.includes(ev.examId);
-                const matchedExam = ALL_EXAMS.find(e => e.id === ev.examId); // the event's own exam, never another
-
-                return (
-                  <div 
-                    key={ev.id} 
-                    style={{ 
-                      padding: '20px', 
-                      borderRadius: 'var(--radius-md)', 
-                      background: isTracked ? 'rgba(99, 102, 241, 0.05)' : 'var(--surface-2)', 
-                      border: isTracked ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid var(--border-color)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      flexWrap: 'wrap',
-                      gap: '16px'
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                      <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'rgba(99, 102, 241, 0.15)', border: '1px solid rgba(99, 102, 241, 0.3)', textAlign: 'center', minWidth: '100px' }}>
+            {agenda.map(group => (
+              <section key={group.key} className="agenda-month" aria-label={group.label}>
+                <h4 className="agenda-month-label">{group.label}</h4>
+                <ul className="agenda-list">
+                  {group.events.map(ev => {
+                    const isTracked = trackedExamIds.includes(ev.examId);
+                    const matchedExam = ALL_EXAMS.find(e => e.id === ev.examId); // the event's own exam, never another
+                    const superseded = ev.status === 'SUPERSEDED';
+                    const chip = STATE_CHIP[ev.factState];
+                    return (
+                      <li key={ev.id} className={`agenda-row${isTracked ? ' is-tracked' : ''}${superseded ? ' is-superseded' : ''}${ev.isPast ? ' is-past' : ''}`}>
                         {/* A superseded date stays listed, as in the exam's own timeline, but never reads as current. */}
-                        <div style={{ fontSize: '0.88rem', fontWeight: 800, color: ev.status === 'SUPERSEDED' ? '#b71f1f' : 'var(--primary)', textDecoration: ev.status === 'SUPERSEDED' ? 'line-through' : 'none' }}>{ev.dateStr}</div>
-                        <div style={{ fontSize: '0.68rem', color: ev.status === 'SUPERSEDED' ? '#b71f1f' : 'var(--text-muted)', fontWeight: ev.status === 'SUPERSEDED' ? 700 : 400 }}>{ev.status === 'SUPERSEDED' ? 'SUPERSEDED' : 'VERIFIED'}</div>
-                      </div>
-
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
-                          <span className="badge badge-demo" style={{ fontSize: '0.7rem' }}>
-                            {ev.examCode}
-                          </span>
-                          <span className="badge" style={{ fontSize: '0.65rem', background: 'var(--surface-2)', color: 'var(--text-secondary)' }}>
-                            {ev.type.replace('_', ' ')}
-                          </span>
+                        <div className="agenda-date">
+                          {ev.exact
+                            ? <><span className="agenda-day">{ev.day}</span><span className="agenda-mon">{ev.month}</span></>
+                            : <span className="agenda-printed">{ev.dateStr}</span>}
                         </div>
-                        <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', textDecoration: ev.status === 'SUPERSEDED' ? 'line-through' : 'none' }}>
-                          {ev.label}
+                        <div className="agenda-what">
+                          <div className="agenda-tags">
+                            <span className={`agenda-exam pass-${passToneOf(ev.authorityName)}`}>{ev.examCode}</span>
+                            <span className={`agenda-type ${typeTag(ev.type)}`}>{typeWords(ev.type)}</span>
+                            <span className={`agenda-state ${chip.cls}`}>{chip.text}</span>
+                          </div>
+                          <div className="agenda-label">{ev.label}</div>
+                          <div className="agenda-sub">{ev.examTitle}{ev.whenText ? <> · <strong>{ev.whenText}</strong></> : null}</div>
                         </div>
-                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                          Authority: {ev.authority} | Exam: {ev.examTitle}
+                        <div className="agenda-actions">
+                          <button className={`btn ${isTracked ? 'btn-emerald' : 'btn-secondary'}`} onClick={() => onToggleTrackExam(ev.examId)} style={{ fontSize: '0.8rem', padding: '6px 12px' }}>
+                            {isTracked ? <><Check size={14} /> Tracking</> : <><Bell size={14} /> Track</>}
+                          </button>
+                          <button className="btn btn-outline" onClick={() => matchedExam && onSelectExam(matchedExam)} disabled={!matchedExam} style={{ fontSize: '0.8rem', padding: '6px 12px' }}>
+                            Guide <ChevronRight size={14} />
+                          </button>
                         </div>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <button 
-                        className={`btn ${isTracked ? 'btn-emerald' : 'btn-secondary'}`}
-                        onClick={() => onToggleTrackExam(ev.examId)}
-                        style={{ fontSize: '0.8rem', padding: '6px 14px', display: 'flex', alignItems: 'center', gap: '6px' }}
-                      >
-                        {isTracked ? (
-                          <>
-                            <Check size={14} /> Tracking
-                          </>
-                        ) : (
-                          <>
-                            <Bell size={14} /> Track Exam
-                          </>
-                        )}
-                      </button>
-
-                      <button 
-                        className="btn btn-outline"
-                        onClick={() => matchedExam && onSelectExam(matchedExam)}
-                        disabled={!matchedExam}
-                        style={{ fontSize: '0.8rem', padding: '6px 14px' }}
-                      >
-                        Guide <ChevronRight size={14} />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            ))}
           </div>
         </div>
       )}
-
     </div>
   );
 };
@@ -6199,8 +6852,9 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal,
   const greeting = (forExam: Exam): AIChatMessage => ({
     id: `m-1-${forExam.id}`,
     sender: 'AI',
-    text: `Hello. I answer from the verified GovOS register for ${forExam.title} — eligibility, dates, pattern, posts, syllabus, application, admit card and cutoffs — and I can take you to the right part of the platform. I do not guess, and I do not search unverified websites.\n\nTry: "where do I check my eligibility", "where are the resources", "what is the last date to apply", or "is there negative marking".`,
-    isVerified: true
+        text: `Hello. I answer from the GovOS register for ${forExam.title} — eligibility, dates, pattern, posts, syllabus, application, admit card and cutoffs — and I can take you to the right part of the platform. Each answer says whether its facts are officially verified. I do not guess, and I do not search unverified websites.\n\nTry: "where do I check my eligibility", "where are the resources", "what is the last date to apply", or "is there negative marking".`,
+    isVerified: false,
+    sourceKind: 'PLATFORM'
   });
   const [messages, setMessages] = useState<AIChatMessage[]>(() => [greeting(exam)]);
 
@@ -6356,63 +7010,34 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal,
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       
-      {/* Header */}
-      <div className="glass-card" style={{ padding: '24px', background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, #ffffff 100%)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-primary)' }}>
-            <Bot size={24} />
-          </div>
-          <div>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 800 }}>
-              Strictly Grounded AI Guidance Assistant
-            </h2>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-              Answers come from the verified GovOS register and its rule engine. When the register has no direct answer, Claude may read this exam's record to help; its answer is labelled and cited, each fact it uses shows whether it is officially verified, and if Claude is unavailable you get the register's own reply.
-            </p>
-          </div>
-        </div>
-
+      <PageStage
+        eyebrow="Ask GovOS AI"
+        colour="periwinkle"
+        title={<>Ask anything about <span className="accent-serif">{examDisplayCode(exam)}</span>.</>}
+        lede="Answers come from this exam's record and GovOS's rule engine. Where the record has no direct answer, Claude may read it to help — that answer is labelled and cited, each fact it uses says whether it is officially verified, and if Claude is unavailable you get the record's own reply."
+        icon={<Bot size={15} />}
+      >
         {/* The exam in hand, stated. "When is it?" means this exam until you name another. */}
-        <div style={{ marginTop: '16px', paddingTop: '14px', borderTop: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            Current exam context
-          </span>
-          <span className="badge badge-verified" style={{ fontSize: '0.72rem' }}>
-            <BookOpen size={12} /> {exam.title}
-          </span>
-          <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-            Questions like “when is it?” or “am I eligible?” are answered for this exam. Name another exam in your message to ask about that one instead.
-          </span>
+        <div className="ask-context">
+          <span className="ask-context-label">Current exam context</span>
+          <span className={`ask-context-exam pass-${passToneOf(exam.authorityName)}`}><BookOpen size={13} /> {exam.title}</span>
+          <span className="ask-context-hint">Questions like “when is it?” or “am I eligible?” are answered for this exam. Name another exam in your message to ask about that one instead.</span>
         </div>
-      </div>
+      </PageStage>
 
       {/* Chat Conversation Box */}
-      <div className="glass-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', height: '550px' }}>
-        
+            <div className="glass-card chat-card">
+
         {/* Messages Feed */}
-        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px', paddingRight: '8px' }}>
+        <div className="chat-feed" data-smooth-scroll>
           {messages.map(msg => (
-            <div 
-              key={msg.id} 
-              style={{
-                alignSelf: msg.sender === 'USER' ? 'flex-end' : 'flex-start',
-                maxWidth: '82%',
-                background: msg.sender === 'USER' ? 'var(--primary)' : 'var(--surface-2)',
-                // A solid brand fill takes white text; near-black on --primary reads at 3.97:1.
-                color: msg.sender === 'USER' ? '#ffffff' : 'var(--text-primary)',
-                padding: '16px 20px',
-                borderRadius: msg.sender === 'USER' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-                border: msg.sender === 'AI' ? '1px solid var(--border-color)' : 'none',
-                lineHeight: 1.6,
-                fontSize: '0.95rem'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                {/* Indigo on the blue bubble measured 1.40:1 - the label was effectively
-                    invisible. On the fill it is white; on the light AI bubble it is the
-                    theme's purple, which clears AA there. */}
-                <span style={{ fontWeight: 700, fontSize: '0.8rem', color: msg.sender === 'USER' ? 'rgba(255, 255, 255, 0.92)' : 'var(--purple)' }}>
-                  {msg.sender === 'USER' ? 'CANDIDATE' : 'GOVOS GROUNDED AI'}
+            <div key={msg.id} className={`chat-turn ${msg.sender === 'USER' ? 'from-user' : 'from-ai'}`}>
+              {msg.sender === 'AI' && <span className="chat-avatar" aria-hidden="true"><Bot size={16} /></span>}
+            <div className="chat-bubble">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' }}>
+                {/* The candidate's bubble is an ink fill, so its label is white; the assistant's is a white card. */}
+                <span className="chat-who">
+                  {msg.sender === 'USER' ? 'You' : 'GovOS AI'}
                 </span>
                 
                 {msg.sender === 'AI' && msg.claudeAnswer && <ClaudeAnswerBadge answer={msg.claudeAnswer} />}
@@ -6488,7 +7113,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal,
                 </div>
               )}
 
-              {msg.citation && (
+                            {msg.citation && (
                 <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid var(--surface-3)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                     Citation: {msg.citation.documentTitle} (Page {msg.citation.pageNumber}, {msg.citation.clauseNumber})
@@ -6500,46 +7125,31 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onOpenProvenanceModal,
               )}
 
             </div>
+            </div>
           ))}
         </div>
 
         {/* Input Bar */}
         {/* Starter questions, so the assistant's scope is visible rather than guessed at */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '16px' }}>
+                <div className="chat-prompts">
           {suggestedQuestions.map(question => (
-            <button
-              key={question}
-              className="btn btn-secondary"
-              onClick={() => askSuggested(question)}
-              style={{ fontSize: '0.75rem', padding: '6px 12px' }}
-            >
+            <button key={question} className="chip" onClick={() => askSuggested(question)}>
               {question}
             </button>
           ))}
         </div>
 
-        <div style={{ display: 'flex', gap: '12px', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--border-color)' }}>
-          <input 
+        <div className="chat-input">
+          <input
             type="text"
+            aria-label="Ask GovOS AI"
             placeholder="Ask about eligibility, dates, pattern, posts, syllabus — or where something is in this platform"
             value={inputQuery}
             onChange={(e) => setInputQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-            style={{
-              flex: 1,
-              minWidth: 0,
-              padding: '14px 18px',
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--bg-input)',
-              border: '1px solid var(--border-color)',
-              color: 'var(--text-primary)',
-              fontSize: '0.95rem',
-              outline: 'none'
-            }}
           />
-
-          <button className="btn btn-primary" onClick={handleSendMessage} style={{ padding: '14px 24px', flexShrink: 0 }}>
-            Send <Send size={18} />
+          <button className="chat-send" onClick={handleSendMessage} aria-label="Send">
+            <span className="chat-send-text">Send</span> <Send size={17} />
           </button>
         </div>
 
@@ -6963,32 +7573,15 @@ export const AdminVerificationPanel: React.FC<AdminVerificationPanelProps> = ({ 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
       
-      {/* Header Banner */}
-      <div className="glass-card" style={{ padding: '24px', background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, #ffffff 100%)', borderColor: 'rgba(16, 185, 129, 0.3)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'var(--emerald)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-primary)' }}>
-              <Terminal size={24} />
-            </div>
-            <div>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 800 }}>
-                {SHOW_DEV_FIXTURES ? 'Trust Pipeline & Source Health Monitoring Console' : 'Trust Pipeline & Verifier Console'}
-              </h2>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                {SHOW_DEV_FIXTURES
-                  ? 'Multi-layer SHA-256 hash checks, official domain security boundary, and human verifier approval workflow.'
-                  : 'Corrigenda, syllabus revisions, candidate accuracy reports and official-source research, each decided by a human verifier.'}
-              </p>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <span className="badge badge-verified" style={{ padding: '6px 12px' }}>
-              <Lock size={14} /> SECURITY BOUNDARY ACTIVE
-            </span>
-          </div>
-        </div>
-      </div>
+      <PageStage
+        eyebrow="Trust Panel"
+        colour="green"
+        title={<>Nothing reaches a candidate <span className="accent-serif">unreviewed</span>.</>}
+        lede={SHOW_DEV_FIXTURES
+          ? 'Source health checks, corrigenda, syllabus revisions, candidate accuracy reports and official-source research — each change decided by a human verifier. The monitor below shows development fixtures.'
+          : 'Corrigenda, syllabus revisions, candidate accuracy reports and official-source research, each decided by a human verifier.'}
+        icon={<ShieldCheck size={15} />}
+      />
 
       {/* Admin Tabs */}
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -21741,8 +22334,20 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
 
   const activeSectionMeta = sections.find(s => s.num === activeSection);
 
-  const goToSection = (secNum: number) => {
+    const goToSection = (secNum: number) => {
     setActiveSection(secNum);
+  };
+
+  // Where the open part sits in the journey, and its neighbours. A reference section is not a step: it leads
+  // back to the part it backs up.
+  const partIndex = EXAM_SECTIONS.findIndex(sec => sec.num === activeSection);
+  const referenceMeta = REFERENCE_SECTIONS.find(sec => sec.num === activeSection);
+  const prevPart = partIndex > 0 ? EXAM_SECTIONS[partIndex - 1] : null;
+  const nextPart = partIndex >= 0 && partIndex < EXAM_SECTIONS.length - 1 ? EXAM_SECTIONS[partIndex + 1] : null;
+  const backsPart = referenceMeta ? EXAM_SECTIONS.find(sec => sec.label === referenceMeta.under) || null : null;
+  const turnTo = (secNum: number) => {
+    goToSection(secNum);
+    requestAnimationFrame(() => sectionCardRef.current?.scrollIntoView({ block: 'start', behavior: prefersReducedMotion() ? 'auto' : 'smooth' }));
   };
 
   // Opening the Syllabus section re-reads the verifier's revisions, so a change applied in the
@@ -21824,14 +22429,13 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
             </button>
           );
         })}
-        <div style={{ marginTop: '12px', padding: '14px', borderRadius: '12px', background: 'var(--primary-soft)', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-          <Bot size={18} color="var(--primary)" style={{ flexShrink: 0, marginTop: '2px' }} />
-          <div>
-            <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-primary)' }}>Need Help?</div>
-            <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Ask GovOS AI</div>
-            <button className="nav-link" onClick={onAskAI} style={{ padding: '4px 0', color: 'var(--primary)', fontSize: '0.78rem' }}>Get instant answers →</button>
-          </div>
-        </div>
+        <button className="side-help" onClick={onAskAI}>
+          <span className="side-help-mark" aria-hidden="true"><Bot size={17} /></span>
+          <span>
+            <span className="side-help-title">Need help?</span>
+            <span className="side-help-text">Ask GovOS AI about {examDisplayCode(exam)} <ArrowRight size={13} /></span>
+          </span>
+        </button>
       </aside>
 
       <div className="exam-main-content" data-smooth-scroll style={{ display: 'flex', flexDirection: 'column', gap: '20px', minWidth: 0 }}>
@@ -21923,26 +22527,41 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
 
       {/* Corrigendum Change Notification Bar */}
       {activeCorrigendum && (
-        <div className="corrigendum-bar animate-fade-in" style={{ padding: '16px 20px', borderRadius: 'var(--radius-md)', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <RefreshCw size={22} color="var(--amber)" />
-            <div>
-              <div style={{ fontSize: '0.9rem', fontWeight: 800, color: '#af5109', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                ACTIVE CORRIGENDUM NOTICE: {activeCorrigendum.noticeNumber}
-              </div>
-              <div style={{ fontSize: '0.85rem', color: '#92400e' }}>
-                {activeCorrigendum.diffSummary}
-              </div>
-            </div>
+                <div className="corrigendum-bar notice-ribbon" role="status">
+          <span className="notice-ribbon-mark" aria-hidden="true"><RefreshCw size={18} /></span>
+          <div className="notice-ribbon-copy">
+            <div className="notice-ribbon-eyebrow">Corrigendum in force · {activeCorrigendum.noticeNumber}</div>
+            <div className="notice-ribbon-text">{activeCorrigendum.diffSummary}</div>
           </div>
-          <button className="btn btn-outline" onClick={() => setActiveSection(13)} style={{ borderColor: 'var(--amber)', color: 'var(--amber)', fontSize: '0.8rem', padding: '6px 12px' }}>
-            View Full Notice <ChevronRight size={14} />
+          <button className="btn btn-secondary notice-ribbon-btn" onClick={() => turnTo(13)}>
+            View full notice <ChevronRight size={14} />
           </button>
         </div>
       )}
 
       {/* Section Content Views. A section change replays a short entrance on this card -- nothing inside remounts. */}
-      <div className="glass-card" ref={sectionCardRef} style={{ padding: '28px' }}>
+            <div className="glass-card exam-section-card" ref={sectionCardRef} style={{ padding: '28px' }}>
+
+        {/* Where this part sits in the exam: its position, and every part as a step you can jump to. */}
+        <div className="part-mast">
+          <div className="part-mast-label">
+            {partIndex >= 0
+              ? <>Part <strong>{String(partIndex + 1).padStart(2, '0')}</strong> of {EXAM_SECTIONS.length} · {EXAM_SECTIONS[partIndex].label}</>
+              : <>Reference · {referenceMeta?.label}{referenceMeta ? <> — backs <strong>{referenceMeta.under}</strong></> : null}</>}
+          </div>
+          <div className="part-progress" role="group" aria-label="Parts of this exam">
+            {EXAM_SECTIONS.map((sec, i) => (
+              <button
+                key={sec.num}
+                className={`part-step${i < partIndex ? ' is-done' : ''}${i === partIndex ? ' is-on' : ''}`}
+                onClick={() => goToSection(sec.num)}
+                aria-label={`Part ${i + 1}: ${sec.label}`}
+                aria-current={i === partIndex ? 'step' : undefined}
+                title={sec.label}
+              />
+            ))}
+          </div>
+        </div>
 
         {/* The engine's honest state for this section of a machine-acquired exam. */}
         <SectionStateNote exam={exam} sectionNum={activeSection} discovered={discoveredForBanner} />
@@ -22236,8 +22855,8 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                 <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                   03 — Configured Eligibility Rules (Crucial Date: {exam.crucialEligibilityDate || 'not stated in the record'})
                 </h3>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: '4px 0 0 0' }}>
-                  Deterministic verification rules configured directly from the official {exam.authorityName} notification.
+                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: '4px 0 0 0' }}>
+                  The rules as {exam.authorityName}'s notice states them. Each one carries its own evidence; the calculator applies them to you.
                 </p>
               </div>
 
@@ -22248,19 +22867,14 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
               )}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '14px' }}>
+                        <div className="rule-ledger">
               {/* Each exam states its own rules; the cards are data, cited, not component prose. */}
               {(exam.eligibilityHighlights || []).map((card, idx) => {
-                const palette = [
-                  { bg: 'rgba(59, 130, 246, 0.08)', border: 'rgba(59, 130, 246, 0.3)', color: '#235ddd' },
-                  { bg: 'rgba(16, 185, 129, 0.08)', border: 'rgba(16, 185, 129, 0.3)', color: '#137638' },
-                  { bg: 'rgba(245, 158, 11, 0.08)', border: 'rgba(245, 158, 11, 0.3)', color: '#af5109' },
-                  { bg: 'rgba(168, 85, 247, 0.08)', border: 'rgba(168, 85, 247, 0.3)', color: '#7c3aed' }
-                ][idx % 4];
                 return (
-                  <div key={card.title} style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: palette.bg, border: `1px solid ${palette.border}`, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <h4 style={{ fontSize: '1rem', fontWeight: 700, color: palette.color, margin: 0 }}>{card.title}</h4>
-                    <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.55 }}>{card.body}</p>
+                  <div key={card.title} className="rule-card" data-reveal>
+                    <span className="rule-card-num" aria-hidden="true">{String(idx + 1).padStart(2, '0')}</span>
+                    <h4 className="rule-card-title">{card.title}</h4>
+                    <p className="rule-card-body">{card.body}</p>
                     {(() => {
                       // A card printing several amounts needs evidence for each, not one clause for all.
                       const figures = moneyFigureEvidence(card.body, card.provenance, exam);
@@ -22276,10 +22890,11 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                   </div>
                 );
               })}
-              {(exam.eligibilityHighlights || []).length === 0 && exam.globalRuleGroup.rules.map(rule => (
-                <div key={rule.id} style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)' }}>
-                  <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>{rule.ruleType.replace(/_/g, ' ')}</h4>
-                  <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', margin: 0 }}>{rule.operator} {Array.isArray(rule.ruleValue) ? rule.ruleValue.join(', ') : String(rule.ruleValue)}</p>
+                            {(exam.eligibilityHighlights || []).length === 0 && exam.globalRuleGroup.rules.map((rule, idx) => (
+                <div key={rule.id} className="rule-card">
+                  <span className="rule-card-num" aria-hidden="true">{String(idx + 1).padStart(2, '0')}</span>
+                  <h4 className="rule-card-title">{rule.ruleType.replace(/_/g, ' ')}</h4>
+                  <p className="rule-card-body">{rule.operator} {Array.isArray(rule.ruleValue) ? rule.ruleValue.join(', ') : String(rule.ruleValue)}</p>
                 </div>
               ))}
               {(exam.eligibilityHighlights || []).length === 0 && exam.globalRuleGroup.rules.length === 0 && (
@@ -22930,6 +23545,19 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
           <SectionSourcesPanel key={`${exam.id}-${activeSection}`} exam={exam} section={SECTION_PANEL_FOR[activeSection]}
             onOpenProvenanceModal={onOpenProvenanceModal} />
         )}
+
+        {/* Turn the page: the previous and next parts of the journey, or back to the part a reference backs up. */}
+        <nav className="part-pager" aria-label="Previous and next part">
+          {prevPart
+            ? <button className="part-pager-btn" onClick={() => turnTo(prevPart.num)}><ArrowLeft size={18} /><span><small>Previous part</small>{prevPart.label}</span></button>
+            : <span />}
+          {nextPart && (
+            <button className="part-pager-btn is-next" onClick={() => turnTo(nextPart.num)}><span><small>Next part</small>{nextPart.label}</span><ArrowRight size={18} /></button>
+          )}
+          {backsPart && (
+            <button className="part-pager-btn is-next" onClick={() => turnTo(backsPart.num)}><span><small>Back to the part it backs up</small>{backsPart.label}</span><ArrowRight size={18} /></button>
+          )}
+        </nav>
       </div>
 
       </div>

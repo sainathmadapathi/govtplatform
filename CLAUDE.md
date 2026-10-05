@@ -1610,8 +1610,10 @@ or the content, and adds no dependency.
   viewport, staggered 55 ms when several mount together. Only the outermost card reveals; overlays, the top bar and
   `[data-no-reveal]` never wait. Content is hidden only by `.rv-wait`, which only that observer adds and always
   removes, so a server render, a check or a failed script never hides anything.
-- **Lerped wheel** — `installSmoothWheel`: lerp 0.2 per 60 Hz frame for the document and for panes marked
-  `data-smooth-scroll` (the exam page's two panes). It leaves native scrolling alone for ctrl/meta (the syllabus
+- **Lerped wheel** — `installSmoothWheel`: lerp 0.22 per 60 Hz frame for the document and for panes marked
+  `data-smooth-scroll` (the exam page's two panes), **for a mouse wheel's notches only** (40 px and up). A touchpad
+  sends small pixel deltas already eased by the system's own inertia; smoothing them a second time made scrolling lag
+  behind the fingers, so once a fine delta is seen the stream stays native until it pauses for 300 ms. It leaves native scrolling alone for ctrl/meta (the syllabus
   map's pinch), horizontal wheels, nested scrollers that can still move, modals, keyboard/scrollbar, touch and
   reduced motion, and it hands over at once if anything else moves the scroller.
 - **Transitions** — `useReplayOnChange(ref, key, class)` replays `view-enter` on `<main>` when the tab changes and
@@ -1632,26 +1634,90 @@ or the content, and adds no dependency.
   emulated.
 
 **Composition (the visual redesign).** Presentation only; every handler, data source and flow is the one it was.
-- **Visual system** (`index.html`, "GOVOS VISUAL SYSTEM"): ink `#0b1430` and saffron (the wordmark's blue and orange,
-  deepened), white cards on a cool paper ground. Five authority **tones** (`.pass-ink|saffron|jade|plum|tide`) are
-  picked by `passToneOf(authorityName)` — one per authority in the register, a hash for others — and shared by
-  an exam's pass and its command stage, so an exam keeps its colour. Every tone clears 4.5:1 for white text at
-  85 % opacity (the faintest small text placed on one).
-- **Home** is told in chapters (`ChapterHeader`: numbered eyebrow, display title, one line): `CinematicHero` (a dark
-  layered stage; the next milestones the register holds float over the illustration as buttons into their exams,
-  with counts read from the records; pointer depth via `usePointerDepth`, scroll exit on a CSS view timeline) →
-  `ExamPassRail` (the same five popular exams and handlers, as passes with the next milestone and a pointer tilt;
-  a horizontal snap rail under 1100 px) → eligibility (`ExamDiscovery`, unchanged inside) → `JourneyStory` (seven
-  steps with a scroll-filled line; it carries the four old action cards' actions) → `PullQuote` → the
-  recommendation and discovery engines, each opened by a chapter header. `nextMilestoneOf` never counts down to a
-  date printed without a day.
-- **Exam page:** the header is a dark **command stage** (`.exam-hero` on the exam's tone): authority, title, badges,
+- **Visual system — the "club" look** (`index.html`, the "CLUB" block, which overrides the earlier "GOVOS VISUAL
+  SYSTEM" block): the reference site's own palette, read from its CSS — violet `#3b308f` (now `--primary`), yellow
+  `#ffd24a`, magenta `#ff008c`, bright pink `#fd48f2`, cyan, green, orange and their pale/soft variants — as flat
+  colour fields with black type, 2 px black outlines and flat offset shadows on stickers, pill buttons, wavy grounds
+  (`ClubWaves`, drawn here) and a hand-lettered accent (`.accent-serif` and `Handwritten` use Caveat Brush). The
+  reference's logo, book covers, illustrations, copy and licensed fonts are **not** used: GovOS has its own mark
+  (`GovOSMark`), its own content, and Google fonts. Five authority **tones** (`.pass-ink|saffron|jade|plum|tide`)
+  picked by `passToneOf(authorityName)` now map to violet / yellow / pale green / pale pink / pale blue, each setting
+  `--tone-fg` (white on violet, black on the rest); every component placed on a tone reads `--tone-fg`.
+- **Dawn — GovOS's own colours over that composition** (`index.html`, the "DAWN" block, last before reduced
+  motion): a navy sky (`--d-navy`), a saffron sun rising over marigold and saffron hills, India green, coral and sky
+  blue, on cream paper — the morning of "Exams today. A better tomorrow." The reference's palette is no longer used;
+  its composition and motion are. Tones: navy / marigold / pale green / pale coral / pale sky.
+- **The bar blends into what is under it.** `Header` samples the colour beneath its bottom edge (at most ~10 reads a
+  second while scrolling with a trailing read when it stops, and on a view change) into `--bar-rgb` and `data-surface="dark|light"`; only a field
+  the width of the screen counts, so a card or row passing under it never makes it flicker. Scrolled, the bar is that
+  colour at 90 %; on a dark field its wordmark and links turn light.
+- **More motion, all of it off under reduced motion.** The hero's sun rises, its stars fade in and its hills rise on
+  load; scrolling sets the sun, parts the hills, lifts the book away and drifts the words up (scroll timelines); the
+  book tilts toward the pointer; the book, the stickers, the sun and the stars move gently **only while the hero is on
+  screen** (`data-live`, an IntersectionObserver pauses them otherwise — decoration never animates out of view).
+  Exam cards are dealt onto the table as they arrive, the band's label strips wipe in, the footer wordmark springs up
+  letter by letter, and `PageWipe` sweeps a saffron ribbon off the screen whenever the top-level view changes (set in
+  a layout effect, so the swap itself is never seen).
+- **Home**, in the reference's order: `ClubIntro` (first visit per session only, never under reduced motion: violet
+  field, the mark pops in and out, a violet ribbon sweeps off; it sets `html.intro-run`, which delays the hero by
+  `--intro-delay`, and removes itself after 2.3 s) → `ClubHero` (full-bleed yellow field with waves; the headline
+  springs in word by word; search, CTAs, popular chips and the register's counts; `ClubSkyline` — **the journey, happening**: a candidate (a
+  boy with a backpack and the notice under his arm) stands at the start of a road to the gate of a domed government
+  building at dawn; the **Discover** milestone glows on, the camera eases forward and the road fills in under his
+  feet as he walks to **Apply**, which lights up gold with a ring; then **Exam**; then **Result**, where the
+  building's windows bloom gold and sparks burst; the loop holds, settles back and begins again (17 s). **One clock**
+  (`journeyAt(t)` + a requestAnimationFrame loop) drives the walk, the camera push, the road fill and the stage, so
+  they can never drift apart; the milestones light from `data-stage` and his legs move only while `data-walking`.
+  Milestone posts stand on the roadside (the path's normal, measured from `ROAD_D`) and he stops a step short of each,
+  so he never covers a label. It runs only while the hero is on screen (`live`), never jumps after a background tab,
+  and under reduced motion the finished journey is shown, still. The four stages are generic on purpose — no exam's
+  dates; the nearest milestones the register holds float beside it as stickers that open their exam. The hero has
+  its own palette: background #0B1633, hills #173B68 / #245B86, building #101B3D, accent blue #3B82F6, gold #F4B942,
+  road #E8EEF5, white cards with #14213D text) → `ExamPassRail` (the same five popular
+  exams and handlers as a **fanned deck**: overlapping tilted cards, each in its authority's colour with a line-art
+  sketch of that authority's world — `AuthoritySketch` selection / civil / banking / state / railway, passed on the
+  item — the exam set large, tags read from the record and the next milestone. Pointing at a card (or focusing it)
+  grows its flex slot until it is fully in view, lifts and straightens it and wakes its sketch, while the others tuck
+  under; on touch and under 1100 px it is a swipeable rail. **The sketches are not the authorities' logos or the State
+  Emblem** — the Emblem's use is restricted by law and a commission's logo on a non-government site reads as
+  endorsement; do not substitute them) → `ClubCategories` (**a pinned scene**: the section is
+  `100svh + lines × 34svh` tall (26svh on a phone) and its stage is `position: sticky`, so the page holds still while its scroll moves
+  the list — every exam code and every career field the records name — one line at a time, dwelling on each
+  (smoothstep between lines), the centre line full size and the rest dimmed and blurred by distance; one
+  `getBoundingClientRect` per frame, written straight to the DOM. The user found it too quick to read, so it is
+  slowed three ways: the extra height; `data-scroll-rate="0.55"`, which `installSmoothWheel` honours while a marked
+  zone fills the screen (wheel notches eased at 55 %, a touchpad's own deltas scaled to 55 %); and a settle 220 ms
+  after the scroll stops that glides on to the next line in the direction of travel once 15 % of the way there, else
+  back — so one wheel notch steps exactly one line, and a line is never left half-way. It settles only while pinned,
+  so the page leaves the scene freely at either end. The section must be `overflow: clip`, never
+  `hidden`, or it becomes a scroll container and the stage never sticks. Under reduced motion it is a plain list. An
+  exam line opens that exam, a field line sets the browse engine's interest filter) → `ClubBand` (sky blue, words only: "Think inside the notice." in
+  label strips, one line and the eligibility and timeline buttons; the user asked for the illustration to be taken out) → eligibility
+  (`ExamDiscovery`) → `JourneyStory` → the recommendation and discovery engines → `ClubFAQ` (colour-coded questions
+  about how GovOS works, with sticky categories; every answer is a statement this file supports) → `ClubFooter`.
+  Full-bleed fields use `.bleed`; the sideways clip lives on `#root` (`overflow-x: clip`), not on `.homepage`, or the
+  fields stop at the content column. `nextMilestoneOf` never counts down to a date printed without a day.
+- **Exam page:** the header is a **command stage** (`.exam-hero` on the exam's tone): authority, title, badges,
   "Next on record" from the live dates, a **stage rail** read from `exam.stages` (works for any exam, no rail
   with fewer than two), and the same actions. The four date tiles are one ticket strip; the description is an
   editorial lead; the current part in the side navigation sits on ink. `.exam-main-content > *` never shrinks
   (the pane is a fixed-height flex column on a desktop, and an `overflow: hidden` child collapsed to nothing).
 - **Shell:** the top bar is sticky and condenses once the page scrolls (`data-scrolled`); under 600 px it wraps,
   with the navigation as a full-width swipeable row.
+- **Top-level pages** open on one `PageStage` (a flat colour field per page — `colour` prop — with a wavy foot) (eyebrow, display title with one serif accent, lede, the page's
+  own actions and figures). My Exams is a shelf of passes on each exam's tone; Compare puts the two exams as passes
+  facing each other ("vs"), then the matrix, which stacks into one card per attribute under 760 px; My Timeline shows
+  each tracked exam on its tone with its milestones as stops on a line, and the all-exams calendar as a month agenda.
+  **Each agenda date names its own evidence state** (`factVerification` of the date — "Officially verified",
+  "Verification pending", "Not in its quoted source", "No official source on record", "Superseded"); it used to
+  print VERIFIED under every live date. A date printed without a day is never counted down to there either, and
+  milestone kinds read as words ("last date", "examination"), never the internal `EXAM_TIER1` bucket.
+- **Ask GovOS AI's greeting** is `PLATFORM` ("how GovOS works"), not a fact from the record, so it no longer wears
+  the "verified from the official record" badge.
+- **Exam page:** the section card opens with the part's position ("Part 03 of 13") and a step bar of the 13 parts,
+  and closes with a previous / next pager (`turnTo`, which brings the new part's top into view); a reference section
+  leads back to the part it backs up. The active corrigendum is a ribbon; eligibility highlights are one numbered
+  ledger style (`.rule-card`), each as tall as its own words.
 
 Checks after touching any of this: the 375/768/1024/1440 overflow sweep over every section of every exam, the
 contrast sweep, and `npm run check:frontend`.
@@ -1681,10 +1747,11 @@ When adding UI, write colours as tokens; a new hex meant for a dark ground will 
 
 **The hero illustration is the user's reference art, not a drawing.** `src/hero-illustration.png`
 is cropped from the GovOS reference mockup (the hero's right panel), with its handwritten
-caption filled from the neighbouring sky and upscaled 3x; `ui.tsx` imports it and Vite
-inlines it into the single-file build (the `vite/client` reference at the top of `ui.tsx`
-types the import). It is the one non-source file under `src/`; do not replace it with a
-generated scene — the user asked for this image specifically.
+caption filled from the neighbouring sky and upscaled 3x. It is the one non-source file under
+`src/`; do not replace it with a generated scene — the user asked for this image specifically.
+**It is not shown at present**: the user asked for it to be removed from the home page
+(2026-10-05), so nothing imports it and it is not in the build. Import it again from `ui.tsx`
+(Vite inlines it; the `vite/client` reference at the top of `ui.tsx` types the import) if it returns.
 
 **The light re-skin left a tail of dark-theme colours, now cleared.** A colour written for a
 near-black ground (`color: 'white'`, `#d1d5db`, `#facc15`, `#d1fae5`, `rgba(255,255,255,0.4)`)
