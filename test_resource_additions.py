@@ -24,6 +24,27 @@ TGPSC = 'exam-websitenew-tgpsc-group-i-2024'
 MANABADI = 'https://www.manabadi.co.in/sourceview/questionpaperlist.aspx?sourceid=1550'
 OFFICIAL_PAGE = 'https://websitenew.tgpsc.gov.in/oldquestionp.jsp'
 
+# TGPSC Group-I is a machine-read exam: it lives in the runtime registry (the exam_registry table), not in
+# data.ts. The server's exam store is built at import against whatever govos.db is there, so these tests used
+# to pass only on a machine whose own database held TGPSC, and failed on a clean checkout. They now carry the
+# one field the source-kind rule reads (its official domain, as the registry record states it).
+FIXTURE_EXAMS = {TGPSC: {'id': TGPSC, 'title': 'TGPSC Group-I Services',
+                         'authorityName': 'Telangana Public Service Commission',
+                         'officialDomain': 'https://websitenew.tgpsc.gov.in'}}
+
+
+class _FixtureStore:
+    """The server's exam store, with this file's fixture exams in front of it."""
+
+    def __init__(self, real):
+        self.real = real
+
+    def get(self, exam_id):
+        return FIXTURE_EXAMS.get((exam_id or '').strip()) or self.real.get(exam_id)
+
+    def __getattr__(self, name):
+        return getattr(self.real, name)
+
 
 class _Base(unittest.TestCase):
     def setUp(self):
@@ -32,11 +53,15 @@ class _Base(unittest.TestCase):
         self._orig_db = govos.DB_FILE
         govos.DB_FILE = self._tmp.name
         govos.init_database()
+        self._hooks = govos._claude_queue().hooks
+        self._orig_store = self._hooks.exam_store
+        self._hooks.exam_store = _FixtureStore(self._orig_store)
         self._orig_check = govos._check_one_link
         govos._check_one_link = lambda url: {'url': url, 'status': 'HEALTHY', 'httpCode': 200, 'checkedAt': 'now'}
         self.client = govos.app.test_client()
 
     def tearDown(self):
+        self._hooks.exam_store = self._orig_store
         govos._check_one_link = self._orig_check
         govos.DB_FILE = self._orig_db
         try:
