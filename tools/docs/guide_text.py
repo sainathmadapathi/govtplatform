@@ -65,10 +65,20 @@ GovOS holds a small set of exams, and it is honest about how deep each one goes:
   something has not been read yet, the screen says exactly what is missing.
 - **TGPSC Group-I** was read by GovOS's own machine reader from the commission's website and stored in the
   database. It is a "machine-read" exam.
+- **TG TET 2026-II** (the Special Teacher Eligibility Test for in-service teachers in Telangana) was written by
+  hand from the Department of School Education's own notification, bulletin, press note and syllabus files. It
+  is an *eligibility test*, not a recruitment: passing it fills no post, so it has no vacancies, pay or age
+  band, and GovOS says so instead of printing "0 posts".
+- **JEE (Main) 2026** (the National Testing Agency's engineering, architecture and planning entrance test) was
+  written by hand from NTA's own information bulletin, syllabus, FAQ and result press release. It is an
+  *admission test*: its scores decide admission to institutions, so it too has no posts. Its 2026 cycle is over
+  (the Paper 1 result was declared on 20 April 2026); NTA had published nothing for 2027 when it was read.
 
 GovOS never fills a thin exam with another exam's material. A UPSC page never shows SSC content.""",
      """Authored records are constants in `data.ts` ([[SSC_CGL_EXAM]], [[UPSC_CSE_EXAM]], [[IBPS_PO_EXAM]],
-`APPSC_*`), collected in [[ALL_EXAMS]]. Machine-read exams are rows in the `exam_registry` table, published by
+`APPSC_*`, [[TG_TET_INSERVICE_2026_II_EXAM]], [[JEE_MAIN_2026_EXAM]]), collected in [[ALL_EXAMS]]. `Exam.examNature`
+marks an `ELIGIBILITY_TEST` or an `ADMISSION_TEST`; the assistant answers their post-shaped questions with
+[[noPostsReply]], and a question one of the exam's own FAQs answers with [[faqAnswerFor]]. Machine-read exams are rows in the `exam_registry` table, published by
 `tools/exam_builder` and served by `GET /api/exams`. The frontend loads them through `examRegistryService`
 (newest load wins; a failed load keeps the last good list). Exam ids are stable (`exam-ssc-cgl-2026`); the
 legacy short id is mapped once by `canonicalExamId` / `LEGACY_EXAM_ID_ALIASES`. See {{doc:Adding an exam is adding data, never a branch}}."""),

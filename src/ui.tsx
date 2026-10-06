@@ -2648,14 +2648,17 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
     'Postgraduate / Master\'s'
   ];
 
-  const interests = [
+  // The standard fields first, then any field an exam's own record declares (a TET's "Teaching & Education"), so a
+  // new kind of exam can be found by its field without a code change.
+  const interests = Array.from(new Set([
     'Government Job',
     'Civil Services & Governance',
     'Banking & Financial Sector',
     'Indian Railways',
     'Defence & Armed Forces',
-    'State Public Services'
-  ];
+    'State Public Services',
+    ...exams.flatMap(e => e.careerFields || [])
+  ]));
 
   // Rank of each qualification, so a graduate also sees exams that only need 12th.
   const QUALIFICATION_RANK: Record<ExamQualificationLevel, number> = {
@@ -5047,6 +5050,7 @@ const ASSISTANT_FILLER = new Set(['the', 'a', 'an', 'is', 'are', 'was', 'do', 'd
  * Order matters only where two patterns could both fire; each appends, none replaces.
  */
 const ASSISTANT_PARAPHRASES: { pattern: RegExp; means: string }[] = [
+  { pattern: /\bwho (can|may|is allowed to|are allowed to) (apply|appear|write|sit|take)\b/, means: 'eligibility' },
   { pattern: /\b(till|until|by) when\b|\bfill (in |up )?(the )?form\b|\bform (close|closes|closing|shut)|\bsubmit the form\b/, means: 'last date to apply' },
   { pattern: /\bwrong (tick|answer|option|mark|attempt)s?\b|\blose marks?\b|\bpenalt(y|ies)\b|\bdeduct|\bminus marks?\b|\bnegative\b/, means: 'negative marking' },
   { pattern: /\bhow much (do|does|will|would) (they|it|the job|the post|the government) pay\b|\bearn\b|\bstipend\b|\btake.?home\b|\bmonthly pay\b|\bpay of\b/, means: 'salary' },
@@ -5071,6 +5075,16 @@ function expandParaphrases(q: string): string {
     if (pattern.test(q) && !added.includes(means)) added.push(means);
   });
   return added.length > 0 ? `${q} ${added.join(' ')}` : q;
+}
+
+/** The question as typed, without the meanings `expandParaphrases` appended to it. */
+function withoutParaphrases(q: string): string {
+  const added: string[] = [];
+  ASSISTANT_PARAPHRASES.forEach(({ pattern, means }) => {
+    if (pattern.test(q) && !added.includes(means)) added.push(means);
+  });
+  const suffix = ` ${added.join(' ')}`;
+  return added.length > 0 && q.endsWith(suffix) ? q.slice(0, -suffix.length) : q;
 }
 
 /**
@@ -5113,6 +5127,8 @@ const assistantVocab = (): Set<string> => {
     'certificate', 'category', 'relaxation', 'marking', 'negative', 'pattern', 'question', 'questions', 'resources',
     'calendar', 'timeline', 'roadmap', 'bookmark', 'simulator'].forEach(w => vocab.add(w));
   ALL_EXAMS.forEach(ex => (ex.resources || []).forEach(r => { add(r.title); add(r.subject); }));
+  // An exam's own FAQ questions are its candidates' words ("percentile" is not a typo of "percentage").
+  ALL_EXAMS.forEach(ex => (ex.faqs || []).forEach(f => add(f.question)));
   COMMON_WORDS.forEach(w => vocab.add(w));
   ASSISTANT_PARAPHRASES.forEach(pp => add(pp.means));
   assistantVocabulary = vocab;
@@ -5512,7 +5528,8 @@ const FACT_SUBJECTS: Record<string, string> = {
   practice: 'practice and mock tests',
   attempts: 'the number of attempts',
   physical: 'the physical standards',
-  tentative: 'whether the dates are final'
+  tentative: 'whether the dates are final',
+  documents: 'the documents to upload'
 };
 
 /**
@@ -5601,17 +5618,18 @@ const FACT_INTENTS: { id: string; keys: string[] }[] = [
   { id: 'age', keys: ['age limit', 'maximum age', 'minimum age', 'age relaxation', 'how old', 'upper age', 'age criteria', 'crucial date', 'age as on', 'too old', 'age bar'] },
   { id: 'eligibility', keys: ['eligib', 'qualification', 'graduate', 'graduation', 'degree', 'b tech', 'btech', 'can i apply', 'final year eligibility', 'can i still'] },
   { id: 'dates', keys: ['last date', 'deadline', 'closing date', 'application date', 'when can i apply', 'apply by', 'important date', 'exam date', 'when is the exam', 'notification date', 'tier 1 exam', 'tier 2 exam', 'when is tier', 'exam schedule', 'exam month', 'which month', 'last date to apply', 'when is prelims', 'prelims date', 'when is mains', 'mains date', 'when is the interview', 'interview date', 'when is'] },
-  { id: 'pattern', keys: ['negative marking', 'marking scheme', 'exam pattern', 'pattern', 'how many questions', 'how many marks', 'duration', 'tier 1', 'tier 2', 'paper pattern', 'dest', 'data entry speed test', 'qualifying', 'csat qualifying', 'wrong answer', 'penalty'] },
+  { id: 'pattern', keys: ['negative marking', 'marking scheme', 'exam pattern', 'pattern', 'how many questions', 'how many papers', 'how many marks', 'duration', 'tier 1', 'tier 2', 'paper pattern', 'dest', 'data entry speed test', 'qualifying', 'csat qualifying', 'wrong answer', 'penalty'] },
   { id: 'vacancy', keys: ['vacancy', 'vacancies', 'how many post', 'number of post', 'seats', 'how many services', 'which services', 'services can i get', 'posts can i get', 'openings'] },
   { id: 'pay', keys: ['salary', 'pay level', 'pay scale', 'in hand', 'grade pay', 'how much do they pay', 'earn', 'stipend', 'take home', 'pay of'] },
   { id: 'syllabus', keys: ['syllabus', 'what to study', 'topics'] },
   { id: 'fee', keys: ['fee', 'payment', 'how much to pay', 'application fee', 'fees'] },
   { id: 'resources', keys: ['resource', 'material', 'book', 'pdf', 'video', 'ncert', 'free course', 'youtube', 'channel', 'coaching', 'teacher'] },
   { id: 'admitCard', keys: ['admit card', 'hall ticket', 'hall pass', 'e admit card', 'admission certificate', 'call letter'] },
-  { id: 'cutoff', keys: ['cutoff', 'cut off', 'marks needed', 'safe score', 'qualifying marks', 'minimum marks', 'csat cutoff'] },
+  { id: 'cutoff', keys: ['cutoff', 'cut off', 'marks needed', 'safe score', 'qualifying marks', 'minimum marks', 'csat cutoff', 'pass marks', 'pass mark', 'pass percentage'] },
   { id: 'attempts', keys: ['attempts', 'number of attempts', 'how many attempts', 'how many times can i', 'chances'] },
   { id: 'physical', keys: ['physical test', 'physical standard', 'physical standards', 'running test', 'walking test', 'fitness test', 'height', 'chest', 'medical standard'] },
   { id: 'tentative', keys: ['tentative', 'is that final', 'is it final', 'final or tentative', 'confirmed', 'fixed date', 'can it change'] },
+  { id: 'documents', keys: ['documents required', 'required documents', 'documents needed', 'which documents', 'what documents', 'documents to upload', 'certificates required'] },
   { id: 'apply', keys: ['apply', 'application', 'otr', 'registration', 'photo', 'signature'] },
   { id: 'practice', keys: ['practice', 'mock', 'test', 'pyq', 'previous year'] }
 ];
@@ -5723,7 +5741,7 @@ const PLATFORM_MAP: { keys: string[]; answer: string; action: AssistantAction }[
   },
   {
     keys: ['admit card', 'hall ticket', 'call letter'],
-    answer: 'Section 14 Admit Card of the Exam Guide covers when the card is released, which regional website issues it, what you must carry with it, and what to do if the download fails.',
+    answer: 'Section 14 Admit Card of the Exam Guide covers when the card is released, which website issues it, what you must carry with it, and what to do if the download fails.',
     action: { label: 'Open Admit Card', tab: 'EXAM_DETAIL', section: 14 }
   },
   {
@@ -5748,7 +5766,7 @@ const PLATFORM_MAP: { keys: string[]; answer: string; action: AssistantAction }[
   },
   {
     keys: ['result', 'after the exam', 'document verification', 'next step'],
-    answer: 'Section 16 Result & Next Steps of the Exam Guide covers the stages after the exam: answer key and challenge window, result, document verification and final posting.',
+    answer: 'Section 16 Result & Next Steps of the Exam Guide covers what comes after the exam: the result declarations on record, and the next steps the record states.',
     action: { label: 'Open Result & Next Steps', tab: 'EXAM_DETAIL', section: 16 }
   },
   {
@@ -5809,6 +5827,73 @@ function threadExam(ctx: ChatContext): Exam {
   const lastId = [...ctx.history].reverse().find(t => t.role === 'assistant')?.examId;
   if (!lastId || lastId === ctx.exam.id) return ctx.exam;
   return ALL_EXAMS.find(e => e.id === lastId) || ctx.exam;
+}
+
+/** Facts only a recruitment has: an exam with no posts answers these from what its record does state. */
+const POST_SHAPED_FACTS = new Set(['age', 'vacancy', 'pay', 'physical', 'targetPost', 'studyPlan', 'eligibility']);
+
+/**
+ * The answer for an exam with no posts. An ELIGIBILITY_TEST (a TET) or an ADMISSION_TEST (an entrance test) fills no
+ * post by design, so it has no vacancies, pay, post-wise age band or physical standard, and its notice states who may
+ * appear instead; any other exam with no posts on record is said to hold none yet. Every statement is about the record
+ * or quotes it.
+ */
+export function noPostsReply(exam: Exam, factId: string): AssistantReply {
+  const kind = exam.examNature === 'ELIGIBILITY_TEST' ? 'an eligibility test' : exam.examNature === 'ADMISSION_TEST' ? 'an admission test' : null;
+  const cards = exam.eligibilityHighlights || [];
+  const who = cards[0];
+  // Who may appear answers every one of these; the full set of rules only where eligibility itself was asked.
+  const shown = factId === 'eligibility' || factId === 'age' ? cards : cards.slice(0, 2);
+  const whoLines = shown.map(c => `• **${c.title}** — ${c.body}`).join('\n');
+  const what: Record<string, string> = {
+    age: 'age limit', vacancy: 'vacancies', pay: 'pay scale', physical: 'physical standard', posts: 'posts',
+    targetPost: 'target post to choose', studyPlan: 'target post to plan around', eligibility: 'post-by-post eligibility check'
+  };
+  const lead = kind
+    ? `${exam.title} is ${kind}, not a recruitment: it fills no post, so the record has no ${what[factId] || 'post-wise rule'} for it.`
+    : `The record holds no posts for ${exam.title} yet, so GovOS has no ${what[factId] || 'post-wise rule'} to state.`;
+  const studyLine = factId === 'studyPlan' || factId === 'targetPost'
+    ? `\n\nWork from its syllabus instead: ${exam.syllabus.length} topics in section 06, which you can tick off as you finish them.` : '';
+  return {
+    verified: !!who,
+    sourceKind: who ? 'OFFICIAL' : 'PLATFORM',
+    subject: FACT_SUBJECTS[factId] || 'eligibility',
+    text: `${lead}${whoLines ? `\n\nWhat its notice states instead:\n${whoLines}` : ''}${studyLine}`,
+    citation: who ? citeFrom(who.provenance, `${exam.title} official notice`) : undefined,
+    action: factId === 'studyPlan' || factId === 'targetPost'
+      ? { label: 'Open the syllabus', tab: 'EXAM_DETAIL', section: 6 }
+      : { label: 'Open Eligibility & Posts', tab: 'EXAM_DETAIL', section: 3 }
+  };
+}
+
+/**
+ * An answer from the exam's own FAQs, when the question shares most of one FAQ's distinctive words. A FAQ is part of the
+ * record and carries its own clause and provenance, so this is a cited answer, not a guess.
+ */
+export function faqAnswerFor(q: string, exam: Exam, whole = false): AssistantReply | null {
+  const STOP = new Set(['what', 'which', 'when', 'where', 'who', 'how', 'can', 'could', 'should', 'will', 'would', 'the', 'and', 'for', 'this', 'that',
+    'with', 'from', 'are', 'is', 'there', 'any', 'have', 'has', 'does', 'do', 'did', 'my', 'me', 'you', 'your', 'i', 'a', 'an', 'of', 'to', 'in', 'on', 'it', 'be', 'or']);
+  const words = (t: string) => new Set(normaliseQuery(t).split(' ').filter(w => w.length >= 3 && !STOP.has(w)));
+  const asked = words(q);
+  if (asked.size === 0) return null;
+  let best: { faq: Exam['faqs'][number]; score: number } | null = null;
+  for (const faq of exam.faqs || []) {
+    const own = words(faq.question + ' ' + faq.answer.split('.')[0]);
+    const shared = Array.from(asked).filter(w => own.has(w) || Array.from(own).some(o => o.length >= 5 && (o.startsWith(w) || w.startsWith(o)))).length;
+    const score = shared / asked.size;
+    // A one-word question ("percentile") is that FAQ's only when the word is long and in the FAQ's own question.
+    const lone = whole && asked.size === 1 && Array.from(asked).every(w => w.length >= 7 && words(faq.question).has(w));
+    if ((shared >= 2 || lone) && score >= (whole ? 1 : 0.5) && (!best || score > best.score)) best = { faq, score };
+  }
+  if (!best) return null;
+  return {
+    verified: true,
+    sourceKind: 'OFFICIAL',
+    subject: best.faq.question,
+    text: `${best.faq.answer}\n\n(${exam.title} FAQ — ${best.faq.officialClause})`,
+    citation: citeFrom(best.faq.provenance, `${exam.title} official notice`),
+    action: { label: 'Open FAQs', tab: 'EXAM_DETAIL', section: 11 }
+  };
 }
 
 export function answerCandidateQuery(query: string, context?: ChatContext): AssistantReply {
@@ -5939,6 +6024,11 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
   // intent matched confidently, or "what about the admit card" would return a portal link
   // instead of the admit-card answer.
   const confidentIntent = Math.max(nav ? nav.score : 0, fact ? fact.score : 0) >= 6;
+  // A question every one of whose words one of this exam's own FAQs carries ("who can take jee advanced", "can i change
+  // my exam centre") is answered by that FAQ, cited -- ahead of a section pointer or a document that merely shares a word.
+  // Not when it asks where something is, and not over a fact intent the question plainly names.
+  const wholeFaq = !asksLocation(q) && !(fact && fact.score >= 6) ? faqAnswerFor(withoutParaphrases(q), exam, true) : null;
+  if (wholeFaq) return wholeFaq;
   if (!confidentIntent) {
     const stronglyNamed = namedResourceAnswer(q, 10, exam);
     if (stronglyNamed) return stronglyNamed.reply;
@@ -5947,6 +6037,7 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
   // Answer with navigation when the candidate asks where something is, or when a specific
   // multi-word request ("application practice") outscores whatever single words also matched.
   if (nav && (asksLocation(q) || (nav.score >= 6 && nav.score > (fact ? fact.score : 0)))) {
+    if (exam.posts.length === 0 && /\{posts\}/.test(nav.entry.answer)) return noPostsReply(exam, /Am I Eligible/.test(nav.entry.answer) ? 'eligibility' : 'posts');
     // If that section answer is really about one entry, hand over the entry as well.
     // Resources is section 08 of the exam now, so recognise it by section as well as by the
     // legacy tab id — otherwise a "where is the constitution pdf" answer stops handing over
@@ -5973,6 +6064,11 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
   }
 
   // ---- facts, read out of the register
+  // An exam that fills no post (an eligibility test such as a TET, or a record that holds no posts yet) has no
+  // vacancies, pay, post-wise age band or physical standard; the branches below would print "0 posts" or
+  // "Infinity to -Infinity". Answer from what its record does state.
+  if (exam.posts.length === 0 && POST_SHAPED_FACTS.has(factId)) return noPostsReply(exam, factId);
+
   if (factId === 'age') {
     const minAge = Math.min(...exam.posts.map(p => p.minAge));
     const maxAge = Math.max(...exam.posts.map(p => p.maxAge));
@@ -6026,7 +6122,8 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
     const card = (exam.eligibilityHighlights || []).find(c => /attempt/i.test(c.title));
     return card
       ? { verified: true, subject: FACT_SUBJECTS.attempts, text: `${card.body}\n\nThat is the rule as the notice states it; the age limit still applies on top.`, citation: citeFrom(card.provenance, `${exam.title} Official Notice`), action: { label: 'Open Eligibility & Posts', tab: 'EXAM_DETAIL', section: 3 } }
-      : { verified: true, subject: FACT_SUBJECTS.attempts, text: `The ${exam.title} notice sets no limit on the number of attempts: you may appear every year you are within the age limit (counted on ${exam.crucialEligibilityDate}) and hold the qualification. Only the age band caps it.`, citation: citeFrom(exam.posts[0]?.provenance, `${exam.title} Official Notice`), action: { label: 'Open Eligibility & Posts', tab: 'EXAM_DETAIL', section: 3 } };
+      // No attempt rule on record is not "the notice sets no limit": GovOS says what it holds, not what a notice omits.
+      : { verified: false, subject: FACT_SUBJECTS.attempts, text: `GovOS holds no limit on the number of attempts for ${exam.title} from its notice.${exam.posts.length > 0 && exam.crucialEligibilityDate ? ` The age band, counted on ${exam.crucialEligibilityDate}, still applies to every attempt.` : ''} Section 03 has the rules the record does hold.`, action: { label: 'Open Eligibility & Posts', tab: 'EXAM_DETAIL', section: 3 } };
   }
 
   if (factId === 'physical') {
@@ -6081,7 +6178,10 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
 
   if (factId === 'nextStep') {
     const close = ctx.daysToApplicationClose;
-    const post = ctx.targetPost ? `your target post, ${ctx.targetPost.postName}` : 'a target post (set one in section 01 so the roadmap and analysis follow it)';
+    // An exam with no posts has no target post to set; its syllabus is what the time goes on.
+    const post = exam.posts.length === 0 ? 'its papers' : ctx.targetPost ? `your target post, ${ctx.targetPost.postName}` : 'a target post (set one in section 01 so the roadmap and analysis follow it)';
+    // "Before notification" is wrong once the notification date has passed and only the window is still ahead.
+    const notified = ctx.stage === 'BEFORE_NOTIFICATION' && exam.dates.some(d => d.type === 'NOTIFICATION' && d.status !== 'SUPERSEDED' && new Date(d.dateTimeStr.replace(' ', 'T')) <= new Date());
     const byStage: Record<string, { line: string; action: AssistantAction }> = {
       BEFORE_NOTIFICATION: {
         line: `Applications for ${exam.title} have not opened yet. Use the time on the syllabus and on ${post}, and track the exam so GovOS tells you the day the window opens.`,
@@ -6104,12 +6204,17 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
         action: { label: 'Open Result & Next Steps', tab: 'EXAM_DETAIL', section: 16 }
       }
     };
+    const declared = exam.dates.filter(d => d.type === 'RESULT' && !d.isTentative && d.status !== 'SUPERSEDED' && new Date(d.dateTimeStr.replace(' ', 'T')) <= new Date());
+    if (ctx.stage === 'POST_EXAM' && declared.length > 0) {
+      const last = declared[declared.length - 1];
+      byStage.POST_EXAM.line = `${last.label}: ${shownWhen(last, true)}. Section 16 has what was declared and what the record says follows it.`;
+    }
     const chosen = byStage[ctx.stage] || byStage.BEFORE_NOTIFICATION;
     return {
       verified: true,
       sourceKind: 'GUIDANCE',
       subject: 'what to do next',
-      text: `You are at the **${ctx.stage.replace(/_/g, ' ').toLowerCase()}** stage of ${exam.title}, going by the dates on record.\n\n${chosen.line}`,
+      text: `You are at the **${notified ? 'notified, applications not yet open' : ctx.stage.replace(/_/g, ' ').toLowerCase()}** stage of ${exam.title}, going by the dates on record.\n\n${chosen.line}`,
       action: chosen.action
     };
   }
@@ -6171,6 +6276,19 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
     const fmt = (d: ImportantDate) => `• ${d.label}: ${shownWhen(d, true)}${d.isTentative ? ' (tentative)' : ''}`;
     const close = dateOfType('APPLICATION_CLOSE', exam);
     const superseded = exam.dates.filter(d => d.status === 'SUPERSEDED');
+    // An authority may print a release rule ("03-04 days before the date of the Examination") or a month, not a date.
+    const admitEvents = wanted.includes('ADMIT_CARD') && chosen.length === 0
+      ? (exam.admitCardEvents || []).filter(e => e.releaseRule || e.releasedAt || e.releaseNote) : [];
+    if (admitEvents.length > 0) {
+      const when = (e: ExamAdmitCardEvent) => e.releaseRule || (e.releaseNote ? e.releaseNote.replace(/^printed /, '') : e.releasedAt);
+      return {
+        verified: true,
+        subject: FACT_SUBJECTS.admitCard || FACT_SUBJECTS.dates,
+        text: `${exam.authorityName.split(' (')[0]} prints no admit-card date for ${exam.title}; it states:\n\n${admitEvents.map(e => `• ${e.officialLabel}${e.stageLabel ? ` — ${e.stageLabel}` : ''}: ${when(e)}`).join('\n')}\n\nSection 14 has each one with where it is issued.`,
+        citation: admitEvents[0].provenance ? citeFrom(admitEvents[0].provenance, `${exam.title} official notice`) : undefined,
+        action: { label: 'Open Admit Card', tab: 'EXAM_DETAIL', section: 14 }
+      };
+    }
     if (chosen.length > 0) {
       const anyTentative = chosen.some(d => d.isTentative);
       return {
@@ -6259,6 +6377,19 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
   }
 
   if (factId === 'fee') {
+    // The fee as the application guide records it, where it does: the amounts as printed, with the exemptions stated.
+    const fee = exam.applicationGuide?.fee;
+    if (fee && fee.rules.length > 0) {
+      const lines = fee.rules.map(r => `• ${r.scope}: ${r.isExempt ? 'exempt' : r.amount}`).join('\n');
+      const exempt = fee.exemptions.length > 0 ? `\n\nExempt: ${fee.exemptions.map(x => x.category).join(', ')}.` : '';
+      return {
+        verified: true,
+        subject: FACT_SUBJECTS.fee,
+        text: `The fee for ${exam.title}, as the notice prints it:\n\n${lines}${exempt}${fee.acceptedModes.length ? `\n\nPaid by: ${fee.acceptedModes.join('; ')}.` : ''}`,
+        citation: fee.provenance ? citeFrom(fee.provenance, `${exam.title} official notice`) : undefined,
+        action: { label: 'Open the application guide', tab: 'EXAM_DETAIL', section: 4 }
+      };
+    }
     const feeCard = (exam.eligibilityHighlights || []).find(c => /fee/i.test(c.title));
     if (feeCard) {
       return {
@@ -6271,7 +6402,9 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
     }
     return {
       verified: false,
-      text: `The application fee is paid on ${authority}'s own portal while submitting the form; women, SC, ST, PwBD and ex-servicemen candidates are exempted under the notice.\n\nGovOS does not hold the current fee figure as a verified field, so check the fee clause of the notice itself before paying — section 04 links to it, and I can search official domains live if you want the current figure.`,
+      // It used to add "women, SC, ST, PwBD and ex-servicemen candidates are exempted under the notice" for every
+      // exam -- one authority's rule stated as any notice's.
+      text: `GovOS does not hold the ${exam.title} fee as a verified field, so check the fee clause of ${authority}'s notice itself before paying — section 04 links to it.`,
       action: { label: 'Open the application guide', tab: 'EXAM_DETAIL', section: 4 }
     };
   }
@@ -6303,7 +6436,11 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
     const ruled = !ac ? (exam.admitCardEvents || []).find(e => e.kind === 'ADMIT_CARD' && (e.releaseRule || e.releasedAt)) : undefined;
     return {
       verified: true,
-      text: `${ac ? `Admit card: ${shownWhen(ac, true)}${ac.isTentative ? ' (tentative)' : ''}.\n\n` : ruled ? `${ruled.officialLabel}${ruled.stageLabel ? ` (${ruled.stageLabel})` : ''}: ${ruled.releaseRule || ruled.releasedAt}${ruled.examDateNote ? `. ${ruled.examDateNote}` : ruled.examDate ? `; examination ${ruled.examDate}` : ''}.\n\n` : 'The admit card date has not been announced in the register yet.\n\n'}Admit cards are issued by ${authority} for your centre, and you must carry a printed copy with an original photo ID. Section 14 covers the download steps and what to do if it fails.`,
+      text: `${ac ? `Admit card: ${shownWhen(ac, true)}${ac.isTentative ? ' (tentative)' : ''}.\n\n` : ruled ? `${ruled.officialLabel}${ruled.stageLabel ? ` (${ruled.stageLabel})` : ''}: ${ruled.releaseRule || ruled.releasedAt}${ruled.examDateNote ? `. ${ruled.examDateNote}` : ruled.examDate ? `; examination ${ruled.examDate}` : ''}.\n\n` : 'The admit card date has not been announced in the register yet.\n\n'}${(() => {
+        // What the record says to do, where it says it; it used to tell every candidate to carry "an original photo ID".
+        const event = (exam.admitCardEvents || []).find(e => e.kind === 'ADMIT_CARD' && (e.instructions || []).length > 0);
+        return event ? `From ${authority}'s own documents:\n${event.instructions!.map(i => `• ${i}`).join('\n')}\n\n` : '';
+      })()}Section 14 covers where it is issued and what the record says about it.`,
       citation: ac ? citeFrom(ac.provenance, `${exam.title} official notice`) : ruled?.provenance ? citeFrom(ruled.provenance, `${exam.title} notice`) : undefined,
       action: { label: 'Open Admit Card', tab: 'EXAM_DETAIL', section: 14 }
     };
@@ -6311,12 +6448,14 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
 
   if (factId === 'cutoff') {
     // A minimum qualifying standard is a rule, not a cut-off; answer with the rule where the record states one.
-    const minimum = /minimum|qualifying marks|pass marks/.test(q) ? (exam.eligibilityHighlights || []).find(h => /qualifying marks/i.test(h.title)) : undefined;
+    const passTest = exam.examNature === 'ELIGIBILITY_TEST';
+    const minimum = (passTest || /minimum|qualifying marks|pass marks|pass mark|pass percentage/.test(q))
+      ? (exam.eligibilityHighlights || []).find(h => /qualifying marks|pass marks/i.test(h.title)) : undefined;
     if (minimum) {
       return {
         verified: true,
         subject: FACT_SUBJECTS.cutoff,
-        text: `${minimum.title}: ${minimum.body}\n\nThese are the minimum standards the notice sets; the cut-off that decides who goes through in a given year is published with that year's result.`,
+        text: `${minimum.title}: ${minimum.body}\n\n${passTest ? `${exam.title} is an eligibility test: these pass marks are the standard it sets, and GovOS holds no cut-off for it.` : 'These are the minimum standards the notice sets; the cut-off that decides who goes through in a given year is published with that year\'s result.'}`,
         citation: citeFrom(minimum.provenance, `${exam.title} official notice`),
         action: { label: 'Open Cutoffs', tab: 'EXAM_DETAIL', section: 10 }
       };
@@ -6344,14 +6483,22 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
         action: { label: 'Open the pattern section', tab: 'EXAM_DETAIL', section: 5 }
       };
     }
+    // Asked for a pass mark the record does not hold: say so before listing cut-offs, which are a different thing.
+    const noPassMark = !minimum && /pass mark|pass marks|pass percentage|passing marks|minimum marks|qualifying marks/.test(q)
+      ? `The record holds no pass mark for ${exam.title}. ` : '';
     if (picked.length > 0) {
       // The stage and post each figure belongs to, where recorded: one category can have several
       // cut-offs in a year (one list per group of posts).
-      const lines = picked.map(r => `• ${r.category}: ${r.stage || label1} ${cutoffFigure(r)}${r.tier2Cutoff ? ` · ${label2} ${r.tier2Cutoff}` : ''}${r.post ? ` · ${r.post}` : ''}${r.postsEligible ? ` · ${r.postsEligible}` : ''}`).join('\n');
+      const lines = picked.map(r => `• ${r.category}: ${r.stage || label1} ${cutoffFigure(r)}${r.cutoffType ? ` (${r.cutoffType})` : ''}${r.tier2Cutoff ? ` · ${label2} ${r.tier2Cutoff}` : ''}${r.post ? ` · ${r.post}` : ''}${r.postsEligible ? ` · ${r.postsEligible}` : ''}`).join('\n');
+      // The cycle the record is for: the year of its own examination dates. A cut-off of that year is this cycle's.
+      const examYears = exam.dates.filter(d => (d.type === 'EXAM_TIER1' || d.type === 'EXAM_TIER2') && d.status !== 'SUPERSEDED').map(d => Number(d.dateTimeStr.slice(0, 4)));
+      const thisCycle = examYears.length > 0 && year === Math.min(...examYears);
+      const latestNote = thisCycle ? `These are the cut-offs ${authority} published for this cycle. `
+        : year === latestYear ? 'That is the most recent year published; this cycle\'s cut-off does not exist yet. ' : '';
       return {
         verified: true,
         subject: FACT_SUBJECTS.cutoff,
-        text: `${cat ? 'Cut-off' : 'Cut-offs'} on record for ${year}${cat ? ` (${picked[0].category})` : ''}:\n\n${lines}\n\n${year === latestYear ? 'That is the most recent year published; this cycle\'s cut-off does not exist yet. ' : ''}Cut-offs move with vacancies and paper difficulty, so treat them as a band to clear with margin, not a promise.`,
+        text: `${noPassMark}${cat ? 'Cut-off' : 'Cut-offs'} on record for ${year}${cat ? ` (${picked[0].category})` : ''}:\n\n${lines}\n\n${latestNote}Cut-offs move ${exam.posts.length > 0 ? 'with vacancies and paper difficulty' : 'from cycle to cycle'}, so treat them as a band to clear with margin, not a promise.`,
         citation: citeFrom(picked[0].provenance, `${exam.title} cut-off sheet`),
         action: { label: 'Open Cutoffs', tab: 'EXAM_DETAIL', section: 10 }
       };
@@ -6359,13 +6506,26 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
     return {
       verified: true,
       subject: FACT_SUBJECTS.cutoff,
-      text: `${latestYear ? `Most recent cut-off on record: ${latestYear} — ${rows.filter(r => r.year === latestYear).map(r => `${r.category} ${cutoffFigure(r)}`).join(', ')} (${label1}). Ask for a category or a year and I will give that row; the full table is in section 10.` : 'Cut-off history is listed in section 10 of the exam page.'}\n\nCut-offs move every year with vacancies and paper difficulty, so use them as a target band rather than a promise.`,
+      text: `${latestYear ? `Most recent cut-off on record: ${latestYear} — ${rows.filter(r => r.year === latestYear).map(r => `${r.category} ${cutoffFigure(r)}`).join(', ')} (${label1}). Ask for a category or a year and I will give that row; the full table is in section 10.` : `No cut-off is on record for ${exam.title}.`}${latestYear ? '\n\nCut-offs move every year with vacancies and paper difficulty, so use them as a target band rather than a promise.' : ''}`,
       citation: rows[0] ? citeFrom(rows[0].provenance, `${exam.title} cut-off sheet`) : undefined,
       action: { label: 'Open Cutoffs', tab: 'EXAM_DETAIL', section: 10 }
     };
   }
 
-  if (factId === 'apply') {
+  if (factId === 'documents') {
+    const docs = exam.applicationGuide?.requiredDocuments || [];
+    if (docs.length > 0) {
+      return {
+        verified: true,
+        subject: FACT_SUBJECTS.documents,
+        text: `The ${exam.title} notice asks for:\n\n${docs.map(d => `• ${d.name}${d.specifications.length ? ` — ${d.specifications.join('; ')}` : ''}`).join('\n')}\n\nSection 04 has the upload rules and the mistakes that get applications rejected.`,
+        citation: docs[0].provenance ? citeFrom(docs[0].provenance, `${exam.title} official notice`) : undefined,
+        action: { label: 'Open the application guide', tab: 'EXAM_DETAIL', section: 4 }
+      };
+    }
+  }
+
+  if (factId === 'apply' || factId === 'documents') {
     return {
       verified: true,
       text: applicationAnswerFor(exam),
@@ -6383,11 +6543,18 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
 
   // Not phrased as a location question, but plainly about a part of the platform
   // ("study plan", "roadmap", "compare exams") — route it rather than fall back.
-  if (nav) return { verified: true, sourceKind: 'PLATFORM', text: fillCounts(nav.entry.answer, exam), action: nav.entry.action };
+  if (nav) {
+    if (exam.posts.length === 0 && /\{posts\}/.test(nav.entry.answer)) return noPostsReply(exam, /Am I Eligible/.test(nav.entry.answer) ? 'eligibility' : 'posts');
+    return { verified: true, sourceKind: 'PLATFORM', text: fillCounts(nav.entry.answer, exam), action: nav.entry.action };
+  }
 
   // Last chance before refusing: did they name something in the library?
   const namedLate = namedResourceAnswer(q, 6, exam);
   if (namedLate) return namedLate.reply;
+
+  // Or ask something this exam's own FAQs answer? ("can I use this pass for DSC?", "how long is the certificate valid?")
+  const faq = faqAnswerFor(q, exam);
+  if (faq) return faq;
 
   // ---- a location question we could not place
   if (asksLocation(q)) {
@@ -16492,11 +16659,12 @@ export function resultPathway(
     missing: `The record ties no syllabus topic to ${name}.`,
     action: syllabus,
   });
+  const forCategory = ctx.category || 'your category';
   const cutoffs = (which: 'tier1Cutoff' | 'tier2Cutoff', name: string): ResultPathwayBlock => ({
     key: `cutoffs-${which}`,
-    heading: `Recorded ${name} cut-offs for ${ctx.category}`,
+    heading: `Recorded ${name} cut-offs for ${forCategory}`,
     items: cutoffItems(exam, ctx.category, which),
-    missing: `No ${name} cut-off for ${ctx.category} is on record. GovOS sets no target of its own.`,
+    missing: `No ${name} cut-off for ${forCategory} is on record. GovOS sets no target of its own.`,
     action: { label: 'Open cut-off history', section: 10 },
   });
   const skillTestsAt = (st: StageOf | undefined): ResultPathwayItem[] => skillTestsOf(exam).filter(t => !st || t.stage === st)
@@ -16510,7 +16678,7 @@ export function resultPathway(
   const laterStages: ResultPathwayItem[] = exam.stages.slice(2).map(st => ({ title: stageShortName(st, `Stage ${st.stageNumber}`), body: st.qualifyingNature || undefined, provenance: st.provenance }));
   // A missing cut-off is said first: "compare them with the recorded cut-off" promised one the record lacks.
   const standingLine = (st: ResultStanding, name: string, cut: string) =>
-    st.cutoff === null ? `No ${name} cut-off for ${ctx.category} is on record${st.score !== null ? ` to compare your ${st.score} with` : ''}.`
+    st.cutoff === null ? `No ${name} cut-off for ${forCategory} is on record${st.score !== null ? ` to compare your ${st.score} with` : ''}.`
       : st.score === null ? `Enter your ${name} marks above to compare them with ${cut}.`
       : st.margin !== null && st.margin >= 0 ? `Your ${name} score of ${st.score} is +${st.margin} above ${year} ${ctx.category} cut-off of ${st.cutoff}.`
       : `Your ${name} score of ${st.score} is ${Math.abs(st.margin ?? 0)} below ${year} ${ctx.category} cut-off of ${st.cutoff}.`;
@@ -16698,6 +16866,8 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
     st ? st.stageName.split(/[:—(]/)[0].trim() || fallback : fallback;
   const stageOneName = shortStage(stageOne, 'Stage 1');
   const stageTwoName = shortStage(stageTwo, 'Stage 2');
+  /** One stage on record (an eligibility or admission test): no second stage's marks, plan or gap to offer. */
+  const hasStageTwo = !!stageTwo;
   /** Skill tests come from the record's `ExamStage.skillTest` and nothing else. A stage-name regex used
    *  to decide this and then show every such exam SSC CGL's CKT / DEST card and thresholds. */
   const skillTests = skillTestsOf(exam);
@@ -16763,7 +16933,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
 
   // IBPS PO is judged by the stage engine below, whose tabs are the stage statuses; 'IBPS_MAINS_PREP'
   // selected a tab that does not exist.
-  const [selectedStatus, setSelectedStatus] = useState<CandidateResultStatus>(isUPSC ? 'UPSC_MAINS_PREP' : 'TIER2_PREP');
+  const [selectedStatus, setSelectedStatus] = useState<CandidateResultStatus>(isUPSC ? 'UPSC_MAINS_PREP' : exam.stages.length > 1 ? 'TIER2_PREP' : 'TIER1_FAILED_RECOVERY');
   const [statusChosenManually, setStatusChosenManually] = useState<boolean>(false);
   const [parsing, setParsing] = useState<boolean>(false);
   const [parsed, setParsed] = useState<{ ok: boolean; reason?: string; message?: string; confidence?: string; method?: 'TEXT_LAYER' | 'OCR'; fields?: any; notes?: string[]; excerpt?: string } | null>(null);
@@ -16805,7 +16975,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
     } else {
       setTier1Input(saved?.tier1Marks !== undefined ? String(saved.tier1Marks) : (saved ? String(saved.marks) : ''));
       setTier2Input(saved?.tier2Marks !== undefined ? String(saved.tier2Marks) : '');
-      setSelectedStatus('TIER2_PREP');
+      setSelectedStatus(exam.stages.length > 1 ? 'TIER2_PREP' : 'TIER1_FAILED_RECOVERY');
     }
   }, [exam.id]);
 
@@ -17564,7 +17734,8 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
             <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0 }}>
               {isUPSC 
                 ? 'Type marks for Prelims GS-I, CSAT, Mains Written, and Personality Test, or upload your official UPSC mark sheet scan.'
-                : `Upload your official scorecard or type marks for ${stageOneName} and ${stageTwoName}. GovOS evaluates all stages together.`}
+                : hasStageTwo ? `Upload your official scorecard or type marks for ${stageOneName} and ${stageTwoName}. GovOS evaluates all stages together.`
+                : `Upload your official scorecard or type your ${stageOneName} marks.`}
             </p>
           </div>
 
@@ -17651,7 +17822,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                 />
               </div>
 
-              <div>
+              {hasStageTwo && <div>
                 <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', fontWeight: 700 }}>{s2} marks</label>
                 <input
                   type="number" step="0.01" min={0} max={700}
@@ -17660,7 +17831,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                   placeholder="e.g. 255.95"
                   style={{ width: '140px', padding: '9px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontSize: '0.9rem' }}
                 />
-              </div>
+              </div>}
             </>
           )}
 
@@ -18141,6 +18312,8 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
             </>
           ) : (
             <>
+              {/* The three second-stage pathways exist only where the record has a second stage. */}
+              {hasStageTwo && <>
               {/* SSC Tab 1: Tier 2 Prep */}
               <button 
                 className={`btn ${(selectedStatus === 'TIER2_PREP' || selectedStatus === 'QUALIFIED_TIER2') ? 'btn-primary' : 'btn-secondary'}`}
@@ -18194,6 +18367,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                   <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>{stageOneName} cleared · merit shortfall plan</div>
                 </div>
               </button>
+              </>}
 
               {/* SSC Tab 4: Tier-1 Not Cleared Comeback */}
               <button 
@@ -19864,7 +20038,7 @@ const PatternNodeCard: React.FC<{
   if (node.questions !== undefined) figures.push({ label: 'Questions', value: String(node.questions), field: 'questions' });
   if (node.marks !== undefined) figures.push({ label: 'Marks', value: String(node.marks), field: 'marks' });
   if (node.durationMinutes !== undefined) figures.push({ label: 'Minutes', value: String(node.durationMinutes), field: 'durationMinutes' });
-  if (node.marksPerQuestion !== undefined) figures.push({ label: 'Marks / question', value: String(node.marksPerQuestion), field: 'marksPerQuestion' });
+  if (node.marksPerQuestion !== undefined) figures.push({ label: node.marksPerQuestion === 1 ? 'Mark / question' : 'Marks / question', value: String(node.marksPerQuestion), field: 'marksPerQuestion' });
 
   return (
     <div style={{
@@ -20832,7 +21006,8 @@ const UnavailablePracticeEngine: React.FC<{
   onOpenProvenanceModal: (provenance: DataProvenance) => void;
 }> = ({ exam, scope, onOpenProvenanceModal }) => {
   const stage = exam.stages[0];
-  const hasOfficial = (exam.officialPapers?.length ?? 0) > 0 || (exam.answerKeys?.length ?? 0) > 0;
+  const hasOfficial = (exam.officialPapers?.length ?? 0) > 0 || (exam.answerKeys?.length ?? 0) > 0
+    || exam.resources.some(r => r.subject === 'Previous Year Papers' && r.type === 'OFFICIAL_PDF');
   return (
     <div className="animate-fade-in glass-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
       <div>
@@ -20879,8 +21054,9 @@ const UnavailablePracticeEngine: React.FC<{
           ))}
         </div>
       )}
-      {/* The authority's own papers and keys, bound to their exact paper identity. Both render
+      {/* The authority's own papers and keys, bound to their exact paper identity. Each renders
           nothing when the record has none. */}
+      <OfficialPapersPanel exam={exam} onOpenProvenanceModal={onOpenProvenanceModal} />
       <OfficialPaperCatalogue exam={exam} onOpenProvenanceModal={onOpenProvenanceModal} />
       <AnswerKeyPanel exam={exam} onOpenProvenanceModal={onOpenProvenanceModal} />
     </div>
@@ -21976,7 +22152,9 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
   const tiles = [
     ...examHeaderWindowTiles(liveDates),
     tileFor(['EXAM_TIER1'], stageLabel(0, 'Exam — Stage 1')),
-    tileFor(['EXAM_TIER2'], stageLabel(1, 'Exam — Stage 2'))
+    // A second-stage tile only where the record has a second stage or a date for one; "Stage 2: TBA" on a
+    // single-stage exam announced a stage that does not exist.
+    ...(exam.stages.length >= 2 || liveDates.some(d => d.type === 'EXAM_TIER2') ? [tileFor(['EXAM_TIER2'], stageLabel(1, 'Exam — Stage 2'))] : [])
   ];
   const headerInitials = examInitials(exam);
   const headerNext = nextMilestoneOf({ ...exam, dates: liveDates } as Exam);
@@ -22165,9 +22343,11 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                 <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px' }}>Quick Info</h4>
                 {[
                   { icon: <Building size={16} />, label: 'Conducting Body', value: exam.authorityName },
-                  { icon: <Award size={16} />, label: 'Exam Level', value: exam.minimumQualification === 'GRADUATION' ? 'Graduation' : (exam.minimumQualification || 'See notice') },
+                  { icon: <Award size={16} />, label: 'Exam Level', value: exam.minimumQualification ? QUALIFICATION_WORDS[exam.minimumQualification] : 'See notice' },
                   { icon: <Briefcase size={16} />, label: 'Posts', value: exam.posts.length > 0
                     ? `${exam.posts.length} posts${exam.posts.some(p => p.classification) ? ` · ${Array.from(new Set(exam.posts.map(p => p.classification).filter(Boolean))).join(', ')}` : ''}`
+                    : exam.examNature === 'ELIGIBILITY_TEST' ? 'None — an eligibility test fills no post'
+                    : exam.examNature === 'ADMISSION_TEST' ? 'None — an admission test fills no post'
                     : exam.materialization?.heldForReview?.posts ? 'Post list under review — see the notice' : 'Not stated in the record' },
                   { icon: <Layers size={16} />, label: exam.stages.some(st => st.derivedFrom) ? 'Stages in the notice' : 'Selection Process', value: exam.stages.length === 0 ? 'Not stated in the record' : Array.from(new Set(exam.stages.map(st => st.stageName.split(' — ')[0].split(':')[0]))).join(exam.stages.some(st => st.derivedFrom) ? '; ' : ' → ') },
                   { icon: <Globe size={16} />, label: 'Official Website', value: exam.officialDomain, href: exam.officialDomain }
@@ -22949,7 +23129,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                       <td style={{ padding: '12px', fontWeight: 700, color: 'var(--text-primary)' }}>{c.year}</td>
                       <td style={{ padding: '12px' }}>{c.stage || 'Not stated'}</td>
                       <td style={{ padding: '12px', color: '#235ddd' }}>{c.category}</td>
-                      <td style={{ padding: '12px' }}>{c.post || 'All posts (as recorded)'}</td>
+                      <td style={{ padding: '12px' }}>{c.post || (exam.posts.length === 0 ? '—' : 'All posts (as recorded)')}</td>
                       <td style={{ padding: '12px', fontWeight: 700, color: 'var(--emerald)', fontFamily: 'var(--font-mono)' }}>{c.value ?? c.tier1Cutoff}{c.cutoffType ? ` (${c.cutoffType})` : ''}</td>
                       <td style={{ padding: '12px' }}>
                         <EvidenceButton provenance={c.provenance} onOpen={onOpenProvenanceModal} />

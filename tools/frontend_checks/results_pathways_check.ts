@@ -114,7 +114,13 @@ const rowOf = (exam: Exam) => [...exam.cutoffsHistory].filter(r => r.tier1Cutoff
 for (const exam of EXAMS) {
   const row = rowOf(exam);
   const opened = section16(exam);
-  check(`${exam.id}: section 16 opens on a pathway panel with content`, opened.pathway === 'TIER2_PREP' && opened.blocks > 0, `${opened.pathway} / ${opened.blocks} blocks`);
+  // An exam with one stage (an eligibility or admission test) has no second stage to plan for: it opens on the
+  // stage-one plan, and the three second-stage tabs are not offered at all.
+  const opensOn = exam.stages.length > 1 ? 'TIER2_PREP' : 'TIER1_FAILED_RECOVERY';
+  check(`${exam.id}: section 16 opens on a pathway panel with content`, opened.pathway === opensOn && opened.blocks > 0, `${opened.pathway} / ${opened.blocks} blocks`);
+  if (exam.stages.length <= 1) {
+    check(`${exam.id}: one stage on record, so no second-stage tab or marks box`, !/Final Allocation &amp; DV|Final Allocation & DV|Bridge .* Gap|Stage 2 marks/i.test(flat(opened.html)), '');
+  }
   if (!row) continue;
   const base = { category: row.category, examYear: row.year };
   const cases: [string, Partial<MultiTierResultEntry>, string][] = [

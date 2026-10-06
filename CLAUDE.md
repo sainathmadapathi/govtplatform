@@ -3,7 +3,10 @@
 Single-page React app (light, card-based UI) that turns fragmented Indian government
 recruitment notifications into a verified, provenance-cited, personalized exam journey.
 SSC CGL 2026 is the "Golden Journey" reference exam and UPSC CSE 2026 is authored to the
-same depth from UPSC's own documents; IBPS PO and the two APPSC exams are thin skeletons.
+same depth from UPSC's own documents; IBPS PO and the two APPSC exams are thin skeletons; the Special
+TG TET 2026-II (Telangana's Teacher Eligibility Test for in-service teachers) is authored from the
+Department of School Education's own documents and is the register's first eligibility test; JEE (Main)
+2026 is authored from the National Testing Agency's own documents and is its first admission test.
 
 ## Project layout
 
@@ -341,6 +344,44 @@ Four candidate-facing gaps on TGPSC, each fixed for every machine-read exam:
   Constitution, NCERT on DIKSHA, e-Gazette, Sansad TV (official) and six coaching channels
   whose identity and subscriber count were read from each channel page (`/channel/UC...`
   URLs from the page's canonical link) — all HTTP 200 through the app's checker that day.
+- **`TG_TET_INSERVICE_2026_II_EXAM` was read on 2026-10-06** from the Department of School Education,
+  Government of Telangana's own documents, all published 01.10.2026 on the TG TET portal (tgtet.aptonline.in,
+  which the Department's site schooledu.telangana.gov.in links to as "Click Here for TG TET - In-Service
+  Teachers - 2026"): the Notification (Rc.No.444, 5 pp.), the Information Bulletin (15 pp.) and the Press Note —
+  **all three scans with no text layer, read page by page from their images** — and the Paper I / Paper II
+  syllabus files (Telugu medium), served by the syllabus page's ASP.NET postback buttons (no direct file URL, so
+  syllabus provenance points at that page). Every value is cited with `tgtet(id, doc, page, clause, excerpt)`;
+  the Language-I (Telugu) topics quote the Telugu from the page images (the file's Telugu text layer drops
+  conjuncts) with GovOS's English rendering beside it, cited through `tgtetTelugu` as INTERPRETATION /
+  UNDER_VERIFICATION. **This cycle is for in-service teachers ONLY and its pass cannot be used for direct
+  recruitment** (para 5); the regular TG TET's June 2026 bulletin had already been removed from the portal (404),
+  so nothing is taken from it. The record: one CBT stage carrying both papers' sections (two "stages" would have
+  made Results invent a Paper-I-then-Paper-II sequence), a `patternTree` CBT → Paper-I / Paper-II → subjects,
+  78 syllabus topics plus a `syllabusTree` in the files' own layout, dates with ranges as printed (`displayWhen`;
+  the last date carries no closing hour), a Hall Ticket event, a SCHEDULED result, a two-step practice form with
+  eleven cited traps, the bulletin's exam-day rules, nine FAQs, and the portal's mock test (hosted on
+  g21.digialm.com, labelled so) as the library's one practice tool. No posts, vacancies, pay, age band or
+  cut-offs: the pass marks (General/EWS 60%, BC 50%, SC/ST/Differently abled 40%) are its standard, and the
+  self-assessment says it holds no cut-off rather than turning a percentage into one.
+- **`JEE_MAIN_2026_EXAM` was read on 2026-10-06** from the National Testing Agency's own documents, all linked
+  from jeemain.nta.nic.in (files on NTA's store cdnbbsr.s3waas.gov.in): the Information Bulletin – 2026 (91 pp.,
+  text layer; cited by the bulletin's **printed** page number, which NTA's own FAQ uses — the PDF page is six
+  more), the Syllabus for JEE (Main) - 2026 (17 pp.; the integral types, dy/dx + p(x)y = q(x), ψ/ψ², α and the
+  ion lists were lost by the text layer and read from the page images), the FAQs (6 pp.) and the Press Release of
+  20 April 2026 declaring the Paper 1 result (a scan, read from its images; its pages listing candidates by name
+  are not transcribed). Every value is cited with `jee(id, doc, page, clause, excerpt)`. **The 2026 cycle is
+  over** and NTA had published nothing for 2027 — author 2027 as its own exam from its own bulletin. The record:
+  `examNature: 'ADMISSION_TEST'`, no posts; one stage carrying all three papers' sections (Paper 1's totals, the
+  others in `qualifyingNature`) because Papers 1, 2A and 2B are alternatives, not a sequence; a `patternTree`
+  examination → Paper 1 / 2A / 2B → subjects / parts → Section A (20 MCQ) / B (5 numerical); both sessions' dates
+  (Paper 1 held 21–24 and 28 January and 2, 4, 5, 6 and 8 April 2026, from the press release; the bulletin's
+  plans for city slips and results kept as tentative); admit-card events as NTA prints them — city slips by month
+  and the admit card as a rule ("03-04 days before the date of the Examination"); the declared Paper 1 result; the
+  six category-wise **JEE (Advanced) eligibility percentiles** as value-only `cutoffsHistory` rows (`cutoffType`
+  says what they are; the marks-based self-assessment never compares a mark to a percentile); 64 syllabus topics
+  plus a `syllabusTree`; a three-step practice form with fifteen cited traps; nine NTA question papers (Session 2,
+  Paper 1) and three final answer keys as role-tagged links; twelve FAQs. No learning material: the bulletin names
+  none, so the library's empty state stands. csab.nic.in timed out from this machine and is not linked.
 - **Resource library (SSC CGL only), links only.** `officialSource()` / `pendingSource()` build
   `DataProvenance` for external links. Every `OFFICIAL_PORTAL` entry was HTTP-checked on 2026-09-09 and carries
   `linkVerifiedDate`; `ncert.nic.in` timed out from the authoring machine so it is marked
@@ -1411,6 +1452,33 @@ GovOS keeps adding exams, so a fix is a data-driven rule or it is not done. Befo
   later stages, declared next steps, certificate rules, listed documents, posts' printed physical standards,
   eligibility highlights and next-cycle dates; `ResultPathwayPanel` renders it with Evidence, and a block
   the record cannot fill says what is missing instead of borrowing. Check: `results_pathways_check.ts`.
+- **An eligibility test is a kind of exam, not a special case.** `Exam.examNature: 'ELIGIBILITY_TEST'` (a TET)
+  fills no post. Any exam with no posts answers age, vacancy, pay, physical, target-post, study-plan and
+  eligibility questions through `noPostsReply` — what its record states instead (its eligibility highlights),
+  never "0 posts" or "Infinity to -Infinity" — and a `{posts}` navigation answer the same way. The header shows a
+  second exam-date tile only where a second stage or its date exists; Quick Info says an eligibility test fills
+  no post. Adding TG TET also exposed answers that stated one authority's rules for every exam, now fixed for
+  all: the fee answer reads `applicationGuide.fee` and no longer claims "women, SC, ST, PwBD and ex-servicemen
+  are exempted"; the admit-card answer lists the record's own instructions instead of "carry an original photo
+  ID"; attempts says GovOS holds no limit rather than that "the notice sets none"; "No cut-off is on record" when
+  none is; a `documents` intent reads `requiredDocuments`; "who can apply" is an eligibility question; and
+  `faqAnswerFor` answers from the exam's own FAQs before the assistant refuses. The finder's field filter offers
+  any `careerFields` value a record declares ('Teaching & Education'). Check: `eligibility_test_check.ts` (TG TET
+  and a synthetic eligibility test from the future-exam fixture, plus the fee and admit-card rules over every
+  register exam).
+- **So is an admission test** (`examNature: 'ADMISSION_TEST'`, JEE (Main)): `noPostsReply` names it as one, and
+  Quick Info says it fills no post and prints the exam level in words. Adding JEE fixed, for every exam: an
+  admit-card question with no admit-card date answers with the record's `admitCardEvents` (a release rule or
+  month) instead of every date; a cut-off line carries its `cutoffType`, says "published for this cycle" when its
+  year is the record's own exam year (it used to say "this cycle's cut-off does not exist yet" of the current
+  cycle) and does not mention vacancies for an exam with none; asked for a pass mark the record lacks, it says so
+  before listing cut-offs; "what next" after a declared result names it; a question one of the exam's own FAQs
+  carries word for word (`faqAnswerFor(…, whole)`, on the candidate's words via `withoutParaphrases`) is answered
+  by that FAQ ahead of a section pointer or a document; FAQ questions join the typo vocabulary ("percentile" is
+  not "percentage"). Results & Next Steps offers a one-stage exam no second-stage marks box or tabs and opens on
+  its stage-one plan, and "for  is on record" reads "for your category". The no-engine practice page lists the
+  authority's own question-paper PDFs (`OfficialPapersPanel`). Checks: `eligibility_test_check.ts` (JEE and a
+  synthetic admission test), `results_pathways_check.ts` (one-stage exams).
 - **The proof is `future_exam_check.ts`.** It runs an invented exam (`future_exam_fixture.ts`, typed
   against `Exam` by `check:frontend`) through the unchanged assistant, banners, exam page and paper rules,
   checks no other exam's words or evidence reach it, and scans the functions above for exam ids,

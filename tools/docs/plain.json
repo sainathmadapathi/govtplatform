@@ -817,9 +817,9 @@
    "hash": "86a1bc515da0"
   },
   "src/data.ts::ALL_EXAMS": {
-   "text": "The list of the five exams written into GovOS by hand: SSC CGL, UPSC CSE, IBPS PO, APPSC Group-I and APPSC Group-II. Automatically built exams from the server are added to these at run time.",
-   "tech": "Exported `Exam[]` = [SSC_CGL_EXAM, UPSC_CSE_EXAM, IBPS_PO_EXAM, APPSC_GROUP1_EXAM, APPSC_GROUP2_EXAM]; the authored register passed to `getExamUniverse` and used across ui.tsx/main.tsx.",
-   "hash": "c0c8bd2dd90d"
+   "text": "The list of the seven exams written into GovOS by hand: SSC CGL, UPSC CSE, IBPS PO, APPSC Group-I, APPSC Group-II the Special TG TET 2026-II and JEE (Main) 2026. Automatically built exams from the server are added to these at run time.",
+   "tech": "Exported `Exam[]` = [SSC_CGL_EXAM, UPSC_CSE_EXAM, IBPS_PO_EXAM, APPSC_GROUP1_EXAM, APPSC_GROUP2_EXAM, TG_TET_INSERVICE_2026_II_EXAM, JEE_MAIN_2026_EXAM]; the authored register passed to `getExamUniverse` and exported to exam_data/authored_exams.json.",
+   "hash": "ea68581ad85e"
   },
   "src/data.ts::ALL_OFFICIAL_QUESTIONS": {
    "text": "The complete list of real official exam questions GovOS holds, across all exams. Today that is only the eight UPSC essay topics, because the other authorities publish no readable papers.",
@@ -926,6 +926,56 @@
    "tech": "CuratedItem[10] built from [idiom, meaning, wrong[3]] tuples, GovOS-authored citation. Served by genIdiom.",
    "hash": "78d21c5d5620"
   },
+  "src/data.ts::JEE_APPLICATION_SIMULATOR": {
+   "text": "The practice application form for JEE (Main): NTA’s three steps (registration, the application form with live photograph and uploads, the fee) with fifteen traps that each quote the bulletin or FAQ — for example Class XII passed in 2023, registering twice, assuming Session 1 covers Session 2, a photo over 200 kb, more than four cities, or the wrong fee.",
+   "tech": "ApplicationSimulatorSpec for JEE_EXAM_ID: 3 modules (registration, application form, fee payment) and 15 traps (VALUE_IN, VALUE_IN_ALL, DATE_OUTSIDE 2025-10-31..2025-11-27 for Session 1), each officialClause a jeeP_* excerpt.",
+   "hash": "714c0b7b655e"
+  },
+  "src/data.ts::JEE_AUTHORITY": {
+   "text": "Who conducts JEE (Main): the National Testing Agency (NTA).",
+   "tech": "'National Testing Agency (NTA)' — the authorityName on the record and on every JEE provenance; displays use the part before the bracket.",
+   "hash": "715790250fcf"
+  },
+  "src/data.ts::JEE_CHECK": {
+   "text": "The day NTA’s JEE (Main) documents were read for GovOS: 6 October 2026.",
+   "tech": "'2026-10-06' — the verifiedDate on every JEE provenance and the linkVerifiedDate of its resources.",
+   "hash": "186aaf6a8619"
+  },
+  "src/data.ts::JEE_EXAM_ID": {
+   "text": "The id that names JEE (Main) 2026 everywhere in GovOS (practice records, alerts, links).",
+   "tech": "'exam-jee-main-2026' — the stable id; never derived from the title.",
+   "hash": "16dc688a27f5"
+  },
+  "src/data.ts::JEE_FILES": {
+   "text": "The address of NTA’s file store, where the JEE (Main) website keeps its PDFs.",
+   "tech": "'https://cdnbbsr.s3waas.gov.in/…/uploads/' — joined with each file's path in JEE_SOURCES and the resources.",
+   "hash": "9173d0321247"
+  },
+  "src/data.ts::JEE_MAIN_2026_EXAM": {
+   "text": "The whole record of JEE (Main) 2026, read from NTA’s own documents: the three papers and their pattern, the two sessions’ dates, eligibility (no age limit; Class XII in 2024, 2025 or 2026), the fee, the application steps and practice form, the admit-card rule, the declared Paper 1 result and the JEE (Advanced) cut-offs, the 64-topic syllabus, exam-day rules, FAQs, NTA’s nine question papers and answer keys, and official links. It is an admission test, so it has no posts, vacancies or pay.",
+   "tech": "Exam with examNature 'ADMISSION_TEST', posts [], minimumQualification CLASS_12, careerFields ['Engineering & Technology'], one stage (all papers' sections; Paper 1's totals), patternTree (examination → Paper 1 / 2A / 2B → subjects/parts → sections), 12 dates (ranges and months via displayWhen), admitCardEvents (city slips and the '03-04 days before' rule per session), resultDeclarations (Paper 1, 20 April 2026, with cut-offs), cutoffsHistory (6 value-only percentile rows), applicationGuide with fee and simulator, 16 role-tagged resources, 12 FAQs, examDayChecklist (11), eligibilityHighlights (5), officialLinks (9).",
+   "hash": "c43373d71c08"
+  },
+  "src/data.ts::JEE_SITE": {
+   "text": "NTA’s JEE (Main) website, where candidates apply and download the city slip, admit card and score card.",
+   "tech": "'https://jeemain.nta.nic.in' — the record's officialDomain and application portal.",
+   "hash": "94c927cef109"
+  },
+  "src/data.ts::JEE_SOURCES": {
+   "text": "The five official sources the JEE (Main) record was read from: the Information Bulletin, the syllabus, the FAQ, the result press release and the website’s own listing, each with its title, link and (where printed) publication date.",
+   "tech": "Object IB / SYL / FAQ / RES / SITE → {title, url, published, how}. Only RES prints a date (2026-04-20); the others carry '' rather than the day GovOS read them.",
+   "hash": "011147c5e597"
+  },
+  "src/data.ts::JEE_SYLLABUS_TOPICS": {
+   "text": "The JEE (Main) syllabus as 64 topics: Paper 1’s 14 Mathematics, 20 Physics and 20 Chemistry units, and the Mathematics, Aptitude, Drawing and Planning parts of Papers 2A and 2B, each with its printed sub-topics.",
+   "tech": "SyllabusTopic[] generated from NTA's syllabus PDF (unit titles located in order, bodies split on ';' and sentence ends); formulae the text layer lost (the integral types, dy/dx + p(x)y = q(x), ψ and ψ², α, the ion lists) were read from the page images. Subjects 'Paper 1 · Mathematics' etc., tier 'JEE (Main)'.",
+   "hash": "7b79c0b27a56"
+  },
+  "src/data.ts::JEE_SYLLABUS_TREE": {
+   "text": "The same JEE (Main) syllabus as a tree: Paper 1 → Mathematics / Physics / Chemistry (by branch) → units, and Papers 2A and 2B → Parts I–III → units, in NTA’s own headings.",
+   "tech": "ExamSyllabusNode[] with scope PAPER per root; Chemistry splits into Physical / Inorganic / Organic branches; Paper 2 Mathematics lists the 14 unit titles with the note \"As in Paper 1\".",
+   "hash": "bdac6279a6f7"
+  },
   "src/data.ts::LEGACY_POST_ID_ALIASES": {
    "text": "A lookup that maps older or equivalent SSC post ids to the post whose study plan they share, for example several Assistant Section Officer posts all use the ASO plan.",
    "tech": "Record<string, string> of 15 entries: three legacy ids (post-cbi-si, post-tax-asst, post-auditor) and twelve equivalent posts mapped to an authored path (ASO variants to post-aso-css, preventive officer/examiner to post-excise, NIA SI to post-si-cbi, statistical investigator to post-jso, etc.).",
@@ -1019,7 +1069,7 @@
   "src/data.ts::PRACTICE_BANK_EXAM_ID": {
    "text": "Names the one exam (SSC CGL 2026) that GovOS's own practice question bank, shift papers and drills are written for.",
    "tech": "Exported string 'exam-ssc-cgl-2026'; `PracticeEngine` offers its papers, sectionals and drills only for this exam id.",
-   "hash": "2c2550e853e4"
+   "hash": "620b1d3c1a86"
   },
   "src/data.ts::PaperMarking": {
    "text": "How a practice paper is scored: marks for a right answer, marks taken off for a wrong one, and the rule that says so.",
@@ -1125,6 +1175,56 @@
    "text": "An internal record used while building a test: one topic, its bank questions, and counters for how far through the bank and the generator it has got.",
    "tech": "Interface {topic: TopicSpec, bank: TemplateQuestion[], cursor, genIndex}. Created by makeSupplier, consumed by drawFrom.",
    "hash": "6a018cb9b478"
+  },
+  "src/data.ts::TGTET_APPLICATION_SIMULATOR": {
+   "text": "The practice application form for TG TET: the portal’s two steps (pay the fee to get a Journal Number, then submit the application) with eleven traps that each quote the notification or bulletin — for example applying when not an in-service teacher, using the pass for direct recruitment, paying the wrong fee, or uploading a non-JPEG photo.",
+   "tech": "ApplicationSimulatorSpec for TGTET_EXAM_ID: 2 modules (fee payment: serviceStatus, teacherPost, papers, category, feeClaimed, paymentDate; application: language1, photoFormat, submissionMode, afterSubmit, purpose); traps use VALUE_IN, VALUE_IN_ALL and DATE_OUTSIDE (07.10.2026–16.10.2026), each with the clause and page.",
+   "hash": "629a62dc4258"
+  },
+  "src/data.ts::TGTET_AUTHORITY": {
+   "text": "Who conducts the TG TET: the Department of School Education, Government of Telangana.",
+   "tech": "The authorityName on the record and on every TG TET provenance.",
+   "hash": "095fd706a7bf"
+  },
+  "src/data.ts::TGTET_CHECK": {
+   "text": "The day the TG TET documents were read for GovOS: 6 October 2026.",
+   "tech": "'2026-10-06' — the verifiedDate on every TG TET provenance and the linkVerifiedDate of its resources.",
+   "hash": "998acfa066fa"
+  },
+  "src/data.ts::TGTET_DOCS": {
+   "text": "The folder on the TG TET portal where the Department publishes its PDFs.",
+   "tech": "'https://tgtet.aptonline.in/Documents/' — joined with each file name in TGTET_SOURCES.",
+   "hash": "09fd622ef57e"
+  },
+  "src/data.ts::TGTET_DSE": {
+   "text": "The Department of School Education’s website, which the notification names for the bulletin, fee, application and Hall Tickets.",
+   "tech": "'https://schooledu.telangana.gov.in' — the record's officialDomain (the authority's estate) and the application portal.",
+   "hash": "29ac5c1e08fa"
+  },
+  "src/data.ts::TGTET_EXAM_ID": {
+   "text": "The id that names the Special TG TET 2026-II everywhere in GovOS (practice records, alerts, links).",
+   "tech": "'exam-tgtet-inservice-2026-ii' — the stable id; never derived from the title.",
+   "hash": "03f10fb3e45c"
+  },
+  "src/data.ts::TGTET_PORTAL": {
+   "text": "The TG TET portal’s home page, which the Department’s own site links to.",
+   "tech": "The portal URL used in official links and as the source of the \"Mock Test\" menu entry.",
+   "hash": "d44c70818241"
+  },
+  "src/data.ts::TGTET_SOURCES": {
+   "text": "The five official documents the TG TET record was read from: the notification, the information bulletin, the press note and the two syllabus files, each with its title, link and publication date.",
+   "tech": "Object NOTIF / IB / PRESS / SYL1 / SYL2 → {title, url, published: 2026-10-01}; read by tgtet() to build every citation.",
+   "hash": "2aefa456c44d"
+  },
+  "src/data.ts::TGTET_SYLLABUS_PAGE": {
+   "text": "The portal page that serves the TG TET syllabus files, one per paper and language.",
+   "tech": "Its Download buttons are ASP.NET postbacks, so there is no direct file URL; syllabus provenance and the syllabus resource point here.",
+   "hash": "3ef64c1ab29a"
+  },
+  "src/data.ts::TG_TET_INSERVICE_2026_II_EXAM": {
+   "text": "The whole record of the Special TG TET 2026-II for in-service teachers, read from the Department’s own documents: who may appear, the two papers and their pattern, the 78-topic syllabus, the dates, the fee, the application steps and practice form, the hall ticket, the scheduled result, the exam-day rules, FAQs and official links. It is an eligibility test, so it has no posts, vacancies or pay.",
+   "tech": "Exam with examNature 'ELIGIBILITY_TEST', posts [], careerFields ['Teaching & Education'], one CBT stage (both papers' sections), patternTree (CBT → Paper-I / Paper-II → subjects), syllabus (78 topics) and syllabusTree (91 entries), 7 dates (ranges via displayWhen), admitCardEvents, resultDeclarations (SCHEDULED), applicationGuide with fee and simulator, examDayChecklist (9), eligibilityHighlights (5), officialLinks (7), 4 role-tagged resources.",
+   "hash": "1045fa91aee0"
   },
   "src/data.ts::TOPIC_CATALOG": {
    "text": "The master list of the 47 topics a candidate can ask the test builder for, with the words that recognise each one. 34 are in the SSC CGL syllabus; 13 (such as matrices, programming or law) are listed only so GovOS can say they are outside the syllabus. Some topics have a question maker; others can only use the existing question bank.",
@@ -1395,6 +1495,431 @@
    "text": "An older, general source note for IBPS PO facts, naming the detailed advertisement but linking only to the ibps.in homepage, with no specific page quoted beyond a one-line description of the recruitment. Most IBPS dates, posts and cut-offs in the record still point to it.",
    "tech": "`DataProvenance` 'prov-ibps-01': documentTitle 'IBPS CRP PO/MT-XVI Detailed Advertisement.pdf', officialUrl 'https://ibps.in', page 1, published 2026-08-01, verifiedBy 'Senior Verification Officer #108', FACT / OFFICIALLY_VERIFIED, a generic excerpt. Referenced about 22 times in `IBPS_PO_EXAM` (all 9 dates, the post, the 2 cut-offs, etc.).",
    "hash": "454e51d2cb30"
+  },
+  "src/data.ts::jee": {
+   "text": "Builds one JEE (Main) citation: which NTA document, which page and clause, and the exact words quoted from it.",
+   "tech": "(id, doc, pageNumber, clauseNumber, excerptText, taxonomyType='FACT') → DataProvenance: OFFICIALLY_VERIFIED, publishedDate from JEE_SOURCES, verifiedBy naming how it was read (text layer or page image).",
+   "hash": "79dc2f982c10"
+  },
+  "src/data.ts::jeeCut": {
+   "text": "Builds the citation for one row of the JEE (Advanced) eligibility cut-off table in NTA’s 20 April 2026 press release.",
+   "tech": "(n, category, from, to, candidates) → jee('prov-jee-cutoff-n', 'RES', 3, …) quoting the row as printed: number, category, percentile range and candidate count.",
+   "hash": "ecc968ec88ad"
+  },
+  "src/data.ts::jeeMathsPart": {
+   "text": "Builds a 25-question, 100-mark subject of the JEE pattern with its two sections: 20 multiple-choice questions and 5 numerical-value questions answered as an integer.",
+   "tech": "(id, name, provenance) → ExamPatternNode SUBJECT with SECTION children 'Section A' (20, MCQ) and 'Section B' (5, numerical value, cited to jeeP_rounding).",
+   "hash": "04303080b31d"
+  },
+  "src/data.ts::jeeP_about": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 7, Para 1.3 — About JEE (Main) - 2026. Its Evidence button shows NTA’s own words: “The Joint Entrance Examination, JEE (Main) comprises of two papers. Paper 1 is conducted for admission to Undergraduate Engineering Progr…”",
+   "tech": "DataProvenance from jee('prov-jee-about', 'IB', 7, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "e32e263386e0"
+  },
+  "src/data.ts::jeeP_admit": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 27, Para 5.2 — Admit Card. Its Evidence button shows NTA’s own words: “The e-Admit Card will be issued provisionally to the candidates through the NTA website: https://jeemain.nta.nic.in/, subject to the fulf…”",
+   "tech": "DataProvenance from jee('prov-jee-admit', 'IB', 27, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "8f9ebfcfb0fb"
+  },
+  "src/data.ts::jeeP_admitRule": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 2, Important Dates — Session 1 and Session 2. Its Evidence button shows NTA’s own words: “Downloading Admit Cards from the NTA website 03-04 days before the date of the Examination”",
+   "tech": "DataProvenance from jee('prov-jee-admit-rule', 'IB', 2, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "318cb2a23f65"
+  },
+  "src/data.ts::jeeP_advanced": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 38, Para 5.8.4 — Eligibility Criteria for Indian Nationals Appearing in JEE (Advanced) – 2026. Its Evidence button shows NTA’s own words: “Candidates should be among the top 2, 50, 000 successful candidates (including all categories) in B.E./B.Tech. Paper of JEE (Main) – 2026.”",
+   "tech": "DataProvenance from jee('prov-jee-advanced', 'IB', 38, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "224c8335a238"
+  },
+  "src/data.ts::jeeP_age": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 18, Para 3.1 — Age Criteria. Its Evidence button shows NTA’s own words: “For appearing in the JEE (Main) - 2026, there is no age limit for the candidates. The candidates who have passed the class XII / equivale…”",
+   "tech": "DataProvenance from jee('prov-jee-age', 'IB', 18, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "f3c12445a777"
+  },
+  "src/data.ts::jeeP_air": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 35, Note 5.7.2 (3) and (5). Its Evidence button shows NTA’s own words: “Only the All India Rank (AIR) is used for admissions through Central Seat Allocation Board (CSAB)/Joint Seat Allocation Authority (JoSAA)…”",
+   "tech": "DataProvenance from jee('prov-jee-air', 'IB', 35, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "1db21b2ff4da"
+  },
+  "src/data.ts::jeeP_best": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 34, Para 5.7.1 (c). Its Evidence button shows NTA’s own words: “The best of the two NTA Scores in Total (and not in individual subject) will be considered for further processing for those candidates wh…”",
+   "tech": "DataProvenance from jee('prov-jee-best', 'IB', 34, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "4bac2a94874a"
+  },
+  "src/data.ts::jeeP_carry": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 30, Para 5.4 (13). Its Evidence button shows NTA’s own words: “Candidates MUST carry the following documents on the day of Examination at the test centre. In the absence of these documents, candidates…”",
+   "tech": "DataProvenance from jee('prov-jee-carry', 'IB', 30, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "f8faa6aecf2b"
+  },
+  "src/data.ts::jeeP_challenge": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 32, Para 5.6.1 — Display of Answer Key for Challenges. Its Evidence button shows NTA’s own words: “to provide an opportunity to the candidates to challenge the Provisional Answer Keys with a non-refundable online payment of ₹ 200/- per …”",
+   "tech": "DataProvenance from jee('prov-jee-challenge', 'IB', 32, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "815ed8b76634"
+  },
+  "src/data.ts::jeeP_cities": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 26, Para 5.1 — Choice of Cities. Its Evidence button shows NTA’s own words: “While filling up the Online Application Form, candidates can select maximum four Convenient Cities from Appendix - VI as their Choice of …”",
+   "tech": "DataProvenance from jee('prov-jee-cities', 'IB', 26, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "869489d06aa5"
+  },
+  "src/data.ts::jeeP_debar": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 32, Para 5.5.2 — Punishment for using Unfair Means Practices. Its Evidence button shows NTA’s own words: “The candidate may be debarred up to 3 years in the future and shall also be liable for criminal action and /or any other action as deemed…”",
+   "tech": "DataProvenance from jee('prov-jee-debar', 'IB', 32, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "8461c743c733"
+  },
+  "src/data.ts::jeeP_drawing": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 13, Para 2.4 — Paper 2A, Marking Scheme. Its Evidence button shows NTA’s own words: “(b)Marking Scheme for Drawing Test (Part III) Two questions are to be evaluated out of 100 marks.”",
+   "tech": "DataProvenance from jee('prov-jee-drawing', 'IB', 13, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "568966475a01"
+  },
+  "src/data.ts::jeeP_dropped": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 15, Para 2.4.1 — Multiple Choice Questions. Its Evidence button shows NTA’s own words: “in the event that a question(s) needs to be dropped, full marks for that question(s) will be awarded to ALL candidates who appear for tha…”",
+   "tech": "DataProvenance from jee('prov-jee-dropped', 'IB', 15, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "4af4ecba210a"
+  },
+  "src/data.ts::jeeP_duration": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 2, Duration and timing of examination for each session. Its Evidence button shows NTA’s own words: “Paper 1 (B. E/ B. Tech.) Or Paper 2A (B. Arch.) Or Paper 2B (B. Planning) 03 Hours B. Arch & B. Planning (Both) 03 Hours 30 Minutes”",
+   "tech": "DataProvenance from jee('prov-jee-duration', 'IB', 2, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "9d161e9e64b0"
+  },
+  "src/data.ts::jeeP_faqCalc": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s FAQ PDF, page 1, FAQ 7. Its Evidence button shows NTA’s own words: “No. The use of calculators in any form is not permitted in the JEE (Main) examination.”",
+   "tech": "DataProvenance from jee('prov-jee-faq-calc', 'FAQ', 1, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.FAQ.url; read from the text of the PDF.",
+   "hash": "4ec3eda4f83a"
+  },
+  "src/data.ts::jeeP_faqCancel": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s FAQ PDF, page 5, FAQ 30. Its Evidence button shows NTA’s own words: “The online application form, once submitted successfully, cannot be cancelled or withdrawn.”",
+   "tech": "DataProvenance from jee('prov-jee-faq-cancel', 'FAQ', 5, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.FAQ.url; read from the text of the PDF.",
+   "hash": "5a213b9e41f7"
+  },
+  "src/data.ts::jeeP_faqCategory": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s FAQ PDF, page 4, FAQ 25. Its Evidence button shows NTA’s own words: “No, the Category Certificate is not required to be uploaded in the online Application Form of JEE (Main) 2026. Instead, the candidate sho…”",
+   "tech": "DataProvenance from jee('prov-jee-faq-category', 'FAQ', 4, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.FAQ.url; read from the text of the PDF.",
+   "hash": "38d21499a588"
+  },
+  "src/data.ts::jeeP_faqCentre": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s FAQ PDF, page 5, FAQ 32. Its Evidence button shows NTA’s own words: “The allotted Examination Centre cannot be changed, in any case.”",
+   "tech": "DataProvenance from jee('prov-jee-faq-centre', 'FAQ', 5, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.FAQ.url; read from the text of the PDF.",
+   "hash": "775ab7b0f65d"
+  },
+  "src/data.ts::jeeP_faqClash": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s FAQ PDF, page 4, FAQ 27. Its Evidence button shows NTA’s own words: “If such a clash occurs, then NTA will not change the allotted date or shift of the examination for the candidates.”",
+   "tech": "DataProvenance from jee('prov-jee-faq-clash', 'FAQ', 4, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.FAQ.url; read from the text of the PDF.",
+   "hash": "c97dc0eb9ed1"
+  },
+  "src/data.ts::jeeP_faqLeave": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s FAQ PDF, page 5, FAQ 34. Its Evidence button shows NTA’s own words: “No, candidates are not allowed to leave the examination centre before the test concludes.”",
+   "tech": "DataProvenance from jee('prov-jee-faq-leave', 'FAQ', 5, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.FAQ.url; read from the text of the PDF.",
+   "hash": "835740b5ee7a"
+  },
+  "src/data.ts::jeeP_faqSeparate": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s FAQ PDF, page 1, FAQ 4. Its Evidence button shows NTA’s own words: “Yes, candidates have to apply separately for each session.”",
+   "tech": "DataProvenance from jee('prov-jee-faq-separate', 'FAQ', 1, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.FAQ.url; read from the text of the PDF.",
+   "hash": "3bc32726f459"
+  },
+  "src/data.ts::jeeP_fee": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 3, Para 2 — Fee payable for JEE (Main) – 2026 for each Session. Its Evidence button shows NTA’s own words: “Paper 1: B.E./B. Tech OR Paper 2A: B. Arch OR Paper 2B: B. Planning General Male 1000 5000 Female 800 4000 Gen-EWS/ OBC (NCL) Male 900 45…”",
+   "tech": "DataProvenance from jee('prov-jee-fee', 'IB', 3, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "1a5f06ee52f5"
+  },
+  "src/data.ts::jeeP_feeMode": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 3, Para 2 (iv). Its Evidence button shows NTA’s own words: “The fee can be submitted only online through Net Banking, Credit Card, Debit Card, or UPI Services.”",
+   "tech": "DataProvenance from jee('prov-jee-fee-mode', 'IB', 3, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "4fb14261c5a7"
+  },
+  "src/data.ts::jeeP_feeTwo": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 3, Para 2 — Fee payable for JEE (Main) – 2026 for each Session. Its Evidence button shows NTA’s own words: “General/ Gen-EWS/ OBC (NCL) Male 2000 10000 Female 1600 8000 SC/ ST/ PwD/ PwBD Male 1000 5000 Female 1000 5000 Third Gender 1000 5000”",
+   "tech": "DataProvenance from jee('prov-jee-fee-two', 'IB', 3, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "e72171a57d80"
+  },
+  "src/data.ts::jeeP_idProof": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 4, Para 3 — Application Procedure, Step 2. Its Evidence button shows NTA’s own words: “Scanned copy of Identity Proof (for those candidates who will verify their identities through methods other than Aadhaar or DigiLocker) s…”",
+   "tech": "DataProvenance from jee('prov-jee-id-proof', 'IB', 4, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "ef49da462bdb"
+  },
+  "src/data.ts::jeeP_keepDocs": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 29, Para 5.4 (12). Its Evidence button shows NTA’s own words: “Candidates are requested to retain both hard and soft copies of the Confirmation Page, Admit Card, and Scorecard of the JEE (Main) – 2026…”",
+   "tech": "DataProvenance from jee('prov-jee-keep-docs', 'IB', 29, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "ec24d70db408"
+  },
+  "src/data.ts::jeeP_livePhoto": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 4, Para 3 — Application Procedure, Step 2. Its Evidence button shows NTA’s own words: “The candidate will have to upload his/her live photograph at the time of filling of the application form and will also have to upload his…”",
+   "tech": "DataProvenance from jee('prov-jee-live-photo', 'IB', 4, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "29b4d3111329"
+  },
+  "src/data.ts::jeeP_marking": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 12, Para 2.4 — Paper 1, Marking Scheme. Its Evidence button shows NTA’s own words: “Marking Scheme for MCQs Correct Answer or the Most Appropriate Answer Four marks (+4) Incorrect Answer Minus one mark (-1) Unanswered / M…”",
+   "tech": "DataProvenance from jee('prov-jee-marking', 'IB', 12, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "8f09afaf53b3"
+  },
+  "src/data.ts::jeeP_markingNum": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 12, Para 2.4 — Paper 1, Marking Scheme. Its Evidence button shows NTA’s own words: “Marking Scheme for questions for which the answer is a Numerical value Correct Answer Four marks (+4) Incorrect Answer Minus one mark (-1…”",
+   "tech": "DataProvenance from jee('prov-jee-marking-num', 'IB', 12, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "1220eee04334"
+  },
+  "src/data.ts::jeeP_medium": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 10, Para 2.2 — Choice of Medium of Question Papers. Its Evidence button shows NTA’s own words: “the JEE (Main) - 2026 will be conducted in thirteen languages i.e. English, Hindi, Assamese, Bengali, Gujarati, Kannada Malayalam, Marath…”",
+   "tech": "DataProvenance from jee('prov-jee-medium', 'IB', 10, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "36f895f363f5"
+  },
+  "src/data.ts::jeeP_mediumFixed": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 10, Note 2.2. Its Evidence button shows NTA’s own words: “The option of language for Question Paper should be exercised carefully while filling up the online Application Form and it cannot be cha…”",
+   "tech": "DataProvenance from jee('prov-jee-medium-fixed', 'IB', 10, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "7eaaab8001ac"
+  },
+  "src/data.ts::jeeP_merit": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 12, Para 2.4 — Paper 1, Method of determining merit. Its Evidence button shows NTA’s own words: “Conversion of the raw score in Mathematics, Physics and Chemistry and total into NTA scores. Overall merit shall be prepared by merging N…”",
+   "tech": "DataProvenance from jee('prov-jee-merit', 'IB', 12, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "82030e649b1e"
+  },
+  "src/data.ts::jeeP_mode": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 10, Para 2.1 — Mode of Examination. Its Evidence button shows NTA’s own words: “Paper 2A (B. Arch): Mathematics (Part-I) and Aptitude Test (Part-II) in “Computer Based Test (CBT)” mode and Drawing Test (Part-III) in p…”",
+   "tech": "DataProvenance from jee('prov-jee-mode', 'IB', 10, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "defc4b381b25"
+  },
+  "src/data.ts::jeeP_nit": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 36, Para 5.8.1 — Eligibility for Admission to NIT+ System. Its Evidence button shows NTA’s own words: “The candidates seeking admission to NIT+ System must have passed class XII (or equivalent) Board examination with a minimum of five subje…”",
+   "tech": "DataProvenance from jee('prov-jee-nit', 'IB', 36, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "e1dc268872f4"
+  },
+  "src/data.ts::jeeP_noCorrection": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 29, Para 5.4 (10). Its Evidence button shows NTA’s own words: “Any request for change in the particulars and uploaded scanned images at any stage will not be considered by NTA under any circumstances.…”",
+   "tech": "DataProvenance from jee('prov-jee-no-correction', 'IB', 29, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "60922f14ca78"
+  },
+  "src/data.ts::jeeP_noReeval": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 36, Para 5.7.3 — Re-evaluation / Re-checking of Result. Its Evidence button shows NTA’s own words: “There shall be no re-evaluation/re-checking of the result.”",
+   "tech": "DataProvenance from jee('prov-jee-no-reeval', 'IB', 36, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "d5022fd85553"
+  },
+  "src/data.ts::jeeP_noRetest": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 29, Para 5.4 (9). Its Evidence button shows NTA’s own words: “For those who are unable to appear on the scheduled date/shift and pre-intimated time of the test for any reason, no opportunity for re-t…”",
+   "tech": "DataProvenance from jee('prov-jee-no-retest', 'IB', 29, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "e583baafa6d6"
+  },
+  "src/data.ts::jeeP_oneForm": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 3, Para 2, Note. Its Evidence button shows NTA’s own words: “Under no circumstances, candidates will be allowed to fill more than one Application Form. Strict action will be taken, even at a later s…”",
+   "tech": "DataProvenance from jee('prov-jee-one-form', 'IB', 3, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "5f526e91ed86"
+  },
+  "src/data.ts::jeeP_p1": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 11, Para 2.4 — Paper 1: B.E./ B. Tech.. Its Evidence button shows NTA’s own words: “Subject Number of Questions Marks Section A Section B Mathematics 20 05 100 Physics 20 05 100 Chemistry 20 05 100 Total 75 300”",
+   "tech": "DataProvenance from jee('prov-jee-p1', 'IB', 11, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "454cfb5866db"
+  },
+  "src/data.ts::jeeP_p1Sections": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 11, Para 2.4 — Paper 1. Its Evidence button shows NTA’s own words: “Each Subject will have two sections. Section A will be of Multiple-Choice Questions (MCQs) and Section B will contain Questions whose ans…”",
+   "tech": "DataProvenance from jee('prov-jee-p1-sections', 'IB', 11, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "a144e58bf0e7"
+  },
+  "src/data.ts::jeeP_p2Marking": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 14, Para 2.4 — Paper 2B, Marking Scheme. Its Evidence button shows NTA’s own words: “Correct Answer or the most appropriate Answer Four marks (+4) Incorrect Answer/Multiple Answer Minus one mark (-1)”",
+   "tech": "DataProvenance from jee('prov-jee-p2-marking', 'IB', 14, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "e10e6c156c35"
+  },
+  "src/data.ts::jeeP_p2a": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 12, Para 2.4 — Paper 2A (B. Arch). Its Evidence button shows NTA’s own words: “Part I: Mathematics 20 (Section A) and 05 (Section B) 100 Part II: Aptitude test 50 200 Part III: Drawing Test 02 100 Total 77 400”",
+   "tech": "DataProvenance from jee('prov-jee-p2a', 'IB', 12, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "e2c07618456e"
+  },
+  "src/data.ts::jeeP_p2b": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 13, Para 2.4 — Paper 2B (B. Planning). Its Evidence button shows NTA’s own words: “Part-I: Mathematics 20 (Section A) and 05 (Section B) 100 Part-II: Aptitude Test 50 200 Part-III: Planning 25 100 Total 100 400”",
+   "tech": "DataProvenance from jee('prov-jee-p2b', 'IB', 13, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "f4f1f29a87c3"
+  },
+  "src/data.ts::jeeP_payStep": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 5, Para 3 — Application Procedure, Step 3. Its Evidence button shows NTA’s own words: “After successful payment, candidate will be able to print the Confirmation Page. In case the Confirmation Page is not generated after pay…”",
+   "tech": "DataProvenance from jee('prov-jee-pay-step', 'IB', 5, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "86f749d667be"
+  },
+  "src/data.ts::jeeP_percentile": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 55, Appendix-VII — Normalization procedure based on Percentile Score. Its Evidence button shows NTA’s own words: “The Percentile Score indicates the percentage of candidates that have scored EQUAL TO OR BELOW (same or lower raw scores) that particular…”",
+   "tech": "DataProvenance from jee('prov-jee-percentile', 'IB', 55, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "b13651873b52"
+  },
+  "src/data.ts::jeeP_photoId": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 30, Para 5.4 (13) (b)–(e). Its Evidence button shows NTA’s own words: “b. One passport size photograph (same as uploaded on the Online Application Form) for pasting on the specific space in the Attendance She…”",
+   "tech": "DataProvenance from jee('prov-jee-photo-id', 'IB', 30, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "9daf2785b3e7"
+  },
+  "src/data.ts::jeeP_photoLook": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 4, Para 3 — Application Procedure, Step 2. Its Evidence button shows NTA’s own words: “The recent passport size photograph should be in colour with 80% face (without mask) visible including ears against white background.”",
+   "tech": "DataProvenance from jee('prov-jee-photo-look', 'IB', 4, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "bfdf3329ebdb"
+  },
+  "src/data.ts::jeeP_prohibited": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 29, Para 5.4 (11). Its Evidence button shows NTA’s own words: “Candidates are NOT allowed to carry Instruments, Geometry or Pencil box, Handbag, Purse, any kind of Paper/ Stationery/ Textual material …”",
+   "tech": "DataProvenance from jee('prov-jee-prohibited', 'IB', 29, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "0a9dc99044bd"
+  },
+  "src/data.ts::jeeP_pwdTime": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 16, Para 2.5 and Note 2.5 — Duration of Test. Its Evidence button shows NTA’s own words: “Paper 2A (B. Arch) & Paper 2B (B. Planning) both Mathematics, Aptitude Test, Drawing Test, and Planning Based Questions 03 hours 30 minut…”",
+   "tech": "DataProvenance from jee('prov-jee-pwd-time', 'IB', 16, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "6bfb4c1ab538"
+  },
+  "src/data.ts::jeeP_qe": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 18, Para 3.2 — List of Qualifying Examinations. Its Evidence button shows NTA’s own words: “The final Examination of the 10+2 system, conducted by any recognized Central/ State Board, such as the Central Board of Secondary Educat…”",
+   "tech": "DataProvenance from jee('prov-jee-qe', 'IB', 18, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "5ea2522a1811"
+  },
+  "src/data.ts::jeeP_report": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 29, Para 5.4 (1)–(2) — Important Instructions for the Candidates. Its Evidence button shows NTA’s own words: “Candidates are advised to report at the Examination Center well on time i.e. 02 hours before the commencement of the Examination.”",
+   "tech": "DataProvenance from jee('prov-jee-report', 'IB', 29, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "2fa9d3371b8b"
+  },
+  "src/data.ts::jeeP_resCount": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s press release of 20 April 2026, page 3, Press Release, candidates registered and appeared in both sessions. Its Evidence button shows NTA’s own words: “Total Number of Unique Candidates Appeared in both Sessions (January/April) of the JEE (Main) - 2026 Examination. 15,38,468”",
+   "tech": "DataProvenance from jee('prov-jee-res-count', 'RES', 3, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.RES.url; read from the page image of the scanned press release.",
+   "hash": "6fefec3afd35"
+  },
+  "src/data.ts::jeeP_resDeclared": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s press release of 20 April 2026, page 1, Press Release, subject line. Its Evidence button shows NTA’s own words: “Press Release 20 April 2026 Subject.: Declaration of the Result/NTA Scores for the Joint Entrance Examination [JEE (Main) - 2026] of Pape…”",
+   "tech": "DataProvenance from jee('prov-jee-res-declared', 'RES', 1, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.RES.url; read from the page image of the scanned press release.",
+   "hash": "b226c1c13afd"
+  },
+  "src/data.ts::jeeP_resKeys": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s press release of 20 April 2026, page 3, Press Release. Its Evidence button shows NTA’s own words: “The NTA Scores/ Results of JEE (Main) 2026 Session 2, Paper 1 (B.E./B.Tech.) computed using the Final Answer keys released on 20 April 20…”",
+   "tech": "DataProvenance from jee('prov-jee-res-keys', 'RES', 3, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.RES.url; read from the page image of the scanned press release.",
+   "hash": "acf9b220673b"
+  },
+  "src/data.ts::jeeP_resPaper2": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s press release of 20 April 2026, page 13, Press Release. Its Evidence button shows NTA’s own words: “The NTA Scores for Paper 2A (B.Arch.) and 2B (B. Planning) for the JEE (Main) – 2026 Session 2 will be issued separately.”",
+   "tech": "DataProvenance from jee('prov-jee-res-paper2', 'RES', 13, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.RES.url; read from the page image of the scanned press release.",
+   "hash": "75af10f14034"
+  },
+  "src/data.ts::jeeP_resS1Held": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s press release of 20 April 2026, page 1, Press Release, table of examination dates. Its Evidence button shows NTA’s own words: “Session 1 Paper 1 (B.E. / B.Tech.) 21, 22, 23, 24 and 28 January 2026”",
+   "tech": "DataProvenance from jee('prov-jee-res-s1-held', 'RES', 1, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.RES.url; read from the page image of the scanned press release.",
+   "hash": "5a665c570a30"
+  },
+  "src/data.ts::jeeP_resS2Held": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s press release of 20 April 2026, page 1, Press Release, table of examination dates. Its Evidence button shows NTA’s own words: “Session 2 Paper 1 (B.E. / B.Tech.) 02, 04, 05, 06 and 08 April 2026”",
+   "tech": "DataProvenance from jee('prov-jee-res-s2-held', 'RES', 1, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.RES.url; read from the page image of the scanned press release.",
+   "hash": "410a97819d5c"
+  },
+  "src/data.ts::jeeP_resShifts": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s press release of 20 April 2026, page 1, Press Release. Its Evidence button shows NTA’s own words: “JEE (Main) 2026 Session-1 Examination was conducted in ten (10) shifts and in Session-2 (April 2026), it was conducted in nine (09) shifts.”",
+   "tech": "DataProvenance from jee('prov-jee-res-shifts', 'RES', 1, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.RES.url; read from the page image of the scanned press release.",
+   "hash": "36a5fbdde136"
+  },
+  "src/data.ts::jeeP_reservation": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 21, Para 4.1 — Reservations. Its Evidence button shows NTA’s own words: “General category belonging to Economically Weaker Section (GEN- EWS) – 10% of seats in every course.”",
+   "tech": "DataProvenance from jee('prov-jee-reservation', 'IB', 21, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "fe547afb4e96"
+  },
+  "src/data.ts::jeeP_rough": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 30, Para 5.4 (14) — For Rough work. Its Evidence button shows NTA’s own words: “All calculations/writing work is to be done only in the Rough Sheet provided at the Test Centre in the Examination Room/Hall and on compl…”",
+   "tech": "DataProvenance from jee('prov-jee-rough', 'IB', 30, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "b4cd6d009a9b"
+  },
+  "src/data.ts::jeeP_rounding": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 15, Para 2.4.2 — Numerical Value Questions. Its Evidence button shows NTA’s own words: “Candidates are advised to do the calculations with the constants given (if any) in the questions. The answer should be rounded off to the…”",
+   "tech": "DataProvenance from jee('prov-jee-rounding', 'IB', 15, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "679df9cc73e7"
+  },
+  "src/data.ts::jeeP_s1City": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 2, Important Dates — Session 1 (January 2026). Its Evidence button shows NTA’s own words: “City Intimation Slip First Week of January 2026 (Tentatively)”",
+   "tech": "DataProvenance from jee('prov-jee-s1-city', 'IB', 2, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "ce6f11aa6385"
+  },
+  "src/data.ts::jeeP_s1Exam": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 2, Important Dates — Session 1 (January 2026). Its Evidence button shows NTA’s own words: “Dates of Examination Between 21 January 2026 to 30 January 2026”",
+   "tech": "DataProvenance from jee('prov-jee-s1-exam', 'IB', 2, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "3bf33ac33d8b"
+  },
+  "src/data.ts::jeeP_s1Fee": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 2, Important Dates — Session 1 (January 2026). Its Evidence button shows NTA’s own words: “Last date for successful transaction of prescribed Application Fee 27 November 2025 (Up to 11:50 P.M.)”",
+   "tech": "DataProvenance from jee('prov-jee-s1-fee', 'IB', 2, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "6002841ec523"
+  },
+  "src/data.ts::jeeP_s1Result": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 2, Important Dates — Session 1 (January 2026). Its Evidence button shows NTA’s own words: “Declaration of Result By 12 February, 2026”",
+   "tech": "DataProvenance from jee('prov-jee-s1-result', 'IB', 2, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "4533ae54e3f8"
+  },
+  "src/data.ts::jeeP_s1Window": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 2, Important Dates — Session 1 (January 2026). Its Evidence button shows NTA’s own words: “Online Submission of Application Form 31 October 2025 to 27 November 2025 (Up to 09:00 P.M.)”",
+   "tech": "DataProvenance from jee('prov-jee-s1-window', 'IB', 2, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "75c6b41c0d49"
+  },
+  "src/data.ts::jeeP_s2City": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 2, Important Dates — Session 2 (April 2026). Its Evidence button shows NTA’s own words: “City Intimation Slip Second Week of March 2026 (Tentatively)”",
+   "tech": "DataProvenance from jee('prov-jee-s2-city', 'IB', 2, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "801ec30edb2a"
+  },
+  "src/data.ts::jeeP_s2Exam": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 2, Important Dates — Session 2 (April 2026). Its Evidence button shows NTA’s own words: “Dates of Examination Between 02 April 2026 to 09 April 2026”",
+   "tech": "DataProvenance from jee('prov-jee-s2-exam', 'IB', 2, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "7060853f272b"
+  },
+  "src/data.ts::jeeP_s2Result": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 2, Important Dates — Session 2 (April 2026). Its Evidence button shows NTA’s own words: “Declaration of Result By 20 April, 2026”",
+   "tech": "DataProvenance from jee('prov-jee-s2-result', 'IB', 2, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "08bd238cca63"
+  },
+  "src/data.ts::jeeP_s2Window": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 2, Important Dates — Session 2 (April 2026). Its Evidence button shows NTA’s own words: “Session 2 (April 2026): JEE (Main) - 2026 Online Submission of Application Form Last week of January 2026 Onwards”",
+   "tech": "DataProvenance from jee('prov-jee-s2-window', 'IB', 2, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "5a56d6852004"
+  },
+  "src/data.ts::jeeP_scheme": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 11, Para 2.3 — Scheme of Examination. Its Evidence button shows NTA’s own words: “Paper 1: B.E. / B. Tech. Mathematics, Physics and Chemistry Objective Type - Multiple Choice Questions (MCQs) and Questions for which the…”",
+   "tech": "DataProvenance from jee('prov-jee-scheme', 'IB', 11, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "16d6504ae502"
+  },
+  "src/data.ts::jeeP_session2Apply": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 3, Para 2 (i). Its Evidence button shows NTA’s own words: “A candidate can apply for Session-1 (January 2026) examination and pay the exam fee accordingly. The candidates will be given opportunity…”",
+   "tech": "DataProvenance from jee('prov-jee-session2-apply', 'IB', 3, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "55aecce04520"
+  },
+  "src/data.ts::jeeP_sessions": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 7, Para 1.3. Its Evidence button shows NTA’s own words: “A candidate need not appear in both Sessions, if he/she so desires. However, a candidate appears in more than one Session then his/her be…”",
+   "tech": "DataProvenance from jee('prov-jee-sessions', 'IB', 7, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "36db0845a099"
+  },
+  "src/data.ts::jeeP_shifts": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 2, Timing of Examination for each Session. Its Evidence button shows NTA’s own words: “For 03 Hours Paper 09:00 A.M. to 12:00 Noon (IST) 03:00 P.M. to 06:00 P.M. (IST) For 03 Hours 30 Minutes Paper 09:00 A.M. to 12:30 P.M. (…”",
+   "tech": "DataProvenance from jee('prov-jee-shifts', 'IB', 2, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "2d5cade693c4"
+  },
+  "src/data.ts::jeeP_stateCode": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 19, Para 3.4 — State of Eligibility. Its Evidence button shows NTA’s own words: “State code of eligibility means the code of the State from where the candidate has passed the Class XII (or Equivalent) qualifying Examin…”",
+   "tech": "DataProvenance from jee('prov-jee-state-code', 'IB', 19, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "14541f25f8bf"
+  },
+  "src/data.ts::jeeP_steps": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 4, Para 3 — Application Procedure, Step 1. Its Evidence button shows NTA’s own words: “Register for the Online Application Form and note down the system-generated Application Number.”",
+   "tech": "DataProvenance from jee('prov-jee-steps', 'IB', 4, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "f902f927244f"
+  },
+  "src/data.ts::jeeP_syllabus": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 16, Para 2.6 — Syllabus of Examination. Its Evidence button shows NTA’s own words: “The detailed syllabus for JEE (Main) is available on the website: https://jeemain.nta.nic.in/”",
+   "tech": "DataProvenance from jee('prov-jee-syllabus', 'IB', 16, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "d063734293ca"
+  },
+  "src/data.ts::jeeP_ties": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 12, Para 2.4 — Paper 1, Method of resolving ties. Its Evidence button shows NTA’s own words: “Tie between candidates obtaining same Total NTA scores will be resolved in the following order: 1. NTA score in Mathematics, followed by;…”",
+   "tech": "DataProvenance from jee('prov-jee-ties', 'IB', 12, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "af0b1f498274"
+  },
+  "src/data.ts::jeeP_timing": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 28, Para 5.3 — Schedule of Examination. Its Evidence button shows NTA’s own words: “Entry in the Examination Centre/ Hall/ Room, frisking, biometric registration/ record of manual attendance by Invigilator, document verif…”",
+   "tech": "DataProvenance from jee('prov-jee-timing', 'IB', 28, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "a0695ca500e5"
+  },
+  "src/data.ts::jeeP_uploads": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 4, Para 3 — Application Procedure, Step 2. Its Evidence button shows NTA’s own words: “Photograph in JPG/JPEG format (clearly legible) between 10 kb to 200 kb. Signature file should be JPG/JPEG format (clearly legible) betwe…”",
+   "tech": "DataProvenance from jee('prov-jee-uploads', 'IB', 4, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "7412438b016b"
+  },
+  "src/data.ts::jeeP_year": {
+   "text": "The citation behind one JEE (Main) 2026 fact: NTA’s Information Bulletin (printed page) 19, Para 3.3 — Year of Appearance in Qualifying Examination. Its Evidence button shows NTA’s own words: “Candidates those who have passed the Class XII / Equivalent Examination in 2024, 2025 or those who are appearing in the Class XII / equiv…”",
+   "tech": "DataProvenance from jee('prov-jee-year', 'IB', 19, …): OFFICIALLY_VERIFIED, FACT, authorityName JEE_AUTHORITY, URL JEE_SOURCES.IB.url; read from the text of the PDF.",
+   "hash": "6d2fbeaf88c8"
+  },
+  "src/data.ts::jeePaperNode": {
+   "text": "Builds one paper (Paper 1, 2A or 2B) of the JEE (Main) pattern: its questions, marks, 3 hours, +4 / −1 marking and the longer time for candidates eligible for a scribe.",
+   "tech": "(id, code, name, order, questions, marks, provenance, children, extra?) → ExamPatternNode level PAPER, durationMinutes 180, marksPerQuestion 4, negativeMarkPerWrong 1, durationVariants (240 min PwD/PwBD); extra overrides fields.",
+   "hash": "9a432e5dbe3c"
   },
   "src/data.ts::makeSupplier": {
    "text": "Creates a fresh supplier for a topic with its bank questions and counters at zero.",
@@ -1740,6 +2265,201 @@
    "text": "A remembered table saying which catalogue topic each bank question belongs to, worked out once and then reused.",
    "tech": "Module-level Map<TemplateQuestion, string> | null, lazily filled by ownerOf() on first call.",
    "hash": "9e0116aa3030"
+  },
+  "src/data.ts::tgP_apply": {
+   "text": "The citation behind one TG TET fact: the Information Bulletin, page 8, Para 13 — Mode of submission of application. Its Evidence button shows the Department’s own words: “A candidate can apply for the Special TGTET-In-service Teachers-2026-II Online by logging to the website https://schooledu.telangana.gov.…”",
+   "tech": "DataProvenance from tgtet('prov-tgtet-apply', 'IB', 8, …): OFFICIALLY_VERIFIED, FACT, authorityName TGTET_AUTHORITY, URL TGTET_SOURCES.IB.url; the excerpt was read from the page image (the PDFs have no text layer).",
+   "hash": "384877c8e584"
+  },
+  "src/data.ts::tgP_cbt": {
+   "text": "The citation behind one TG TET fact: the Notification (Rc.No.444, 01.10.2026), page 2, Para 1. Its Evidence button shows the Department’s own words: “to be conducted Online as Computer Based Test (CBT) by Department of School Education, Government of Telangana between 16.11.2026 and 21.…”",
+   "tech": "DataProvenance from tgtet('prov-tgtet-cbt', 'NOTIF', 2, …): OFFICIALLY_VERIFIED, FACT, authorityName TGTET_AUTHORITY, URL TGTET_SOURCES.NOTIF.url; the excerpt was read from the page image (the PDFs have no text layer).",
+   "hash": "2c9a59d73d7c"
+  },
+  "src/data.ts::tgP_cbtConduct": {
+   "text": "The citation behind one TG TET fact: the Information Bulletin, page 12, Para 18 — Procedure for conduct of CBT. Its Evidence button shows the Department’s own words: “Total duration of examination is 150 minutes (2½ hours).”",
+   "tech": "DataProvenance from tgtet('prov-tgtet-cbt-conduct', 'IB', 12, …): OFFICIALLY_VERIFIED, FACT, authorityName TGTET_AUTHORITY, URL TGTET_SOURCES.IB.url; the excerpt was read from the page image (the PDFs have no text layer).",
+   "hash": "2a30588ef2d2"
+  },
+  "src/data.ts::tgP_centres": {
+   "text": "The citation behind one TG TET fact: the Information Bulletin, page 8, Para 12 — Examination Centers. Its Evidence button shows the Department’s own words: “Candidates can submit order of preference of the examination centers (district) given in the online application form. However, Convenor, …”",
+   "tech": "DataProvenance from tgtet('prov-tgtet-centres', 'IB', 8, …): OFFICIALLY_VERIFIED, FACT, authorityName TGTET_AUTHORITY, URL TGTET_SOURCES.IB.url; the excerpt was read from the page image (the PDFs have no text layer).",
+   "hash": "69285bec602a"
+  },
+  "src/data.ts::tgP_fee": {
+   "text": "The citation behind one TG TET fact: the Notification (Rc.No.444, 01.10.2026), page 3, Para 7 — Exam fee. Its Evidence button shows the Department’s own words: “The exam fee prescribed for appearing for Special-TGTET-In-service Teachers-2026-II for General & BC candidates is Rs. 750/- (Rupees Seve…”",
+   "tech": "DataProvenance from tgtet('prov-tgtet-fee', 'NOTIF', 3, …): OFFICIALLY_VERIFIED, FACT, authorityName TGTET_AUTHORITY, URL TGTET_SOURCES.NOTIF.url; the excerpt was read from the page image (the PDFs have no text layer).",
+   "hash": "37266790118d"
+  },
+  "src/data.ts::tgP_hallTicket": {
+   "text": "The citation behind one TG TET fact: the Information Bulletin, page 8, Para 14 — Hall Ticket. Its Evidence button shows the Department’s own words: “Candidates can download their Hall Tickets from the website at https://schooledu.telangana.gov.in from 09.11.2026.”",
+   "tech": "DataProvenance from tgtet('prov-tgtet-hall-ticket', 'IB', 8, …): OFFICIALLY_VERIFIED, FACT, authorityName TGTET_AUTHORITY, URL TGTET_SOURCES.IB.url; the excerpt was read from the page image (the PDFs have no text layer).",
+   "hash": "e376b3ba7562"
+  },
+  "src/data.ts::tgP_helpdesk": {
+   "text": "The citation behind one TG TET fact: the Notification (Rc.No.444, 01.10.2026), page 5, Para 14 — Important dates. Its Evidence button shows the Department’s own words: “Help Desk services on all working days 01.10.2026 to 11.12.2026”",
+   "tech": "DataProvenance from tgtet('prov-tgtet-helpdesk', 'NOTIF', 5, …): OFFICIALLY_VERIFIED, FACT, authorityName TGTET_AUTHORITY, URL TGTET_SOURCES.NOTIF.url; the excerpt was read from the page image (the PDFs have no text layer).",
+   "hash": "98c7ae584a25"
+  },
+  "src/data.ts::tgP_journal": {
+   "text": "The citation behind one TG TET fact: the Information Bulletin, page 2, Important notes, 2 (c). Its Evidence button shows the Department’s own words: “On receipt of online fee payment, the candidate shall be issued a ‘Journal Number’ with which she/he can proceed with submission of appli…”",
+   "tech": "DataProvenance from tgtet('prov-tgtet-journal', 'IB', 2, …): OFFICIALLY_VERIFIED, FACT, authorityName TGTET_AUTHORITY, URL TGTET_SOURCES.IB.url; the excerpt was read from the page image (the PDFs have no text layer).",
+   "hash": "37b6e7afcb12"
+  },
+  "src/data.ts::tgP_key": {
+   "text": "The citation behind one TG TET fact: the Notification (Rc.No.444, 01.10.2026), page 4, Para 11 (c). Its Evidence button shows the Department’s own words: “The final key shall be published for the information of candidates. Any representation / petition / objection on the key after the above …”",
+   "tech": "DataProvenance from tgtet('prov-tgtet-key', 'NOTIF', 4, …): OFFICIALLY_VERIFIED, FACT, authorityName TGTET_AUTHORITY, URL TGTET_SOURCES.NOTIF.url; the excerpt was read from the page image (the PDFs have no text layer).",
+   "hash": "3d3677d8eb03"
+  },
+  "src/data.ts::tgP_lang1P1": {
+   "text": "The citation behind one TG TET fact: the Information Bulletin, page 5, Para 7 (a), Note (2). Its Evidence button shows the Department’s own words: “The following 8 languages are offered under first Language in schools under State Syllabus viz., Telugu, Urdu, Hindi, Bengali, Kannada, M…”",
+   "tech": "DataProvenance from tgtet('prov-tgtet-lang1-p1', 'IB', 5, …): OFFICIALLY_VERIFIED, FACT, authorityName TGTET_AUTHORITY, URL TGTET_SOURCES.IB.url; the excerpt was read from the page image (the PDFs have no text layer).",
+   "hash": "560e7cabfdb4"
+  },
+  "src/data.ts::tgP_lang1P2": {
+   "text": "The citation behind one TG TET fact: the Information Bulletin, page 6, Para 7 (b), Note (2). Its Evidence button shows the Department’s own words: “The following 7 languages are offered under first Language in secondary schools under State Syllabus viz., Telugu, Urdu, Hindi, Kannada, …”",
+   "tech": "DataProvenance from tgtet('prov-tgtet-lang1-p2', 'IB', 6, …): OFFICIALLY_VERIFIED, FACT, authorityName TGTET_AUTHORITY, URL TGTET_SOURCES.IB.url; the excerpt was read from the page image (the PDFs have no text layer).",
+   "hash": "9d148d543732"
+  },
+  "src/data.ts::tgP_lang2": {
+   "text": "The citation behind one TG TET fact: the Information Bulletin, page 5, Para 7 (a), Note (3). Its Evidence button shows the Department’s own words: “The Language-II shall be English for all candidates.”",
+   "tech": "DataProvenance from tgtet('prov-tgtet-lang2', 'IB', 5, …): OFFICIALLY_VERIFIED, FACT, authorityName TGTET_AUTHORITY, URL TGTET_SOURCES.IB.url; the excerpt was read from the page image (the PDFs have no text layer).",
+   "hash": "5fe566a663b1"
+  },
+  "src/data.ts::tgP_mcq": {
+   "text": "The citation behind one TG TET fact: the Information Bulletin, page 5, Para 7 — Structure and content of TGTET. Its Evidence button shows the Department’s own words: “All questions will be Multiple Choice Questions (MCQs), each carrying one mark, with four alternatives out of which one answer will be co…”",
+   "tech": "DataProvenance from tgtet('prov-tgtet-mcq', 'IB', 5, …): OFFICIALLY_VERIFIED, FACT, authorityName TGTET_AUTHORITY, URL TGTET_SOURCES.IB.url; the excerpt was read from the page image (the PDFs have no text layer).",
+   "hash": "570fe7939af6"
+  },
+  "src/data.ts::tgP_medium": {
+   "text": "The citation behind one TG TET fact: the Information Bulletin, page 7, Para 8 — Medium of question paper. Its Evidence button shows the Department’s own words: “The question paper shall be bilingual i.e. English followed by the Language-I chosen by the candidates for all languages except Sanskrit.…”",
+   "tech": "DataProvenance from tgtet('prov-tgtet-medium', 'IB', 7, …): OFFICIALLY_VERIFIED, FACT, authorityName TGTET_AUTHORITY, URL TGTET_SOURCES.IB.url; the excerpt was read from the page image (the PDFs have no text layer).",
+   "hash": "7bd2f2d5a3fe"
+  },
+  "src/data.ts::tgP_noEdit": {
+   "text": "The citation behind one TG TET fact: the Information Bulletin, page 10, Para 17 (g) (i). Its Evidence button shows the Department’s own words: “Application cannot be edited after final submission.”",
+   "tech": "DataProvenance from tgtet('prov-tgtet-no-edit', 'IB', 10, …): OFFICIALLY_VERIFIED, FACT, authorityName TGTET_AUTHORITY, URL TGTET_SOURCES.IB.url; the excerpt was read from the page image (the PDFs have no text layer).",
+   "hash": "df57883ee0c6"
+  },
+  "src/data.ts::tgP_noRecruit": {
+   "text": "The citation behind one TG TET fact: the Notification (Rc.No.444, 01.10.2026), page 3, Para 5 (iii) — TET for in-service teachers. Its Evidence button shows the Department’s own words: “Pass in Special-TGTET-In-service Teachers-2026-II CANNOT be used for appearing in any direct recruitment in future. For appearing in any …”",
+   "tech": "DataProvenance from tgtet('prov-tgtet-no-recruitment', 'NOTIF', 3, …): OFFICIALLY_VERIFIED, FACT, authorityName TGTET_AUTHORITY, URL TGTET_SOURCES.NOTIF.url; the excerpt was read from the page image (the PDFs have no text layer).",
+   "hash": "58e538018b3b"
+  },
+  "src/data.ts::tgP_notified": {
+   "text": "The citation behind one TG TET fact: the Notification (Rc.No.444, 01.10.2026), page 2, Header and para 1. Its Evidence button shows the Department’s own words: “Rc.No.444/Special-TGTET-In-service Teachers-2026-II/2026 Dt.01.10.2026”",
+   "tech": "DataProvenance from tgtet('prov-tgtet-notified', 'NOTIF', 2, …): OFFICIALLY_VERIFIED, FACT, authorityName TGTET_AUTHORITY, URL TGTET_SOURCES.NOTIF.url; the excerpt was read from the page image (the PDFs have no text layer).",
+   "hash": "e9a6b7f669ed"
+  },
+  "src/data.ts::tgP_p1": {
+   "text": "The citation behind one TG TET fact: the Information Bulletin, page 5, Para 7 (a) — Paper-I. Its Evidence button shows the Department’s own words: “Paper- I: No. of Multiple-Choice Questions (MCQs) - 150 Duration of Examination: 2 hours and 30 minutes”",
+   "tech": "DataProvenance from tgtet('prov-tgtet-p1', 'IB', 5, …): OFFICIALLY_VERIFIED, FACT, authorityName TGTET_AUTHORITY, URL TGTET_SOURCES.IB.url; the excerpt was read from the page image (the PDFs have no text layer).",
+   "hash": "691f27ac304a"
+  },
+  "src/data.ts::tgP_p2": {
+   "text": "The citation behind one TG TET fact: the Information Bulletin, page 6, Para 7 (b) — Paper-II. Its Evidence button shows the Department’s own words: “Paper II : No. of Multiple Choice Questions (MCQs)- 150: Duration of Examination: 2 hours and 30 minutes”",
+   "tech": "DataProvenance from tgtet('prov-tgtet-p2', 'IB', 6, …): OFFICIALLY_VERIFIED, FACT, authorityName TGTET_AUTHORITY, URL TGTET_SOURCES.IB.url; the excerpt was read from the page image (the PDFs have no text layer).",
+   "hash": "4782464b3f41"
+  },
+  "src/data.ts::tgP_p2Maths": {
+   "text": "The citation behind one TG TET fact: the Information Bulletin, page 7, Para 7 (b), Note (4). Its Evidence button shows the Department’s own words: “(i) Mathematics - 30 MCQs (Content 24; Pedagogy 06) (ii) Science - 30 MCQs (Content 24; Pedagogy 06) a) Content - Physical Science - 12MC…”",
+   "tech": "DataProvenance from tgtet('prov-tgtet-p2-mathsci', 'IB', 7, …): OFFICIALLY_VERIFIED, FACT, authorityName TGTET_AUTHORITY, URL TGTET_SOURCES.IB.url; the excerpt was read from the page image (the PDFs have no text layer).",
+   "hash": "5e2a182cd2f0"
+  },
+  "src/data.ts::tgP_p2Social": {
+   "text": "The citation behind one TG TET fact: the Information Bulletin, page 7, Para 7 (b), Note (5). Its Evidence button shows the Department’s own words: “For Paper II Social Studies, the syllabus will cover the sections/areas namely, History, Geography, Civics and Economics. Out of 60 marks…”",
+   "tech": "DataProvenance from tgtet('prov-tgtet-p2-social', 'IB', 7, …): OFFICIALLY_VERIFIED, FACT, authorityName TGTET_AUTHORITY, URL TGTET_SOURCES.IB.url; the excerpt was read from the page image (the PDFs have no text layer).",
+   "hash": "f5dd61549335"
+  },
+  "src/data.ts::tgP_paper1Who": {
+   "text": "The citation behind one TG TET fact: the Notification (Rc.No.444, 01.10.2026), page 3, Para 5 (iv). Its Evidence button shows the Department’s own words: “Secondary Grade Teachers and LFL Head Masters working in Government and Local Body Schools appointed with both D.El.Ed. and B.Ed. qualifi…”",
+   "tech": "DataProvenance from tgtet('prov-tgtet-paper1-who', 'NOTIF', 3, …): OFFICIALLY_VERIFIED, FACT, authorityName TGTET_AUTHORITY, URL TGTET_SOURCES.NOTIF.url; the excerpt was read from the page image (the PDFs have no text layer).",
+   "hash": "c70c5fea3d87"
+  },
+  "src/data.ts::tgP_paper2Who": {
+   "text": "The citation behind one TG TET fact: the Notification (Rc.No.444, 01.10.2026), page 3, Para 5 (v). Its Evidence button shows the Department’s own words: “School Assistants, TGTs, Language Pandits, Head Masters of High Schools are permitted to appear for Paper II.”",
+   "tech": "DataProvenance from tgtet('prov-tgtet-paper2-who', 'NOTIF', 3, …): OFFICIALLY_VERIFIED, FACT, authorityName TGTET_AUTHORITY, URL TGTET_SOURCES.NOTIF.url; the excerpt was read from the page image (the PDFs have no text layer).",
+   "hash": "85bec35a0b52"
+  },
+  "src/data.ts::tgP_papers": {
+   "text": "The citation behind one TG TET fact: the Notification (Rc.No.444, 01.10.2026), page 3, Para 4. Its Evidence button shows the Department’s own words: “Teachers for classes I to V have to appear for Paper-I and teachers for classes VI to VIII have to appear for Paper-II. However, teachers…”",
+   "tech": "DataProvenance from tgtet('prov-tgtet-papers', 'NOTIF', 3, …): OFFICIALLY_VERIFIED, FACT, authorityName TGTET_AUTHORITY, URL TGTET_SOURCES.NOTIF.url; the excerpt was read from the page image (the PDFs have no text layer).",
+   "hash": "37d75824aa7e"
+  },
+  "src/data.ts::tgP_pass": {
+   "text": "The citation behind one TG TET fact: the Information Bulletin, page 7, Para 9 (i) — Pass marks in TGTET. Its Evidence button shows the Department’s own words: “The percentage of pass marks for different categories are as shown below: General / EWS 60% and above BCs 50% and above SC / ST / Differe…”",
+   "tech": "DataProvenance from tgtet('prov-tgtet-pass', 'IB', 7, …): OFFICIALLY_VERIFIED, FACT, authorityName TGTET_AUTHORITY, URL TGTET_SOURCES.IB.url; the excerpt was read from the page image (the PDFs have no text layer).",
+   "hash": "a04d173aeeee"
+  },
+  "src/data.ts::tgP_photo": {
+   "text": "The citation behind one TG TET fact: the Information Bulletin, page 3, Important notes, 2 (e) and (f). Its Evidence button shows the Department’s own words: “The Candidate should be ready with scanned copy of the photograph of 500kb and Signature of 100kb before filling in the Online application.”",
+   "tech": "DataProvenance from tgtet('prov-tgtet-photo', 'IB', 3, …): OFFICIALLY_VERIFIED, FACT, authorityName TGTET_AUTHORITY, URL TGTET_SOURCES.IB.url; the excerpt was read from the page image (the PDFs have no text layer).",
+   "hash": "39a3fbff3942"
+  },
+  "src/data.ts::tgP_purpose": {
+   "text": "The citation behind one TG TET fact: the Notification (Rc.No.444, 01.10.2026), page 3, Para 5 (ii) — TET for in-service teachers. Its Evidence button shows the Department’s own words: “Pass in Special-TGTET-In-service Teachers-2026-II shall be considered as qualified only for fulfillment of the mandatory condition of pas…”",
+   "tech": "DataProvenance from tgtet('prov-tgtet-purpose', 'NOTIF', 3, …): OFFICIALLY_VERIFIED, FACT, authorityName TGTET_AUTHORITY, URL TGTET_SOURCES.NOTIF.url; the excerpt was read from the page image (the PDFs have no text layer).",
+   "hash": "c9c89a10af06"
+  },
+  "src/data.ts::tgP_results": {
+   "text": "The citation behind one TG TET fact: the Notification (Rc.No.444, 01.10.2026), page 5, Para 14 — Important dates. Its Evidence button shows the Department’s own words: “Declaration of Results Between 09.12.2026 to 11.12.2026”",
+   "tech": "DataProvenance from tgtet('prov-tgtet-results', 'NOTIF', 5, …): OFFICIALLY_VERIFIED, FACT, authorityName TGTET_AUTHORITY, URL TGTET_SOURCES.NOTIF.url; the excerpt was read from the page image (the PDFs have no text layer).",
+   "hash": "68cec45e704a"
+  },
+  "src/data.ts::tgP_schedule": {
+   "text": "The citation behind one TG TET fact: the Notification (Rc.No.444, 01.10.2026), page 5, Para 14 — Important dates. Its Evidence button shows the Department’s own words: “Download of Hall Tickets 09.11.2026 onwards”",
+   "tech": "DataProvenance from tgtet('prov-tgtet-schedule', 'NOTIF', 5, …): OFFICIALLY_VERIFIED, FACT, authorityName TGTET_AUTHORITY, URL TGTET_SOURCES.NOTIF.url; the excerpt was read from the page image (the PDFs have no text layer).",
+   "hash": "ed11196bbb03"
+  },
+  "src/data.ts::tgP_sessions": {
+   "text": "The citation behind one TG TET fact: the Information Bulletin, page 4, Para 5 — Schedule of Examination. Its Evidence button shows the Department’s own words: “Special TGTET-In-service Teachers-2026-II shall be conducted Online as Computer Based Test (CBT) on the dates as given below in Two sessi…”",
+   "tech": "DataProvenance from tgtet('prov-tgtet-sessions', 'IB', 4, …): OFFICIALLY_VERIFIED, FACT, authorityName TGTET_AUTHORITY, URL TGTET_SOURCES.IB.url; the excerpt was read from the page image (the PDFs have no text layer).",
+   "hash": "6577006618e5"
+  },
+  "src/data.ts::tgP_steps": {
+   "text": "The citation behind one TG TET fact: the Information Bulletin, page 10, Para 17 (g) — Initial steps before filling the Online Application Form. Its Evidence button shows the Department’s own words: “Enter your Journal Number, Date of Payment, Date of Birth given at the time of Online payment.”",
+   "tech": "DataProvenance from tgtet('prov-tgtet-steps', 'IB', 10, …): OFFICIALLY_VERIFIED, FACT, authorityName TGTET_AUTHORITY, URL TGTET_SOURCES.IB.url; the excerpt was read from the page image (the PDFs have no text layer).",
+   "hash": "ec2c1dd09564"
+  },
+  "src/data.ts::tgP_syllabus": {
+   "text": "The citation behind one TG TET fact: the Information Bulletin, page 14, Para 20 — Syllabus. Its Evidence button shows the Department’s own words: “Details of the Syllabus of the Special TGTET-In-service Teachers-2026-II Examination for Paper I & Paper II can be downloaded from https:…”",
+   "tech": "DataProvenance from tgtet('prov-tgtet-syllabus', 'IB', 14, …): OFFICIALLY_VERIFIED, FACT, authorityName TGTET_AUTHORITY, URL TGTET_SOURCES.IB.url; the excerpt was read from the page image (the PDFs have no text layer).",
+   "hash": "a2c278427175"
+  },
+  "src/data.ts::tgP_validity": {
+   "text": "The citation behind one TG TET fact: the Notification (Rc.No.444, 01.10.2026), page 5, Para 13 — Validity period. Its Evidence button shows the Department’s own words: “The validity period of Special TGTET-In-service teachers-2026-II certificate unless otherwise notified by the Government of Telangana, wo…”",
+   "tech": "DataProvenance from tgtet('prov-tgtet-validity', 'NOTIF', 5, …): OFFICIALLY_VERIFIED, FACT, authorityName TGTET_AUTHORITY, URL TGTET_SOURCES.NOTIF.url; the excerpt was read from the page image (the PDFs have no text layer).",
+   "hash": "1c85e1af7ace"
+  },
+  "src/data.ts::tgP_who": {
+   "text": "The citation behind one TG TET fact: the Notification (Rc.No.444, 01.10.2026), page 3, Para 5 (i) — TET for in-service teachers. Its Evidence button shows the Department’s own words: “All In-service Teachers working in Government / Local Body / TGREIS / Government Welfare Societies Residential / Telangana Model Schools …”",
+   "tech": "DataProvenance from tgtet('prov-tgtet-who', 'NOTIF', 3, …): OFFICIALLY_VERIFIED, FACT, authorityName TGTET_AUTHORITY, URL TGTET_SOURCES.NOTIF.url; the excerpt was read from the page image (the PDFs have no text layer).",
+   "hash": "0cef92c83234"
+  },
+  "src/data.ts::tgP_window": {
+   "text": "The citation behind one TG TET fact: the Notification (Rc.No.444, 01.10.2026), page 1, Notification. Its Evidence button shows the Department’s own words: “Candidates can pay fee and submit their application Online from 07.10.2026 to 16.10.2026 at https://schooledu.telangana.gov.in.”",
+   "tech": "DataProvenance from tgtet('prov-tgtet-window', 'NOTIF', 1, …): OFFICIALLY_VERIFIED, FACT, authorityName TGTET_AUTHORITY, URL TGTET_SOURCES.NOTIF.url; the excerpt was read from the page image (the PDFs have no text layer).",
+   "hash": "614aebca7425"
+  },
+  "src/data.ts::tgtet": {
+   "text": "Builds one TG TET citation: which document, which page and clause, and the exact words quoted from it.",
+   "tech": "(id, doc, pageNumber, clauseNumber, excerptText, taxonomyType='FACT') → DataProvenance: OFFICIALLY_VERIFIED, publishedDate from TGTET_SOURCES, verifiedBy naming the page-image reading, authorityName TGTET_AUTHORITY.",
+   "hash": "d570bf940c18"
+  },
+  "src/data.ts::tgtetPaperNode": {
+   "text": "Builds one paper (Paper-I or Paper-II) of the TG TET pattern: 150 one-mark questions, 150 minutes, no negative marking, with the pass marks as printed.",
+   "tech": "(id, code, name, order, provenance, children) → ExamPatternNode level PAPER with questions/marks/durationMinutes 150, marksPerQuestion 1, negativeMarkPerWrong 0 and qualifying.asPrinted.",
+   "hash": "ffdaf7146387"
+  },
+  "src/data.ts::tgtetSubject": {
+   "text": "Builds one subject inside a TG TET paper, with its number of questions and a note on what it covers.",
+   "tech": "(id, name, order, questions, note, provenance, languages?) → ExamPatternNode level SUBJECT, marks = questions (one mark each).",
+   "hash": "cc0cd72bb58e"
+  },
+  "src/data.ts::tgtetTelugu": {
+   "text": "Builds the citation for a Telugu-language syllabus entry: the Telugu words are quoted as printed, but the English rendering shown beside them is GovOS’s own, so it is marked as pending verification.",
+   "tech": "tgtet(id, doc, 2, …, 'INTERPRETATION') with verificationLevel UNDER_VERIFICATION and a verifiedBy that says the English is GovOS's; used by the Language-I (Telugu) topics.",
+   "hash": "21c57704a127"
   },
   "src/data.ts::topicHasSupply": {
    "text": "Says whether GovOS can actually provide questions for a topic, either from its bank or by generating them.",
@@ -3407,9 +4127,9 @@
    "hash": "f093b437044b"
   },
   "src/types.ts::Exam": {
-   "text": "The complete record of one exam that the whole app is built on: its name, authority, website and key dates; its posts, eligibility rules, stages, pattern and syllabus; practice questions and official papers and keys; corrections, cut-offs, resources and FAQs; the application guide, study roadmaps, admit-card and result information; and notes about where each part came from. Every exam, whether written by hand or read by machine from official documents, fits this same shape.",
-   "tech": "Interface with required id, code, title, authorityName, officialDomain, crucialEligibilityDate, isGoldenJourney, isDemoData, overviewDescription, posts, dates, globalRuleGroup, stages, syllabus, practiceQuestions, corrigendums, cutoffsHistory, resources, faqs, applicationGuide, roadmapTracks; optional minimumQualification, careerFields, categoryTag, vacanciesTotal, factEvidence, patternTree, studyGuidance, vacancyBreakups, syllabusTree, officialPapers, answerKeys, admitCardDetails, admitCardEvents, examDayChecklist, resultNextSteps, resultDeclarations, eligibilityHighlights, officialLinks, syllabusSourceNote, ageRelaxations, origin ('AUTHORED' | 'MACHINE_ACQUIRED'), sectionStates (per-section completeness + evidenceRoles), materialization (audit ledger). ALL_EXAMS and the runtime registry hold these.",
-   "hash": "4f5119e7a8ff"
+   "text": "The complete record of one exam that the whole app is built on: its name, authority, website and key dates; its posts, eligibility rules, stages, pattern and syllabus; practice questions and official papers and keys; corrections, cut-offs, resources and FAQs; the application guide, study roadmaps, admit-card and result information; and notes about where each part came from. Every exam, whether written by hand or read by machine from official documents, fits this same shape. An exam also says whether it is a recruitment or an eligibility test (such as a TET), which fills no post. It can also be an admission test (such as JEE), whose scores decide admission to institutions.",
+   "tech": "Interface with required id, code, title, authorityName, officialDomain, crucialEligibilityDate, isGoldenJourney, isDemoData, overviewDescription, posts, dates, globalRuleGroup, stages, syllabus, practiceQuestions, corrigendums, cutoffsHistory, resources, faqs, applicationGuide, roadmapTracks; optional minimumQualification, careerFields, categoryTag, vacanciesTotal, factEvidence, patternTree, studyGuidance, vacancyBreakups, syllabusTree, officialPapers, answerKeys, admitCardDetails, admitCardEvents, examDayChecklist, resultNextSteps, resultDeclarations, eligibilityHighlights, officialLinks, syllabusSourceNote, ageRelaxations, origin ('AUTHORED' | 'MACHINE_ACQUIRED'), sectionStates (per-section completeness + evidenceRoles), materialization (audit ledger). ALL_EXAMS and the runtime registry hold these. Optional examNature: 'RECRUITMENT' (the default) | 'ELIGIBILITY_TEST' (no posts, vacancies, pay or post-wise age band). | 'ADMISSION_TEST' (an entrance test; no posts either).",
+   "hash": "b915c4808896"
   },
   "src/types.ts::ExamAdmitCardEvent": {
    "text": "One admit-card related event exactly as an authority published it, such as a city slip, an admit card or a call letter for a stage. It keeps the release date separate from the exam date, can hold a rule like '7 days before the exam' instead of a date, says whether a day or only a month was printed, and links a file only where the authority published one.",
@@ -3422,9 +4142,9 @@
    "hash": "ee4dca4ec3a9"
   },
   "src/types.ts::ExamCareerField": {
-   "text": "The broad career area an exam leads to, used by the Exam Finder's interest filter (for example banking, railways, civil services).",
-   "tech": "Union of six labels: 'Government Job', 'Civil Services & Governance', 'Banking & Financial Sector', 'Indian Railways', 'Defence & Armed Forces', 'State Public Services'. Exam.careerFields.",
-   "hash": "d34485046fda"
+   "text": "The broad career area an exam leads to, used by the Exam Finder’s field filter (for example banking, railways, civil services, teaching). Engineering is one of them now.",
+   "tech": "Union of seven labels: 'Government Job', 'Civil Services & Governance', 'Banking & Financial Sector', 'Indian Railways', 'Defence & Armed Forces', 'State Public Services', 'Teaching & Education'. The finder offers these plus any field a record declares. Eighth label: 'Engineering & Technology'.",
+   "hash": "d3d988665be7"
   },
   "src/types.ts::ExamCategoryTag": {
    "text": "The family an exam belongs to (civil services, state commission, staff selection, banking, railways, defence), used for recommendations.",
@@ -3862,9 +4582,9 @@
    "hash": "d88cd7ee5e62"
   },
   "src/ui.tsx::ASSISTANT_PARAPHRASES": {
-   "text": "A list of everyday phrasings and what they mean, so the assistant understands, for example, that 'till when can I fill the form' means the last date to apply, 'wrong tick' means negative marking and 'hall pass' means admit card.",
-   "tech": "Array of {pattern: RegExp, means: string}; 15 rules mapping to concepts such as 'last date to apply', 'negative marking', 'salary', 'physical test', 'admit card', 'vacancies', 'attempts', 'tentative', 'prelims', 'mains', 'interview', 'final year eligibility', 'which post should i choose', 'csat qualifying', 'cutoff'. Each match appends its concept; none replaces the candidate's words.",
-   "hash": "9eb5e3282c4a"
+   "text": "A list of everyday phrasings and what they mean, so the assistant understands, for example, that ‘who can apply’ is an eligibility question, ‘till when can I fill the form’ means the last date, ‘wrong tick’ means negative marking and ‘hall pass’ means admit card.",
+   "tech": "Array of {pattern: RegExp, means: string}; 16 rules (\"who can/may apply|appear\" → eligibility, then last date, negative marking, salary, physical test, admit card, vacancies, attempts, tentative, prelims, mains, interview, final year, which post, csat, cutoff). Each match appends its concept; none replaces the words.",
+   "hash": "735f51f92337"
   },
   "src/ui.tsx::AdminTokenField": {
    "text": "A small password box that appears only when the server requires an admin token for Trust Panel actions. The administrator enters it once and it is kept for the current browser tab only.",
@@ -4212,9 +4932,9 @@
    "hash": "c14685571644"
   },
   "src/ui.tsx::ExamDetailView": {
-   "text": "An exam's own page: a side list of its 13 parts plus four reference parts, a header with the exam's name, authority, verification badge, next milestone, stages and key dates, with buttons to track it, open the official site, report an error, bookmark it or ask the AI. The body shows whichever part is open (overview and posts, timeline, eligibility rules, application guide, pattern, syllabus in three views, roadmap, resources, practice, mock tests, admit card, exam day, results, cut-offs, FAQs, official links, corrigenda), with a status note, a progress bar and previous/next buttons. A 'practice' button anywhere on the page turns to part 09. Switching to another exam resets the page to that exam's starting section, and ticked syllabus topics are only the ones the candidate ticked.",
-   "tech": "Exported component taking ExamDetailViewProps. State: activeSection (from initialSection; reset during render when exam.id changes, along with showPastDates, guide index and resource modal), nowTs (ticks every 60 s only while section 2 is open), syllabusWatch (syllabusLiveService.watch(exam.id, verifiedDate)), syllabusViewMode (defaults by examHasStudyPaths), completedTopics (storageService.getCompletedTopics(exam.id) from the first render; an exam.id effect re-reads it), isBookmarked. Effects call storageService.recordInteraction on open and for sections 6/8/12, onSyllabusOpened when section 6 opens, and scroll the active side-nav chip into view. Derived: liveDates (non-SUPERSEDED), header tiles (examHeaderWindowTiles plus stage tiles for EXAM_TIER1/EXAM_TIER2 skipping stageAssociation NEEDS_REVIEW), nextMilestoneOf, stage rail, latestUpdates (top 5). onNavigatePractice = () => turnTo(9) is passed to PostStudyPathEngine and ResultNextStepsSection. Renders SectionStateNote, each section's block (ApplicationGuide, ApplicationSourcesPanel, PatternNodeCard, PublishedSyllabusPanel, PostStudyPathEngine, SyllabusTreeMap, PreparationPlanner, ResourceLibrary, ExamPracticeRouter with PRACTICE/MOCKS scope, AdmitCardSection, ExamDayChecklistSection, ResultNextStepsSection, OfficialDocumentsPanel, OfficialNoticeBoards), a SectionSourcesPanel when SECTION_PANEL_FOR[activeSection] exists, a pager using turnTo (sets the section and smooth-scrolls the card), and ResourceReaderModal.",
-   "hash": "e169ebe631f2"
+   "text": "An exam's own page: a side list of its 13 parts plus four reference parts, a header with the exam's name, authority, verification badge, next milestone, stages and key dates, with buttons to track it, open the official site, report an error, bookmark it or ask the AI. The body shows whichever part is open (overview and posts, timeline, eligibility rules, application guide, pattern, syllabus in three views, roadmap, resources, practice, mock tests, admit card, exam day, results, cut-offs, FAQs, official links, corrigenda), with a status note, a progress bar and previous/next buttons. A 'practice' button anywhere on the page turns to part 09. Switching to another exam resets the page to that exam's starting section, and ticked syllabus topics are only the ones the candidate ticked. For an eligibility test the Quick Info says it fills no post, and a second exam-date tile appears only when the exam has a second stage. An admission test likewise says it fills no post, and the exam level reads as words (‘Class 12’).",
+   "tech": "Exported component taking ExamDetailViewProps. State: activeSection (from initialSection; reset during render when exam.id changes, along with showPastDates, guide index and resource modal), nowTs (ticks every 60 s only while section 2 is open), syllabusWatch (syllabusLiveService.watch(exam.id, verifiedDate)), syllabusViewMode (defaults by examHasStudyPaths), completedTopics (storageService.getCompletedTopics(exam.id) from the first render; an exam.id effect re-reads it), isBookmarked. Effects call storageService.recordInteraction on open and for sections 6/8/12, onSyllabusOpened when section 6 opens, and scroll the active side-nav chip into view. Derived: liveDates (non-SUPERSEDED), header tiles (examHeaderWindowTiles plus stage tiles for EXAM_TIER1/EXAM_TIER2 skipping stageAssociation NEEDS_REVIEW), nextMilestoneOf, stage rail, latestUpdates (top 5). onNavigatePractice = () => turnTo(9) is passed to PostStudyPathEngine and ResultNextStepsSection. Renders SectionStateNote, each section's block (ApplicationGuide, ApplicationSourcesPanel, PatternNodeCard, PublishedSyllabusPanel, PostStudyPathEngine, SyllabusTreeMap, PreparationPlanner, ResourceLibrary, ExamPracticeRouter with PRACTICE/MOCKS scope, AdmitCardSection, ExamDayChecklistSection, ResultNextStepsSection, OfficialDocumentsPanel, OfficialNoticeBoards), a SectionSourcesPanel when SECTION_PANEL_FOR[activeSection] exists, a pager using turnTo (sets the section and smooth-scrolls the card), and ResourceReaderModal. The EXAM_TIER2 header tile is added only when exam.stages has 2+ entries or an EXAM_TIER2 date exists; Quick Info 'Posts' reads 'None — an eligibility test fills no post' for examNature ELIGIBILITY_TEST. ADMISSION_TEST reads 'None — an admission test fills no post'; 'Exam Level' maps minimumQualification through QUALIFICATION_WORDS (it printed the code CLASS_12).",
+   "hash": "561e2403783b"
   },
   "src/ui.tsx::ExamDetailViewProps": {
    "text": "The list of things the exam page needs from the app around it: the exam to show, and the actions it can trigger such as going home, opening the AI chat, showing a source, reporting an error, tracking the exam, and which section to open first.",
@@ -4232,9 +4952,9 @@
    "hash": "7c969ff340ce"
   },
   "src/ui.tsx::ExamFinder": {
-   "text": "The whole home page. From top to bottom: the banner with search and the journey picture, the fanned row of popular exam cards, the scrolling list of exams and career fields, the 'Think inside the notice' band, the eligibility check, the 'How GovOS works' steps, a 'Recommended for You' shortlist built from what the candidate actually searches, opens, saves and reads (with an activity log they can clear), an exam browser filtered by who you are and what you want, and finally the FAQ and footer. Each exam card can be tracked, saved or opened.",
-   "tech": "State: selectedPersona, selectedInterest, searchQuery, recommendations (storageService.getPersonalizedRecommendations(exams)), interactions, bookmarkedIds and showInteractionsModal; refreshRecommendations re-reads all three and runs when trackedExamIds or exams change. handleSearchChange records a SEARCH interaction for the first exam whose title, code or authority matches a 3+ character query. openPopular opens the ALL_EXAMS exam whose id contains the given part, or else searches for it. The browse filter (a two-step .grid-2: qualification, field) keeps exams matching the search, QUALIFICATION_RANK of the persona >= the exam's minimumQualification (missing means shown) and careerFields including the interest (missing or empty means shown). Exam cards show ExamVerifiedBadge (or DEMO DATA), QUALIFICATION_WORDS, getExamCycle and the code (hidden for MACHINE_ACQUIRED); Guide buttons record a VIEW and call onSelectExam. The activity modal lists events with INTERACTION_WEIGHTS times SIGNAL_STRENGTH_MULTIPLIER and the stated decay formula, and its 'Clear All Events' calls storageService.clearUserInteractions(). Nothing on the page writes activity the candidate did not do.",
-   "hash": "e29fe6d978c6"
+   "text": "The whole home page. From top to bottom: the banner with search and the journey picture, the fanned row of popular exam cards, the scrolling list of exams and career fields, the 'Think inside the notice' band, the eligibility check, the 'How GovOS works' steps, a 'Recommended for You' shortlist built from what the candidate actually searches, opens, saves and reads (with an activity log they can clear), an exam browser filtered by who you are and what you want, and finally the FAQ and footer. Each exam card can be tracked, saved or opened. The field filter offers the standard fields plus any field an exam’s record declares, such as Teaching & Education.",
+   "tech": "State: selectedPersona, selectedInterest, searchQuery, recommendations (storageService.getPersonalizedRecommendations(exams)), interactions, bookmarkedIds and showInteractionsModal; refreshRecommendations re-reads all three and runs when trackedExamIds or exams change. handleSearchChange records a SEARCH interaction for the first exam whose title, code or authority matches a 3+ character query. openPopular opens the ALL_EXAMS exam whose id contains the given part, or else searches for it. The browse filter (a two-step .grid-2: qualification, field) keeps exams matching the search, QUALIFICATION_RANK of the persona >= the exam's minimumQualification (missing means shown) and careerFields including the interest (missing or empty means shown). Exam cards show ExamVerifiedBadge (or DEMO DATA), QUALIFICATION_WORDS, getExamCycle and the code (hidden for MACHINE_ACQUIRED); Guide buttons record a VIEW and call onSelectExam. The activity modal lists events with INTERACTION_WEIGHTS times SIGNAL_STRENGTH_MULTIPLIER and the stated decay formula, and its 'Clear All Events' calls storageService.clearUserInteractions(). Nothing on the page writes activity the candidate did not do. `interests` = the six standard fields followed by every careerFields value the exams declare (de-duplicated).",
+   "hash": "75b130386452"
   },
   "src/ui.tsx::ExamFinderProps": {
    "text": "What the home page needs: the exams, ways to open evidence, move between screens, open an exam or the eligibility page, and track exams.",
@@ -4272,14 +4992,14 @@
    "hash": "9794e73a4072"
   },
   "src/ui.tsx::FACT_INTENTS": {
-   "text": "The list of factual topics the assistant can answer (target post, next step, study plan, age, eligibility, dates, pattern, vacancies, pay, syllabus, fee, resources, admit card, cut-off, attempts, physical standards, whether dates are final, how to apply, practice), each with the keywords and phrases that signal it.",
-   "tech": "Array of {id, keys}; scored with bestMatch/scoreKeys so position does not decide the winner. The id selects the branch in answerCorrectedQuery.",
-   "hash": "4e261e865632"
+   "text": "The list of factual topics the assistant can answer (target post, next step, study plan, age, eligibility, dates, pattern, vacancies, pay, syllabus, fee, resources, admit card, cut-off and pass marks, attempts, physical standards, whether dates are final, documents to upload, how to apply, practice), each with the phrases that signal it.",
+   "tech": "Array of {id, keys}; scored with bestMatch/scoreKeys. 'pattern' includes 'how many papers'; 'cutoff' includes 'pass marks'; 'documents' (documents required/needed/to upload) answers from applicationGuide.requiredDocuments, else falls through to 'apply'.",
+   "hash": "2348a099c868"
   },
   "src/ui.tsx::FACT_SUBJECTS": {
-   "text": "Short readable names for each fact topic the assistant answers (for example 'the age limits', 'the pay by post'), remembered on each answer so a later follow-up knows what was being discussed.",
-   "tech": "Record from FACT_INTENTS id to subject label; stored as AssistantReply.subject.",
-   "hash": "45c786df1fa8"
+   "text": "Short readable names for each fact topic the assistant answers (for example ‘the age limits’, ‘the documents to upload’), remembered on each answer so a later follow-up knows what was being discussed.",
+   "tech": "Record from FACT_INTENTS id to subject label (now including documents); stored as AssistantReply.subject.",
+   "hash": "44fe10ba3be1"
   },
   "src/ui.tsx::FACT_VERIFICATION_TEXT": {
    "text": "The exact words and colours candidates see for each fact state, such as 'Officially verified' in green or 'Source found — verification pending' in amber.",
@@ -4507,14 +5227,19 @@
    "hash": "445202681a4b"
   },
   "src/ui.tsx::PLATFORM_MAP": {
-   "text": "The assistant's map of where everything lives in GovOS: about 20 entries (eligibility, resources, practice, calendar, syllabus, application simulator, typing, past tests, saved items, target post, applying, admit card, cut-offs, roadmap, compare, trust and reporting, results, exam day, corrigenda, FAQs, posts), each with its keywords, a ready-made explanation and a button to that place.",
-   "tech": "Array of {keys, answer, action}. Answers contain placeholders filled by fillCounts ({exam}, {posts}, {resources}, {practice}, {apply}, {typing}, {syllabusWhere}); actions mostly target EXAM_DETAIL with stable section ids, plus ELIGIBILITY, COMPARE and ADMIN. Scored by bestMatch; must be updated whenever a feature moves.",
-   "hash": "050326a9e6b3"
+   "text": "The assistant’s map of where everything lives in GovOS: about 20 entries (eligibility, resources, practice, calendar, syllabus, application simulator, typing, past tests, saved items, target post, applying, admit card, cut-offs, roadmap, compare, trust and reporting, results, exam day, corrigenda, FAQs, posts), each with its keywords, a ready-made explanation and a button to that place.",
+   "tech": "Array of {keys, answer, action}. Answers use placeholders filled by fillCounts ({exam}, {posts}, …); an answer that counts {posts} is replaced by noPostsReply for an exam with no posts. The admit-card and results answers no longer name one authority’s process (\"regional website\", \"final posting\").",
+   "hash": "e176724e821f"
   },
   "src/ui.tsx::PORTAL_WORDS": {
    "text": "Recognises wording that describes a general website or portal ('portal', 'official website').",
    "tech": "Case-insensitive RegExp for the word 'portal' or 'official site/website'; used with ITEM_ROLE_RULES in resourceRoleOf.",
    "hash": "6ea6d32d3c28"
+  },
+  "src/ui.tsx::POST_SHAPED_FACTS": {
+   "text": "The questions only a recruitment can answer — age, vacancies, pay, physical standards, target post, study plan by post and post-by-post eligibility — which an exam with no posts answers differently.",
+   "tech": "Set of FACT_INTENTS ids; answerCorrectedQuery routes them to noPostsReply when exam.posts is empty.",
+   "hash": "d55b5851ec08"
   },
   "src/ui.tsx::PRACTICE_CONCEPTS": {
    "text": "Common ways candidates describe practice without naming a topic, each with what it means: 'money problems' means percentage, profit and loss and interest; 'odd one out' means classification; 'the whole thing' means a full mock test; 'the law of the land' means polity; 'sums' means questions. Phrases like 'help me with' are recognised but add nothing.",
@@ -4542,9 +5267,9 @@
    "hash": "19c6e687fcbb"
   },
   "src/ui.tsx::PatternNodeCard": {
-   "text": "Shows one part of an exam's structure — a stage, a paper or a section — with its questions, marks, time and marks per question as the authority stated them, then the parts inside it. Figures GovOS worked out itself are marked 'computed', unclear rows are flagged 'needs review' with their original text, and rules such as negative marking, qualifying marks, language and mode are listed. Evidence buttons show the source and how any computed figure was worked out.",
-   "tech": "Recursive component { node: ExamPatternNode, depth, onOpenProvenanceModal }. Figures only for defined questions / marks / durationMinutes / marksPerQuestion; node.derived marks '(computed)' and node.underReview adds '*'. Shows levelLabel, code, NEEDS_REVIEW badge and note, negativeMarking, qualifying (minimumPercent, minimumMarks, byCategory, asPrinted), languages, mode, questionType, sectionalTiming, durationVariants. EvidenceButton for node.provenance plus one per derivedEvidence entry labelled via PATTERN_FIELD_WORDS; recurses into node.children with depth + 1.",
-   "hash": "835b9d8536f3"
+   "text": "Shows one part of an exam’s structure — a stage, a paper or a section — with its questions, marks, time and marks per question as the authority stated them, then the parts inside it. Figures GovOS worked out itself are marked ‘computed’, unclear rows are flagged ‘needs review’ with their original text, and rules such as negative marking, qualifying marks, language and mode are listed.",
+   "tech": "Recursive component { node: ExamPatternNode, depth, onOpenProvenanceModal }. Figures only for defined questions / marks / durationMinutes / marksPerQuestion (labelled 'Mark / question' when it is 1); node.derived marks '(computed)', underReview adds '*'. Shows levelLabel, code, NEEDS_REVIEW, negativeMarking, qualifying, languages, mode, questionType, sectionalTiming, durationVariants, an EvidenceButton per provenance and derivedEvidence, and recurses into children.",
+   "hash": "0ba6fb09c6a9"
   },
   "src/ui.tsx::PostStudyPathEngine": {
    "text": "The 'Post Study Plan' view of the syllabus (used for SSC CGL). The candidate picks the post they are aiming for and sees exactly what to study for it: the common modules for each stage, extra modules that post needs, any physical or medical standards, and the modules they can skip because that post does not need them. Modules can be ticked off as done, and a button copies the candidate's progress to the server database.",
@@ -4727,9 +5452,9 @@
    "hash": "41fb946627e0"
   },
   "src/ui.tsx::ResultNextStepsSection": {
-   "text": "The Results & Next Steps part of an exam page. At the top it shows the results the authority has officially declared (or says GovOS has not read any yet), and the authority's own rules for moving between stages. Below that is a self-assessment: you type your marks or upload your scorecard, pick your category and a past year, and GovOS compares your marks with that year's recorded cut-off for your category, saying clearly that this is not a result. It then suggests one of several 'what next' guides; UPSC Civil Services has its own three-stage version, and every other exam gets guides built from its own record. Your marks are remembered per exam in the browser.",
-   "tech": "scheme = RESULT_SCHEMES[exam.id] for authored exams (isUPSC / isIBPS). State per exam loaded from storageService.getResultEntry(exam.id) and reset in a useEffect on exam.id (inputs, year, category via startingResultCategory, selectedStatus). Cut-off = matchCutoffRow(verdictCutoffRows(exam, selectedYear), activeCategory); no row shows a data-cutoff-state notice instead of borrowing another row. applyUpscEntry / applyMultiTierEntry build a MultiTierResultEntry and save via storageService.setResultEntry (a false return sets entryNotKept and shows a 'not kept' alert). handleScorecard calls storageService.parseResultDocument(file, exam.id), discards stale reads via isCurrentScorecardRequest and a ref counter, maps fields per scheme (keeping only this exam's skill metric keys) and saves. A verdict object (badge, headline, conclusion, recommendedTab) is computed from margins (UPSC also checks CSAT >= 66.66); a useEffect moves selectedStatus to recommendedTab unless chosen manually. Also renders exam.resultDeclarations (declared / scheduled / superseded fold), exam.resultNextSteps (official vs guidance), SkillTestCards from evaluateSkillTest, the tab row, and for non-UPSC exams a ResultPathwayPanel from resultPathway(resultPathwayOf(selectedStatus)); UPSC renders its own bespoke pathway panels.",
-   "hash": "2aa1b606bbb6"
+   "text": "The Results & Next Steps part of an exam page. At the top it shows the results the authority has officially declared (or says GovOS has not read any yet), and the authority's own rules for moving between stages. Below that is a self-assessment: you type your marks or upload your scorecard, pick your category and a past year, and GovOS compares your marks with that year's recorded cut-off for your category, saying clearly that this is not a result. It then suggests one of several 'what next' guides; UPSC Civil Services has its own three-stage version, and every other exam gets guides built from its own record. Your marks are remembered per exam in the browser. An exam with only one stage (an eligibility or admission test) is not asked for second-stage marks and is not offered the second-stage guides; with no category chosen the guides say ‘your category’.",
+   "tech": "scheme = RESULT_SCHEMES[exam.id] for authored exams (isUPSC / isIBPS). State per exam loaded from storageService.getResultEntry(exam.id) and reset in a useEffect on exam.id (inputs, year, category via startingResultCategory, selectedStatus). Cut-off = matchCutoffRow(verdictCutoffRows(exam, selectedYear), activeCategory); no row shows a data-cutoff-state notice instead of borrowing another row. applyUpscEntry / applyMultiTierEntry build a MultiTierResultEntry and save via storageService.setResultEntry (a false return sets entryNotKept and shows a 'not kept' alert). handleScorecard calls storageService.parseResultDocument(file, exam.id), discards stale reads via isCurrentScorecardRequest and a ref counter, maps fields per scheme (keeping only this exam's skill metric keys) and saves. A verdict object (badge, headline, conclusion, recommendedTab) is computed from margins (UPSC also checks CSAT >= 66.66); a useEffect moves selectedStatus to recommendedTab unless chosen manually. Also renders exam.resultDeclarations (declared / scheduled / superseded fold), exam.resultNextSteps (official vs guidance), SkillTestCards from evaluateSkillTest, the tab row, and for non-UPSC exams a ResultPathwayPanel from resultPathway(resultPathwayOf(selectedStatus)); UPSC renders its own bespoke pathway panels. hasStageTwo = !!exam.stages[1]: the second marks box and the TIER2_PREP / BOTH_PASSED_SELECTION / TIER2_MISSED_RECOVERY tabs render only then, and selectedStatus starts (and resets on an exam switch) on TIER1_FAILED_RECOVERY otherwise.",
+   "hash": "4d9cafcff67e"
   },
   "src/ui.tsx::ResultNextStepsSectionProps": {
    "text": "The inputs the Results & Next Steps part of the page needs: the exam, ways to jump to another section or to practice, and a way to open evidence.",
@@ -4962,9 +5687,9 @@
    "hash": "0673015191e5"
   },
   "src/ui.tsx::UnavailablePracticeEngine": {
-   "text": "What a candidate sees in Practice or Mock Tests for an exam that has no practice engine built yet. It says plainly that practice is not available instead of running the exam through another exam's questions, points to the exam's pattern and syllabus, and, in Mock Tests, lists the rules any mock for this exam would have to follow. Official papers and answer keys are still shown if the authority published any.",
-   "tech": "Component {exam, scope, onOpenProvenanceModal}. Heading is '17 — Mock Tests' when scope === 'MOCKS', else '09 — Practice & PYQs'. Mentions exam.stages[0].stageName only when that stage is not derivedFrom; hasOfficial checks officialPapers or answerKeys length. In MOCKS scope, when any stage has sections, lists each stage (with qualifyingNature) and section (questions, marks, durationMinutes, negative marking from section or stage, else 'not stated in the notice'). Ends with OfficialPaperCatalogue and AnswerKeyPanel.",
-   "hash": "496f856a674f"
+   "text": "What a candidate sees in Practice or Mock Tests for an exam that has no practice engine built yet. It says plainly that practice is not available instead of running the exam through another exam's questions, points to the exam's pattern and syllabus, and, in Mock Tests, lists the rules any mock for this exam would have to follow. Official papers and answer keys are still shown if the authority published any. The authority’s own question-paper PDFs (such as NTA’s nine JEE shift papers) are listed too.",
+   "tech": "Component {exam, scope, onOpenProvenanceModal}. Heading is '17 — Mock Tests' when scope === 'MOCKS', else '09 — Practice & PYQs'. Mentions exam.stages[0].stageName only when that stage is not derivedFrom; hasOfficial checks officialPapers or answerKeys length. In MOCKS scope, when any stage has sections, lists each stage (with qualifyingNature) and section (questions, marks, durationMinutes, negative marking from section or stage, else 'not stated in the notice'). Ends with OfficialPaperCatalogue and AnswerKeyPanel. Also renders OfficialPapersPanel, and hasOfficial counts resources with subject 'Previous Year Papers' and type OFFICIAL_PDF.",
+   "hash": "7548bc645c8e"
   },
   "src/ui.tsx::UploadedFileMeta": {
    "text": "A record of one file the candidate picked in the practice application form, such as a photo, signature, marksheet or certificate. It keeps the file, a preview, its name and size, its width and height for images, whether the size and shape passed the checks, and the message shown about it.",
@@ -5052,9 +5777,9 @@
    "hash": "1cfa65dae28b"
   },
   "src/ui.tsx::answerCorrectedQuery": {
-   "text": "Produces the actual answer once the question has been cleaned up. It decides whether the candidate wants to know where something is (and points there) or wants a fact, then reads that fact from the current exam's own record: age limits and relaxations, attempts, physical standards, which dates are final, target post, what to do next, study plan, eligibility from the saved profile, dates by stage, marking and pattern, vacancies, pay, syllabus, fee, resources, admit card, cut-offs, how to apply or practice. Each fact answer cites its source; if nothing fits, it says plainly that the question is not in the verified record rather than guessing.",
-   "tech": "answerCorrectedQuery(q, ctx). Orientation phrases (via has) get a platform overview. Scores PLATFORM_MAP and FACT_INTENTS with bestMatch (exact then loose); questionFocus can override the fact match. If no intent scores >= 6, namedResourceAnswer(q, 10) may answer first. Navigation wins when asksLocation(q) or nav score >= 6 and beats the fact score (adding a resourceLink when it points at section 8); a best score < 3 with 2+ content words tries namedResourceAnswer(q, 6). Then one branch per factId reading exam fields (posts, ageRelaxations/eligibilityHighlights, dates with displayWhen via shownWhen, stages, factEvidence.vacanciesTotal, cutoffsHistory by year/category, admitCardEvents, applicationGuide), ctx.profile (evaluateCandidateEligibility), ctx.targetPost, ctx.stage and ctx.daysToApplicationClose, with citeFrom citations. Falls back to nav, then namedResourceAnswer, then a full map for location questions, else {verified: false, sourceKind: UNVERIFIED, unresolved: true}. Quirks: the general age answer prints '+null years' for a relaxation the record lacks; the fee fallback (verified: false) states a generic exemption list; the location map text contains a literal '{exam}' because fillCounts is not applied to it.",
-   "hash": "2b7bf9c2d64a"
+   "text": "Produces the actual answer once the question has been cleaned up. It decides whether the candidate wants to know where something is (and points there) or wants a fact, then reads that fact from the current exam's own record: age limits and relaxations, attempts, physical standards, which dates are final, target post, what to do next, study plan, eligibility from the saved profile, dates by stage, marking and pattern, vacancies, pay, syllabus, fee, resources, admit card, cut-offs, how to apply or practice. Each fact answer cites its source; if nothing fits, it says plainly that the question is not in the verified record rather than guessing. For an exam with no posts, questions about age, vacancies, pay, physical standards or posts are answered from what its record states instead; questions its own FAQs answer are answered from them before it gives up. A question one of the exam’s own FAQs answers word for word is answered by that FAQ first; an admit-card question with no date on record is answered with the authority’s release rule; cut-offs say what kind they are and whether they are this cycle’s; after a declared result the next step names it.",
+   "tech": "answerCorrectedQuery(q, ctx). Orientation phrases (via has) get a platform overview. Scores PLATFORM_MAP and FACT_INTENTS with bestMatch (exact then loose); questionFocus can override the fact match. If no intent scores >= 6, namedResourceAnswer(q, 10) may answer first. Navigation wins when asksLocation(q) or nav score >= 6 and beats the fact score (adding a resourceLink when it points at section 8); a best score < 3 with 2+ content words tries namedResourceAnswer(q, 6). Then one branch per factId reading exam fields (posts, ageRelaxations/eligibilityHighlights, dates with displayWhen via shownWhen, stages, factEvidence.vacanciesTotal, cutoffsHistory by year/category, admitCardEvents, applicationGuide), ctx.profile (evaluateCandidateEligibility), ctx.targetPost, ctx.stage and ctx.daysToApplicationClose, with citeFrom citations. Falls back to nav, then namedResourceAnswer, then a full map for location questions, else {verified: false, sourceKind: UNVERIFIED, unresolved: true}. Quirks: the general age answer prints '+null years' for a relaxation the record lacks; the fee fallback (verified: false) states a generic exemption list; the location map text contains a literal '{exam}' because fillCounts is not applied to it. Exams with no posts route POST_SHAPED_FACTS (and {posts} navigation answers) to noPostsReply. Fee reads applicationGuide.fee first and no longer asserts exemptions; the admit-card answer lists the event's own instructions instead of a photo-ID rule; attempts says GovOS holds no limit rather than that the notice sets none; cut-off answers pass marks for an ELIGIBILITY_TEST and 'No cut-off is on record' when there is none; a 'documents' branch reads requiredDocuments; nextStep says 'notified, applications not yet open' once the notification date has passed; faqAnswerFor runs before the refusal. Early wholeFaq = faqAnswerFor(withoutParaphrases(q), exam, true) unless asksLocation or a fact intent scores 6+; the dates branch answers ADMIT_CARD from admitCardEvents' releaseRule / releaseNote; cut-off lines add cutoffType, say 'published for this cycle' when the year is the record's own exam year, 'no pass mark' when asked for one the record lacks, and drop 'vacancies' for an exam with no posts; nextStep POST_EXAM names the last firm RESULT date that has passed.",
+   "hash": "3f766254dbba"
   },
   "src/ui.tsx::answerVerification": {
    "text": "Labels a whole AI answer: fully verified only if the server says so and every fact it cites checks out; partly verified if some do; otherwise not verified.",
@@ -5082,9 +5807,9 @@
    "hash": "14a7a0c8b3b2"
   },
   "src/ui.tsx::assistantVocab": {
-   "text": "Builds the list of every word the assistant knows, used to repair typos: words from its navigation and fact keywords, common question words, resource titles and subjects, the ordinary-word list and the paraphrase meanings.",
-   "tech": "Returns the cached set if built; otherwise adds words of length >= 4 from PLATFORM_MAP and FACT_INTENTS keys, a fixed list of whole words, every ALL_EXAMS resource's title and subject, COMMON_WORDS and ASSISTANT_PARAPHRASES 'means', then caches it in assistantVocabulary.",
-   "hash": "5473445604b2"
+   "text": "Builds the list of every word the assistant knows, used to repair typos: words from its navigation and fact keywords, common question words, resource titles and subjects, the ordinary-word list and the paraphrase meanings. It also learns the words of every exam’s FAQ questions, so ‘percentile’ is not corrected to ‘percentage’.",
+   "tech": "Returns the cached set if built; otherwise adds words of length >= 4 from PLATFORM_MAP and FACT_INTENTS keys, a fixed list of whole words, every ALL_EXAMS resource's title and subject, COMMON_WORDS and ASSISTANT_PARAPHRASES 'means', then caches it in assistantVocabulary. Also adds every ALL_EXAMS FAQ question's words.",
+   "hash": "36c6e5e518cc"
   },
   "src/ui.tsx::assistantVocabulary": {
    "text": "A remembered copy of the assistant's word list, so it is only built once.",
@@ -5264,12 +5989,17 @@
   "src/ui.tsx::expandParaphrases": {
    "text": "Adds the meaning of any recognised phrasing to the end of the question, so the keyword tables can find it even if the candidate never used a listed keyword.",
    "tech": "Tests every ASSISTANT_PARAPHRASES pattern against q and appends each distinct matching 'means' string (space-separated); returns q unchanged if none match.",
-   "hash": "834fda569441"
+   "hash": "dbbb3069f381"
   },
   "src/ui.tsx::factVerification": {
    "text": "Works out the one honest label for a fact: officially verified, not in the quoted words, verification pending, superseded by a later notice, or no official source. Only a fact whose own quote contains the value can be 'verified'. It mirrors the server's rule, and both follow one shared list of test cases.",
    "tech": "(p, claim) => FactVerification: UNVERIFIED if !provenanceHasEvidence; UNSUPPORTED if claimNotInQuote; SUPERSEDED if verificationLevel is SUPERSEDED or supersededBy is set; UNDER_VERIFICATION if not OFFICIALLY_VERIFIED; UNVERIFIED if no http(s) URL plus page or excerpt; else VERIFIED when claimInQuote(p, claim), otherwise UNSUPPORTED. Pinned to tools/claude_cli/fact_verification_cases.json alongside the Python context.fact_verification.",
    "hash": "c26bd2236a84"
+  },
+  "src/ui.tsx::faqAnswerFor": {
+   "text": "Lets the assistant answer from the exam’s own FAQs when no other topic fits — for example “can I use this pass for DSC?” — with the FAQ’s clause and source, instead of saying it does not know. It can also be asked to answer only when one FAQ carries every word of the question, which lets a FAQ answer ahead of a general section.",
+   "tech": "(q, exam) → AssistantReply | null: distinctive words (3+ letters, stop words removed) shared with a FAQ's question and first sentence; needs at least 2 shared and half of the question's words; returns the best FAQ's answer, officialClause and provenance, with a button to section 11. Optional third argument whole: requires every content word to be shared; a one-word question matches only a 7+ letter word in the FAQ's own question.",
+   "hash": "412acd03ddc0"
   },
   "src/ui.tsx::fillCounts": {
    "text": "Fills placeholders in the assistant's ready-made answers with live figures and text for the current exam (number of posts, resources and syllabus topics, the exam's name, and the practice, application, typing and syllabus answers), so the wording never goes out of date.",
@@ -5395,6 +6125,11 @@
    "text": "Finds an exam's next upcoming date and how many days away it is. A date printed without an exact day (like 'May/June') is shown as printed with no countdown.",
    "tech": "(exam, now=Date.now()) => {label, when, days} | null: the earliest non-SUPERSEDED date whose parsed dateTimeStr is at or after now. when = statedWhen(d); days = ceil((at - now)/86400000), floored at 0, only when displayWhen is empty, else null.",
    "hash": "a356ef63f304"
+  },
+  "src/ui.tsx::noPostsReply": {
+   "text": "The assistant’s answer for an exam that fills no post. For an eligibility test such as a TET it says there are no vacancies, pay or age band, and gives the rules its notice states instead (who may appear, what the pass is for); for any other exam with no posts on record it says the record holds none yet. An admission test such as JEE is described the same way, as an admission test.",
+   "tech": "(exam, factId) → AssistantReply: examNature ELIGIBILITY_TEST → 'is an eligibility test, not a recruitment'; otherwise 'The record holds no posts … yet'. Lists eligibilityHighlights (all for eligibility/age, the first two otherwise), cites the first; study-plan and target-post questions point at the syllabus. examNature ADMISSION_TEST → 'is an admission test, not a recruitment'.",
+   "hash": "972ce315d294"
   },
   "src/ui.tsx::normaliseQuery": {
    "text": "Tidies a question before matching: lowercase, punctuation turned into spaces, extra spaces removed.",
@@ -5542,9 +6277,9 @@
    "hash": "b4ace5911fe8"
   },
   "src/ui.tsx::resultPathway": {
-   "text": "Builds one of the five 'what next' guides for an exam after a result, using only that exam's own record. Depending on the guide, it describes how the next stage is marked, past cut-offs for your category, linked syllabus topics, skill tests, later stages, declared next steps, certificate and document rules, physical standards, eligibility notes and the next cycle's dates. Whenever the record lacks something, the guide says what is missing instead of filling it in.",
-   "tech": "resultPathway(exam, id, { category, year?, stageOne, stageTwo, now? }) -> ResultPathway. Uses the first two exam.stages (names via stageShortName) and helper builders howStage (stageFactItems, action section 5), topics (stageTopicItems, section 6), cutoffs (cutoffItems, section 10) and skillTestsAt (skillTestsOf). standingLine phrases the ResultStanding (no cut-off on record / enter marks / +margin above / below). Cases: TIER2_PREP (stage two pattern, tier2 cut-offs, skill tests, topics, stages 3+); BOTH_PASSED_SELECTION (later stages, non-superseded resultDeclarations with nextStep, applicationGuide.certificateRules and requiredDocuments, posts' physicalNote grouped); TIER2_MISSED_RECOVERY; TIER1_FAILED_RECOVERY (stage one, tier1 cut-offs, topics, eligibilityHighlights, future non-superseded NOTIFICATION/APPLICATION_OPEN dates after now); SKILL_TEST. Pure function.",
-   "hash": "831988af1abe"
+   "text": "Builds one of the five 'what next' guides for an exam after a result, using only that exam's own record. Depending on the guide, it describes how the next stage is marked, past cut-offs for your category, linked syllabus topics, skill tests, later stages, declared next steps, certificate and document rules, physical standards, eligibility notes and the next cycle's dates. Whenever the record lacks something, the guide says what is missing instead of filling it in. With no category chosen it says ‘your category’ rather than leaving a gap.",
+   "tech": "resultPathway(exam, id, { category, year?, stageOne, stageTwo, now? }) -> ResultPathway. Uses the first two exam.stages (names via stageShortName) and helper builders howStage (stageFactItems, action section 5), topics (stageTopicItems, section 6), cutoffs (cutoffItems, section 10) and skillTestsAt (skillTestsOf). standingLine phrases the ResultStanding (no cut-off on record / enter marks / +margin above / below). Cases: TIER2_PREP (stage two pattern, tier2 cut-offs, skill tests, topics, stages 3+); BOTH_PASSED_SELECTION (later stages, non-superseded resultDeclarations with nextStep, applicationGuide.certificateRules and requiredDocuments, posts' physicalNote grouped); TIER2_MISSED_RECOVERY; TIER1_FAILED_RECOVERY (stage one, tier1 cut-offs, topics, eligibilityHighlights, future non-superseded NOTIFICATION/APPLICATION_OPEN dates after now); SKILL_TEST. Pure function. forCategory = ctx.category || 'your category' in the cut-off blocks and standing lines.",
+   "hash": "f1591b7e8c1d"
   },
   "src/ui.tsx::resultPathwayOf": {
    "text": "Translates a result verdict into the 'what next' guide that fits it.",
@@ -5664,7 +6399,7 @@
   "src/ui.tsx::threadExam": {
    "text": "Works out which exam the conversation is currently about, in case an earlier message switched to another exam.",
    "tech": "Takes the examId of the most recent assistant turn in ctx.history; returns that exam from ALL_EXAMS if it differs from ctx.exam and exists, otherwise ctx.exam.",
-   "hash": "a6c5d6da2c7f"
+   "hash": "dcd8678f9104"
   },
   "src/ui.tsx::toneOfClass": {
    "text": "Chooses the label colour for a source found on the web, based on how GovOS classified it.",
@@ -5720,6 +6455,11 @@
    "text": "Prepares a fact's source for display. If the source claims to quote or verify the value but its quote does not contain it, GovOS marks it so it is shown as 'not in the quoted words' rather than as verified.",
    "tech": "(p, value): returns p unchanged when p is missing, the value list is empty, the provenance neither has evidenceKind 'DIRECT' nor passes provenanceIsVerified, or claimInQuote passes. Otherwise returns a copy with claimNotInQuote set to the first alternative.",
    "hash": "22d2df6cf83f"
+  },
+  "src/ui.tsx::withoutParaphrases": {
+   "text": "Gives back the question exactly as the candidate typed it, without the meanings the assistant added to it, so an FAQ is matched on the candidate’s own words.",
+   "tech": "Recomputes which ASSISTANT_PARAPHRASES patterns match and strips their joined means-suffix when q ends with it; otherwise returns q unchanged.",
+   "hash": "e0d41c4069ac"
   },
   "src/ui.tsx::wordsCoveredByKey": {
    "text": "Lists which words of the question a keyword or phrase accounts for, so the same word is not counted twice.",
@@ -7874,7 +8614,7 @@
   "tools/docs/guide_text.py::STORY": {
    "text": "The hand-written heart of chapter 1: 32 topics, each told in simple words and then under the hood, covering every screen, every part of an exam's page and every mechanism of GovOS.",
    "tech": "List of (title, id, simple, tech) tuples in the rich() markup; [[name]] links must name a real declaration and {{doc:Heading}} a real CLAUDE.md heading, or the build warns.",
-   "hash": "1775c08dc655"
+   "hash": "a0381d26ac31"
   },
   "tools/docs/guide_text.py::TECH_WORDS": {
    "text": "Everyday explanations of the technical words the guide uses (React, component, API, database, OCR, hash and so on), shown in chapter 2.",
