@@ -1087,7 +1087,7 @@ LINK_OUTBOUND_PER_MINUTE = 240
 LINK_MAX_TRACKED = 1000
 #: Requests per client per minute. A library page load sends one sync, one follow-up 15 s later and one
 #: channel request; "Verify all links now" is one recheck.
-LINK_RATE = {'verify': 10, 'recheck': 4, 'sync': 20, 'channels': 30}
+LINK_RATE = {'verify': 10, 'recheck': 4, 'sync': 20, 'channels': 30, 'scorecard': 10}
 _YOUTUBE_CHANNEL_ID = re.compile(r'UC[A-Za-z0-9_-]{22}')
 
 
@@ -3651,6 +3651,10 @@ def _parse_scorecard(text, exam_id=''):
 @app.route('/api/results/parse', methods=['POST'])
 def parse_result_document():
     """Read an uploaded scorecard. Parsed in memory, never stored, always sent back to confirm."""
+    # Anonymous and CPU-heavy (the pre-flight runs in this process): a client may send a few a minute.
+    limited = _link_rate_limited('scorecard')
+    if limited:
+        return limited
     data = request.get_json(silent=True) or {}
     content = data.get('contentBase64') or ''
     filename = (data.get('filename') or 'upload').lower()

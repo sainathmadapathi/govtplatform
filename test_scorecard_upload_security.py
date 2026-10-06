@@ -100,6 +100,7 @@ class _Endpoint(unittest.TestCase):
         self._db = govos.DB_FILE
         govos.DB_FILE = self.path
         govos.init_database()
+        govos._link_limiter().reset()          # each test starts inside the route's per-minute allowance
         self.client = govos.app.test_client()
 
     def tearDown(self):
@@ -159,6 +160,14 @@ class BoundedInflateTests(unittest.TestCase):
             tracemalloc.stop()
         self.assertLess(peak, 4 * MB + 3 * MB, f'peak {peak} bytes')
 
+    def test_a_stream_that_fails_part_way_reports_what_it_decoded(self):
+        broken = bytearray(zeros_bomb(3 * MB))
+        broken[-4:] = b'\0\0\0\0'                # valid deflate data, wrong checksum: fails at the very end
+        with self.assertRaises(zlib.error) as caught:
+            sd.inflate_bounded(bytes(broken), 8 * MB, keep=False)
+        self.assertIsInstance(caught.exception, sd.InflateDataError)
+        self.assertGreaterEqual(caught.exception.decoded, 2 * MB)
+
     def test_malformed_zlib_raises_zlib_error(self):
         with self.assertRaises(zlib.error):
             sd.inflate_bounded(b'\x78\x9c' + b'\xff' * 64, MB)
@@ -202,6 +211,29 @@ class DecompressionTests(_Endpoint):
         streams = [zeros_bomb(each) for _ in range(3)]    # 120 MB together, over INFLATE_TOTAL_LIMIT (96 MB)
         body = self.assertRefused(pdf(*streams), 413, 'DECOMPRESSED_TOO_LARGE')
         self.assertIn('together', body['message'])
+
+    def test_5c_undeclared_streams_that_fail_their_checksum_still_count_toward_the_total(self):
+        # The audit's attack: streams whose dictionaries declare no filter, each inflating to 40 MB and then failing
+        # its checksum. They used to be skipped without counting what they decoded, so ~170 of them in an 8 MB
+        # upload burned seconds of CPU per request and were never refused.
+        broken = bytearray(zeros_bomb(40 * MB))
+        broken[-4:] = b'\0\0\0\0'
+        part = b'1 0 obj\n<< /Length 5 >>\nstream\n' + bytes(broken) + b'\nendstream\nendobj\n'
+        body = self.assertRefused(b'%PDF-1.4\n' + part * 4, 413, 'DECOMPRESSED_TOO_LARGE')
+        self.assertIn('together', body['message'])
+
+    def test_5d_a_flood_of_stream_keywords_is_refused_quickly(self):
+        import time
+        flood = b'%PDF-1.4\n' + b'stream\n' * 600_000          # ~4 MB, far more places a reader could start than any scorecard
+        started = time.perf_counter()
+        self.assertRefused(flood, 413, 'TOO_MANY_PARTS')
+        self.assertLess(time.perf_counter() - started, 3.0)
+
+    def test_5e_a_client_over_its_upload_rate_is_answered_429(self):
+        for _ in range(govos.LINK_RATE['scorecard']):
+            self.assertNotEqual(self.post(scorecard_pdf())[0], 429)
+        status, body = self.post(scorecard_pdf())
+        self.assertEqual((status, body.get('error')), (429, 'RATE_LIMITED'))
 
     def test_5b_a_stream_cannot_hide_its_length_behind_an_early_endstream(self):
         # A stored deflate block holding the bytes "endstream", then 60 MB of zeros, in one valid zlib stream:

@@ -47,6 +47,12 @@ check('notification: the future exam is unknown until it is in the universe', no
 const mainSrc = readFileSync('src/main.tsx', 'utf8');
 check('main.tsx: no alert or exam lookup falls back to the first exam', !/\|\|\s*ALL_EXAMS\[0\]/.test(mainSrc));
 check('main.tsx: the unresolved alert is said, not swallowed', /data-exam-notice="unresolved"/.test(mainSrc) && /notificationDestination\(notif, examUniverse\)/.test(mainSrc));
+// Text from the server (resource titles, feeds, verifier additions, Claude) reaches the chats; it must render as
+// React text. The navigator's bubble once used dangerouslySetInnerHTML, so a fetched page's title ran as script.
+for (const file of ['src/ui.tsx', 'src/main.tsx']) {
+  const src = readFileSync(file, 'utf8');
+  check(`${file}: no raw HTML rendering (dangerouslySetInnerHTML / innerHTML)`, !/dangerouslySetInnerHTML|\.innerHTML\s*=|insertAdjacentHTML|outerHTML\s*=/.test(src));
+}
 
 // ======================================================================= 2. an empty tracked list stays empty
 localStorage.removeItem('govos_tracked_exams');

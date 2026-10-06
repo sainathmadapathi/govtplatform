@@ -10193,17 +10193,17 @@ export const ResourceAIAssistant: React.FC<ResourceAIAssistantProps> = ({
               borderRadius: 'var(--radius-md)', 
               background: msg.sender === 'USER' ? 'var(--primary)' : 'var(--surface-2)',
               border: msg.sender === 'USER' ? 'none' : '1px solid var(--border-color)',
-              color: 'var(--text-primary)',
+              // A solid brand fill takes white text (the theme's --primary is navy).
+              color: msg.sender === 'USER' ? '#ffffff' : 'var(--text-primary)',
               fontSize: '0.9rem',
               lineHeight: 1.5
             }}>
-              <div 
-                dangerouslySetInnerHTML={{ 
-                  __html: msg.text
-                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                    .replace(/\n/g, '<br/>') 
-                }} 
-              />
+              {/* React text only. This used to be set as raw HTML, and a reply quotes resource titles and
+                  authors -- including verifier additions whose title came from a fetched page -- so markup in one
+                  ran as script for every candidate whose search matched it. */}
+              <div style={{ whiteSpace: 'pre-wrap' }}>
+                {msg.sender === 'USER' ? msg.text : renderAssistantText(msg.text)}
+              </div>
             </div>
 
             {/* Render Instant Action Cards for Matched Resources */}

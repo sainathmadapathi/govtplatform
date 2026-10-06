@@ -46,6 +46,9 @@ INFLATE_STREAM_LIMIT = 48 * MB
 INFLATE_TOTAL_LIMIT = 96 * MB
 #: What the text-layer fallback keeps in memory from one stream; anything larger is not a page of text.
 TEXT_STREAM_LIMIT = 4 * MB
+#: Places a PDF reader could start a stream that the pre-flight will examine. A scorecard has a few dozen;
+#: without a cap, an 8 MB upload of repeated `stream` keywords made the pre-flight examine about a million.
+MAX_PDF_STREAMS = 2000
 #: Text handed to the scorecard parser. A scorecard is a page or two; this bounds the parser's regexes.
 MAX_TEXT_CHARS = 1_000_000
 #: Pages read for a text layer, and (unchanged) for OCR. A scorecard is on its first page or two.
@@ -98,6 +101,16 @@ class InflateLimitExceeded(Exception):
     pass
 
 
+class InflateDataError(zlib.error):
+    """Invalid zlib data, raised part-way through a stream. `decoded` is what was produced before the error: work
+    the pre-flight must still count, or a stream that inflates almost to the limit and then fails its checksum
+    costs CPU without ever counting toward the total."""
+
+    def __init__(self, message: str, decoded: int):
+        super().__init__(message)
+        self.decoded = decoded
+
+
 _OUT_CHUNK = 1 * MB
 _IN_CHUNK = 64 * 1024
 
@@ -124,7 +137,10 @@ def inflate_bounded(data, limit: int, *, keep: bool = True, start: int = 0):
             pos += len(chunk)
         else:
             break
-        piece = inflater.decompress(chunk, min(_OUT_CHUNK, limit - size + 1))
+        try:
+            piece = inflater.decompress(chunk, min(_OUT_CHUNK, limit - size + 1))
+        except zlib.error as e:
+            raise InflateDataError(str(e), size) from None
         size += len(piece)
         if size > limit:
             raise InflateLimitExceeded(size)
@@ -164,7 +180,13 @@ def preflight_pdf(blob: bytes) -> dict:
     """
     total = 0
     streams = 0
-    for m in _STREAM_START.finditer(blob):
+    for examined, m in enumerate(_STREAM_START.finditer(blob)):
+        if examined >= MAX_PDF_STREAMS:
+            raise UploadRejected(413, 'TOO_MANY_PARTS',
+                                 f'This file has far more parts than a scorecard has (over {MAX_PDF_STREAMS}). '
+                                 'Upload the scorecard PDF itself, or type your marks in.')
+        if total >= INFLATE_TOTAL_LIMIT:
+            raise _too_large(f'its compressed parts together decode to more than {INFLATE_TOTAL_LIMIT // MB} MB')
         at = m.end()
         dict_bytes = blob[max(0, m.start() - 4096):m.start()]
         dict_bytes = dict_bytes[dict_bytes.rfind(b'obj') + 3:] if b'obj' in dict_bytes else dict_bytes
@@ -181,12 +203,15 @@ def preflight_pdf(blob: bytes) -> dict:
             if INFLATE_TOTAL_LIMIT - total < INFLATE_STREAM_LIMIT:
                 raise _too_large(f'its compressed parts together decode to more than {INFLATE_TOTAL_LIMIT // MB} MB')
             raise _too_large(f'one compressed part decodes to more than {INFLATE_STREAM_LIMIT // MB} MB')
-        except zlib.error:
+        except zlib.error as e:
             if declared:
                 raise UploadRejected(422, 'MALFORMED_COMPRESSED_DATA',
                                      'Part of this PDF that should be compressed is damaged, so it cannot be read safely. '
                                      'Download the scorecard again, or type your marks in.')
-            continue      # looked like zlib by chance (raw image bytes); not declared, so not ours to judge
+            # Looked like zlib by chance (raw image bytes); not declared, so not ours to judge. What it decoded
+            # before failing is still work done, so it counts toward the total.
+            total += getattr(e, 'decoded', 0)
+            continue
         total += size
         streams += 1
     return {'streams': streams, 'decodedBytes': total}
