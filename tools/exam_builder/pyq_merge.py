@@ -184,7 +184,24 @@ def merge_answer_keys(existing: list, incoming: list) -> PyqMergeReport:
                        f'key for this paper; the earlier one is kept as superseded'))
             continue
         if same_kind:
-            used.add(id(same_kind[0]))
+            for k in same_kind:
+                used.add(id(k))
+            # The same kind of key for the same paper is only the same key if no published answer
+            # differs: against the record's answers, or between two extracted copies.
+            held = _answer_map(row.get('entries') or [])
+            disagree = sorted({q for k in same_kind for q, a in _answer_map(k.entries).items()
+                               if q in held and held[q] != a}
+                              | {q for i, k in enumerate(same_kind) for other in same_kind[i + 1:]
+                                 for q, a in _answer_map(k.entries).items()
+                                 if q in _answer_map(other.entries) and _answer_map(other.entries)[q] != a},
+                              key=_question_order)
+            if disagree:
+                report.decisions.append(ItemDecision(
+                    MergeAction.CONFLICTED, identity.describe(), str(row.get('id', '')),
+                    reason=f'two {kind.value.lower() if hasattr(kind, "value") else "same-kind"} keys for this '
+                           f'paper give different answers to question(s) {", ".join(disagree)}, and neither '
+                           f'revises the other; both are kept and neither is published over the other'))
+                continue
             report.decisions.append(ItemDecision(
                 MergeAction.CONFIRMED, identity.describe(), str(row.get('id', '')),
                 reason='the same key, for the same paper'))
@@ -201,6 +218,28 @@ def merge_answer_keys(existing: list, incoming: list) -> PyqMergeReport:
             MergeAction.ADDED, f'{key.paper.describe()} — {key.kind.value}', key.id,
             reason='the authority published this key and the record does not hold it'))
     return report
+
+
+def _answer_map(entries: list) -> dict:
+    """question number -> (sorted accepted labels, printed value), for entries that state an answer.
+    Takes `AnswerEntry` objects or the record's dicts (`question_number` / `questionNumber`)."""
+    out = {}
+    for e in entries:
+        if isinstance(e, AnswerEntry):
+            number, accepted, value = e.question_number, e.accepted, e.value
+        elif isinstance(e, dict):
+            number = e.get('question_number') or e.get('questionNumber')
+            accepted, value = e.get('accepted') or [], e.get('value') or ''
+        else:
+            continue
+        number = str(number or '').strip()
+        if number and (accepted or value):
+            out[number] = (tuple(sorted(str(a).strip().lower() for a in accepted)), str(value).strip())
+    return out
+
+
+def _question_order(number: str):
+    return (0, int(number)) if number.isdigit() else (1, number)
 
 
 def merge_answers(existing: AnswerKey, incoming: AnswerKey) -> list:

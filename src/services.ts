@@ -574,7 +574,9 @@ export function evaluateEligibility(exam: Exam, profile: UserProfile): Eligibili
       days: detailedAge.days,
       crucialDate
     },
-    categoryRelaxationApplied: `${profile.category} (+${relaxation} Years Relaxation Applied)`,
+    categoryRelaxationApplied: relaxation > 0
+      ? `${profile.category} (+${relaxation} ${relaxation === 1 ? 'Year' : 'Years'} Relaxation Applied)`
+      : `${profile.category} (no age relaxation)`,
     totalEligiblePosts: eligibleCount,
     totalAvailablePosts: totalCount,
     legalClauses,

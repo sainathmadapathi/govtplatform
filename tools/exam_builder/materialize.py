@@ -329,8 +329,9 @@ def _dates(rec: ExamRecord) -> list[dict]:
         # is linked below so the page can show the old statement beside the new.
         replaced = {str(d['id']): str(d['supersededBy']) for d in f.value
                     if isinstance(d, dict) and d.get('id') and d.get('supersededBy')}
-        # A row whose label matched no known milestone is not emitted: the union has no OTHER,
-        # and forcing it into the nearest member would invent a milestone (same rule as emit).
+        # Only rows whose type is a member of the frontend union (_DATE_TYPES, which includes OTHER
+        # for a printed milestone no specific member names) are emitted; a row of any other type is
+        # not forced into the nearest member, which would invent a milestone (same rule as emit).
         for i, d in enumerate(x for x in f.value if isinstance(x, dict) and x.get('type') in _DATE_TYPES):
             out.append({
                 'id': str(d.get('id') or f'date-{rec.exam_id}-{i}'), 'type': d['type'],

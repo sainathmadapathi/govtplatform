@@ -419,14 +419,38 @@ def _extractor_for(field_name: str) -> str:
     return ''
 
 
+#: The domain readers `build.py` runs for each field before its contract extractor, by the name
+#: each one logs when it raises ("extract_pattern failed on …"). `test_review_fixes`
+#: re-reads build.py and fails if a reader's log name is missing here, so the two cannot drift.
+DOMAIN_READERS: dict[str, tuple[str, ...]] = {
+    'dates': ('dates_from_rows', 'extract_milestones', 'dates_from_notice'),
+    'examPattern': ('extract_pattern',),
+    'syllabus': ('extract_syllabus',),
+    'posts': ('extract_posts',),
+    'vacancies': ('extract_vacancies',),
+    'ageLimits': ('extract_eligibility (age)',),
+    'qualification': ('extract_eligibility (qualification)',),
+    'officialPapers': ('catalogue_papers',),
+    'answerKeys': ('read_answer_key_notice',),
+    'admitCard': ('admit_card.read_notice',),
+    'results': ('results.read_notice',),
+    'corrigenda': ('extract_corrigenda',),
+    'applicationPortal': ('extract_portal',),
+    'howToApply': ('extract_stages',),
+    'fee': ('extract_fees',),
+    'feeExemptions': ('extract_fee_exemptions',),
+    'requiredDocuments': ('extract_required_documents',),
+    'photoSignatureGuidelines': ('extract_photo_signature_guidelines',),
+}
+
+
 def _reader_raised(rec: ExamRecord, field_name: str) -> bool:
-    """True when this field's reader threw on a document it was handed -- positive evidence
-    that content was present and we failed on it, which is what EXTRACTION_FAILED means."""
-    name = _extractor_for(field_name)
-    if not name:
-        return False
-    marker = f'{name} failed on '
-    return any(marker in line for line in getattr(rec, 'log', []))
+    """True when one of this field's readers threw on a document it was handed -- positive evidence
+    that content was present and we failed on it, which is what EXTRACTION_FAILED means. It used to
+    look only for the contract extractor's name, so a failure in a domain reader went unseen."""
+    names = [n for n in (_extractor_for(field_name), *DOMAIN_READERS.get(field_name, ())) if n]
+    markers = [f'{n} failed on ' for n in names]
+    return any(m in line for line in getattr(rec, 'log', []) for m in markers)
 
 
 def _classify_field_status(rec: ExamRecord, field_name: str,
@@ -599,9 +623,9 @@ def evaluate_completeness(rec: ExamRecord, sources: Any,
                     else:
                         failure_cnt += 1
             else:
-                final_state = CompletenessState.NOT_YET_PUBLISHED
-                student_summary = 'Runtime derived capability'
-                tech_note = ''
+                # A derived section is as ready as its inputs, so it must name them above. Calling an
+                # unknown one NOT_YET_PUBLISHED (uncounted) would claim something of the authority.
+                raise ValueError(f'derived section {s_def.id!r} declares no inputs in evaluate_completeness')
 
             field_states['pattern'] = 'FOUND' if pat_ok else 'MISSING'
             field_states['syllabus'] = 'FOUND' if syl_ok else 'MISSING'

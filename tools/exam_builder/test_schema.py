@@ -181,6 +181,9 @@ def test_5_post_specific_age_limits() -> None:
           covering, ['age-global', 'age-post-a'])
     check('5: and the global rule does not govern only itself',
           eligibility.age_rules[1].scope.covers(Scope()), False)
+    stored_specific_first = Eligibility(age_rules=list(reversed(eligibility.age_rules)))
+    check('5: the most general rule comes first whatever order they were stored in',
+          [r.id for r in stored_specific_first.age_rules_for(post_scope)], ['age-global', 'age-post-a'])
 
 
 def test_6_category_relaxation_is_sourced_not_assumed() -> None:

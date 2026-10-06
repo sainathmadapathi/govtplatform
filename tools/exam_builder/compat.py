@@ -499,9 +499,9 @@ def milestone_from_important_date(row: dict, *, exam_id: str, source_id: str = '
     to write it, which is at least as good as our reading, and the merge engine has no
     business preferring whichever came last.
 
-    `APPLICATION_OPEN` and `APPLICATION_CLOSE` both map to the application window, and the
-    open/close distinction is carried by which end of the milestone the date sits on -- that
-    is what lets an extracted range match an authored pair.
+    `APPLICATION_OPEN` and `APPLICATION_CLOSE` map to two milestone kinds,
+    `APPLICATION_START` and `APPLICATION_END` (`_LEGACY_TYPE_TO_KIND`), so each end of the
+    application window is matched against the extracted end of the same name.
     """
     from .schema import (DatePrecision, Fact, Milestone, MilestoneState, Scope, ScopeKind,
                          ScopeRef, SourceEvidence, Status)
@@ -821,7 +821,10 @@ def admit_card_events(events: list, *, exam_id: str) -> list:
       * **`releasePrecision`** says whether the authority printed a day or a month, so
         "August, 2026" is not rendered as 1 August.
 
-    An event whose exam is not this exam is dropped rather than relabelled.
+    Every row is stamped with `exam_id`. The events carry no exam of their own, so this
+    projection cannot tell another exam's event from this one's: the pattern gate
+    (`may_supply_admit_card`) and the merge decide that upstream, and only this exam's events
+    may be passed in.
     """
     from .schema import ScopeKind
 
@@ -899,7 +902,9 @@ def result_declarations(events: list, *, exam_id: str) -> list:
       * **`lifecycle` and `supersedes` travel**, so a revised or cancelled result shows its
         relationship to the one it replaced rather than silently overwriting it.
 
-    A declaration whose exam is not this exam is dropped rather than relabelled.
+    Every row is stamped with `exam_id`. A declaration carries no exam of its own, so this
+    projection cannot tell another exam's declaration from this one's: the results gate and the
+    merge decide that upstream, and only this exam's declarations may be passed in.
     """
     from .schema import ScopeKind
 

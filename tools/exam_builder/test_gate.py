@@ -143,6 +143,25 @@ def test_the_asymmetry_holds_in_one_comparison() -> None:
           and not any('cutoffs: optional, not read' in n for n in theirs.notes), True)
 
 
+def test_a_required_field_on_an_ambiguous_source_blocks() -> None:
+    """A source that names several exams cannot establish which exam a required value is
+    for. The module's own table always said AMBIGUOUS blocks; nothing enforced it."""
+    shared = 'https://x.invalid/several-exams.pdf'
+    rec = _record()
+    rec.set(Field.found('dates', 'value', Citation(document_title='combined', url=shared, page=1,
+                                                   excerpt='...', verified_date='2026-09-17')))
+    r = evaluate(rec, identity_by_source={shared: IdentityVerdict.AMBIGUOUS})
+    check('a required field citing an ambiguous source blocks', r.decision, GateDecision.BLOCK)
+    check('and the blocker names the field', _blocked_on(r, 'dates'), True)
+    optional = _record()
+    optional.set(Field.found('fee', '100', Citation(document_title='combined', url=shared, page=1,
+                                                    excerpt='...', verified_date='2026-09-17')))
+    quiet = evaluate(optional, identity_by_source={shared: IdentityVerdict.AMBIGUOUS})
+    check('an optional field on an ambiguous source does not block', quiet.decision, GateDecision.PASS)
+    uncited = evaluate(_record(), identity_by_source={shared: IdentityVerdict.AMBIGUOUS})
+    check('an ambiguous source no field cites does not block', uncited.decision, GateDecision.PASS)
+
+
 def main() -> int:
     test_a_clean_build_publishes()
     test_unpublished_is_allowed()
@@ -154,6 +173,7 @@ def main() -> int:
     test_schema_typecheck_isolation_block()
     test_a_required_field_may_not_be_merely_unpublished()
     test_the_asymmetry_holds_in_one_comparison()
+    test_a_required_field_on_an_ambiguous_source_blocks()
     if _FAILURES:
         print(f'{len(_FAILURES)} FAILURE(S):')
         for f in _FAILURES:

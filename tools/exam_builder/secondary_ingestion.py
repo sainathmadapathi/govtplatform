@@ -405,7 +405,12 @@ def _iso(y, m, d) -> Optional[str]:
         y, m, d = int(y), int(m), int(d)
     except (TypeError, ValueError):
         return None
-    if not (1900 < y < 2100 and 1 <= m <= 12 and 1 <= d <= 31):
+    if not 1900 < y < 2100:
+        return None
+    try:
+        import datetime as _dt
+        _dt.date(y, m, d)              # a real calendar day: 31/02 and 31/04 are refused, 29/02 only in a leap year
+    except ValueError:
         return None
     return f'{y:04d}-{m:02d}-{d:02d}'
 

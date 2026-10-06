@@ -44,7 +44,10 @@ npm run build              # -> dist/index.html, fully self-contained
 npx tsc --noEmit           # type check (NOT part of build — currently clean, keep it so)
 npm run export:authored    # exam_data/authored_exams.json from src/data.ts (also runs before `npm run build`)
 npm run check:frontend     # headless checks of the Claude-facing frontend contract (assistant fallback, services fail soft)
+npm run docs               # regenerate docs/GovOS_Guide.html, the one-file project guide (also runs in prebuild)
 python -m pytest tools test_*.py -q   # backend suite (tools/ and every root test file); never starts the real Claude CLI
+                           # (the root conftest.py fails any test whose module-level `check()` records into
+                           # `_FAILURES` -- 23 exam_builder suites use that pattern and could not fail under pytest before)
 python -m tools.exam_builder.secondary_ingestion --source manabadi.co.in --exam exam-websitenew-tgpsc-group-i-2024 --walk
                            # read one reviewed secondary source for one exam; read-only, writes exam_data/secondary/*.json
 
@@ -52,6 +55,29 @@ python -m tools.exam_builder.secondary_ingestion --source manabadi.co.in --exam 
 
 For development run both servers. For production, `npm run build` then `python app.py`
 serves the built frontend and the API together on 5000.
+
+## The project guide: `docs/GovOS_Guide.html`
+
+One self-contained HTML page (no network, dark/light, searchable) explaining the whole project to someone
+who has never programmed **and** to a developer. Chapter 1 tells every screen, part and mechanism twice —
+"In simple words" beside "Under the hood", the latter linking into the reference; chapter 2 explains the
+technical words; seven flow diagrams (SVG by `svg_flow`) each carry a plain step-by-step; then a reference
+**generated from the code** — every frontend declaration, every service/class method, every backend
+function/class/method/constant, each with an explanation in simple words, a precise "how it works", its
+signature and the notes written in the code, and for components what they keep inside (state, refs,
+handlers, effects); every route, SQLite table, localStorage key, `/api/` call site, test and frontend check,
+every tracked file, and the design records (`*.md`) rendered in full.
+
+Three sources: `tools/docs/build_guide.py` (the generator and the reference), `tools/docs/guide_text.py`
+(chapter 1, the diagram steps, the words — `[[name]]` links a declaration and `{{doc:Heading}}` a CLAUDE.md
+heading; the generator warns on a dead one), and `tools/docs/plain.json` (one explanation per declaration,
+each with the fingerprint of the code it was written for — when the code changes the page marks it "may be
+out of date" rather than describing old code). It is regenerated, only when its content changed, by
+`npm run docs`, by `prebuild`, and by the project's Claude Code **Stop hook** (`.claude/settings.json`).
+**When you change code:** `python tools/docs/build_guide.py --stale` lists explanations whose code changed,
+declarations with none, and explanations whose declaration is gone; rewrite those entries in plain.json
+(delete their `hash`), then run `--stamp`. When you change a flow chapter 1 or a diagram describes, edit
+guide_text.py / `diagrams()` in the same change.
 
 ## Content policy: link, don't store
 
@@ -1991,6 +2017,10 @@ Remaining by design, not defects:
     and the topic's real weight from `exam.syllabus` (`weightagePercentage`, `avgQuestions`,
     `isHighYield`). They used to assert a cause GovOS cannot know ("prone to sign errors")
     and an invented weight ("3-4 Qs guaranteed in TCS exam pattern").
+  - Nothing is ticked or done on the candidate's behalf: the exam page used to open with four SSC
+    syllabus topics marked complete, and the home page had a "Behaviour Simulation Lab" whose buttons
+    wrote made-up activity into the candidate's own history (which drives their recommendations). Both
+    are gone, and `evidence_boundary_check.ts` scans for them.
   - `getTargetPost()` returns `''` when the candidate has not chosen, never `post-aso-css`.
     Labels say "not chosen yet" and point at section 01; the statistics slice appears when
     the chosen post actually needs statistics, read from the post, not from its id.

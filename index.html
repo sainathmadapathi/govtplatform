@@ -2753,6 +2753,13 @@
         .cat-scene .club-cat-window { height: min(44svh, 340px); }
       }
 
+      /* A post's pay level: its own line under the post name, a neutral tag in the record's own words. */
+      .pay-tag {
+        display: inline-block; margin-top: 8px; padding: 4px 10px; border-radius: 8px;
+        background: var(--primary-soft); color: #14213d; font-size: 0.78rem; font-weight: 700; line-height: 1.35;
+        box-shadow: inset 0 0 0 1px rgba(20, 33, 61, 0.12); max-width: 100%;
+      }
+
       /* Reduced motion: everything above lands immediately. */
       @media (prefers-reduced-motion: reduce) {
         *, *::before, *::after {

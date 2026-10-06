@@ -36,9 +36,11 @@ def _words(text: str) -> set:
 def topic_identity(authored_title: str, node: SyllabusNode) -> float:
     """How sure we are that a record's topic and an extracted node are the same topic.
 
-    A syllabus topic is identified by the words that distinguish it. "Number Systems" and
-    "Number System" are the same entry; "Number Systems" and "Number Series" are not, and
-    sharing "number" is not evidence that they are.
+    A syllabus topic is identified by the words that distinguish it, compared as printed (no
+    stemming). "Number Systems" and "Systems: Number" are the same entry; "Number Systems" and
+    "Number Series" are not, and sharing "number" is not evidence that they are. A plural and its
+    singular ("Number System") share one word of two and score 0.4, below the threshold, so they
+    are left for a person rather than matched.
     """
     left, right = _words(authored_title), _words(node.title)
     if not left or not right:
@@ -132,13 +134,21 @@ def merge_syllabus(existing: list, incoming: Syllabus, *, document=None,
     is_revision = revises(document, revision_span)
     used: set = set()
 
+    # Each row's best match, first, so a published entry that is the clear match of several record
+    # topics can be seen: it cannot be all of them, and it used to confirm every one.
+    plans = []
+    claims: dict = {}
     for row in existing:
         title = row.get('topicName', '')
         scored = sorted(((topic_identity(title, node), node) for node in nodes),
                         key=lambda t: -t[0])
         best, match = scored[0] if scored else (0.0, None)
         runner_up = scored[1][0] if len(scored) > 1 else 0.0
+        plans.append((row, title, best, match, runner_up))
+        if best >= IDENTITY_THRESHOLD and runner_up < IDENTITY_THRESHOLD:
+            claims[id(match)] = claims.get(id(match), 0) + 1
 
+    for row, title, best, match, runner_up in plans:
         if best < IDENTITY_THRESHOLD:
             report.decisions.append(NodeDecision(
                 MergeAction.UNCHANGED, title, row.get('id', ''), identity=best,
@@ -150,6 +160,14 @@ def merge_syllabus(existing: list, incoming: Syllabus, *, document=None,
                 MergeAction.CONFLICTED, title, row.get('id', ''), identity=best,
                 reason='more than one published entry matches this topic equally well, so '
                        'which is which is not established; nothing is merged'))
+            continue
+        if claims.get(id(match), 0) > 1:
+            used.add(id(match))     # held for review, not offered again as a new topic
+            report.decisions.append(NodeDecision(
+                MergeAction.CONFLICTED, title, row.get('id', ''), identity=best,
+                reason=f'the published entry "{match.title}" is the closest match for '
+                       f'{claims[id(match)]} topics in the record, and it can be only one of them; '
+                       f'nothing is merged'))
             continue
 
         used.add(id(match))

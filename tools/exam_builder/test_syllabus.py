@@ -395,6 +395,21 @@ def test_v_two_sources_that_disagree_are_not_resolved() -> None:
           ('Number Systems', 'Number Systems and Series'))
 
 
+def test_v_one_published_entry_cannot_confirm_two_record_topics() -> None:
+    from .merge import MergeAction
+    from .syllabus_merge import merge_syllabus
+    # A record that lists one topic twice (two ids, one name) -- the published entry can be only one of them.
+    record = [{'id': 'syl-1', 'topicName': 'Number Systems'}, {'id': 'syl-2', 'topicName': 'Number Systems'}]
+    one = read("""
+6. Syllabus:
+6.1 Number Systems: Computation of whole numbers.
+""")
+    report = merge_syllabus(record, one)
+    check('an entry that is the clear match of two record topics confirms neither',
+          [d.action for d in report.decisions], [MergeAction.CONFLICTED, MergeAction.CONFLICTED])
+    check('and it is not offered again as a new topic', report.of(MergeAction.ADDED), [])
+
+
 def test_w_a_revision_supersedes_and_keeps_the_old_wording() -> None:
     from .merge import MergeAction
     from .syllabus_merge import merge_syllabus
@@ -517,6 +532,7 @@ def main() -> int:
                test_t_a_document_with_no_syllabus_produces_none,
                test_u_a_named_subject_with_no_published_topics_has_no_children,
                test_v_two_sources_that_disagree_are_not_resolved,
+               test_v_one_published_entry_cannot_confirm_two_record_topics,
                test_w_a_revision_supersedes_and_keeps_the_old_wording,
                test_w_a_revision_stated_in_words_must_name_the_syllabus,
                test_x_every_published_node_carries_verbatim_evidence,

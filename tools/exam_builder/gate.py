@@ -149,6 +149,15 @@ def evaluate(record: ExamRecord, *,
                 notes.append(f'source excluded as another exam’s and retained for audit '
                              f'only; it supplied no field: {url}')
 
+    # --- a required field may not rest on a source that names several exams: which exam's
+    # --- value it read is not established. (The table above always said so; nothing enforced it.)
+    ambiguous = {url for url, verdict in identity_by_source.items() if verdict is IdentityVerdict.AMBIGUOUS}
+    for name in sorted(required):
+        f = record.fields.get(name)
+        url = getattr(getattr(f, 'citation', None), 'url', '') if f is not None else ''
+        if url and url in ambiguous and f.status is Status.FOUND and name not in ('officialName', 'authority'):
+            blockers.append(Blocker(name, 'a required field rests on a source that names several exams', url))
+
     # --- field-by-field
     field_names = {f.name for f in CONTRACT}
     for name in sorted(field_names):

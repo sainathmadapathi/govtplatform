@@ -925,224 +925,8 @@ export const EvidencePanel: React.FC<EvidencePanelProps> = ({ provenance: p, onC
 // ==========================================================================
 // Header.tsx
 // ==========================================================================
-/** The nine top-level views. `main.tsx` switches on this; the assistant navigates with it. */
+/** The top-level views. `main.tsx` switches on this; the assistant navigates with it. */
 export type GovOSTab = 'FINDER' | 'ELIGIBILITY' | 'EXAM_DETAIL' | 'PLANNER' | 'PRACTICE' | 'RESOURCES' | 'COMPARE' | 'CALENDAR' | 'AI_ASSISTANT' | 'ADMIN' | 'MY_EXAMS';
-
-// ==========================================================================
-// UserProfileModal.tsx — Admin & Candidate Profile representation
-// ==========================================================================
-export interface UserProfileModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onNavigate: (tab: GovOSTab, section?: number) => void;
-  trackedCount?: number;
-}
-
-export const UserProfileModal: React.FC<UserProfileModalProps> = ({
-  isOpen,
-  onClose,
-  onNavigate,
-  trackedCount = 0
-}) => {
-  if (!isOpen) return null;
-
-  const modalContent = (
-    <div
-      className="modal-overlay animate-fade-in"
-      onClick={onClose}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 99999,
-        background: 'rgba(15, 23, 42, 0.55)',
-        backdropFilter: 'blur(6px)',
-        WebkitBackdropFilter: 'blur(6px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '20px'
-      }}
-    >
-      <div
-        className="modal-content animate-fade-in"
-        onClick={e => e.stopPropagation()}
-        style={{
-          maxWidth: '520px',
-          width: '100%',
-          padding: '26px 28px',
-          borderRadius: '24px',
-          background: '#ffffff',
-          boxShadow: '0 25px 60px -15px rgba(15, 23, 42, 0.35)',
-          border: '1px solid #e2e8f0',
-          position: 'relative',
-          maxHeight: '90vh',
-          overflowY: 'auto'
-        }}
-      >
-        {/* Header with Close */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span className="badge badge-verified" style={{ fontSize: '0.72rem' }}>
-              <ShieldCheck size={13} /> Official Admin Session
-            </span>
-          </div>
-          <button
-            className="icon-btn"
-            onClick={onClose}
-            aria-label="Close"
-            style={{ width: '32px', height: '32px', border: 'none', background: 'var(--surface-2)' }}
-          >
-            <X size={16} />
-          </button>
-        </div>
-
-        {/* User Identity Card */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '16px',
-          padding: '18px 20px',
-          background: 'linear-gradient(135deg, #f0f6ff 0%, #ffffff 100%)',
-          border: '1px solid var(--border-color)',
-          borderRadius: '16px',
-          marginBottom: '20px'
-        }}>
-          <div style={{
-            position: 'relative',
-            width: '56px',
-            height: '56px',
-            borderRadius: '50%',
-            background: 'var(--primary)',
-            color: '#fff',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '1.4rem',
-            fontWeight: 800,
-            boxShadow: 'var(--shadow-glow)',
-            flexShrink: 0
-          }}>
-            S
-            <span style={{
-              position: 'absolute',
-              bottom: '0',
-              right: '0',
-              width: '14px',
-              height: '14px',
-              background: '#10b981',
-              borderRadius: '50%',
-              border: '2px solid #fff'
-            }} title="Active" />
-          </div>
-
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-                Sainath
-              </h3>
-              <span className="badge badge-demo" style={{ fontSize: '0.65rem', padding: '2px 8px' }}>
-                ADMIN
-              </span>
-            </div>
-            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-              admin@govos.in · System Administrator
-            </div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--emerald)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
-              <CheckCircle2 size={12} /> Full Platform & Engine Privileges
-            </div>
-          </div>
-        </div>
-
-        {/* System & Session Specs */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', marginBottom: '20px' }}>
-          <div style={{ padding: '12px 14px', background: '#fafcff', border: '1px solid var(--border-color)', borderRadius: '12px' }}>
-            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Current Role</div>
-            <div style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Lock size={13} color="var(--primary)" /> Administrator
-            </div>
-          </div>
-          <div style={{ padding: '12px 14px', background: '#fafcff', border: '1px solid var(--border-color)', borderRadius: '12px' }}>
-            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Database Sync</div>
-            <div style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Database size={13} color="var(--emerald)" /> SQLite 3 Active
-            </div>
-          </div>
-        </div>
-
-        {/* Quick Navigation & Administrative Controls */}
-        <div style={{ marginBottom: '16px' }}>
-          <div style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '10px' }}>
-            Administrative Actions & Navigation
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <button
-              className="side-link"
-              onClick={() => { onClose(); onNavigate('ADMIN'); }}
-              style={{ padding: '12px 14px', background: 'var(--surface-2)', border: '1px solid var(--border-color)', borderRadius: '12px' }}
-            >
-              <ShieldCheck size={18} color="var(--primary)" />
-              <div style={{ flex: 1, textAlign: 'left' }}>
-                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>Trust Panel & Audit Reports</div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Review candidate error submissions and verify official source notices</div>
-              </div>
-              <ChevronRight size={16} color="var(--text-muted)" />
-            </button>
-
-            <button
-              className="side-link"
-              onClick={() => { onClose(); onNavigate('MY_EXAMS'); }}
-              style={{ padding: '12px 14px', background: '#fff', border: '1px solid var(--border-color)', borderRadius: '12px' }}
-            >
-              <Bookmark size={18} color="#6d28d9" />
-              <div style={{ flex: 1, textAlign: 'left' }}>
-                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>My Tracked Exams</div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>View bookmarked exam workspaces ({trackedCount} currently tracked)</div>
-              </div>
-              <ChevronRight size={16} color="var(--text-muted)" />
-            </button>
-
-            <button
-              className="side-link"
-              onClick={() => { onClose(); onNavigate('ELIGIBILITY'); }}
-              style={{ padding: '12px 14px', background: '#fff', border: '1px solid var(--border-color)', borderRadius: '12px' }}
-            >
-              <UserCheck size={18} color="var(--emerald)" />
-              <div style={{ flex: 1, textAlign: 'left' }}>
-                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>Candidate Profile & Eligibility</div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Configure degree, category, and age parameters for diagnostic testing</div>
-              </div>
-              <ChevronRight size={16} color="var(--text-muted)" />
-            </button>
-
-            <button
-              className="side-link"
-              onClick={() => { onClose(); onNavigate('AI_ASSISTANT'); }}
-              style={{ padding: '12px 14px', background: '#fff', border: '1px solid var(--border-color)', borderRadius: '12px' }}
-            >
-              <Bot size={18} color="var(--primary)" />
-              <div style={{ flex: 1, textAlign: 'left' }}>
-                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>Ask GovOS AI</div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Query official notices, pattern breakdown, and dates across all exams</div>
-              </div>
-              <ChevronRight size={16} color="var(--text-muted)" />
-            </button>
-          </div>
-        </div>
-
-        {/* Footer actions */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '16px', paddingTop: '14px', borderTop: '1px solid var(--border-color)' }}>
-          <button className="btn btn-secondary" onClick={onClose} style={{ fontSize: '0.85rem', padding: '8px 16px' }}>
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  return typeof document !== 'undefined'
-    ? createPortal(modalContent, document.body)
-    : modalContent;
-};
 
 interface HeaderProps {
   activeTab: GovOSTab;
@@ -1152,7 +936,6 @@ interface HeaderProps {
   trackedCount?: number;
   onOpenNotifications?: () => void;
   onOpenTimeline?: () => void;
-  onOpenProfile?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -1162,8 +945,7 @@ export const Header: React.FC<HeaderProps> = ({
   unreadCount = 0,
   trackedCount = 0,
   onOpenNotifications,
-  onOpenTimeline,
-  onOpenProfile
+  onOpenTimeline
 }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
@@ -1983,19 +1765,6 @@ export const JourneyStory: React.FC<{ steps: JourneyStep[] }> = ({ steps }) => (
   </section>
 );
 
-/** A typographic pause between chapters; its words settle in as it scrolls into view. */
-export const PullQuote: React.FC<{ text: string }> = ({ text }) => (
-  <figure className="pull-quote" data-reveal>
-    <Quote size={34} aria-hidden="true" />
-    <blockquote className="accent-serif">
-      <span className="sr-only">{text}</span>
-      {text.split(' ').map((w, i) => (
-        <span key={i} className="pq-word" aria-hidden="true" style={{ ['--qi' as any]: i }}>{w} </span>
-      ))}
-    </blockquote>
-  </figure>
-);
-
 // =============================================================================================
 // The club composition (presentation only): flat colour fields, wavy grounds, stacked display type and
 // handwritten asides. Every figure is read from the exam records; every button calls a handler the page owned.
@@ -2812,7 +2581,6 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
 }) => {
   const [selectedPersona, setSelectedPersona] = useState<string>('Graduation (Any Stream)');
   const [selectedInterest, setSelectedInterest] = useState<string>('Government Job');
-  const [ageInput, setAgeInput] = useState<number>(21);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   // --- Smarter Personalized Recommendations (Time-Decayed BPR) ---
@@ -2826,8 +2594,6 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
     storageService.getBookmarkedExams()
   );
   const [showInteractionsModal, setShowInteractionsModal] = useState<boolean>(false);
-  const [simulationNotice, setSimulationNotice] = useState<string | null>(null);
-
   const refreshRecommendations = () => {
     setRecommendations(storageService.getPersonalizedRecommendations(exams));
     setInteractions(storageService.getUserInteractions());
@@ -2870,90 +2636,6 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
         });
         refreshRecommendations();
       }
-    }
-  };
-
-  const runSimulationPreset = (preset: 'CIVIL_SERVICES_TARGET' | 'COMMITMENT_TEST' | 'BANKING' | 'STAFF_SELECTION' | 'RESET') => {
-    if (preset === 'RESET') {
-      storageService.clearUserInteractions();
-      setSimulationNotice('Activity history cleared! Recommendations reset to default profile prior.');
-      refreshRecommendations();
-      setTimeout(() => setSimulationNotice(null), 4000);
-      return;
-    }
-
-    if (preset === 'CIVIL_SERVICES_TARGET') {
-      // User recently: Viewed -> UPSC, Saved -> APPSC Group 1, Read -> Civil Services syllabus
-      storageService.clearUserInteractions();
-      storageService.recordInteraction({
-        type: 'VIEW',
-        examId: 'exam-upsc-cse-2026',
-        metadata: { title: 'UPSC CSE 2026 Guide & Scheme' }
-      });
-      storageService.recordInteraction({
-        type: 'BOOKMARK',
-        examId: 'exam-appsc-group1-2026',
-        metadata: { title: 'APPSC Group-I Notification Bookmarked' }
-      });
-      storageService.recordInteraction({
-        type: 'SYLLABUS_READ',
-        examId: 'exam-upsc-cse-2026',
-        metadata: { section: '06 - Civil Services General Studies Syllabus & Blueprint' }
-      });
-      setSimulationNotice('🎯 Target Scenario Applied: Viewed UPSC + Saved APPSC Gr 1 + Read CS Syllabus! GovOS recommends: 1. UPSC CSE, 2. APPSC Group 1, 3. APPSC Group 2.');
-      refreshRecommendations();
-      setTimeout(() => setSimulationNotice(null), 5000);
-    } else if (preset === 'COMMITMENT_TEST') {
-      // Candidate Activity: FOLLOW UPSC (180d, 2x) + BOOKMARK APPSC Group 1 (60d, 1.5x) vs VIEW IBPS PO once (3d, 1x)
-      storageService.clearUserInteractions();
-      storageService.recordInteraction({
-        type: 'FOLLOW',
-        examId: 'exam-upsc-cse-2026',
-        metadata: { action: 'Tracked UPSC CSE in Timeline (T½=180d, 2.0x signal)' }
-      });
-      storageService.recordInteraction({
-        type: 'BOOKMARK',
-        examId: 'exam-appsc-group1-2026',
-        metadata: { action: 'Saved APPSC Group-I to Shortlist (T½=60d, 1.5x signal)' }
-      });
-      storageService.recordInteraction({
-        type: 'VIEW',
-        examId: 'exam-ibps-po-2026',
-        metadata: { action: 'Exploratory View of IBPS PO (T½=3d, 1.0x signal)' }
-      });
-      setSimulationNotice('🎯 Commitment Dominance Applied: Long-term tracking (Follow UPSC + Bookmark APPSC Gr 1) massively outranks transient clicks (View IBPS PO)!');
-      refreshRecommendations();
-      setTimeout(() => setSimulationNotice(null), 5000);
-    } else if (preset === 'BANKING') {
-      storageService.clearUserInteractions();
-      storageService.recordInteraction({
-        type: 'VIEW',
-        examId: 'exam-ibps-po-2026',
-        metadata: { title: 'IBPS PO 2026 Guide' }
-      });
-      storageService.recordInteraction({
-        type: 'FOLLOW',
-        examId: 'exam-ibps-po-2026',
-        metadata: { action: 'Tracked in timeline' }
-      });
-      setSimulationNotice('🏦 Applied Banking Focus: Viewed & Tracked IBPS PO!');
-      refreshRecommendations();
-      setTimeout(() => setSimulationNotice(null), 5000);
-    } else if (preset === 'STAFF_SELECTION') {
-      storageService.clearUserInteractions();
-      storageService.recordInteraction({
-        type: 'VIEW',
-        examId: 'exam-ssc-cgl-2026',
-        metadata: { title: 'SSC CGL 2026 Golden Journey' }
-      });
-      storageService.recordInteraction({
-        type: 'SYLLABUS_READ',
-        examId: 'exam-ssc-cgl-2026',
-        metadata: { section: '06 - Tier 1 & Tier 2 Syllabus' }
-      });
-      setSimulationNotice('📋 Applied Staff Selection Focus: Viewed & Studied SSC CGL Blueprint!');
-      refreshRecommendations();
-      setTimeout(() => setSimulationNotice(null), 5000);
     }
   };
 
@@ -3149,68 +2831,6 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
               Activity Log ({interactions.length})
             </button>
           </div>
-        </div>
-
-        {/* Behavioral Simulation Toolbar */}
-        <div style={{ padding: '14px 18px', background: 'var(--surface-3)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', marginBottom: '22px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '10px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Zap size={16} color="var(--amber)" />
-              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#af5109' }}>
-                Behaviour Simulation Lab:
-              </span>
-              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                Test candidate interaction sequences in 1 click:
-              </span>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <button
-              className="btn btn-emerald"
-              onClick={() => runSimulationPreset('CIVIL_SERVICES_TARGET')}
-              style={{ fontSize: '0.78rem', padding: '7px 14px' }}
-              title="Viewed UPSC + Saved APPSC Gr 1 + Read CS syllabus -> Recommends UPSC CSE, APPSC Gr 1, APPSC Gr 2"
-            >
-              ✨ Target Test: Viewed UPSC + Saved APPSC 1 + Read CS Syllabus
-            </button>
-            <button
-              className="btn btn-primary"
-              onClick={() => runSimulationPreset('COMMITMENT_TEST')}
-              style={{ fontSize: '0.78rem', padding: '7px 14px' }}
-              title="Follow UPSC + Bookmark APPSC Gr 1 vs View IBPS PO (Demonstrates explicit tracking anchor vs fleeting view)"
-            >
-              🎯 Commitment Dominance (Follow UPSC + Save APPSC vs View IBPS)
-            </button>
-            <button
-              className="btn btn-secondary"
-              onClick={() => runSimulationPreset('BANKING')}
-              style={{ fontSize: '0.78rem', padding: '7px 14px' }}
-            >
-              🏦 Banking Focus (IBPS PO)
-            </button>
-            <button
-              className="btn btn-secondary"
-              onClick={() => runSimulationPreset('STAFF_SELECTION')}
-              style={{ fontSize: '0.78rem', padding: '7px 14px' }}
-            >
-              📋 Staff Selection (SSC CGL)
-            </button>
-            <button
-              className="btn btn-secondary"
-              onClick={() => runSimulationPreset('RESET')}
-              style={{ fontSize: '0.78rem', padding: '7px 14px', color: '#b71f1f' }}
-            >
-              <RotateCcw size={13} /> Reset Behaviour
-            </button>
-          </div>
-
-          {simulationNotice && (
-            <div className="animate-fade-in" style={{ marginTop: '10px', padding: '8px 12px', borderRadius: 'var(--radius-sm)', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#137638', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <CheckCircle2 size={15} />
-              {simulationNotice}
-            </div>
-          )}
         </div>
 
         {/* Recommendation Cards Grid */}
@@ -3469,7 +3089,7 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
 
             {interactions.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                No interaction events recorded yet. Try browsing exams, reading syllabus blueprints, or using the Simulation Lab!
+                No interaction events recorded yet. Try browsing exams or reading a syllabus.
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -3545,7 +3165,7 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
           <h3 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Career & Exam Discovery Engine</h3>
         </div>
 
-        <div className="grid-3" style={{ marginBottom: '24px' }}>
+        <div className="grid-2" style={{ marginBottom: '24px' }}>
           {/* Step 1: Persona */}
           <div>
             <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px' }}>
@@ -3594,27 +3214,6 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
             </select>
           </div>
 
-          {/* Step 3: Age */}
-          <div>
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px' }}>
-              3. Target Recruitment Year
-            </label>
-            <select 
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                borderRadius: 'var(--radius-md)',
-                background: 'var(--bg-input)',
-                border: '1px solid var(--border-color)',
-                color: 'var(--text-primary)',
-                fontSize: '0.95rem',
-                fontFamily: 'var(--font-sans)',
-                outline: 'none'
-              }}
-            >
-              <option value="2026">2026 Recruitment Cycle</option>
-            </select>
-          </div>
         </div>
 
         {/* Search Bar */}
@@ -20975,8 +20574,9 @@ export const UPSCPracticeEngine: React.FC<{
   scope?: PracticeScope;
   onOpenProvenanceModal: (provenance: DataProvenance) => void;
 }> = ({ exam, scope = 'ALL', onOpenProvenanceModal }) => {
-  if (!assertExamMatches('UPSCPracticeEngine', UPSC_PRACTICE_CONFIG.examId, exam)) return null;
+  // Hooks before the guard: React requires the same hooks on every render, and the guard returns early.
   const [group, setGroup] = useState<'Prelims' | 'Mains'>('Prelims');
+  if (!assertExamMatches('UPSCPracticeEngine', UPSC_PRACTICE_CONFIG.examId, exam)) return null;
 
   const sectionFor = (re: RegExp) => {
     for (const st of exam.stages) {
@@ -21996,8 +21596,6 @@ interface ExamDetailViewProps {
   onOpenProvenanceModal: (provenance: DataProvenance) => void;
   onOpenReportModal: (entityType: string, entityId: string) => void;
   onNavigateEligibility?: () => void;
-  onNavigatePlanner?: () => void;
-  onNavigatePractice?: () => void;
   isTracked?: boolean;
   onToggleTrack?: () => void;
   initialSection?: number;
@@ -22197,8 +21795,6 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
   onOpenProvenanceModal,
   onOpenReportModal,
   onNavigateEligibility,
-  onNavigatePlanner,
-  onNavigatePractice,
   isTracked = false,
   onToggleTrack,
   initialSection = 1,
@@ -22265,18 +21861,10 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
     examHasStudyPaths(exam) ? 'POST_STUDY_PATH' : 'OFFICIAL_BLUEPRINT';
   const [syllabusViewMode, setSyllabusViewMode] = useState<'POST_STUDY_PATH' | 'OFFICIAL_BLUEPRINT' | 'TREE_MAP'>(defaultSyllabusView);
   useEffect(() => { setSyllabusViewMode(defaultSyllabusView()); }, [exam.id]);
+  // Only what the candidate ticked. A first visit used to start with four SSC topics marked done,
+  // which is progress nobody made (and SSC's ids on any exam).
   const [completedTopics, setCompletedTopics] = useState<Record<string, boolean>>(
-    () => {
-      const saved = storageService.getCompletedTopics(exam.id);
-      if (Object.keys(saved).length > 0) return saved;
-      // First visit for this exam: start from the standard baseline.
-      return {
-        'syl-quant-arithmetic': true,
-        'syl-reas-analogy-series': true,
-        'syl-eng-grammar': true,
-        'syl-ga-polity': true
-      };
-    }
+    () => storageService.getCompletedTopics(exam.id)
   );
 
   // Reload the saved ticks whenever the candidate switches to a different exam.
@@ -22349,6 +21937,9 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
     goToSection(secNum);
     requestAnimationFrame(() => sectionCardRef.current?.scrollIntoView({ block: 'start', behavior: prefersReducedMotion() ? 'auto' : 'smooth' }));
   };
+  // Practice is this exam's own part 09. It used to be handed in by the shell as a switch to the PRACTICE
+  // safety-net tab, which left the exam page instead of turning to its part.
+  const onNavigatePractice = () => turnTo(9);
 
   // Opening the Syllabus section re-reads the verifier's revisions, so a change applied in the
   // Trust Panel reaches the list and the tree map without leaving the exam page.
@@ -22647,17 +22238,19 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: '16px' }}>
               {exam.posts.map(p => (
                 <div key={p.id} style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
-                    <div>
-                      <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>{p.postName}</h4>
-                      <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '2px' }}>{p.department}</div>
-                      {p.ministry && <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{p.ministry}</div>}
-                    </div>
-                    <span className="badge badge-verified" style={{ fontSize: '0.75rem' }}>{p.payLevel}</span>
+                  <div style={{ minWidth: 0 }}>
+                    <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>{p.postName}</h4>
+                    <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '2px' }}>{p.department}</div>
+                    {p.ministry && <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{p.ministry}</div>}
+                    {/* Its own line, in the record's own words. A neutral tag, not the green "verified" badge: a pay level
+                        is only as verified as its provenance (UPSC's is the record's reading, the notice prints no pay),
+                        and a pill squeezed beside a long post name wrapped into a tall oval. */}
+                    {p.payLevel && <span className="pay-tag">{p.payLevel}</span>}
                   </div>
 
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                    <span className="glass-pill" style={{ color: '#137638', borderColor: 'rgba(16,185,129,0.3)', fontSize: '0.75rem' }}>{p.payScale}</span>
+                    {/* Neutral like the pay tag (green read as "verified"); squared corners, so a scale that wraps stays a box. */}
+                    <span className="glass-pill" style={{ fontSize: '0.75rem', borderRadius: '8px' }}>{p.payScale}</span>
                     <span className="glass-pill" style={{ fontSize: '0.75rem' }}>Age: {p.minAge}–{p.maxAge} Yrs</span>
                     <span
                       className="glass-pill"
