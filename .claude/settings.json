@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && python tools/docs/build_guide.py --quiet",
+            "timeout": 120
+          }
+        ]
+      }
+    ]
+  }
+}
