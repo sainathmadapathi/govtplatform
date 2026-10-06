@@ -7591,6 +7591,296 @@
    "tech": "Returns a VERIFY_CLAIM-shaped dict: decision, identity_supported, evidence_supported, claim_supported, reason.",
    "hash": "ed83b0da1af7"
   },
+  "tools/docs/build_guide.py::BANNER": {
+   "text": "The pattern for the '// =====' lines the code uses to divide a file into sections; the guide groups declarations under them.",
+   "tech": "re.compile(r'^//\\s*={6,}\\s*$').",
+   "hash": "c2aa58af2aa5"
+  },
+  "tools/docs/build_guide.py::CSS": {
+   "text": "The guide's whole look: colours for light and dark mode, the sidebar, cards, tables, the two-column plain chapter, badges and the diagram styles, including fitting on a phone.",
+   "tech": "One stylesheet with :root tokens, a prefers-color-scheme: dark override, grid layout (290px sidebar), .topic/.two columns (stacked under 1000px), .ref entry styles, SVG flow styles, and code ligatures turned off.",
+   "hash": "173c94419e65"
+  },
+  "tools/docs/build_guide.py::GLOSSARY": {
+   "text": "GovOS's own terms explained (exam record, provenance, VERIFIED, superseded, the admin guard and so on), shown in chapter 2.",
+   "tech": "List of (term, meaning-in-Markdown) pairs rendered with md_inline.",
+   "hash": "20ee06c413a3"
+  },
+  "tools/docs/build_guide.py::INNER_DECL": {
+   "text": "The pattern for a declaration one level inside a component or function (a state pair, a handler, a helper value).",
+   "tech": "Matches two-space-indented const/let/var/function/async function, capturing the target (a name or a [destructured] pair) and the rest of the line.",
+   "hash": "af930eb886c0"
+  },
+  "tools/docs/build_guide.py::INNER_EFFECT": {
+   "text": "The pattern for an effect inside a component (work done after the screen is drawn).",
+   "tech": "Matches a two-space-indented useEffect( or useLayoutEffect(, optionally React.-prefixed.",
+   "hash": "671539e37161"
+  },
+  "tools/docs/build_guide.py::JS": {
+   "text": "The guide's small script: the search box that filters every entry, and links that open the right collapsed section before jumping to an entry.",
+   "tech": "run() toggles .hidden on [data-s] by substring and opens/hides details.ref-group; openTo(id) opens every ancestor <details>, clears a search hiding the target, and scrolls to it; wired to clicks on '#' links, hashchange and the initial hash.",
+   "hash": "43c63bb2f935"
+  },
+  "tools/docs/build_guide.py::KIND_PLAIN": {
+   "text": "A one-line everyday description of each kind of code (component, function, type, state, effect and so on), shown when you hover a kind badge.",
+   "tech": "dict kind -> description; also the prefix of the name-derived fallback text in plain_for.",
+   "hash": "9a0457cc2e6e"
+  },
+  "tools/docs/build_guide.py::OBJ_ARROW": {
+   "text": "The pattern for a method written as 'name: (…) =>' inside an object.",
+   "tech": "Two-space-indented 'name:' followed by an arrow function (optionally async, typed).",
+   "hash": "6b75e6df8f49"
+  },
+  "tools/docs/build_guide.py::OBJ_METHOD": {
+   "text": "The pattern for a method inside a class or an object such as storageService.",
+   "tech": "Two-space-indented name with optional private/public/protected/static/readonly/async/get/set modifiers and generics, followed by a parameter list (and optional return type and brace).",
+   "hash": "fba71cfdd335"
+  },
+  "tools/docs/build_guide.py::OUT": {
+   "text": "Where the finished guide is written: docs/GovOS_Guide.html.",
+   "tech": "os.path.join(ROOT, 'docs', 'GovOS_Guide.html').",
+   "hash": "467ee03f30ae"
+  },
+  "tools/docs/build_guide.py::PLAIN": {
+   "text": "All the stored explanations, loaded once when the script starts.",
+   "tech": "load_plain() at import; --stamp mutates it in place and writes it back.",
+   "hash": "ecede640b37e"
+  },
+  "tools/docs/build_guide.py::PLAIN_PATH": {
+   "text": "Where the plain-language explanations of every declaration are stored: tools/docs/plain.json.",
+   "tech": "Path to the JSON store {version, entries: {'<file>::<name>': {text, tech, hash}}}.",
+   "hash": "a40d9a29ebbc"
+  },
+  "tools/docs/build_guide.py::QUIET": {
+   "text": "Whether the script was asked to stay quiet (used by the automatic hook), printing only when the guide actually changes.",
+   "tech": "True when '--quiet' is in sys.argv; suppresses the 'is current' line and build warnings.",
+   "hash": "6d6c3e41510f"
+  },
+  "tools/docs/build_guide.py::ROOT": {
+   "text": "The project's top folder, worked out from where this script sits, so the guide can be built from anywhere.",
+   "tech": "Absolute path two levels above tools/docs/.",
+   "hash": "2fc5649623a7"
+  },
+  "tools/docs/build_guide.py::TS_DECL": {
+   "text": "The pattern that recognises a top-level declaration in a TypeScript file (a const, function, type, interface, class or enum).",
+   "tech": "Regex at line start with optional export/default/declare/async, capturing the keyword (group 5) and the name (group 6).",
+   "hash": "b824a36d60ac"
+  },
+  "tools/docs/build_guide.py::anchor": {
+   "text": "Turns a name into a safe link target inside the page (lowercase, dashes), so any heading or entry can be linked to.",
+   "tech": "re.sub(r'[^a-z0-9]+', '-', '-'.join(parts).lower()).strip('-').",
+   "hash": "ef75c3c7a6f2"
+  },
+  "tools/docs/build_guide.py::api_calls": {
+   "text": "Finds every server address the page calls, and where.",
+   "tech": "Scans the three frontend files for quoted '/api/...' paths, replaces ${...} with <id>, strips trailing slashes; sorted (path, ['file:line', ...]).",
+   "hash": "96749e92bbac"
+  },
+  "tools/docs/build_guide.py::build": {
+   "text": "Assembles the whole guide: reads the code, indexes every declaration for links, writes the twelve chapters, and returns the finished page with its counts.",
+   "tech": "Scans the five frontend files and every non-test Python file, routes, tables, tests, checks, storage keys and API calls; indexes REF_INDEX and DOC_HEADINGS; renders chapters 1-12 (guide_text STORY, words, start, architecture, flows with FIGURE_STEPS, exam page, frontend, backend, API, data, tests, files and design records); puts the stamp in stats so it stays out of the content hash.",
+   "hash": "6af32dff4ada"
+  },
+  "tools/docs/build_guide.py::clean_comment": {
+   "text": "Strips comment markers (//, /*, *) from the lines written above a declaration, leaving the plain words.",
+   "tech": "Removes /**, */, leading * and // per line, drops '=====' rule lines, collapses 3+ blank lines; returns the stripped text.",
+   "hash": "cdcdfab06693"
+  },
+  "tools/docs/build_guide.py::decorator_text": {
+   "text": "Turns a decorator (like @app.route(...)) back into its source text.",
+   "tech": "ast.unparse(d), '' on failure.",
+   "hash": "28a801324434"
+  },
+  "tools/docs/build_guide.py::describe_file": {
+   "text": "Gives a one-line description of any file, taken from the file's own opening comment or docstring (or a Markdown file's first heading).",
+   "tech": ".py: module docstring's first paragraph; .ts/.tsx/.mjs/.js: leading block comment or // lines (skipping /// references); .md: first heading; capped at 400 chars.",
+   "hash": "1d7e8edc89bb"
+  },
+  "tools/docs/build_guide.py::diagrams": {
+   "text": "Defines the seven flow charts: the whole system, how a fact reaches a candidate, navigation, how 'verified' is decided, saving, Ask GovOS AI, and reading an uploaded scorecard.",
+   "tech": "Returns {architecture, pipeline, navigation, evidence, persistence, ask, upload} -> svg_flow figures with hand-placed coordinates in 1000-wide view boxes.",
+   "hash": "c4e66bf52074"
+  },
+  "tools/docs/build_guide.py::exam_sections": {
+   "text": "Reads the exam page's list of parts and reference parts straight from ui.tsx, so the guide's table of parts always matches the app.",
+   "tech": "Regex over the EXAM_SECTIONS / REFERENCE_SECTIONS array literals: num, label and optional under.",
+   "hash": "d9b37c8f68bc"
+  },
+  "tools/docs/build_guide.py::file_lines": {
+   "text": "Counts the lines in a text file (images, databases and fonts count as zero).",
+   "tech": "read(rel).count('\\n') + 1, 0 for binary extensions or unreadable files.",
+   "hash": "3ccfd3c3feba"
+  },
+  "tools/docs/build_guide.py::first_para": {
+   "text": "Tidies a docstring for display (trims surrounding space).",
+   "tech": "(doc or '').strip().",
+   "hash": "ce8c79a23452"
+  },
+  "tools/docs/build_guide.py::frontend_checks": {
+   "text": "Lists every frontend check file and the names of the checks inside it, with the file's own description.",
+   "tech": "For each tracked tools/frontend_checks/*.ts except fixtures and stub.ts: check('...') names via regex and the leading block comment.",
+   "hash": "94d7b78e534a"
+  },
+  "tools/docs/build_guide.py::git": {
+   "text": "Asks git a question (for example the current commit) and returns the answer, or nothing if git is not available.",
+   "tech": "subprocess.run(['git', *args], cwd=ROOT, capture_output=True, text=True, timeout=30).stdout; OSError/SubprocessError -> ''.",
+   "hash": "2197ca2cb976"
+  },
+  "tools/docs/build_guide.py::index_ref": {
+   "text": "Remembers where a declaration's entry is, so [[name]] links in the hand-written chapter can find it.",
+   "tech": "REF_INDEX.setdefault(name, ref_anchor(rel, name)) -- the first file to declare a name (frontend files are indexed first) wins.",
+   "hash": "59d4acaa92c2"
+  },
+  "tools/docs/build_guide.py::load_plain": {
+   "text": "Loads the stored explanations, or starts empty if the file is missing or broken.",
+   "tech": "json.load(plain.json)['entries'], {} on OSError/ValueError.",
+   "hash": "122895cbcfe7"
+  },
+  "tools/docs/build_guide.py::main": {
+   "text": "Runs the build and writes the guide only if its content changed, so running it again (or committing) creates no noise. It also handles the upkeep commands.",
+   "tech": "build(); prints WARNINGS unless --quiet; --stale/--stamp via plain_maintenance (a rebuild after --stamp); digest = sha256 of the page with the stamp placeholder; skips writing when the old file's content-hash matches; else fills __STAMP__, __GENERATED_AT__ and __HASH__ and writes with LF line endings.",
+   "hash": "6f645e1b260b"
+  },
+  "tools/docs/build_guide.py::md_inline": {
+   "text": "Converts the small inline parts of Markdown (code, links, bold, italic) into HTML, escaping everything else so no text can become markup.",
+   "tech": "Protects `code` spans with \\x00N\\x00 placeholders, html-escapes, then converts [text](url), **bold** and *italic*, and restores the code spans.",
+   "hash": "c2be4722b3fc"
+  },
+  "tools/docs/build_guide.py::md_to_html": {
+   "text": "A small Markdown reader for the project's own documents (CLAUDE.md and the audits): headings, paragraphs, lists, tables, code blocks, quotes and rules, so they appear in full inside the guide.",
+   "tech": "Line-based state machine with a list stack keyed by indent; headings get ids anchor(id_prefix, title) and level <= 3 ones are appended to `toc`; tables need a separator row; fenced code is escaped verbatim. No dependency.",
+   "hash": "99267bd89f05"
+  },
+  "tools/docs/build_guide.py::name_words": {
+   "text": "Turns a code name into ordinary words ('evaluatePostEligibility' becomes 'evaluate post eligibility'), used when no explanation has been written yet.",
+   "tech": "Takes the last segment after ' > ' and '.', splits camelCase and acronym boundaries, replaces underscores with spaces, lower-cases.",
+   "hash": "eec346791654"
+  },
+  "tools/docs/build_guide.py::plain_for": {
+   "text": "Finds the explanation of one declaration and says whether it is current, possibly out of date (the code changed after it was written), or missing (so only the name can be read).",
+   "tech": "Returns (text, tech, state) with state 'ok' | 'stale' | 'name'. Records the current hash in PLAIN_SEEN (first occurrence wins for duplicate names); 'stale' when the stored hash differs from it; with no entry, KIND_PLAIN plus name_words.",
+   "hash": "8273c4a7b16b"
+  },
+  "tools/docs/build_guide.py::plain_key": {
+   "text": "Builds the label an explanation is stored under: the file and the name, joined.",
+   "tech": "f'{rel}::{name}' -- a method is 'Class.method', a component's inner item 'App > name'.",
+   "hash": "5078de28ab53"
+  },
+  "tools/docs/build_guide.py::plain_maintenance": {
+   "text": "The upkeep commands for the explanations: --stamp records the current code fingerprint on new or rewritten explanations; --stale lists explanations whose code has changed, declarations with none, and explanations whose code no longer exists.",
+   "tech": "--stamp sets hash from PLAIN_SEEN where missing and rewrites plain.json sorted; --stale compares stored hashes with PLAIN_SEEN and prints the three lists.",
+   "hash": "97c11db4e06e"
+  },
+  "tools/docs/build_guide.py::practice_engines": {
+   "text": "Reads which practice engine each exam gets, straight from the app's registry, for the guide's table.",
+   "tech": "Regex over the PRACTICE_ENGINES object: each exam id block's engine/component name and label.",
+   "hash": "1f0d286a986f"
+  },
+  "tools/docs/build_guide.py::py_signature": {
+   "text": "Writes out a Python function's name and parameters as they appear in the code.",
+   "tech": "f'{node.name}({ast.unparse(node.args)})', falling back to the bare name.",
+   "hash": "da528b3a2c71"
+  },
+  "tools/docs/build_guide.py::py_tests": {
+   "text": "Lists every Python test and the classes they sit in, with each test's description.",
+   "tech": "For tracked test_*.py: class methods named test* and module-level test* functions, with docstrings and lines; files with no tests are skipped.",
+   "hash": "e7e88b98d621"
+  },
+  "tools/docs/build_guide.py::read": {
+   "text": "Reads a project file as text, given its path from the project's top folder.",
+   "tech": "open(os.path.join(ROOT, rel), encoding='utf-8', errors='replace').read() -- unreadable bytes become replacement characters rather than failing the build.",
+   "hash": "de7269256229"
+  },
+  "tools/docs/build_guide.py::ref_anchor": {
+   "text": "Builds the link target of one reference entry, so the plain chapter can jump straight to it.",
+   "tech": "anchor('ref', rel, name).",
+   "hash": "0a3076f0f22e"
+  },
+  "tools/docs/build_guide.py::ref_entry": {
+   "text": "Builds one entry of the reference: its kind badge, name and line, the explanation in simple words, how it works, a warning if the code changed since it was written, the signature, the notes written in the code, and what it keeps inside.",
+   "tech": "With rel: id = ref_anchor, plain_for(...) for simple/tech/state; with inner: a details 'Inside it: counts' list where methods and main.tsx items get their own anchors and explanations (shared names explained once). data-s carries every searchable word.",
+   "hash": "a72348febfaa"
+  },
+  "tools/docs/build_guide.py::rich": {
+   "text": "Turns the hand-written chapter's light markup into page HTML: paragraphs, lists, bold, code, and links into the reference and the design notes. A link to something that does not exist is reported, not silently printed.",
+   "tech": "Splits on blank lines; '- ' blocks become <ul>. [[name]] -> link to REF_INDEX[name] (else <code> and a WARNINGS entry); {{doc:Heading}} -> link to that CLAUDE.md heading's anchor (warned if not in DOC_HEADINGS). Placeholders \\x01N\\x01 protect the links through md_inline.",
+   "hash": "dd667421a9f3"
+  },
+  "tools/docs/build_guide.py::route_words": {
+   "text": "The one-line description of a route in the API table: its handler's plain explanation if one is written, otherwise the handler's docstring.",
+   "tech": "PLAIN[plain_key(file, func)]['text'] or the docstring's first paragraph.",
+   "hash": "17bb5d19dae3"
+  },
+  "tools/docs/build_guide.py::routes": {
+   "text": "Finds every address the server answers, which handler runs it, whether it needs the owner's admin access, and its explanation.",
+   "tech": "For tracked non-test .py files containing '.route(': walks every function's decorators for <owner>.route(path, methods=[...]); prefixes a Blueprint's url_prefix; admin when decorated admin_required or the body calls admin_denied(). Sorted by path and methods.",
+   "hash": "52c886320303"
+  },
+  "tools/docs/build_guide.py::scan_inner": {
+   "text": "Lists what a screen piece or function keeps inside itself: what it remembers (state), handles (refs), works out once (memos), its handlers and helpers, and its effects, each with its line and the comment above it.",
+   "tech": "Over the declaration's span, at exactly two-space indent: [a, setA] = useState/useReducer -> state named a; useRef -> ref; useMemo/useCallback -> memo; handle*/on* or arrows/functions -> handler; else value; useEffect/useLayoutEffect -> effect. Comments directly above are kept. Each gets end and hash like top-level items.",
+   "hash": "ff5e712e218f"
+  },
+  "tools/docs/build_guide.py::scan_methods": {
+   "text": "Lists the methods of a class or of an object of functions (like storageService), each with its line, the comment above it and its own code fingerprint.",
+   "tech": "Lines at exactly two-space indent matching OBJ_ARROW or OBJ_METHOD (not control keywords) become {kind: method, name, line, doc, sig}; end = line before the next method (or the container's end); hash = span_hash.",
+   "hash": "a9ebd2f9c64c"
+  },
+  "tools/docs/build_guide.py::scan_py": {
+   "text": "Reads one Python file and lists its top-level functions, classes (with their methods) and constants, with signatures, decorators, docstrings and code fingerprints.",
+   "tech": "ast.parse; FunctionDef/AsyncFunctionDef -> function; ClassDef -> class with methods; single-name ALL_CAPS Assign -> constant (value unparsed, <=160 chars). Each has line, end (end_lineno) and hash (span_hash from the first decorator line). A syntax error yields an entry saying so.",
+   "hash": "e2816d59384a"
+  },
+  "tools/docs/build_guide.py::scan_ts": {
+   "text": "Reads one TypeScript file and lists every top-level declaration with its line, kind and the comment above it, grouped under the file's section banners. For screen pieces and functions it also lists what they keep inside; for service objects and classes, their methods.",
+   "tech": "Walks lines tracking block comments and // runs; a banner (rule, title lines, rule) opens a group (title split on ' — '). Each TS_DECL match records name, kind, line, exported, signature (<=220 chars) and doc. Afterwards each item gets end (line before the next declaration), hash (span_hash) and inner (scan_inner for component/function/hook, scan_methods for a class or an object-literal value).",
+   "hash": "53dccb32e8d4"
+  },
+  "tools/docs/build_guide.py::span_hash": {
+   "text": "Makes a short fingerprint of a piece of code. If the code changes, the fingerprint changes, which is how the guide knows an explanation may be out of date.",
+   "tech": "sha1 of the span's lines (rstripped, joined, stripped), first 12 hex characters.",
+   "hash": "ade8ef73466b"
+  },
+  "tools/docs/build_guide.py::sqlite_tables": {
+   "text": "Finds every database table the server creates, with its columns, by reading the CREATE TABLE statements.",
+   "tech": "Regex over non-test .py files for 'CREATE TABLE IF NOT EXISTS name (...)'; columns are non-constraint lines split into name and type; first definition wins; sorted by name.",
+   "hash": "b794cd24d1db"
+  },
+  "tools/docs/build_guide.py::storage_keys": {
+   "text": "Finds every key the app stores in the browser, and where each one is used.",
+   "tech": "Scans services.ts, ui.tsx and main.tsx for quoted 'govos_*' strings; returns sorted (key, ['file:line', ...]).",
+   "hash": "b17b1599451e"
+  },
+  "tools/docs/build_guide.py::svg_flow": {
+   "text": "Draws one flow chart as a picture made of boxes and arrows, inside the page itself, so the diagrams need no image files or internet.",
+   "tech": "Nodes (id, x, y, w, h, text, tone; first text line bold) and edges (from, to, label, opts) with elbow paths whose exit side is horizontal or vertical by geometry or forced with 'h'/'v'; 'dash' dashes the line; labels are pill-shaped; optional dashed groups. Returns <figure class='diagram'> with an SVG and a caption.",
+   "hash": "1256baa861f5"
+  },
+  "tools/docs/build_guide.py::tracked_files": {
+   "text": "Lists every file in the project that git tracks, which is what the guide documents.",
+   "tech": "git ls-files, filtered to files that exist; outside a git checkout it walks the tree, skipping .git, node_modules, dist, __pycache__ and exam_data. Sorted relative paths with forward slashes.",
+   "hash": "caf9575101c6"
+  },
+  "tools/docs/build_guide.py::ts_kind": {
+   "text": "Decides what kind of thing a TypeScript declaration is (screen component, hook, type, constant, function, class or plain value) from how it is written.",
+   "tech": "interface/type/enum -> type; class -> class; use[A-Z] -> hook; capitalised React.FC / function / arrow returning JSX -> component; ALL_CAPS -> constant; arrow or function -> function; else value.",
+   "hash": "a2f134b3bc8f"
+  },
+  "tools/docs/guide_text.py::FIGURE_STEPS": {
+   "text": "The step-by-step explanation in simple words printed under each of the seven flow charts.",
+   "tech": "dict figure key -> rich() text, rendered in a .steps box after the matching svg_flow figure.",
+   "hash": "737f5035ac6d"
+  },
+  "tools/docs/guide_text.py::STORY": {
+   "text": "The hand-written heart of chapter 1: 32 topics, each told in simple words and then under the hood, covering every screen, every part of an exam's page and every mechanism of GovOS.",
+   "tech": "List of (title, id, simple, tech) tuples in the rich() markup; [[name]] links must name a real declaration and {{doc:Heading}} a real CLAUDE.md heading, or the build warns.",
+   "hash": "1775c08dc655"
+  },
+  "tools/docs/guide_text.py::TECH_WORDS": {
+   "text": "Everyday explanations of the technical words the guide uses (React, component, API, database, OCR, hash and so on), shown in chapter 2.",
+   "tech": "List of (word, meaning-in-Markdown) pairs rendered with md_inline.",
+   "hash": "5bd523e2d06d"
+  },
   "tools/exam_authoring/__main__.py::main": {
    "text": "The command-line tool for authoring an exam record from its authority's own documents. You name an exam; it finds the matching authority adapter and exam, reads that authority's pages and notice, runs the isolation checks, and prints what it found, what needs review, what the authority does not publish, and what the tool failed to read. It can also write the record as a TypeScript exam file or as JSON.",
    "tech": "argparse: exam, --json, --pick, --list, --emit. `resolve(exam)` -> adapter (none: lists `supported()`, returns 2); `adapter.discover` (none: 3); lists matches and returns 0 for --list or several matches without --pick; else `adapter.gather(targets[pick or 0])`, `run_all(rec)` (IsolationError: 4). Prints sources and the FOUND / NEEDS REVIEW / NOT PUBLISHED / NOT EXTRACTED lists, foreign mentions and notes. --emit writes `header(rec, rpt)` + `render_exam(rec)` with a low-coverage warning; --json writes ids, sources, log and every field's status/note/value/citation. Returns 0.",
