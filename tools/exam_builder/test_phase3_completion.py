@@ -313,7 +313,11 @@ class TestPhase3Completion(unittest.TestCase):
             # projected. Mock tests still have no verified question source.
             'roadmap': 'SUPPORTED_AND_PROJECTED', 'mock-tests': 'NOT_YET_GENERATED',
             'exam-day': 'SOURCE_NOT_FOUND_AFTER_SEARCH', 'faqs': 'SOURCE_NOT_FOUND_AFTER_SEARCH',
-            'pyqs': 'NOT_YET_PUBLISHED', 'results': 'NOT_YET_PUBLISHED', 'cutoffs': 'NOT_YET_PUBLISHED',
+            # Changed expectation: no paper or cut-off document was found, which is a search that came
+            # up empty, not the authority's own listing showing none -- never "not published yet".
+            # Results stay "not published yet": the builder read that no result is declared.
+            'pyqs': 'SOURCE_NOT_FOUND_AFTER_SEARCH', 'results': 'NOT_YET_PUBLISHED',
+            'cutoffs': 'SOURCE_NOT_FOUND_AFTER_SEARCH',
         }
         for sid, st in want.items():
             self.assertEqual(states[sid]['state'], st, sid)

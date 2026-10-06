@@ -24,6 +24,27 @@ TGPSC = 'exam-websitenew-tgpsc-group-i-2024'
 MANABADI = 'https://www.manabadi.co.in/sourceview/questionpaperlist.aspx?sourceid=1550'
 OFFICIAL_PAGE = 'https://websitenew.tgpsc.gov.in/oldquestionp.jsp'
 
+# TGPSC Group-I is a machine-read exam: it lives in the runtime registry (the exam_registry table), not in
+# data.ts. The server's exam store is built at import against whatever govos.db is there, so these tests used
+# to pass only on a machine whose own database held TGPSC, and failed on a clean checkout. They now carry the
+# one field the source-kind rule reads (its official domain, as the registry record states it).
+FIXTURE_EXAMS = {TGPSC: {'id': TGPSC, 'title': 'TGPSC Group-I Services',
+                         'authorityName': 'Telangana Public Service Commission',
+                         'officialDomain': 'https://websitenew.tgpsc.gov.in'}}
+
+
+class _FixtureStore:
+    """The server's exam store, with this file's fixture exams in front of it."""
+
+    def __init__(self, real):
+        self.real = real
+
+    def get(self, exam_id):
+        return FIXTURE_EXAMS.get((exam_id or '').strip()) or self.real.get(exam_id)
+
+    def __getattr__(self, name):
+        return getattr(self.real, name)
+
 
 class _Base(unittest.TestCase):
     def setUp(self):
@@ -32,11 +53,15 @@ class _Base(unittest.TestCase):
         self._orig_db = govos.DB_FILE
         govos.DB_FILE = self._tmp.name
         govos.init_database()
+        self._hooks = govos._claude_queue().hooks
+        self._orig_store = self._hooks.exam_store
+        self._hooks.exam_store = _FixtureStore(self._orig_store)
         self._orig_check = govos._check_one_link
         govos._check_one_link = lambda url: {'url': url, 'status': 'HEALTHY', 'httpCode': 200, 'checkedAt': 'now'}
         self.client = govos.app.test_client()
 
     def tearDown(self):
+        self._hooks.exam_store = self._orig_store
         govos._check_one_link = self._orig_check
         govos.DB_FILE = self._orig_db
         try:
@@ -50,6 +75,38 @@ class _Base(unittest.TestCase):
     def listed(self, exam_id=None):
         path = '/api/resources/additions' + ('?exam_id=' + exam_id if exam_id else '')
         return self.client.get(path).get_json()['additions']
+
+
+class TestAnAdditionFromResearchNeedsAPromotedFinding(_Base):
+    """Promote is the human gate between research and candidates; the server enforces it, not the UI."""
+
+    def finding(self, url, status):
+        conn = govos.get_db_connection()
+        conn.execute("INSERT OR IGNORE INTO research_runs (id, query, mode) VALUES (1, 'q', 'OFFICIAL')")
+        cur = conn.execute('INSERT INTO research_findings (run_id, title, url, review_status) VALUES (1, ?, ?, ?)',
+                           ('A finding', url, status))
+        conn.commit()
+        fid = cur.lastrowid
+        conn.close()
+        return fid
+
+    def test_a_finding_that_was_not_promoted_does_not_reach_candidates(self):
+        for status in ('PENDING_REVIEW', 'REVIEWED', 'REJECTED'):
+            fid = self.finding(OFFICIAL_PAGE, status)
+            r = self.add({'title': 't', 'url': OFFICIAL_PAGE, 'examId': TGPSC, 'findingId': fid})
+            self.assertEqual(r.status_code, 409, (status, r.get_json()))
+        self.assertEqual(self.listed(TGPSC), [])
+
+    def test_a_promoted_finding_carries_only_its_own_link(self):
+        fid = self.finding(OFFICIAL_PAGE, 'PROMOTED')
+        self.assertEqual(self.add({'title': 't', 'url': MANABADI, 'examId': TGPSC, 'findingId': fid}).status_code, 409)
+        r = self.add({'title': 't', 'url': OFFICIAL_PAGE, 'examId': TGPSC, 'findingId': fid})
+        self.assertEqual(r.status_code, 200, r.get_json())
+        self.assertEqual(r.get_json()['addition']['findingId'], fid)
+
+    def test_an_unknown_or_malformed_finding_is_refused(self):
+        self.assertEqual(self.add({'title': 't', 'url': OFFICIAL_PAGE, 'examId': TGPSC, 'findingId': 999}).status_code, 400)
+        self.assertEqual(self.add({'title': 't', 'url': OFFICIAL_PAGE, 'examId': TGPSC, 'findingId': 'x'}).status_code, 400)
 
 
 class TestAnAdditionBelongsToOneExam(_Base):
@@ -117,6 +174,27 @@ class TestTheSourceKindIsTheServersOwn(_Base):
     def test_an_academic_host_is_trusted_public_not_official(self):
         added = self.add({'title': 'n', 'url': 'https://nptel.ac.in/courses', 'examId': SSC}).get_json()['addition']
         self.assertEqual(added['sourceKind'], 'TRUSTED_PUBLIC')
+
+    def test_official_means_this_exams_authority_not_any_government_host(self):
+        """Officiality is ownership: a .gov.in host is official only for the exam whose authority runs it."""
+        for exam_id, url, kind in ((SSC, 'https://ssc.gov.in/notice.pdf', 'OFFICIAL'),
+                                   ('exam-upsc-cse-2026', 'https://upsc.gov.in/examinations', 'OFFICIAL'),
+                                   ('exam-upsc-cse-2026', 'https://ssc.gov.in/notice.pdf', 'GOVERNMENT_SITE'),
+                                   (SSC, 'https://upsc.gov.in/examinations', 'GOVERNMENT_SITE'),
+                                   (SSC, 'https://pib.gov.in/PressReleasePage.aspx', 'GOVERNMENT_SITE'),
+                                   (TGPSC, OFFICIAL_PAGE, 'OFFICIAL')):
+            with self.subTest(exam=exam_id, url=url):
+                added = self.add({'title': 't', 'url': url, 'examId': exam_id}).get_json()['addition']
+                self.assertEqual(added['sourceKind'], kind)
+                if kind == 'GOVERNMENT_SITE':
+                    self.assertNotEqual(added['resourceFormat'], 'OFFICIAL_PORTAL')
+                    self.assertIn("not this exam's authority's own site", added['description'])
+                    self.assertNotIn('official-domain search', added['description'])
+
+    def test_an_exam_govos_does_not_hold_has_no_official_estate(self):
+        self.assertEqual(govos._addition_source_kind('https://ssc.gov.in/x', 'exam-removed-board-2030'), 'GOVERNMENT_SITE')
+        self.assertEqual(govos._addition_source_kind('https://ssc.gov.in/x', ''), 'GOVERNMENT_SITE')
+        self.assertEqual(govos._addition_source_kind(MANABADI, SSC), 'THIRD_PARTY')
 
     def test_the_source_kind_is_recomputed_on_read_and_never_stored(self):
         self.add({'title': 'Papers', 'url': MANABADI, 'examId': TGPSC})

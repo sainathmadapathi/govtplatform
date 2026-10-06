@@ -22,7 +22,9 @@ Properties, all tested:
 """
 from __future__ import annotations
 
+import collections
 import json
+import logging
 import sqlite3
 import threading
 import time
@@ -57,6 +59,11 @@ class JobStatus(str, Enum):
 
 class QueueFull(RuntimeError):
     pass
+
+
+class ResultNotPersistable(ValueError):
+    """A job's result (or its evidence links / audit) cannot be stored as JSON. Retrying would fail the
+    same way, so the job is finished as FAILED -- never SUCCEEDED with nothing saved."""
 
 
 def init_job_tables(conn: sqlite3.Connection) -> None:
@@ -372,43 +379,87 @@ class JobStore:
         finally:
             conn.close()
 
-    def heartbeat(self, worker_id: str) -> list:
-        """Refresh this worker's running jobs; return the ids that have a cancel request."""
+    def heartbeat(self, worker_id: str, job_ids: Optional[list] = None) -> list:
+        """Refresh this worker's running jobs; return the ids that have a cancel request.
+
+        With `job_ids`, only those jobs are refreshed: the queue passes the jobs its threads are actually
+        executing. A job whose thread died, or whose finalisation could not be written, is then no longer
+        refreshed, goes stale, and `recover_stale` re-queues or fails it. It used to refresh every RUNNING
+        row with this worker id, so such a job was kept "alive" by the process forever and never reclaimed."""
         conn = self._conn()
         try:
-            conn.execute("UPDATE claude_jobs SET heartbeat_at=? WHERE status='RUNNING' AND worker_id=?",
-                         (self._clock(), worker_id))
+            if job_ids is None:
+                scope, args = '', ()
+            elif not job_ids:
+                return []
+            else:
+                scope, args = ' AND id IN (%s)' % ','.join('?' * len(job_ids)), tuple(job_ids)
+            conn.execute("UPDATE claude_jobs SET heartbeat_at=? WHERE status='RUNNING' AND worker_id=?" + scope,
+                         (self._clock(), worker_id) + args)
             return [r[0] for r in conn.execute(
-                "SELECT id FROM claude_jobs WHERE status='RUNNING' AND worker_id=? AND cancel_requested=1",
-                (worker_id,))]
+                "SELECT id FROM claude_jobs WHERE status='RUNNING' AND worker_id=? AND cancel_requested=1" + scope,
+                (worker_id,) + args)]
         finally:
             conn.close()
 
-    def finish(self, job: Job, outcome: JobOutcome, *, status: JobStatus) -> None:
+    @staticmethod
+    def _serialised(outcome: JobOutcome) -> tuple:
+        """The outcome's stored fields, serialised before any transaction opens."""
+        try:
+            return (json.dumps(outcome.result, ensure_ascii=False) if outcome.result is not None else None,
+                    json.dumps(outcome.evidence_links), json.dumps(outcome.audit))
+        except (TypeError, ValueError, RecursionError) as exc:
+            raise ResultNotPersistable(type(exc).__name__) from exc
+
+    # The attempt that holds a job: RUNNING, under this worker id, at this retry count (claiming leaves the
+    # count alone; every requeue and recovery raises it). Only that attempt may finish or requeue the job,
+    # so a worker whose job was reclaimed and re-run meanwhile cannot overwrite the newer attempt's outcome.
+    _OWNER = "id=? AND status='RUNNING' AND worker_id=? AND retry_count=?"
+
+    def finish(self, job: Job, outcome: JobOutcome, *, status: JobStatus) -> bool:
+        """Write a terminal state. False (nothing written) when this attempt no longer holds the job."""
+        result_json, links_json, audit_json = self._serialised(outcome)
         conn = self._conn()
         try:
             conn.execute('BEGIN IMMEDIATE')
-            conn.execute(
+            cur = conn.execute(
                 'UPDATE claude_jobs SET status=?, result_json=?, error_category=?, error_message=?, '
-                'template_version=?, finished_at=?, evidence_links_json=?, audit_json=?, stage=? WHERE id=?',
-                (status.value, json.dumps(outcome.result, ensure_ascii=False) if outcome.result is not None else None,
-                 outcome.error_category, outcome.error_message[:300], outcome.template_version, now_iso(),
-                 json.dumps(outcome.evidence_links), json.dumps(outcome.audit), status.value, job.id))
-            self._event(conn, job.id, status.value, outcome.error_category)
+                'template_version=?, finished_at=?, evidence_links_json=?, audit_json=?, stage=? WHERE ' + self._OWNER,
+                (status.value, result_json, str(outcome.error_category or ''), str(outcome.error_message or '')[:300],
+                 str(outcome.template_version or ''), now_iso(), links_json, audit_json, status.value,
+                 job.id, job.worker_id, job.retry_count))
+            if cur.rowcount:
+                self._event(conn, job.id, status.value, str(outcome.error_category or ''))
             conn.execute('COMMIT')
+            return bool(cur.rowcount)
         finally:
             conn.close()
 
-    def requeue(self, job: Job, delay: float, reason: str) -> None:
+    def requeue(self, job: Job, delay: float, reason: str) -> bool:
+        """Queue a retry. False (nothing written) when this attempt no longer holds the job."""
         conn = self._conn()
         try:
             conn.execute('BEGIN IMMEDIATE')
-            conn.execute("UPDATE claude_jobs SET status='QUEUED', retry_count=retry_count+1, not_before=?, "
-                         "stage='', worker_id='' WHERE id=?", (self._clock() + delay, job.id))
-            self._event(conn, job.id, 'RETRY_SCHEDULED', reason)
+            cur = conn.execute("UPDATE claude_jobs SET status='QUEUED', retry_count=retry_count+1, not_before=?, "
+                               "stage='', worker_id='' WHERE " + self._OWNER,
+                               (self._clock() + delay, job.id, job.worker_id, job.retry_count))
+            if cur.rowcount:
+                self._event(conn, job.id, 'RETRY_SCHEDULED', reason)
             conn.execute('COMMIT')
+            return bool(cur.rowcount)
         finally:
             conn.close()
+
+    def note(self, job_id: str, event: str, detail: str = '') -> None:
+        """Record an event on a job's trail, best effort: called while handling a failure, so it never raises."""
+        try:
+            conn = self._conn()
+            try:
+                self._event(conn, job_id, event, detail)
+            finally:
+                conn.close()
+        except Exception:                                           # noqa: BLE001
+            pass
 
     def request_cancel(self, job_id: str) -> Optional[Job]:
         """Cancel a queued job now; flag a running one (the worker kills its CLI process)."""
@@ -483,6 +534,11 @@ class JobStore:
 
 # ------------------------------------------------------------------------------- queue
 RETRY_BACKOFF_SECONDS = (5.0, 20.0, 60.0)
+#: A finalisation that cannot be written (the database locked past its 30 s timeout) is tried again after
+#: these pauses; after that the job is left to `recover_stale`, which reclaims it once it goes stale.
+FINALISE_RETRY_SECONDS = (0.5, 2.0)
+
+_log = logging.getLogger('govos.jobs')
 
 
 class JobQueue:
@@ -501,6 +557,12 @@ class JobQueue:
         self.worker_id = f'w-{uuid.uuid4().hex[:10]}'
         self._clock = clock
         self._started = False
+        #: Jobs a thread of this queue is executing right now -- the only ones the heartbeat keeps alive --
+        #: counted per attempt: a reclaimed job's old attempt finishing must not drop its new attempt.
+        self._active: collections.Counter = collections.Counter()
+        #: The last failures the workers contained (newest last), for diagnosis; never job input or output.
+        self.incidents: collections.deque = collections.deque(maxlen=50)
+        self._sleep = time.sleep
 
     # ----------------------------------------------------------------------- submit
     def submit(self, operation: str, payload: dict, *, exam_id: str = '', cycle: str = '',
@@ -548,33 +610,70 @@ class JobQueue:
             self._threads.clear()
             self._started = False
 
+    def _incident(self, where: str, exc: BaseException, job_id: str = '') -> None:
+        """Record a contained failure: logged, kept in `incidents`, and on the job's own event trail.
+        Called from the worker's last line of defence, so it never raises itself."""
+        detail = f'{where}: {type(exc).__name__}'
+        try:
+            self.incidents.append({'at': now_iso(), 'where': where, 'error': type(exc).__name__, 'jobId': job_id})
+            _log.error('job worker contained %s%s', detail, f' (job {job_id})' if job_id else '', exc_info=exc)
+        except Exception:                                           # noqa: BLE001
+            pass
+        if job_id:
+            self.store.note(job_id, 'WORKER_ERROR', detail)
+
     def _loop(self) -> None:
+        """One worker. Nothing a job, the database or this code raises may end it: a worker that died used
+        to leave its job RUNNING and every later job waiting for a thread that no longer existed."""
         while not self._stop.is_set():
             try:
                 job = self.store.claim_next(self.worker_id)
-            except sqlite3.Error:
-                time.sleep(1.0)
+            except Exception as exc:                                # noqa: BLE001 - sqlite or anything else
+                if not isinstance(exc, sqlite3.Error):
+                    self._incident('claim', exc)
+                self._sleep(1.0)
                 continue
             if job is None:
                 self._wake.wait(timeout=1.0)
                 self._wake.clear()
                 continue
-            self._execute(job)
+            try:
+                self._execute(job)
+            except Exception as exc:                                # noqa: BLE001 - last line of defence
+                # _execute contains its own failures; this is for a bug there. The job is no longer in
+                # _active, so the heartbeat stops and recover_stale reclaims it within its retry budget.
+                self._incident('execute', exc, job.id)
 
     def _housekeeping(self) -> None:
         last_purge = 0.0
         while not self._stop.wait(HEARTBEAT_SECONDS):
-            try:
-                for job_id in self.store.heartbeat(self.worker_id):
-                    ev = self._cancels.get(job_id)
-                    if ev is not None:
-                        ev.set()
-                self.store.recover_stale()
-                if self._clock() - last_purge > 600:
-                    self.store.purge_candidate_data()
-                    last_purge = self._clock()
-            except sqlite3.Error:
-                pass
+            last_purge = self._housekeeping_tick(last_purge)
+
+    def _housekeeping_tick(self, last_purge: float) -> float:
+        """One round: heartbeat the jobs being executed, recover stale ones, purge old candidate data.
+
+        Each step on its own, and none may end the loop: a failed heartbeat must not skip recovery (it
+        used to catch only sqlite errors, and with the loop gone no stale job was ever recovered again)."""
+        try:
+            with self._lock:
+                active = sorted(j for j, n in self._active.items() if n > 0)
+            for job_id in self.store.heartbeat(self.worker_id, active):
+                ev = self._cancels.get(job_id)
+                if ev is not None:
+                    ev.set()
+        except Exception as exc:                                    # noqa: BLE001
+            self._incident('heartbeat', exc)
+        try:
+            self.store.recover_stale()
+        except Exception as exc:                                    # noqa: BLE001
+            self._incident('recover', exc)
+        try:
+            if self._clock() - last_purge > 600:
+                self.store.purge_candidate_data()
+                last_purge = self._clock()
+        except Exception as exc:                                    # noqa: BLE001
+            self._incident('purge', exc)
+        return last_purge
 
     def cancel(self, job_id: str) -> Optional[Job]:
         """Cancel a job now. A queued job is cancelled at once; for one running in THIS process the cancel
@@ -593,7 +692,10 @@ class JobQueue:
             job = self.store.claim_next(self.worker_id)
             if job is None:
                 break
-            self._execute(job)
+            try:
+                self._execute(job)
+            except Exception as exc:                                # noqa: BLE001
+                self._incident('execute', exc, job.id)
             done += 1
         return done
 
@@ -603,22 +705,65 @@ class JobQueue:
         cancel = threading.Event()
         if job.cancel_requested:
             cancel.set()
+        with self._lock:
+            self._active[job.id] += 1
         self._cancels[job.id] = cancel
         outcome: JobOutcome
         try:
-            if spec is None:
-                outcome = JobOutcome('FAILED', error_category='UNKNOWN_OPERATION',
-                                     error_message='This job type is no longer supported.')
-            else:
-                ctx = JobContext(job, self.db_path, cancel, self.hooks, self.store)
-                with job_scope(job.id, cancel):
-                    outcome = spec.handler(ctx)
-        except Exception:                                        # noqa: BLE001
-            outcome = JobOutcome('FAILED', error_category='INTERNAL',
-                                 error_message='The job failed unexpectedly.')
+            try:
+                if spec is None:
+                    outcome = JobOutcome('FAILED', error_category='UNKNOWN_OPERATION',
+                                         error_message='This job type is no longer supported.')
+                else:
+                    ctx = JobContext(job, self.db_path, cancel, self.hooks, self.store)
+                    with job_scope(job.id, cancel):
+                        outcome = spec.handler(ctx)
+                if not isinstance(outcome, JobOutcome) or outcome.status not in ('SUCCEEDED', 'FAILED', 'CANCELLED'):
+                    raise TypeError('the handler returned no valid outcome')
+            except Exception as exc:                                # noqa: BLE001
+                _log.warning('job %s handler raised %s', job.id, type(exc).__name__)
+                outcome = JobOutcome('FAILED', error_category='INTERNAL',
+                                     error_message='The job failed unexpectedly.')
+            finally:
+                self._cancels.pop(job.id, None)
+            self._finalise_safely(job, outcome, cancel)
         finally:
-            self._cancels.pop(job.id, None)
-        self._finalise(job, outcome, cancel)
+            with self._lock:
+                self._active[job.id] -= 1
+                if self._active[job.id] <= 0:
+                    del self._active[job.id]
+
+    def _finalise_safely(self, job: Job, outcome: JobOutcome, cancel: threading.Event) -> bool:
+        """Finalise, containing every failure; True once a state was written (or the job was not ours).
+
+        - A result that cannot be stored as JSON: finished as FAILED / RESULT_NOT_SAVED (never SUCCEEDED).
+        - A database error (locked past its timeout): tried again after FINALISE_RETRY_SECONDS.
+        - Anything else (a bug): finished as FAILED / INTERNAL instead.
+        If nothing can be written, the job stays RUNNING but leaves `_active`, so the heartbeat no longer
+        refreshes it and `recover_stale` re-queues it (within its retry budget) or fails it as INTERRUPTED
+        once it goes stale -- the same path as a worker that crashed. Never raises."""
+        pauses = list(FINALISE_RETRY_SECONDS)
+        while True:
+            try:
+                self._finalise(job, outcome, cancel)
+                return True
+            except ResultNotPersistable as exc:
+                self._incident('finalise', exc, job.id)
+                outcome = JobOutcome('FAILED', error_category='RESULT_NOT_SAVED',
+                                     error_message='The job finished but its result could not be saved.')
+                continue
+            except sqlite3.Error as exc:
+                if not pauses:
+                    self._incident('finalise', exc, job.id)
+                    return False
+                self._sleep(pauses.pop(0))
+                continue
+            except Exception as exc:                                # noqa: BLE001
+                self._incident('finalise', exc, job.id)
+                if outcome.error_category == 'INTERNAL' and outcome.status == 'FAILED':
+                    return False                                    # already the simplest outcome; leave it to recovery
+                outcome = JobOutcome('FAILED', error_category='INTERNAL',
+                                     error_message='The job failed unexpectedly.')
 
     def _finalise(self, job: Job, outcome: JobOutcome, cancel: threading.Event) -> None:
         fresh = self.store.get(job.id) or job

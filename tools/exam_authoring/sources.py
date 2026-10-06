@@ -15,11 +15,8 @@ import hashlib
 import json
 import os
 import re
-import ssl
 import time
-import urllib.error
 import urllib.parse
-import urllib.request
 from dataclasses import dataclass, field
 from html import unescape
 from typing import Optional
@@ -37,6 +34,15 @@ _UA = {
 # failure is recorded rather than silently treated as "no such document".
 _RETRIES = 3
 _TIMEOUT = 45
+#: The largest document read: an official notice is a few MB (UPSC CSE 2026's 159-page notice, SSC CGL
+#: 2026's 132 pages); a scanned question booklet runs to tens of MB. A larger file is refused, never read
+#: in part -- half a notice is a document that "does not mention" what is on its missing pages.
+SOURCE_MAX_BYTES = 40 * 1024 * 1024
+#: The whole download, beyond the per-operation _TIMEOUT: a host that trickles bytes cannot hold a build.
+SOURCE_MAX_SECONDS = 180
+#: Failures worth another attempt: a slow or flaky government host. A refused address, a certificate that
+#: does not verify, an HTTP error or an oversized file will not change on retry.
+_RETRYABLE = ('TIMEOUT', 'NETWORK')
 
 
 class FetchError(RuntimeError):
@@ -133,9 +139,19 @@ def _encoded(url: str) -> str:
 
 
 def fetch(url: str, *, use_cache: bool = True, max_age_hours: int = 24) -> bytes:
-    """Get a document's bytes, retrying before declaring it unreachable."""
-    blob = _cache_path(url, '.bin')
-    meta = _cache_path(url, '.json')
+    """Get a document's bytes, retrying before declaring it unreachable.
+
+    Through GovOS's one guarded fetch (`claude_cli.discovery.fetch_checked`): every hop validated and
+    resolved to a public address before connecting, TLS certificates and host names verified, each
+    socket operation and the whole download time-bounded, at most SOURCE_MAX_BYTES read. It used to
+    open the URL with certificate checks switched off, follow any redirect anywhere (a private address,
+    ftp:) and read without limit; a URL with no scheme or a file: one is now refused, never read from disk.
+    The cache holds only what this guarded fetch returned (`.checked.*`; nothing fetched the old way is reused).
+    """
+    from ..claude_cli.discovery import fetch_checked
+
+    blob = _cache_path(url, '.checked.bin')
+    meta = _cache_path(url, '.checked.json')
     if use_cache and os.path.exists(blob) and os.path.exists(meta):
         try:
             info = json.load(open(meta, encoding='utf-8'))
@@ -144,27 +160,32 @@ def fetch(url: str, *, use_cache: bool = True, max_age_hours: int = 24) -> bytes
         except Exception:
             pass
 
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
-
     # Requested with its path encoded; cached under the URL as the authority wrote it.
-    requested = _encoded(url)
+    try:
+        requested = _encoded(url)
+    except ValueError as exc:                       # "http://[x/": a malformed address is a FetchError like any other
+        raise FetchError(f'{url} could not be fetched after 0 attempts: not a valid web address ({type(exc).__name__})') from exc
 
-    last = None
+    last = ''
+    attempts = 0
     for attempt in range(_RETRIES):
-        try:
-            req = urllib.request.Request(requested, headers=_UA)
-            with urllib.request.urlopen(req, timeout=_TIMEOUT, context=ctx) as resp:
-                data = resp.read()
+        attempts += 1
+        result = fetch_checked(requested, timeout=_TIMEOUT, max_bytes=SOURCE_MAX_BYTES, keep_body=True,
+                               max_seconds=SOURCE_MAX_SECONDS, headers=_UA)
+        if result.ok and result.truncated:
+            raise FetchError(f'{url} is larger than {SOURCE_MAX_BYTES // (1024 * 1024)} MB, so it was not read')
+        if result.ok:
+            data = result.body
             os.makedirs(CACHE_DIR, exist_ok=True)
             open(blob, 'wb').write(data)
-            json.dump({'url': url, 'ts': time.time()}, open(meta, 'w', encoding='utf-8'))
+            json.dump({'url': url, 'ts': time.time(), 'final_url': result.final_url}, open(meta, 'w', encoding='utf-8'))
             return data
-        except Exception as exc:                      # noqa: BLE001 - reported, not hidden
-            last = exc
-            time.sleep(1.5 * (attempt + 1))
-    raise FetchError(f'{url} could not be fetched after {_RETRIES} attempts: {last!r}')
+        last = (f'the TLS certificate could not be verified ({result.error})' if result.error_kind == 'TLS'
+                else result.error or f'HTTP {result.status}')
+        if not (result.error_kind in _RETRYABLE or (result.error_kind == 'HTTP' and result.status >= 500)):
+            break
+        time.sleep(1.5 * (attempt + 1))
+    raise FetchError(f'{url} could not be fetched after {attempts} attempt{"s" if attempts > 1 else ""}: {last}')
 
 
 def pdf_text(text: str) -> str:
@@ -197,12 +218,14 @@ def unreadable_text(text: str) -> bool:
 
 def load_pdf(url: str, **kw) -> Document:
     """A PDF as per-page text. A scanned PDF is reported as scanned, never as empty."""
+    return pdf_document(url, fetch(url, **kw))
+
+
+def pdf_document(url: str, data: bytes) -> Document:
+    """A PDF already in hand, as per-page text. Parses the bytes it is given; nothing here fetches."""
     import pypdfium2 as pdfium
 
-    data = fetch(url, **kw)
-    path = _cache_path(url, '.pdf')
-    open(path, 'wb').write(data)
-    doc = pdfium.PdfDocument(path)
+    doc = pdfium.PdfDocument(data)
     pages = []
     for i in range(len(doc)):
         try:
@@ -227,7 +250,11 @@ _SCRIPT = re.compile(r'<(script|style)[^>]*>.*?</\1>', re.S | re.I)
 
 
 def load_html(url: str, **kw) -> Document:
-    data = fetch(url, **kw)
+    return html_document(url, fetch(url, **kw))
+
+
+def html_document(url: str, data: bytes) -> Document:
+    """An HTML page already in hand, as text (and its markup, for links and tables). Nothing here fetches."""
     html = data.decode('utf-8', 'replace')
     body = _SCRIPT.sub(' ', html)
     text = ' '.join(unescape(_TAG.sub(' ', body)).split())
@@ -296,10 +323,14 @@ def load_document(url: str, **kw) -> Document:
 
     Authorities serve PDFs behind viewer routes with no extension ("/preview/<token>"), and
     reading one of those as HTML yields no text at all -- which then reads as "the document
-    names no examination". The bytes are fetched once and the PDF magic decides; `load_pdf`
-    re-reads them from the cache.
+    names no examination". The bytes are fetched once and the PDF magic decides.
     """
-    data = fetch(url, **kw)
+    return document_from_bytes(url, fetch(url, **kw))
+
+
+def document_from_bytes(url: str, data: bytes) -> Document:
+    """A document from bytes already fetched (by the guarded fetch): a PDF by its magic, else HTML.
+    `url` is only the citation it keeps; nothing here touches the network."""
     if data[:5] == b'%PDF-':
-        return load_pdf(url, **kw)
-    return load_html(url, **kw)
+        return pdf_document(url, data)
+    return html_document(url, data)

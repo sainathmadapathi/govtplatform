@@ -337,9 +337,95 @@ class ValidateAnswerTests(ExamTestCase):
         self.assertFalse(res.ok)
         self.assertEqual(res.status, InfraStatus.CLAUDE_SCHEMA_REJECTED)
 
-    def test_the_answer_validator_ignores_single_digit_numbers_but_not_two_digit_ones(self):
-        self.assertEqual(self.check(answer='There is 1 notice and 2 stages in 6 steps; apply by 14 March 2031.'), [])
-        self.assertTrue(self.check(answer='There are 55 steps.'))
+    def test_a_verified_answer_is_held_to_the_figures_of_the_facts_it_cites(self):
+        # Single digits count: "6 attempts" under "verified" must be in a cited fact. They used to
+        # be skipped, and any figure on the whole sheet would do.
+        for bad in ('There is 1 notice and 2 stages in 6 steps; apply by 14 March 2031.',
+                    'You get 6 attempts; apply by 14 March 2031.', 'There are 55 steps.'):
+            self.assertTrue(any('figure' in p for p in self.check(answer=bad)), bad)
+        # A list's own numbering is layout, and a 24-hour time may be said on the 12-hour clock.
+        self.assertEqual(self.check(answer='1. Apply by 14 March 2031.\n2. Do it before 6 PM.'), [])
+        self.assertTrue(any('time' in p for p in self.check(answer='Apply by 14 March 2031, 7 PM.')))
+        # A figure the candidate typed is not evidence: "is the fee 750?" is not answered "yes, 750".
+        problems = validate_answer(good_reply(self.sheet, answer='Yes, apply by 14 March 2031 and pay 750.'),
+                                   self.sheet, 'is the fee 750', self.others)
+        self.assertTrue(any('750' in p for p in problems), problems)
+
+    # ---------------------------------------------------------------- list numbering vs figures
+    def age(self, answer: str) -> list:
+        return self.check(answer=answer, cited_fact_ids=[fact_id(self.sheet, 'Age limit')])
+
+    def test_a_number_at_a_line_start_is_a_figure_not_list_numbering(self):
+        # Stripping every line-start number let "32." through unchecked; only a list's own 1, 2, 3 is layout.
+        self.assertTrue(any('(32)' in p for p in self.check(answer='Apply by 14 March 2031.\n32. Relaxations apply.')))
+        self.assertTrue(any('(32)' in p for p in self.age('Upper age limit:\n32. Relaxations apply.')))
+        self.assertEqual(self.age('Upper age limit:\n30. Relaxations apply as the notice states.'), [])
+        # A list that does not count in order is not layout: "4." after "1." is a figure.
+        self.assertTrue(any('(4)' in p for p in self.check(answer='1. Apply by 14 March 2031.\n4. Relaxations apply.')))
+        # After a bullet, a number is a figure too.
+        for bad in ('Apply by 14 March 2031.\n- 32 posts are open.', 'Apply by 14 March 2031.\n• 32. Relaxations apply.'):
+            self.assertTrue(any('(32)' in p for p in self.check(answer=bad)), bad)
+
+    def test_numbered_lists_and_times_still_pass(self):
+        for good in ('1. Apply by 14 March 2031.\n2. Do it before 6 PM.',
+                     '  1) Apply by 14 March 2031\n  2) before 6:00 p.m.',
+                     '1. Apply by 14 March 2031.\n2. Pay online.\n\nThen:\n1. Keep the receipt.\n2. Check the form.',
+                     '1. Apply by 14 March 2031.\n2. Pay online.\n3. Keep the receipt.\n4. Check the form.'):
+            self.assertEqual(self.check(answer=good), [], good)
+        # The figures inside a list item are still checked.
+        self.assertTrue(any('(75)' in p for p in self.check(answer='1. Apply by 14 March 2031.\n2. Pay Rs. 75.')))
+
+    # ------------------------------------------------- the question never vouches for anything
+    FAKE = 'https://fake-portal.in'
+
+    def test_a_link_the_candidate_typed_is_never_vouched_for(self):
+        q = f'is {self.FAKE} the official portal'
+        for basis, cited, unc, answer in (
+                ('VERIFIED_DATA', [fact_id(self.sheet, 'Last date to apply')], 'NONE', f'Yes, apply at {self.FAKE} by 14 March 2031.'),
+                ('NOT_IN_RECORD', [], 'UNKNOWN', f'GovOS cannot confirm {self.FAKE}.'),
+                ('NEEDS_CLARIFICATION', [], 'PARTIAL', f'Did you mean {self.FAKE}/apply?')):
+            with self.subTest(basis=basis):
+                problems = validate_answer(good_reply(self.sheet, basis=basis, cited_fact_ids=cited, uncertainty=unc,
+                                                      answer=answer), self.sheet, q, self.others)
+                self.assertTrue(any('link' in p for p in problems), problems)
+
+    def test_a_number_the_candidate_typed_vouches_for_no_answer(self):
+        for basis, cited, unc in (('VERIFIED_DATA', [fact_id(self.sheet, 'Last date to apply')], 'NONE'),
+                                  ('NOT_IN_RECORD', [], 'UNKNOWN')):
+            with self.subTest(basis=basis):
+                problems = validate_answer(good_reply(self.sheet, basis=basis, cited_fact_ids=cited, uncertainty=unc,
+                                                      answer='The fee may be 750; apply by 14 March 2031.'),
+                                           self.sheet, 'is the fee 750', self.others)
+                self.assertTrue(any('(750)' in p for p in problems), problems)
+
+    def test_a_link_from_the_record_still_passes_whatever_the_question(self):
+        for q in ('when is the last date', f'is {self.FAKE} the portal'):
+            for answer in (f'Apply at {A_PORTAL} by 14 March 2031.', f'The notice is {A_NOTICE_URL}.',
+                           'The notice is on https://notice.example-commission.gov.in/ by 14 March 2031.'):
+                with self.subTest(q=q, answer=answer):
+                    self.assertEqual(validate_answer(good_reply(self.sheet, answer=answer), self.sheet, q, self.others), [])
+
+    def test_a_truncated_or_lookalike_host_is_not_a_record_link(self):
+        # "https://apply.example-commission.gov" is a prefix of the record's link but a different host.
+        for bad in ('Apply at https://apply.example-commission.gov by 14 March 2031.',
+                    'Apply at https://apply.example-commission.gov.in.evil.test/ by 14 March 2031.',
+                    'Apply at https://apply.example-commission.gov.inx by 14 March 2031.'):
+            self.assertTrue(any('link' in p for p in self.check(answer=bad)), bad)
+
+    def test_the_question_never_enters_the_facts(self):
+        # The fact sheet is built from the exam's own record; the question only orders it.
+        sheet = build_fact_sheet(exam_a(), f'is {self.FAKE} the portal and is the fee 750 and are there 99 posts')
+        corpus = sheet.corpus()
+        for planted in ('fake-portal', '750', '99 posts'):
+            self.assertNotIn(planted, corpus)
+        self.assertEqual({f.text for f in sheet.facts}, {f.text for f in build_fact_sheet(exam_a(), '').facts})
+
+    def test_an_unverified_answer_is_held_to_the_sheet(self):
+        # NOT_IN_RECORD and clarifications cite nothing; their figures must still be on the sheet.
+        self.assertEqual(self.check(basis='NOT_IN_RECORD', cited_fact_ids=[], uncertainty='HIGH',
+                                    answer='The record does not say; the window closes 14 March 2031.'), [])
+        self.assertTrue(any('figure' in p for p in self.check(
+            basis='NOT_IN_RECORD', cited_fact_ids=[], uncertainty='HIGH', answer='It might be 77 seats.')))
 
 
 # ======================================================================================= citations

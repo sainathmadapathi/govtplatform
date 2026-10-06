@@ -152,8 +152,14 @@ class FetchResult:
     error: str = ''
     #: SHA-256 (first 24 hex) of the bytes read, so one file reached at two addresses is one file.
     content_hash: str = ''
-    #: True when the body reached `max_bytes`: the hash then covers the first `max_bytes` only.
+    #: True when the body was longer than `max_bytes`: the hash then covers the first `max_bytes` only.
     truncated: bool = False
+    #: The bytes read (at most `max_bytes`), only when the caller asked to keep them (`keep_body=True`):
+    #: a caller that parses the document reads these, and never fetches the URL a second time.
+    body: bytes = field(default=b'', repr=False)
+    #: Why it failed, as a category: BLOCKED (an address refused before connecting), TLS (certificate or
+    #: handshake), TIMEOUT, NETWORK, HTTP (a status >= 300 with no usable redirect), REDIRECTS (too many).
+    error_kind: str = ''
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -161,47 +167,85 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
+def _error_kind(exc: BaseException) -> str:
+    reason = getattr(exc, 'reason', exc)
+    if isinstance(reason, (ssl.SSLError, ssl.CertificateError)) or isinstance(exc, (ssl.SSLError, ssl.CertificateError)):
+        return 'TLS'
+    if isinstance(reason, (socket.timeout, TimeoutError)) or isinstance(exc, (socket.timeout, TimeoutError)):
+        return 'TIMEOUT'
+    return 'NETWORK'
+
+
 def fetch_checked(url: str, *, timeout: float = FETCH_TIMEOUT, max_bytes: int = FETCH_MAX_BYTES,
-                  resolver: Optional[Callable] = None) -> FetchResult:
-    """GET `url`, following up to MAX_REDIRECTS redirects, re-validating every hop."""
+                  resolver: Optional[Callable] = None, keep_body: bool = False,
+                  max_seconds: Optional[float] = None, headers: Optional[dict] = None) -> FetchResult:
+    """GET `url`, following up to MAX_REDIRECTS redirects, re-validating every hop.
+
+    Every hop must pass `validate_url_syntax` (http(s), port 80/443, no IP literal, no local name, no
+    credentials) and `resolves_public` before anything connects to it. TLS certificates and host names are
+    verified (the default context). `timeout` bounds each socket operation and `max_seconds` (default four
+    times it) the whole download; at most `max_bytes` are read, and `truncated` says when there was more.
+    With `keep_body` the bytes read are returned for the caller to parse, so it never fetches again."""
     out = FetchResult()
+    deadline_budget = max_seconds if max_seconds is not None else timeout * 4
     ctx = ssl.create_default_context()
     opener = urllib.request.build_opener(_NoRedirect, urllib.request.HTTPSHandler(context=ctx))
     current = url
     for _ in range(MAX_REDIRECTS + 1):
         ok, why = validate_url_syntax(current)
         if not ok:
-            out.error = f'blocked hop: {why}'
+            out.error, out.error_kind = f'blocked hop: {why}', 'BLOCKED'
             return out
         public, why = resolves_public(urlparse(current).hostname or '', resolver)
         if not public:
-            out.error = f'blocked hop: {why}'
+            out.error, out.error_kind = f'blocked hop: {why}', 'BLOCKED'
             return out
         out.hops.append(current)
         req = urllib.request.Request(current, headers={
-            'User-Agent': 'Mozilla/5.0 (GovOS source check)', 'Accept': 'text/html,application/pdf,*/*;q=0.5'})
+            'User-Agent': 'Mozilla/5.0 (GovOS source check)', 'Accept': 'text/html,application/pdf,*/*;q=0.5',
+            **(headers or {})})
         try:
             with opener.open(req, timeout=timeout) as resp:
                 out.status = resp.getcode()
                 out.final_url = current
                 out.content_type = (resp.headers.get('Content-Type') or '').split(';')[0].strip().lower()
-                body = resp.read(max_bytes)
+                # Read in chunks, one byte past the limit (so "exactly max_bytes" is not "truncated"), and
+                # stop when the whole download overruns its time: a slow drip cannot hold the request.
+                deadline = time.monotonic() + deadline_budget
+                # read1 returns what has arrived (one socket read), where read(n) would block until n
+                # bytes came -- so a server trickling bytes would never reach the deadline check.
+                read_some = getattr(resp, 'read1', None) or resp.read
+                chunks, got = [], 0
+                while got <= max_bytes:
+                    chunk = read_some(min(64 * 1024, max_bytes + 1 - got))
+                    if not chunk:
+                        break
+                    chunks.append(chunk)
+                    got += len(chunk)
+                    if time.monotonic() > deadline:
+                        out.error, out.error_kind = 'download took too long', 'TIMEOUT'
+                        return out
+                body = b''.join(chunks)
+                out.truncated = len(body) > max_bytes
+                body = body[:max_bytes]
                 out.ok = 200 <= out.status < 300
                 out.content_hash = hashlib.sha256(body).hexdigest()[:24] if body else ''
-                out.truncated = len(body) >= max_bytes
+                if keep_body:
+                    out.body = body
                 if 'html' in out.content_type or out.content_type.startswith('text/'):
                     out.text = body.decode('utf-8', 'replace')
                 return out
         except urllib.error.HTTPError as e:
             if e.code in (301, 302, 303, 307, 308) and e.headers.get('Location'):
-                current = urljoin(current, e.headers['Location'])
+                # As urllib's own redirect handler does: a space in a Location is a %20.
+                current = urljoin(current, e.headers['Location'].strip().replace(' ', '%20'))
                 continue
-            out.status, out.final_url, out.error = e.code, current, f'HTTP {e.code}'
+            out.status, out.final_url, out.error, out.error_kind = e.code, current, f'HTTP {e.code}', 'HTTP'
             return out
         except Exception as e:                                  # noqa: BLE001
-            out.final_url, out.error = current, type(e).__name__
+            out.final_url, out.error, out.error_kind = current, type(e).__name__, _error_kind(e)
             return out
-    out.error = 'too many redirects'
+    out.error, out.error_kind = 'too many redirects', 'REDIRECTS'
     return out
 
 

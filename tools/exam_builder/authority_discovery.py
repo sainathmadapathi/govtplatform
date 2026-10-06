@@ -43,7 +43,7 @@ from .resource_roles import (REPOSITORY_WORDS, SECTION_FOR_ROLE, classify_link, 
                              is_learning)
 from .source_graph import (DiscoveryLimits, DiscoveryRun, EdgeKind, NodeStatus, NodeType, SearchState, SkipReason,
                            SourceClass, SourceGraph, SourceNode, coverage_report, normalize_url, now_iso,
-                           role_search_state, url_key)
+                           role_by_claude, role_search_state, url_key, CLAUDE_ROLE_REASON)
 from .source_trust import TrustRegistry, bare_host, classify_source, is_social, is_video, source_ownership
 
 #: Roles whose page, when it lists many items, is a repository of that role.
@@ -635,7 +635,7 @@ def classify_ambiguous(run: DiscoveryRun, gateway) -> None:
             continue
         node = candidates[idx]
         node.role = DocKind(role)
-        node.role_reason = 'classified by Claude from its text and address (the source class is GovOS’s own rule)'
+        node.role_reason = CLAUDE_ROLE_REASON
         if row.get('is_repository') and node.node_type in (NodeType.PAGE, NodeType.LINK):
             node.notes.append('Claude reads it as a repository page')
         applied += 1
@@ -650,10 +650,12 @@ class Admission:
 
     exam_id: str
     docs: list = field(default_factory=list)        # DiscoveredDoc, ready for the existing pipeline
-    #: node id -> THIS_EXAM | THIS_EXAM_OTHER_CYCLE | OTHER_EXAM | NOT_THIS_EXAM | UNIDENTIFIABLE
+    #: node id -> THIS_EXAM | THIS_EXAM_CYCLE_UNSTATED | THIS_EXAM_OTHER_CYCLE | OTHER_EXAM | NOT_THIS_EXAM | UNIDENTIFIABLE
     relation: dict = field(default_factory=dict)
     matched: dict = field(default_factory=dict)
     identified: set = field(default_factory=set)
+    #: node ids whose listing names this exam but no cycle (the exam's cycle being known)
+    cycle_unstated: set = field(default_factory=set)
     unidentifiable: set = field(default_factory=set)
     mismatches: list = field(default_factory=list)
     #: listing node id -> items on it that name this exam but carry no link ("listed, not obtainable")
@@ -719,7 +721,10 @@ def admit_for_exam(run: DiscoveryRun, *, exam_id: str, exam_words: list, sibling
                                      sibling_exam_words=sibling_words, designation=designation)
         cycle = identity_from_text(text, exam_id=exam_id).cycle
         if rel is not Relevance.REJECTED and exam_words:
-            relation = 'THIS_EXAM_OTHER_CYCLE' if (exam_cycle and cycle and cycle != exam_cycle) else 'THIS_EXAM'
+            # The exam named but no cycle: it is not "this cycle's" on the authority's address alone. It
+            # used to become THIS_EXAM, so an undated listing could prove a section of the current cycle.
+            relation = ('THIS_EXAM_OTHER_CYCLE' if (exam_cycle and cycle and cycle != exam_cycle)
+                        else 'THIS_EXAM_CYCLE_UNSTATED' if (exam_cycle and not cycle) else 'THIS_EXAM')
         elif foreign:
             relation = 'OTHER_EXAM'
         elif _identifying_words(text):
@@ -728,8 +733,13 @@ def admit_for_exam(run: DiscoveryRun, *, exam_id: str, exam_words: list, sibling
             relation = 'UNIDENTIFIABLE'
         out.relation[node.id] = relation
         out.matched[node.id] = list(matched or foreign)
-        if relation == 'THIS_EXAM':
-            out.identified.add(node.id)
+        if relation == 'THIS_EXAM_CYCLE_UNSTATED':
+            out.cycle_unstated.add(node.id)
+        if relation in ('THIS_EXAM', 'THIS_EXAM_CYCLE_UNSTATED'):
+            # Only THIS_EXAM is identified as this cycle's. A document whose listing names no cycle still goes
+            # to the pipeline, whose own gates read the cycle from the document itself.
+            if relation == 'THIS_EXAM':
+                out.identified.add(node.id)
             parent = parents[0].url if parents else ''
             if node.role in _PIPELINE_KINDS:
                 out.docs.append(DiscoveredDoc(url=node.url, kind=node.role, title=node.title[:160], relevance=rel,
@@ -773,6 +783,8 @@ def _item(run: DiscoveryRun, node: SourceNode, admission: Optional[Admission] = 
         'obtainable': node.status not in (NodeStatus.FETCH_FAILED, NodeStatus.BLOCKED),
         'foundOn': found_on[0].url if found_on else '', 'foundOnTitle': (found_on[0].title if found_on else ''),
         'relation': relation,
+        # Where the role came from: GovOS's rules, or only Claude's reading (never proof by itself).
+        'roleFrom': 'CLAUDE' if role_by_claude(node) else 'RULES',
         'identity': {k: v for k, v in (('cycle', ident.cycle), ('stage', ident.stage), ('paper', ident.paper),
                                         ('session', ident.session)) if v},
         'duplicateOf': run.graph.nodes[node.duplicate_of].url if node.duplicate_of in run.graph.nodes else '',
@@ -830,7 +842,7 @@ def project_for_exam(run: DiscoveryRun, *, exam_id: str, title: str, authority_n
         items = [g.nodes[e.target_id] for e in g.children(repo.id)
                  if e.kind is EdgeKind.REPOSITORY_ITEM and e.target_id in g.nodes]
         rows = [_item(run, n, admission) for n in items if not n.duplicate_of]
-        mine = [r for r in rows if r['relation'] in ('THIS_EXAM', 'THIS_EXAM_OTHER_CYCLE')]
+        mine = [r for r in rows if r['relation'] in ('THIS_EXAM', 'THIS_EXAM_CYCLE_UNSTATED', 'THIS_EXAM_OTHER_CYCLE')]
         # A listing reaches this exam's page when it lists something of this exam, or when it is
         # where this exam's papers, keys or results would be -- there "none of these is yours" is
         # itself the answer. An authority's departmental tests and form downloads are not shown.

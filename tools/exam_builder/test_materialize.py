@@ -333,7 +333,9 @@ class TestMaterializationEngine(unittest.TestCase):
         self.assertEqual(exam['faqs'], [])
         self.assertIn(states['faqs']['state'], ('EXTRACTION_FAILED', 'SOURCE_NOT_FOUND_AFTER_SEARCH', 'NOT_YET_PUBLISHED'))
         self.assertEqual(exam['cutoffsHistory'], [])
-        self.assertEqual(states['cutoffs']['state'], 'NOT_YET_PUBLISHED')
+        # Discovery found no cut-off document: a search that came up empty, not the authority's own
+        # listing showing none, so it is never "not published yet".
+        self.assertEqual(states['cutoffs']['state'], 'SOURCE_NOT_FOUND_AFTER_SEARCH')
         # states are metadata: no raw enum ever lands in a student-facing text field
         for key in ('overviewDescription', 'title'):
             for s in ('NOT_EXTRACTED', 'EXTRACTION_FAILED', 'SOURCE_NOT_FOUND'):

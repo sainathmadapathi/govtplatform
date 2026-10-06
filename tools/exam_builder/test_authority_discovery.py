@@ -33,7 +33,8 @@ from .evidence import EvidenceStatus
 from .resource_roles import LEARNING_ROLES, classify_link, classify_resource_item, is_learning, video_kind
 from .schema import Fact, SourceEvidence, Status
 from .source_graph import (DiscoveryLimits, DiscoveryRun, EdgeKind, NodeStatus, NodeType, SearchState, SourceClass,
-                           SourceGraph, SourceGraphStore, coverage_report, normalize_url, role_search_state)
+                           SourceGraph, SourceGraphStore, coverage_report, normalize_url, role_by_claude,
+                           role_search_state, CLAUDE_ROLE_REASON)
 from .source_trust import DEFAULT_PROFILE_PATH, SourceTrustProfile, TrustRegistry, classify_source
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -647,6 +648,86 @@ class StoreTests(unittest.TestCase):
                          "the coaching page, the vendor's mock test and the YouTube channel the authority links to")
         state = cov['searchStates']['ADMIT_CARD']['state']
         self.assertEqual(state, SearchState.NOT_SEARCHED.value, 'nothing was there to read: not searched, never "not found"')
+
+
+
+# ============================================================ evidence boundary: what may be called this exam's
+class EvidenceBoundaryTests(unittest.TestCase):
+    """A document is this exam's, found, only when GovOS's own rules tie it to this exam *in this cycle*.
+    Naming the exam without a cycle is a listing to check (case D); another cycle is another cycle's (case C);
+    a role only Claude proposed is a reading, never evidence (case E)."""
+
+    def run_with(self, *items):
+        g = SourceGraph()
+        run = DiscoveryRun(authority_name=AUTHORITY, estates=['epsc.gov.in'], roots=[ROOT], graph=g)
+        hub, _ = g.add('https://www.epsc.gov.in/n.jsp', title='Notifications', node_type=NodeType.REPOSITORY,
+                       role=DocKind.NOTIFICATION, source_class=SourceClass.PRIMARY_OFFICIAL, status=NodeStatus.READ)
+        g.add_edge('', hub.id, EdgeKind.OFFICIAL_LINK)
+        for i, (title, by_claude) in enumerate(items):
+            item, _ = g.add(f'https://www.epsc.gov.in/n{i}.pdf', title=title, node_type=NodeType.DOCUMENT,
+                            role=DocKind.NOTIFICATION, source_class=SourceClass.PRIMARY_OFFICIAL, status=NodeStatus.FETCHED)
+            if by_claude:
+                item.role_reason = CLAUDE_ROLE_REASON
+            g.add_edge(hub.id, item.id, EdgeKind.REPOSITORY_ITEM)
+        return run
+
+    def state(self, run):
+        words = exam_words_for('Group-I Services', 'Group-I Services', authority_name=AUTHORITY, authority_domain=ROOT)
+        adm = admit_for_exam(run, exam_id='e', exam_words=words, exam_cycle='2026')
+        state, why = role_search_state(run, DocKind.NOTIFICATION, identified=adm.identified,
+                                       unidentifiable=adm.unidentifiable, relation=adm.relation)
+        return adm, state, why
+
+    def test_case_a_this_exam_this_cycle_by_rules_is_found(self):
+        adm, state, _ = self.state(self.run_with(('05/2026 - GROUP-I SERVICES', False)))
+        self.assertIs(state, SearchState.FOUND_VERIFIED)
+        self.assertEqual(list(adm.relation.values()), ['THIS_EXAM'])
+
+    def test_case_c_another_cycle_is_never_this_cycles_document(self):
+        adm, state, _ = self.state(self.run_with(('04/2022 - Group - I Services', False)))
+        self.assertEqual(list(adm.relation.values()), ['THIS_EXAM_OTHER_CYCLE'])
+        self.assertFalse(adm.identified)
+        self.assertIsNot(state, SearchState.FOUND_VERIFIED)
+
+    def test_case_d_naming_the_exam_without_a_cycle_is_not_this_exam(self):
+        adm, state, why = self.state(self.run_with(('GROUP-I SERVICES - Notification', False)))
+        self.assertEqual(list(adm.relation.values()), ['THIS_EXAM_CYCLE_UNSTATED'])
+        self.assertFalse(adm.identified, "an undated document is not identified as this cycle's")
+        self.assertIs(state, SearchState.FOUND_AMBIGUOUS)
+        self.assertIn('cycle', why)
+
+    def test_case_d_does_not_hide_a_dated_document_beside_it(self):
+        _, state, _ = self.state(self.run_with(('GROUP-I SERVICES - Notification', False),
+                                               ('05/2026 - GROUP-I SERVICES', False)))
+        self.assertIs(state, SearchState.FOUND_VERIFIED)
+
+    def test_case_e_a_role_only_claude_read_is_never_found_verified(self):
+        adm, state, why = self.state(self.run_with(('05/2026 - GROUP-I SERVICES', True)))
+        self.assertEqual(list(adm.relation.values()), ['THIS_EXAM'])
+        self.assertIs(state, SearchState.FOUND_AMBIGUOUS)
+        self.assertIn('Claude', why)
+
+    def test_case_e_the_projection_says_where_the_role_came_from(self):
+        run = self.run_with(('05/2026 - GROUP-I SERVICES', True), ('06/2026 - GROUP-I SERVICES Addendum', False))
+        p = project_for_exam(run, **GROUP_I)
+        items = {i['title']: i for r in p['repositories'] for i in r['items']}
+        self.assertEqual(items['05/2026 - GROUP-I SERVICES']['roleFrom'], 'CLAUDE')
+        self.assertEqual(items['06/2026 - GROUP-I SERVICES Addendum']['roleFrom'], 'RULES')
+
+    def test_case_e_claude_classification_marks_the_node(self):
+        g = SourceGraph()
+        run = DiscoveryRun(authority_name=AUTHORITY, estates=['epsc.gov.in'], roots=[ROOT], graph=g)
+        g.add('https://www.epsc.gov.in/x0.jsp', title='Click here', source_class=SourceClass.PRIMARY_OFFICIAL,
+              node_type=NodeType.LINK)
+        classify_ambiguous(run, FakeClaude({'links': [{'index': 0, 'role': 'QUESTION_PAPER', 'is_repository': False}]}))
+        (n,) = run.graph.nodes.values()
+        self.assertIs(n.role, DocKind.QUESTION_PAPER)
+        self.assertTrue(role_by_claude(n))
+        self.assertIs(n.source_class, SourceClass.PRIMARY_OFFICIAL, 'Claude never sets the class')
+
+    def test_a_government_host_the_authority_does_not_run_is_not_its_source(self):
+        cls, _ = classify_source('https://pib.gov.in/release.aspx', estates=['epsc.gov.in'], role=DocKind.NOTIFICATION)
+        self.assertIsNot(cls, SourceClass.PRIMARY_OFFICIAL)
 
 
 if __name__ == '__main__':

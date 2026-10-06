@@ -46,7 +46,7 @@ from ..exam_authoring.record import ExamRecord, Field, Status
 from ..exam_authoring.verify import IsolationError, run_all
 from . import publish as P
 from . import render as R
-from .build import BuildResult, build
+from .build import BuildResult, NoClaude, build
 from .gate import BuildState, GateReport, evaluate as gate_evaluate
 from .identity import IdentityVerdict
 from .resolve import AmbiguousAuthority, SearchUnavailable
@@ -161,8 +161,12 @@ def orchestrate(exam_query: str = '', *, year: str = '', dry_run: bool = True,
 
     # --- RESOLUTION → DISCOVERY → SOURCE CAPTURE → IDENTITY → EXTRACTION (existing build) ----
     try:
+        # A job that did not ask for Claude builds with none, even where Claude is enabled for
+        # the process. One that did builds as before: its extraction steps use the process-wide
+        # gateway, and `gateway` below verifies the claims.
         br = build(exam_query, year=year, sibling_exam_words=siblings, max_docs=max_docs,
-                   replay=replay, search_fn=search_fn, authority_discovery=authority_discovery)
+                   replay=replay, search_fn=search_fn, authority_discovery=authority_discovery,
+                   gateway=None if use_claude else NoClaude())
     except AmbiguousAuthority as exc:
         res.state = OrchestrationState.AMBIGUOUS_AUTHORITY
         res.reached = Stage.RESOLUTION

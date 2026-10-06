@@ -59,6 +59,28 @@ class SourceDiscoveryRoutes(AppCase):
         self.assertEqual(self.get('/api/sources/runs/run-missing/coverage').status_code, 404)
         self.assertEqual(SourceGraphStore(self.db).latest('epsc.gov.in').id, runs[0]['id'])
 
+    def walk(self):
+        job_id = self.post('/api/sources/discover', {'examId': EXAM_ID}).get_json()['jobId']
+        site = FakeSite()
+        with mock.patch.object(AD, 'fetch_checked', lambda url, **kw: site(url)):
+            self.assertEqual(self.finish(job_id)['status'], 'SUCCEEDED')
+
+    def test_a_walk_is_projected_once_and_a_new_walk_replaces_it(self):
+        # Every section of an exam page asks for the projection; it used to be rebuilt from the whole
+        # stored walk on each request. It is now projected once per run, and a new walk is read at once.
+        self.walk()
+        with mock.patch.object(AD, 'project_for_exam', wraps=AD.project_for_exam) as projected:
+            first = self.get(f'/api/sources/exam/{EXAM_ID}').get_json()
+            again = self.get(f'/api/sources/exam/{EXAM_ID}').get_json()
+            self.assertEqual(projected.call_count, 1)
+            self.assertEqual(first, again)
+            self.walk()
+            before = projected.call_count
+            newer = self.get(f'/api/sources/exam/{EXAM_ID}').get_json()
+            self.assertEqual(projected.call_count, before + 1)
+        self.assertEqual(newer['state'], 'DISCOVERED')
+        self.assertNotEqual(newer['runId'], first['runId'])
+
     def test_asking_for_claude_when_it_is_not_ready_is_refused_before_anything_is_queued(self):
         r = self.post('/api/sources/discover', {'examId': EXAM_ID, 'useClaude': True})
         self.assertEqual(r.status_code, 503)

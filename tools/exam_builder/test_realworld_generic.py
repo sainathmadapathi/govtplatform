@@ -39,21 +39,27 @@ class TestLinkParsing(unittest.TestCase):
 
 
 class TestDocumentSniffing(unittest.TestCase):
-    def test_pdf_bytes_behind_extensionless_url_load_as_pdf(self):
+    """The bytes are fetched once and the PDF magic decides how they are parsed -- the parsers take the
+    bytes, never the URL (`load_pdf`/`load_html` used to be called here, and fetched it again)."""
+
+    def sniff(self, data):
         calls = []
-        with patch.object(S, 'fetch', return_value=b'%PDF-1.4 ...'), \
-             patch.object(S, 'load_pdf', side_effect=lambda u, **k: calls.append(('pdf', u))), \
-             patch.object(S, 'load_html', side_effect=lambda u, **k: calls.append(('html', u))):
+        with patch.object(S, 'fetch', side_effect=lambda u, **k: calls.append(('fetch', u)) or data) as fetched, \
+             patch.object(S, 'pdf_document', side_effect=lambda u, b: calls.append(('pdf', u, b))), \
+             patch.object(S, 'html_document', side_effect=lambda u, b: calls.append(('html', u, b))), \
+             patch.object(S, 'load_pdf', side_effect=AssertionError('fetched again')), \
+             patch.object(S, 'load_html', side_effect=AssertionError('fetched again')):
             S.load_document('https://board.example.gov.in/preview/token')
-        self.assertEqual(calls, [('pdf', 'https://board.example.gov.in/preview/token')])
+        self.assertEqual(fetched.call_count, 1)
+        return calls
+
+    def test_pdf_bytes_behind_extensionless_url_load_as_pdf(self):
+        url = 'https://board.example.gov.in/preview/token'
+        self.assertEqual(self.sniff(b'%PDF-1.4 ...'), [('fetch', url), ('pdf', url, b'%PDF-1.4 ...')])
 
     def test_html_bytes_load_as_html(self):
-        calls = []
-        with patch.object(S, 'fetch', return_value=b'<html><title>x</title></html>'), \
-             patch.object(S, 'load_pdf', side_effect=lambda u, **k: calls.append(('pdf', u))), \
-             patch.object(S, 'load_html', side_effect=lambda u, **k: calls.append(('html', u))):
-            S.load_document('https://board.example.gov.in/preview/token')
-        self.assertEqual(calls[0][0], 'html')
+        calls = self.sniff(b'<html><title>x</title></html>')
+        self.assertEqual([c[0] for c in calls], ['fetch', 'html'])
 
 
 class TestOrdinalAliases(unittest.TestCase):
