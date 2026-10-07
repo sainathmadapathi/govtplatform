@@ -836,15 +836,75 @@
    "tech": "CuratedItem[10] mapped from [word, answer, wrong[3], why] tuples, GovOS-authored citation. Concatenated after VOCAB_ITEMS to form genSynonym.",
    "hash": "04c808a5bdb0"
   },
+  "src/data.ts::APG1_AUTHORITY": {
+   "text": "The name of the authority that runs APPSC Group-I, written once so every Group-I citation names it the same way.",
+   "tech": "'Andhra Pradesh Public Service Commission (APPSC)' — authorityName on every apg1() provenance and the record's authorityName.",
+   "hash": "a63d3ccf7d12"
+  },
+  "src/data.ts::APG1_CHECK": {
+   "text": "The day GovOS read the Group-I notification, stamped on every Group-I citation as its check date.",
+   "tech": "'2026-10-07' — verifiedDate and the verifiedBy wording of apg1().",
+   "hash": "ae21e156dc62"
+  },
+  "src/data.ts::APG1_LANGUAGE_QUALIFYING": {
+   "text": "What the notice says about the Mains Telugu and English papers: they must be passed (40% / 35% / 30% by category) but are not counted for merit.",
+   "tech": "ExamPatternNode['qualifying'] {asPrinted (para 12.8), qualifyingOnly: true, countsTowardsMerit: false} — shared by the two language-paper nodes; the study plan gives them the average share for it.",
+   "hash": "2f6349b9fc70"
+  },
+  "src/data.ts::APG1_MAINS": {
+   "text": "The words GovOS uses for the second stage of Group-I, the descriptive Main examination.",
+   "tech": "'Main Examination' — stage tier and syllabus topic tier for the Main examination rows.",
+   "hash": "b14e89ae6c4d"
+  },
+  "src/data.ts::APG1_NOTICE": {
+   "text": "The one document the Group-I record is read from: APPSC Notification No. 07/2026, dated 06/10/2026 — its title, address and publication date.",
+   "tech": "{title, url (psc.ap.gov.in/Documents/NotificationDocuments/Group_I_07_2026.pdf), published '2026-10-06'} as const; documentTitle / officialUrl / publishedDate of apg1().",
+   "hash": "6d92e09ea766"
+  },
+  "src/data.ts::APG1_PAPERS": {
+   "text": "The papers of Group-I as Annexure-II prints their headings — the Screening Test’s two papers and the Main examination’s Telugu, English and Papers I–V — with their marks and pages.",
+   "tech": "Record<'S-I'|'S-II'|'M-T'|'M-E'|'M-I'…'M-V', {title, marks, page}>; titles are the syllabus headings, used for the tree's paper nodes and each topic's clauseNumber.",
+   "hash": "ee72921c7e6a"
+  },
+  "src/data.ts::APG1_SCREENING": {
+   "text": "The words GovOS uses for the first stage of Group-I, the objective Screening Test, so the stage, its syllabus topics and its date all name it alike.",
+   "tech": "'Screening Test' — stage tier, syllabus topic tier for Annexure-II's Screening Test rows, and a date's stageLabel. Results pathways match topics to stages by this tier string.",
+   "hash": "175efd847214"
+  },
+  "src/data.ts::APG1_SITE": {
+   "text": "The Commission’s own website, where candidates register (OTPR), apply, and download Hall Tickets.",
+   "tech": "'https://psc.ap.gov.in' — officialDomain, every portal link and every OTR step's portalUrl in APPSC_GROUP1_EXAM.",
+   "hash": "667d017a56dc"
+  },
+  "src/data.ts::APG1_SYLLABUS_ROWS": {
+   "text": "Annexure-II’s syllabus, item by item: 32 Screening Test items (History, Polity, Economy, Geography; Mental Ability, Science and Technology, Current Events) and 54 Main examination items (the two language papers, the essay and Papers II–V). Each keeps the notice’s opening words for its citation and GovOS’s split of the item into sub-topics.",
+   "tech": "Apg1SyllabusRow[] (86 rows, pp. 27–39). Subjects are shared across the two stages (History & Culture, Polity & Governance, Economy, Geography, Science & Technology) plus Mental & Psychological Abilities, Current Affairs, Telugu/English (Qualifying), General Essay and Ethics & Law. No weightage: APPSC prints none.",
+   "hash": "66f6399aa042"
+  },
+  "src/data.ts::APG1_SYLLABUS_TOPICS": {
+   "text": "The Group-I syllabus as the list the Syllabus section, the tick-boxes, the tree map and the study plan all read: one topic per row, each citing the page it is printed on, with no invented weightage.",
+   "tech": "APG1_SYLLABUS_ROWS.map → SyllabusTopic {id 'syl-appsc1-<slug>', subject, tier APG1_SCREENING|APG1_MAINS, topicName, subtopics, weightagePercentage 0, avgQuestions 0, isHighYield false, officialProvenance apg1(…)}.",
+   "hash": "82395b3529e1"
+  },
+  "src/data.ts::APG1_SYLLABUS_TREE": {
+   "text": "The same syllabus in the notice’s own layout — stage, then paper, then part (where the paper has parts), then item — for the Official Syllabus view.",
+   "tech": "Built from APG1_SYLLABUS_ROWS: two Stage nodes (Screening Test, Main Examination) → Paper nodes (APG1_PAPERS titles) → Part nodes only where the paper prints parts → Item nodes with the sub-topics as their note and the topic's own provenance. Ids are unique by construction.",
+   "hash": "d518552c5b2e"
+  },
   "src/data.ts::APPSC_GROUP1_EXAM": {
-   "text": "GovOS's short, skeleton record of the Andhra Pradesh PSC Group-I Services Exam 2026, for top state posts such as Deputy Collector and DSP. It holds three posts, four dates, eligibility rules, two stages (an objective screening test with 1/3 negative marking and a descriptive Mains), three syllabus topics, one practice question, one cut-off, one resource, one FAQ, an application guide and a roadmap.",
-   "tech": "`Exam` id 'exam-appsc-group1-2026' (lines 19168-19471), categoryTag STATE_PSC, crucialEligibilityDate '2026-07-01', vacanciesTotal '89 (Direct Recruitment)'. Fields: `posts` (3), `dates` (4), `globalRuleGroup`, `stages` (2), `syllabus` (3), `practiceQuestions` (1), `corrigendums` [], `cutoffsHistory` (1), `resources` (1), `faqs` (1), `applicationGuide`, `roadmapTracks`; provenance mostly `appscProvenance`. No pattern tree. Fourth entry of `ALL_EXAMS`.",
-   "hash": "369504111ba7"
+   "text": "The APPSC Group-I Services exam, read on 2026-10-07 from the Commission’s Notification No. 07/2026: 166 vacancies in 13 posts with their age bands and pay scales, the application window (06–27 October 2026), the corrections window, the Screening Test on 24 January 2027, the three stages (an objective Screening Test that only shortlists, a descriptive Mains with qualifying Telugu and English papers, an interview), the full syllabus, the fee and its exemptions, age relaxations, certificates, Hall Ticket rules, exam-day rules, and 14 FAQs — every value cited to its page. It replaced a record with invented dates, vacancies, a cut-off and a practice question. Its eligibility cards include the minimum qualifying marks (40% / 35% / 30%), so 'what are the qualifying marks' is answered from the notice. Its library links 21 study resources.",
+   "tech": "Exam {id 'exam-appsc-group1-2026', posts via apg1Post (Post Code 04 carries a B.E./B.Tech. branch rule), dates (no Mains date: 'announced later'), ageRelaxations (SC/ST/BC/EWS 5, PBD 10, service-based ones as conditions), stages Screening Test / Main Examination (meritMarks 750) / INTERVIEW, patternTree, admitCardEvents (release rule only), syllabus APG1_SYLLABUS_TOPICS + syllabusTree, cutoffsHistory [], applicationGuide with certificateRules (BC NCL, EWS) and fee rules, examDayChecklist, eligibilityHighlights, officialLinks}. Keeps the resource library added on 2026-10-06.",
+   "hash": "a25e3a089cd1"
   },
   "src/data.ts::APPSC_GROUP2_EXAM": {
-   "text": "GovOS's short, skeleton record of the Andhra Pradesh PSC Group-II Services Exam 2026, for posts such as Municipal Commissioner Grade-III, Sub-Registrar and Secretariat ASO. It holds three posts, four dates, two stages (a screening test and objective Mains papers, both with 1/3 negative marking), two syllabus topics, one practice question, one cut-off, one resource, one FAQ, an application guide and a roadmap. It is a separate exam from Group-I.",
-   "tech": "`Exam` id 'exam-appsc-group2-2026' (lines 19472-19774), categoryTag STATE_PSC, vacanciesTotal '897 (Executive & Non-Executive)'. Same field set as APPSC_GROUP1_EXAM: `posts` (3), `dates` (4), `globalRuleGroup`, `stages` (2), `syllabus` (2), `practiceQuestions` (1), `corrigendums` [], `cutoffsHistory` (1), `resources` (1), `faqs` (1), `applicationGuide`, `roadmapTracks`; provenance mostly `appscProvenance`. Fifth entry of `ALL_EXAMS`.",
-   "hash": "ee988d10749d"
+   "text": "GovOS's short placeholder record of the Andhra Pradesh PSC Group-II Services Exam 2026, for posts such as Municipal Commissioner Grade-III, Sub-Registrar and Secretariat ASO. It holds three posts, four dates, two stages, two syllabus topics and an application guide, none of them read from an APPSC document yet, so every fact on it shows as not verified. It is a separate exam from Group-I. Its library links 20 study resources, and the syllabus page, old papers and keys sit in their own sections.",
+   "tech": "`Exam` id 'exam-appsc-group2-2026', categoryTag STATE_PSC, vacanciesTotal '897 (Executive & Non-Executive)'. posts (3), dates (4), stages (2), syllabus (2), practiceQuestions, cutoffsHistory, faqs, applicationGuide, roadmapTracks; the record's own facts cite `appscProvenance` (a placeholder: no URL, no quote, UNDER_VERIFICATION). resources: entries built with openResource / coachingSource, filtered to Group-II; the apsdps.ap.gov.in and cse.ap.gov.in cards were removed on 2026-10-07 because those hosts stopped answering.",
+   "hash": "afafd8f4e794"
+  },
+  "src/data.ts::Apg1SyllabusRow": {
+   "text": "The shape of one line of the Group-I syllabus as GovOS stores it: which stage and paper it belongs to, its subject, a short name, the page, the notice’s opening words and its sub-topics.",
+   "tech": "[slug, stage S|M, paper key (APG1_PAPERS), part heading, subject, topic name, page, excerpt as printed, subtopics[]] — a tuple type read by APG1_SYLLABUS_TOPICS and APG1_SYLLABUS_TREE.",
+   "hash": "dd035e86826c"
   },
   "src/data.ts::CHECK_DATE": {
    "text": "The date (9 September 2026) on which GovOS checked that its library links were working; it is stamped on those links' source records.",
@@ -917,9 +977,9 @@
    "hash": "449eb32f63c6"
   },
   "src/data.ts::IBPS_PO_EXAM": {
-   "text": "GovOS's record of the IBPS Probationary Officer exam 2026 (CRP PO/MT-XVI), a thinner record than SSC or UPSC. It holds one post, nine dates, the eligibility rules, the exam pattern and two stages (Prelims and Mains), two admit-card events and two scheduled results, two syllabus topics, one practice question, two years of cut-offs, one resource, one FAQ, an application guide and a roadmap.",
-   "tech": "`Exam` id 'exam-ibps-po-2026' (lines 18168-19153), categoryTag BANKING, vacanciesTotal '4,455 (Tentative)'. Fields: `posts` (1), `dates` (9, all citing `ibpsProvenance`), `globalRuleGroup`, `patternTree`, `stages` (2), `admitCardEvents` (2), `resultDeclarations` (2, SCHEDULED), `syllabus` (2), `practiceQuestions` (1, labelled 'Memory Based' OFFICIAL_PYQ), `corrigendums` [], `cutoffsHistory` (2023 and 2024 UR), `resources` (1), `faqs` (1), `applicationGuide`, `roadmapTracks`. Third entry of `ALL_EXAMS`.",
-   "hash": "38e3591272d5"
+   "text": "GovOS's record of the IBPS Probationary Officer exam 2026 (CRP PO/MT-XVI), a thinner record than SSC or UPSC. It holds one post, nine dates, the eligibility rules, the exam pattern and two stages (Prelims and Mains), two admit-card events and two scheduled results, two syllabus topics, one practice question, two years of cut-offs, one resource, one FAQ, an application guide and a roadmap. Its library now links 37 study resources — RBI and Finance Ministry pages, NIOS lessons, NCERT maths on DIKSHA and labelled coaching channels.",
+   "tech": "`Exam` id 'exam-ibps-po-2026' (lines 18168-19153), categoryTag BANKING, vacanciesTotal '4,455 (Tentative)'. Fields: `posts` (1), `dates` (9, all citing `ibpsProvenance`), `globalRuleGroup`, `patternTree`, `stages` (2), `admitCardEvents` (2), `resultDeclarations` (2, SCHEDULED), `syllabus` (2), `practiceQuestions` (1, labelled 'Memory Based' OFFICIAL_PYQ), `corrigendums` [], `cutoffsHistory` (2023 and 2024 UR), `resources` (1), `faqs` (1), `applicationGuide`, `roadmapTracks`. Third entry of `ALL_EXAMS`. resources: + 39 entries built with openResource / coachingSource (the IBPS notification and PO/MT page go to Official Links).",
+   "hash": "b8120facf888"
   },
   "src/data.ts::IDIOM_ITEMS": {
    "text": "Ten hand-written questions asking what a common English idiom means, such as 'once in a blue moon'.",
@@ -952,9 +1012,9 @@
    "hash": "9173d0321247"
   },
   "src/data.ts::JEE_MAIN_2026_EXAM": {
-   "text": "The whole record of JEE (Main) 2026, read from NTA’s own documents: the three papers and their pattern, the two sessions’ dates, eligibility (no age limit; Class XII in 2024, 2025 or 2026), the fee, the application steps and practice form, the admit-card rule, the declared Paper 1 result and the JEE (Advanced) cut-offs, the 64-topic syllabus, exam-day rules, FAQs, NTA’s nine question papers and answer keys, and official links. It is an admission test, so it has no posts, vacancies or pay.",
-   "tech": "Exam with examNature 'ADMISSION_TEST', posts [], minimumQualification CLASS_12, careerFields ['Engineering & Technology'], one stage (all papers' sections; Paper 1's totals), patternTree (examination → Paper 1 / 2A / 2B → subjects/parts → sections), 12 dates (ranges and months via displayWhen), admitCardEvents (city slips and the '03-04 days before' rule per session), resultDeclarations (Paper 1, 20 April 2026, with cut-offs), cutoffsHistory (6 value-only percentile rows), applicationGuide with fee and simulator, 16 role-tagged resources, 12 FAQs, examDayChecklist (11), eligibilityHighlights (5), officialLinks (9).",
-   "hash": "c43373d71c08"
+   "text": "The whole record of JEE (Main) 2026, read from NTA’s own documents: the three papers and their pattern, the two sessions’ dates, eligibility (no age limit; Class XII in 2024, 2025 or 2026), the fee, the application steps and practice form, the admit-card rule, the declared Paper 1 result and the JEE (Advanced) cut-offs, the 64-topic syllabus, exam-day rules, FAQs, NTA’s nine question papers and answer keys, and official links. It is an admission test, so it has no posts, vacancies or pay. Its library links 43 study resources: NCERT books on DIKSHA, SATHEE (Ministry of Education with IIT Kanpur), NTA’s mock tests, IIT-PAL lecture channels, Khan Academy and labelled coaching channels. SATHEE's lesson channel on YouTube is run by Prutor Ai, so it is listed as linked from SATHEE but not as a government channel.",
+   "tech": "Exam with examNature 'ADMISSION_TEST', posts [], minimumQualification CLASS_12, careerFields ['Engineering & Technology'], one stage (all papers' sections; Paper 1's totals), patternTree (examination → Paper 1 / 2A / 2B → subjects/parts → sections), 12 dates (ranges and months via displayWhen), admitCardEvents (city slips and the '03-04 days before' rule per session), resultDeclarations (Paper 1, 20 April 2026, with cut-offs), cutoffsHistory (6 value-only percentile rows), applicationGuide with fee and simulator, 16 role-tagged resources, 12 FAQs, examDayChecklist (11), eligibilityHighlights (5), officialLinks (9). resources: + 43 entries built with openResource / coachingSource; subjects Physics / Chemistry / Mathematics / Architecture & Planning Aptitude.",
+   "hash": "b24d52cbcd99"
   },
   "src/data.ts::JEE_SITE": {
    "text": "NTA’s JEE (Main) website, where candidates apply and download the city slip, admit card and score card.",
@@ -1101,6 +1161,11 @@
    "tech": "Module-private case-insensitive regex matching harder/hardest/easier/easiest/tougher/toughest/stiffer/more difficult/less difficult/harder mix/easier mix as whole words; checked against title + description in `mockPaperProblems`.",
    "hash": "f9bca011b69f"
   },
+  "src/data.ts::RESOURCE_CHECK": {
+   "text": "The day the new resource links for IBPS PO, APPSC, TG TET and JEE were checked: 6 October 2026.",
+   "tech": "'2026-10-06' — the verifiedDate and linkVerifiedDate of every resource built with openResource or coachingSource.",
+   "hash": "1fc95aac1835"
+  },
   "src/data.ts::SSC_BOARD": {
    "text": "The base web address of SSC's notice-board files; each later SSC notice's address is this plus its file name.",
    "tech": "Module-private string 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/', prefixed to the `file` argument in `sscDocument`.",
@@ -1222,9 +1287,9 @@
    "hash": "3ef64c1ab29a"
   },
   "src/data.ts::TG_TET_INSERVICE_2026_II_EXAM": {
-   "text": "The whole record of the Special TG TET 2026-II for in-service teachers, read from the Department’s own documents: who may appear, the two papers and their pattern, the 78-topic syllabus, the dates, the fee, the application steps and practice form, the hall ticket, the scheduled result, the exam-day rules, FAQs and official links. It is an eligibility test, so it has no posts, vacancies or pay.",
-   "tech": "Exam with examNature 'ELIGIBILITY_TEST', posts [], careerFields ['Teaching & Education'], one CBT stage (both papers' sections), patternTree (CBT → Paper-I / Paper-II → subjects), syllabus (78 topics) and syllabusTree (91 entries), 7 dates (ranges via displayWhen), admitCardEvents, resultDeclarations (SCHEDULED), applicationGuide with fee and simulator, examDayChecklist (9), eligibilityHighlights (5), officialLinks (7), 4 role-tagged resources.",
-   "hash": "1045fa91aee0"
+   "text": "The whole record of the Special TG TET 2026-II for in-service teachers, read from the Department’s own documents: who may appear, the two papers and their pattern, the 78-topic syllabus, the dates, the fee, the application steps and practice form, the hall ticket, the scheduled result, the exam-day rules, FAQs and official links. It is an eligibility test, so it has no posts, vacancies or pay. Its library links T-SAT’s official TG TET 2026 playlists for every paper and subject, NIOS D.El.Ed material, DIKSHA Telangana and labelled coaching channels.",
+   "tech": "Exam with examNature 'ELIGIBILITY_TEST', posts [], careerFields ['Teaching & Education'], one CBT stage (both papers' sections), patternTree (CBT → Paper-I / Paper-II → subjects), syllabus (78 topics) and syllabusTree (91 entries), 7 dates (ranges via displayWhen), admitCardEvents, resultDeclarations (SCHEDULED), applicationGuide with fee and simulator, examDayChecklist (9), eligibilityHighlights (5), officialLinks (7), 4 role-tagged resources. resources: + 33 entries (SCERT Telangana’s textbook PDFs were left out: the host dropped most connections when checked).",
+   "hash": "a83ecfb5930f"
   },
   "src/data.ts::TOPIC_CATALOG": {
    "text": "The master list of the 47 topics a candidate can ask the test builder for, with the words that recognise each one. 34 are in the SSC CGL syllabus; 13 (such as matrices, programming or law) are listed only so GovOS can say they are outside the syllabus. Some topics have a question maker; others can only use the existing question bank.",
@@ -1296,10 +1361,425 @@
    "tech": "CuratedItem[6] from [active, passive, wrong[3], rule] tuples, GovOS-authored citation. Served by genVoice.",
    "hash": "0e223396580c"
   },
+  "src/data.ts::apg1": {
+   "text": "Builds one Group-I citation: the page and clause of Notification No. 07/2026 and the exact words quoted from it, plus how it was read (text layer or page image).",
+   "tech": "(id, pageNumber, clauseNumber, excerptText, how = 'from the text of the Commission’s PDF') → DataProvenance: FACT, OFFICIALLY_VERIFIED, publishedDate APG1_NOTICE.published, verifiedDate APG1_CHECK, authorityName APG1_AUTHORITY. The printed page numbers equal the PDF's.",
+   "hash": "67d41ce47893"
+  },
+  "src/data.ts::apg1MainsPaper": {
+   "text": "One paper of the Group-I Main examination as the scheme table prints it: 180 minutes, 150 marks, descriptive.",
+   "tech": "(id, code, name, order, extra?) → ExamPatternNode {level PAPER, levelLabel 'Paper', marks 150, durationMinutes 180, questionType 'Descriptive (conventional)', provenance apg1P_schemeMains, …extra}.",
+   "hash": "aa08fa7ba271"
+  },
+  "src/data.ts::apg1P_age": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 8, Para 5.1. Its Evidence button shows the Commission’s own words: “Minimum 18/21 years & Maximum 30/44 years as on 01/07/2026, as per Rule 12 of APS&SS, Rules,1996”",
+   "tech": "DataProvenance from apg1('prov-apg1-age', 8, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "267a0e5b81a4"
+  },
+  "src/data.ts::apg1P_allMains": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 18, Para 15.4. Its Evidence button shows the Commission’s own words: “Appearance in all the papers of Main Written examination (descriptive) is compulsory. Absence in any of the papers will automatically ren…”",
+   "tech": "DataProvenance from apg1('prov-apg1-all-mains', 18, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "f8c0bd285e84"
+  },
+  "src/data.ts::apg1P_allScreening": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 18, Para 15.2. Its Evidence button shows the Commission’s own words: “The candidates must appear in all the papers of Screening Test. Absence in any of the papers will render him / her liable for disqualific…”",
+   "tech": "DataProvenance from apg1('prov-apg1-all-screening', 18, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "8d1c046a7a32"
+  },
+  "src/data.ts::apg1P_bcNcl": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 7, Para 4.9. Its Evidence button shows the Commission’s own words: “The candidates belonging to Backward classes (BC’s) applying for this Notification must produce Non Creamy layer certificate … from the c…”",
+   "tech": "DataProvenance from apg1('prov-apg1-bc-ncl', 7, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "2feec0a02bda"
+  },
+  "src/data.ts::apg1P_biometric": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 41, Annexure-III, C.1. Its Evidence button shows the Commission’s own words: “Biometric identification would be conducted before entry into examination hall. The entry time would be mentioned in the hall ticket. Lat…”",
+   "tech": "DataProvenance from apg1('prov-apg1-biometric', 41, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "cfebd05559ab"
+  },
+  "src/data.ts::apg1P_blank": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 12, Para 8, NOTE D and E. Its Evidence button shows the Commission’s own words: “Incomplete / incorrect application form will be summarily rejected. … No relevant column of the application form should be left blank; ot…”",
+   "tech": "DataProvenance from apg1('prov-apg1-blank', 12, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "050465312562"
+  },
+  "src/data.ts::apg1P_calculator": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 42, Annexure-III, D.5. Its Evidence button shows the Commission’s own words: “Non programmable calculators would be permitted, wherever necessary.”",
+   "tech": "DataProvenance from apg1('prov-apg1-calculator', 42, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "1958fc360c3b"
+  },
+  "src/data.ts::apg1P_carry": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 41, Annexure-III, C.6. Its Evidence button shows the Commission’s own words: “In case you are carrying articles other than the admit card, photo identity proof and pen, please leave them outside the exam room.”",
+   "tech": "DataProvenance from apg1('prov-apg1-carry', 41, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "1b1b07c93c46"
+  },
+  "src/data.ts::apg1P_centrePrefs": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 14, Para 11.2. Its Evidence button shows the Commission’s own words: “the applicant may choose the Test center from the above with three preferences for Screening Test. However, the Commission reserves the r…”",
+   "tech": "DataProvenance from apg1('prov-apg1-centre-prefs', 14, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "b3fa74fa7c26"
+  },
+  "src/data.ts::apg1P_centres": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 13, Para 11.1. Its Evidence button shows the Commission’s own words: “Screening Test will be held in all District Centers including newly organized Districts. However, the Commission reserves the right eithe…”",
+   "tech": "DataProvenance from apg1('prov-apg1-centres', 13, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "427bac877fe9"
+  },
+  "src/data.ts::apg1P_cf": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 2, Para 1.2, Note (i). Its Evidence button shows the Commission’s own words: “The above carried forward vacancies brought forward from previous recruitments. Selection/Appointment to such reserved vacancies as the c…”",
+   "tech": "DataProvenance from apg1('prov-apg1-cf', 2, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "380a4c7e720b"
+  },
+  "src/data.ts::apg1P_citizen": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 3, Para 2 (iv). Its Evidence button shows the Commission’s own words: “He/ She is a citizen of India.”",
+   "tech": "DataProvenance from apg1('prov-apg1-citizen', 3, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "97ec2d3a699d"
+  },
+  "src/data.ts::apg1P_colour03": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 5, Para 3 — Vision, Post Code No. 03 (e). Its Evidence button shows the Commission’s own words: “Inability to distinguish the Principal colours will not be regarded as cause for rejection, but the fact will be noted in the proceedings…”",
+   "tech": "DataProvenance from apg1('prov-apg1-colour-03', 5, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "009d4fed1a84"
+  },
+  "src/data.ts::apg1P_colour04": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 5, Para 3 — Vision, Post Code No. 04 (iii). Its Evidence button shows the Commission’s own words: “Cololur blindness, squint or any morbid condition of the eye or lids of either eye knock knees, and pigeon chest, flat foot vericose vein…”",
+   "tech": "DataProvenance from apg1('prov-apg1-colour-04', 5, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "ad725df9d868"
+  },
+  "src/data.ts::apg1P_correction": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 12, Para 8, STEP-V. Its Evidence button shows the Commission’s own words: “corrections in the application will be enabled after the last date of the submission of application and will be allowed up to 7 days only…”",
+   "tech": "DataProvenance from apg1('prov-apg1-correction', 12, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "b29ed9438b71"
+  },
+  "src/data.ts::apg1P_dates": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 2, Para 1.7. Its Evidence button shows the Commission’s own words: “The Screening Test will be held on 24/01/2027. The Dates for the Main Examination will be announced later.”",
+   "tech": "DataProvenance from apg1('prov-apg1-dates', 2, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "fe667172d0a8"
+  },
+  "src/data.ts::apg1P_debar": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 19, Para 16.1. Its Evidence button shows the Commission’s own words: “Any applicant furnishing in-correct information or making false declaration regarding his/her eligibility at any stage or suppressing any…”",
+   "tech": "DataProvenance from apg1('prov-apg1-debar', 19, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "9ed059cb47a0"
+  },
+  "src/data.ts::apg1P_distance": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 17, Para 13.8. Its Evidence button shows the Commission’s own words: “The Degrees through Open Universities / Distance Education mode shall required to have recognition by the Distance Education Council, Gov…”",
+   "tech": "DataProvenance from apg1('prov-apg1-distance', 17, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "fe2760e222b7"
+  },
+  "src/data.ts::apg1P_englishAuth": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 15, Para 12.5. Its Evidence button shows the Commission’s own words: “The question paper is set in English and translated in to Telugu language. English version will be considered as the authentic version fo…”",
+   "tech": "DataProvenance from apg1('prov-apg1-english-auth', 15, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "272ba502515b"
+  },
+  "src/data.ts::apg1P_ews": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 7, Para 4.10. Its Evidence button shows the Commission’s own words: “whose gross annual family income is below Rs.8.00 lakh. … The applicants/candidates who claim the EWS Reservation must possess the EWS ce…”",
+   "tech": "DataProvenance from apg1('prov-apg1-ews', 7, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "92aaee95cb87"
+  },
+  "src/data.ts::apg1P_fee": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 12, Para 9.1. Its Evidence button shows the Commission’s own words: “Applicant must pay Rs. 250/- (Rupees two hundred and fifty only) towards application processing fee and Rs.120/- (Rupees One hundred and…” The amounts were read from the page image, because the PDF’s text layer drops them.",
+   "tech": "DataProvenance from apg1('prov-apg1-fee', 12, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the page image of the PDF.",
+   "hash": "c3888f0901aa"
+  },
+  "src/data.ts::apg1P_feeExempt": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 13, Para 9.2. Its Evidence button shows the Commission’s own words: “However, the following categories of candidates are exempted from payment of examination fee Rs. 120/-only. i) SC, ST, BC, PBDs & Ex-Serv…” The amounts were read from the page image, because the PDF’s text layer drops them.",
+   "tech": "DataProvenance from apg1('prov-apg1-fee-exempt', 13, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the page image of the PDF.",
+   "hash": "320dc44706e5"
+  },
+  "src/data.ts::apg1P_feeMode": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 13, Para 9.3 — Mode of Payment of Fee. Its Evidence button shows the Commission’s own words: “The Fee mentioned in the above paragraph is to be paid online using payment gateway using Net Banking/ Credit card / Debit Card. … The fe…”",
+   "tech": "DataProvenance from apg1('prov-apg1-fee-mode', 13, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "77267be9b8e8"
+  },
+  "src/data.ts::apg1P_feeOther": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 13, Para 9.2 (iv)–(v). Its Evidence button shows the Commission’s own words: “Applicants belonging to other States shall pay the prescribed fee of Rs. 120/- (Rupees One twenty only), along with processing fee of Rs.…” The amounts were read from the page image, because the PDF’s text layer drops them.",
+   "tech": "DataProvenance from apg1('prov-apg1-fee-other', 13, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the page image of the PDF.",
+   "hash": "f572861c6e06"
+  },
+  "src/data.ts::apg1P_formats": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 40, Annexure-III, A.8. Its Evidence button shows the Commission’s own words: “The following certificate formats are available on the Commission’s Website (https://psc.ap.gov.in) for reference. A.8.1. Community, Nati…”",
+   "tech": "DataProvenance from apg1('prov-apg1-formats', 40, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "efe85b0817a1"
+  },
+  "src/data.ts::apg1P_fullTime": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 41, Annexure-III, C.3. Its Evidence button shows the Commission’s own words: “Candidates will not be permitted to leave the examination hall till the expiry of full time. If any candidate leaves the examination hall…”",
+   "tech": "DataProvenance from apg1('prov-apg1-full-time', 41, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "985c892c28bf"
+  },
+  "src/data.ts::apg1P_gadgets": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 20, Para 16.5 — Electronic Gadgets Banned. Its Evidence button shows the Commission’s own words: “The use of any mobile (even in switched off mode), calculator or any electronic equipment or programmable device or storage media like pe…”",
+   "tech": "DataProvenance from apg1('prov-apg1-gadgets', 20, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "6a11d6ae43e4"
+  },
+  "src/data.ts::apg1P_hallTicket": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 2, Para 1.9. Its Evidence button shows the Commission’s own words: “HALL TICKETS For Screening and Main Examination will be hosted on the Commission’s website. Instructions would be given through the websi…”",
+   "tech": "DataProvenance from apg1('prov-apg1-hall-ticket', 2, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "65d5190fa9f4"
+  },
+  "src/data.ts::apg1P_horizontal": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 24, Annexure-I, Note A — Women & PBD’s. Its Evidence button shows the Commission’s own words: “Since the above vacancies shown at Note A is under Horizontal Reservation. All eligible candidates irrespective category/ Community/ Gend…”",
+   "tech": "DataProvenance from apg1('prov-apg1-horizontal', 24, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "dfbf9d62c836"
+  },
+  "src/data.ts::apg1P_htDiscrepancy": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 41, Annexure-III, D.1. Its Evidence button shows the Commission’s own words: “If the candidate notices any discrepancy printed on the Hall ticket, as to community, date of birth etc., he/she may immediately bring it…”",
+   "tech": "DataProvenance from apg1('prov-apg1-ht-discrepancy', 41, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "7a67bb155d31"
+  },
+  "src/data.ts::apg1P_htPhoto": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 42, Annexure-III, D.10. Its Evidence button shows the Commission’s own words: “In case the Hall-Ticket is without photo or too small, he/she should affix a passport size photo on Hall-ticket and appear by duly gettin…”",
+   "tech": "DataProvenance from apg1('prov-apg1-ht-photo', 42, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "1b6b0c0a1926"
+  },
+  "src/data.ts::apg1P_interview": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 15, Para 12.10. Its Evidence button shows the Commission’s own words: “After Main written examination, eligible candidates will be called for an Interview (Personality Test) as per G.O.Ms.No.100, GA (SER-A) D…”",
+   "tech": "DataProvenance from apg1('prov-apg1-interview', 15, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "088e28a57199"
+  },
+  "src/data.ts::apg1P_key": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 14, Para 12.2 and 12.4. Its Evidence button shows the Commission’s own words: “If the candidates have any objections with regard to the initial key / questions they shall have to file the objections within three days…”",
+   "tech": "DataProvenance from apg1('prov-apg1-key', 14, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "28e8131cf270"
+  },
+  "src/data.ts::apg1P_languages": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 15, Para 12.8. Its Evidence button shows the Commission’s own words: “In the main examination, the papers of Telugu and English are in qualifying in nature and the marks secured in these papers are not count…”",
+   "tech": "DataProvenance from apg1('prov-apg1-languages', 15, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "d1709a5b4fa6"
+  },
+  "src/data.ts::apg1P_local": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 9, Para 6.1–6.3. Its Evidence button shows the Commission’s own words: “The benefit of 95 % of Local Reservation as provided in Presidential Order 2025 will go to local candidates of each Multi Zone mentioned…”",
+   "tech": "DataProvenance from apg1('prov-apg1-local', 9, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "291d158fd136"
+  },
+  "src/data.ts::apg1P_localDef": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 10, Para 7.2 A.1 — Definition of Local Candidate. Its Evidence button shows the Commission’s own words: “a candidate for direct recruitment to any post shall be regarded as a local candidate in relation to a local areas where he/ she has stud…”",
+   "tech": "DataProvenance from apg1('prov-apg1-local-def', 10, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "695effbad78c"
+  },
+  "src/data.ts::apg1P_mainsCentres": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 14, Para 11.3–11.4. Its Evidence button shows the Commission’s own words: “The Main Written Examination will be held at the following Four Centers only. … 1. VISAKHAPATNAM 2. VIJAYAWADA 3. TIRUPATI 4. ANANTHAPURA…”",
+   "tech": "DataProvenance from apg1('prov-apg1-mains-centres', 14, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "88a490b71565"
+  },
+  "src/data.ts::apg1P_mainsOptions": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 2, Para 1.6. Its Evidence button shows the Commission’s own words: “Option of medium for writing Main Examination and Post/Multi-Zonal/Zonal preferences etc., will be taken through online from the candidat…”",
+   "tech": "DataProvenance from apg1('prov-apg1-mains-options', 2, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "ff0445397dae"
+  },
+  "src/data.ts::apg1P_marksMemo": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 19, Para 15.12. Its Evidence button shows the Commission’s own words: “After publication of final selection list,the marks list (total marks) of the successful candidates will be displayed on the Commission’s…”",
+   "tech": "DataProvenance from apg1('prov-apg1-marks-memo', 19, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "a80940bf61eb"
+  },
+  "src/data.ts::apg1P_medium": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 15, Para 12.9. Its Evidence button shows the Commission’s own words: “All papers except Telugu & English may be answered in English or Telugu or Urdu chosen by the candidates at the time of filling the onlin…”",
+   "tech": "DataProvenance from apg1('prov-apg1-medium', 15, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "cc5e525f2394"
+  },
+  "src/data.ts::apg1P_minMarks": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 18, Para 15.5. Its Evidence button shows the Commission’s own words: “The minimum qualifying marks on aggregate for the vacancies notified under different categories are as follows … 1. OC, Sportspersons & E…”",
+   "tech": "DataProvenance from apg1('prov-apg1-min-marks', 18, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "9af0fd5ec235"
+  },
+  "src/data.ts::apg1P_mode": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 2, Para 1.5. Its Evidence button shows the Commission’s own words: “The Screening test (objective type) will be held in offline mode (OMR based) and the Main Examination would be in Descriptive type.”",
+   "tech": "DataProvenance from apg1('prov-apg1-mode', 2, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "1026f50eb935"
+  },
+  "src/data.ts::apg1P_msp": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 6, Para 4.3. Its Evidence button shows the Commission’s own words: “There shall be Reservation to Meritorious Sports Persons to an extent of 3%”",
+   "tech": "DataProvenance from apg1('prov-apg1-msp', 6, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "b492bd7a600e"
+  },
+  "src/data.ts::apg1P_negative": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 13, Para 10.2. Its Evidence button shows the Commission’s own words: “As per G.O. Ms. No.235, Finance (HR-I, Plg & Policy) Dept., Dt. 06/12/2016, each wrong answer will be penalized with 1/3rd of the marks p…”",
+   "tech": "DataProvenance from apg1('prov-apg1-negative', 13, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "5f240f214999"
+  },
+  "src/data.ts::apg1P_noWaitingList": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 15, Para 13.1. Its Evidence button shows the Commission’s own words: “The recruitment will be made to the vacancies notified only. There shall be no waiting list”",
+   "tech": "DataProvenance from apg1('prov-apg1-no-waiting-list', 15, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "0055105414cb"
+  },
+  "src/data.ts::apg1P_notice": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 1, Title. Its Evidence button shows the Commission’s own words: “NOTIFICATION NO. 07/2026, DATED: 06/10/2026 DIRECT RECRUITMENT TO GROUP – I SERVICES (GENERAL/LIMITED RECRUITMENT)”",
+   "tech": "DataProvenance from apg1('prov-apg1-notice', 1, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "5a601140cdc0"
+  },
+  "src/data.ts::apg1P_omr": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 14, Para 12.1 (a)–(b). Its Evidence button shows the Commission’s own words: “If any applicant fails to bubble or wrongly bubble the Booklet Series in the OMR Answer Sheet, such Answer sheets are invariably invalida…”",
+   "tech": "DataProvenance from apg1('prov-apg1-omr', 14, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "7bc7445b05d2"
+  },
+  "src/data.ts::apg1P_otherStates": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 7, Para 4.12. Its Evidence button shows the Commission’s own words: “BCs, SCs, STs & EWS belonging to other States are not entitled for reservation.”",
+   "tech": "DataProvenance from apg1('prov-apg1-other-states', 7, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "26745539a4a1"
+  },
+  "src/data.ts::apg1P_otpr": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 2, Para 1.4. Its Evidence button shows the Commission’s own words: “In case, applying for the first time to the posts notified by APPSC, he/she shall register his/her bio-data particulars through One Time…”",
+   "tech": "DataProvenance from apg1('prov-apg1-otpr', 2, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "b14b0dde3227"
+  },
+  "src/data.ts::apg1P_otprFrozen": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 11, Para 8, NOTE 4. Its Evidence button shows the Commission’s own words: “Applicant shall note that the data displayed from OTPR at the time of submitting the application will be considered for the purpose of th…”",
+   "tech": "DataProvenance from apg1('prov-apg1-otpr-frozen', 11, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "723ef4bca121"
+  },
+  "src/data.ts::apg1P_payment": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 12, Para 8 — Payment Process. Its Evidence button shows the Commission’s own words: “Once the payment form is submitted, the respective details (used for Calculation of fee and age relaxation) will not be altered in any st…”",
+   "tech": "DataProvenance from apg1('prov-apg1-payment', 12, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "18570a39f75d"
+  },
+  "src/data.ts::apg1P_pbd": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 6, Para 4.4. Its Evidence button shows the Commission’s own words: “There shall be Reservations in respect of Persons with Benchmark Disabilities (PBD) as per Rule 22, 22 (A) and 22 (B) of State and Subord…”",
+   "tech": "DataProvenance from apg1('prov-apg1-pbd', 6, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "a1e1ccb327f8"
+  },
+  "src/data.ts::apg1P_pen": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 41, Annexure-III, B.3. Its Evidence button shows the Commission’s own words: “The OMR Sheet is to be bubbled by Ball Point Pen (Blue or Black) only. Bubbling by Pencil / Ink Pen / Gel Pen is not permitted in this ex…”",
+   "tech": "DataProvenance from apg1('prov-apg1-pen', 41, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "c95992a70166"
+  },
+  "src/data.ts::apg1P_photo": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 40, Annexure-III, A.4. Its Evidence button shows the Commission’s own words: “Applicants must compulsorily upload his/her own scanned photo and signature through jpg format.”",
+   "tech": "DataProvenance from apg1('prov-apg1-photo', 40, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "f4a46a66d254"
+  },
+  "src/data.ts::apg1P_physical": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 4, Para 3 — Physical Requirements. Its Evidence button shows the Commission’s own words: “For Post Code No. 03 & 04: Must not be less than 167.6 Cms in height and must not be less than 86.3 Cms round the Chest on full inspirati…”",
+   "tech": "DataProvenance from apg1('prov-apg1-physical', 4, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "bf998e5dc142"
+  },
+  "src/data.ts::apg1P_prefs": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 19, Para 15.9. Its Evidence button shows the Commission’s own words: “However, the submission of option for Post preferences and Multizonal/Zonal preferences at the time of verification of certificates is ma…”",
+   "tech": "DataProvenance from apg1('prov-apg1-prefs', 19, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "4d3070fe4e03"
+  },
+  "src/data.ts::apg1P_qual04": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 3, Para 3 — Post Code No. 04. Its Evidence button shows the Commission’s own words: “Must possesses B.E/ B.Tech in Electronics and Communication Engineering or Electronics and Telecommunication Engineering or Radio Enginee…”",
+   "tech": "DataProvenance from apg1('prov-apg1-qual-04', 3, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "0dc69bbd2c1b"
+  },
+  "src/data.ts::apg1P_qualDate": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 3, Para 3 — Educational Qualifications. Its Evidence button shows the Commission’s own words: “Applicants must possess the prescribed academic qualification from the recognized University as on the date of Detailed notification.”",
+   "tech": "DataProvenance from apg1('prov-apg1-qual-date', 3, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "ec680cb4d2aa"
+  },
+  "src/data.ts::apg1P_qualDegree": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 3, Para 3 — Post Code No. 01. Its Evidence button shows the Commission’s own words: “Must hold the Bachelor’s Degree of any University in India established or incorporated by or under a Central Act, Provincial Act or a Sta…”",
+   "tech": "DataProvenance from apg1('prov-apg1-qual-degree', 3, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "0d6d72052ff4"
+  },
+  "src/data.ts::apg1P_relax": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 8, Para 5.2 — Age Relaxation. Its Evidence button shows the Commission’s own words: “1 SC, ST, BCs and EWS 5 Years 2 Persons with Benchmark Disabilities (PBD) 10 years”",
+   "tech": "DataProvenance from apg1('prov-apg1-relax', 8, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "3f971c2a225e"
+  },
+  "src/data.ts::apg1P_relaxCensus": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 8, Para 5.2 — Age Relaxation, S. No. 6. Its Evidence button shows the Commission’s own words: “Retrenched temporary employees in the State Census Department with a minimum service of 6 months. 3 Years”",
+   "tech": "DataProvenance from apg1('prov-apg1-relax-census', 8, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "c4f966ad0135"
+  },
+  "src/data.ts::apg1P_relaxEsm": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 8, Para 5.2 — Age Relaxation, S. No. 3 and 4. Its Evidence button shows the Commission’s own words: “3 Ex-Servicemen Shall be allowed to deduct from his age a period of 3 years in addition to the length of service rendered by him in the a…”",
+   "tech": "DataProvenance from apg1('prov-apg1-relax-esm', 8, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "72b833c4af8f"
+  },
+  "src/data.ts::apg1P_relaxState": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 8, Para 5.2 — Age Relaxation, S. No. 5. Its Evidence button shows the Commission’s own words: “Regular A.P. State Government Employees (Employees of Corporations,Municipalit-ies etc. are not eligible). Allowed to deduct from his age…”",
+   "tech": "DataProvenance from apg1('prov-apg1-relax-state', 8, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "782ae532c53a"
+  },
+  "src/data.ts::apg1P_saveSubmit": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 11, Para 8, NOTE 3. Its Evidence button shows the Commission’s own words: “Saving the application alone will not be sufficient. The application will be considered complete only when the candidate clicks the Save…”",
+   "tech": "DataProvenance from apg1('prov-apg1-save-submit', 11, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "ab5167244128"
+  },
+  "src/data.ts::apg1P_scheme1": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 26, Annexure-II — Screening Test, Paper-I. Its Evidence button shows the Commission’s own words: “Screening Test (Objective Type) Paper -I General Studies. This paper consists of 04 parts i.e., ABCD each part carries 30 marks. A. Histo…”",
+   "tech": "DataProvenance from apg1('prov-apg1-scheme-1', 26, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "222187fc5bc5"
+  },
+  "src/data.ts::apg1P_scheme2": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 26, Annexure-II — Screening Test, Paper-II. Its Evidence button shows the Commission’s own words: “Screening Test (Objective Type) Paper -II General Aptitude. This paper consists 2 parts i.e., A and B each part carries 60 Marks (Part-A…”",
+   "tech": "DataProvenance from apg1('prov-apg1-scheme-2', 26, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "133d1b4e6178"
+  },
+  "src/data.ts::apg1P_schemeMains": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 26, Annexure-II — Mains, Written Examination (Descriptive Type). Its Evidence button shows the Commission’s own words: “Paper in Telugu Qualifying Nature 180 minutes 150 Marks Paper in English Qualifying Nature 180 minutes 150 Marks Paper - I General Essay…”",
+   "tech": "DataProvenance from apg1('prov-apg1-scheme-mains', 26, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "08f64233efb5"
+  },
+  "src/data.ts::apg1P_schemeTotal": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 26, Annexure-II — Mains, Written Examination (Descriptive Type). Its Evidence button shows the Commission’s own words: “Paper -V Science, Technology and Environmental Issues. - 180 minutes 150 Marks INTERVIEW 75 Marks TOTAL MARKS 825 Marks”",
+   "tech": "DataProvenance from apg1('prov-apg1-scheme-total', 26, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "09cb7a12f4b3"
+  },
+  "src/data.ts::apg1P_screening": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 18, Para 15.1. Its Evidence button shows the Commission’s own words: “There will be a Screening Test (Objective Type) comprising of two papers (Paper-I and Paper-II). The test is meant for shortlisting the n…”",
+   "tech": "DataProvenance from apg1('prov-apg1-screening', 18, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "e01b945fbd34"
+  },
+  "src/data.ts::apg1P_screeningMin": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 13, Para 10.3. Its Evidence button shows the Commission’s own words: “the Andhra Pradesh Public Service Commission is empowered to pick up candidates, who obtains such minimum qualifying marks in Screening T…”",
+   "tech": "DataProvenance from apg1('prov-apg1-screening-min', 13, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "5c98711b5a2c"
+  },
+  "src/data.ts::apg1P_scribe": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 42, Annexure-III, D.9 (a) and (c). Its Evidence button shows the Commission’s own words: “Wherever the candidates are totally blind, they will be provided a scribe to write the examination and 20 minutes extra time is permitted…”",
+   "tech": "DataProvenance from apg1('prov-apg1-scribe', 42, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "60c512c3a843"
+  },
+  "src/data.ts::apg1P_selection": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 18, Para 15.3. Its Evidence button shows the Commission’s own words: “The selection of candidates for appointment to the posts shall be based on the merit in the Main Written examination and Interview (Perso…”",
+   "tech": "DataProvenance from apg1('prov-apg1-selection', 18, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "1d6ab680336a"
+  },
+  "src/data.ts::apg1P_stateCadre": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 9, Para 6.2. Its Evidence button shows the Commission’s own words: “Post Code No.04: The Rule of Reservation is not applicable as the post is State cadre.”",
+   "tech": "DataProvenance from apg1('prov-apg1-state-cadre', 9, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "c611bd40eca3"
+  },
+  "src/data.ts::apg1P_steps": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 11, Para 8 — How to Apply, STEP-I and STEP-II. Its Evidence button shows the Commission’s own words: “STEP-I: The applicant desires to apply for this Notification shall login to the Commission’s Website with his/her registered OTPR number.…”",
+   "tech": "DataProvenance from apg1('prov-apg1-steps', 11, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "b082497dfb8a"
+  },
+  "src/data.ts::apg1P_ties": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 18, Para 15.8. Its Evidence button shows the Commission’s own words: “if two or more candidates get equal total number of marks, those candidates shall be bracketed. Candidates within the same bracket shall…”",
+   "tech": "DataProvenance from apg1('prov-apg1-ties', 18, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "3c394cd20705"
+  },
+  "src/data.ts::apg1P_topSheet": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 40, Annexure-III, B.2. Its Evidence button shows the Commission’s own words: “After writing the examination the candidate has to handover the original OMR sheet (Top Sheet) to the invigilator in the examination hall…”",
+   "tech": "DataProvenance from apg1('prov-apg1-top-sheet', 40, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "4c0f06f709ac"
+  },
+  "src/data.ts::apg1P_total": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 1, Para 1.2 — table of vacancies. Its Evidence button shows the Commission’s own words: “13 Divisional Development Officer in A.P. Panchayat Raj Service. 35 18-44 65,360- 1,54,980 TOTAL 166”",
+   "tech": "DataProvenance from apg1('prov-apg1-total', 1, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "e760b52d7ef4"
+  },
+  "src/data.ts::apg1P_variation": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 2, Para 1.2, Note (ii). Its Evidence button shows the Commission’s own words: “The number of vacancies and Departments are subject to variation on intimation being received from the Department concerned. Addition of…”",
+   "tech": "DataProvenance from apg1('prov-apg1-variation', 2, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "b27d0e0180b1"
+  },
+  "src/data.ts::apg1P_window": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 1, Para 1.1. Its Evidence button shows the Commission’s own words: “The applicants shall apply online through Commission’s Website https://psc.ap.gov.in from 06/10/2026 to 27/10/2026 up to 11:59 P.M.”",
+   "tech": "DataProvenance from apg1('prov-apg1-window', 1, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "9e4d7a2c2297"
+  },
+  "src/data.ts::apg1P_women": {
+   "text": "The citation behind one APPSC Group-I fact: Notification No. 07/2026, page 6, Para 4.2. Its Evidence button shows the Commission’s own words: “There shall be Reservation to Women horizontally to an extent of 33 1/3%”",
+   "tech": "DataProvenance from apg1('prov-apg1-women', 6, …): OFFICIALLY_VERIFIED, FACT, authorityName APG1_AUTHORITY, URL APG1_NOTICE.url; read from the text of the PDF.",
+   "hash": "7dabcc135f25"
+  },
+  "src/data.ts::apg1Post": {
+   "text": "Turns one row of the notification’s vacancy table (page 1) into a post: its name exactly as printed (so the Evidence quote contains it), its service, number of vacancies, age band and pay scale, cited to that row.",
+   "tech": "(code, id, postName, department, vacancies, minAge, maxAge, pay, row, extra?) → PostRequirement: postName as printed + '(Post Code NN)', payLevel/payScale from the printed scale, classification 'Group-I Services', provenance apg1('prov-apg1-post-NN', 1, …, row); postConditions lead with the vacancies (PostRequirement has no vacancy field) then extra's; extra adds physical standards or a post's own ruleGroup (Post Code 04's branch rule).",
+   "hash": "be5786e7ea93"
+  },
   "src/data.ts::appscProvenance": {
-   "text": "A general source note for APPSC Group-I and Group-II facts, naming a 2026 recruitment notification but linking only to the psc.ap.gov.in homepage with a one-line description. Both APPSC records cite it throughout.",
-   "tech": "`DataProvenance` 'prov-appsc-01': title 'APPSC Group-I & Group-II Services General Recruitment Notification 2026', officialUrl 'https://psc.ap.gov.in', clause 'Notification No. 12/2026', verifiedBy 'Senior State Verification Officer #404', FACT / OFFICIALLY_VERIFIED. Referenced about 35 times across `APPSC_GROUP1_EXAM` and `APPSC_GROUP2_EXAM`.",
-   "hash": "e5d3bfe49cb9"
+   "text": "The placeholder source note behind APPSC Group-II's facts. It says plainly that no APPSC Group-II notification has been read yet, so the facts citing it show 'No official source on record — not verified' and carry no Evidence button. It used to name an invented notification and verifier and claim to be officially verified.",
+   "tech": "`DataProvenance` 'prov-appsc-01': documentTitle 'No APPSC Group-II notification read yet (placeholder record)', officialUrl '', no page, no excerpt, publishedDate/verifiedDate '', verifiedBy saying it is not verified, FACT / UNDER_VERIFICATION. provenanceHasEvidence is false for it, so factVerification gives UNVERIFIED. Referenced throughout `APPSC_GROUP2_EXAM`.",
+   "hash": "86761d590809"
   },
   "src/data.ts::bankFor": {
    "text": "Returns the fixed question bank for a subject (maths, reasoning, general awareness, computers, or English for anything else).",
@@ -1321,6 +1801,11 @@
    "tech": "(paperId, shiftInfo, year) => PracticeQuestion[100]. Four loops of 25 cycling REASONING/GA/QUANT/ENGLISH_TEMPLATES with i % length; ids '<paperId>-q<n>', tier TIER_1, questionType GOVOS_CREATED, difficulty HARD when i%3==0, else MEDIUM when i even, else EASY; provenance via provenanceForSource. Used by OFFICIAL_10_MOCK_PAPERS and NEW_DISCOVERED_PAPERS.",
    "hash": "60709dbf7816"
   },
+  "src/data.ts::coachingSource": {
+   "text": "Builds the label for a free coaching YouTube channel: not official, listed because many candidates follow it, never fact-checked by GovOS — and the exam’s own authority wins wherever a lesson disagrees.",
+   "tech": "(id, channelTitle, url, subscribers, examAuthority) → DataProvenance: RECOMMENDATION, UNDER_VERIFICATION, the subscriber count read from the channel’s own page as the stated basis. The SSC-worded communitySource stays for SSC’s channels.",
+   "hash": "59b0b040c28c"
+  },
   "src/data.ts::collapseRepeats": {
    "text": "Squashes doubled letters into one (so 'workk' becomes 'work'), to help forgive typos.",
    "tech": "w => w.replace(/(.)\\1+/g, '$1'). Used by fuzzyWordEq.",
@@ -1329,7 +1814,7 @@
   "src/data.ts::communitySource": {
    "text": "Builds the source record for a free coaching resource (such as a popular YouTube channel) that is not a government publication. It records how big its audience was when checked, says GovOS does not endorse or fact-check it, and that the official notice wins if they disagree.",
    "tech": "`(id, documentTitle, url, audience) => DataProvenance`: RECOMMENDATION / UNDER_VERIFICATION, dates `CHECK_DATE`, verifiedBy 'channel reachable and identity confirmed', excerpt with the audience string and the disclaimer. Used about 16 times for coaching channels.",
-   "hash": "fe8ec8265b99"
+   "hash": "3ae4b3bae4d6"
   },
   "src/data.ts::constitutionSource": {
    "text": "A helper that builds the source note for a question written from the Constitution of India, pointing to the official text.",
@@ -1492,9 +1977,9 @@
    "hash": "90912b86001b"
   },
   "src/data.ts::ibpsProvenance": {
-   "text": "An older, general source note for IBPS PO facts, naming the detailed advertisement but linking only to the ibps.in homepage, with no specific page quoted beyond a one-line description of the recruitment. Most IBPS dates, posts and cut-offs in the record still point to it.",
-   "tech": "`DataProvenance` 'prov-ibps-01': documentTitle 'IBPS CRP PO/MT-XVI Detailed Advertisement.pdf', officialUrl 'https://ibps.in', page 1, published 2026-08-01, verifiedBy 'Senior Verification Officer #108', FACT / OFFICIALLY_VERIFIED, a generic excerpt. Referenced about 22 times in `IBPS_PO_EXAM` (all 9 dates, the post, the 2 cut-offs, etc.).",
-   "hash": "454e51d2cb30"
+   "text": "The placeholder source note behind IBPS PO's facts. It says plainly that no IBPS document has been read yet, so the dates, the post and the cut-offs citing it show 'No official source on record — not verified' and carry no Evidence button. It used to name an advertisement page and a verifier that did not exist and claim to be officially verified.",
+   "tech": "`DataProvenance` 'prov-ibps-01': documentTitle 'No IBPS document read yet (placeholder record)', officialUrl '', no page, no excerpt, publishedDate/verifiedDate '', FACT / UNDER_VERIFICATION. provenanceHasEvidence is false, so factVerification gives UNVERIFIED and the exam badge reads '0 of N facts officially verified'. Referenced about 22 times in `IBPS_PO_EXAM`.",
+   "hash": "7d582ce31ce7"
   },
   "src/data.ts::jee": {
    "text": "Builds one JEE (Main) citation: which NTA document, which page and clause, and the exact words quoted from it.",
@@ -1960,6 +2445,11 @@
    "text": "Builds the source record for a link to an official government site in the Resource Library, saying the link answered when it was checked on 9 September 2026 and that GovOS links to it rather than copying it.",
    "tech": "`(id, documentTitle, officialUrl, httpCode, taxonomyType='FACT') => DataProvenance` with published/verified date `CHECK_DATE`, verifiedBy naming the HTTP code, OFFICIALLY_VERIFIED, and a generic excerpt saying the source is reachable and maintained by the issuing authority. Used about 47 times in data.ts for resource entries.",
    "hash": "c240289e2e4f"
+  },
+  "src/data.ts::openResource": {
+   "text": "Builds the citation for a free learning resource an official body publishes (an RBI page, an NCERT book on DIKSHA, a T-SAT playlist): it names the publisher and quotes the page’s own title.",
+   "tech": "(id, title, url, owner) → DataProvenance: FACT, OFFICIALLY_VERIFIED, excerptText = the page title as published, verifiedBy naming the HTTP check and the publisher, no publication date (a link check is not a publication).",
+   "hash": "fb48aa4f1e02"
   },
   "src/data.ts::ownerOf": {
    "text": "Works out which single topic a bank question belongs to, by finding the longest topic word in the question's topic name. This stops, for example, a trigonometry 'heights and distances' question being used in a speed-and-distance drill.",
@@ -2927,9 +3417,9 @@
    "hash": "124ad2311db4"
   },
   "src/services.ts::STORAGE_KEYS": {
-   "text": "The names under which GovOS saves things in the browser: the current exam, target post, daily study hours, result entry, completed modules, practice attempts, profile, bookmarks, tracked exams, notification settings and alerts, ticked syllabus topics, roadmap goals, pending error reports and usage events.",
-   "tech": "Constant map of localStorage keys: CURRENT_EXAM 'govos_current_exam_id', TARGET_POST 'govos_target_post_id', DAILY_HOURS 'govos_daily_study_hours', RESULT_ENTRY 'govos_result_entry', COMPLETED_MODULES, MOCK_ATTEMPTS, PROFILE 'govos_candidate_profile', BOOKMARKS 'govos_bookmarked_resources', TRACKED_EXAMS, NOTIFICATION_PREFERENCES, NOTIFICATIONS 'govos_candidate_notifications', COMPLETED_TOPICS 'govos_completed_syllabus_topics', ROADMAP_GOALS, PENDING_REPORTS, USER_INTERACTIONS 'govos_user_interactions'.",
-   "hash": "f03c0cc7e00e"
+   "text": "The names under which GovOS saves things in the browser: the current exam, target post, daily study hours, result entry, completed modules, practice attempts, profile, bookmarks, tracked exams, notification settings and alerts, ticked syllabus topics, roadmap goals, pending error reports and usage events. It also names where the study-plan choices are kept.",
+   "tech": "Constant map of localStorage keys: CURRENT_EXAM 'govos_current_exam_id', TARGET_POST 'govos_target_post_id', DAILY_HOURS 'govos_daily_study_hours', RESULT_ENTRY 'govos_result_entry', COMPLETED_MODULES, MOCK_ATTEMPTS, PROFILE 'govos_candidate_profile', BOOKMARKS 'govos_bookmarked_resources', TRACKED_EXAMS, NOTIFICATION_PREFERENCES, NOTIFICATIONS 'govos_candidate_notifications', COMPLETED_TOPICS 'govos_completed_syllabus_topics', ROADMAP_GOALS, PENDING_REPORTS, USER_INTERACTIONS 'govos_user_interactions'. + STUDY_PLAN: 'govos_study_plan'.",
+   "hash": "171eb020b377"
   },
   "src/services.ts::SYNC_BATCH_BUDGET_BYTES": {
    "text": "The target size of each batch when sending saved attempts to the server: 4 megabytes, so a long history goes in several small uploads.",
@@ -2942,9 +3432,9 @@
    "hash": "2b330e12e7f4"
   },
   "src/services.ts::StorageService": {
-   "text": "The single place where GovOS remembers what a candidate has done: their chosen post, current exam, tracked and bookmarked exams, practice test attempts, ticked syllabus topics, roadmap goals, alerts, saved resources, profile and recent activity. It writes everything to the browser first (so the app works offline) and then sends a copy to the GovOS server's database when it can. It also builds the candidate's date-based alerts and hands scorecard uploads to the server to be read.",
-   "tech": "Class (exported only as the singleton `storageService`) over localStorage keys, with fire-and-forget fetches to `/api/sqlite/*`; userId is fixed to 'default-candidate'. Covers target post, current exam id, result entries, `parseResultDocument` (base64 POST to `/api/results/parse`, mapping 413/non-JSON/offline to typed failures), completed modules, mock attempts (`saveMockAttempt` returns `{local,id}`, `getMockAttempts(examId)` filters by exam, `loadMockAttemptsFromSQLite`), tracked/bookmarked exams, notification preferences and `generatePersonalizedNotificationsForTrackedExams`, completed topics and roadmap goals per exam, queued error reports (`submitReport`/`flushPendingReports`), resource bookmarks, `verifyResourceLinks`, a single-flight `syncAllToSQLite` that batches attempts and reports failed ids, interaction events, the profile, `getPersonalizedRecommendations` (delegates to `computePersonalizedRecommendations`) and `checkSQLiteHealth`.",
-   "hash": "b2bae980b35c"
+   "text": "The single place where GovOS remembers what a candidate has done: their chosen post, current exam, tracked and bookmarked exams, practice test attempts, ticked syllabus topics, roadmap goals, alerts, saved resources, profile and recent activity. It writes everything to the browser first (so the app works offline) and then sends a copy to the GovOS server's database when it can. It also builds the candidate's date-based alerts and hands scorecard uploads to the server to be read. It also keeps each exam’s study-plan choices.",
+   "tech": "Class (exported only as the singleton `storageService`) over localStorage keys, with fire-and-forget fetches to `/api/sqlite/*`; userId is fixed to 'default-candidate'. Covers target post, current exam id, result entries, `parseResultDocument` (base64 POST to `/api/results/parse`, mapping 413/non-JSON/offline to typed failures), completed modules, mock attempts (`saveMockAttempt` returns `{local,id}`, `getMockAttempts(examId)` filters by exam, `loadMockAttemptsFromSQLite`), tracked/bookmarked exams, notification preferences and `generatePersonalizedNotificationsForTrackedExams`, completed topics and roadmap goals per exam, queued error reports (`submitReport`/`flushPendingReports`), resource bookmarks, `verifyResourceLinks`, a single-flight `syncAllToSQLite` that batches attempts and reports failed ids, interaction events, the profile, `getPersonalizedRecommendations` (delegates to `computePersonalizedRecommendations`) and `checkSQLiteHealth`. + getStudyPlanPrefs / setStudyPlanPrefs.",
+   "hash": "c84d6788353a"
   },
   "src/services.ts::StorageService.checkSQLiteHealth": {
    "text": "Asks the GovOS server whether its database is available, and reports 'offline' if the server does not answer.",
@@ -3040,6 +3530,11 @@
    "text": "Reads which study-roadmap goals the candidate has ticked off for one exam.",
    "tech": "Reads readStoredJson('govos_roadmap_goals', isPlainObject, {}) and returns the object stored under examId, or {}.",
    "hash": "790041a91be3"
+  },
+  "src/services.ts::StorageService.getStudyPlanPrefs": {
+   "text": "Reads back the study-plan choices the candidate made for one exam.",
+   "tech": "(examId) → StudyPlanPrefs from govos_study_plan[examId]; {} when none or the store is unreadable.",
+   "hash": "108096ca8545"
   },
   "src/services.ts::StorageService.getTargetPost": {
    "text": "Tells GovOS which job post the candidate has chosen to aim for. If they have not chosen one, it says so with an empty answer instead of picking one for them.",
@@ -3171,6 +3666,11 @@
    "tech": "Key is 'govos_result_entry_<examId>' or 'govos_result_entry'. A non-null entry is written via writeStored (returns false and leaves the old value if the browser refuses); null removes the key, returning true, or false if removeItem throws. No server call.",
    "hash": "069cc9402fc8"
   },
+  "src/services.ts::StorageService.setStudyPlanPrefs": {
+   "text": "Saves the candidate’s study-plan choices for one exam, so the plan opens the same way next time.",
+   "tech": "(examId, prefs) → boolean: writes govos_study_plan[examId]; false (and a warning) when the browser refuses the write.",
+   "hash": "76d2ee4cdb80"
+  },
   "src/services.ts::StorageService.setTargetPost": {
    "text": "Saves the job post the candidate wants to aim for, in the browser and also as a copy on the GovOS server.",
    "tech": "Writes postId to localStorage 'govos_target_post_id', then calls syncProfileToSQLite({target_post_id}) (fire-and-forget POST /api/sqlite/profile, partial update). Storage errors are caught and logged; if setItem throws, the server sync is skipped.",
@@ -3224,7 +3724,7 @@
   "src/services.ts::StorageService.toggleCompletedTopic": {
    "text": "Ticks or unticks one syllabus topic for one exam, saves it in the browser and sends a copy to the server.",
    "tech": "Flips topicId in getCompletedTopics(examId), writes the whole per-exam map back to 'govos_completed_syllabus_topics', and fire-and-forget calls syncProgressToSQLite with module id 'topic:<examId>:<topicId>' (POST /api/sqlite/progress). Returns the new map; a write error is logged and skips the sync.",
-   "hash": "c9718a93393a"
+   "hash": "c74519bf9774"
   },
   "src/services.ts::StorageService.toggleResourceBookmark": {
    "text": "Saves or unsaves a study resource for later, in the browser and as a copy on the server.",
@@ -3245,6 +3745,11 @@
    "text": "Asks the GovOS server to check whether a list of web links still open, because the browser cannot test other websites directly.",
    "tech": "POSTs {urls} to /api/resources/verify-links and returns data.results (ResourceLinkCheck[]) when it is an array. Returns [] on a non-OK reply, bad shape or network error, so the caller shows 'could not verify'.",
    "hash": "8d0c55b3da76"
+  },
+  "src/services.ts::StudyPlanPrefs": {
+   "text": "What a candidate chose for an exam’s study plan: how many days, how many hours a day, which paper, and which subjects to leave out.",
+   "tech": "Interface {days?, hoursPerDay?, track?, excludedSubjects?}; every field optional — absent means not chosen.",
+   "hash": "de7d68a22273"
   },
   "src/services.ts::SyncAllResult": {
    "text": "The outcome of a full sync to the server: whether it worked, a message, how many requests and attempts were sent, and which attempts were not stored.",
@@ -4372,9 +4877,9 @@
    "hash": "b6e5a856ceeb"
   },
   "src/types.ts::ResourceItem": {
-   "text": "One entry in a resource library: a link to a PDF, website, video, channel or tool, with its subject, author, type, format, description, who it suits, its source, whether it is pinned as essential, when its link last worked, and what it is for. GovOS only links to these; it stores no study material.",
-   "tech": "Interface: id, title, subject (closed union of library groups), author, type (OFFICIAL_PDF | OFFICIAL_PORTAL | SIMPLIFIED_GUIDE | RECOMMENDED_BOOK | VIDEO_LECTURE | ONLINE_TOOL | THIRD_PARTY), resourceFormat (DIRECT_PDF | YOUTUBE_COURSE | YOUTUBE_CHANNEL | INTERACTIVE_HANDBOOK | ONLINE_TOOL | OFFICIAL_PORTAL | EXTERNAL_PAGE), url, directPdfUrl?, youtubeUrl?, youtubeEmbedId?, inAppHandbookContent?, description, recommendedFor, rating?, officialTag?, provenance?, isEssential?, linkVerifiedDate?, role?. Exam.resources.",
-   "hash": "957e7e406f2e"
+   "text": "One entry in a resource library: a link to a PDF, website, video, channel or tool, with its subject, author, type, format, description, who it suits, its source, whether it is pinned as essential, when its link last worked, and what it is for. GovOS only links to these; it stores no study material. Subjects now also include Physics, Chemistry, Mathematics, architecture and planning aptitude, child development and pedagogy, languages, environmental studies and social studies.",
+   "tech": "Interface: id, title, subject (closed union of library groups), author, type (OFFICIAL_PDF | OFFICIAL_PORTAL | SIMPLIFIED_GUIDE | RECOMMENDED_BOOK | VIDEO_LECTURE | ONLINE_TOOL | THIRD_PARTY), resourceFormat (DIRECT_PDF | YOUTUBE_COURSE | YOUTUBE_CHANNEL | INTERACTIVE_HANDBOOK | ONLINE_TOOL | OFFICIAL_PORTAL | EXTERNAL_PAGE), url, directPdfUrl?, youtubeUrl?, youtubeEmbedId?, inAppHandbookContent?, description, recommendedFor, rating?, officialTag?, provenance?, isEssential?, linkVerifiedDate?, role?. Exam.resources. subject union + 'Physics' | 'Chemistry' | 'Mathematics' | 'Architecture & Planning Aptitude' | 'Child Development & Pedagogy' | 'Languages' | 'Environmental Studies' | 'Social Studies'.",
+   "hash": "ebd4b6c7d364"
   },
   "src/types.ts::ResourceLinkCheck": {
    "text": "One link-check result: the address, its status, the web response code, and when it was checked.",
@@ -4657,14 +5162,14 @@
    "hash": "6d641a5efc8d"
   },
   "src/ui.tsx::AuthorityArt": {
-   "text": "Simple line drawings for exam cards that hint at each authority's world: a clipboard with ticks (staff selection), a columned building with a flag (civil services), a bank with coins and a rising chart (banking), a secretariat with a clock tower and map pin (state commission), and a train (railway). They are GovOS's own drawings, not official logos.",
-   "tech": "Component {kind: AuthoritySketch}: SVG viewBox 180x130 (.deck-art, aria-hidden) rendering one of five groups built from SKETCH_LINE and INK, with CSS hook classes (deck-tick-N, deck-chart, deck-lamp, deck-art-glyph).",
-   "hash": "2af8768c7143"
+   "text": "Simple line drawings for exam cards that hint at each authority's world: a clipboard with ticks (staff selection), a columned building with a flag (civil services), a bank with coins and a rising chart (banking), a secretariat with a clock tower and map pin (state commission), and a train (railway). They are GovOS's own drawings, not official logos. It also draws a blackboard with books and an apple for teaching exams, and a drawing sheet with compasses and a turning gear for engineering exams.",
+   "tech": "Component {kind: AuthoritySketch}: SVG viewBox 180x130 (.deck-art, aria-hidden) rendering one of five groups built from SKETCH_LINE and INK, with CSS hook classes (deck-tick-N, deck-chart, deck-lamp, deck-art-glyph). + teaching and engineering groups; the gear turns on hover (.deck-gear), only on a fine pointer without reduced motion.",
+   "hash": "2099dc47c48a"
   },
   "src/ui.tsx::AuthoritySketch": {
-   "text": "The five kinds of drawing that can decorate an exam card: selection commission, civil services, banking, state commission and railway.",
-   "tech": "Union 'selection' | 'civil' | 'banking' | 'state' | 'railway'; selects AuthorityArt's drawing. Deliberately not logos or the State Emblem.",
-   "hash": "6e88594c95d8"
+   "text": "The kinds of drawing that can decorate an exam card: selection commission, civil services, banking, state commission and railway. Two more were added for teaching exams (a blackboard and books) and engineering exams (a drawing sheet, compasses and a gear).",
+   "tech": "Union 'selection' | 'civil' | 'banking' | 'state' | 'railway'; selects AuthorityArt's drawing. Deliberately not logos or the State Emblem. + 'teaching' | 'engineering'; chosen by authoritySketchOf.",
+   "hash": "945c5d3dda64"
   },
   "src/ui.tsx::AuthoritySourceDiscoveryCard": {
    "text": "A Trust Panel card that lets an administrator 'walk' an exam authority's official website to catalogue its documents, portals and listings. It shows when the last walk ran, how much was read, whether it was complete, and for each kind of document what the search could honestly conclude. An optional tick lets Claude name links the rules could not classify; nothing found becomes a candidate fact.",
@@ -4772,9 +5277,9 @@
    "hash": "cadf4364805c"
   },
   "src/ui.tsx::ClubHero": {
-   "text": "The top banner of the home page: the headline 'Government exams, simplified for you.', a short promise, a search box, 'Find my exam' and 'Explore exams' buttons, quick search chips (SSC CGL, UPSC CSE, etc.), counts of exams, authorities and dates on record, and the animated journey picture. Two small stickers show the nearest upcoming dates GovOS holds and open those exams.",
-   "tech": "Uses usePointerDepth(stageRef) and an IntersectionObserver (threshold 0.05) to set live, which drives data-live and ClubSkyline's live. milestones = the 2 exams with the smallest nextMilestoneOf days (null days sort as 9999). Figures: exams.length, unique authorityName count, and the count of non-superseded dates. Search input calls onSearch on change and onFind on Enter; chips call onSearch(name). Sticker buttons call onOpenExam.",
-   "hash": "c5eef5cfcde4"
+   "text": "The top banner of the home page: the headline 'Government exams, simplified for you.', a short promise, a search box, 'Find my exam' and 'Explore exams' buttons, one quick chip per exam GovOS holds, counts of exams, authorities and dates on record, and the animated journey picture. Two small stickers show the nearest upcoming dates GovOS holds and open those exams. The quick chips are one per exam GovOS holds and open that exam; the search hint names the first exams held. The stickers only ever use dates that are verified by their own evidence, so an unverified date is never advertised on the home page.",
+   "tech": "Uses usePointerDepth(stageRef) and an IntersectionObserver (threshold 0.05) to set live, which drives data-live and ClubSkyline's live. milestones = the 2 exams with the smallest nextMilestoneOf days (null days sort as 9999). Figures: exams.length, unique authorityName count, and the count of non-superseded dates. Search input calls onSearch on change and onFind on Enter; chips call onSearch(name). Sticker buttons call onOpenExam. Chips map exams → examDisplayCode and call onOpenExam (they used to search fixed names, including RRB NTPC, which GovOS does not hold). Each exam's dates are filtered to factVerification(d.provenance, dateClaim(d)) === 'VERIFIED' before nextMilestoneOf picks the next one.",
+   "hash": "68686bb404f2"
   },
   "src/ui.tsx::ClubHeroProps": {
    "text": "What the home page's top banner needs: the exams, the search text and its handlers, and actions to find, explore or open an exam.",
@@ -4932,9 +5437,9 @@
    "hash": "c14685571644"
   },
   "src/ui.tsx::ExamDetailView": {
-   "text": "An exam's own page: a side list of its 13 parts plus four reference parts, a header with the exam's name, authority, verification badge, next milestone, stages and key dates, with buttons to track it, open the official site, report an error, bookmark it or ask the AI. The body shows whichever part is open (overview and posts, timeline, eligibility rules, application guide, pattern, syllabus in three views, roadmap, resources, practice, mock tests, admit card, exam day, results, cut-offs, FAQs, official links, corrigenda), with a status note, a progress bar and previous/next buttons. A 'practice' button anywhere on the page turns to part 09. Switching to another exam resets the page to that exam's starting section, and ticked syllabus topics are only the ones the candidate ticked. For an eligibility test the Quick Info says it fills no post, and a second exam-date tile appears only when the exam has a second stage. An admission test likewise says it fills no post, and the exam level reads as words (‘Class 12’).",
-   "tech": "Exported component taking ExamDetailViewProps. State: activeSection (from initialSection; reset during render when exam.id changes, along with showPastDates, guide index and resource modal), nowTs (ticks every 60 s only while section 2 is open), syllabusWatch (syllabusLiveService.watch(exam.id, verifiedDate)), syllabusViewMode (defaults by examHasStudyPaths), completedTopics (storageService.getCompletedTopics(exam.id) from the first render; an exam.id effect re-reads it), isBookmarked. Effects call storageService.recordInteraction on open and for sections 6/8/12, onSyllabusOpened when section 6 opens, and scroll the active side-nav chip into view. Derived: liveDates (non-SUPERSEDED), header tiles (examHeaderWindowTiles plus stage tiles for EXAM_TIER1/EXAM_TIER2 skipping stageAssociation NEEDS_REVIEW), nextMilestoneOf, stage rail, latestUpdates (top 5). onNavigatePractice = () => turnTo(9) is passed to PostStudyPathEngine and ResultNextStepsSection. Renders SectionStateNote, each section's block (ApplicationGuide, ApplicationSourcesPanel, PatternNodeCard, PublishedSyllabusPanel, PostStudyPathEngine, SyllabusTreeMap, PreparationPlanner, ResourceLibrary, ExamPracticeRouter with PRACTICE/MOCKS scope, AdmitCardSection, ExamDayChecklistSection, ResultNextStepsSection, OfficialDocumentsPanel, OfficialNoticeBoards), a SectionSourcesPanel when SECTION_PANEL_FOR[activeSection] exists, a pager using turnTo (sets the section and smooth-scrolls the card), and ResourceReaderModal. The EXAM_TIER2 header tile is added only when exam.stages has 2+ entries or an EXAM_TIER2 date exists; Quick Info 'Posts' reads 'None — an eligibility test fills no post' for examNature ELIGIBILITY_TEST. ADMISSION_TEST reads 'None — an admission test fills no post'; 'Exam Level' maps minimumQualification through QUALIFICATION_WORDS (it printed the code CLASS_12).",
-   "hash": "561e2403783b"
+   "text": "An exam's own page: a side list of its 13 parts plus four reference parts, a header with the exam's name, authority, verification badge, next milestone, stages and key dates, with buttons to track it, open the official site, report an error, bookmark it or ask the AI. The body shows whichever part is open (overview and posts, timeline, eligibility rules, application guide, pattern, syllabus in three views, roadmap, resources, practice, mock tests, admit card, exam day, results, cut-offs, FAQs, official links, corrigenda), with a status note, a progress bar and previous/next buttons. A 'practice' button anywhere on the page turns to part 09. Switching to another exam resets the page to that exam's starting section, and ticked syllabus topics are only the ones the candidate ticked. For an eligibility test the Quick Info says it fills no post, and a second exam-date tile appears only when the exam has a second stage. An admission test likewise says it fills no post, and the exam level reads as words (‘Class 12’). The Study Roadmap part opens on the study plan GovOS builds for the exam.",
+   "tech": "Exported component taking ExamDetailViewProps. State: activeSection (from initialSection; reset during render when exam.id changes, along with showPastDates, guide index and resource modal), nowTs (ticks every 60 s only while section 2 is open), syllabusWatch (syllabusLiveService.watch(exam.id, verifiedDate)), syllabusViewMode (defaults by examHasStudyPaths), completedTopics (storageService.getCompletedTopics(exam.id) from the first render; an exam.id effect re-reads it), isBookmarked. Effects call storageService.recordInteraction on open and for sections 6/8/12, onSyllabusOpened when section 6 opens, and scroll the active side-nav chip into view. Derived: liveDates (non-SUPERSEDED), header tiles (examHeaderWindowTiles plus stage tiles for EXAM_TIER1/EXAM_TIER2 skipping stageAssociation NEEDS_REVIEW), nextMilestoneOf, stage rail, latestUpdates (top 5). onNavigatePractice = () => turnTo(9) is passed to PostStudyPathEngine and ResultNextStepsSection. Renders SectionStateNote, each section's block (ApplicationGuide, ApplicationSourcesPanel, PatternNodeCard, PublishedSyllabusPanel, PostStudyPathEngine, SyllabusTreeMap, PreparationPlanner, ResourceLibrary, ExamPracticeRouter with PRACTICE/MOCKS scope, AdmitCardSection, ExamDayChecklistSection, ResultNextStepsSection, OfficialDocumentsPanel, OfficialNoticeBoards), a SectionSourcesPanel when SECTION_PANEL_FOR[activeSection] exists, a pager using turnTo (sets the section and smooth-scrolls the card), and ResourceReaderModal. The EXAM_TIER2 header tile is added only when exam.stages has 2+ entries or an EXAM_TIER2 date exists; Quick Info 'Posts' reads 'None — an eligibility test fills no post' for examNature ELIGIBILITY_TEST. ADMISSION_TEST reads 'None — an admission test fills no post'; 'Exam Level' maps minimumQualification through QUALIFICATION_WORDS (it printed the code CLASS_12). Section 07 renders GeneratedStudyPlan (with the syllabus ticks) above PreparationPlanner.",
+   "hash": "9be4c2a815d3"
   },
   "src/ui.tsx::ExamDetailViewProps": {
    "text": "The list of things the exam page needs from the app around it: the exam to show, and the actions it can trigger such as going home, opening the AI chat, showing a source, reporting an error, tracking the exam, and which section to open first.",
@@ -4952,9 +5457,9 @@
    "hash": "7c969ff340ce"
   },
   "src/ui.tsx::ExamFinder": {
-   "text": "The whole home page. From top to bottom: the banner with search and the journey picture, the fanned row of popular exam cards, the scrolling list of exams and career fields, the 'Think inside the notice' band, the eligibility check, the 'How GovOS works' steps, a 'Recommended for You' shortlist built from what the candidate actually searches, opens, saves and reads (with an activity log they can clear), an exam browser filtered by who you are and what you want, and finally the FAQ and footer. Each exam card can be tracked, saved or opened. The field filter offers the standard fields plus any field an exam’s record declares, such as Teaching & Education.",
-   "tech": "State: selectedPersona, selectedInterest, searchQuery, recommendations (storageService.getPersonalizedRecommendations(exams)), interactions, bookmarkedIds and showInteractionsModal; refreshRecommendations re-reads all three and runs when trackedExamIds or exams change. handleSearchChange records a SEARCH interaction for the first exam whose title, code or authority matches a 3+ character query. openPopular opens the ALL_EXAMS exam whose id contains the given part, or else searches for it. The browse filter (a two-step .grid-2: qualification, field) keeps exams matching the search, QUALIFICATION_RANK of the persona >= the exam's minimumQualification (missing means shown) and careerFields including the interest (missing or empty means shown). Exam cards show ExamVerifiedBadge (or DEMO DATA), QUALIFICATION_WORDS, getExamCycle and the code (hidden for MACHINE_ACQUIRED); Guide buttons record a VIEW and call onSelectExam. The activity modal lists events with INTERACTION_WEIGHTS times SIGNAL_STRENGTH_MULTIPLIER and the stated decay formula, and its 'Clear All Events' calls storageService.clearUserInteractions(). Nothing on the page writes activity the candidate did not do. `interests` = the six standard fields followed by every careerFields value the exams declare (de-duplicated).",
-   "hash": "75b130386452"
+   "text": "The whole home page. From top to bottom: the banner with search and the journey picture, the fanned row of popular exam cards, the scrolling list of exams and career fields, the 'Think inside the notice' band, the eligibility check, the 'How GovOS works' steps, a 'Recommended for You' shortlist built from what the candidate actually searches, opens, saves and reads (with an activity log they can clear), an exam browser filtered by who you are and what you want, and finally the FAQ and footer. Each exam card can be tracked, saved or opened. The field filter offers the standard fields plus any field an exam’s record declares, such as Teaching & Education. The exam deck near the top shows a card for every exam GovOS holds — the register and the published registry alike — so a newly added exam appears there automatically.",
+   "tech": "State: selectedPersona, selectedInterest, searchQuery, recommendations (storageService.getPersonalizedRecommendations(exams)), interactions, bookmarkedIds and showInteractionsModal; refreshRecommendations re-reads all three and runs when trackedExamIds or exams change. handleSearchChange records a SEARCH interaction for the first exam whose title, code or authority matches a 3+ character query. openPopular opens the ALL_EXAMS exam whose id contains the given part, or else searches for it. The browse filter (a two-step .grid-2: qualification, field) keeps exams matching the search, QUALIFICATION_RANK of the persona >= the exam's minimumQualification (missing means shown) and careerFields including the interest (missing or empty means shown). Exam cards show ExamVerifiedBadge (or DEMO DATA), QUALIFICATION_WORDS, getExamCycle and the code (hidden for MACHINE_ACQUIRED); Guide buttons record a VIEW and call onSelectExam. The activity modal lists events with INTERACTION_WEIGHTS times SIGNAL_STRENGTH_MULTIPLIER and the stated decay formula, and its 'Clear All Events' calls storageService.clearUserInteractions(). Nothing on the page writes activity the candidate did not do. `interests` = the six standard fields followed by every careerFields value the exams declare (de-duplicated). ExamPassRail items = exams.map(exam → {name: examDisplayCode, sub: authorityName, sketch: authoritySketchOf(exam), exam, onClick: onSelectExam}); the five hand-written cards (and openPopular, which matched exams by a fragment of their id) are gone.",
+   "hash": "b4c4f5b93423"
   },
   "src/ui.tsx::ExamFinderProps": {
    "text": "What the home page needs: the exams, ways to open evidence, move between screens, open an exam or the eligibility page, and track exams.",
@@ -4988,18 +5493,18 @@
   },
   "src/ui.tsx::FACT_CANONICAL": {
    "text": "For each fact topic, the phrase that leads the assistant back to it (for example 'salary' for pay), used when a follow-up borrows the earlier topic.",
-   "tech": "Record from intent id to a phrase that scores on that intent in FACT_INTENTS.",
-   "hash": "9794e73a4072"
+   "tech": "Record from intent id to a phrase that scores on that intent in FACT_INTENTS. Includes interview → 'interview'.",
+   "hash": "d2e5ac030841"
   },
   "src/ui.tsx::FACT_INTENTS": {
-   "text": "The list of factual topics the assistant can answer (target post, next step, study plan, age, eligibility, dates, pattern, vacancies, pay, syllabus, fee, resources, admit card, cut-off and pass marks, attempts, physical standards, whether dates are final, documents to upload, how to apply, practice), each with the phrases that signal it.",
-   "tech": "Array of {id, keys}; scored with bestMatch/scoreKeys. 'pattern' includes 'how many papers'; 'cutoff' includes 'pass marks'; 'documents' (documents required/needed/to upload) answers from applicationGuide.requiredDocuments, else falls through to 'apply'.",
-   "hash": "2348a099c868"
+   "text": "The list of factual topics the assistant can answer (target post, next step, study plan, age, eligibility, dates, pattern, vacancies, pay, syllabus, fee, resources, admit card, cut-off and pass marks, attempts, whether there is an interview, physical standards, whether dates are final, documents to upload, how to apply, practice), each with the phrases that signal it.",
+   "tech": "Array of {id, keys}; scored with bestMatch/scoreKeys. 'pattern' includes 'how many papers'; 'cutoff' includes 'pass marks'; 'documents' (documents required/needed/to upload) answers from applicationGuide.requiredDocuments, else falls through to 'apply'. 'interview' (is there an interview / interview / personality test / viva voce / interview marks) answers from the record's stages.",
+   "hash": "a576f6b99a1d"
   },
   "src/ui.tsx::FACT_SUBJECTS": {
    "text": "Short readable names for each fact topic the assistant answers (for example ‘the age limits’, ‘the documents to upload’), remembered on each answer so a later follow-up knows what was being discussed.",
-   "tech": "Record from FACT_INTENTS id to subject label (now including documents); stored as AssistantReply.subject.",
-   "hash": "44fe10ba3be1"
+   "tech": "Record from FACT_INTENTS id to subject label (now including documents); stored as AssistantReply.subject. Includes interview → 'the interview'.",
+   "hash": "5125857520c3"
   },
   "src/ui.tsx::FACT_VERIFICATION_TEXT": {
    "text": "The exact words and colours candidates see for each fact state, such as 'Officially verified' in green or 'Source found — verification pending' in amber.",
@@ -5025,6 +5530,11 @@
    "text": "Words in exam titles that do not identify any one exam (services, civil, group, commission, state, 2026 and so on), so that a question like 'how many services' is not mistaken for naming a particular exam.",
    "tech": "Set of lower-case words excluded by examNamedIn when deriving an exam's identifying tokens.",
    "hash": "156082718241"
+  },
+  "src/ui.tsx::GeneratedStudyPlan": {
+   "text": "Section 07’s study plan for every exam: the candidate picks a paper (where there are alternatives), 60/90/120/180 days or the days to the exam, and hours a day; it shows the totals, where the hours go and why, and the plan week by week with a tick box and Evidence for each topic.",
+   "tech": "Component {exam, completedTopics, onToggleTopic, onOpenProvenanceModal}: prefs from storageService.getStudyPlanPrefs (reset on an exam switch, during render), hours default to the saved daily hours or 4 (labelled an assumption), plan = generateStudyPlan (memoised); ticks are the syllabus ticks of ExamDetailView. Renders “none” honestly when the record has neither topics nor scored sections.",
+   "hash": "c663730458a8"
   },
   "src/ui.tsx::GovOSMark": {
    "text": "GovOS's own logo: a ring with a bold 'G' whose crossbar is a tick mark. It is drawn in code, not taken from an outside image.",
@@ -5226,6 +5736,26 @@
    "tech": "Record mapping marksPerQuestion, questions, marks, durationMinutes, negativeMarking, negativeMarkPerWrong to readable phrases; used for EvidenceButton labels in PatternNodeCard.",
    "hash": "445202681a4b"
   },
+  "src/ui.tsx::PLAN_DAY_PRESETS": {
+   "text": "The plan lengths a candidate can pick: 60, 90, 120 or 180 days.",
+   "tech": "[60, 90, 120, 180]; the days left to a firm exam date are added when there is one.",
+   "hash": "e5205fbf318a"
+  },
+  "src/ui.tsx::PLAN_PHASE_SHARES": {
+   "text": "How GovOS splits the days of a plan: about 60% learning, 25% a second pass, and the rest full papers on the clock.",
+   "tech": "{learn: 0.6, revise: 0.25}; practice takes the remainder. Stated on screen as GovOS’s guidance, not a rule of the exam.",
+   "hash": "845e92680181"
+  },
+  "src/ui.tsx::PLAN_STOP": {
+   "text": "Small words ignored when matching a syllabus subject to a part of the exam pattern.",
+   "tech": "Set of 'and', 'or', 'the', 'of', 'in', 'for', 'a', 'an', 'to', 'with'.",
+   "hash": "3565e1e34144"
+  },
+  "src/ui.tsx::PLAN_THIN_SYLLABUS": {
+   "text": "The size below which an exam’s syllabus is too thin to plan from, so its plan is built from the exam pattern’s sections instead.",
+   "tech": "10 — studyPlanUnits uses the pattern path when exam.syllabus.length is below it.",
+   "hash": "e5750c50552f"
+  },
   "src/ui.tsx::PLATFORM_MAP": {
    "text": "The assistant’s map of where everything lives in GovOS: about 20 entries (eligibility, resources, practice, calendar, syllabus, application simulator, typing, past tests, saved items, target post, applying, admit card, cut-offs, roadmap, compare, trust and reporting, results, exam day, corrigenda, FAQs, posts), each with its keywords, a ready-made explanation and a button to that place.",
    "tech": "Array of {keys, answer, action}. Answers use placeholders filled by fillCounts ({exam}, {posts}, …); an answer that counts {posts} is replaced by noPostsReply for an exam with no posts. The admit-card and results answers no longer name one authority’s process (\"regional website\", \"final posting\").",
@@ -5271,6 +5801,11 @@
    "tech": "Recursive component { node: ExamPatternNode, depth, onOpenProvenanceModal }. Figures only for defined questions / marks / durationMinutes / marksPerQuestion (labelled 'Mark / question' when it is 1); node.derived marks '(computed)', underReview adds '*'. Shows levelLabel, code, NEEDS_REVIEW, negativeMarking, qualifying, languages, mode, questionType, sectionalTiming, durationVariants, an EvidenceButton per provenance and derivedEvidence, and recurses into children.",
    "hash": "0ba6fb09c6a9"
   },
+  "src/ui.tsx::PlanMarkNode": {
+   "text": "One part of an exam’s pattern that states its marks, with what sits above it.",
+   "tech": "Type {name, path (ancestor words), marks, depth, key, qualifying, stage}.",
+   "hash": "b3cacebe72bc"
+  },
   "src/ui.tsx::PostStudyPathEngine": {
    "text": "The 'Post Study Plan' view of the syllabus (used for SSC CGL). The candidate picks the post they are aiming for and sees exactly what to study for it: the common modules for each stage, extra modules that post needs, any physical or medical standards, and the modules they can skip because that post does not need them. Modules can be ticked off as done, and a button copies the candidate's progress to the server database.",
    "tech": "State: selectedPostId from storageService.getTargetPost() (handleSelectPost also calls setTargetPost), selectedStage ALL | TIER_1 | TIER_2, completedModules from getCompletedModules() (toggled via toggleCompletedModule). currentPath = getPostStudyPath(selectedPostId); post pills come from ALL_POST_STUDY_PATHS. Renders tier1/tier2 commonModules (with provenance-type badges and EvidenceButton when onOpenProvenanceModal is given), tier2.additionalModules, physicalMedical when required, and tier2.excludedModules (empty case shows a fixed sentence about Junior Statistical Officer). 'Sync to SQLite' awaits storageService.syncAllToSQLite() and shows its message on failure. Not exam-parameterised: it reads SSC's study paths directly.",
@@ -5292,9 +5827,9 @@
    "hash": "c52414c9702c"
   },
   "src/ui.tsx::PracticeEngine": {
-   "text": "This is SSC CGL's practice screen, where a candidate sits timed practice tests and then studies the answers. It has tabs for full-length GovOS practice papers, 25-question subject tests, 15-question topic drills, a chat where you describe the test you want and it builds one, the test in progress, and a history of past attempts. During a test there is a countdown clock (it submits automatically at zero), a numbered grid of questions to jump around, and buttons to clear an answer or mark it for review. After submitting you see your score, accuracy, topics sorted into weak, moderate and strong, an optional split of your own daily study hours across subjects, and a worked solution for every question with where it came from. Every attempt is saved in the browser and sent to the GovOS server, and any past attempt can be reopened for review or retaken. For exams other than SSC CGL the paper shelves are empty and a note says these questions are written to SSC's pattern and would mislead.",
+   "text": "This is SSC CGL's practice screen, where a candidate sits timed practice tests and then studies the answers. It has tabs for full-length GovOS practice papers, 25-question subject tests, 15-question topic drills, a chat where you describe the test you want and it builds one, the test in progress, and a history of past attempts. During a test there is a countdown clock (it submits automatically at zero), a numbered grid of questions to jump around, and buttons to clear an answer or mark it for review. After submitting you see your score, accuracy, topics sorted into weak, moderate and strong, an optional split of your own daily study hours across subjects, and a worked solution for every question with where it came from. Every attempt is saved in the browser and sent to the GovOS server, and any past attempt can be reopened for review or retaken. For exams other than SSC CGL the paper shelves are empty and a note says these questions are written to SSC's pattern and would mislead. On a phone the test creator's header wraps (the target badge drops below the title) and its replies use the full width beside the bot icon.",
    "tech": "Props: `exam`, `onOpenProvenanceModal`, `scope` ('ALL' | 'PRACTICE' | 'MOCKS'; MOCKS hides papers/sectionals/drills and opens on the creator, PRACTICE hides the creator); `activePracticeTab` switches PAPERS_LIST, SUBJECT_TESTS, TOPIC_DRILLS, AI_CHAT_ASSISTANT, ACTIVE_TEST, PAST_ANALYTICS. The bank (`OFFICIAL_10_MOCK_PAPERS`, `SUBJECT_MOCK_TESTS`, `TOPIC_DRILL_TESTS`) is shown only when `exam.id === PRACTICE_BANK_EXAM_ID`; 'Show More Practice Papers' adds `NEW_DISCOVERED_PAPERS` after a 1.2 s timeout, and PAPERS_LIST also mounts `OfficialPaperCatalogue` and `AnswerKeyPanel`. Test state is `userAnswers`, `markedForReview`, `currentIdx`, `timerSeconds` (1 s interval, pause toggle, auto `handleSubmitTest` at 0), and a `sittingIdRef` id fixed at start so a double submit replaces one record; scoring uses `selectedPaper.marking` (correct/wrong), topics under 50% / under 75% / 75%+ become weak/medium/strong, and weak cards cite `exam.syllabus` weightage and offer a `TOPIC_DRILL_TESTS` drill matched by subject. Submit builds a `MockAttemptRecord` (exam_id, scores, time, userAnswers, paperData) and calls `storageService.saveMockAttempt`, showing a `saveWarning` when `kept.local` is false; history comes from `storageService.getMockAttempts(exam.id)` and on mount `loadMockAttemptsFromSQLite(exam.id)`, and `handleReviewPastAttempt` rebuilds a paper through a 7-step fallback (stored paperData, id, title, fuzzy match, regenerated quant drill, a built-in 4-question application drill, `OFFICIAL_10_MOCK_PAPERS[0]`), defaulting missing marking to `SSC_TIER1_MARKING`. The chat calls `planPracticeRequest(query, pastAttempts, buildChatContext(exam, 'PRACTICE'))` after a 400 ms delay, appends both turns to `conversationService`, and offers the returned paper as a start button; daily hours are read and written via `storageService.getDailyStudyHours`/`setDailyStudyHours` (0.5-16) and split by Tier-1 section marks from `exam.stages`, boosted by each section's share of weak topics, with a Statistics slice when the target post (`storageService.getTargetPost()`, `getPostStudyPath`) names statistics. Solutions can be filtered by result and subject and show the five-part `detailedExplanation`, an 'Open source' link and an `EvidenceButton`; the section jump tabs assume four 25-question blocks for papers of 50+ questions.",
-   "hash": "fe932009001b"
+   "hash": "783ccf08d737"
   },
   "src/ui.tsx::PracticeEngineEntry": {
    "text": "The shape of one entry in GovOS's list of practice engines: a short description of the exam's pattern, the practice modes it supports, and how to draw that exam's practice screen.",
@@ -5322,9 +5857,9 @@
    "hash": "29fef1452de8"
   },
   "src/ui.tsx::PreparationPlanner": {
-   "text": "The Study Roadmap section of an exam. If the exam has authored study tracks (for example a 90-day plan), the candidate picks one and sees its suggested daily timetable and week-by-week goals to tick off, with overall progress; these are clearly called GovOS suggestions, not official rules. If the exam has only a machine-read syllabus study order, it shows the syllabus roadmap instead, and if it has neither it says plainly that no study guidance exists yet rather than borrowing another exam's plan.",
-   "tech": "State: selectedTrackId (first of exam.roadmapTracks, else 'TRACK_90_DAYS'), expandedPhase (1), completedGoals from storageService.getRoadmapGoals(exam.id); toggleGoal uses storageService.toggleRoadmapGoal(exam.id, key). On an exam switch it resets goals, track and phase during render (plannerExamId). No track + studyGuidance.steps -> SyllabusRoadmap; no track at all -> 'not yet generated' card naming the syllabus and pattern sections. Otherwise renders track cards, the dailyTimetable (or a note when empty), and phases with weekly goals keyed '<trackId>-p<phase>-w<week>-g<idx>'; completion counts stored keys starting with the track id over total goals, and shows 'Not tracked yet' when the track has no goals.",
-   "hash": "f29461d3c084"
+   "text": "The Study Roadmap section of an exam. If the exam has authored study tracks (for example a 90-day plan), the candidate picks one and sees its suggested daily timetable and week-by-week goals to tick off, with overall progress; these are clearly called GovOS suggestions, not official rules. If the exam has only a machine-read syllabus study order, it shows the syllabus roadmap instead, and if it has neither it says plainly that no study guidance exists yet rather than borrowing another exam's plan. It now shows only an authored track that has phases; for every other exam the generated study plan above it is the roadmap.",
+   "tech": "State: selectedTrackId (first of exam.roadmapTracks, else 'TRACK_90_DAYS'), expandedPhase (1), completedGoals from storageService.getRoadmapGoals(exam.id); toggleGoal uses storageService.toggleRoadmapGoal(exam.id, key). On an exam switch it resets goals, track and phase during render (plannerExamId). No track + studyGuidance.steps -> SyllabusRoadmap; no track at all -> 'not yet generated' card naming the syllabus and pattern sections. Otherwise renders track cards, the dailyTimetable (or a note when empty), and phases with weekly goals keyed '<trackId>-p<phase>-w<week>-g<idx>'; completion counts stored keys starting with the track id over total goals, and shows 'Not tracked yet' when the track has no goals. Returns null when no track has authored phases (the old “not yet generated” card and the empty-phase panels are gone).",
+   "hash": "330117a45bd4"
   },
   "src/ui.tsx::PreparationPlannerProps": {
    "text": "What the study planner needs: the exam it is planning for.",
@@ -5602,9 +6137,9 @@
    "hash": "70679d34ac6e"
   },
   "src/ui.tsx::SourceRow": {
-   "text": "One row in a list of documents or links: a small heading, the title, optional extra lines, a source label, an Open button and, where available, an Evidence button.",
-   "tech": "Component { kicker, title, url, sub?, source, note?, provenance?, onOpenProvenanceModal? }; Open is an external link (target _blank); EvidenceButton only when both provenance and onOpenProvenanceModal are given.",
-   "hash": "7b5448a32eb6"
+   "text": "One row in a list of documents or links: a small heading, the title, optional extra lines, a source label, an Open button and, where available, an Evidence button. The source label and buttons wrap inside the row on a narrow screen instead of pushing past its edge.",
+   "tech": "Component { kicker, title, url, sub?, source, note?, provenance?, onOpenProvenanceModal? }; Open is an external link (target _blank); EvidenceButton only when both provenance and onOpenProvenanceModal are given. The action group is flex '0 1 auto' with minWidth 0 and maxWidth 100% (it used to be flexShrink 0, which overflowed at 375 px).",
+   "hash": "2d8b5a7fa4a2"
   },
   "src/ui.tsx::SourceTone": {
    "text": "The four kinds of source label colouring: official, trusted, third-party and lead.",
@@ -5621,6 +6156,31 @@
    "tech": "Type alias Exam['stages'][number].",
    "hash": "3cd3cd03eeb5"
   },
+  "src/ui.tsx::StudyPlan": {
+   "text": "The whole generated plan: its days and hours, the phases, the subjects and their shares, every week, the reasons, and how many topics are left or done.",
+   "tech": "Interface {days, hoursPerDay, learnDays, reviseDays, practiceDays, tracks, track, subjects, weeks, basis, unitsLeft, unitsDone, hoursPerUnit, tight}.",
+   "hash": "86777260f1e7"
+  },
+  "src/ui.tsx::StudyPlanItem": {
+   "text": "One line of a week: a unit and the hours given to it that week.",
+   "tech": "Interface {subject, unit, hours, continued?}.",
+   "hash": "46c19baf84eb"
+  },
+  "src/ui.tsx::StudyPlanSubject": {
+   "text": "A subject in the plan with its share of the time, the marks it came from, its units and its hours.",
+   "tech": "Interface {name, share (0–1), marks?, units, hours, included}.",
+   "hash": "6496cfe36379"
+  },
+  "src/ui.tsx::StudyPlanUnit": {
+   "text": "One piece of study in the plan — a syllabus topic or a part of a pattern section — with its weight and its source.",
+   "tech": "Interface {id, subject, name, subtopics, weight, topicId?, provenance?}.",
+   "hash": "ffcfb9a62a6d"
+  },
+  "src/ui.tsx::StudyPlanWeek": {
+   "text": "One week of the plan: its days, its phase (learn, second pass or full papers) and what to do.",
+   "tech": "Interface {week, fromDay, toDay, phase: 'LEARN' | 'REVISE' | 'PRACTICE', items}.",
+   "hash": "416bc5ddb126"
+  },
   "src/ui.tsx::SyllabusNodeCard": {
    "text": "One box in the official syllabus as the authority published it: a heading or topic, with its own sub-entries nested inside. Top levels start opened and deeper ones can be opened with a plus button. Where GovOS knows which document the entry was read from, an Evidence button shows that source.",
    "tech": "Recursive React component taking {node: ExamSyllabusNode, depth, onOpenProvenanceModal}. Local `open` state defaults to depth < 2; shows node.levelLabel (upper-cased), a NEEDS REVIEW badge when node.status === 'NEEDS_REVIEW', the child count, title, note, and 'Applies to:' from node.scope labels (depth <= 1 only), plus an EvidenceButton when node.provenance exists. Children render through syllabusNodeKeys(kids) so repeated ids get unique React keys; styling (padding, background, border) varies by depth.",
@@ -5629,7 +6189,7 @@
   "src/ui.tsx::SyllabusRoadmap": {
    "text": "A study roadmap for exams whose syllabus was read by machine from the authority's notice. It groups the syllabus into the exam's own stages and papers, shows each stage's official schedule in the authority's words, and lets the candidate tick off topics, with progress shown for the whole syllabus, each stage and each paper. It is labelled as GovOS guidance and suggests no durations or hours, because none are published.",
    "tech": "Internal component (exam, completed, onToggle). Walks exam.syllabusTree to map each node title to a stage (a 'Stage'-level node sets it, else stageOf(title)); then groups exam.studyGuidance.steps (by topicId into exam.syllabus) into phases by stage and papers by subject (subject matched by exact key, prefix, or stageOf). Progress keys are 'syllabus::<topicId>' in the completed map. A stage's schedule is non-superseded EXAM_TIER1/EXAM_TIER2/INTERVIEW dates whose stageLabel+label resolve to that stage, showing one (preferring a label containing 'schedule'). One paper open at a time (openPaper state, first paper by default). Assumes exam.studyGuidance is present (non-null assertion).",
-   "hash": "18efff5abe5f"
+   "hash": "9a13ccb5e31c"
   },
   "src/ui.tsx::SyllabusTreeMap": {
    "text": "The 'Tree Map' view of the Syllabus section: it draws the same syllabus topics as the list, as a branching diagram from the exam, to its subjects, to topics, to subtopics. Candidates can drag to move around, zoom with buttons, a pinch or ctrl plus the scroll wheel, fit the whole tree, or open it full screen. Clicking a topic's name jumps to that topic in the official syllabus list, while the arrow beside it just opens its branch. Topics marked done show in green, and topics a verifier added or changed carry a small NEW or REV tag.",
@@ -5777,9 +6337,9 @@
    "hash": "1cfa65dae28b"
   },
   "src/ui.tsx::answerCorrectedQuery": {
-   "text": "Produces the actual answer once the question has been cleaned up. It decides whether the candidate wants to know where something is (and points there) or wants a fact, then reads that fact from the current exam's own record: age limits and relaxations, attempts, physical standards, which dates are final, target post, what to do next, study plan, eligibility from the saved profile, dates by stage, marking and pattern, vacancies, pay, syllabus, fee, resources, admit card, cut-offs, how to apply or practice. Each fact answer cites its source; if nothing fits, it says plainly that the question is not in the verified record rather than guessing. For an exam with no posts, questions about age, vacancies, pay, physical standards or posts are answered from what its record states instead; questions its own FAQs answer are answered from them before it gives up. A question one of the exam’s own FAQs answers word for word is answered by that FAQ first; an admit-card question with no date on record is answered with the authority’s release rule; cut-offs say what kind they are and whether they are this cycle’s; after a declared result the next step names it.",
+   "text": "Produces the actual answer once the question has been cleaned up. It decides whether the candidate wants to know where something is (and points there) or wants a fact, then reads that fact from the current exam's own record: age limits and relaxations, attempts, physical standards, which dates are final, target post, what to do next, study plan, eligibility from the saved profile, dates by stage, marking and pattern, vacancies, pay, syllabus, fee, resources, admit card, cut-offs, how to apply or practice. Each fact answer cites its source; if nothing fits, it says plainly that the question is not in the verified record rather than guessing. For an exam with no posts, questions about age, vacancies, pay, physical standards or posts are answered from what its record states instead; questions its own FAQs answer are answered from them before it gives up. A question one of the exam’s own FAQs answers word for word is answered by that FAQ first; an admit-card question with no date on record is answered with the authority’s release rule; cut-offs say what kind they are and whether they are this cycle’s; after a declared result the next step names it. Age relaxations are read from the exam’s own list: SC and ST separately where an authority prints them apart, EWS where stated, a category with nothing read said to be unread (never \"no relaxation\"), and \"a PwBD candidate who is also OBC or SC/ST gets both\" only where the record carries such a combined relaxation. Asked whether there is an interview, it reads the exam's own stages: if one is an interview it gives its marks and rule, otherwise it says none is on record and lists the stages.",
    "tech": "answerCorrectedQuery(q, ctx). Orientation phrases (via has) get a platform overview. Scores PLATFORM_MAP and FACT_INTENTS with bestMatch (exact then loose); questionFocus can override the fact match. If no intent scores >= 6, namedResourceAnswer(q, 10) may answer first. Navigation wins when asksLocation(q) or nav score >= 6 and beats the fact score (adding a resourceLink when it points at section 8); a best score < 3 with 2+ content words tries namedResourceAnswer(q, 6). Then one branch per factId reading exam fields (posts, ageRelaxations/eligibilityHighlights, dates with displayWhen via shownWhen, stages, factEvidence.vacanciesTotal, cutoffsHistory by year/category, admitCardEvents, applicationGuide), ctx.profile (evaluateCandidateEligibility), ctx.targetPost, ctx.stage and ctx.daysToApplicationClose, with citeFrom citations. Falls back to nav, then namedResourceAnswer, then a full map for location questions, else {verified: false, sourceKind: UNVERIFIED, unresolved: true}. Quirks: the general age answer prints '+null years' for a relaxation the record lacks; the fee fallback (verified: false) states a generic exemption list; the location map text contains a literal '{exam}' because fillCounts is not applied to it. Exams with no posts route POST_SHAPED_FACTS (and {posts} navigation answers) to noPostsReply. Fee reads applicationGuide.fee first and no longer asserts exemptions; the admit-card answer lists the event's own instructions instead of a photo-ID rule; attempts says GovOS holds no limit rather than that the notice sets none; cut-off answers pass marks for an ELIGIBILITY_TEST and 'No cut-off is on record' when there is none; a 'documents' branch reads requiredDocuments; nextStep says 'notified, applications not yet open' once the notification date has passed; faqAnswerFor runs before the refusal. Early wholeFaq = faqAnswerFor(withoutParaphrases(q), exam, true) unless asksLocation or a fact intent scores 6+; the dates branch answers ADMIT_CARD from admitCardEvents' releaseRule / releaseNote; cut-off lines add cutoffType, say 'published for this cycle' when the year is the record's own exam year, 'no pass mark' when asked for one the record lacks, and drop 'vacancies' for an exam with no posts; nextStep POST_EXAM names the last firm RESULT date that has passed.",
-   "hash": "3f766254dbba"
+   "hash": "89f18aa1d4d4"
   },
   "src/ui.tsx::answerVerification": {
    "text": "Labels a whole AI answer: fully verified only if the server says so and every fact it cites checks out; partly verified if some do; otherwise not verified.",
@@ -5815,6 +6375,11 @@
    "text": "A remembered copy of the assistant's word list, so it is only built once.",
    "tech": "Module-level cache (Set<string> | null) for assistantVocab().",
    "hash": "244f6d9611bd"
+  },
+  "src/ui.tsx::authoritySketchOf": {
+   "text": "Picks which drawing an exam’s card shows on the home page from the exam’s own category and career fields, so a new exam gets the right card without any code change.",
+   "tech": "(exam) → AuthoritySketch | undefined: BANKING → banking, RAILWAYS → railway, STATE_PSC → state, CIVIL_SERVICES → civil, STAFF_SELECTION → selection, then careerFields Teaching & Education → teaching, Engineering & Technology → engineering, Civil Services & Governance → civil.",
+   "hash": "b3e2ea0335ae"
   },
   "src/ui.tsx::bestMatch": {
    "text": "Finds the entry in a keyword table that best fits the question, by score, rather than the first one that happens to match.",
@@ -6016,6 +6581,11 @@
    "tech": "Parses iso + 'T00:00:00'; returns the input unchanged if invalid, else toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }).",
    "hash": "8cb4474b322f"
   },
+  "src/ui.tsx::generateStudyPlan": {
+   "text": "Builds the study plan: splits the days into learning, a second pass and full papers; shares the learning hours between subjects and topics; moves every subject forward together week by week; leaves out ticked topics and subjects the candidate turned off; and warns when the time per topic is tight.",
+   "tech": "(exam, {days, hoursPerDay, done?, track?, excludedSubjects?}) → StudyPlan. Learning: per-subject queues of unticked units in syllabus order, hours = learnHours × share × weight/Σweight, each week spending days/learnDays of a subject’s hours (the last week takes the rest). Revision weeks: per-subject second pass over its heaviest units. Practice weeks: one full paper every two days on the first stage’s stated questions/marks/minutes, the authority’s own papers first. tight when under 2 learning hours per unit. Pure.",
+   "hash": "0f197ac7cd72"
+  },
   "src/ui.tsx::getDirectPdfUrl": {
    "text": "Finds the web address of the actual PDF file for a library item, if there is one.",
    "tech": "Returns '' for null; otherwise directPdfUrl, else url when it contains '.pdf' (case-insensitive), else ''. The trailing OFFICIAL_PDF branch is redundant with the previous check.",
@@ -6107,9 +6677,9 @@
    "hash": "be7245af2667"
   },
   "src/ui.tsx::namedResourceAnswer": {
-   "text": "When the candidate names a specific resource ('typing test tool', 'constitution pdf'), answers with that item and a direct link, and says which section of the exam page holds it. It only searches the current exam's own library, and does nothing for very small libraries where a match would mean little.",
-   "tech": "Exported namedResourceAnswer(q, minScore = 6, exam = SSC_CGL_EXAM). Returns null if the library has < 5 entries, if rankResourcesForQuery(q, library, 3) has no result at minScore, or if the top item's placement is NONE. Otherwise returns {reply, score}: sourceKind OFFICIAL when the provenance is OFFICIALLY_VERIFIED else GUIDANCE, resourceLink via linkFor, up to two other hits in the same placement, and an action to EXAM_DETAIL at SECTION_OF_PLACEMENT[placement].num.",
-   "hash": "baf7c600a829"
+   "text": "When the candidate names a specific resource ('typing test tool', 'constitution pdf'), answers with that item and a direct link, and says which section of the exam page holds it. It only searches the current exam's own library, and does nothing for very small libraries where a match would mean little. Words that only name the exam itself (its code or its authority’s initials) are ignored, because every entry in that exam’s library carries them.",
+   "tech": "Exported namedResourceAnswer(q, minScore = 6, exam = SSC_CGL_EXAM). Returns null if the library has < 5 entries, if rankResourcesForQuery(q, library, 3) has no result at minScore, or if the top item's placement is NONE. Otherwise returns {reply, score}: sourceKind OFFICIAL when the provenance is OFFICIALLY_VERIFIED else GUIDANCE, resourceLink via linkFor, up to two other hits in the same placement, and an action to EXAM_DETAIL at SECTION_OF_PLACEMENT[placement].num. Drops the exam’s code tokens and authority acronym from q before ranking; a question with nothing else left names no entry.",
+   "hash": "7dd4af4a81f6"
   },
   "src/ui.tsx::navigatorFormatLabel": {
    "text": "The plain wording the search chat uses for each kind of resource, such as 'a video lesson' or 'an official portal'.",
@@ -6151,10 +6721,30 @@
    "tech": "(seed: authority name): returns PASS_TONES[index mod 5] where index is the name's position among the unique authorityName values of ALL_EXAMS; for names not in ALL_EXAMS, a 31-multiplier string hash mod 5.",
    "hash": "76b6dbaadda7"
   },
+  "src/ui.tsx::patternMarkNodes": {
+   "text": "Lists every part of the exam pattern that has marks, noting which stage it belongs to and whether it is only qualifying (a minimum to pass, not counted for rank).",
+   "tech": "(exam) → PlanMarkNode[] from patternTree (or stages’ sections): qualifying when the node’s own name says qualifying, qualifyingOnly, or a non-STAGE node not counted for merit — a screening stage that is not counted for merit is still competitive and does not make its parts qualifying.",
+   "hash": "0e762229c95d"
+  },
+  "src/ui.tsx::patternNodesFor": {
+   "text": "Finds the parts of the exam pattern that name a syllabus subject (inside the right paper), deepest first.",
+   "tech": "(subject, nodes) → PlanMarkNode[]: own words within the subject’s words or the reverse, and the paper’s words within the node’s path; sorted by depth.",
+   "hash": "f831eb964998"
+  },
+  "src/ui.tsx::planHours": {
+   "text": "How the plan shows hours: to the nearest half hour, never less than half an hour.",
+   "tech": "(h) → max(0.5, round(h×2)/2); used only for display — the plan keeps exact hours.",
+   "hash": "aeb56ab641cf"
+  },
   "src/ui.tsx::planPracticeRequest": {
    "text": "The brain of the practice test chat. It reads the candidate's message, works out the topics, number of questions and difficulty, and either builds a matching practice test with a summary of what it understood, or explains honestly why it did not: the topic is outside the syllabus, GovOS has no questions on it yet, or the words matched nothing. It handles follow-ups like 'make it harder' or '20 more', and 'test my weak areas' by finding topics the candidate scored under 60% on.",
    "tech": "planPracticeRequest(rawQuery, pastAttempts, ctx?): PracticePlan. Applies understandPracticeRequest; if the query names no topic/subject, matches PRACTICE_MODIFIER and ctx.history has an assistant turn with topics, it rebuilds '<count> <difficulty> questions on <labels>' (stepDifficulty for harder/easier; count kept unless a non-default number was given). For focusGoal WEAK_AREAS with no topics, tallies answered questions per matchTopicByName topic across pastAttempts (paperData/userAnswers or details.*) and drills up to four below 60%. Returns OFF_SYLLABUS when every named topic is !inSyllabus with no generator (with nearest in-syllabus topics), NO_MATCH when all named topics lack supply (topicHasSupply) or nothing was recognised, else calls generateCustomMockTest and returns BUILT with a summary (topic scope, count, difficulty, time, typo corrections, request and generation notes) plus topics/count/difficulty. The syllabus is named from ctx.exam.title; topics come from SSC's TOPIC_CATALOG. Pure; exported for headless tests.",
    "hash": "fb67393a2ca7"
+  },
+  "src/ui.tsx::planTokens": {
+   "text": "Breaks a name into lower-case words, so “Paper-I · Language-II (English)” and “Language II (English)” can be compared.",
+   "tech": "(s) → string[]: lower-cases, turns brackets, punctuation, “·” and hyphens into spaces, drops PLAN_STOP words.",
+   "hash": "8ff49283b121"
   },
   "src/ui.tsx::practiceAnswerFor": {
    "text": "Writes the assistant's answer to 'what practice is there?' for a specific exam, from that exam's own record: official paper and key links, catalogued papers, answer keys that actually contain answers, answer-key notices whose answers GovOS does not have, the authority's own questions GovOS holds, and GovOS-written practice only for the exam it was written for. It never borrows another exam's papers or marking.",
@@ -6331,6 +6921,11 @@
    "tech": "Returns { text, tone }: THIRD_PARTY tone when r.type === 'THIRD_PARTY' or provenance.taxonomyType === 'RECOMMENDATION', else OFFICIAL.",
    "hash": "57f20ceaf428"
   },
+  "src/ui.tsx::splitPaper": {
+   "text": "Splits a syllabus subject like “Paper 1 · Physics” into its paper and its subject.",
+   "tech": "(subject) → {paper: 'Paper 1' | null, core: 'Physics'} on ' · '.",
+   "hash": "7459a0a24e6c"
+  },
   "src/ui.tsx::stageBadge": {
    "text": "Chooses the short label for a stage badge using the authority's own wording ('TIER-I', 'PHASE II', 'PAPER 1'), or the stage's position ('STAGE 2') rather than GovOS's internal 'tier' term, which many exams do not use.",
    "tech": "If stageName contains tier/phase/stage/paper/session/round followed by a Roman numeral, 1-2 digits or a letter A-H, returns that uppercased. Else, if stage.tier (underscores to spaces) is 'TIER n', returns 'STAGE ' + stageNumber; otherwise returns the tier text (e.g. INTERVIEW).",
@@ -6366,6 +6961,21 @@
    "tech": "stepDifficulty(current, up): returns the next level on ['EASY','MEDIUM','HARD'] from current (unknown/undefined treated as MEDIUM), clamped to the ladder.",
    "hash": "1bf5aabdd14e"
   },
+  "src/ui.tsx::studyPlanDefaultDays": {
+   "text": "Chooses the plan’s starting length: the days left to the next firm exam date on record, otherwise 90 days. A tentative date or one printed without a day is never counted down to.",
+   "tech": "(exam, now) → {days (clamped 30–365), reason | null} from future, non-superseded, non-tentative EXAM_TIER1/EXAM_TIER2 dates without displayWhen.",
+   "hash": "c1cd19f8e761"
+  },
+  "src/ui.tsx::studyPlanTracks": {
+   "text": "The papers a candidate chooses between when an exam’s syllabus is organised by alternative papers (JEE’s Paper 1 / 2A / 2B, TG TET’s Paper-I / II).",
+   "tech": "(exam) → the distinct “Paper X” prefixes of syllabus subjects, when there are two or more; else [].",
+   "hash": "0702a5aba628"
+  },
+  "src/ui.tsx::studyPlanUnits": {
+   "text": "Decides what the plan is made of and how much each part weighs: for a full syllabus, its topics, with each subject’s share from the marks the exam pattern gives it and each topic’s share from its weightage or breadth; for a thin syllabus, the exam pattern’s own sections and what they name. Returns the reasons in words too.",
+   "tech": "(exam, track) → {subjects: {name, share, marks?, units}[], basis}: subject marks are read from the stage that names the most subjects; qualifying parts and unnamed subjects take the average; topic weight = weightagePercentage when every topic in the subject has one, else sub-topic count; thin path = stages’ sections (marks) and their modules (printed question counts, else 1), with each syllabus topic placed in the section it shares most words with.",
+   "hash": "6b7b555357e2"
+  },
   "src/ui.tsx::supersessionOf": {
    "text": "Explains why an old date was replaced, but only as far as the record proves it. If the new date came from a numbered corrigendum (correction notice) the record holds, it names that notice; if it came from another later official statement, it names that document; otherwise it just says 'Superseded'.",
    "tech": "Exported (d, exam: {dates, corrigendums}) => {label, source}. Finds the replacing date via d.supersededBy; none → {label: 'Superseded', source: ''}. Looks for a corrigendum whose pdfUrl or provenance.officialUrl (via _bareUrl) equals the replacing date's provenance URL and whose noticeNumber is set and differs (via _norm) from both document titles → 'Superseded by corrigendum' with the notice number; else 'Superseded by a later official statement' with the replacing date's documentTitle or label.",
@@ -6400,6 +7010,11 @@
    "text": "Works out which exam the conversation is currently about, in case an earlier message switched to another exam.",
    "tech": "Takes the examId of the most recent assistant turn in ctx.history; returns that exam from ALL_EXAMS if it differs from ctx.exam and exists, otherwise ctx.exam.",
    "hash": "dcd8678f9104"
+  },
+  "src/ui.tsx::tokensWithin": {
+   "text": "Whether every word of one name appears in another.",
+   "tech": "(a, b) → a non-empty and every word of a in b.",
+   "hash": "b726c141535a"
   },
   "src/ui.tsx::toneOfClass": {
    "text": "Chooses the label colour for a source found on the web, based on how GovOS classified it.",
@@ -6452,9 +7067,9 @@
    "hash": "c8278d056eda"
   },
   "src/ui.tsx::withClaim": {
-   "text": "Prepares a fact's source for display. If the source claims to quote or verify the value but its quote does not contain it, GovOS marks it so it is shown as 'not in the quoted words' rather than as verified.",
-   "tech": "(p, value): returns p unchanged when p is missing, the value list is empty, the provenance neither has evidenceKind 'DIRECT' nor passes provenanceIsVerified, or claimInQuote passes. Otherwise returns a copy with claimNotInQuote set to the first alternative.",
-   "hash": "22d2df6cf83f"
+   "text": "Prepares a fact's source for display. If the source claims to quote or verify the value but its quote does not contain it, GovOS marks it so it is shown as 'not in the quoted words' rather than as verified. A source that has neither a link nor quoted words is left as it is: it is simply unverified, not 'not in the quoted words'.",
+   "tech": "(p, value): returns p unchanged when p is missing, the value list is empty, the provenance neither has evidenceKind 'DIRECT' nor passes provenanceIsVerified, or claimInQuote passes. Otherwise returns a copy with claimNotInQuote set to the first alternative. Also returns p unchanged when !provenanceHasEvidence(p).",
+   "hash": "37875f57f0c0"
   },
   "src/ui.tsx::withoutParaphrases": {
    "text": "Gives back the question exactly as the candidate typed it, without the meanings the assistant added to it, so an FAQ is matched on the candidate’s own words.",
@@ -8614,7 +9229,7 @@
   "tools/docs/guide_text.py::STORY": {
    "text": "The hand-written heart of chapter 1: 32 topics, each told in simple words and then under the hood, covering every screen, every part of an exam's page and every mechanism of GovOS.",
    "tech": "List of (title, id, simple, tech) tuples in the rich() markup; [[name]] links must name a real declaration and {{doc:Heading}} a real CLAUDE.md heading, or the build warns.",
-   "hash": "a0381d26ac31"
+   "hash": "95e30e32c69a"
   },
   "tools/docs/guide_text.py::TECH_WORDS": {
    "text": "Everyday explanations of the technical words the guide uses (React, component, API, database, OCR, hash and so on), shown in chapter 2.",

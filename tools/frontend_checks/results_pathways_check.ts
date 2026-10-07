@@ -10,7 +10,7 @@ import * as React from 'react';
 import { renderToString } from 'react-dom/server';
 import { ExamDetailView, resultPathway, ResultPathwayPanel, resultPathwayOf } from '../../src/ui';
 import type { ResultPathwayId } from '../../src/ui';
-import { ALL_EXAMS, APPSC_GROUP1_EXAM, IBPS_PO_EXAM, SSC_CGL_EXAM, UPSC_CSE_EXAM } from '../../src/data';
+import { ALL_EXAMS, APPSC_GROUP1_EXAM, APPSC_GROUP2_EXAM, IBPS_PO_EXAM, SSC_CGL_EXAM, UPSC_CSE_EXAM } from '../../src/data';
 import type { DataProvenance, Exam, MultiTierResultEntry } from '../../src/types';
 import { futureExam, futureExamWithSkill } from './future_exam_fixture';
 
@@ -81,9 +81,13 @@ for (const exam of EXAMS) {
   const ibps = resultPathway(IBPS_PO_EXAM, 'TIER2_PREP', { category: 'UR', stageOne: standing(null, null), stageTwo: standing(null, null) });
   check('IBPS: no skill-test block, because its record states none', !ibps.blocks.some(b => b.key === 'skill'));
   check('IBPS: its stage-two penalty is quoted from its own record', ibps.blocks.some(b => b.items.some(i => i.body === IBPS_PO_EXAM.stages[1].negativeMarking)));
+  const appsc2 = resultPathway(APPSC_GROUP2_EXAM, 'BOTH_PASSED_SELECTION', { category: 'UR', stageOne: standing(null, null), stageTwo: standing(null, null) });
+  const certs = appsc2.blocks.find(b => b.key === 'certificates')!;
+  check('APPSC Group-II: holds no certificate rules, and says so rather than borrowing another exam\'s', certs.items.length === 0 && /no certificate-validity rules/.test(certs.missing));
   const appsc = resultPathway(APPSC_GROUP1_EXAM, 'BOTH_PASSED_SELECTION', { category: 'UR', stageOne: standing(null, null), stageTwo: standing(null, null) });
-  const certs = appsc.blocks.find(b => b.key === 'certificates')!;
-  check('APPSC Group-I: holds no certificate rules, and says so rather than borrowing another exam\'s', certs.items.length === 0 && /no certificate-validity rules/.test(certs.missing));
+  const g1Certs = appsc.blocks.find(b => b.key === 'certificates')!;
+  check('APPSC Group-I: its certificate rules are its own notice\'s (BC Non-Creamy Layer, EWS)',
+    g1Certs.items.length > 0 && g1Certs.items.length === APPSC_GROUP1_EXAM.applicationGuide.certificateRules.length, `${g1Certs.items.length}`);
   const sscFinal = resultPathway(SSC_CGL_EXAM, 'BOTH_PASSED_SELECTION', { category: 'UR', stageOne: standing(null, null), stageTwo: standing(null, null) });
   const phys = sscFinal.blocks.find(b => b.key === 'physical')!;
   check('SSC: physical standards are the notice\'s own, per post', phys.items.length > 0 && phys.items.every(i => SSC_CGL_EXAM.posts.some(p => p.physicalNote === i.body)));

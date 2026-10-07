@@ -187,6 +187,31 @@ const body = (src: string, start: string) => {
   const end = [j, k].filter(x => x > i).sort((a, b) => a - b)[0] ?? src.length;
   return src.slice(i, end).replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');   // code, not comments
 };
+// The age answer reads the exam's own relaxations: SC and ST printed as two rows, EWS where stated, and no
+// "a PwBD candidate who is also OBC or SC/ST gets both" unless the record carries such a combined relaxation.
+{
+  const cite = exam.posts[0].provenance;
+  const relaxed: Exam = { ...exam, ageRelaxations: [
+    { category: 'SC', years: 5, status: 'VERIFIED', provenance: cite }, { category: 'ST', years: 5, status: 'VERIFIED', provenance: cite },
+    { category: 'EWS', years: 4, status: 'VERIFIED', provenance: cite }, { category: 'Persons with Benchmark Disabilities', years: 10, status: 'VERIFIED', provenance: cite }
+  ] };
+  const all = ask(relaxed, 'what is the age limit');
+  check('age: SC and ST rows read as the record prints them', /SC\/ST \+5 years/.test(all), all);
+  check('age: EWS relaxation stated where the record has one', /EWS \+4 years/.test(all) && /4 years/.test(ask(relaxed, 'age relaxation for ews')), all);
+  check('age: no null or NaN, and no combined PwBD claim the record lacks', !/null|NaN|gets both/.test(all + ask(relaxed, 'age relaxation for pwbd')), all);
+  check('age: nothing read for a category is never "no relaxation"', /has not read a relaxation for OBC/.test(all) && !/get no age relaxation/.test(ask(relaxed, 'age relaxation for obc')), all);
+}
+
+// "Is there an interview?" is answered from the record's own stages, either way.
+{
+  const withInterview: Exam = { ...exam, stages: [...exam.stages, { ...exam.stages[0], id: 'stage-zssc-interview', stageNumber: 9, stageName: 'Personality Test', tier: 'INTERVIEW', totalMarks: 60, qualifyingNature: 'Called at 1:3.' }] };
+  const yes = ask(withInterview, 'is there an interview');
+  check('interview: a record with an interview stage says so, with its marks', /^Yes\./.test(yes) && /Personality Test, 60 marks/.test(yes), yes);
+  const without: Exam = { ...exam, stages: exam.stages.filter(st => st.tier !== 'INTERVIEW' && !/interview|personality/i.test(st.stageName)) };
+  const no = ask(without, 'is there an interview');
+  check('interview: a record without one says none is on record and names its own stages', /No interview is on record/.test(no) && without.stages.every(st => no.includes(st.stageName)), no);
+}
+
 const GENERIC = [
   ['skillTestInRecord', body(ui, 'export const skillTestInRecord')], ['SKILL_TEST_WORDS', body(ui, 'export const SKILL_TEST_WORDS')],
   ['typingAnswerFor', body(ui, 'const typingAnswerFor')], ['SECTION_EVIDENCE_ROLES', body(ui, 'export const SECTION_EVIDENCE_ROLES')],

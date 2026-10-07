@@ -632,7 +632,15 @@ export interface ResourceItem {
     | 'Ethics, Essay & Answer Writing'
     | 'CSAT & Aptitude'
     | 'Previous Year Papers'
-    | 'Optional Subjects';
+    | 'Optional Subjects'
+    | 'Physics'
+    | 'Chemistry'
+    | 'Mathematics'
+    | 'Architecture & Planning Aptitude'
+    | 'Child Development & Pedagogy'
+    | 'Languages'
+    | 'Environmental Studies'
+    | 'Social Studies';
   author: string;
   /** THIRD_PARTY: a page GovOS did not write and no authority published (a coaching portal, say). Never counted as official. */
   type: 'OFFICIAL_PDF' | 'OFFICIAL_PORTAL' | 'SIMPLIFIED_GUIDE' | 'RECOMMENDED_BOOK' | 'VIDEO_LECTURE' | 'ONLINE_TOOL' | 'THIRD_PARTY';

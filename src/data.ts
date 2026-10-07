@@ -63,6 +63,41 @@ const communitySource = (
   excerptText: `Free coaching content, not a government publication. GovOS lists it because it is widely followed by SSC candidates (${audience}, checked ${CHECK_DATE}) and costs nothing to watch; GovOS does not endorse it, is not affiliated with it, and has not fact-checked its lessons. Where a lesson disagrees with the SSC notice, the notice is right.`
 });
 
+// Links added on 2026-10-06 for IBPS PO, the two APPSC exams, TG TET and JEE (Main). Each was opened from the
+// authoring machine (HTTP 200, the final address compared with the one requested), each official page's publisher
+// read from the page itself, and each YouTube channel's identity and subscriber count read from its own
+// /channel/UC… page. The helpers name the exam's own authority, never SSC's.
+const RESOURCE_CHECK = '2026-10-06';
+
+/** A learning resource an official body publishes openly, linked where it publishes it. The quote is the page's
+ *  own title; GovOS stores nothing from it. */
+const openResource = (id: string, title: string, url: string, owner: string): DataProvenance => ({
+  id,
+  documentTitle: `${title} — ${owner}`,
+  officialUrl: url,
+  publishedDate: '',
+  verifiedDate: RESOURCE_CHECK,
+  verifiedBy: `GovOS link check — HTTP 200 from ${url} on ${RESOURCE_CHECK}; the page names ${owner} as its publisher`,
+  taxonomyType: 'FACT',
+  verificationLevel: 'OFFICIALLY_VERIFIED',
+  excerptText: title,
+  authorityName: owner
+});
+
+/** Free coaching content: not a government publication, listed because candidates widely follow it, labelled so,
+ *  and never fact-checked by GovOS. The exam's own authority's notice governs wherever a lesson disagrees. */
+const coachingSource = (id: string, channelTitle: string, url: string, subscribers: string, examAuthority: string): DataProvenance => ({
+  id,
+  documentTitle: `${channelTitle} (YouTube channel)`,
+  officialUrl: url,
+  publishedDate: '',
+  verifiedDate: RESOURCE_CHECK,
+  verifiedBy: `GovOS link check — channel identity and ${subscribers} subscribers read from its own page on ${RESOURCE_CHECK}`,
+  taxonomyType: 'RECOMMENDATION',
+  verificationLevel: 'UNDER_VERIFICATION',
+  excerptText: `Free coaching content, not a government publication. GovOS lists it because it is widely followed (${subscribers} subscribers on its channel page, ${RESOURCE_CHECK}) and costs nothing to watch; GovOS does not endorse it, is not affiliated with it, and has not fact-checked its lessons. Where a lesson disagrees with ${examAuthority}'s notice, the notice is right.`
+});
+
 const pendingSource = (
   id: string,
   documentTitle: string,
@@ -18156,16 +18191,14 @@ const IBPS_APPLICATION_SIMULATOR: ApplicationSimulatorSpec = {
 
 const ibpsProvenance: DataProvenance = {
   id: 'prov-ibps-01',
-  documentTitle: 'IBPS CRP PO/MT-XVI Detailed Advertisement.pdf',
-  officialUrl: 'https://ibps.in',
-  pageNumber: 1,
-  clauseNumber: 'Section 1 (Notification CRP PO/MT-XVI)',
-  publishedDate: '2026-08-01',
-  verifiedDate: '2026-08-02',
-  verifiedBy: 'Senior Verification Officer #108',
+  documentTitle: 'No IBPS document read yet (placeholder record)',
+  officialUrl: '',
+  publishedDate: '',
+  verifiedDate: '',
+  verifiedBy: 'Not verified — this placeholder record was written before GovOS read IBPS’s own documents; nothing in it has been checked against the advertisement',
   taxonomyType: 'FACT',
-  verificationLevel: 'OFFICIALLY_VERIFIED',
-  excerptText: 'Common Recruitment Process for selection of personnel in Probationary Officer / Management Trainee posts in the Participating Banks is scheduled in October/November 2026.'
+  verificationLevel: 'UNDER_VERIFICATION',
+  excerptText: ''
 };
 
 export const IBPS_PO_EXAM: Exam = {
@@ -18904,6 +18937,397 @@ export const IBPS_PO_EXAM: Exam = {
       description: 'The official IBPS portal hosting genuine CRP PO/MT recruitment notices, participating bank vacancies, and candidate guidelines.',
       recommendedFor: 'Banking aspirants targeting Scale-I PO recruitments.',
       officialTag: 'OFFICIAL IBPS PORTAL'
+    },
+    // ---- added IBPS_PO_EXAM resources: linked, never stored; checked 2026-10-06
+    {
+      id: 'res-ibps-01', title: 'Notification for Common Recruitment Process for CRP- PO/MTs-XVI', subject: 'Official Gazette',
+      author: 'Institute of Banking Personnel Selection (IBPS)', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'NOTIFICATION',
+      url: 'https://www.ibps.in/wp-content/uploads/Detailed-Notification_CRP-PO-XVI_Final_V1_30.06.2026.pdf', directPdfUrl: 'https://www.ibps.in/wp-content/uploads/Detailed-Notification_CRP-PO-XVI_Final_V1_30.06.2026.pdf',
+      description: 'Published openly by Institute of Banking Personnel Selection (IBPS). Useful for: Exam pattern & syllabus scope (Structure of Examination, pp.15-16). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Exam pattern & syllabus scope (Structure of Examination, pp.15-16)',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-01', 'Notification for Common Recruitment Process for CRP- PO/MTs-XVI', 'https://www.ibps.in/wp-content/uploads/Detailed-Notification_CRP-PO-XVI_Final_V1_30.06.2026.pdf', 'Institute of Banking Personnel Selection (IBPS)')
+    },
+    {
+      id: 'res-ibps-02', title: 'CRP Process Probationary Officers / Management Trainees XVI', subject: 'Official Gazette',
+      author: 'IBPS', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'EXAM_PAGE',
+      url: 'https://www.ibps.in/index.php/management-trainees-xvi/',
+      description: 'Published openly by IBPS. Useful for: Official notices for this cycle. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Official notices for this cycle',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-02', 'CRP Process Probationary Officers / Management Trainees XVI', 'https://www.ibps.in/index.php/management-trainees-xvi/', 'IBPS')
+    },
+    {
+      id: 'res-ibps-03', title: 'Annual Report', subject: 'Banking & Financial Awareness',
+      author: 'Reserve Bank of India', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://rbi.org.in/Scripts/AnnualReportMainDisplay.aspx',
+      description: 'Published openly by Reserve Bank of India. Useful for: Mains General/Economy/Banking Awareness; Descriptive. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Mains General/Economy/Banking Awareness; Descriptive',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-03', 'Annual Report', 'https://rbi.org.in/Scripts/AnnualReportMainDisplay.aspx', 'Reserve Bank of India')
+    },
+    {
+      id: 'res-ibps-04', title: 'Monetary Policy', subject: 'Banking & Financial Awareness',
+      author: 'Reserve Bank of India', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.rbi.org.in/Scripts/Annualpolicy.aspx',
+      description: 'Published openly by Reserve Bank of India. Useful for: Mains Economy/Banking Awareness. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Mains Economy/Banking Awareness',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-04', 'Monetary Policy', 'https://www.rbi.org.in/Scripts/Annualpolicy.aspx', 'Reserve Bank of India')
+    },
+    {
+      id: 'res-ibps-05', title: 'Monetary Policy Report', subject: 'Banking & Financial Awareness',
+      author: 'Reserve Bank of India', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.rbi.org.in/Scripts/HalfYearlyPublications.aspx?head=Monetary%20Policy%20Report',
+      description: 'Published openly by Reserve Bank of India. Useful for: Mains Economy/Banking Awareness. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Mains Economy/Banking Awareness',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-05', 'Monetary Policy Report', 'https://www.rbi.org.in/Scripts/HalfYearlyPublications.aspx?head=Monetary%20Policy%20Report', 'Reserve Bank of India')
+    },
+    {
+      id: 'res-ibps-06', title: 'Trend and Progress of Banking in India', subject: 'Banking & Financial Awareness',
+      author: 'Reserve Bank of India', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.rbi.org.in/Scripts/AnnualPublications.aspx?head=Trend%20and%20Progress%20of%20Banking%20in%20India',
+      description: 'Published openly by Reserve Bank of India. Useful for: Mains Banking Awareness; Interview. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Mains Banking Awareness; Interview',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-06', 'Trend and Progress of Banking in India', 'https://www.rbi.org.in/Scripts/AnnualPublications.aspx?head=Trend%20and%20Progress%20of%20Banking%20in%20India', 'Reserve Bank of India')
+    },
+    {
+      id: 'res-ibps-07', title: 'Financial Stability Report', subject: 'Banking & Financial Awareness',
+      author: 'Reserve Bank of India', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.rbi.org.in/Scripts/FsReports.aspx',
+      description: 'Published openly by Reserve Bank of India. Useful for: Mains Banking Awareness. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Mains Banking Awareness',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-07', 'Financial Stability Report', 'https://www.rbi.org.in/Scripts/FsReports.aspx', 'Reserve Bank of India')
+    },
+    {
+      id: 'res-ibps-08', title: 'Frequently Asked Questions', subject: 'Banking & Financial Awareness',
+      author: 'Reserve Bank of India', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.rbi.org.in/Scripts/FAQDisplay.aspx',
+      description: 'Published openly by Reserve Bank of India. Useful for: Mains Banking Awareness. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Mains Banking Awareness',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-08', 'Frequently Asked Questions', 'https://www.rbi.org.in/Scripts/FAQDisplay.aspx', 'Reserve Bank of India')
+    },
+    {
+      id: 'res-ibps-09', title: 'Handbook of Statistics on Indian Economy', subject: 'Banking & Financial Awareness',
+      author: 'Reserve Bank of India', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.rbi.org.in/Scripts/AnnualPublications.aspx?head=Handbook%20of%20Statistics%20on%20Indian%20Economy',
+      description: 'Published openly by Reserve Bank of India. Useful for: Mains Economy Awareness; Data Analysis & Interpretation. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Mains Economy Awareness; Data Analysis & Interpretation',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-09', 'Handbook of Statistics on Indian Economy', 'https://www.rbi.org.in/Scripts/AnnualPublications.aspx?head=Handbook%20of%20Statistics%20on%20Indian%20Economy', 'Reserve Bank of India')
+    },
+    {
+      id: 'res-ibps-10', title: 'RBI Financial Education', subject: 'Banking & Financial Awareness',
+      author: 'Reserve Bank of India', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.rbi.org.in/FinancialEducation/Home.aspx',
+      description: 'Published openly by Reserve Bank of India. Useful for: Banking Awareness basics. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Banking Awareness basics',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-10', 'RBI Financial Education', 'https://www.rbi.org.in/FinancialEducation/Home.aspx', 'Reserve Bank of India')
+    },
+    {
+      id: 'res-ibps-11', title: 'RBI Financial Education - Basic Banking', subject: 'Banking & Financial Awareness',
+      author: 'Reserve Bank of India', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.rbi.org.in/FinancialEducation/BasicBanking.aspx',
+      description: 'Published openly by Reserve Bank of India. Useful for: Banking Awareness basics. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Banking Awareness basics',
+      officialTag: 'OFFICIAL OPEN RESOURCE', isEssential: true,
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-11', 'RBI Financial Education - Basic Banking', 'https://www.rbi.org.in/FinancialEducation/BasicBanking.aspx', 'Reserve Bank of India')
+    },
+    {
+      id: 'res-ibps-12', title: 'India Budget', subject: 'Banking & Financial Awareness',
+      author: 'Ministry of Finance, Government of India', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.indiabudget.gov.in/',
+      description: 'Published openly by Ministry of Finance, Government of India. Useful for: Mains Economy Awareness; Descriptive. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Mains Economy Awareness; Descriptive',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-12', 'India Budget', 'https://www.indiabudget.gov.in/', 'Ministry of Finance, Government of India')
+    },
+    {
+      id: 'res-ibps-13', title: 'Economic Survey', subject: 'Banking & Financial Awareness',
+      author: 'Ministry of Finance, Government of India', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.indiabudget.gov.in/economicsurvey/',
+      description: 'Published openly by Ministry of Finance, Government of India. Useful for: Mains Economy Awareness; Descriptive; Interview. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Mains Economy Awareness; Descriptive; Interview',
+      officialTag: 'OFFICIAL OPEN RESOURCE', isEssential: true,
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-13', 'Economic Survey', 'https://www.indiabudget.gov.in/economicsurvey/', 'Ministry of Finance, Government of India')
+    },
+    {
+      id: 'res-ibps-14', title: 'Press Information Bureau - Home Page', subject: 'Current Affairs & Governance',
+      author: 'Press Information Bureau, Government of India', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.pib.gov.in/index.aspx?reg=3&lang=1',
+      description: 'Published openly by Press Information Bureau, Government of India. Useful for: Mains General Awareness (current affairs). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Mains General Awareness (current affairs)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-14', 'Press Information Bureau - Home Page', 'https://www.pib.gov.in/index.aspx?reg=3&lang=1', 'Press Information Bureau, Government of India')
+    },
+    {
+      id: 'res-ibps-15', title: 'Department of Financial Services: Home', subject: 'Banking & Financial Awareness',
+      author: 'Department of Financial Services, Ministry of Finance', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://financialservices.gov.in/',
+      description: 'Published openly by Department of Financial Services, Ministry of Finance. Useful for: Banking Awareness; Interview. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Banking Awareness; Interview',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-15', 'Department of Financial Services: Home', 'https://financialservices.gov.in/', 'Department of Financial Services, Ministry of Finance')
+    },
+    {
+      id: 'res-ibps-16', title: 'Pradhan Mantri Jan-Dhan Yojana', subject: 'Banking & Financial Awareness',
+      author: 'Department of Financial Services, Ministry of Finance', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://pmjdy.gov.in/',
+      description: 'Published openly by Department of Financial Services, Ministry of Finance. Useful for: Banking Awareness (financial inclusion). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Banking Awareness (financial inclusion)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-16', 'Pradhan Mantri Jan-Dhan Yojana', 'https://pmjdy.gov.in/', 'Department of Financial Services, Ministry of Finance')
+    },
+    {
+      id: 'res-ibps-17', title: 'Jan-Dhan Se Jan Suraksha', subject: 'Banking & Financial Awareness',
+      author: 'Department of Financial Services', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://jansuraksha.gov.in/',
+      description: 'Published openly by Department of Financial Services. Useful for: Banking Awareness (social-security schemes). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Banking Awareness (social-security schemes)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-17', 'Jan-Dhan Se Jan Suraksha', 'https://jansuraksha.gov.in/', 'Department of Financial Services')
+    },
+    {
+      id: 'res-ibps-18', title: 'DICGC Home', subject: 'Banking & Financial Awareness',
+      author: 'Deposit Insurance and Credit Guarantee Corporation', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.dicgc.org.in/',
+      description: 'Published openly by Deposit Insurance and Credit Guarantee Corporation. Useful for: Banking Awareness (deposit insurance). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Banking Awareness (deposit insurance)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-18', 'DICGC Home', 'https://www.dicgc.org.in/', 'Deposit Insurance and Credit Guarantee Corporation')
+    },
+    {
+      id: 'res-ibps-19', title: 'NCERT-DIKSHA', subject: 'Quantitative Aptitude',
+      author: 'NCERT on DIKSHA (Ministry of Education)', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://diksha.gov.in/ncert/',
+      description: 'Published openly by NCERT on DIKSHA (Ministry of Education). Useful for: Quantitative Aptitude basics. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Quantitative Aptitude basics',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-19', 'NCERT-DIKSHA', 'https://diksha.gov.in/ncert/', 'NCERT on DIKSHA (Ministry of Education)')
+    },
+    {
+      id: 'res-ibps-20', title: '(NEW) Mathematics Textbook for Class VIII', subject: 'Quantitative Aptitude',
+      author: 'DIKSHA', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://diksha.gov.in/play/collection/do_31310347515146240011465?contentType=TextBook',
+      description: 'Published openly by DIKSHA. Useful for: Quantitative Aptitude basics (percentages, ratio, comparing quantities). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Quantitative Aptitude basics (percentages, ratio, comparing quantities)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-20', '(NEW) Mathematics Textbook for Class VIII', 'https://diksha.gov.in/play/collection/do_31310347515146240011465?contentType=TextBook', 'DIKSHA')
+    },
+    {
+      id: 'res-ibps-21', title: '(NEW) Mathematics Textbook for Class IX', subject: 'Quantitative Aptitude',
+      author: 'DIKSHA', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://diksha.gov.in/play/collection/do_3131034751904808961736?contentType=TextBook',
+      description: 'Published openly by DIKSHA. Useful for: Quantitative Aptitude basics. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Quantitative Aptitude basics',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-21', '(NEW) Mathematics Textbook for Class IX', 'https://diksha.gov.in/play/collection/do_3131034751904808961736?contentType=TextBook', 'DIKSHA')
+    },
+    {
+      id: 'res-ibps-22', title: '(NEW) Mathematics textbook for class X', subject: 'Quantitative Aptitude',
+      author: 'DIKSHA', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://diksha.gov.in/play/collection/do_31310347523356262411428?contentType=TextBook',
+      description: 'Published openly by DIKSHA. Useful for: Quantitative Aptitude basics. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Quantitative Aptitude basics',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-22', '(NEW) Mathematics textbook for class X', 'https://diksha.gov.in/play/collection/do_31310347523356262411428?contentType=TextBook', 'DIKSHA')
+    },
+    {
+      id: 'res-ibps-23', title: 'Mathematics (211) — course material', subject: 'Quantitative Aptitude',
+      author: 'The National Institute of Open Schooling (NIOS)', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://nios.ac.in/online-course-material/secondary-courses/Mathematics-(211)-Syllabus.aspx',
+      description: 'Published openly by The National Institute of Open Schooling (NIOS). Useful for: Quantitative Aptitude; Data Analysis & Interpretation. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Quantitative Aptitude; Data Analysis & Interpretation',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-23', 'Mathematics (211) Syllabus', 'https://nios.ac.in/online-course-material/secondary-courses/Mathematics-(211)-Syllabus.aspx', 'The National Institute of Open Schooling (NIOS)')
+    },
+    {
+      id: 'res-ibps-24', title: 'Percentage and Its Applications (Mathematics Secondary Course, Lesson 8)', subject: 'Quantitative Aptitude',
+      author: 'NIOS', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'STUDY_MATERIAL',
+      url: 'https://nios.ac.in/media/documents/SecMathcour/Eng/Chapter-8.pdf', directPdfUrl: 'https://nios.ac.in/media/documents/SecMathcour/Eng/Chapter-8.pdf',
+      description: 'Published openly by NIOS. Useful for: Quantitative Aptitude (arithmetic: profit & loss, discount, SI, CI). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Quantitative Aptitude (arithmetic: profit & loss, discount, SI, CI)',
+      officialTag: 'OFFICIAL PDF', isEssential: true,
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-24', 'Percentage and Its Applications (Mathematics Secondary Course, Lesson 8)', 'https://nios.ac.in/media/documents/SecMathcour/Eng/Chapter-8.pdf', 'NIOS')
+    },
+    {
+      id: 'res-ibps-25', title: 'Data and their Representations (Mathematics Secondary Course, Lesson 24)', subject: 'Quantitative Aptitude',
+      author: 'NIOS', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'STUDY_MATERIAL',
+      url: 'https://nios.ac.in/media/documents/SecMathcour/Eng/Chapter-24.pdf', directPdfUrl: 'https://nios.ac.in/media/documents/SecMathcour/Eng/Chapter-24.pdf',
+      description: 'Published openly by NIOS. Useful for: Mains Data Analysis & Interpretation. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Mains Data Analysis & Interpretation',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-25', 'Data and their Representations (Mathematics Secondary Course, Lesson 24)', 'https://nios.ac.in/media/documents/SecMathcour/Eng/Chapter-24.pdf', 'NIOS')
+    },
+    {
+      id: 'res-ibps-26', title: 'Economics (318)', subject: 'Banking & Financial Awareness',
+      author: 'NIOS', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://nios.ac.in/online-course-material/sr-secondary-courses/Economics-(318).aspx',
+      description: 'Published openly by NIOS. Useful for: Economy Awareness foundations. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Economy Awareness foundations',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-26', 'Economics (318)', 'https://nios.ac.in/online-course-material/sr-secondary-courses/Economics-(318).aspx', 'NIOS')
+    },
+    {
+      id: 'res-ibps-27', title: 'Money and Banking (Economics 318, Lesson 28)', subject: 'Banking & Financial Awareness',
+      author: 'NIOS', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'STUDY_MATERIAL',
+      url: 'https://nios.ac.in/media/documents/SrSec318NEW/318_Economics_Eng/318_Economics_Eng_Lesson28.pdf', directPdfUrl: 'https://nios.ac.in/media/documents/SrSec318NEW/318_Economics_Eng/318_Economics_Eng_Lesson28.pdf',
+      description: 'Published openly by NIOS. Useful for: Banking Awareness foundations. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Banking Awareness foundations',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-27', 'Money and Banking (Economics 318, Lesson 28)', 'https://nios.ac.in/media/documents/SrSec318NEW/318_Economics_Eng/318_Economics_Eng_Lesson28.pdf', 'NIOS')
+    },
+    {
+      id: 'res-ibps-28', title: 'Government and the Budget (Economics 318, Lesson 29)', subject: 'Banking & Financial Awareness',
+      author: 'NIOS', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'STUDY_MATERIAL',
+      url: 'https://nios.ac.in/media/documents/SrSec318NEW/318_Economics_Eng/318_Economics_Eng_Lesson29.pdf', directPdfUrl: 'https://nios.ac.in/media/documents/SrSec318NEW/318_Economics_Eng/318_Economics_Eng_Lesson29.pdf',
+      description: 'Published openly by NIOS. Useful for: Economy Awareness. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Economy Awareness',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-28', 'Government and the Budget (Economics 318, Lesson 29)', 'https://nios.ac.in/media/documents/SrSec318NEW/318_Economics_Eng/318_Economics_Eng_Lesson29.pdf', 'NIOS')
+    },
+    {
+      id: 'res-ibps-29', title: 'Computer Science (330)', subject: 'Computer & Typing',
+      author: 'NIOS', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://nios.ac.in/online-course-material/sr-secondary-courses/Computer-Science-(330).aspx',
+      description: 'Published openly by NIOS. Useful for: Mains Computer Aptitude. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Mains Computer Aptitude',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-29', 'Computer Science (330)', 'https://nios.ac.in/online-course-material/sr-secondary-courses/Computer-Science-(330).aspx', 'NIOS')
+    },
+    {
+      id: 'res-ibps-30', title: 'Computer Fundamentals (Computer Science 330, Lesson 1)', subject: 'Computer & Typing',
+      author: 'NIOS', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'STUDY_MATERIAL',
+      url: 'https://nios.ac.in/media/documents/330srsec/online_course_material_330/Theory/Lesson_01.pdf', directPdfUrl: 'https://nios.ac.in/media/documents/330srsec/online_course_material_330/Theory/Lesson_01.pdf',
+      description: 'Published openly by NIOS. Useful for: Mains Computer Aptitude. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Mains Computer Aptitude',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-30', 'Computer Fundamentals (Computer Science 330, Lesson 1)', 'https://nios.ac.in/media/documents/330srsec/online_course_material_330/Theory/Lesson_01.pdf', 'NIOS')
+    },
+    {
+      id: 'res-ibps-31', title: 'NCFE E-Library | Free Financial Resources', subject: 'Banking & Financial Awareness',
+      author: 'National Centre for Financial Education (Section 8 company promoted by RBI, SEBI, IRDAI, PFRDA)', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://ncfe.org.in/e-library/',
+      description: 'Published openly by National Centre for Financial Education (Section 8 company promoted by RBI, SEBI, IRDAI, PFRDA). Useful for: Banking/financial awareness basics. GovOS links to the publisher’s own copy and stores nothing. It is not a government publication.',
+      recommendedFor: 'Banking/financial awareness basics',
+      officialTag: 'OPEN RESOURCE (TRUSTED, NOT A GOVERNMENT BODY)',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: { ...openResource('prov-res-ibps-31', 'NCFE E-Library | Free Financial Resources', 'https://ncfe.org.in/e-library/', 'National Centre for Financial Education (Section 8 company promoted by RBI, SEBI, IRDAI, PFRDA)'), taxonomyType: 'RECOMMENDATION', verificationLevel: 'UNDER_VERIFICATION' }
+    },
+    {
+      id: 'res-ibps-32', title: 'Adda247 Banking Exams — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'Adda247 Banking Exams (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UC1L2JoMpcY6MRLhFd3gg5Xg', youtubeUrl: 'https://www.youtube.com/channel/UC1L2JoMpcY6MRLhFd3gg5Xg',
+      description: 'A free YouTube channel candidates widely follow (9.45M subscribers as read on its own page on 2026-10-06). Useful for: All sections. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with IBPS’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for All sections.',
+      officialTag: 'FREE ON YOUTUBE · 9.45M SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-ibps-32', 'Adda247 Banking Exams', 'https://www.youtube.com/channel/UC1L2JoMpcY6MRLhFd3gg5Xg', '9.45M', 'IBPS')
+    },
+    {
+      id: 'res-ibps-33', title: 'Studified — free YouTube lessons', subject: 'Quantitative Aptitude',
+      author: 'Studified (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCYa4_JrOrf8R5Kz2uOtccXQ', youtubeUrl: 'https://www.youtube.com/channel/UCYa4_JrOrf8R5Kz2uOtccXQ',
+      description: 'A free YouTube channel candidates widely follow (1.31M subscribers as read on its own page on 2026-10-06). Useful for: Quantitative Aptitude; Data Analysis & Interpretation. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with IBPS’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Quantitative Aptitude; Data Analysis & Interpretation.',
+      officialTag: 'FREE ON YOUTUBE · 1.31M SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-ibps-33', 'Studified', 'https://www.youtube.com/channel/UCYa4_JrOrf8R5Kz2uOtccXQ', '1.31M', 'IBPS')
+    },
+    {
+      id: 'res-ibps-34', title: 'Banking by Rojgar With Ankit — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'Banking by Rojgar With Ankit (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCHZyAHx9RsBminUd9-15s4w', youtubeUrl: 'https://www.youtube.com/channel/UCHZyAHx9RsBminUd9-15s4w',
+      description: 'A free YouTube channel candidates widely follow (1.1M subscribers as read on its own page on 2026-10-06). Useful for: All sections (Hindi medium). Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with IBPS’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for All sections (Hindi medium).',
+      officialTag: 'FREE ON YOUTUBE · 1.1M SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-ibps-34', 'Banking by Rojgar With Ankit', 'https://www.youtube.com/channel/UCHZyAHx9RsBminUd9-15s4w', '1.1M', 'IBPS')
+    },
+    {
+      id: 'res-ibps-35', title: 'BANKING CHRONICLE — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'BANKING CHRONICLE (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCzARHhsjYS-qcaaIRv5A0mA', youtubeUrl: 'https://www.youtube.com/channel/UCzARHhsjYS-qcaaIRv5A0mA',
+      description: 'A free YouTube channel candidates widely follow (1.09M subscribers as read on its own page on 2026-10-06). Useful for: Reasoning Ability; Reasoning & Computer Aptitude. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with IBPS’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Reasoning Ability; Reasoning & Computer Aptitude.',
+      officialTag: 'FREE ON YOUTUBE · 1.09M SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-ibps-35', 'BANKING CHRONICLE', 'https://www.youtube.com/channel/UCzARHhsjYS-qcaaIRv5A0mA', '1.09M', 'IBPS')
+    },
+    {
+      id: 'res-ibps-36', title: 'Banking Wallah — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'Banking Wallah (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCg5_K50hLTKerLkSE7I1yWQ', youtubeUrl: 'https://www.youtube.com/channel/UCg5_K50hLTKerLkSE7I1yWQ',
+      description: 'A free YouTube channel candidates widely follow (1.07M subscribers as read on its own page on 2026-10-06). Useful for: All sections. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with IBPS’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for All sections.',
+      officialTag: 'FREE ON YOUTUBE · 1.07M SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-ibps-36', 'Banking Wallah', 'https://www.youtube.com/channel/UCg5_K50hLTKerLkSE7I1yWQ', '1.07M', 'IBPS')
+    },
+    {
+      id: 'res-ibps-37', title: 'CAREER DEFINER — free YouTube lessons', subject: 'Quantitative Aptitude',
+      author: 'CAREER DEFINER (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCjO0g7qbAcZX-vtdIFCA41Q', youtubeUrl: 'https://www.youtube.com/channel/UCjO0g7qbAcZX-vtdIFCA41Q',
+      description: 'A free YouTube channel candidates widely follow (1M subscribers as read on its own page on 2026-10-06). Useful for: Quantitative Aptitude; Data Analysis & Interpretation. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with IBPS’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Quantitative Aptitude; Data Analysis & Interpretation.',
+      officialTag: 'FREE ON YOUTUBE · 1M SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-ibps-37', 'CAREER DEFINER', 'https://www.youtube.com/channel/UCjO0g7qbAcZX-vtdIFCA41Q', '1M', 'IBPS')
+    },
+    {
+      id: 'res-ibps-38', title: 'Oliveboard — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'Oliveboard (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCRvrHAyNdOMI_JBkE2pjZtw', youtubeUrl: 'https://www.youtube.com/channel/UCRvrHAyNdOMI_JBkE2pjZtw',
+      description: 'A free YouTube channel candidates widely follow (906K subscribers as read on its own page on 2026-10-06). Useful for: All sections. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with IBPS’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for All sections.',
+      officialTag: 'FREE ON YOUTUBE · 906K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-ibps-38', 'Oliveboard', 'https://www.youtube.com/channel/UCRvrHAyNdOMI_JBkE2pjZtw', '906K', 'IBPS')
+    },
+    {
+      id: 'res-ibps-39', title: 'Anil Aggarwal — free YouTube lessons', subject: 'Banking & Financial Awareness',
+      author: 'Anil Aggarwal (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCngdIjToGTKfOyoRCBLq0vg', youtubeUrl: 'https://www.youtube.com/channel/UCngdIjToGTKfOyoRCBLq0vg',
+      description: 'A free YouTube channel candidates widely follow (376K subscribers as read on its own page on 2026-10-06). Useful for: Interview; Banking Awareness. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with IBPS’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Interview; Banking Awareness.',
+      officialTag: 'FREE ON YOUTUBE · 376K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-ibps-39', 'Anil Aggarwal', 'https://www.youtube.com/channel/UCngdIjToGTKfOyoRCBLq0vg', '376K', 'IBPS')
     }
   ],
   faqs: [
@@ -19156,255 +19580,757 @@ export const IBPS_PO_EXAM: Exam = {
 
 const appscProvenance: DataProvenance = {
   id: 'prov-appsc-01',
-  documentTitle: 'APPSC Group-I & Group-II Services General Recruitment Notification 2026',
-  officialUrl: 'https://psc.ap.gov.in',
-  pageNumber: 1,
-  clauseNumber: 'Notification No. 12/2026',
-  publishedDate: '2026-01-10',
-  verifiedDate: '2026-01-12',
-  verifiedBy: 'Senior State Verification Officer #404',
+  documentTitle: 'No APPSC Group-II notification read yet (placeholder record)',
+  officialUrl: '',
+  publishedDate: '',
+  verifiedDate: '',
+  verifiedBy: 'Not verified — this placeholder record was written before GovOS read APPSC’s own notifications; nothing in it has been checked against an APPSC document',
   taxonomyType: 'FACT',
-  verificationLevel: 'OFFICIALLY_VERIFIED',
-  excerptText: 'Andhra Pradesh Public Service Commission invites online applications for executive posts in Group-I and Group-II Services from eligible graduates.'
+  verificationLevel: 'UNDER_VERIFICATION',
+  excerptText: ''
+};
+
+// ---------------------------------------------------------------------------------------------
+// APPSC Group-I Services — Notification No. 07/2026, dated 06/10/2026, read on 2026-10-07 from the
+// Commission's own PDF (66 pp., text layer; the fee amounts, which the text layer drops, were read
+// from the page image). Every value below is cited to the page it is printed on with `apg1(...)`.
+// The record used to carry a January 2026 notification, an April 2026 Prelims, 89 vacancies, a 2024
+// cut-off and an "official" practice question, none of which came from an APPSC document.
+// ---------------------------------------------------------------------------------------------
+const APG1_AUTHORITY = 'Andhra Pradesh Public Service Commission (APPSC)';
+const APG1_SITE = 'https://psc.ap.gov.in';
+const APG1_CHECK = '2026-10-07';
+const APG1_NOTICE = {
+  title: 'APPSC Notification No. 07/2026, dated 06/10/2026 — Direct Recruitment to Group-I Services (General/Limited Recruitment)',
+  url: 'https://psc.ap.gov.in/Documents/NotificationDocuments/Group_I_07_2026.pdf',
+  published: '2026-10-06'
+} as const;
+const APG1_SCREENING = 'Screening Test';
+const APG1_MAINS = 'Main Examination';
+
+/** A clause of APPSC's Notification No. 07/2026, cited by its printed page (the PDF's pages are numbered the same). */
+const apg1 = (id: string, pageNumber: number, clauseNumber: string, excerptText: string,
+  how: string = 'from the text of the Commission’s PDF'): DataProvenance => ({
+  id, documentTitle: APG1_NOTICE.title, officialUrl: APG1_NOTICE.url, pageNumber, clauseNumber,
+  publishedDate: APG1_NOTICE.published, verifiedDate: APG1_CHECK,
+  verifiedBy: `GovOS verifier — read ${how} on ${APG1_CHECK}`,
+  taxonomyType: 'FACT', verificationLevel: 'OFFICIALLY_VERIFIED', excerptText, authorityName: APG1_AUTHORITY
+});
+
+const apg1P_notice = apg1('prov-apg1-notice', 1, 'Title', 'NOTIFICATION NO. 07/2026, DATED: 06/10/2026 DIRECT RECRUITMENT TO GROUP – I SERVICES (GENERAL/LIMITED RECRUITMENT)');
+const apg1P_window = apg1('prov-apg1-window', 1, 'Para 1.1',
+  'The applicants shall apply online through Commission’s Website https://psc.ap.gov.in from 06/10/2026 to 27/10/2026 up to 11:59 P.M.');
+const apg1P_total = apg1('prov-apg1-total', 1, 'Para 1.2 — table of vacancies',
+  '13 Divisional Development Officer in A.P. Panchayat Raj Service. 35 18-44 65,360- 1,54,980 TOTAL 166');
+const apg1P_cf = apg1('prov-apg1-cf', 2, 'Para 1.2, Note (i)',
+  'The above carried forward vacancies brought forward from previous recruitments. Selection/Appointment to such reserved vacancies as the case will be made first before the fresh vacancies');
+const apg1P_variation = apg1('prov-apg1-variation', 2, 'Para 1.2, Note (ii)',
+  'The number of vacancies and Departments are subject to variation on intimation being received from the Department concerned. Addition of vacancies if any will be accepted only before the date of Screening Test and an addendum to that effect will be issued.');
+const apg1P_otpr = apg1('prov-apg1-otpr', 2, 'Para 1.4',
+  'In case, applying for the first time to the posts notified by APPSC, he/she shall register his/her bio-data particulars through One Time Profile Registration (OTPR) on the Commission’s Website viz., https://psc.ap.gov.in');
+const apg1P_mode = apg1('prov-apg1-mode', 2, 'Para 1.5',
+  'The Screening test (objective type) will be held in offline mode (OMR based) and the Main Examination would be in Descriptive type.');
+const apg1P_mainsOptions = apg1('prov-apg1-mains-options', 2, 'Para 1.6',
+  'Option of medium for writing Main Examination and Post/Multi-Zonal/Zonal preferences etc., will be taken through online from the candidates before Main Examination.');
+const apg1P_dates = apg1('prov-apg1-dates', 2, 'Para 1.7', 'The Screening Test will be held on 24/01/2027. The Dates for the Main Examination will be announced later.');
+const apg1P_hallTicket = apg1('prov-apg1-hall-ticket', 2, 'Para 1.9',
+  'HALL TICKETS For Screening and Main Examination will be hosted on the Commission’s website. Instructions would be given through the website regarding downloading of Hall Tickets.');
+const apg1P_citizen = apg1('prov-apg1-citizen', 3, 'Para 2 (iv)', 'He/ She is a citizen of India.');
+const apg1P_qualDate = apg1('prov-apg1-qual-date', 3, 'Para 3 — Educational Qualifications',
+  'Applicants must possess the prescribed academic qualification from the recognized University as on the date of Detailed notification.');
+const apg1P_qualDegree = apg1('prov-apg1-qual-degree', 3, 'Para 3 — Post Code No. 01',
+  'Must hold the Bachelor’s Degree of any University in India established or incorporated by or under a Central Act, Provincial Act or a State Act or the Institution recognized by the University Grants Commission or an equivalent qualification.');
+const apg1P_qual04 = apg1('prov-apg1-qual-04', 3, 'Para 3 — Post Code No. 04',
+  'Must possesses B.E/ B.Tech in Electronics and Communication Engineering or Electronics and Telecommunication Engineering or Radio Engineering of a University in India established or incorporated by or under a Central Act, State Act or a Provincial Act or of an Institution recognized by the University Grants Commission or an equivalent qualification.');
+const apg1P_physical = apg1('prov-apg1-physical', 4, 'Para 3 — Physical Requirements',
+  'For Post Code No. 03 & 04: Must not be less than 167.6 Cms in height and must not be less than 86.3 Cms round the Chest on full inspiration and has a chest expansion of not less than 5 Cms on full inspiration. For S.T: Must not be less than 164 Cms in height and is not less than 83.8 Cms round the Chest with a minimum expansion of not less than 5 Cms on full inspiration. For Post Code No. 03 & 04 (Women): Shall not be less than 152.5 Cms in height and shall not be less than 45.5 Kgs in weight.');
+const apg1P_colour03 = apg1('prov-apg1-colour-03', 5, 'Para 3 — Vision, Post Code No. 03 (e)',
+  'Inability to distinguish the Principal colours will not be regarded as cause for rejection, but the fact will be noted in the proceedings and the candidate will be informed.');
+const apg1P_colour04 = apg1('prov-apg1-colour-04', 5, 'Para 3 — Vision, Post Code No. 04 (iii)',
+  'Cololur blindness, squint or any morbid condition of the eye or lids of either eye knock knees, and pigeon chest, flat foot vericose veins, hammer toes, fractured limbs and decayed tooth shall be deemed to be disqualification.');
+const apg1P_women = apg1('prov-apg1-women', 6, 'Para 4.2', 'There shall be Reservation to Women horizontally to an extent of 33 1/3%');
+const apg1P_msp = apg1('prov-apg1-msp', 6, 'Para 4.3', 'There shall be Reservation to Meritorious Sports Persons to an extent of 3%');
+const apg1P_pbd = apg1('prov-apg1-pbd', 6, 'Para 4.4',
+  'There shall be Reservations in respect of Persons with Benchmark Disabilities (PBD) as per Rule 22, 22 (A) and 22 (B) of State and Subordinate Service Rules and read with Departmental Special Rules except Post Code Nos. 03, 04.');
+const apg1P_bcNcl = apg1('prov-apg1-bc-ncl', 7, 'Para 4.9',
+  'The candidates belonging to Backward classes (BC’s) applying for this Notification must produce Non Creamy layer certificate … from the competent authority (Tahsildar) and issued on or after 01.04.2026 (after the completion of FY 2025-2026) but not later than the closing date of the submission of Application Form for this Notification');
+const apg1P_ews = apg1('prov-apg1-ews', 7, 'Para 4.10',
+  'whose gross annual family income is below Rs.8.00 lakh. … The applicants/candidates who claim the EWS Reservation must possess the EWS certificate based on the income for FY 2025-2026 a issued by the competent Revenue Authority in the rank of Tahsildar in digital format only on / after 01.04.2026 (after the completion of FY 2025-2026) but not later than the closing date of the submission of Application Form for this Notification');
+const apg1P_otherStates = apg1('prov-apg1-other-states', 7, 'Para 4.12', 'BCs, SCs, STs & EWS belonging to other States are not entitled for reservation.');
+const apg1P_age = apg1('prov-apg1-age', 8, 'Para 5.1', 'Minimum 18/21 years & Maximum 30/44 years as on 01/07/2026, as per Rule 12 of APS&SS, Rules,1996');
+const apg1P_relax = apg1('prov-apg1-relax', 8, 'Para 5.2 — Age Relaxation',
+  '1 SC, ST, BCs and EWS 5 Years 2 Persons with Benchmark Disabilities (PBD) 10 years');
+const apg1P_relaxEsm = apg1('prov-apg1-relax-esm', 8, 'Para 5.2 — Age Relaxation, S. No. 3 and 4',
+  '3 Ex-Servicemen Shall be allowed to deduct from his age a period of 3 years in addition to the length of service rendered by him in the armed forces / NCC. 4 N.C.C. (who have worked as Instructor in N.C.C.)');
+const apg1P_relaxState = apg1('prov-apg1-relax-state', 8, 'Para 5.2 — Age Relaxation, S. No. 5',
+  'Regular A.P. State Government Employees (Employees of Corporations,Municipalit-ies etc. are not eligible). Allowed to deduct from his age the length of regular Service under State Government up to a maximum of five years for the purposes of the maximum age limit.');
+const apg1P_relaxCensus = apg1('prov-apg1-relax-census', 8, 'Para 5.2 — Age Relaxation, S. No. 6',
+  'Retrenched temporary employees in the State Census Department with a minimum service of 6 months. 3 Years');
+const apg1P_local = apg1('prov-apg1-local', 9, 'Para 6.1–6.3',
+  'The benefit of 95 % of Local Reservation as provided in Presidential Order 2025 will go to local candidates of each Multi Zone mentioned hereunder.');
+const apg1P_stateCadre = apg1('prov-apg1-state-cadre', 9, 'Para 6.2', 'Post Code No.04: The Rule of Reservation is not applicable as the post is State cadre.');
+const apg1P_localDef = apg1('prov-apg1-local-def', 10, 'Para 7.2 A.1 — Definition of Local Candidate',
+  'a candidate for direct recruitment to any post shall be regarded as a local candidate in relation to a local areas where he/ she has studied in Educational Institution(s) for not less than four consecutive academic years prior to and including the year in which he/she appeared for 7th class or its equivalent Examination.');
+const apg1P_steps = apg1('prov-apg1-steps', 11, 'Para 8 — How to Apply, STEP-I and STEP-II',
+  'STEP-I: The applicant desires to apply for this Notification shall login to the Commission’s Website with his/her registered OTPR number. … STEP-II: … After Login, the Applicant has to click on the “Online Application Submission” present in the bottom right corner of the Commission’s website.');
+const apg1P_saveSubmit = apg1('prov-apg1-save-submit', 11, 'Para 8, NOTE 3',
+  'Saving the application alone will not be sufficient. The application will be considered complete only when the candidate clicks the Save & Submit button and successfully completes the submission process.');
+const apg1P_otprFrozen = apg1('prov-apg1-otpr-frozen', 11, 'Para 8, NOTE 4',
+  'Applicant shall note that the data displayed from OTPR at the time of submitting the application will be considered for the purpose of this notification only. Any changes made by the applicant in OTPR data at a later date shall not be considered for Recruitment Notification.');
+const apg1P_payment = apg1('prov-apg1-payment', 12, 'Para 8 — Payment Process',
+  'Once the payment form is submitted, the respective details (used for Calculation of fee and age relaxation) will not be altered in any stage of application processing.');
+const apg1P_correction = apg1('prov-apg1-correction', 12, 'Para 8, STEP-V',
+  'corrections in the application will be enabled after the last date of the submission of application and will be allowed up to 7 days only from the last date of applications. … The corrections can be made in the application form itself by making a payment of Rs.100/- for each correction in said stipulated time. Fields which affect the Name, fee, age relaxations are not enabled for corrections.');
+const apg1P_blank = apg1('prov-apg1-blank', 12, 'Para 8, NOTE D and E',
+  'Incomplete / incorrect application form will be summarily rejected. … No relevant column of the application form should be left blank; otherwise, application form will not be accepted.');
+const apg1P_fee = apg1('prov-apg1-fee', 12, 'Para 9.1',
+  'Applicant must pay Rs. 250/- (Rupees two hundred and fifty only) towards application processing fee and Rs.120/- (Rupees One hundred and twenty only) towards examination fee.',
+  'from the page image of the Commission’s PDF (its text layer drops the amounts)');
+const apg1P_feeExempt = apg1('prov-apg1-fee-exempt', 13, 'Para 9.2',
+  'However, the following categories of candidates are exempted from payment of examination fee Rs. 120/-only. i) SC, ST, BC, PBDs & Ex-Servicemen. ii) Families having Household Supply White Card issued by Civil Supplies Department, A.P. Government (Residents of Andhra Pradesh). iii) Un-employed youth as per G.O.Ms.No.439, G.A (Ser-A) Dept., dated: 18/10/1996 should submit declaration at an appropriate time to the Commission.',
+  'from the page images of the Commission’s PDF (pp. 12–13; its text layer drops the amount)');
+const apg1P_feeOther = apg1('prov-apg1-fee-other', 13, 'Para 9.2 (iv)–(v)',
+  'Applicants belonging to other States shall pay the prescribed fee of Rs. 120/- (Rupees One twenty only), along with processing fee of Rs. 250/- (Rupees Two Hundred and Fifty only).',
+  'from the page image of the Commission’s PDF (its text layer drops the amount)');
+const apg1P_feeMode = apg1('prov-apg1-fee-mode', 13, 'Para 9.3 — Mode of Payment of Fee',
+  'The Fee mentioned in the above paragraph is to be paid online using payment gateway using Net Banking/ Credit card / Debit Card. … The fee once remitted shall not be refunded or adjusted under any circumstances. … IPOs / Demand Drafts are not accepted.');
+const apg1P_negative = apg1('prov-apg1-negative', 13, 'Para 10.2',
+  'As per G.O. Ms. No.235, Finance (HR-I, Plg & Policy) Dept., Dt. 06/12/2016, each wrong answer will be penalized with 1/3rd of the marks prescribed for the question.');
+const apg1P_screeningMin = apg1('prov-apg1-screening-min', 13, 'Para 10.3',
+  'the Andhra Pradesh Public Service Commission is empowered to pick up candidates, who obtains such minimum qualifying marks in Screening Test as may be fixed by the Commission at its discretion to the Main Examination in all direct recruitment examinations.');
+const apg1P_centres = apg1('prov-apg1-centres', 13, 'Para 11.1',
+  'Screening Test will be held in all District Centers including newly organized Districts. However, the Commission reserves the right either to increase or decrease the number of Centers.');
+const apg1P_centrePrefs = apg1('prov-apg1-centre-prefs', 14, 'Para 11.2',
+  'the applicant may choose the Test center from the above with three preferences for Screening Test. However, the Commission reserves the right to allot the applicant to any center of examination depending on the availability of the resources.');
+const apg1P_mainsCentres = apg1('prov-apg1-mains-centres', 14, 'Para 11.3–11.4',
+  'The Main Written Examination will be held at the following Four Centers only. … 1. VISAKHAPATNAM 2. VIJAYAWADA 3. TIRUPATI 4. ANANTHAPURAMU … Applicants should choose only one of the above centers for Main examination. Centre once chosen shall be final.');
+const apg1P_omr = apg1('prov-apg1-omr', 14, 'Para 12.1 (a)–(b)',
+  'If any applicant fails to bubble or wrongly bubble the Booklet Series in the OMR Answer Sheet, such Answer sheets are invariably invalidated … Tampering of OMR answer sheet by using whitener, eraser, blade and chalk powder etc., and also tampering of barcode by any means leads to invalidation.');
+const apg1P_key = apg1('prov-apg1-key', 14, 'Para 12.2 and 12.4',
+  'If the candidates have any objections with regard to the initial key / questions they shall have to file the objections within three days after publication of the initial key in the prescribed proforma available in the website. … The candidate shall pay Rs.100/- per objection raised by him/her against question / initial answer key');
+const apg1P_englishAuth = apg1('prov-apg1-english-auth', 15, 'Para 12.5',
+  'The question paper is set in English and translated in to Telugu language. English version will be considered as the authentic version for valuation purpose.');
+const apg1P_languages = apg1('prov-apg1-languages', 15, 'Para 12.8',
+  'In the main examination, the papers of Telugu and English are in qualifying in nature and the marks secured in these papers are not counted for merit. The minimum qualifying marks for Telugu & English for each individual paper is 40 % for OC’s/Sports Persons/EWS; 35 % for B. C’s; 30% for SC/ST/ PBD.');
+const apg1P_medium = apg1('prov-apg1-medium', 15, 'Para 12.9',
+  'All papers except Telugu & English may be answered in English or Telugu or Urdu chosen by the candidates at the time of filling the online option for medium of writing main examination … All 05 (Five) papers have to be written in the medium chosen only. And also different papers cannot be written in different languages.');
+const apg1P_interview = apg1('prov-apg1-interview', 15, 'Para 12.10',
+  'After Main written examination, eligible candidates will be called for an Interview (Personality Test) as per G.O.Ms.No.100, GA (SER-A) Department, dt: 30/09/2022 at the ratio of 1:2 with reference to the number of vacancies');
+const apg1P_noWaitingList = apg1('prov-apg1-no-waiting-list', 15, 'Para 13.1', 'The recruitment will be made to the vacancies notified only. There shall be no waiting list');
+const apg1P_distance = apg1('prov-apg1-distance', 17, 'Para 13.8',
+  'The Degrees through Open Universities / Distance Education mode shall required to have recognition by the Distance Education Council, Government of India. Unless such Degrees have been recognised by the D.E.C. they will not be accepted for purpose of Educational Qualification.');
+const apg1P_screening = apg1('prov-apg1-screening', 18, 'Para 15.1',
+  'There will be a Screening Test (Objective Type) comprising of two papers (Paper-I and Paper-II). The test is meant for shortlisting the number of candidates to be admitted to the Main Written (Conventional) Type Examination. The number of candidates to be admitted to the Written Examination (Conventional Type) would be 50 times to the vacancies available irrespective of communities.');
+const apg1P_allScreening = apg1('prov-apg1-all-screening', 18, 'Para 15.2',
+  'The candidates must appear in all the papers of Screening Test. Absence in any of the papers will render him / her liable for disqualification.');
+const apg1P_selection = apg1('prov-apg1-selection', 18, 'Para 15.3',
+  'The selection of candidates for appointment to the posts shall be based on the merit in the Main Written examination and Interview (Personality Test) as per G.O.Ms.No.100, GA (Ser-A) Department, dt: 30/09/2022');
+const apg1P_allMains = apg1('prov-apg1-all-mains', 18, 'Para 15.4',
+  'Appearance in all the papers of Main Written examination (descriptive) is compulsory. Absence in any of the papers will automatically render the disqualification of the candidature.');
+const apg1P_minMarks = apg1('prov-apg1-min-marks', 18, 'Para 15.5',
+  'The minimum qualifying marks on aggregate for the vacancies notified under different categories are as follows … 1. OC, Sportspersons & EWS : 40% 2. Backward Class : 35% 3. SCs, STs & PBDs : 30%');
+const apg1P_ties = apg1('prov-apg1-ties', 18, 'Para 15.8',
+  'if two or more candidates get equal total number of marks, those candidates shall be bracketed. Candidates within the same bracket shall then be ranked 1, 2, 3 etc., according to age i.e., oldest being considered for admission.');
+const apg1P_prefs = apg1('prov-apg1-prefs', 19, 'Para 15.9',
+  'However, the submission of option for Post preferences and Multizonal/Zonal preferences at the time of verification of certificates is mandatory and will be considered as final.');
+const apg1P_marksMemo = apg1('prov-apg1-marks-memo', 19, 'Para 15.12',
+  'After publication of final selection list,the marks list (total marks) of the successful candidates will be displayed on the Commission’s website. However, the marks of all the candidates who have attended the Written Examination will be available in their individual logins.');
+const apg1P_debar = apg1('prov-apg1-debar', 19, 'Para 16.1',
+  'Any applicant furnishing in-correct information or making false declaration regarding his/her eligibility at any stage or suppressing any information is liable TO BE DEBARRED UPTO FIVE YEARS FROM APPEARING FOR ANY OF THE EXAMINATIONS CONDUCTED BY THE COMMISSION');
+const apg1P_gadgets = apg1('prov-apg1-gadgets', 20, 'Para 16.5 — Electronic Gadgets Banned',
+  'The use of any mobile (even in switched off mode), calculator or any electronic equipment or programmable device or storage media like pen drive, smart watches etc., or camera or blue tooth devices … during the examination is strictly prohibited.');
+const apg1P_horizontal = apg1('prov-apg1-horizontal', 24, 'Annexure-I, Note A — Women & PBD’s',
+  'Since the above vacancies shown at Note A is under Horizontal Reservation. All eligible candidates irrespective category/ Community/ Gender may apply.');
+const apg1P_scheme1 = apg1('prov-apg1-scheme-1', 26, 'Annexure-II — Screening Test, Paper-I',
+  'Screening Test (Objective Type) Paper -I General Studies. This paper consists of 04 parts i.e., ABCD each part carries 30 marks. A. History and Culture. B. Constitution, Polity, Social Justice and international relations. C. Indian and Andhra Pradesh Economy and Planning. D. Geography. 120 Questions 120 Minutes 120 Marks');
+const apg1P_scheme2 = apg1('prov-apg1-scheme-2', 26, 'Annexure-II — Screening Test, Paper-II',
+  'Screening Test (Objective Type) Paper -II General Aptitude. This paper consists 2 parts i.e., A and B each part carries 60 Marks (Part-A - 60 Marks, Part -B (i) - 30 Marks and B (ii) - 30 Marks). … 120 Questions 120 Minutes 120 Marks');
+const apg1P_schemeMains = apg1('prov-apg1-scheme-mains', 26, 'Annexure-II — Mains, Written Examination (Descriptive Type)',
+  'Paper in Telugu Qualifying Nature 180 minutes 150 Marks Paper in English Qualifying Nature 180 minutes 150 Marks Paper - I General Essay … 180 minutes 150 Marks');
+const apg1P_schemeTotal = apg1('prov-apg1-scheme-total', 26, 'Annexure-II — Mains, Written Examination (Descriptive Type)',
+  'Paper -V Science, Technology and Environmental Issues. - 180 minutes 150 Marks INTERVIEW 75 Marks TOTAL MARKS 825 Marks');
+const apg1P_photo = apg1('prov-apg1-photo', 40, 'Annexure-III, A.4', 'Applicants must compulsorily upload his/her own scanned photo and signature through jpg format.');
+const apg1P_formats = apg1('prov-apg1-formats', 40, 'Annexure-III, A.8',
+  'The following certificate formats are available on the Commission’s Website (https://psc.ap.gov.in) for reference. A.8.1. Community, Nativity and Date of Birth Certificate A.8.2. Declaration by the Un-Employed A.8.3. School Study Certificate A.8.4. Certificate of Residence');
+const apg1P_pen = apg1('prov-apg1-pen', 41, 'Annexure-III, B.3',
+  'The OMR Sheet is to be bubbled by Ball Point Pen (Blue or Black) only. Bubbling by Pencil / Ink Pen / Gel Pen is not permitted in this examination.');
+const apg1P_topSheet = apg1('prov-apg1-top-sheet', 40, 'Annexure-III, B.2',
+  'After writing the examination the candidate has to handover the original OMR sheet (Top Sheet) to the invigilator in the examination hall. If any candidate takes away the original OMR Sheet (Top Sheet) his/her candidature will be rejected.');
+const apg1P_biometric = apg1('prov-apg1-biometric', 41, 'Annexure-III, C.1',
+  'Biometric identification would be conducted before entry into examination hall. The entry time would be mentioned in the hall ticket. Late entry after the given entry time would not be allowed.');
+const apg1P_fullTime = apg1('prov-apg1-full-time', 41, 'Annexure-III, C.3',
+  'Candidates will not be permitted to leave the examination hall till the expiry of full time. If any candidate leaves the examination hall in the middle, he would be disqualified.');
+const apg1P_carry = apg1('prov-apg1-carry', 41, 'Annexure-III, C.6',
+  'In case you are carrying articles other than the admit card, photo identity proof and pen, please leave them outside the exam room.');
+const apg1P_calculator = apg1('prov-apg1-calculator', 42, 'Annexure-III, D.5',
+  'Non programmable calculators would be permitted, wherever necessary.');
+const apg1P_scribe = apg1('prov-apg1-scribe', 42, 'Annexure-III, D.9 (a) and (c)',
+  'Wherever the candidates are totally blind, they will be provided a scribe to write the examination and 20 minutes extra time is permitted to them per hour. … An extra time of 20 minutes per hour is also permitted for the candidates with locomotor disability and CEREBRAL PALSY where dominant (writing) extremity is affected');
+const apg1P_htPhoto = apg1('prov-apg1-ht-photo', 42, 'Annexure-III, D.10',
+  'In case the Hall-Ticket is without photo or too small, he/she should affix a passport size photo on Hall-ticket and appear by duly getting attested by Gazetted Officer.');
+const apg1P_htDiscrepancy = apg1('prov-apg1-ht-discrepancy', 41, 'Annexure-III, D.1',
+  'If the candidate notices any discrepancy printed on the Hall ticket, as to community, date of birth etc., he/she may immediately bring it to the notice of Commission’s officials/Chief Superintendent in the examination centre');
+
+/** One row of the vacancy table on p.1, as printed. */
+/** One row of the vacancy table on p.1, as printed: the post's name in the notice's own words (so its Evidence
+ *  quotes it), its vacancies (which `PostRequirement` has no field for, so they lead its conditions), age band and pay. */
+const apg1Post = (code: string, id: string, postName: string, department: string, vacancies: string, minAge: number, maxAge: number, pay: string, row: string,
+  extra: Partial<PostRequirement> = {}): PostRequirement => ({
+  id, postName: `${postName} (Post Code ${code})`, department, payLevel: `Scale of Pay ₹${pay}`, payScale: `₹${pay.replace('-', ' – ')}`,
+  classification: 'Group-I Services', minAge, maxAge,
+  provenance: apg1(`prov-apg1-post-${code}`, 1, `Para 1.2 — Post Code No. ${code}`, row), ...extra,
+  postConditions: [`Vacancies: ${vacancies} (para 1.2; the break-up by multi-zone, community and women is in Annexure-I)`, ...(extra.postConditions || [])]
+});
+
+/** Annexure-II's syllabus, one row per numbered item (or per question type for the language papers):
+ *  [slug, stage, paper, part, subject, topic name, page, the item's opening words as printed, sub-topics]. */
+type Apg1SyllabusRow = [string, 'S' | 'M', string, string, string, string, number, string, string[]];
+const APG1_PAPERS: Record<string, { title: string; marks: number; page: number }> = {
+  'S-I': { title: 'PAPER —I GENERAL STUDIES (DEGREE STANDARD) — Marks: 120 No.of Questions:120 Time: 120 Minutes', marks: 120, page: 27 },
+  'S-II': { title: 'PAPER -II — GENERAL APTITUDE (DEGREE STANDARD) — Marks:120 No.of Questions:120 Time: 120 Minutes', marks: 120, page: 29 },
+  'M-T': { title: 'TELUGU (S.S.C STANDARD) — Marks-150 Medium: Telugu Time- 180 Minutes (qualifying)', marks: 150, page: 32 },
+  'M-E': { title: 'ENGLISH (S.S.C STANDARD) — Marks — 150 Medium: English Time- 180 Minutes (qualifying)', marks: 150, page: 31 },
+  'M-I': { title: 'PAPER-I - GENERAL ESSSAY (DEGREE STANDARD) — Marks - 150 Time- 180 Minutes', marks: 150, page: 33 },
+  'M-II': { title: 'PAPER — II: HISTORY, CULTURE AND GEOGRAPHY OF INDIA AND ANDHRA PRADESH (DEGREE STANDARD) — Marks — 150 Time- 180 Minutes', marks: 150, page: 33 },
+  'M-III': { title: 'PAPER III - POLITY, CONSTITUTION, GOVERNANCE, LAW AND ETHICS (DEGREE STANDARD) — Marks — 150 Time- 180 Minutes', marks: 150, page: 35 },
+  'M-IV': { title: 'Paper - IV - ECONOMY AND DEVELOPMENT OF INDIA AND ANDHRA PRADESH (DEGREE STANDARD) — Marks — 150 Time - 180 Minutes', marks: 150, page: 37 },
+  'M-V': { title: 'Paper -V SCIENCE AND TECHNOLOGY (DEGREE STANDARD) — Marks — 150 Time- 180 Minutes', marks: 150, page: 38 }
+};
+const APG1_SYLLABUS_ROWS: Apg1SyllabusRow[] = [
+  // ---- Screening Test, Paper-I General Studies (pp. 27–29)
+  ['s1a-1', 'S', 'S-I', '(A) HISTORY & CULTURE', 'History & Culture', 'Indus Valley Civilization to the Gupta Empire', 27,
+    '1. Indus Valley Civilization: Features, Sites, Society, Cultural History, Art and Religion. Vedic Age- Mahajanapadas, Religions-Jainism and Buddhism.',
+    ['Indus Valley Civilization: features, sites, society, cultural history, art and religion', 'Vedic Age; Mahajanapadas; Jainism and Buddhism', 'The Magadhas, the Mauryas, foreign invasions on India and their impact, the Kushans', 'The Satavahanas, the Sangam Age, the Sungas', 'The Gupta Empire: administration; social, religious and economic conditions; art, architecture, literature, science and technology']],
+  ['s1a-2', 'S', 'S-I', '(A) HISTORY & CULTURE', 'History & Culture', 'The Kanauj and South Indian Dynasties', 27,
+    '2. The Kanauj and their Contributions, South Indian Dynasties - The Badami Chalukyas, the Eastarn Chalukyas, the Rastrakutas, the Kalyani Chalukyas, the Cholas, the Hoyasalas, the Yedavas, the Kakatiyas and the Reddis.',
+    ['The Kanauj and their contributions', 'The Badami Chalukyas, the Eastern Chalukyas, the Rashtrakutas, the Kalyani Chalukyas', 'The Cholas, the Hoysalas, the Yadavas, the Kakatiyas and the Reddis']],
+  ['s1a-3', 'S', 'S-I', '(A) HISTORY & CULTURE', 'History & Culture', 'Delhi Sultanate, Vijayanagara and Mughal Empires; Bhakti and Sufism', 27,
+    '3. The Delhi Sultanate, the Vijaynagar Empire and the Mughal Empire, the Bhakti Movement and Sufism - Administration, Economy, Society, Religion, Literature, Arts and Architecture.',
+    ['The Delhi Sultanate', 'The Vijayanagara Empire', 'The Mughal Empire', 'The Bhakti Movement and Sufism', 'Administration, economy, society, religion, literature, arts and architecture']],
+  ['s1a-4', 'S', 'S-I', '(A) HISTORY & CULTURE', 'History & Culture', 'European Trading Companies in India', 27,
+    '4. The European Trading companies in India- their struggle for supremacy-with special reference to Bengal, Bombay, Madras, Mysore, Andhra and Nizam, Governor-Generals and Viceroys.',
+    ['Their struggle for supremacy', 'With special reference to Bengal, Bombay, Madras, Mysore, Andhra and Nizam', 'Governor-Generals and Viceroys']],
+  ['s1a-5', 'S', 'S-I', '(A) HISTORY & CULTURE', 'History & Culture', '1857, Reform Movements and the Freedom Movement', 27,
+    '5. Indian War of Independence of 1857 - Origin, Nature, causes, consequences and significance with special reference to Concerned State',
+    ['Indian War of Independence of 1857: origin, nature, causes, consequences and significance, with special reference to the State', 'Religious and social reform movements in 19th-century India and the State', 'India’s Freedom Movement', 'Revolutionaries in India and abroad']],
+  ['s1a-6', 'S', 'S-I', '(A) HISTORY & CULTURE', 'History & Culture', 'Gandhi, Patel, Bose, Ambedkar and India after Independence', 27,
+    '6. Mahatma Gandhi, his thoughts, Principles and Philosophy. Important Satyagrahas, the Role of Sardar Patel, Subash Chandrabose in Freedom Movement and Post independence consolidation.',
+    ['Mahatma Gandhi: his thoughts, principles and philosophy; important Satyagrahas', 'The role of Sardar Patel and Subhas Chandra Bose in the Freedom Movement and post-independence consolidation', 'Dr. B.R. Ambedkar: his life and contribution to the making of the Indian Constitution', 'India after Independence: reorganization of the States']],
+  ['s1b-1', 'S', 'S-I', '(B) CONSTITUTION, POLITY, SOCIAL JUSTICE AND INTERNATIONAL RELATIONS', 'Polity & Governance', 'Indian Constitution', 27,
+    '1. Indian Constitution: Evolution, features, Preamble, Fundamental Rights, Fundamental Duties, Directive Principles of State Policy, Amendments, Significant Provisions and Basic Structure.',
+    ['Evolution, features and the Preamble', 'Fundamental Rights, Fundamental Duties, Directive Principles of State Policy', 'Amendments, significant provisions and the Basic Structure']],
+  ['s1b-2', 'S', 'S-I', '(B) CONSTITUTION, POLITY, SOCIAL JUSTICE AND INTERNATIONAL RELATIONS', 'Polity & Governance', 'Union, States, Legislatures and the Federal Structure', 27,
+    '2. Functions and Responsibilities of the Union and the States, Parliament and State Legislatures: Structure, Function, Power and Privileges.',
+    ['Functions and responsibilities of the Union and the States', 'Parliament and State Legislatures: structure, function, power and privileges', 'Federal structure: devolution of power and finances up to local levels, and its challenges']],
+  ['s1b-3', 'S', 'S-I', '(B) CONSTITUTION, POLITY, SOCIAL JUSTICE AND INTERNATIONAL RELATIONS', 'Polity & Governance', 'Constitutional Authorities, Panchayati Raj and Public Policy', 27,
+    '3. Constitutional Authorities: Powers, Functions and Responsibilities - Panchayati Raj - Public Policy and Governance.',
+    ['Constitutional authorities: powers, functions and responsibilities', 'Panchayati Raj', 'Public policy and governance']],
+  ['s1b-4', 'S', 'S-I', '(B) CONSTITUTION, POLITY, SOCIAL JUSTICE AND INTERNATIONAL RELATIONS', 'Polity & Governance', 'Liberalization and Governance; Statutory, Regulatory and Quasi-judicial Bodies', 27,
+    '4. Impact of Liberalization, Privatization and Globalization on Governance - Statutory, Regulatory and Quasi-judicial bodies.',
+    ['Impact of liberalization, privatization and globalization on governance', 'Statutory, regulatory and quasi-judicial bodies']],
+  ['s1b-5', 'S', 'S-I', '(B) CONSTITUTION, POLITY, SOCIAL JUSTICE AND INTERNATIONAL RELATIONS', 'Polity & Governance', 'Rights Issues', 27,
+    '5. Rights Issues (Human rights, Women rights, SC/ST rights, Child rights) etc.',
+    ['Human rights', 'Women’s rights', 'SC/ST rights', 'Child rights']],
+  ['s1b-6', 'S', 'S-I', '(B) CONSTITUTION, POLITY, SOCIAL JUSTICE AND INTERNATIONAL RELATIONS', 'Polity & Governance', 'India’s Foreign Policy and International Relations', 28,
+    '6. India\'s Foreign Policy — International Relations — Important Institutions, Agencies and Fora, their structure and mandate - Important Policies and Programmes of Central and State Governments.',
+    ['India’s foreign policy and international relations', 'Important institutions, agencies and fora: their structure and mandate', 'Important policies and programmes of the Central and State Governments']],
+  ['s1c-1', 'S', 'S-I', '(C) INDIAN AND ANDHRA PRADESH ECONOMY AND PLANNING', 'Economy', 'Indian Economy, Planning and Sustainable Development', 28,
+    '1. Basic characteristics of Indian Economy as a developing economy – Economic development since independence objectives and achievements of planning - NITI Ayog and its approach to economic development',
+    ['Basic characteristics of the Indian economy as a developing economy', 'Economic development since independence; objectives and achievements of planning', 'NITI Aayog and its approach to economic development', 'Growth and distributive justice; Human Development Index and India’s rank', 'Environmental degradation; sustainable development; environmental policy']],
+  ['s1c-2', 'S', 'S-I', '(C) INDIAN AND ANDHRA PRADESH ECONOMY AND PLANNING', 'Economy', 'National Income, Demography, Poverty and Employment', 28,
+    '2. National Income and its concepts and components –India’s National Accounts –Demographic issues - Poverty and Inequalities – Occupational Structure and Unemployment',
+    ['National income: concepts and components; India’s National Accounts', 'Demographic issues; poverty and inequalities', 'Occupational structure and unemployment; schemes of employment and poverty eradication', 'Rural development and urban development']],
+  ['s1c-3', 'S', 'S-I', '(C) INDIAN AND ANDHRA PRADESH ECONOMY AND PLANNING', 'Economy', 'Agriculture, Industry, Reforms and Trade', 28,
+    '3. Indian Agriculture –Irrigation and water – Inputs of agriculture – Agricultural Strategy and Agricultural Policy – Agrarian Crisis and land reforms',
+    ['Agriculture: irrigation and water, inputs, strategy and policy', 'Agrarian crisis and land reforms; agricultural credit; Minimum Support Prices; malnutrition and food security', 'Industry and industrial policy; Make in India; Start-up and Stand-up programmes; SEZs and industrial corridors', 'Energy and power policies; economic reforms – liberalisation, privatisation and globalisation', 'International trade and balance of payments; India and the WTO']],
+  ['s1c-4', 'S', 'S-I', '(C) INDIAN AND ANDHRA PRADESH ECONOMY AND PLANNING', 'Economy', 'Money, Banking, Taxation and Public Finance', 28,
+    '4. Financial Institutions – RBI and Monetary Policy – Banking and Financial Sector Reforms – Commercial Banks and NPAs',
+    ['RBI and monetary policy; banking and financial sector reforms; commercial banks and NPAs', 'Financial markets; stock exchanges and SEBI', 'The Indian tax system and recent changes; GST and its impact on commerce and industry', 'Centre–State financial relations; Finance Commissions; sharing of resources and devolution', 'Public debt and public expenditure; fiscal policy and the budget']],
+  ['s1c-5', 'S', 'S-I', '(C) INDIAN AND ANDHRA PRADESH ECONOMY AND PLANNING', 'Economy', 'Andhra Pradesh Economy after Bifurcation; A.P. Reorganisation Act, 2014', 28,
+    '5. i) The characteristics/ basic features of Andhra Pradesh economy after bifurcation in 2014 – Impact of bifurcation on the endowment of natural resources and state revenue',
+    ['Basic features of the Andhra Pradesh economy after bifurcation in 2014; impact on natural resources and State revenue', 'River-water sharing disputes and their impact on irrigation; new challenges to industry and commerce', 'Infrastructure, power and transport; information technology and e-governance', 'Development initiatives in agriculture, industry and the social sector; urbanization and smart cities; skill development; social welfare programmes', 'A.P. Reorganisation Act, 2014: economic issues; central assistance for a new capital, compensation for loss of revenue, development of backward districts', 'Vizag railway zone, Kadapa steel factory, Dugarajapatnam airport, expressways and industrial corridors', 'Special Status and Special Assistance: the controversy, the Government’s stand and measures']],
+  ['s1d-1', 'S', 'S-I', '(D) GEOGRAPHY', 'Geography', 'General Geography', 28,
+    '1. General Geography: Earth in Solar system, Motion of the Earth, Concept of time, Season, Internal Structure of the Earth, Major landfornns and their features.',
+    ['Earth in the solar system, motion of the Earth, concept of time, seasons', 'Internal structure of the Earth; major landforms and their features', 'Atmosphere: structure and composition, elements and factors of climate, air masses and fronts, atmospheric disturbances, climate change', 'Oceans: physical, chemical and biological characteristics; hydrological disasters; marine and continental resources']],
+  ['s1d-2', 'S', 'S-I', '(D) GEOGRAPHY', 'Geography', 'Physical Geography: World, India and the State', 28,
+    '2. Physical: World, India and concerned State : Major physical divisions, Earthquakes, landslides, Natural drainage, climatic changes and regions, Monsoon, Natural Vegetation, Parks and Sanctuaries, Major Soil types, Rocks and Minerals.',
+    ['Major physical divisions', 'Earthquakes and landslides', 'Natural drainage', 'Climatic changes and regions; the monsoon', 'Natural vegetation, parks and sanctuaries', 'Major soil types, rocks and minerals']],
+  ['s1d-3', 'S', 'S-I', '(D) GEOGRAPHY', 'Geography', 'Social Geography: World, India and the State', 29,
+    '3. Social: World, India and concerned State : distribution, density, growth, Sex-ratio, Literacy, Occupational Structure, SC and ST Population, Rural-Urban components',
+    ['Distribution, density, growth, sex ratio, literacy', 'Occupational structure; SC and ST population; rural–urban components', 'Racial, tribal, religious and linguistic groups', 'Urbanization, migration and metropolitan regions']],
+  ['s1d-4', 'S', 'S-I', '(D) GEOGRAPHY', 'Geography', 'Economic Geography: World, India and the State', 29,
+    '4. Economic: World, India and concerned State: Major sectors of economy, Agriculture, Industry and Services, their salient features.',
+    ['Major sectors of the economy: agriculture, industry and services', 'Basic industries: agro, mineral, forest, fuel and manpower based', 'Transport and trade: pattern and issues']],
+  // ---- Screening Test, Paper-II General Aptitude (pp. 29–30)
+  ['s2a-1', 'S', 'S-II', '(A). GENERAL MENTAL AND PSYCOLOGICAL ABILITIES', 'Mental & Psychological Abilities', 'Logical and Analytical Reasoning', 29,
+    '1. Logical Reasoning and Analytical Ability. 2. Number Series, Coding —Decoding. 3. Problems Related to Relations. 4. Shapes and their Sub-sections, Venn Diagram. 5. Problems based on Clocks, Calendar and Age.',
+    ['Logical reasoning and analytical ability', 'Number series; coding–decoding', 'Problems related to relations', 'Shapes and their sub-sections; Venn diagrams', 'Clocks, calendar and age']],
+  ['s2a-2', 'S', 'S-II', '(A). GENERAL MENTAL AND PSYCOLOGICAL ABILITIES', 'Mental & Psychological Abilities', 'Number System and Arithmetic', 29,
+    '6. Number system and order of Magnitude. 7. Ratio, proportion and variation. 8. Central Tendencies - mean, median, mode — including weighted mean.',
+    ['Number system and order of magnitude', 'Ratio, proportion and variation', 'Mean, median and mode, including the weighted mean', 'Powers and exponents, squares, square roots, cube roots, HCF and LCM', 'Percentage, simple and compound interest, profit and loss', 'Time and work, time and distance, speed and distance']],
+  ['s2a-3', 'S', 'S-II', '(A). GENERAL MENTAL AND PSYCOLOGICAL ABILITIES', 'Mental & Psychological Abilities', 'Mensuration and Geometry', 29,
+    '12. Area and Perimeter of Simple Geometrical Shapes, Volume and Surface Area of Sphere, Cone, Cylinder, cubes and Cuboids. 13. Lines, angels and common geometrical figures',
+    ['Area and perimeter of simple geometrical shapes', 'Volume and surface area of the sphere, cone, cylinder, cube and cuboid', 'Lines and angles; properties of transversals and parallel lines', 'Properties of triangles, quadrilaterals, rectangles, parallelograms and rhombuses']],
+  ['s2a-4', 'S', 'S-II', '(A). GENERAL MENTAL AND PSYCOLOGICAL ABILITIES', 'Mental & Psychological Abilities', 'Algebra, Data Interpretation and Probability', 29,
+    '14. Introduction to algebra — BODMAS, simplification of weird symbols. 15. Data interpretation, Data Analysis, Data sufficiency, and concepts of Probability.',
+    ['Introduction to algebra: BODMAS, simplification of symbols', 'Data interpretation and data analysis', 'Data sufficiency', 'Concepts of probability']],
+  ['s2a-5', 'S', 'S-II', '(A). GENERAL MENTAL AND PSYCOLOGICAL ABILITIES', 'Mental & Psychological Abilities', 'Emotional and Social Intelligence', 29,
+    '16. Emotional Intelligence: Understanding and analyzing emotions, Dimensions of emotional intelligence, coping with emotions, empathy and coping with stress. 17. Social Intelligence',
+    ['Emotional intelligence: understanding and analysing emotions, its dimensions, coping with emotions, empathy, coping with stress', 'Social intelligence and interpersonal skills', 'Decision making, critical thinking and problem solving', 'Assessment of personality']],
+  ['s2b-1', 'S', 'S-II', '(B)(i) SCIENCE AND TECHNOLOGY', 'Science & Technology', 'Science and Technology: Scope, Policy and Institutions', 29,
+    '18. Science and Technology: Nature and Scope of Science & Technology; Relevance of Science & Technology to the day-to-day life; National Policy on Science, Technology and Innovation',
+    ['Nature and scope of science and technology; relevance to day-to-day life', 'National Policy on Science, Technology and Innovation', 'Institutes and organizations in India promoting science, technology and innovation', 'Contribution of prominent Indian scientists']],
+  ['s2b-2', 'S', 'S-II', '(B)(i) SCIENCE AND TECHNOLOGY', 'Science & Technology', 'Information and Communication Technology', 29,
+    '19. Information and Communication Technology (ICT): Nature and Scope of ICT; ICT in day-to-day life; ICT and Industry; ICT and Governance',
+    ['Nature and scope of ICT; ICT in day-to-day life and in industry', 'ICT and governance: government schemes, e-governance programmes and services', 'Netiquette; cyber security concerns; National Cyber Crime Policy']],
+  ['s2b-3', 'S', 'S-II', '(B)(i) SCIENCE AND TECHNOLOGY', 'Science & Technology', 'Technology in Space and Defence', 30,
+    '20. Technology in Space & Defence: Evolution of Indian Space Programme; Indian Space Research Organization (ISRO) — it\'s activities and achievements',
+    ['Evolution of the Indian space programme; ISRO’s activities and achievements', 'Satellite programmes: telecommunication, IRNSS, IRS, defence and academic (EDUSAT) satellites', 'DRDO: vision, mission and activities']],
+  ['s2b-4', 'S', 'S-II', '(B)(i) SCIENCE AND TECHNOLOGY', 'Science & Technology', 'Energy Requirement and Efficiency', 30,
+    '21. Energy Requirement and Efficiency: India\'s existing energy needs and deficit; India\'s Energy Resources and Dependence, Energy policy of India Government Policies and Programmes. Solar, Wind and Nuclear energy',
+    ['India’s energy needs and deficit; energy resources and dependence', 'India’s energy policy: government policies and programmes', 'Solar, wind and nuclear energy']],
+  ['s2b-5', 'S', 'S-II', '(B)(i) SCIENCE AND TECHNOLOGY', 'Science & Technology', 'Environmental Science, Biotechnology and Nanotechnology', 30,
+    '22. Environmental Science: Issues and concerns related to environment; Its legal aspects, policies and treaties for the protection of environment at the national and the international level',
+    ['Environmental issues; legal aspects, policies and treaties, national and international', 'Biodiversity; climate change, international initiatives and India’s commitment', 'Forest and wildlife: the legal framework for conservation in India', 'Environmental hazards, pollution, carbon emission, global warming; national action plans on climate change and disaster management', 'Biotechnology and nanotechnology: nature, scope, applications; ethical, social and legal issues; government policies', 'Genetic engineering and its impact on human life; health and environment']],
+  ['s2b-6', 'S', 'S-II', '(ii) CURRENT EVENTS OF REGIONAL, NATIONAL AND INTERNATIONAL IMPORTANCE', 'Current Affairs', 'Current Events of Regional, National and International Importance', 30,
+    '(ii) CURRENT EVENTS OF REGIONAL, NATIONAL AND INTERNATIONAL IMPORTANCE', []],
+  // ---- Main Examination, the two qualifying language papers (pp. 31–32)
+  ['mt-1', 'M', 'M-T', '', 'Telugu (Qualifying)', 'Telugu — thirteen question types (150 marks)', 32,
+    'TELUGU (S.S.C STANDARD) Marks-150 Medium: Telugu Time- 180 Minutes',
+    ['Essay, 200–250 words, one of three topics (20 marks)', 'Elaborating the meaning of a poem or verse, two of three, about 100 words — Vemana and Sumathi Satakam (20)', 'Précis: a one-third summary of a passage (10)', 'Comprehension: a passage of about 250 words, five short answers (10)', 'Formal speech or a speech for a press conference, about 150 words (10)', 'Statements for publicity media: a press note, about 100 words (10)', 'Letter writing, about 100 words (10)', 'Application writing, about 150 words (10)', 'Report writing, about 150 words (10)', 'Translation, English to Telugu (10)', 'Translation, Telugu to English (10)', 'Word meanings, English to Telugu and Telugu to English (10)', 'Synonyms and antonyms, English to Telugu and Telugu to English (10)']],
+  ['me-1', 'M', 'M-E', '', 'English (Qualifying)', 'English — ten question types (150 marks)', 31,
+    'ENGLISH (S.S.C STANDARD) Marks — 150 Medium: English Time- 180 Minutes',
+    ['Essay, 200–250 words, one of five topics (20 marks)', 'Letter writing: a formal letter, about 100 words (10)', 'Press release or appeal, about 100 words (10)', 'Report writing, about 150 words (15)', 'Writing on visual information: a graph, image, flow chart or table, about 150 words (15)', 'Formal speech, about 150 words (15)', 'Précis: about 100 words from a 300-word passage (15)', 'Reading comprehension: a passage of about 250 words with short answers (15)', 'Grammar, multiple choice: tenses, voice, narration, transformation, articles and determiners, prepositions, phrasal verbs, idioms, administrative glossary, synonyms and antonyms, one-word substitution, connectives, affixes, confusable words (20)', 'Translation of a passage of about 150 words from the regional language into English (15)']],
+  // ---- Main Examination, Paper-I General Essay (p. 33)
+  ['m1-1', 'M', 'M-I', '', 'General Essay', 'Three essays, one from each section, about 800 words each', 33,
+    'The candidates are required to attempt three essays, one from each of the three sections, in about 800 words each.',
+    ['Section I: current affairs', 'Section II: socio-political, socio-economic and socio-environmental issues', 'Section III: cultural and historical aspects, issues related to civic awareness, reflective topics', 'Credit is given for the established rules and format of an essay, grammatical correctness, and originality of thought and expression']],
+  // ---- Main Examination, Paper-II History, Culture and Geography of India and Andhra Pradesh (pp. 33–35)
+  ['m2a-1', 'M', 'M-II', 'A. History and Culture of India', 'History & Culture', 'Pre-Historic Cultures to the Guptas', 33,
+    '1. Pre-Historic Cultures in India- Indus Valley Civilization- Vedic Culture- Mahajanapadas- Emergence of New Religions-Jainism, Buddhism- Rise of the Magadha and Age of the Mauryas- Ashoka Dharma',
+    ['Pre-historic cultures; the Indus Valley Civilization; Vedic culture; Mahajanapadas', 'New religions: Jainism and Buddhism', 'Rise of Magadha and the Age of the Mauryas; Ashoka’s Dharma; foreign invasions; the Kushans', 'The Satavahanas, the Sangam Age, the Sungas, the Guptas, the Kanauj', 'Accounts of foreign travellers; early educational institutions']],
+  ['m2a-2', 'M', 'M-II', 'A. History and Culture of India', 'History & Culture', 'South Indian Kingdoms, the Delhi Sultanate and the Bhakti and Sufi Movements', 33,
+    '2. The Pallavas, the Badami Chalukyas, the Eastern Chalukyas, the Rashtrakutas, the Kalyani Chalukyas and the Cholas- Socio Cultural Contributions, Language, Literature Art and Architecture',
+    ['The Pallavas, the Badami, Eastern and Kalyani Chalukyas, the Rashtrakutas and the Cholas: socio-cultural contributions, language, literature, art and architecture', 'The Delhi Sultanate; the advent of Islam and its impact', 'Bhakti and Sufi movements and their influence', 'Growth of vernacular languages, scripts, literature and fine arts', 'The Kakatiyas, the Vijayanagaras, the Bahmanis, the Qutub Shahis and their contemporary South Indian kingdoms']],
+  ['m2a-3', 'M', 'M-II', 'A. History and Culture of India', 'History & Culture', 'The Mughals, the Marathas and the Coming of the Europeans', 34,
+    '3. The Mughals Administration, Socio-Religious life and Cultural developments- Shivaji and Rise of Maratha Empire- Advent of Europeans in India.',
+    ['Mughal administration, socio-religious life and cultural developments', 'Shivaji and the rise of the Maratha Empire', 'Advent of the Europeans; trade practices; rise of the East India Company and its hegemony', 'Changes in administration and in the social and cultural spheres; the role of Christian missionaries']],
+  ['m2a-4', 'M', 'M-II', 'A. History and Culture of India', 'History & Culture', 'British Rule, 1857, Reform and the Rise of Nationalism', 34,
+    '4. Rise of British rule in India from 1757 to 1856- Land Revenue Settlement, Permanent Settlement, Ryothvari and Mahalvari-1857 Revolt and its Impact',
+    ['British rule from 1757 to 1856; land revenue settlements – Permanent, Ryotwari and Mahalwari', 'The 1857 Revolt and its impact; education, the press and cultural change', 'Socio-religious reform movements of the 19th century: Raja Ram Mohan Roy, Dayananda Saraswati, Swami Vivekananda, Annie Besant, Sir Syed Ahmad Khan and others', 'Rise of Indian nationalism; the Indian National Congress; Vandemataram and Home Rule movements', 'The Self-Respect Movement: Jyotiba Phule, Narayana Guru, Periyar', 'Gandhi, Subhas Chandra Bose, Vallabhbhai Patel; Satyagraha; Quit India; Dr B.R. Ambedkar']],
+  ['m2a-5', 'M', 'M-II', 'A. History and Culture of India', 'History & Culture', 'The Freedom Struggle in Three Phases and India after Independence', 34,
+    '5. Indian Nationalism in three phases- Freedom Struggle 1885-1905, 1905-1920 and Gandhi Phase 1920-1947- Peasant, Women, Tribal and Workers Movements',
+    ['The freedom struggle 1885–1905, 1905–1920 and the Gandhian phase 1920–1947', 'Peasant, women, tribal and workers’ movements; parties, local and regional movements; inter-religious unity and communalism', 'Independence and Partition; rehabilitation after Partition', 'Linguistic reorganization of States; integration of the Indian States; the Constitution; economic policies; foreign-policy initiatives']],
+  ['m2b-1', 'M', 'M-II', 'B. History and Culture of Andhra Pradesh', 'History & Culture', 'Ancient Andhra', 34,
+    '6. Ancient: The Satavahanas, the Ikshvakus, the Salankayanas, the Pallavas and the Vishnukundins',
+    ['The Satavahanas, the Ikshvakus, the Salankayanas, the Pallavas and the Vishnukundins: society, economy, religion, Telugu language, literature, art and architecture', 'Jainism and Buddhism in Andhra', 'The Eastern Chalukyas, the Rashtrakutas, the Renati Cholas and others: socio-cultural life, religion, Telugu script and language, literature, art and architecture']],
+  ['m2b-2', 'M', 'M-II', 'B. History and Culture of Andhra Pradesh', 'History & Culture', 'Medieval Andhra, 1000–1565 A.D.', 34,
+    '7. Medieval: Socio- Cultural and Religious Conditions in Andhradesa 1000 to 1565 A.D.-Antiquity, Origin and Growth Telugu Language and Literature (Kavitraya- Asthadiggajas)',
+    ['Socio-cultural and religious conditions in Andhradesa, 1000–1565 A.D.', 'Origin and growth of Telugu language and literature: the Kavitraya and the Ashtadiggajas', 'Fine arts, art and architecture under the Kakatiyas, Reddis, Gajapatis and Vijayanagaras and their feudatories', 'Historical monuments; the Qutub Shahis’ contribution; regional literature; Praja Kavi Vemana and others']],
+  ['m2b-3', 'M', 'M-II', 'B. History and Culture of Andhra Pradesh', 'History & Culture', 'Modern Andhra', 34,
+    '8. Modern: European Trade Establishments in Andhra- Andhra Under the Company Rule- Role of Christian Missionaries- Socio-Cultural, Literary Awakening',
+    ['European trade establishments; Andhra under Company rule; Christian missionaries', 'Socio-cultural and literary awakening: C.P. Brown, Thomas Munro, Mackenzie', 'Zamindari and Poligar systems; native states and little kings', 'Social reformers: Gurajada Apparao, Kandukuri Veeresalingam, Raghupati Venkataratnam Naidu, Gidugu Ramamurthy, Annie Besant and others', 'The library movement; newspapers; folk and tribal culture, oral traditions, subaltern culture, the role of women']],
+  ['m2b-4', 'M', 'M-II', 'B. History and Culture of Andhra Pradesh', 'History & Culture', 'The Nationalist Movement in Andhra and the Making of Andhra Pradesh', 34,
+    '9. Nationalist Movement: Role of Andhra leaders- Justice Party, Non-Brahmin Movement- Nationalist and Revolutionary Literature',
+    ['Role of Andhra leaders; the Justice Party; the non-Brahmin movement', 'Nationalist and revolutionary literature: Gurram Jashuva, Boyi Bheemanna, Sri Sri, Garimella Satyanarayana, Rayaprolu Subbarao, Unnava Lakshminarayana, Tripuraneni Ramaswamy Choudary and others', 'Andhra Mahasabhas and the Andhra Movement: Alluri Sitarama Raju, Duggirala Gopalakrishnaiah, Konda Venkatappayya, Pattabhi Seetaramaiah, Ponaka Kanakamma, Dokka Sitamma', 'The Grandhalaya movement', 'Potti Sreeramulu; formation of Andhra State, 1953; emergence of Andhra Pradesh, 1956; Andhra Pradesh 1956–2014; causes of bifurcation']],
+  ['m2b-5', 'M', 'M-II', 'B. History and Culture of Andhra Pradesh', 'History & Culture', 'Bifurcation of Andhra Pradesh and its Impact', 35,
+    '10. Andhra Pradesh: Bifurcation of Andhra Pradesh and its impact on Administrative, Economic, Social, Political, Cultural and Legal Implications',
+    ['Administrative, economic, social, political, cultural and legal implications', 'Loss of the capital city; building a new capital and its financial implications', 'Division of employees and their native issues', 'Effect on trade, commerce and industry; the State’s financial resources', 'River-water sharing; the Andhra Pradesh Reorganization Act, 2014 and its contested provisions']],
+  ['m2c-1', 'M', 'M-II', 'C. Geography: India and Andhra Pradesh', 'Geography', 'Physical Features and Resources', 35,
+    '11. Physical Features and Resources: India and Andhra Pradesh, Major land forms, Climatic changes, Soil types, Rivers, Water, Streams, Geology, Rocks, Mineral Resources',
+    ['Major landforms, climatic changes, soil types', 'Rivers, streams, reservoirs and dams', 'Geology, rocks, mineral resources, metals, clays, construction materials', 'Forests, mountains, hills, plateaus, flora and fauna; vegetation classification']],
+  ['m2c-2', 'M', 'M-II', 'C. Geography: India and Andhra Pradesh', 'Geography', 'Economic Geography', 35,
+    '12. Economic Geography : Agriculture, Live stocks, Forestry, Fishery, Quarrying, Mining, House hold Manufacturing, Industries',
+    ['Agriculture, livestock, forestry, fishery', 'Quarrying, mining, household manufacturing', 'Industries: agro, mineral, forest, fuel and manpower based', 'Trade and commerce, communication, road transport, storage']],
+  ['m2c-3', 'M', 'M-II', 'C. Geography: India and Andhra Pradesh', 'Geography', 'Social Geography', 35,
+    '13. Social Geography: Population Movements and Distribution, Human Habitations, Density, Age, Sex, Rural, Urban, Race, Caste, Tribe, Religion, Linguistic, Urban Migration, Education Characteristics.',
+    ['Population movements and distribution; human habitations; density', 'Age, sex, rural and urban composition', 'Race, caste, tribe, religion and language', 'Urban migration; educational characteristics']],
+  ['m2c-4', 'M', 'M-II', 'C. Geography: India and Andhra Pradesh', 'Geography', 'Faunal and Floral Geography', 35,
+    '14. Fauna and Floral Geography: Wild Animals, Animals, Birds, Reptiles, Mammals, Trees and Plants and others.',
+    ['Wild animals, birds, reptiles and mammals', 'Trees and plants']],
+  ['m2c-5', 'M', 'M-II', 'C. Geography: India and Andhra Pradesh', 'Geography', 'Environmental Geography and Disaster Management', 35,
+    '15. Environmental Geography: Sustainable Development, Globalization, Temperature, Humidity, Cloudiness, Winds, Special Weather Phenomena',
+    ['Sustainable development and globalization', 'Temperature, humidity, cloudiness, winds, special weather phenomena', 'Natural hazards: earthquakes, landslides, floods, cyclones, cloudbursts; disaster management', 'Impact assessment; environmental pollution and its management']],
+  // ---- Main Examination, Paper-III Polity, Constitution, Governance, Law and Ethics (pp. 35–36)
+  ['m3a-1', 'M', 'M-III', '(A) Indian Polity and Constitution', 'Polity & Governance', 'The Constitution and the Union and State Governments', 35,
+    '1. Indian Constitution and its salient features - Functions and duties of the Indian Union and the State Governments.',
+    ['Salient features of the Constitution', 'Functions and duties of the Union and the State Governments']],
+  ['m3a-2', 'M', 'M-III', '(A) Indian Polity and Constitution', 'Polity & Governance', 'The Federal Structure and the Governor', 35,
+    '2. Issues and challenges pertaining to the Federal structure — Role of Governor in States - Distribution of powers between the Union and States',
+    ['Issues and challenges of the federal structure', 'Role of the Governor', 'Distribution of powers: Union, State and Concurrent lists']],
+  ['m3a-3', 'M', 'M-III', '(A) Indian Polity and Constitution', 'Polity & Governance', 'Local Governance and Constitutional Authorities', 35,
+    '3. Rural and Urban Local Governance under 73rd and 74th Constitutional Amendment - Constitutional Authorities and their Role.',
+    ['Rural and urban local governance under the 73rd and 74th Amendments', 'Constitutional authorities and their role']],
+  ['m3a-4', 'M', 'M-III', '(A) Indian Polity and Constitution', 'Polity & Governance', 'Parliament and State Legislatures', 35,
+    '4. Parliament and State Legislatures — structure, functioning, conduct of business, powers & privileges and issues arising out of these.',
+    ['Structure and functioning', 'Conduct of business', 'Powers and privileges, and the issues arising from them']],
+  ['m3a-5', 'M', 'M-III', '(A) Indian Polity and Constitution', 'Polity & Governance', 'The Judiciary', 35,
+    '5. Judiciary in India — Structure and functions, important provisions relating to emergency and constitutional amendments, judicial review, Public Interest Litigation.',
+    ['Structure and functions', 'Emergency provisions and constitutional amendments', 'Judicial review; Public Interest Litigation']],
+  ['m3b-1', 'M', 'M-III', '(B) Public Administration and Governance', 'Polity & Governance', 'Public Administration: Meaning, Scope and Evolution in India', 36,
+    '6. Meaning, Nature and Scope of Public Administration —Evolution in India —Administrative ideas in Kautilya\'s Arthashastra; Mughal administration; Legacy of British rule.',
+    ['Meaning, nature and scope of public administration', 'Administrative ideas in Kautilya’s Arthashastra; Mughal administration; the legacy of British rule']],
+  ['m3b-2', 'M', 'M-III', '(B) Public Administration and Governance', 'Polity & Governance', 'Government Policies and Interventions for Development', 36,
+    '7. Government policies and interventions for development in various sectors and issues and problems of implementation.',
+    ['Policies and interventions for development in various sectors', 'Issues and problems of implementation']],
+  ['m3b-3', 'M', 'M-III', '(B) Public Administration and Governance', 'Polity & Governance', 'Development Processes: Civil Society and NGOs', 36,
+    '8. Development processes - the role of civil society, NGOs and other stakeholders',
+    ['The role of civil society, NGOs and other stakeholders']],
+  ['m3b-4', 'M', 'M-III', '(B) Public Administration and Governance', 'Polity & Governance', 'Statutory, Regulatory and Quasi-judicial Authorities; the Civil Services', 36,
+    '9. Statutory, regulatory and various quasi-judicial authorities - Role of Civil Services in Democracy.',
+    ['Statutory, regulatory and quasi-judicial authorities', 'The role of the civil services in a democracy']],
+  ['m3b-5', 'M', 'M-III', '(B) Public Administration and Governance', 'Polity & Governance', 'Good Governance and e-Governance', 36,
+    '10.Good governance and e-governance- Transparency, accountability and responsiveness in governance — Citizen\'s Charter. RTI, Public Service Act and their implications, Concept of Social Audit and its importance.',
+    ['Transparency, accountability and responsiveness', 'Citizen’s Charter; RTI; the Public Service Act', 'Social audit and its importance']],
+  ['m3c-1', 'M', 'M-III', '(C). Ethics in Public Service and knowledge of law', 'Ethics & Law', 'Ethics and Human Interface', 36,
+    '11. Ethics and Human Interface: Essence, determinants and Consequences of Ethics in Human actions: dimensions of Ethics',
+    ['Essence, determinants and consequences of ethics in human actions; dimensions of ethics', 'Ethics in private and public relationships', 'Ethics, integrity and accountability in public service']],
+  ['m3c-2', 'M', 'M-III', '(C). Ethics in Public Service and knowledge of law', 'Ethics & Law', 'Human Values', 36,
+    '12.Human values: Understanding the Harmony in existence Human relationships in the society and in the Nature.',
+    ['Harmony in existence; human relationships in society and in nature', 'Gender equality in relationships', 'The role of family, society and educational institutions in imparting values', 'Lessons from the lives and teachings of great leaders, reformers and administrators']],
+  ['m3c-3', 'M', 'M-III', '(C). Ethics in Public Service and knowledge of law', 'Ethics & Law', 'Attitude and Emotional Intelligence', 36,
+    '13.Attitude: Content, Functions, its influence and relation with thought and behaviour, Moral and Political attitudes, role of Social influence and persuasion.',
+    ['Attitude: content, functions, its relation with thought and behaviour', 'Moral and political attitudes; social influence and persuasion', 'Emotional intelligence: concepts and their use in administration and governance']],
+  ['m3c-4', 'M', 'M-III', '(C). Ethics in Public Service and knowledge of law', 'Ethics & Law', 'Public Service, Codes of Conduct and Ethics in Governance', 36,
+    '14.Concept of Public Service, "Philosophical basis of Governance professional Ethics in the light of right understanding and Vision for Holistic Technologies',
+    ['Concept of public service; philosophical basis of governance; professional ethics', 'Codes of ethics and codes of conduct; RTI; the Public Service Act', 'Leadership ethics; work culture; ethical principles within an organization', 'Ethical and moral values in governance; ethics in international relations', 'Corruption; Lokpal and Lokayukta']],
+  ['m3c-5', 'M', 'M-III', '(C). Ethics in Public Service and knowledge of law', 'Ethics & Law', 'Basic Knowledge of Laws in India', 36,
+    '15.Basic Knowledge of Laws in India Constitution of India: Nature and salient features – Fundamental Rights and Directive Principles of State Policy',
+    ['Constitution: nature and salient features; Fundamental Rights and Directive Principles; Union, State and Concurrent lists; powers of the judiciary, executive and legislature', 'Civil and criminal laws: hierarchy of courts; substantive and procedural law; order and decree; new developments in criminal law; the Nirbhaya Act', 'Labour law: social welfare legislation; changing employment and the need for new labour laws', 'Cyber law: the Information Technology Act; cyber security and cyber crime; jurisdiction of courts in cyber crime', 'Tax law: income, profits, wealth tax, corporate tax; GST']],
+  // ---- Main Examination, Paper-IV Economy and Development of India and Andhra Pradesh (pp. 37–38)
+  ['m4-1', 'M', 'M-IV', '', 'Economy', 'Major Challenges of the Indian Economy', 37,
+    '1) Major Challenges of Indian Economy – Inconsistent growth rate, Low growth rates of agriculture and manufacturing sectors, inflation and oil prices',
+    ['Inconsistent growth; low growth of agriculture and manufacturing', 'Inflation and oil prices; current account deficit and balance of payments; the falling rupee', 'Growing NPAs and capital infusion; money laundering and black money', 'Insufficient financial resources and capital; lack of inclusive growth and sustainable development: causes, consequences and solutions']],
+  ['m4-2', 'M', 'M-IV', '', 'Economy', 'Resource Mobilization in the Indian Economy', 37,
+    '2) Resource Mobilization in Indian Economy: Sources of financial resources for public and private sectors - budgetary resources – tax revenue and non-tax revenue',
+    ['Sources of finance for the public and private sectors; tax and non-tax revenue', 'Public debt: market borrowings, loans and grants; external debt from multilateral agencies', 'FII and FDI: desirability and consequences', 'Monetary and fiscal policies; financial markets and development-finance institutions', 'Investment in industry and infrastructure; physical and energy resources']],
+  ['m4-3', 'M', 'M-IV', '', 'Economy', 'Resource Mobilization in Andhra Pradesh', 37,
+    '3) Resource mobilization in Andhra Pradesh – Budgetary resources and constraints - Fulfillment of the conditions of A.P Bifurcation Act',
+    ['Budgetary resources and constraints', 'Fulfilment of the conditions of the A.P. Bifurcation Act; central assistance and issues of conflict', 'Public debt and externally assisted projects', 'Mineral and forest resources; water disputes with neighbouring States']],
+  ['m4-4', 'M', 'M-IV', '', 'Economy', 'Government Budgeting (Union)', 37,
+    '4) Government Budgeting: Structure of Government budget and its components –Budgeting process and recent changes',
+    ['Structure and components of the budget; the budgeting process and recent changes', 'Types of budget and of deficits; their impact and management', 'Highlights and analysis of the current year’s Union budget', 'GST; central assistance to States; federal finance; the latest Finance Commission’s recommendations']],
+  ['m4-5', 'M', 'M-IV', '', 'Economy', 'Government Budgeting in Andhra Pradesh', 37,
+    '5) Government budgeting in Andhra Pradesh – Budget constraints –Central assistance and issues of conflict after bifurcation of the state',
+    ['Budget constraints; central assistance and issues of conflict after bifurcation', 'Management of deficits', 'Highlights and analysis of the current year’s State budget', 'The State Finance Commission and local finance']],
+  ['m4-6', 'M', 'M-IV', '', 'Economy', 'Inclusive Growth', 37,
+    '6) Inclusive Growth: Meaning of inclusion - Causes of exclusion in India – Strategies for and instruments of inclusion',
+    ['Meaning of inclusion; causes of exclusion', 'Instruments: poverty alleviation and employment, health and education, women’s empowerment, social welfare schemes', 'Food security and the Public Distribution System; sustainable agriculture; integrated rural development', 'Financial inclusion; partnership for inclusive growth', 'Andhra Pradesh government’s current schemes for inclusive growth and financial inclusion; PDS and DWCRA']],
+  ['m4-7', 'M', 'M-IV', '', 'Economy', 'Agricultural Development (India)', 37,
+    '7) Agricultural Development: Role of agriculture in economic development – Contribution of to GDP– Issues of finance, production, marketing',
+    ['Role of agriculture in economic development; contribution to GDP', 'Issues of finance, production and marketing', 'Green revolution and the turn to dryland, organic and sustainable farming', 'Minimum support prices; agricultural policy; the Swaminathan Commission; the Rainbow Revolution']],
+  ['m4-8', 'M', 'M-IV', '', 'Economy', 'Agricultural Development in Andhra Pradesh', 37,
+    '8) Agriculture Development in Andhra Pradesh: Contribution to SGDP-Regional disparities in irrigation and agricultural development',
+    ['Contribution to GSDP; regional disparities in irrigation and agriculture', 'Changing cropping pattern; horticulture, fisheries and dairying', 'Government schemes to promote agriculture in Andhra Pradesh']],
+  ['m4-9', 'M', 'M-IV', '', 'Economy', 'Industrial Development and Policy (India)', 37,
+    '9) Industrial Development and Policy : Role of industrial sector in economic development – Evolution of industrial policy since independence',
+    ['Role of industry; evolution of industrial policy since independence', 'The Industrial Policy, 1991 and its impact; the public sector’s contribution', 'Liberalization, privatization and globalization; disinvestment', 'Core industries; MSMEs and their policy; industrial sickness', 'Manufacturing policy; Make in India; Start-up; NIMZs, SEZs and industrial corridors']],
+  ['m4-10', 'M', 'M-IV', '', 'Economy', 'Industrial Policy of Andhra Pradesh', 38,
+    '10) Industrial Policy of the AP Government – Incentives to industries – Industrial corridors in and SEZs in Andhra Pradesh',
+    ['Incentives to industries', 'Industrial corridors and SEZs in Andhra Pradesh', 'Bottlenecks for industrial development; power projects']],
+  ['m4-11', 'M', 'M-IV', '', 'Economy', 'Infrastructure in India', 38,
+    '11) Infrastructure in India: Transport infrastructure : Ports, Roads, Airports, Railways – Major projects of transport infrastructure in India',
+    ['Transport: ports, roads, airports, railways; major projects', 'Communication; information technology, e-governance, Digital India', 'Energy and power; urban infrastructure, smart cities, solid waste management', 'Weather forecasting and disaster management', 'Finance, ownership, operation and maintenance; PPP; pricing of utilities; environmental impact']],
+  ['m4-12', 'M', 'M-IV', '', 'Economy', 'Infrastructure Development in Andhra Pradesh', 38,
+    '12) Infrastructure Development in Andhra Pradesh – Transport , Energy and ICT infrastructure – Bottlenecks – Government policy – Ongoing projects.',
+    ['Transport, energy and ICT infrastructure', 'Bottlenecks and government policy', 'Ongoing projects']],
+  // ---- Main Examination, Paper-V Science and Technology (pp. 38–39)
+  ['m5-1', 'M', 'M-V', '', 'Science & Technology', 'Science, Technology and Innovation for Better Human Life', 38,
+    '1. Integration of Science, Technology and Innovation for better human life; Science & Technology in everyday life; National Policies on proliferation of Science, Technology and Innovation',
+    ['Science and technology in everyday life; national policies on science, technology and innovation', 'India’s contribution; concerns and challenges; the role of science in nation building', 'Major scientific and R&D institutes in Andhra Pradesh and India', 'Achievements of Indian scientists; indigenous and new technologies']],
+  ['m5-2', 'M', 'M-V', '', 'Science & Technology', 'Information and Communication Technology', 38,
+    '2. Information and Communication Technology (ICT) - its importance, advantages and challenges; E-governance and India; Cyber Crime and policies to address security concerns.',
+    ['Importance, advantages and challenges of ICT', 'E-governance in India', 'Cyber crime and security policy', 'Government of India’s IT policy; IT development in Andhra Pradesh and India']],
+  ['m5-3', 'M', 'M-V', '', 'Science & Technology', 'The Indian Space Programme and DRDO', 38,
+    '3. Indian Space Programme - Past, Present and Future; Indian Space Research Organization (ISRO) — it\'s activities and achievements',
+    ['The Indian space programme, past, present and future; ISRO’s activities and achievements', 'Satellite programmes and uses of satellites in health, education, communication and weather forecasting', 'The Defence Research and Development Organization (DRDO)']],
+  ['m5-4', 'M', 'M-V', '', 'Science & Technology', 'Energy Needs, Resources and Nuclear Policy', 38,
+    '4. Indian\'s energy needs, efficiency and resources; Clean energy resources; Energy policy of India - Government Policies and Programmes.',
+    ['Energy needs, efficiency and resources; clean energy', 'Energy policy; conventional and non-conventional sources – thermal, solar, wind, bio and waste based, geothermal and tidal; energy security', 'India’s nuclear policy and programmes; international nuclear policies and India’s stand']],
+  ['m5-5', 'M', 'M-V', '', 'Science & Technology', 'Development and Environment; Natural Resources', 39,
+    '5. Development Vs. Nature / Environment; Depletion of Natural Resources- Metals, Minerals — Conservation Policy.',
+    ['Development versus environment; depletion of natural resources; conservation policy', 'Pollution and environmental degradation; sustainable development; climate change and climate justice', 'Environment impact assessment; natural disasters – cyclones, earthquakes, landslides, tsunamis – prediction and management', 'Health and environment; social forestry, afforestation and deforestation; mining in Andhra Pradesh and India', 'Natural resources: forest, fishery, fossil fuels, minerals, water (watershed management), land (soils and reclamation)']],
+  ['m5-6', 'M', 'M-V', '', 'Science & Technology', 'Pollution, Solid Waste and Environmental Legislation', 39,
+    '6. Environmental pollution and Solid waste management: Sources, impacts and control of - air pollution, water pollution and soil pollution.',
+    ['Air, water, soil and noise pollution: sources, impacts and control', 'Solid waste: types, impacts, recycling and reuse; soil and coastal erosion', 'Ozone depletion, acid rain, global warming', 'International law: Montreal and Kyoto protocols, UNFCCC, CITES, COP 21, the Sustainable Development Goals', 'Indian law: the Environment (Protection) Act 1986, Forest Conservation Act, Wildlife Protection Act, Biodiversity Bill; National Disaster Management Policy, 2016', 'White Revolution, Green Revolution and Green Pharmacy']],
+  ['m5-7', 'M', 'M-V', '', 'Science & Technology', 'Biotechnology and Nanotechnology', 39,
+    '7. Nature, Scope and Applications of Biotechnology and Nanotechnology in India; Ethical, Social and Legal concerns, Government policies',
+    ['Nature, scope and applications in India; ethical, social and legal concerns; government policies', 'Genetic engineering and its impact on human life', 'Biodiversity, fermentation, immuno-diagnosis techniques']],
+  ['m5-8', 'M', 'M-V', '', 'Science & Technology', 'Human Diseases, Genetic Engineering and Vaccines', 39,
+    '8. Human diseases-microbial infections. Common infections and preventive measures. Introduction to bacterial, viral, protozoal and fungal infections.',
+    ['Microbial infections and their prevention: diarrhoea, dysentery, cholera, tuberculosis, malaria, HIV, encephalitis, chikungunya, bird flu', 'Basic concepts of genetic engineering; tissue culture', 'Biotechnology in agriculture: bio-pesticides, bio-fertilizers, bio-fuels, GM crops; transgenic animals', 'Vaccines: immunity, vaccination, the production of modern vaccines (hepatitis vaccine)']],
+  ['m5-9', 'M', 'M-V', '', 'Science & Technology', 'Intellectual Property Rights; Promotion of Science', 39,
+    '9. Issues related to Intellectual Property Rights in the field of Science and Technology. Promotion of Science in AP and India.',
+    ['Intellectual property rights in science and technology', 'Promotion of science in Andhra Pradesh and India']]
+];
+
+const APG1_SYLLABUS_TOPICS: SyllabusTopic[] = APG1_SYLLABUS_ROWS.map(([slug, stage, paper, part, subject, topicName, page, excerpt, subtopics]) => ({
+  id: `syl-appsc1-${slug}`, subject, tier: stage === 'S' ? APG1_SCREENING : APG1_MAINS, topicName,
+  ...(subtopics.length ? { subtopics } : {}),
+  weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+  officialProvenance: apg1(`prov-syl-appsc1-${slug}`, page, `Annexure-II — ${stage === 'S' ? 'Screening Test' : 'Main Examination'}, ${APG1_PAPERS[paper].title.split(' — ')[0]}${part ? `, ${part}` : ''}`, excerpt)
+}));
+
+/** Annexure-II in its own layout: stage → paper → part (where the paper has parts) → item. */
+const APG1_SYLLABUS_TREE: ExamSyllabusNode[] = (['S', 'M'] as const).map((stage, si) => {
+  const rows = APG1_SYLLABUS_ROWS.filter(r => r[1] === stage);
+  const papers = Array.from(new Set(rows.map(r => r[2])));
+  return {
+    id: `tree-appsc1-${stage.toLowerCase()}`, levelLabel: 'Stage', order: si + 1, status: 'VERIFIED',
+    title: stage === 'S' ? 'SYLLABUS FOR GROUP - 1 SERVICES SCREENING TEST' : 'SYLLABUS FOR GROUP-I MAINS EXAMINATION',
+    scope: [{ kind: 'STAGE', label: stage === 'S' ? APG1_SCREENING : APG1_MAINS }],
+    provenance: stage === 'S' ? apg1P_scheme1 : apg1P_schemeMains,
+    children: papers.map((paper, pi) => {
+      const own = rows.filter(r => r[2] === paper);
+      const parts = Array.from(new Set(own.map(r => r[3])));
+      const item = (r: Apg1SyllabusRow, i: number): ExamSyllabusNode => ({
+        id: `tree-syl-appsc1-${r[0]}`, title: r[5], levelLabel: 'Item', order: i + 1, status: 'VERIFIED',
+        ...(r[8].length ? { note: r[8].join('; ') } : {}),
+        provenance: APG1_SYLLABUS_TOPICS.find(t => t.id === `syl-appsc1-${r[0]}`)!.officialProvenance
+      });
+      return {
+        id: `tree-appsc1-${paper.toLowerCase()}`, title: APG1_PAPERS[paper].title, levelLabel: 'Paper', order: pi + 1, status: 'VERIFIED',
+        scope: [{ kind: 'PAPER', label: APG1_PAPERS[paper].title.split(' — ')[0] }],
+        children: parts.length === 1 && !parts[0]
+          ? own.map(item)
+          : parts.map((part, ki) => ({
+            id: `tree-appsc1-${paper.toLowerCase()}-${ki + 1}`, title: part, levelLabel: 'Part', order: ki + 1, status: 'VERIFIED',
+            children: own.filter(r => r[3] === part).map(item)
+          }))
+      };
+    })
+  };
+});
+
+/** A paper of the Main examination as Annexure-II prints it: 180 minutes, 150 marks. */
+const apg1MainsPaper = (id: string, code: string, name: string, order: number, extra: Partial<ExamPatternNode> = {}): ExamPatternNode => ({
+  id, level: 'PAPER', levelLabel: 'Paper', code, name, order, status: 'VERIFIED', marks: 150, durationMinutes: 180,
+  questionType: 'Descriptive (conventional)', provenance: apg1P_schemeMains, ...extra
+});
+const APG1_LANGUAGE_QUALIFYING: ExamPatternNode['qualifying'] = {
+  asPrinted: 'Qualifying in nature; not counted for merit. Minimum in each paper: 40% for OC / Sports Persons / EWS, 35% for BC, 30% for SC / ST / PBD (para 12.8).',
+  qualifyingOnly: true, countsTowardsMerit: false
 };
 
 export const APPSC_GROUP1_EXAM: Exam = {
   id: 'exam-appsc-group1-2026',
   code: 'APPSC_GROUP1_2026',
   title: 'APPSC Group-I Services Examination 2026',
-  authorityName: 'Andhra Pradesh Public Service Commission (APPSC)',
-  officialDomain: 'https://psc.ap.gov.in',
+  authorityName: APG1_AUTHORITY,
+  officialDomain: APG1_SITE,
   crucialEligibilityDate: '2026-07-01',
   minimumQualification: 'GRADUATION',
   careerFields: ['State Public Services', 'Civil Services & Governance', 'Government Job'],
   categoryTag: 'STATE_PSC',
   isGoldenJourney: false,
   isDemoData: false,
-  overviewDescription: 'Premier State Civil Services examination in Andhra Pradesh recruiting for top administrative leadership posts including Deputy Collector, DSP, Commercial Tax Officer, and Regional Transport Officer.',
-  vacanciesTotal: '89 (Direct Recruitment)',
+  overviewDescription:
+    'The Andhra Pradesh Public Service Commission’s direct recruitment to Group-I Services under Notification No. 07/2026 (06/10/2026): 166 vacancies in 13 posts — Deputy Collector, Assistant Commissioner of State Tax, DSP (Civil) and DSP (Communications), District Educational Officer, Regional Transport Officer, District Tribal Welfare Officer, Deputy Registrar, Municipal Commissioner Grade-II, Assistant Treasury / Accounts Officer, District Employment Officer, Assistant Audit Officer and Divisional Development Officer. Selection is in three steps: an objective, OMR-based Screening Test of two papers (held on 24/01/2027) that only shortlists 50 candidates per vacancy; a descriptive Main examination of five papers counted for merit plus qualifying Telugu and English papers; and an interview. Applications are online at psc.ap.gov.in from 06/10/2026 to 27/10/2026, 11:59 PM, through the One Time Profile Registration (OTPR).',
+  vacanciesTotal: '166 (5 of them carried forward)',
+  factEvidence: { vacanciesTotal: apg1P_total, crucialEligibilityDate: apg1P_age },
+  ageRelaxations: [
+    { category: 'SC', years: 5, status: 'VERIFIED', provenance: apg1P_relax },
+    { category: 'ST', years: 5, status: 'VERIFIED', provenance: apg1P_relax },
+    { category: 'BCs (Backward Classes; OBC in your profile)', years: 5, status: 'VERIFIED', provenance: apg1P_relax },
+    { category: 'EWS', years: 5, status: 'VERIFIED', provenance: apg1P_relax },
+    { category: 'Persons with Benchmark Disabilities (PBD)', years: 10, status: 'VERIFIED', provenance: apg1P_relax },
+    { category: 'Ex-Servicemen; N.C.C. instructors', condition: '3 years plus the length of service in the armed forces / NCC, deducted from age; after the deduction the age may not exceed the post’s maximum (Explanation, p.9)', status: 'VERIFIED', provenance: apg1P_relaxEsm },
+    { category: 'Regular A.P. State Government employees', condition: 'The length of regular service under the State Government, up to five years, deducted from age (employees of corporations, municipalities etc. are not eligible)', status: 'VERIFIED', provenance: apg1P_relaxState },
+    { category: 'Retrenched temporary employees of the State Census Department', years: 3, condition: 'With a minimum service of 6 months', status: 'VERIFIED', provenance: apg1P_relaxCensus }
+  ],
   posts: [
-    {
-      id: 'post-appsc-deputy-collector',
-      postName: 'Deputy Collector (Civil Services Executive)',
-      department: 'Revenue Department (Andhra Pradesh)',
-      payLevel: 'Scale ₹61,960 - ₹1,51,990',
-      payScale: '₹61,960 – ₹1,51,990',
-      classification: 'Group A (Gazetted)',
-      minAge: 18,
-      maxAge: 42,
-      natureOfWork: 'District administration, revenue collection, law & order coordination, and disaster management.',
-      provenance: appscProvenance
-    },
-    {
-      id: 'post-appsc-dsp',
-      postName: 'Deputy Superintendent of Police (DSP - Category 2)',
-      department: 'Home (Police) Department',
-      payLevel: 'Scale ₹61,960 - ₹1,51,990',
-      payScale: '₹61,960 – ₹1,51,990',
-      classification: 'Group A (Gazetted)',
-      minAge: 21,
-      maxAge: 30,
-      physicalRequired: true,
-      physicalNote: 'Height: Male 167.6 cm, Female 152.5 cm. Chest: 86.3 cm with 5 cm expansion.',
-      natureOfWork: 'Sub-divisional police administration, crime supervision, and public security maintenance.',
-      provenance: appscProvenance
-    },
-    {
-      id: 'post-appsc-cto',
-      postName: 'Commercial Tax Officer (CTO)',
-      department: 'Commercial Taxes Department',
-      payLevel: 'Scale ₹61,960 - ₹1,51,990',
-      payScale: '₹61,960 – ₹1,51,990',
-      classification: 'Group A (Gazetted)',
-      minAge: 18,
-      maxAge: 42,
-      natureOfWork: 'State GST assessments, enforcement, tax audits, and revenue collection.',
-      provenance: appscProvenance
-    }
+    apg1Post('01', 'post-appsc1-deputy-collector', 'Deputy Collectors', 'A.P. Civil Service (Executive Branch)', '12', 18, 44, '61,960-1,51,370',
+      '01 Deputy Collectors in A.P.Civil Service (Executive Branch). 12 18-44 61,960- 1,51,370'),
+    apg1Post('02', 'post-appsc1-acst', 'Asst. Commissioner of State Tax', 'A.P. State Tax Service', '14', 18, 44, '61,960-1,51,370',
+      '02 Asst. Commissioner of State Tax in A.P.State Tax Service. 14 18-44 61,960- 1,51,370'),
+    apg1Post('03', 'post-appsc1-dsp-civil', 'Deputy Supdt. of Police (Civil) Cat-2', 'A.P. Police Service', '36 (03 carried forward)', 21, 30, '61,960-1,51,370',
+      '03 Deputy Supdt. of Police (Civil)Cat-2 in A.P. Police Service. 36 (03 CF) 21-30 61,960- 1,51,370',
+      { physicalRequired: true, colorBlindnessAllowed: true,
+        physicalNote: 'Men: at least 167.6 cm tall and 86.3 cm round the chest on full inspiration, with at least 5 cm expansion (ST: 164 cm and 83.8 cm). Women: at least 152.5 cm and 45.5 kg. Vision certified by a Medical Board without contact glasses; colour blindness is noted but is not a cause for rejection (para 3; Annexure-V). Not open to the PBD reservation (para 4.4).',
+        postConditions: ['Physical standards and a Medical Board’s vision certificate (para 3, pp. 4–5)', 'No reservation for Persons with Benchmark Disabilities (para 4.4)'] }),
+    apg1Post('04', 'post-appsc1-dsp-comms', 'DSP (Communications)', 'A.P. Police Service', '03', 18, 30, '61,960-1,51,370',
+      '04 DSP (Communications) in A.P. Police Service. 03 18-30 61,960- 1,51,370',
+      { physicalRequired: true, colorBlindnessAllowed: false,
+        specialQualification: 'B.E. / B.Tech. in Electronics and Communication Engineering, Electronics and Telecommunication Engineering or Radio Engineering (para 3, Post Code No. 04).',
+        physicalNote: 'Men: at least 167.6 cm tall and 86.3 cm round the chest on full inspiration, with at least 5 cm expansion (ST: 164 cm and 83.8 cm). Women: at least 152.5 cm and 45.5 kg. Vision standards without glasses; colour blindness, squint, knock knees, flat foot, varicose veins and similar conditions disqualify (para 3, p.5). A State-cadre post: no local reservation (para 6.2); not open to the PBD reservation (para 4.4).',
+        postConditions: ['State cadre — the rule of local reservation does not apply (para 6.2)', 'No reservation for Persons with Benchmark Disabilities (para 4.4)'],
+        ruleGroup: { id: 'rg-appsc1-dsp-comms', operator: 'AND', rules: [
+          { id: 'rule-appsc1-dsp-comms-deg', ruleType: 'DEGREE_REQUIRED', operator: '=', ruleValue: ['Bachelor Degree'], statedAs: 'B.E / B.Tech', category: 'GENERAL', provenance: apg1P_qual04 },
+          { id: 'rule-appsc1-dsp-comms-branch', ruleType: 'BRANCH_SPECIALIZATION', operator: 'IN', ruleValue: ['Electronics and Communication Engineering', 'Electronics and Telecommunication Engineering', 'Radio Engineering'], category: 'GENERAL', provenance: apg1P_qual04 }
+        ] } }),
+    apg1Post('05', 'post-appsc1-deo', 'District Educational Officer', 'A.P. Educational Service', '14', 18, 44, '61,960-1,51,370',
+      '05 District Educational Officer in A.P. Educational Service. 14 18-44 61,960- 1,51,370'),
+    apg1Post('06', 'post-appsc1-rto', 'Regional Transport Officers', 'A.P. Transport Service', '03', 18, 44, '57,100-1,47,760',
+      '06 Regional Transport Officers in A.P. Transport Service. 03 18-44 57,100- 1,47,760'),
+    apg1Post('07', 'post-appsc1-dtwo', 'District Tribal Welfare Officer', 'A.P. Tribal Welfare Service', '01', 18, 44, '57,100-1,47,760',
+      '07 District Tribal Welfare Officer in A.P. Tribal Welfare Service. 01 18-44 57,100- 1,47,760'),
+    apg1Post('08', 'post-appsc1-deputy-registrar', 'Deputy Registrar', 'A.P. Cooperative Service', '16 (01 carried forward)', 18, 44, '57,100-1,47,760',
+      '08 Deputy Registrar in A.P. Cooperative Service. 16 (01 CF) 18-44 57,100- 1,47,760'),
+    apg1Post('09', 'post-appsc1-municipal-commissioner', 'Municipal Commissioner Grade-II', 'A.P. Municipal Administration Service', '12', 18, 44, '54,060-1,40,540',
+      '09 Municipal Commissioner Grade-II in A.P. Municipal Administration Service. 12 18-44 54,060- 1,40,540'),
+    apg1Post('10', 'post-appsc1-ato', 'Asst. Treasury Officer/Asst. Accounts Officer', 'A.P. Treasury & Accounts Service', '02', 18, 44, '54,060-1,40,540',
+      '10 Asst. Treasury Officer/Asst. Accounts Officer in A.P. Treasury & Accounts Service. 02 18-44 54,060- 1,40,540'),
+    apg1Post('11', 'post-appsc1-deo-employment', 'District Employment Officer', 'A.P. Employment Exchange Service', '03 (01 carried forward)', 18, 44, '54,060-1,40,540',
+      '11 District Employment Officer in A.P Employment Exchange Service. 03 (01 CF) 18-44 54,060- 1,40,540'),
+    apg1Post('12', 'post-appsc1-aao', 'Assistant Audit Officer', 'A.P. State Audit Service', '15', 18, 44, '54,060-1,40,540',
+      '12 Assistant Audit Officer in A.P. State Audit Service. 15 18-44 54,060- 1,40,540',
+      { postConditions: ['Organised in zonal cadre (Zones I–VI): 95% local reservation by zone (para 6.4)'] }),
+    apg1Post('13', 'post-appsc1-ddo', 'Divisional Development Officer', 'A.P. Panchayat Raj Service', '35', 18, 44, '65,360-1,54,980',
+      '13 Divisional Development Officer in A.P. Panchayat Raj Service. 35 18-44 65,360- 1,54,980')
   ],
   dates: [
-    {
-      id: 'date-appsc1-notif',
-      type: 'NOTIFICATION',
-      label: 'Official Group-I Notification Release',
-      dateTimeStr: '2026-01-10 10:00:00',
-      timezone: 'Asia/Kolkata (IST)',
-      isTentative: false,
-      status: 'AVAILABLE',
-      provenance: appscProvenance
-    },
-    {
-      id: 'date-appsc1-app-close',
-      type: 'APPLICATION_CLOSE',
-      label: 'Application Window Closing Date',
-      dateTimeStr: '2026-02-28 23:59:00',
-      timezone: 'Asia/Kolkata (IST)',
-      isTentative: false,
-      status: 'AVAILABLE',
-      provenance: appscProvenance
-    },
-    {
-      id: 'date-appsc1-prelims',
-      type: 'EXAM_TIER1',
-      label: 'Preliminary Screening Test (Objective CBT)',
-      dateTimeStr: '2026-04-19 10:00:00',
-      timezone: 'Asia/Kolkata (IST)',
-      isTentative: false,
-      status: 'AVAILABLE',
-      provenance: appscProvenance
-    },
-    {
-      id: 'date-appsc1-mains',
-      type: 'EXAM_TIER2',
-      label: 'Main Written Examination (Descriptive)',
-      dateTimeStr: '2026-09-15 09:00:00',
-      timezone: 'Asia/Kolkata (IST)',
-      isTentative: true,
-      status: 'AVAILABLE',
-      provenance: appscProvenance
-    }
+    { id: 'date-appsc1-notif', type: 'NOTIFICATION', label: 'Notification No. 07/2026 published', dateTimeStr: '2026-10-06 00:00:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: apg1P_notice, displayWhen: '06/10/2026' },
+    { id: 'date-appsc1-app-open', type: 'APPLICATION_OPEN', label: 'Online applications open at psc.ap.gov.in', dateTimeStr: '2026-10-06 00:00:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: apg1P_window, displayWhen: '06/10/2026' },
+    { id: 'date-appsc1-app-close', type: 'APPLICATION_CLOSE', label: 'Last date to apply online (up to 11:59 PM)', dateTimeStr: '2026-10-27 23:59:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: apg1P_window },
+    { id: 'date-appsc1-corrections', type: 'CORRECTION_WINDOW', label: 'Application corrections, ₹100 each — up to 7 days from the last date (not name, fee or age relaxation)', dateTimeStr: '2026-11-03 23:59:00', timezone: 'Asia/Kolkata (IST)', isTentative: true, status: 'AVAILABLE', provenance: apg1P_correction, displayWhen: 'Up to 7 days from the last date of applications' },
+    { id: 'date-appsc1-screening', type: 'EXAM_TIER1', label: 'Screening Test (Objective Type, OMR) — Paper-I and Paper-II', dateTimeStr: '2027-01-24 00:00:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: apg1P_dates, stageLabel: APG1_SCREENING }
   ],
   globalRuleGroup: {
     id: 'rg-appsc1-global',
     operator: 'AND',
     rules: [
-      {
-        id: 'rule-appsc1-age-min',
-        ruleType: 'AGE_MIN',
-        operator: '>=',
-        ruleValue: 18,
-        category: 'GENERAL',
-        provenance: appscProvenance
-      },
-      {
-        id: 'rule-appsc1-age-max',
-        ruleType: 'AGE_MAX',
-        operator: '<=',
-        ruleValue: 42,
-        category: 'GENERAL',
-        provenance: appscProvenance
-      },
-      {
-        id: 'rule-appsc1-deg',
-        ruleType: 'DEGREE_REQUIRED',
-        operator: '=',
-        ruleValue: ['Bachelor Degree', 'Graduation', 'B.Tech', 'B.Sc', 'B.Com', 'B.A'],
-        category: 'GENERAL',
-        provenance: appscProvenance
-      }
+      { id: 'rule-appsc1-degree', ruleType: 'DEGREE_REQUIRED', operator: '=', ruleValue: ['Bachelor Degree'],
+        statedAs: 'A Bachelor’s Degree of a University in India established or incorporated by or under a Central, Provincial or State Act, or an institution recognised by the UGC, or an equivalent qualification (para 3; Post Code 04 needs a B.E./B.Tech. in a named branch)', category: 'GENERAL', provenance: apg1P_qualDegree },
+      { id: 'rule-appsc1-nationality', ruleType: 'NATIONALITY', operator: '=', ruleValue: 'Indian', category: 'GENERAL', provenance: apg1P_citizen }
     ]
   },
   stages: [
     {
-      id: 'stage-appsc1-pre',
+      id: 'stage-appsc1-screening',
       stageNumber: 1,
-      stageName: 'Preliminary Screening Test (Objective Type CBT)',
-      tier: 'TIER_1',
-      durationMinutes: 120,
-      totalQuestions: 120,
-      totalMarks: 120,
-      negativeMarking: '-0.33 marks per incorrect response (1/3rd penalty)',
-      mode: 'Online CBT / OMR based Screening Test',
-      qualifyingNature: 'Shortlisting for Mains examination (1:50 ratio).',
+      stageName: 'Screening Test (Objective Type) — Paper-I General Studies and Paper-II General Aptitude',
+      tier: APG1_SCREENING,
+      durationMinutes: 240,
+      totalQuestions: 240,
+      totalMarks: 240,
+      negativeMarking: 'Each wrong answer is penalised with 1/3rd of the marks prescribed for the question',
+      mode: 'Offline, OMR based, in the district centres; question paper in English with a Telugu translation (the English version is authentic)',
+      qualifyingNature: 'Shortlisting only: the Main examination admits 50 candidates per vacancy, irrespective of communities, from those who reach the minimum the Commission fixes. The selection is on the Main written examination and the Interview (paras 15.1, 15.3, 10.3). Both papers are compulsory.',
       sections: [
-        {
-          sectionName: 'General Studies & Mental Ability',
-          modules: ['Indian History & Geography', 'Polity & Constitution', 'Indian & AP Economy', 'Science & Technology', 'Mental Ability & Data Interpretation'],
-          questions: 120,
-          marks: 120,
-          durationMinutes: 120,
-          negativeMarking: '-0.33'
-        }
+        { sectionName: 'Paper-I General Studies · A. History and Culture', modules: ['Part A of Paper-I'], questions: 30, marks: 30, durationMinutes: 0, negativeMarking: '1/3 of the marks for the question' },
+        { sectionName: 'Paper-I General Studies · B. Constitution, Polity, Social Justice and International Relations', modules: ['Part B of Paper-I'], questions: 30, marks: 30, durationMinutes: 0, negativeMarking: '1/3 of the marks for the question' },
+        { sectionName: 'Paper-I General Studies · C. Indian and Andhra Pradesh Economy and Planning', modules: ['Part C of Paper-I'], questions: 30, marks: 30, durationMinutes: 0, negativeMarking: '1/3 of the marks for the question' },
+        { sectionName: 'Paper-I General Studies · D. Geography', modules: ['Part D of Paper-I'], questions: 30, marks: 30, durationMinutes: 0, negativeMarking: '1/3 of the marks for the question' },
+        { sectionName: 'Paper-II General Aptitude · A. General Mental Ability, Administrative and Psychological Abilities', modules: ['Part A of Paper-II'], questions: 60, marks: 60, durationMinutes: 0, negativeMarking: '1/3 of the marks for the question' },
+        { sectionName: 'Paper-II General Aptitude · B (i). Science and Technologies', modules: ['Part B (i) of Paper-II'], questions: 30, marks: 30, durationMinutes: 0, negativeMarking: '1/3 of the marks for the question' },
+        { sectionName: 'Paper-II General Aptitude · B (ii). Current events of Regional, National and International importance', modules: ['Part B (ii) of Paper-II'], questions: 30, marks: 30, durationMinutes: 0, negativeMarking: '1/3 of the marks for the question' }
       ],
-      provenance: appscProvenance
+      unstatedFields: ['sections.durationMinutes', 'sections.questions'],
+      provenance: apg1P_screening
     },
     {
       id: 'stage-appsc1-mains',
       stageNumber: 2,
-      stageName: 'Main Written Examination (Conventional Descriptive Papers)',
-      tier: 'TIER_2',
-      durationMinutes: 900,
-      totalQuestions: 35,
-      totalMarks: 750,
-      negativeMarking: 'No negative marking in descriptive papers',
-      mode: 'Offline Pen-and-Paper Descriptive Examination',
-      qualifyingNature: 'Marks counted for Interview shortlisting and final merit list.',
+      stageName: 'Main Written Examination (Descriptive Type) — Telugu and English (qualifying), Papers I–V',
+      tier: APG1_MAINS,
+      durationMinutes: 1260,
+      totalQuestions: 0,
+      totalMarks: 1050,
+      meritMarks: 750,
+      negativeMarking: 'None stated — the notice states a penalty only for the objective Screening Test',
+      mode: 'Descriptive (conventional), at Visakhapatnam, Vijayawada, Tirupati or Ananthapuramu; Papers I–V in English, Telugu or Urdu, one medium for all five',
+      qualifyingNature: 'Telugu and English are qualifying (at least 40% for OC / Sports Persons / EWS, 35% for BC, 30% for SC / ST / PBD in each) and not counted for merit; Papers I–V (750 marks) count. Every paper is compulsory. Candidates are called to the Interview at 1:2 of the vacancies (paras 12.8, 12.10, 15.4). The dates will be announced later.',
       sections: [
-        {
-          sectionName: 'General Essay, History & Geography, Polity & Law, Economy, Science & Technology',
-          modules: ['Paper I: General Essay', 'Paper II: History & AP Culture', 'Paper III: Indian Constitution & Governance', 'Paper IV: Economy & Development', 'Paper V: Science, Technology & Environment'],
-          questions: 35,
-          marks: 750,
-          durationMinutes: 900,
-          negativeMarking: 'None'
-        }
+        { sectionName: 'Paper in Telugu (Qualifying)', modules: ['S.S.C standard'], questions: 0, marks: 150, durationMinutes: 180, negativeMarking: 'None stated' },
+        { sectionName: 'Paper in English (Qualifying)', modules: ['S.S.C standard'], questions: 0, marks: 150, durationMinutes: 180, negativeMarking: 'None stated' },
+        { sectionName: 'Paper-I General Essay', modules: ['Three essays, one from each section, about 800 words each'], questions: 3, marks: 150, durationMinutes: 180, negativeMarking: 'None stated' },
+        { sectionName: 'Paper-II History, Culture and Geography of India and Andhra Pradesh', modules: ['A. History and Culture of India', 'B. History and Culture of Andhra Pradesh', 'C. Geography: India and Andhra Pradesh'], questions: 0, marks: 150, durationMinutes: 180, negativeMarking: 'None stated' },
+        { sectionName: 'Paper-III Polity, Constitution, Governance, Law and Ethics', modules: ['(A) Indian Polity and Constitution', '(B) Public Administration and Governance', '(C) Ethics in Public Service and knowledge of law'], questions: 0, marks: 150, durationMinutes: 180, negativeMarking: 'None stated' },
+        { sectionName: 'Paper-IV Economy and Development of India and Andhra Pradesh', modules: ['Twelve units'], questions: 0, marks: 150, durationMinutes: 180, negativeMarking: 'None stated' },
+        { sectionName: 'Paper-V Science, Technology and Environmental Issues', modules: ['Nine units'], questions: 0, marks: 150, durationMinutes: 180, negativeMarking: 'None stated' }
       ],
-      provenance: appscProvenance
-    }
-  ],
-  syllabus: [
-    {
-      id: 'syl-appsc1-gs',
-      subject: 'General Awareness',
-      tier: 'TIER_1',
-      topicName: 'Indian Polity, Governance & AP Reorganisation Act',
-      weightagePercentage: 35,
-      avgQuestions: 40,
-      isHighYield: true,
-      officialProvenance: appscProvenance
+      unstatedFields: ['totalQuestions', 'sections.questions'],
+      provenance: apg1P_schemeMains
     },
     {
-      id: 'syl-appsc1-econ',
-      subject: 'General Awareness',
-      tier: 'TIER_1',
-      topicName: 'Indian Economy & AP Socio-Economic Survey',
-      weightagePercentage: 35,
-      avgQuestions: 40,
-      isHighYield: true,
-      officialProvenance: appscProvenance
+      id: 'stage-appsc1-interview',
+      stageNumber: 3,
+      stageName: 'Interview (Personality Test)',
+      tier: 'INTERVIEW',
+      durationMinutes: 0,
+      totalQuestions: 0,
+      totalMarks: 75,
+      negativeMarking: 'Not applicable',
+      mode: 'Interview',
+      qualifyingNature: 'Called at 1:2 of the vacancies after the Main examination; its 75 marks and Papers I–V’s 750 make the 825 the selection is on (para 12.10; Annexure-II).',
+      sections: [{ sectionName: 'Interview (Personality Test)', modules: [], questions: 0, marks: 75, durationMinutes: 0, negativeMarking: 'Not applicable' }],
+      unstatedFields: ['durationMinutes', 'totalQuestions'],
+      provenance: apg1P_schemeTotal
+    }
+  ],
+  patternTree: [
+    {
+      id: 'appsc1-screening', level: 'STAGE', levelLabel: 'Stage', code: 'Screening Test', name: 'Screening Test — Written Examination (Objective Type)', order: 1, status: 'VERIFIED',
+      marks: 240, durationMinutes: 240, mode: 'Offline, OMR based', questionType: 'Objective type', languages: ['English', 'Telugu'],
+      negativeMarking: '1/3rd of the marks prescribed for the question, for each wrong answer', negativeFractionOfMarks: 1 / 3,
+      qualifying: { asPrinted: 'For shortlisting: 50 times the vacancies are admitted to the Main examination, irrespective of communities (para 15.1); the minimum qualifying marks are fixed by the Commission (para 10.3).', countsTowardsMerit: false },
+      note: 'Both papers are compulsory (para 15.2). The question paper is set in English and translated into Telugu; the English version is authentic (para 12.5).',
+      provenance: apg1P_screening,
+      children: [
+        { id: 'appsc1-s-p1', level: 'PAPER', levelLabel: 'Paper', code: 'Paper-I', name: 'Paper-I General Studies', order: 1, status: 'VERIFIED', questions: 120, marks: 120, durationMinutes: 120,
+          negativeFractionOfMarks: 1 / 3, provenance: apg1P_scheme1,
+          children: [
+            { id: 'appsc1-s-p1-a', level: 'PART', levelLabel: 'Part', code: 'A', name: 'History and Culture', order: 1, status: 'VERIFIED', marks: 30, provenance: apg1P_scheme1 },
+            { id: 'appsc1-s-p1-b', level: 'PART', levelLabel: 'Part', code: 'B', name: 'Constitution, Polity, Social Justice and International Relations', order: 2, status: 'VERIFIED', marks: 30, provenance: apg1P_scheme1 },
+            { id: 'appsc1-s-p1-c', level: 'PART', levelLabel: 'Part', code: 'C', name: 'Indian and Andhra Pradesh Economy and Planning', order: 3, status: 'VERIFIED', marks: 30, provenance: apg1P_scheme1 },
+            { id: 'appsc1-s-p1-d', level: 'PART', levelLabel: 'Part', code: 'D', name: 'Geography', order: 4, status: 'VERIFIED', marks: 30, provenance: apg1P_scheme1 }
+          ] },
+        { id: 'appsc1-s-p2', level: 'PAPER', levelLabel: 'Paper', code: 'Paper-II', name: 'Paper-II General Aptitude', order: 2, status: 'VERIFIED', questions: 120, marks: 120, durationMinutes: 120,
+          negativeFractionOfMarks: 1 / 3, provenance: apg1P_scheme2,
+          children: [
+            { id: 'appsc1-s-p2-a', level: 'PART', levelLabel: 'Part', code: 'A', name: 'General Mental Ability, Administrative and Psychological Abilities', order: 1, status: 'VERIFIED', marks: 60, provenance: apg1P_scheme2 },
+            { id: 'appsc1-s-p2-b1', level: 'PART', levelLabel: 'Part', code: 'B (i)', name: 'Science and Technologies', order: 2, status: 'VERIFIED', marks: 30, provenance: apg1P_scheme2 },
+            { id: 'appsc1-s-p2-b2', level: 'PART', levelLabel: 'Part', code: 'B (ii)', name: 'Current events of Regional, National and International importance', order: 3, status: 'VERIFIED', marks: 30, provenance: apg1P_scheme2 }
+          ] }
+      ]
     },
     {
-      id: 'syl-appsc1-reason',
-      subject: 'Reasoning & General Intelligence',
-      tier: 'TIER_1',
-      topicName: 'Mental Ability, Logical Reasoning & Data Interpretation',
-      weightagePercentage: 30,
-      avgQuestions: 40,
-      isHighYield: true,
-      officialProvenance: appscProvenance
-    }
-  ],
-  practiceQuestions: [
+      id: 'appsc1-mains', level: 'STAGE', levelLabel: 'Stage', code: 'Mains', name: 'Mains — Written Examination (Descriptive Type)', order: 2, status: 'VERIFIED',
+      marks: 1050, durationMinutes: 1260, mode: 'Descriptive (conventional); at Visakhapatnam, Vijayawada, Tirupati or Ananthapuramu',
+      languages: ['English', 'Telugu', 'Urdu'],
+      note: 'Papers I–V may be written in English, Telugu or Urdu, chosen online before the Main examination; all five in the one medium (para 12.9). Every paper is compulsory (para 15.4).',
+      provenance: apg1P_schemeMains,
+      children: [
+        apg1MainsPaper('appsc1-m-telugu', 'Telugu', 'Paper in Telugu — Qualifying Nature (S.S.C standard)', 1, { qualifying: APG1_LANGUAGE_QUALIFYING, languages: ['Telugu'], note: 'Thirteen question types, from an essay to synonyms and antonyms (Annexure-II, p.32).' }),
+        apg1MainsPaper('appsc1-m-english', 'English', 'Paper in English — Qualifying Nature (S.S.C standard)', 2, { qualifying: APG1_LANGUAGE_QUALIFYING, languages: ['English'], note: 'Ten question types, from an essay to translation (Annexure-II, p.31).' }),
+        apg1MainsPaper('appsc1-m-p1', 'Paper-I', 'General Essay — on contemporary themes and issues of regional, national and international importance', 3, { note: 'Three essays, one from each of three sections, about 800 words each (p.33).' }),
+        apg1MainsPaper('appsc1-m-p2', 'Paper-II', 'History, Culture and Geography of India and Andhra Pradesh', 4, { note: 'The scheme table prints “History and Cultural and Geography of India and Andhra Pradesh”; the syllabus heading (p.33) is used here.' }),
+        apg1MainsPaper('appsc1-m-p3', 'Paper-III', 'Polity, Constitution, Governance, Law and Ethics', 5),
+        apg1MainsPaper('appsc1-m-p4', 'Paper-IV', 'Economy and Development of India and Andhra Pradesh', 6),
+        apg1MainsPaper('appsc1-m-p5', 'Paper-V', 'Science, Technology and Environmental Issues', 7, { provenance: apg1P_schemeTotal })
+      ]
+    },
     {
-      id: 'q-appsc1-01',
-      topicId: 'syl-appsc1-gs',
-      subject: 'General Awareness',
-      topicName: 'Indian Polity & Governance',
-      tier: 'TIER_1',
-      shiftInfo: 'APPSC Group-I Prelims 2024',
-      questionType: 'OFFICIAL_PYQ',
-      questionText: 'Under which Article of the Constitution of India is the Finance Commission of India constituted?',
-      options: [
-        { id: 0, text: 'Article 280' },
-        { id: 1, text: 'Article 324' },
-        { id: 2, text: 'Article 312' },
-        { id: 3, text: 'Article 356' }
-      ],
-      correctOptionIndex: 0,
-      explanation: 'Article 280 provides for the constitution of the Finance Commission by the President of India every fifth year.',
-      difficulty: 'MEDIUM',
-      provenance: appscProvenance
+      id: 'appsc1-interview', level: 'STAGE', levelLabel: 'Stage', code: 'Interview', name: 'Interview (Personality Test)', order: 3, status: 'VERIFIED', marks: 75,
+      note: 'At 1:2 of the vacancies (para 12.10). Total marks for the selection: 825.', provenance: apg1P_interview
     }
   ],
+  admitCardEvents: [
+    {
+      id: 'exam-appsc-group1-2026-screening-hall-ticket', examId: 'exam-appsc-group1-2026', kind: 'ADMIT_CARD', officialLabel: 'Hall Ticket', sourceLabel: 'Hall Tickets for Screening and Main Examination',
+      status: 'VERIFIED', cycle: '2026', stageLabel: APG1_SCREENING, examDate: '2027-01-24', examDateNote: 'The Screening Test is on 24/01/2027 (para 1.7).',
+      releaseRuleNote: 'The notification gives no release date: Hall Tickets are hosted on the Commission’s website, with download instructions given there (para 1.9).',
+      portalUrl: APG1_SITE, portalNote: 'The Commission’s website, where the Hall Ticket is hosted. GovOS cannot see your login.',
+      instructions: [
+        'The entry time is printed on the Hall Ticket; late entry after it is not allowed, and biometric identification is taken before entry (Annexure-III, C.1).',
+        'If the Hall Ticket has no photo or a very small one, affix a passport-size photo attested by a Gazetted Officer and bring a similar photo for each paper (D.10).',
+        'A discrepancy in community, date of birth etc. on the Hall Ticket is reported at once to the Chief Superintendent, who corrects the Nominal Roll (D.1).'
+      ],
+      provenance: apg1P_hallTicket
+    },
+    {
+      id: 'exam-appsc-group1-2026-mains-hall-ticket', examId: 'exam-appsc-group1-2026', kind: 'ADMIT_CARD', officialLabel: 'Hall Ticket', sourceLabel: 'Hall Tickets for Screening and Main Examination',
+      status: 'VERIFIED', cycle: '2026', stageLabel: APG1_MAINS, examDateNote: 'The dates of the Main examination will be announced later (para 1.7).',
+      releaseRuleNote: 'The notification gives no release date: Hall Tickets are hosted on the Commission’s website (para 1.9).',
+      portalUrl: APG1_SITE, portalNote: 'The Commission’s website. GovOS cannot see your login.',
+      provenance: apg1P_hallTicket
+    }
+  ],
+  syllabus: APG1_SYLLABUS_TOPICS,
+  syllabusTree: APG1_SYLLABUS_TREE,
+  practiceQuestions: [],
   corrigendums: [],
-  cutoffsHistory: [
-    {
-      year: 2024,
-      category: 'General (UR)',
-      tier1Cutoff: 84.50,
-      provenance: appscProvenance
-    }
-  ],
+  cutoffsHistory: [],
   resources: [
     {
       id: 'res-appsc1-portal',
@@ -19417,59 +20343,519 @@ export const APPSC_GROUP1_EXAM: Exam = {
       description: 'Official portal for APPSC notifications, web notes, syllabus PDFs, and OTR registration.',
       recommendedFor: 'Essential primary portal for AP State Civil Services candidates.',
       officialTag: 'OFFICIAL STATE COMMISSION'
+    },
+    // ---- added APPSC_GROUP1_EXAM resources: linked, never stored; checked 2026-10-06
+    {
+      id: 'res-appsc-g1-01', title: 'Notification No. 07/2026, Dated 06/10/2026 - Direct Recruitment to Group-I Services (General/Limited Recruitment), incl. Annexure-II Scheme and Syllabus', subject: 'Official Gazette',
+      author: 'Andhra Pradesh Public Service Commission, Vijayawada', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'NOTIFICATION',
+      url: 'https://psc.ap.gov.in/Documents/NotificationDocuments/Group_I_07_2026.pdf', directPdfUrl: 'https://psc.ap.gov.in/Documents/NotificationDocuments/Group_I_07_2026.pdf',
+      description: 'Published openly by Andhra Pradesh Public Service Commission, Vijayawada. The notification for Group-I Services, 2026: applications from 06/10/2026 to 27/10/2026, the Screening Test on 24/01/2027 (para 1.7), and in Annexure-II the scheme of examination (p.26) and the syllabus of the Screening Test (pp.27–30) and the Main Examination (pp.31–39). GovOS has not yet re-read the Group-I record from it. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'The 2026 notification: dates, the scheme of examination and the syllabus.',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-01', 'Notification No. 07/2026, Dated 06/10/2026 - Direct Recruitment to Group-I Services (General/Limited Recruitment), incl. Annexure-II Scheme and Syllabus', 'https://psc.ap.gov.in/Documents/NotificationDocuments/Group_I_07_2026.pdf', 'Andhra Pradesh Public Service Commission, Vijayawada')
+    },
+    {
+      id: 'res-appsc-g1-03', title: 'Syllabus (Groups Syllabus page)', subject: 'Official Gazette',
+      author: 'Andhra Pradesh Public Service Commission', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'SYLLABUS',
+      url: 'https://portal-psc.ap.gov.in/HomePages/GroupsSyllabus.aspx',
+      description: 'Published openly by Andhra Pradesh Public Service Commission. Useful for: Syllabus listing. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Syllabus listing',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-03', 'Syllabus (Groups Syllabus page)', 'https://portal-psc.ap.gov.in/HomePages/GroupsSyllabus.aspx', 'Andhra Pradesh Public Service Commission')
+    },
+    {
+      id: 'res-appsc-g1-04', title: 'Old Question Papers (Question Papers of Various Notifications)', subject: 'Official Gazette',
+      author: 'Andhra Pradesh Public Service Commission', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'QUESTION_PAPER',
+      url: 'https://portal-psc.ap.gov.in/HomePages/QuestionPapersofVariousNotifications.aspx',
+      description: 'Published openly by Andhra Pradesh Public Service Commission. Useful for: Previous papers (Group-I Mains 27/2018, 28/2022, 12/2023; 2016 screening tests). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Previous papers (Group-I Mains 27/2018, 28/2022, 12/2023; 2016 screening tests)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-04', 'Old Question Papers (Question Papers of Various Notifications)', 'https://portal-psc.ap.gov.in/HomePages/QuestionPapersofVariousNotifications.aspx', 'Andhra Pradesh Public Service Commission')
+    },
+    {
+      id: 'res-appsc-g1-05', title: 'Keys & Objections', subject: 'Official Gazette',
+      author: 'Andhra Pradesh Public Service Commission', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'ANSWER_KEY',
+      url: 'https://portal-psc.ap.gov.in/HomePages/KeysToPapers.aspx',
+      description: 'Published openly by Andhra Pradesh Public Service Commission. Useful for: Initial/final keys, many in question-paper format. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Initial/final keys, many in question-paper format',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-05', 'Keys & Objections', 'https://portal-psc.ap.gov.in/HomePages/KeysToPapers.aspx', 'Andhra Pradesh Public Service Commission')
+    },
+    {
+      id: 'res-appsc-g1-06', title: 'Group-I Mains (Notification 12/2023), 2025 - SAE-104 General Essay, Paper I', subject: 'Previous Year Papers',
+      author: 'Andhra Pradesh Public Service Commission', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'QUESTION_PAPER',
+      url: 'https://psc.ap.gov.in/Documents/GroupI_QuesPapersMains_122023/PaperI_General_Essay_122023_05052025.pdf', directPdfUrl: 'https://psc.ap.gov.in/Documents/GroupI_QuesPapersMains_122023/PaperI_General_Essay_122023_05052025.pdf',
+      description: 'Published openly by Andhra Pradesh Public Service Commission. Useful for: Mains Paper-I General Essay. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Mains Paper-I General Essay',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-06', 'Group-I Mains (Notification 12/2023), 2025 - SAE-104 General Essay, Paper I', 'https://psc.ap.gov.in/Documents/GroupI_QuesPapersMains_122023/PaperI_General_Essay_122023_05052025.pdf', 'Andhra Pradesh Public Service Commission')
+    },
+    {
+      id: 'res-appsc-g1-07', title: 'Group-I Mains (Notification 12/2023) - Paper II History, Cultural and Geography of India and Andhra Pradesh', subject: 'Previous Year Papers',
+      author: 'Andhra Pradesh Public Service Commission', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'QUESTION_PAPER',
+      url: 'https://psc.ap.gov.in/Documents/GroupI_QuesPapersMains_122023/PaperII_History_Cultural_Geography_India_Andhra%20Pradesh_122023_06052025.pdf', directPdfUrl: 'https://psc.ap.gov.in/Documents/GroupI_QuesPapersMains_122023/PaperII_History_Cultural_Geography_India_Andhra%20Pradesh_122023_06052025.pdf',
+      description: 'Published openly by Andhra Pradesh Public Service Commission. Useful for: Mains Paper-II. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Mains Paper-II',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-07', 'Group-I Mains (Notification 12/2023) - Paper II History, Cultural and Geography of India and Andhra Pradesh', 'https://psc.ap.gov.in/Documents/GroupI_QuesPapersMains_122023/PaperII_History_Cultural_Geography_India_Andhra%20Pradesh_122023_06052025.pdf', 'Andhra Pradesh Public Service Commission')
+    },
+    {
+      id: 'res-appsc-g1-08', title: 'Group-I Mains (Notification 12/2023) - Paper III Polity, Constitution, Governance, Law and Ethics', subject: 'Previous Year Papers',
+      author: 'Andhra Pradesh Public Service Commission', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'QUESTION_PAPER',
+      url: 'https://psc.ap.gov.in/Documents/GroupI_QuesPapersMains_122023/PaperIIIPolityConstitutionGovernanceLawandEthics_122023_07052025.pdf', directPdfUrl: 'https://psc.ap.gov.in/Documents/GroupI_QuesPapersMains_122023/PaperIIIPolityConstitutionGovernanceLawandEthics_122023_07052025.pdf',
+      description: 'Published openly by Andhra Pradesh Public Service Commission. Useful for: Mains Paper-III. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Mains Paper-III',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-08', 'Group-I Mains (Notification 12/2023) - Paper III Polity, Constitution, Governance, Law and Ethics', 'https://psc.ap.gov.in/Documents/GroupI_QuesPapersMains_122023/PaperIIIPolityConstitutionGovernanceLawandEthics_122023_07052025.pdf', 'Andhra Pradesh Public Service Commission')
+    },
+    {
+      id: 'res-appsc-g1-09', title: 'Group-I Mains (Notification 12/2023) - Paper IV Economy and Development of India and Andhra Pradesh', subject: 'Previous Year Papers',
+      author: 'Andhra Pradesh Public Service Commission', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'QUESTION_PAPER',
+      url: 'https://psc.ap.gov.in/Documents/GroupI_QuesPapersMains_122023/PaperIVEconomyandDevelopmentofIndiaandAndhraPradesh_122023_08052025.pdf', directPdfUrl: 'https://psc.ap.gov.in/Documents/GroupI_QuesPapersMains_122023/PaperIVEconomyandDevelopmentofIndiaandAndhraPradesh_122023_08052025.pdf',
+      description: 'Published openly by Andhra Pradesh Public Service Commission. Useful for: Mains Paper-IV. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Mains Paper-IV',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-09', 'Group-I Mains (Notification 12/2023) - Paper IV Economy and Development of India and Andhra Pradesh', 'https://psc.ap.gov.in/Documents/GroupI_QuesPapersMains_122023/PaperIVEconomyandDevelopmentofIndiaandAndhraPradesh_122023_08052025.pdf', 'Andhra Pradesh Public Service Commission')
+    },
+    {
+      id: 'res-appsc-g1-10', title: 'Group-I Mains (Notification 12/2023) - Paper V Science, Technology and Environmental Issues', subject: 'Previous Year Papers',
+      author: 'Andhra Pradesh Public Service Commission', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'QUESTION_PAPER',
+      url: 'https://psc.ap.gov.in/Documents/GroupI_QuesPapersMains_122023/PaperVScienceTechnologyandEnvironmentalIssues_122023_09052025.pdf', directPdfUrl: 'https://psc.ap.gov.in/Documents/GroupI_QuesPapersMains_122023/PaperVScienceTechnologyandEnvironmentalIssues_122023_09052025.pdf',
+      description: 'Published openly by Andhra Pradesh Public Service Commission. Useful for: Mains Paper-V. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Mains Paper-V',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-10', 'Group-I Mains (Notification 12/2023) - Paper V Science, Technology and Environmental Issues', 'https://psc.ap.gov.in/Documents/GroupI_QuesPapersMains_122023/PaperVScienceTechnologyandEnvironmentalIssues_122023_09052025.pdf', 'Andhra Pradesh Public Service Commission')
+    },
+    {
+      id: 'res-appsc-g1-11', title: 'Group-I Services Notification No.12/2023 Screening test - Final Keys (12/04/2024): Paper-I (General Studies, GS/1G/100)', subject: 'Official Gazette',
+      author: 'Andhra Pradesh Public Service Commission', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'ANSWER_KEY',
+      url: 'https://psc.ap.gov.in/Documents/KEYS/122023/FinalKeys/Group-I%20Paper-I%20Final%20KEY_122023_13042024.pdf', directPdfUrl: 'https://psc.ap.gov.in/Documents/KEYS/122023/FinalKeys/Group-I%20Paper-I%20Final%20KEY_122023_13042024.pdf',
+      description: 'Published openly by Andhra Pradesh Public Service Commission. Useful for: Screening Paper-I General Studies. GovOS links to the publisher’s own copy and stores nothing. A large scanned file (64 pp., 20.8 MB.) with no text layer: it opens slowly on a mobile connection and cannot be searched.',
+      recommendedFor: 'Screening Paper-I General Studies',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-11', 'Group-I Services Notification No.12/2023 Screening test - Final Keys (12/04/2024): Paper-I (General Studies, GS/1G/100)', 'https://psc.ap.gov.in/Documents/KEYS/122023/FinalKeys/Group-I%20Paper-I%20Final%20KEY_122023_13042024.pdf', 'Andhra Pradesh Public Service Commission')
+    },
+    {
+      id: 'res-appsc-g1-12', title: 'Group-I Services Notification No.12/2023 Screening test - Final Keys (12/04/2024): Paper-II (General Aptitude)', subject: 'Official Gazette',
+      author: 'Andhra Pradesh Public Service Commission', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'ANSWER_KEY',
+      url: 'https://psc.ap.gov.in/Documents/KEYS/122023/FinalKeys/Group-I%20Paper-II%20Final%20Key_122023_13042024.pdf', directPdfUrl: 'https://psc.ap.gov.in/Documents/KEYS/122023/FinalKeys/Group-I%20Paper-II%20Final%20Key_122023_13042024.pdf',
+      description: 'Published openly by Andhra Pradesh Public Service Commission. Useful for: Screening Paper-II General Aptitude. GovOS links to the publisher’s own copy and stores nothing. A large scanned file (52 pp., 49.3 MB.) with no text layer: it opens slowly on a mobile connection and cannot be searched.',
+      recommendedFor: 'Screening Paper-II General Aptitude',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-12', 'Group-I Services Notification No.12/2023 Screening test - Final Keys (12/04/2024): Paper-II (General Aptitude)', 'https://psc.ap.gov.in/Documents/KEYS/122023/FinalKeys/Group-I%20Paper-II%20Final%20Key_122023_13042024.pdf', 'Andhra Pradesh Public Service Commission')
+    },
+    {
+      id: 'res-appsc-g1-17', title: 'Socio Economic Survey (editions 2017-18 to 2024-25)', subject: 'Economy',
+      author: 'Finance Department, Government of Andhra Pradesh', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://apfinance.gov.in/socio.html',
+      description: 'Published openly by Finance Department, Government of Andhra Pradesh. Useful for: AP economy. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'AP economy',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-17', 'Socio Economic Survey (editions 2017-18 to 2024-25)', 'https://apfinance.gov.in/socio.html', 'Finance Department, Government of Andhra Pradesh')
+    },
+    {
+      id: 'res-appsc-g1-19', title: 'Previous Budget Volumes', subject: 'Economy',
+      author: 'Finance Department, Government of Andhra Pradesh', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://apfinance.gov.in/budget.html',
+      description: 'Published openly by Finance Department, Government of Andhra Pradesh. Useful for: AP economy / public finance. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'AP economy / public finance',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-19', 'Previous Budget Volumes', 'https://apfinance.gov.in/budget.html', 'Finance Department, Government of Andhra Pradesh')
+    },
+    {
+      id: 'res-appsc-g1-23', title: 'The Constitution of India (official full text, PDF)', subject: 'Polity & Governance',
+      author: 'Legislative Department, Ministry of Law & Justice, Government of India', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'STUDY_MATERIAL',
+      url: 'https://www.legislative.gov.in/static/uploads/2025/07/c9fe9c9b6840524844316f74bb1c556c.pdf', directPdfUrl: 'https://www.legislative.gov.in/static/uploads/2025/07/c9fe9c9b6840524844316f74bb1c556c.pdf',
+      description: 'Published openly by Legislative Department, Ministry of Law & Justice, Government of India. Useful for: G-I Prelims Paper-I B / Mains Paper-III; G-II Mains Paper-I Section B. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'G-I Prelims Paper-I B / Mains Paper-III; G-II Mains Paper-I Section B',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-23', 'The Constitution of India (official full text, PDF)', 'https://www.legislative.gov.in/static/uploads/2025/07/c9fe9c9b6840524844316f74bb1c556c.pdf', 'Legislative Department, Ministry of Law & Justice, Government of India')
+    },
+    {
+      id: 'res-appsc-g1-24', title: 'The Andhra Pradesh Reorganisation Act, 2014 (No. 6 of 2014)', subject: 'Polity & Governance',
+      author: 'Ministry of Home Affairs, Government of India', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'STUDY_MATERIAL',
+      url: 'https://www.mha.gov.in/sites/default/files/2022-08/APRegACT2014_0%5B1%5D.pdf', directPdfUrl: 'https://www.mha.gov.in/sites/default/files/2022-08/APRegACT2014_0%5B1%5D.pdf',
+      description: 'Published openly by Ministry of Home Affairs, Government of India. Useful for: G-I Mains Papers II-IV; G-II Mains Paper-I Section A and Paper-II Section A. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'G-I Mains Papers II-IV; G-II Mains Paper-I Section A and Paper-II Section A',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-24', 'The Andhra Pradesh Reorganisation Act, 2014 (No. 6 of 2014)', 'https://www.mha.gov.in/sites/default/files/2022-08/APRegACT2014_0%5B1%5D.pdf', 'Ministry of Home Affairs, Government of India')
+    },
+    {
+      id: 'res-appsc-g1-25', title: 'NCERT-DIKSHA (NCERT textbooks)', subject: 'Foundation Textbooks & Open Courses',
+      author: 'NCERT, on DIKSHA (Ministry of Education, Government of India)', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://diksha.gov.in/ncert/',
+      description: 'Published openly by NCERT, on DIKSHA (Ministry of Education, Government of India). Useful for: History, Geography, Polity, Economy, Science foundations. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'History, Geography, Polity, Economy, Science foundations',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-25', 'NCERT-DIKSHA (NCERT textbooks)', 'https://diksha.gov.in/ncert/', 'NCERT, on DIKSHA (Ministry of Education, Government of India)')
+    },
+    {
+      id: 'res-appsc-g1-26', title: 'Economic Survey', subject: 'Economy',
+      author: 'Ministry of Finance, Government of India', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.indiabudget.gov.in/economicsurvey/',
+      description: 'Published openly by Ministry of Finance, Government of India. Useful for: Indian economy (G-I Prelims C / Mains Paper-IV; G-II Mains Paper-II Section A). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Indian economy (G-I Prelims C / Mains Paper-IV; G-II Mains Paper-II Section A)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-26', 'Economic Survey', 'https://www.indiabudget.gov.in/economicsurvey/', 'Ministry of Finance, Government of India')
+    },
+    {
+      id: 'res-appsc-g1-27', title: 'Press Information Bureau (English)', subject: 'Current Affairs & Governance',
+      author: 'Press Information Bureau, Government of India', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.pib.gov.in/indexd.aspx?reg=3&lang=1',
+      description: 'Published openly by Press Information Bureau, Government of India. Useful for: Current affairs (G-I Paper-II B(ii); G-II Current Affairs). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Current affairs (G-I Paper-II B(ii); G-II Current Affairs)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-27', 'Press Information Bureau (English)', 'https://www.pib.gov.in/indexd.aspx?reg=3&lang=1', 'Press Information Bureau, Government of India')
+    },
+    {
+      id: 'res-appsc-g1-28', title: 'Indian Space Research Organisation', subject: 'Science & Technology',
+      author: 'ISRO, Department of Space, Government of India', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.isro.gov.in/',
+      description: 'Published openly by ISRO, Department of Space, Government of India. Useful for: Science & Technology (space). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Science & Technology (space)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-28', 'Indian Space Research Organisation', 'https://www.isro.gov.in/', 'ISRO, Department of Space, Government of India')
+    },
+    {
+      id: 'res-appsc-g1-29', title: 'History (315) - Senior Secondary course material', subject: 'History & Culture',
+      author: 'National Institute of Open Schooling (NIOS), Ministry of Education', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.nios.ac.in/online-course-material/sr-secondary-courses/History-(315).aspx',
+      description: 'Published openly by National Institute of Open Schooling (NIOS), Ministry of Education. Useful for: Indian History. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Indian History',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-29', 'History (315) - Senior Secondary course material', 'https://www.nios.ac.in/online-course-material/sr-secondary-courses/History-(315).aspx', 'National Institute of Open Schooling (NIOS), Ministry of Education')
+    },
+    {
+      id: 'res-appsc-g1-30', title: 'Geography (316)-New (effective from session 2023-24)', subject: 'Geography & Environment',
+      author: 'National Institute of Open Schooling (NIOS), Ministry of Education', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.nios.ac.in/online-course-material/sr-secondary-courses/geography-(316)-new.aspx',
+      description: 'Published openly by National Institute of Open Schooling (NIOS), Ministry of Education. Useful for: Geography. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Geography',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-30', 'Geography (316)-New (effective from session 2023-24)', 'https://www.nios.ac.in/online-course-material/sr-secondary-courses/geography-(316)-new.aspx', 'National Institute of Open Schooling (NIOS), Ministry of Education')
+    },
+    {
+      id: 'res-appsc-g1-31', title: 'Political Science (317)', subject: 'Polity & Governance',
+      author: 'National Institute of Open Schooling (NIOS), Ministry of Education', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.nios.ac.in/online-course-material/sr-secondary-courses/political-science-(317).aspx',
+      description: 'Published openly by National Institute of Open Schooling (NIOS), Ministry of Education. Useful for: Constitution / Polity. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Constitution / Polity',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-31', 'Political Science (317)', 'https://www.nios.ac.in/online-course-material/sr-secondary-courses/political-science-(317).aspx', 'National Institute of Open Schooling (NIOS), Ministry of Education')
+    },
+    {
+      id: 'res-appsc-g1-32', title: 'Economics (318)', subject: 'Economy',
+      author: 'National Institute of Open Schooling (NIOS), Ministry of Education', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.nios.ac.in/online-course-material/sr-secondary-courses/Economics-(318).aspx',
+      description: 'Published openly by National Institute of Open Schooling (NIOS), Ministry of Education. Useful for: Economy. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Economy',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-32', 'Economics (318)', 'https://www.nios.ac.in/online-course-material/sr-secondary-courses/Economics-(318).aspx', 'National Institute of Open Schooling (NIOS), Ministry of Education')
+    },
+    {
+      id: 'res-appsc-g1-34', title: 'Enviornmental Science (333)', subject: 'Science & Technology',
+      author: 'National Institute of Open Schooling (NIOS), Ministry of Education', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.nios.ac.in/online-course-material/sr-secondary-courses/enviornmental-science-(333).aspx',
+      description: 'Published openly by National Institute of Open Schooling (NIOS), Ministry of Education. Useful for: Mains Paper-V Environmental Issues. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Mains Paper-V Environmental Issues',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-34', 'Enviornmental Science (333)', 'https://www.nios.ac.in/online-course-material/sr-secondary-courses/enviornmental-science-(333).aspx', 'National Institute of Open Schooling (NIOS), Ministry of Education')
+    },
+    {
+      id: 'res-appsc-g1-35', title: 'Andhra Pradesh Budget Analysis 2026-27', subject: 'Economy',
+      author: 'PRS Legislative Research', type: 'ONLINE_TOOL', resourceFormat: 'ONLINE_TOOL', role: 'STUDY_MATERIAL',
+      url: 'https://prsindia.org/budgets/states/andhra-pradesh-budget-analysis-2026-27',
+      description: 'Published openly by PRS Legislative Research. Useful for: AP economy / public finance. GovOS links to the publisher’s own copy and stores nothing. It is not a government publication.',
+      recommendedFor: 'AP economy / public finance',
+      officialTag: 'OPEN RESOURCE (TRUSTED, NOT A GOVERNMENT BODY)',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: { ...openResource('prov-res-appsc-g1-35', 'Andhra Pradesh Budget Analysis 2026-27', 'https://prsindia.org/budgets/states/andhra-pradesh-budget-analysis-2026-27', 'PRS Legislative Research'), taxonomyType: 'RECOMMENDATION', verificationLevel: 'UNDER_VERIFICATION' }
+    },
+    {
+      id: 'res-appsc-g1-36', title: 'Adda247 Telugu — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'Adda247 Telugu (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCqqDD-1K6WTjS16Y8pdY1_Q', youtubeUrl: 'https://www.youtube.com/channel/UCqqDD-1K6WTjS16Y8pdY1_Q',
+      description: 'A free YouTube channel candidates widely follow (1.22M subscribers as read on its own page on 2026-10-06). Useful for: All GS; APPSC Group-1 Mains topics; GS & Mental Ability batches. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with APPSC’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for All GS; APPSC Group-1 Mains topics; GS & Mental Ability batches.',
+      officialTag: 'FREE ON YOUTUBE · 1.22M SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-appsc-g1-36', 'Adda247 Telugu', 'https://www.youtube.com/channel/UCqqDD-1K6WTjS16Y8pdY1_Q', '1.22M', 'APPSC')
+    },
+    {
+      id: 'res-appsc-g1-37', title: 'RK Tutorial - RK sir — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'RK Tutorial - RK sir (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCAvSGKYCrmBxW4l9N9ZRhzA', youtubeUrl: 'https://www.youtube.com/channel/UCAvSGKYCrmBxW4l9N9ZRhzA',
+      description: 'A free YouTube channel candidates widely follow (696K subscribers as read on its own page on 2026-10-06). Useful for: GS MCQs; AP Group-2 model papers. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with APPSC’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for GS MCQs; AP Group-2 model papers.',
+      officialTag: 'FREE ON YOUTUBE · 696K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-appsc-g1-37', 'RK Tutorial - RK sir', 'https://www.youtube.com/channel/UCAvSGKYCrmBxW4l9N9ZRhzA', '696K', 'APPSC')
+    },
+    {
+      id: 'res-appsc-g1-38', title: 'HAREESH THE BEST ACADEMY — free YouTube lessons', subject: 'Current Affairs & Governance',
+      author: 'HAREESH THE BEST ACADEMY (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCvMSKsiXCDfjX41dUNn92yQ', youtubeUrl: 'https://www.youtube.com/channel/UCvMSKsiXCDfjX41dUNn92yQ',
+      description: 'A free YouTube channel candidates widely follow (684K subscribers as read on its own page on 2026-10-06). Useful for: Current affairs (daily, Telugu). Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with APPSC’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Current affairs (daily, Telugu).',
+      officialTag: 'FREE ON YOUTUBE · 684K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-appsc-g1-38', 'HAREESH THE BEST ACADEMY', 'https://www.youtube.com/channel/UCvMSKsiXCDfjX41dUNn92yQ', '684K', 'APPSC')
+    },
+    {
+      id: 'res-appsc-g1-40', title: 'Shine India Academy - Saeed Sir — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'Shine India Academy - Saeed Sir (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCIAwmOj2qC6qV0MkBV-XBsQ', youtubeUrl: 'https://www.youtube.com/channel/UCIAwmOj2qC6qV0MkBV-XBsQ',
+      description: 'A free YouTube channel candidates widely follow (392K subscribers as read on its own page on 2026-10-06). Useful for: History; Telugu current affairs. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with APPSC’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for History; Telugu current affairs.',
+      officialTag: 'FREE ON YOUTUBE · 392K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-appsc-g1-40', 'Shine India Academy - Saeed Sir', 'https://www.youtube.com/channel/UCIAwmOj2qC6qV0MkBV-XBsQ', '392K', 'APPSC')
+    },
+    {
+      id: 'res-appsc-g1-41', title: 'Mana La Excellence — free YouTube lessons', subject: 'History & Culture',
+      author: 'Mana La Excellence (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCAWrbro8XL4w97n8bolXckQ', youtubeUrl: 'https://www.youtube.com/channel/UCAWrbro8XL4w97n8bolXckQ',
+      description: 'A free YouTube channel candidates widely follow (388K subscribers as read on its own page on 2026-10-06). Useful for: APPSC Group-1 AP History / AP-specific modules (Telugu). Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with APPSC’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for APPSC Group-1 AP History / AP-specific modules (Telugu).',
+      officialTag: 'FREE ON YOUTUBE · 388K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-appsc-g1-41', 'Mana La Excellence', 'https://www.youtube.com/channel/UCAWrbro8XL4w97n8bolXckQ', '388K', 'APPSC')
+    },
+    {
+      id: 'res-appsc-g1-42', title: 'SVR ACADEMY — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'SVR ACADEMY (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCI20M_CVSwi26xF1X6q4OFA', youtubeUrl: 'https://www.youtube.com/channel/UCI20M_CVSwi26xF1X6q4OFA',
+      description: 'A free YouTube channel candidates widely follow (324K subscribers as read on its own page on 2026-10-06). Useful for: Group-2 Indian Society; Group 1/2 preparation. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with APPSC’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Group-2 Indian Society; Group 1/2 preparation.',
+      officialTag: 'FREE ON YOUTUBE · 324K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-appsc-g1-42', 'SVR ACADEMY', 'https://www.youtube.com/channel/UCI20M_CVSwi26xF1X6q4OFA', '324K', 'APPSC')
+    },
+    {
+      id: 'res-appsc-g1-43', title: 'Swayam Krushi — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'Swayam Krushi (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCFUU6ypeFNfvtasfqg05AHw', youtubeUrl: 'https://www.youtube.com/channel/UCFUU6ypeFNfvtasfqg05AHw',
+      description: 'A free YouTube channel candidates widely follow (219K subscribers as read on its own page on 2026-10-06). Useful for: APPSC Group-1 Mains syllabus explanation: AP History, Polity & Governance, Ethics, Laws, Economy. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with APPSC’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for APPSC Group-1 Mains syllabus explanation: AP History, Polity & Governance, Ethics, Laws, Economy.',
+      officialTag: 'FREE ON YOUTUBE · 219K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-appsc-g1-43', 'Swayam Krushi', 'https://www.youtube.com/channel/UCFUU6ypeFNfvtasfqg05AHw', '219K', 'APPSC')
     }
   ],
   faqs: [
-    {
-      id: 'faq-appsc1-01',
-      question: 'What is the upper age limit for General category in APPSC Group-I?',
-      answer: 'The upper age limit is 42 years for General category candidates (except for DSP which has a maximum age of 30 years). Age relaxations apply for reserved categories.',
-      officialClause: 'Para 5, Age Concessions',
-      provenance: appscProvenance
-    }
+    { id: 'faq-appsc1-01', question: 'How many vacancies are there, and in which posts?',
+      answer: '166 vacancies in 13 posts, 5 of them carried forward from earlier recruitments: Deputy Collector 12, Assistant Commissioner of State Tax 14, DSP (Civil) Cat-2 36, DSP (Communications) 3, District Educational Officer 14, Regional Transport Officer 3, District Tribal Welfare Officer 1, Deputy Registrar 16, Municipal Commissioner Grade-II 12, Assistant Treasury / Accounts Officer 2, District Employment Officer 3, Assistant Audit Officer 15, Divisional Development Officer 35. The number may change, and vacancies can be added only before the Screening Test, by an addendum.',
+      officialClause: 'Para 1.2 and its Note, pp.1–2', provenance: apg1P_total },
+    { id: 'faq-appsc1-02', question: 'What is the age limit for APPSC Group-I?',
+      answer: '18 to 44 years as on 01/07/2026 for every post except DSP (Civil) Cat-2 (21 to 30) and DSP (Communications) (18 to 30). The upper limit is relaxed by 5 years for SC, ST, BC and EWS, 10 years for Persons with Benchmark Disabilities, and by service for ex-servicemen, NCC instructors and regular A.P. State Government employees (up to 5 years).',
+      officialClause: 'Para 5.1–5.2, p.8', provenance: apg1P_age },
+    { id: 'faq-appsc1-03', question: 'What qualification do I need?',
+      answer: 'A Bachelor’s degree of a recognised university in India, or an equivalent qualification, held on the date of the notification. DSP (Communications) needs a B.E. / B.Tech. in Electronics and Communication, Electronics and Telecommunication, or Radio Engineering. A degree through an open university or distance education counts only if the Distance Education Council recognises it.',
+      officialClause: 'Para 3, pp.3–4; para 13.8, p.17', provenance: apg1P_qualDate },
+    { id: 'faq-appsc1-04', question: 'What is the application fee?',
+      answer: '₹250 application processing fee plus ₹120 examination fee, paid online by net banking, credit card or debit card. SC, ST, BC, PBD and ex-servicemen candidates, families with an A.P. white card, and unemployed youth (who submit a declaration) are exempted from the ₹120 examination fee; everyone pays the ₹250 processing fee. Candidates from other States pay both and get no exemption (except PBD and ex-servicemen). The fee is not refunded.',
+      officialClause: 'Para 9.1–9.3, pp.12–13', provenance: apg1P_fee },
+    { id: 'faq-appsc1-05', question: 'What is the Screening Test pattern, and is there negative marking?',
+      answer: 'Two objective papers on OMR sheets, both compulsory: Paper-I General Studies (120 questions, 120 marks, 120 minutes; History and Culture, Polity, Economy, Geography at 30 marks each) and Paper-II General Aptitude (120 questions, 120 marks, 120 minutes; Mental Ability 60, Science and Technology 30, Current Events 30). Each wrong answer costs 1/3 of the marks for the question.',
+      officialClause: 'Annexure-II, p.26; para 10.2, p.13', provenance: apg1P_scheme1 },
+    { id: 'faq-appsc1-06', question: 'Do my Screening Test marks count for the final selection?',
+      answer: 'No. The Screening Test only shortlists — 50 candidates per vacancy, irrespective of communities, from those who reach the minimum the Commission fixes. The selection is on the Main written examination (Papers I–V, 750 marks) and the Interview (75 marks).',
+      officialClause: 'Para 15.1 and 15.3, p.18; para 10.3, p.13', provenance: apg1P_screening },
+    { id: 'faq-appsc1-07', question: 'Are the Telugu and English papers in the Mains counted?',
+      answer: 'They are qualifying only and not counted for merit, but you must reach the minimum in each: 40% for OC, Sports Persons and EWS, 35% for BC, 30% for SC, ST and PBD. Both are of S.S.C standard, 150 marks and 3 hours each.',
+      officialClause: 'Para 12.8, p.15; Annexure-II, pp.26, 31–32', provenance: apg1P_languages },
+    { id: 'faq-appsc1-08', question: 'In which language can I write the Mains?',
+      answer: 'Papers I–V in English, Telugu or Urdu, chosen online before the Main examination. All five must be written in that one medium; writing part of a paper, or a different paper, in another language makes the candidature invalid.',
+      officialClause: 'Para 12.9, p.15', provenance: apg1P_medium },
+    { id: 'faq-appsc1-09', question: 'Can I correct my application after submitting it?',
+      answer: 'Yes, for up to 7 days from the last date (27/10/2026), at ₹100 a correction, in the form itself. Fields that affect your name, the fee or the age relaxation cannot be corrected, and nothing can be changed after that window. Details used for the fee and age relaxation are frozen once you pay.',
+      officialClause: 'Para 8, STEP-V and Note B, p.12', provenance: apg1P_correction },
+    { id: 'faq-appsc1-10', question: 'When and where is the examination?',
+      answer: 'The Screening Test is on 24/01/2027, in the district centres (you give three preferences; the Commission may allot any centre). The Main examination’s dates will be announced later; it is held only at Visakhapatnam, Vijayawada, Tirupati and Ananthapuramu, and the centre you choose is final.',
+      officialClause: 'Para 1.7, p.2; para 11, pp.13–14', provenance: apg1P_dates },
+    { id: 'faq-appsc1-11', question: 'Can I object to the Screening Test answer key?',
+      answer: 'Yes. The Commission publishes an initial key; objections are filed within three days, in the proforma on its website, at ₹100 per objection (refunded if the objection is sustained). Three subject experts examine them and the final key is final.',
+      officialClause: 'Para 12.2–12.4, p.14', provenance: apg1P_key },
+    { id: 'faq-appsc1-12', question: 'Who is a local candidate, and how much is reserved for locals?',
+      answer: 'Broadly, a candidate who studied for four consecutive academic years up to and including Class VII in a local area (or, without schooling, resided there). 95% of the posts of each multi-zone (or zone, for Assistant Audit Officer) go to its local candidates under the Presidential Order 2025; DSP (Communications) is a State-cadre post with no local reservation.',
+      officialClause: 'Paras 6–7, pp.9–11', provenance: apg1P_localDef },
+    { id: 'faq-appsc1-13', question: 'Is there a waiting list?',
+      answer: 'No. Recruitment is made only to the vacancies notified, and there is no waiting list.',
+      officialClause: 'Para 13.1, p.15', provenance: apg1P_noWaitingList },
+    { id: 'faq-appsc1-14', question: 'What certificates should BC and EWS candidates have ready?',
+      answer: 'BC candidates need a Non-Creamy Layer certificate from the Tahsildar, and EWS candidates an EWS certificate (income for FY 2025-26, in digital format) from the Tahsildar — both issued on or after 01/04/2026 and no later than the last date of the application. Without it on the day of verification, the reservation is lost.',
+      officialClause: 'Para 4.9–4.10, p.7', provenance: apg1P_bcNcl }
   ],
   applicationGuide: {
-    officialPortal: 'https://psc.ap.gov.in',
+    officialPortal: APG1_SITE,
     otrSteps: [
       {
         stepNumber: 1,
         title: 'One Time Profile Registration (OTPR)',
-        portalUrl: 'https://psc.ap.gov.in',
-        instructions: ['Register OTPR with Aadhaar verification', 'Fill personal and educational credentials', 'Generate APPSC OTPR ID'],
-        mandatoryFields: ['Full Name', 'DoB', 'Aadhaar UID', 'Mobile', 'Email'],
-        commonMistakesToAvoid: ['Incorrect district local candidature declaration']
+        portalUrl: APG1_SITE,
+        instructions: [
+          'Applying to APPSC for the first time: register your bio-data through OTPR on psc.ap.gov.in; a user ID is sent to your registered mobile number and email.',
+          'Already registered: log in with your OTPR number. To change a detail, use “modify OTPR”, save it, and then apply.',
+          'OTPR is not an application for any post.'
+        ],
+        mandatoryFields: ['Bio-data particulars', 'Mobile number', 'Email ID'],
+        commonMistakesToAvoid: ['Changing OTPR after applying — the OTPR data shown when you submit is what counts for this notification.'],
+        provenance: apg1P_otpr
+      },
+      {
+        stepNumber: 2,
+        title: 'Fill the application for Notification No. 07/2026',
+        portalUrl: APG1_SITE,
+        instructions: [
+          'Log in, click “Online Application Submission” at the bottom right of the website, and “Fill Application” against Notification No. 07/2026.',
+          'Fill the application-specific data — Local / Non-Local status, white card details (both used to calculate the fee), qualification, post preferences and examination centres (three preferences for the Screening Test, one centre for the Mains).',
+          'Upload your own scanned photo and signature in JPG format. Leave no relevant column blank.'
+        ],
+        mandatoryFields: ['Local / Non-Local status', 'White card details', 'Qualification details', 'Post preferences', 'Screening Test centres (three preferences)', 'Main examination centre', 'Photo (JPG)', 'Signature (JPG)'],
+        commonMistakesToAvoid: [
+          'Leaving a relevant column blank — such a form is not accepted.',
+          'Choosing a Mains centre casually: the centre once chosen is final.'
+        ],
+        provenance: apg1P_steps
+      },
+      {
+        stepNumber: 3,
+        title: 'Save & Submit, and pay online',
+        portalUrl: APG1_SITE,
+        instructions: [
+          '“Save” only saves the form; “Save & Submit” generates the payment link. The application is complete only after Save & Submit and a successful payment.',
+          'Check the details pre-filled for the fee and age relaxation — once the payment form is submitted they cannot be altered.',
+          'Pay by net banking, credit card or debit card; on success a payment reference ID is sent by SMS, and you can download the filled application PDF. If the payment fails, start a fresh payment.'
+        ],
+        mandatoryFields: ['Fee payment (unless exempt from the examination fee)'],
+        commonMistakesToAvoid: ['Stopping at “Save” — an application not submitted is treated as incomplete.', 'Paying by IPO or demand draft — not accepted.'],
+        provenance: apg1P_saveSubmit
+      },
+      {
+        stepNumber: 4,
+        title: 'Corrections window (optional)',
+        portalUrl: APG1_SITE,
+        instructions: [
+          'For up to 7 days from the last date, corrections can be made in the form itself at ₹100 each.',
+          'Name, fee and age-relaxation fields cannot be corrected; nothing at all can be changed after the window, and no manual request is entertained.'
+        ],
+        mandatoryFields: [],
+        commonMistakesToAvoid: ['Planning to fix the community or reservation category later — not entertained after the window.'],
+        provenance: apg1P_correction
       }
     ],
     photoRules: {
       documentType: 'Photograph',
-      dimensions: '3.5 cm x 4.5 cm',
-      fileFormat: 'JPG / JPEG',
-      fileSize: '50 KB max',
-      rules: ['Recent colour photo taken against light background'],
-      sampleDescription: 'Front face clear passport photo'
+      dimensions: 'Not printed in the notification',
+      fileFormat: 'JPG',
+      fileSize: 'Not printed in the notification',
+      rules: [
+        'Upload your own scanned photo (Annexure-III, A.4).',
+        'A recent colour passport photo; bring the same photograph to verification, and do not change your appearance until the recruitment is complete (D.4).'
+      ],
+      sampleDescription: 'Your own recent colour passport-size photograph.',
+      provenance: apg1P_photo
     },
     signatureRules: {
       documentType: 'Signature',
-      dimensions: '3.5 cm x 1.5 cm',
-      fileFormat: 'JPG / JPEG',
-      fileSize: '30 KB max',
-      rules: ['Black ink on white paper'],
-      sampleDescription: 'Signature in running handwriting'
+      dimensions: 'Not printed in the notification',
+      fileFormat: 'JPG',
+      fileSize: 'Not printed in the notification',
+      rules: ['Upload your own scanned signature (Annexure-III, A.4).'],
+      sampleDescription: 'Your own signature, scanned.',
+      provenance: apg1P_photo
     },
-    certificateRules: [],
-    rejectionPitfalls: []
-  },
-  roadmapTracks: [
-    {
-      id: 'TRACK_180_DAYS',
-      name: '6-Month APPSC Group-I Integrated Pathway',
-      subtitle: 'Integrated Prelims-cum-Mains state administration syllabus schedule',
-      targetDailyHours: 7,
-      suitableFor: 'Aspirants targeting Andhra Pradesh Administrative Leadership (Group-I)',
-      phases: [],
-      dailyTimetable: []
+    certificateRules: [
+      { category: 'OBC_NCL', title: 'Non-Creamy Layer certificate (Backward Classes)', issuingAuthority: ['Tahsildar'], financialYearValidity: 'Issued after the completion of FY 2025-26',
+        crucialDate: 'Issued on or after 01/04/2026 and not later than the last date of the application (27/10/2026)', officialAnnexure: 'Para 4.9, p.7',
+        keyConditions: ['Produced at verification; without it on that day, the BC reservation is lost.', 'BCs of other States are not entitled to reservation (para 4.12).'] },
+      { category: 'EWS', title: 'EWS certificate', issuingAuthority: ['Revenue Authority in the rank of Tahsildar'], financialYearValidity: 'Income for FY 2025-26; gross annual family income below ₹8.00 lakh',
+        crucialDate: 'Issued in digital format on or after 01/04/2026 and not later than the last date of the application (27/10/2026)', officialAnnexure: 'Para 4.10, p.7',
+        keyConditions: ['Only those not covered by the SC, ST and BC reservations.', 'Produced at certificate verification.', 'EWS candidates of other States are not entitled to reservation (para 4.12).'] }
+    ],
+    rejectionPitfalls: [
+      { pitfall: 'Clicking only “Save”', consequence: 'The application is not submitted and is treated as incomplete.', prevention: 'Click “Save & Submit” and complete the payment.' },
+      { pitfall: 'A relevant column left blank, or incorrect details', consequence: 'Summarily rejected — even at the final stage — and a false declaration can debar you for up to five years.', prevention: 'Check every field against your certificates before Save & Submit.' },
+      { pitfall: 'A BC Non-Creamy Layer or EWS certificate dated before 01/04/2026 or after the last date', consequence: 'The reservation is not given.', prevention: 'Get it from the Tahsildar between 01/04/2026 and 27/10/2026.' },
+      { pitfall: 'Booklet Series not bubbled, or bubbled wrongly, on the OMR sheet', consequence: 'The answer sheet is invalidated, with no reconsideration.', prevention: 'Bubble the Booklet Series with a blue or black ball-point pen, and use no whitener or eraser.' },
+      { pitfall: 'Absent from any paper of the Screening Test or the Mains', consequence: 'Disqualification.', prevention: 'Sit every paper.' }
+    ],
+    requiredDocuments: [
+      { id: 'doc-appsc1-photo', name: 'Scanned photograph', required: true, specifications: ['JPG', 'Your own recent colour photograph'], provenance: apg1P_photo },
+      { id: 'doc-appsc1-signature', name: 'Scanned signature', required: true, specifications: ['JPG'], provenance: apg1P_photo },
+      { id: 'doc-appsc1-community', name: 'Community, Nativity and Date of Birth Certificate (SC / ST / BC / EWS)', required: false, specifications: ['Revenue authority not below the rank of Tahsildar', 'Format on the Commission’s website (A.8.1)'], provenance: apg1P_formats },
+      { id: 'doc-appsc1-ncl', name: 'Non-Creamy Layer certificate (BC)', required: false, specifications: ['Tahsildar', 'Issued 01/04/2026 – 27/10/2026'], provenance: apg1P_bcNcl },
+      { id: 'doc-appsc1-ews', name: 'EWS certificate', required: false, specifications: ['Tahsildar, digital format', 'Income for FY 2025-26', 'Issued 01/04/2026 – 27/10/2026'], provenance: apg1P_ews },
+      { id: 'doc-appsc1-study', name: 'School Study Certificates (Class I–VII) or a Residence Certificate (local status)', required: false, specifications: ['Study certificates are compulsory if you studied in a school up to Class VII', 'Residence certificate from an officer not below a Mandal Revenue Officer'], provenance: apg1P_localDef },
+      { id: 'doc-appsc1-unemployed', name: 'Declaration by the Un-Employed (examination-fee exemption)', required: false, specifications: ['Format on the Commission’s website (A.8.2)'], provenance: apg1P_formats },
+      { id: 'doc-appsc1-disability', name: 'Disability certificate (PBD), and for a scribe the certificate of the percentage of disability', required: false, specifications: ['At least 40% disability, certified by a medical authority'], provenance: apg1P_scribe }
+    ],
+    fee: {
+      amounts: ['250', '120', '100'],
+      rules: [
+        { scope: 'Every applicant', amount: '₹250', isExempt: false, feeType: 'Application processing fee', statedAs: apg1P_fee.excerptText },
+        { scope: 'Every applicant not exempted', amount: '₹120', isExempt: false, feeType: 'Examination fee', statedAs: apg1P_fee.excerptText },
+        { scope: 'Applicants from other States', amount: '₹250 + ₹120', isExempt: false, statedAs: apg1P_feeOther.excerptText },
+        { scope: 'Each correction in the 7-day window after the last date', amount: '₹100', isExempt: false, feeType: 'Correction fee', statedAs: apg1P_correction.excerptText }
+      ],
+      acceptedModes: ['Net Banking', 'Credit Card', 'Debit Card'],
+      exemptions: [
+        { category: 'SC, ST, BC, PBD and Ex-Servicemen', statedAs: 'i) SC, ST, BC, PBDs & Ex-Servicemen.', exemptedFeeType: 'Examination fee', provenance: apg1P_feeExempt },
+        { category: 'Families with a Household Supply White Card (A.P. residents)', statedAs: 'ii) Families having Household Supply White Card issued by Civil Supplies Department, A.P. Government (Residents of Andhra Pradesh).', exemptedFeeType: 'Examination fee', provenance: apg1P_feeExempt },
+        { category: 'Unemployed youth (with a declaration)', statedAs: 'iii) Un-employed youth as per G.O.Ms.No.439, G.A (Ser-A) Dept., dated: 18/10/1996 should submit declaration at an appropriate time to the Commission.', exemptedFeeType: 'Examination fee', provenance: apg1P_feeExempt }
+      ],
+      statedAs: apg1P_fee.excerptText,
+      provenance: apg1P_fee
     }
-  ]
+  },
+  roadmapTracks: [],
+  examDayChecklist: [
+    { id: 'ed-appsc1-hall-ticket', category: 'DOCUMENTS', title: 'Hall Ticket, photo identity proof and pen — nothing else', description: 'Articles other than the admit card, photo identity proof and pen are left outside the exam room. If the Hall Ticket has no photo or a very small one, affix a passport-size photo attested by a Gazetted Officer.', isMandatory: true, provenance: apg1P_carry },
+    { id: 'ed-appsc1-entry', category: 'TIMING', title: 'Be in your seat by the entry time on the Hall Ticket', description: 'Biometric identification is taken before entry; late entry after the given time is not allowed.', isMandatory: true, provenance: apg1P_biometric },
+    { id: 'ed-appsc1-full-time', category: 'TIMING', title: 'You cannot leave before the full time', description: 'A candidate who leaves the examination hall in the middle is disqualified.', isMandatory: true, provenance: apg1P_fullTime },
+    { id: 'ed-appsc1-ball-pen', category: 'ITEMS_ALLOWED', title: 'A blue or black ball-point pen (and a smooth writing pad) for the OMR sheet', description: 'Bubble every block, including the Booklet Series, with a blue or black ball-point pen. Pencil, ink pen and gel pen are not permitted.', isMandatory: true, provenance: apg1P_pen },
+    { id: 'ed-appsc1-omr', category: 'CENTRE_INSTRUCTIONS', title: 'Bubble the Booklet Series; never use whitener or an eraser', description: 'A missing or wrong Booklet Series, or any whitener, eraser, blade, chalk powder or tampering, invalidates the OMR sheet with no reconsideration.', isMandatory: true, provenance: apg1P_omr },
+    { id: 'ed-appsc1-top-sheet', category: 'CENTRE_INSTRUCTIONS', title: 'Hand the original OMR sheet (top sheet) to the invigilator', description: 'Taking it away gets your candidature rejected; you may keep the duplicate (bottom) sheet.', isMandatory: true, provenance: apg1P_topSheet },
+    { id: 'ed-appsc1-gadgets', category: 'ITEMS_PROHIBITED', title: 'No mobile (even switched off), smart watch, Bluetooth device, camera or storage media', description: 'Any infringement brings disciplinary action including a ban from future examinations; there is no safe-keeping at the venue. Only non-programmable calculators are permitted, and only where necessary.', isMandatory: true, provenance: apg1P_gadgets },
+    { id: 'ed-appsc1-scribe', category: 'CENTRE_INSTRUCTIONS', title: 'Scribe and extra time (20 minutes an hour) where eligible', description: 'Totally blind candidates get a scribe and 20 minutes an hour extra; candidates with locomotor disability or cerebral palsy affecting the writing hand (at least 40%) get the extra time but no scribe.', isMandatory: false, provenance: apg1P_scribe }
+  ],
+  eligibilityHighlights: [
+    { title: 'Age as on 01/07/2026', body: '18 to 44 years for eleven posts; DSP (Civil) Cat-2 21 to 30; DSP (Communications) 18 to 30. Upper-age relaxation: 5 years for SC, ST, BC and EWS; 10 for Persons with Benchmark Disabilities; service-based for ex-servicemen, NCC instructors and A.P. State Government employees (paras 5.1–5.2).', provenance: apg1P_age },
+    { title: 'Educational qualification', body: 'A Bachelor’s degree of a recognised university in India (or equivalent), held on the date of the notification. DSP (Communications): B.E. / B.Tech. in Electronics and Communication, Electronics and Telecommunication, or Radio Engineering. Open-university and distance degrees need Distance Education Council recognition (paras 3, 13.8).', provenance: apg1P_qualDate },
+    { title: 'Physical standards for the two DSP posts', body: 'Men at least 167.6 cm and 86.3 cm chest with 5 cm expansion (ST: 164 cm and 83.8 cm); women at least 152.5 cm and 45.5 kg; vision standards certified by a Medical Board. Colour blindness disqualifies for DSP (Communications) only (para 3, pp.4–5).', provenance: apg1P_physical },
+    { title: 'Local status and reservation', body: '95% of each multi-zone’s (or zone’s) posts go to its local candidates under the Presidential Order 2025 — local by four years of study up to Class VII, or residence. Women 33⅓% and Meritorious Sports Persons 3%, horizontally; no PBD reservation in the two DSP posts; BCs, SCs, STs and EWS of other States get no reservation (paras 4, 6, 7).', provenance: apg1P_local },
+    { title: 'Citizenship and health', body: 'A citizen of India, of sound health and active habits, with character and antecedents suited to the service (para 2).', provenance: apg1P_citizen },
+    { title: 'Minimum qualifying marks', body: 'On the aggregate, to be shortlisted for selection: 40% for OC, Sportspersons and EWS; 35% for Backward Classes; 30% for SCs, STs and PBDs — reaching it confers no right to selection (para 15.5). The Mains Telugu and English papers need the same 40% / 35% / 30% in each paper, and are not counted for merit (para 12.8). The Screening Test’s minimum is fixed by the Commission at its discretion (para 10.3).', provenance: apg1P_minMarks }
+  ],
+  officialLinks: [
+    { title: 'Andhra Pradesh Public Service Commission', url: APG1_SITE, note: 'OTPR, the online application, Hall Tickets, answer keys, results and every notice; the notification says to visit it regularly.', provenance: apg1P_otpr },
+    { title: 'Notification No. 07/2026 — Group-I Services (PDF, 66 pages)', url: APG1_NOTICE.url, note: 'Posts, vacancies, eligibility, fee, how to apply, the scheme and syllabus (Annexure-II), instructions (Annexure-III), the caste lists and physical standards.', provenance: apg1P_notice }
+  ],
+  syllabusSourceNote: 'Annexure-II of APPSC Notification No. 07/2026 — Scheme and Syllabus for Group-I Services: the Screening Test’s two papers and the Main examination’s two qualifying language papers and Papers I–V (pp. 26–39)'
 };
 
 export const APPSC_GROUP2_EXAM: Exam = {
@@ -19717,6 +21103,277 @@ export const APPSC_GROUP2_EXAM: Exam = {
       description: 'Authoritative scheme of examination and syllabus for Group-II executive and non-executive posts.',
       recommendedFor: 'All APPSC Group-II executive aspirants.',
       officialTag: 'OFFICIAL STATE COMMISSION'
+    },
+    // ---- added APPSC_GROUP2_EXAM resources: linked, never stored; checked 2026-10-06
+    {
+      id: 'res-appsc-g2-02', title: 'Syllabus for Screening and Main Examination for the Recruitment to the Post of Group - II Services (published 27/04/2023)', subject: 'Official Gazette',
+      author: 'Andhra Pradesh Public Service Commission, Vijayawada', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'SYLLABUS',
+      url: 'https://psc.ap.gov.in/Documents/NotificationDocuments/Syllabus%20for%20GROUP%20II%20Services_01052023.pdf', directPdfUrl: 'https://psc.ap.gov.in/Documents/NotificationDocuments/Syllabus%20for%20GROUP%20II%20Services_01052023.pdf',
+      description: 'Published openly by Andhra Pradesh Public Service Commission, Vijayawada. Useful for: Screening (History, Geography, Indian Society, Current Affairs, Mental Ability) and Mains Paper-I/II. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Screening (History, Geography, Indian Society, Current Affairs, Mental Ability) and Mains Paper-I/II',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g2-02', 'Syllabus for Screening and Main Examination for the Recruitment to the Post of Group - II Services (published 27/04/2023)', 'https://psc.ap.gov.in/Documents/NotificationDocuments/Syllabus%20for%20GROUP%20II%20Services_01052023.pdf', 'Andhra Pradesh Public Service Commission, Vijayawada')
+    },
+    {
+      id: 'res-appsc-g2-03', title: 'Syllabus (Groups Syllabus page)', subject: 'Official Gazette',
+      author: 'Andhra Pradesh Public Service Commission', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'SYLLABUS',
+      url: 'https://portal-psc.ap.gov.in/HomePages/GroupsSyllabus.aspx',
+      description: 'Published openly by Andhra Pradesh Public Service Commission. Useful for: Syllabus listing. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Syllabus listing',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g2-03', 'Syllabus (Groups Syllabus page)', 'https://portal-psc.ap.gov.in/HomePages/GroupsSyllabus.aspx', 'Andhra Pradesh Public Service Commission')
+    },
+    {
+      id: 'res-appsc-g2-04', title: 'Old Question Papers (Question Papers of Various Notifications)', subject: 'Official Gazette',
+      author: 'Andhra Pradesh Public Service Commission', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'QUESTION_PAPER',
+      url: 'https://portal-psc.ap.gov.in/HomePages/QuestionPapersofVariousNotifications.aspx',
+      description: 'Published openly by Andhra Pradesh Public Service Commission. Useful for: Previous papers (Group-I Mains 27/2018, 28/2022, 12/2023; 2016 screening tests). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Previous papers (Group-I Mains 27/2018, 28/2022, 12/2023; 2016 screening tests)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g2-04', 'Old Question Papers (Question Papers of Various Notifications)', 'https://portal-psc.ap.gov.in/HomePages/QuestionPapersofVariousNotifications.aspx', 'Andhra Pradesh Public Service Commission')
+    },
+    {
+      id: 'res-appsc-g2-05', title: 'Keys & Objections', subject: 'Official Gazette',
+      author: 'Andhra Pradesh Public Service Commission', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'ANSWER_KEY',
+      url: 'https://portal-psc.ap.gov.in/HomePages/KeysToPapers.aspx',
+      description: 'Published openly by Andhra Pradesh Public Service Commission. Useful for: Initial/final keys, many in question-paper format. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Initial/final keys, many in question-paper format',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g2-05', 'Keys & Objections', 'https://portal-psc.ap.gov.in/HomePages/KeysToPapers.aspx', 'Andhra Pradesh Public Service Commission')
+    },
+    {
+      id: 'res-appsc-g2-13', title: 'Group-II Services Notification No.11/2023 Screening Test - Final Key (10/04/2024): General Studies & Mental Ability (GS/2G/200)', subject: 'Official Gazette',
+      author: 'Andhra Pradesh Public Service Commission', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'ANSWER_KEY',
+      url: 'https://psc.ap.gov.in/Documents/KEYS/112023/FinalKeys/Group-II_ScreeningTest_11_2023_FinalKey.pdf', directPdfUrl: 'https://psc.ap.gov.in/Documents/KEYS/112023/FinalKeys/Group-II_ScreeningTest_11_2023_FinalKey.pdf',
+      description: 'Published openly by Andhra Pradesh Public Service Commission. Useful for: Screening test. GovOS links to the publisher’s own copy and stores nothing. A large scanned file (56 pp., 15.4 MB.) with no text layer: it opens slowly on a mobile connection and cannot be searched.',
+      recommendedFor: 'Screening test',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g2-13', 'Group-II Services Notification No.11/2023 Screening Test - Final Key (10/04/2024): General Studies & Mental Ability (GS/2G/200)', 'https://psc.ap.gov.in/Documents/KEYS/112023/FinalKeys/Group-II_ScreeningTest_11_2023_FinalKey.pdf', 'Andhra Pradesh Public Service Commission')
+    },
+    {
+      id: 'res-appsc-g2-14', title: 'Group-II Services Notification No.11/2023 Mains - Final Key in Question Paper Format for Paper-I Series-A (04/04/2025)', subject: 'Official Gazette',
+      author: 'Andhra Pradesh Public Service Commission', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'ANSWER_KEY',
+      url: 'https://psc.ap.gov.in/Documents/KEYS/112023/MainsFinalKeys_04042025/GroupIIMainsPaper_I_SeriesAFinalKey112023.pdf', directPdfUrl: 'https://psc.ap.gov.in/Documents/KEYS/112023/MainsFinalKeys_04042025/GroupIIMainsPaper_I_SeriesAFinalKey112023.pdf',
+      description: 'Published openly by Andhra Pradesh Public Service Commission. Useful for: Mains Paper-I (Social & Cultural History of AP; Indian Constitution). GovOS links to the publisher’s own copy and stores nothing. A large scanned file (48 pp., 13.0 MB.) with no text layer: it opens slowly on a mobile connection and cannot be searched.',
+      recommendedFor: 'Mains Paper-I (Social & Cultural History of AP; Indian Constitution)',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g2-14', 'Group-II Services Notification No.11/2023 Mains - Final Key in Question Paper Format for Paper-I Series-A (04/04/2025)', 'https://psc.ap.gov.in/Documents/KEYS/112023/MainsFinalKeys_04042025/GroupIIMainsPaper_I_SeriesAFinalKey112023.pdf', 'Andhra Pradesh Public Service Commission')
+    },
+    {
+      id: 'res-appsc-g2-15', title: 'Group-II Services Notification No.11/2023 Mains - Final Key in Question Paper Format for Paper-II Series-A (04/04/2025)', subject: 'Official Gazette',
+      author: 'Andhra Pradesh Public Service Commission', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'ANSWER_KEY',
+      url: 'https://psc.ap.gov.in/Documents/KEYS/112023/MainsFinalKeys_04042025/Group_II_Mains_Paper_II_Series_A_FinalKey112023.pdf', directPdfUrl: 'https://psc.ap.gov.in/Documents/KEYS/112023/MainsFinalKeys_04042025/Group_II_Mains_Paper_II_Series_A_FinalKey112023.pdf',
+      description: 'Published openly by Andhra Pradesh Public Service Commission. Useful for: Mains Paper-II (Indian & AP Economy; Science & Technology). GovOS links to the publisher’s own copy and stores nothing. A large scanned file (48 pp., 11.0 MB.) with no text layer: it opens slowly on a mobile connection and cannot be searched.',
+      recommendedFor: 'Mains Paper-II (Indian & AP Economy; Science & Technology)',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g2-15', 'Group-II Services Notification No.11/2023 Mains - Final Key in Question Paper Format for Paper-II Series-A (04/04/2025)', 'https://psc.ap.gov.in/Documents/KEYS/112023/MainsFinalKeys_04042025/Group_II_Mains_Paper_II_Series_A_FinalKey112023.pdf', 'Andhra Pradesh Public Service Commission')
+    },
+    {
+      id: 'res-appsc-g2-17', title: 'Socio Economic Survey (editions 2017-18 to 2024-25)', subject: 'Economy',
+      author: 'Finance Department, Government of Andhra Pradesh', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://apfinance.gov.in/socio.html',
+      description: 'Published openly by Finance Department, Government of Andhra Pradesh. Useful for: AP economy. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'AP economy',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g2-17', 'Socio Economic Survey (editions 2017-18 to 2024-25)', 'https://apfinance.gov.in/socio.html', 'Finance Department, Government of Andhra Pradesh')
+    },
+    {
+      id: 'res-appsc-g2-19', title: 'Previous Budget Volumes', subject: 'Economy',
+      author: 'Finance Department, Government of Andhra Pradesh', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://apfinance.gov.in/budget.html',
+      description: 'Published openly by Finance Department, Government of Andhra Pradesh. Useful for: AP economy / public finance. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'AP economy / public finance',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g2-19', 'Previous Budget Volumes', 'https://apfinance.gov.in/budget.html', 'Finance Department, Government of Andhra Pradesh')
+    },
+    {
+      id: 'res-appsc-g2-23', title: 'The Constitution of India (official full text, PDF)', subject: 'Polity & Governance',
+      author: 'Legislative Department, Ministry of Law & Justice, Government of India', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'STUDY_MATERIAL',
+      url: 'https://www.legislative.gov.in/static/uploads/2025/07/c9fe9c9b6840524844316f74bb1c556c.pdf', directPdfUrl: 'https://www.legislative.gov.in/static/uploads/2025/07/c9fe9c9b6840524844316f74bb1c556c.pdf',
+      description: 'Published openly by Legislative Department, Ministry of Law & Justice, Government of India. Useful for: G-I Prelims Paper-I B / Mains Paper-III; G-II Mains Paper-I Section B. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'G-I Prelims Paper-I B / Mains Paper-III; G-II Mains Paper-I Section B',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g2-23', 'The Constitution of India (official full text, PDF)', 'https://www.legislative.gov.in/static/uploads/2025/07/c9fe9c9b6840524844316f74bb1c556c.pdf', 'Legislative Department, Ministry of Law & Justice, Government of India')
+    },
+    {
+      id: 'res-appsc-g2-24', title: 'The Andhra Pradesh Reorganisation Act, 2014 (No. 6 of 2014)', subject: 'Polity & Governance',
+      author: 'Ministry of Home Affairs, Government of India', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'STUDY_MATERIAL',
+      url: 'https://www.mha.gov.in/sites/default/files/2022-08/APRegACT2014_0%5B1%5D.pdf', directPdfUrl: 'https://www.mha.gov.in/sites/default/files/2022-08/APRegACT2014_0%5B1%5D.pdf',
+      description: 'Published openly by Ministry of Home Affairs, Government of India. Useful for: G-I Mains Papers II-IV; G-II Mains Paper-I Section A and Paper-II Section A. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'G-I Mains Papers II-IV; G-II Mains Paper-I Section A and Paper-II Section A',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g2-24', 'The Andhra Pradesh Reorganisation Act, 2014 (No. 6 of 2014)', 'https://www.mha.gov.in/sites/default/files/2022-08/APRegACT2014_0%5B1%5D.pdf', 'Ministry of Home Affairs, Government of India')
+    },
+    {
+      id: 'res-appsc-g2-25', title: 'NCERT-DIKSHA (NCERT textbooks)', subject: 'Foundation Textbooks & Open Courses',
+      author: 'NCERT, on DIKSHA (Ministry of Education, Government of India)', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://diksha.gov.in/ncert/',
+      description: 'Published openly by NCERT, on DIKSHA (Ministry of Education, Government of India). Useful for: History, Geography, Polity, Economy, Science foundations. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'History, Geography, Polity, Economy, Science foundations',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g2-25', 'NCERT-DIKSHA (NCERT textbooks)', 'https://diksha.gov.in/ncert/', 'NCERT, on DIKSHA (Ministry of Education, Government of India)')
+    },
+    {
+      id: 'res-appsc-g2-26', title: 'Economic Survey', subject: 'Economy',
+      author: 'Ministry of Finance, Government of India', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.indiabudget.gov.in/economicsurvey/',
+      description: 'Published openly by Ministry of Finance, Government of India. Useful for: Indian economy (G-I Prelims C / Mains Paper-IV; G-II Mains Paper-II Section A). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Indian economy (G-I Prelims C / Mains Paper-IV; G-II Mains Paper-II Section A)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g2-26', 'Economic Survey', 'https://www.indiabudget.gov.in/economicsurvey/', 'Ministry of Finance, Government of India')
+    },
+    {
+      id: 'res-appsc-g2-27', title: 'Press Information Bureau (English)', subject: 'Current Affairs & Governance',
+      author: 'Press Information Bureau, Government of India', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.pib.gov.in/indexd.aspx?reg=3&lang=1',
+      description: 'Published openly by Press Information Bureau, Government of India. Useful for: Current affairs (G-I Paper-II B(ii); G-II Current Affairs). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Current affairs (G-I Paper-II B(ii); G-II Current Affairs)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g2-27', 'Press Information Bureau (English)', 'https://www.pib.gov.in/indexd.aspx?reg=3&lang=1', 'Press Information Bureau, Government of India')
+    },
+    {
+      id: 'res-appsc-g2-28', title: 'Indian Space Research Organisation', subject: 'Science & Technology',
+      author: 'ISRO, Department of Space, Government of India', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.isro.gov.in/',
+      description: 'Published openly by ISRO, Department of Space, Government of India. Useful for: Science & Technology (space). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Science & Technology (space)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g2-28', 'Indian Space Research Organisation', 'https://www.isro.gov.in/', 'ISRO, Department of Space, Government of India')
+    },
+    {
+      id: 'res-appsc-g2-29', title: 'History (315) - Senior Secondary course material', subject: 'History & Culture',
+      author: 'National Institute of Open Schooling (NIOS), Ministry of Education', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.nios.ac.in/online-course-material/sr-secondary-courses/History-(315).aspx',
+      description: 'Published openly by National Institute of Open Schooling (NIOS), Ministry of Education. Useful for: Indian History. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Indian History',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g2-29', 'History (315) - Senior Secondary course material', 'https://www.nios.ac.in/online-course-material/sr-secondary-courses/History-(315).aspx', 'National Institute of Open Schooling (NIOS), Ministry of Education')
+    },
+    {
+      id: 'res-appsc-g2-30', title: 'Geography (316)-New (effective from session 2023-24)', subject: 'Geography & Environment',
+      author: 'National Institute of Open Schooling (NIOS), Ministry of Education', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.nios.ac.in/online-course-material/sr-secondary-courses/geography-(316)-new.aspx',
+      description: 'Published openly by National Institute of Open Schooling (NIOS), Ministry of Education. Useful for: Geography. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Geography',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g2-30', 'Geography (316)-New (effective from session 2023-24)', 'https://www.nios.ac.in/online-course-material/sr-secondary-courses/geography-(316)-new.aspx', 'National Institute of Open Schooling (NIOS), Ministry of Education')
+    },
+    {
+      id: 'res-appsc-g2-31', title: 'Political Science (317)', subject: 'Polity & Governance',
+      author: 'National Institute of Open Schooling (NIOS), Ministry of Education', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.nios.ac.in/online-course-material/sr-secondary-courses/political-science-(317).aspx',
+      description: 'Published openly by National Institute of Open Schooling (NIOS), Ministry of Education. Useful for: Constitution / Polity. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Constitution / Polity',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g2-31', 'Political Science (317)', 'https://www.nios.ac.in/online-course-material/sr-secondary-courses/political-science-(317).aspx', 'National Institute of Open Schooling (NIOS), Ministry of Education')
+    },
+    {
+      id: 'res-appsc-g2-32', title: 'Economics (318)', subject: 'Economy',
+      author: 'National Institute of Open Schooling (NIOS), Ministry of Education', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.nios.ac.in/online-course-material/sr-secondary-courses/Economics-(318).aspx',
+      description: 'Published openly by National Institute of Open Schooling (NIOS), Ministry of Education. Useful for: Economy. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Economy',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g2-32', 'Economics (318)', 'https://www.nios.ac.in/online-course-material/sr-secondary-courses/Economics-(318).aspx', 'National Institute of Open Schooling (NIOS), Ministry of Education')
+    },
+    {
+      id: 'res-appsc-g2-33', title: 'Sociology (331)', subject: 'Foundation Textbooks & Open Courses',
+      author: 'National Institute of Open Schooling (NIOS), Ministry of Education', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.nios.ac.in/online-course-material/sr-secondary-courses/Sociology-(331).aspx',
+      description: 'Published openly by National Institute of Open Schooling (NIOS), Ministry of Education. Useful for: Screening: Indian Society (also useful for G-I Social Justice). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Screening: Indian Society (also useful for G-I Social Justice)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g2-33', 'Sociology (331)', 'https://www.nios.ac.in/online-course-material/sr-secondary-courses/Sociology-(331).aspx', 'National Institute of Open Schooling (NIOS), Ministry of Education')
+    },
+    {
+      id: 'res-appsc-g2-35', title: 'Andhra Pradesh Budget Analysis 2026-27', subject: 'Economy',
+      author: 'PRS Legislative Research', type: 'ONLINE_TOOL', resourceFormat: 'ONLINE_TOOL', role: 'STUDY_MATERIAL',
+      url: 'https://prsindia.org/budgets/states/andhra-pradesh-budget-analysis-2026-27',
+      description: 'Published openly by PRS Legislative Research. Useful for: AP economy / public finance. GovOS links to the publisher’s own copy and stores nothing. It is not a government publication.',
+      recommendedFor: 'AP economy / public finance',
+      officialTag: 'OPEN RESOURCE (TRUSTED, NOT A GOVERNMENT BODY)',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: { ...openResource('prov-res-appsc-g2-35', 'Andhra Pradesh Budget Analysis 2026-27', 'https://prsindia.org/budgets/states/andhra-pradesh-budget-analysis-2026-27', 'PRS Legislative Research'), taxonomyType: 'RECOMMENDATION', verificationLevel: 'UNDER_VERIFICATION' }
+    },
+    {
+      id: 'res-appsc-g2-36', title: 'Adda247 Telugu — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'Adda247 Telugu (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCqqDD-1K6WTjS16Y8pdY1_Q', youtubeUrl: 'https://www.youtube.com/channel/UCqqDD-1K6WTjS16Y8pdY1_Q',
+      description: 'A free YouTube channel candidates widely follow (1.22M subscribers as read on its own page on 2026-10-06). Useful for: All GS; APPSC Group-1 Mains topics; GS & Mental Ability batches. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with APPSC’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for All GS; APPSC Group-1 Mains topics; GS & Mental Ability batches.',
+      officialTag: 'FREE ON YOUTUBE · 1.22M SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-appsc-g2-36', 'Adda247 Telugu', 'https://www.youtube.com/channel/UCqqDD-1K6WTjS16Y8pdY1_Q', '1.22M', 'APPSC')
+    },
+    {
+      id: 'res-appsc-g2-37', title: 'RK Tutorial - RK sir — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'RK Tutorial - RK sir (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCAvSGKYCrmBxW4l9N9ZRhzA', youtubeUrl: 'https://www.youtube.com/channel/UCAvSGKYCrmBxW4l9N9ZRhzA',
+      description: 'A free YouTube channel candidates widely follow (696K subscribers as read on its own page on 2026-10-06). Useful for: GS MCQs; AP Group-2 model papers. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with APPSC’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for GS MCQs; AP Group-2 model papers.',
+      officialTag: 'FREE ON YOUTUBE · 696K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-appsc-g2-37', 'RK Tutorial - RK sir', 'https://www.youtube.com/channel/UCAvSGKYCrmBxW4l9N9ZRhzA', '696K', 'APPSC')
+    },
+    {
+      id: 'res-appsc-g2-38', title: 'HAREESH THE BEST ACADEMY — free YouTube lessons', subject: 'Current Affairs & Governance',
+      author: 'HAREESH THE BEST ACADEMY (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCvMSKsiXCDfjX41dUNn92yQ', youtubeUrl: 'https://www.youtube.com/channel/UCvMSKsiXCDfjX41dUNn92yQ',
+      description: 'A free YouTube channel candidates widely follow (684K subscribers as read on its own page on 2026-10-06). Useful for: Current affairs (daily, Telugu). Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with APPSC’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Current affairs (daily, Telugu).',
+      officialTag: 'FREE ON YOUTUBE · 684K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-appsc-g2-38', 'HAREESH THE BEST ACADEMY', 'https://www.youtube.com/channel/UCvMSKsiXCDfjX41dUNn92yQ', '684K', 'APPSC')
+    },
+    {
+      id: 'res-appsc-g2-39', title: 'AKSHARAM EDUCATIONS — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'AKSHARAM EDUCATIONS (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCQeKIHR9EjyjbeKencnojKA', youtubeUrl: 'https://www.youtube.com/channel/UCQeKIHR9EjyjbeKencnojKA',
+      description: 'A free YouTube channel candidates widely follow (398K subscribers as read on its own page on 2026-10-06). Useful for: Indian History, Indian Geography (Group-2 screening). Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with APPSC’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Indian History, Indian Geography (Group-2 screening).',
+      officialTag: 'FREE ON YOUTUBE · 398K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-appsc-g2-39', 'AKSHARAM EDUCATIONS', 'https://www.youtube.com/channel/UCQeKIHR9EjyjbeKencnojKA', '398K', 'APPSC')
+    },
+    {
+      id: 'res-appsc-g2-40', title: 'Shine India Academy - Saeed Sir — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'Shine India Academy - Saeed Sir (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCIAwmOj2qC6qV0MkBV-XBsQ', youtubeUrl: 'https://www.youtube.com/channel/UCIAwmOj2qC6qV0MkBV-XBsQ',
+      description: 'A free YouTube channel candidates widely follow (392K subscribers as read on its own page on 2026-10-06). Useful for: History; Telugu current affairs. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with APPSC’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for History; Telugu current affairs.',
+      officialTag: 'FREE ON YOUTUBE · 392K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-appsc-g2-40', 'Shine India Academy - Saeed Sir', 'https://www.youtube.com/channel/UCIAwmOj2qC6qV0MkBV-XBsQ', '392K', 'APPSC')
+    },
+    {
+      id: 'res-appsc-g2-42', title: 'SVR ACADEMY — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'SVR ACADEMY (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCI20M_CVSwi26xF1X6q4OFA', youtubeUrl: 'https://www.youtube.com/channel/UCI20M_CVSwi26xF1X6q4OFA',
+      description: 'A free YouTube channel candidates widely follow (324K subscribers as read on its own page on 2026-10-06). Useful for: Group-2 Indian Society; Group 1/2 preparation. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with APPSC’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Group-2 Indian Society; Group 1/2 preparation.',
+      officialTag: 'FREE ON YOUTUBE · 324K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-appsc-g2-42', 'SVR ACADEMY', 'https://www.youtube.com/channel/UCI20M_CVSwi26xF1X6q4OFA', '324K', 'APPSC')
     }
   ],
   faqs: [
@@ -20906,6 +22563,337 @@ export const TG_TET_INSERVICE_2026_II_EXAM: Exam = {
       officialTag: 'OFFICIAL WEBSITE',
       linkVerifiedDate: TGTET_CHECK,
       provenance: tgP_apply
+    },
+    // ---- added TG_TET_INSERVICE_2026_II_EXAM resources: linked, never stored; checked 2026-10-06
+    {
+      id: 'res-tgtet-75', title: 'TGTET 2026 - PAPER - I & II (Child Development and Pedagogy)', subject: 'Child Development & Pedagogy',
+      author: 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTwKyun3MlzOvOqP0HrQCh-p',
+      description: 'Published openly by T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana. Useful for: Paper-I & II - Child Development & Pedagogy (53 videos, a playlist on T-SAT Network). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-I & II - Child Development & Pedagogy (53 videos, a playlist on T-SAT Network)',
+      officialTag: 'OFFICIAL OPEN RESOURCE', isEssential: true,
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-75', 'TGTET 2026 - PAPER - I & II (Child Development and Pedagogy)', 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTwKyun3MlzOvOqP0HrQCh-p', 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana')
+    },
+    {
+      id: 'res-tgtet-76', title: 'TGTET 2026 - PAPER - I (Telugu)', subject: 'Languages',
+      author: 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTyab--Kxx2TVTjllYIGxH0r',
+      description: 'Published openly by T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana. Useful for: Paper-I - Language-I Telugu (29 videos, a playlist on T-SAT Network). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-I - Language-I Telugu (29 videos, a playlist on T-SAT Network)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-76', 'TGTET 2026 - PAPER - I (Telugu)', 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTyab--Kxx2TVTjllYIGxH0r', 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana')
+    },
+    {
+      id: 'res-tgtet-77', title: 'TGTET 2025 - PAPER -1 - Language – I (Telugu, Hindi, Urdu)', subject: 'Languages',
+      author: 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTxAsm1-gBOtxnx5y1cyXPOH',
+      description: 'Published openly by T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana. Useful for: Paper-I - Language-I (Telugu, Hindi, Urdu) [previous 2025 series] (13 videos, a playlist on T-SAT Network). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-I - Language-I (Telugu, Hindi, Urdu) [previous 2025 series] (13 videos, a playlist on T-SAT Network)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-77', 'TGTET 2025 - PAPER -1 - Language – I (Telugu, Hindi, Urdu)', 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTxAsm1-gBOtxnx5y1cyXPOH', 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana')
+    },
+    {
+      id: 'res-tgtet-78', title: 'TGTET 2026 - PAPER1 ENGLISH', subject: 'Languages',
+      author: 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTxeqnKAljiAQYH26lrNC6ID',
+      description: 'Published openly by T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana. Useful for: Paper-I - Language-II English (17 videos, a playlist on T-SAT Network). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-I - Language-II English (17 videos, a playlist on T-SAT Network)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-78', 'TGTET 2026 - PAPER1 ENGLISH', 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTxeqnKAljiAQYH26lrNC6ID', 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana')
+    },
+    {
+      id: 'res-tgtet-79', title: 'TGTET 2026 - PAPER - I (Language 2 - English)', subject: 'Languages',
+      author: 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTxZOiswtkG4DnWMtXCFyw7_',
+      description: 'Published openly by T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana. Useful for: Paper-I - Language-II English (20 videos, a playlist on T-SAT Network). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-I - Language-II English (20 videos, a playlist on T-SAT Network)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-79', 'TGTET 2026 - PAPER - I (Language 2 - English)', 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTxZOiswtkG4DnWMtXCFyw7_', 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana')
+    },
+    {
+      id: 'res-tgtet-80', title: 'TGTET 2026 - PAPER - I (Mathematics)', subject: 'Mathematics',
+      author: 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTxvXGTgU8XPvPi6nxTrMSCn',
+      description: 'Published openly by T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana. Useful for: Paper-I - Mathematics (20 videos, a playlist on T-SAT Network). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-I - Mathematics (20 videos, a playlist on T-SAT Network)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-80', 'TGTET 2026 - PAPER - I (Mathematics)', 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTxvXGTgU8XPvPi6nxTrMSCn', 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana')
+    },
+    {
+      id: 'res-tgtet-81', title: 'TGTET 2026 - PAPER - I (EVS)', subject: 'Environmental Studies',
+      author: 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTzpgu954hIjmwoujsuQotOQ',
+      description: 'Published openly by T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana. Useful for: Paper-I - EVS (19 videos, a playlist on T-SAT Network). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-I - EVS (19 videos, a playlist on T-SAT Network)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-81', 'TGTET 2026 - PAPER - I (EVS)', 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTzpgu954hIjmwoujsuQotOQ', 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana')
+    },
+    {
+      id: 'res-tgtet-82', title: 'TGTET 2026 - PAPER - II (Telugu)', subject: 'Languages',
+      author: 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTzd6kTaLnyBfQVPGS9K6Ky5',
+      description: 'Published openly by T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana. Useful for: Paper-II - Language-I Telugu (34 videos, a playlist on T-SAT Network). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-II - Language-I Telugu (34 videos, a playlist on T-SAT Network)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-82', 'TGTET 2026 - PAPER - II (Telugu)', 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTzd6kTaLnyBfQVPGS9K6Ky5', 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana')
+    },
+    {
+      id: 'res-tgtet-83', title: 'TGTET 2026 - PAPER- II ENGLISH', subject: 'Languages',
+      author: 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTxs60thY5Lu97YL4uaH208R',
+      description: 'Published openly by T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana. Useful for: Paper-II - Language-II English (10 videos, a playlist on T-SAT Network). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-II - Language-II English (10 videos, a playlist on T-SAT Network)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-83', 'TGTET 2026 - PAPER- II ENGLISH', 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTxs60thY5Lu97YL4uaH208R', 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana')
+    },
+    {
+      id: 'res-tgtet-84', title: 'TGTET 2026 - PAPER - II (Language 2 - English)', subject: 'Languages',
+      author: 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTz_0j-oolDWact6eBSl0BEl',
+      description: 'Published openly by T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana. Useful for: Paper-II - Language-II English (8 videos, a playlist on T-SAT Network). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-II - Language-II English (8 videos, a playlist on T-SAT Network)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-84', 'TGTET 2026 - PAPER - II (Language 2 - English)', 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTz_0j-oolDWact6eBSl0BEl', 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana')
+    },
+    {
+      id: 'res-tgtet-85', title: 'TGTET 2026 - PAPER - II (Mathematics)', subject: 'Mathematics',
+      author: 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTxy80kIHUmSQ6teK_7cM4pm',
+      description: 'Published openly by T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana. Useful for: Paper-II - Mathematics & Science (Mathematics) (31 videos, a playlist on T-SAT Network). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-II - Mathematics & Science (Mathematics) (31 videos, a playlist on T-SAT Network)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-85', 'TGTET 2026 - PAPER - II (Mathematics)', 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTxy80kIHUmSQ6teK_7cM4pm', 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana')
+    },
+    {
+      id: 'res-tgtet-86', title: 'TGTET 2026 - PAPER - II (Science)', subject: 'Science & Technology',
+      author: 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTwCo_5PVjNI3zELuKsN3hdF',
+      description: 'Published openly by T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana. Useful for: Paper-II - Mathematics & Science (Science) (7 videos, a playlist on T-SAT Network). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-II - Mathematics & Science (Science) (7 videos, a playlist on T-SAT Network)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-86', 'TGTET 2026 - PAPER - II (Science)', 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTwCo_5PVjNI3zELuKsN3hdF', 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana')
+    },
+    {
+      id: 'res-tgtet-87', title: 'TGTET 2026 - PAPER - II (Physics)', subject: 'Science & Technology',
+      author: 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTxaXMYYC4EFm9ukK4WFnSA5',
+      description: 'Published openly by T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana. Useful for: Paper-II - Mathematics & Science (Physics) (20 videos, a playlist on T-SAT Network). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-II - Mathematics & Science (Physics) (20 videos, a playlist on T-SAT Network)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-87', 'TGTET 2026 - PAPER - II (Physics)', 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTxaXMYYC4EFm9ukK4WFnSA5', 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana')
+    },
+    {
+      id: 'res-tgtet-88', title: 'TGTET 2026 - PAPER - II (Chemistry)', subject: 'Science & Technology',
+      author: 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTzifbz5kdLi4mo9eTlek8lu',
+      description: 'Published openly by T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana. Useful for: Paper-II - Mathematics & Science (Chemistry) (16 videos, a playlist on T-SAT Network). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-II - Mathematics & Science (Chemistry) (16 videos, a playlist on T-SAT Network)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-88', 'TGTET 2026 - PAPER - II (Chemistry)', 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTzifbz5kdLi4mo9eTlek8lu', 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana')
+    },
+    {
+      id: 'res-tgtet-89', title: 'TG TET 2026 - PAPER II (BIOLOGY)', subject: 'Science & Technology',
+      author: 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTyEwpoyVk--ePTDtPfyQv9P',
+      description: 'Published openly by T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana. Useful for: Paper-II - Mathematics & Science (Biology) (19 videos, a playlist on T-SAT Network). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-II - Mathematics & Science (Biology) (19 videos, a playlist on T-SAT Network)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-89', 'TG TET 2026 - PAPER II (BIOLOGY)', 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTyEwpoyVk--ePTDtPfyQv9P', 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana')
+    },
+    {
+      id: 'res-tgtet-90', title: 'TGTET 2026 - PAPER - II (Social)', subject: 'Social Studies',
+      author: 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTx5RObNhQFhQR0oLmsPZiqq',
+      description: 'Published openly by T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana. Useful for: Paper-II - Social Studies (31 videos, a playlist on T-SAT Network). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-II - Social Studies (31 videos, a playlist on T-SAT Network)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-90', 'TGTET 2026 - PAPER - II (Social)', 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTx5RObNhQFhQR0oLmsPZiqq', 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana')
+    },
+    {
+      id: 'res-tgtet-91', title: 'TGTET - 2026', subject: 'Foundation Textbooks & Open Courses',
+      author: 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTzmmKK23cUL2Q47REziWxHE',
+      description: 'Published openly by T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana. Useful for: Paper-I & II - final revision (6 videos, a playlist on T-SAT Network). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-I & II - final revision (6 videos, a playlist on T-SAT Network)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-91', 'TGTET - 2026', 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTzmmKK23cUL2Q47REziWxHE', 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana')
+    },
+    {
+      id: 'res-tgtet-92', title: 'T-SAT Network', subject: 'Foundation Textbooks & Open Courses',
+      author: 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCcwlOchFc_WJKoCSgfDcGZQ',
+      description: 'Published openly by T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana. Useful for: All TG TET subjects (TGTET 2026 series); the channel also carries other recruitments. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'All TG TET subjects (TGTET 2026 series); the channel also carries other recruitments',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-92', 'T-SAT Network', 'https://www.youtube.com/channel/UCcwlOchFc_WJKoCSgfDcGZQ', 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana')
+    },
+    {
+      id: 'res-tgtet-93', title: 'Telangana - DIKSHA', subject: 'Foundation Textbooks & Open Courses',
+      author: 'DIKSHA, Ministry of Education, Government of India', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://diksha.gov.in/telangana/',
+      description: 'Published openly by DIKSHA, Ministry of Education, Government of India. Useful for: Paper-I & II - textbook-linked (QR) content, all subjects. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-I & II - textbook-linked (QR) content, all subjects',
+      officialTag: 'OFFICIAL OPEN RESOURCE', isEssential: true,
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-93', 'Telangana - DIKSHA', 'https://diksha.gov.in/telangana/', 'DIKSHA, Ministry of Education, Government of India')
+    },
+    {
+      id: 'res-tgtet-94', title: 'Diploma in Elementary Education (D.El.Ed) Study Material', subject: 'Child Development & Pedagogy',
+      author: 'National Institute of Open Schooling (NIOS), Ministry of Education, Government of India', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.nios.ac.in/dled/dledstudy.aspx',
+      description: 'Published openly by National Institute of Open Schooling (NIOS), Ministry of Education, Government of India. Useful for: Paper-I & II - Child Development & Pedagogy; subject pedagogy (language, maths, EVS, science, social science). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-I & II - Child Development & Pedagogy; subject pedagogy (language, maths, EVS, science, social science)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-94', 'Diploma in Elementary Education (D.El.Ed) Study Material', 'https://www.nios.ac.in/dled/dledstudy.aspx', 'National Institute of Open Schooling (NIOS), Ministry of Education, Government of India')
+    },
+    {
+      id: 'res-tgtet-95', title: 'D.El.Ed. Course-506 Understanding Children in Inclusive Context, Block-1: Child Growth and Development: Basics', subject: 'Child Development & Pedagogy',
+      author: 'National Institute of Open Schooling, NOIDA', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'STUDY_MATERIAL',
+      url: 'https://www.nios.ac.in/media/documents/dled/Block1_506.pdf', directPdfUrl: 'https://www.nios.ac.in/media/documents/dled/Block1_506.pdf',
+      description: 'Published openly by National Institute of Open Schooling, NOIDA. Useful for: Paper-I & II - Child Development & Pedagogy. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-I & II - Child Development & Pedagogy',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-95', 'D.El.Ed. Course-506 Understanding Children in Inclusive Context, Block-1: Child Growth and Development: Basics', 'https://www.nios.ac.in/media/documents/dled/Block1_506.pdf', 'National Institute of Open Schooling, NOIDA')
+    },
+    {
+      id: 'res-tgtet-96', title: 'D.El.Ed. Course-506 Understanding Children in Inclusive Context, Block-2: Personality Development of Children', subject: 'Child Development & Pedagogy',
+      author: 'National Institute of Open Schooling, NOIDA', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'STUDY_MATERIAL',
+      url: 'https://www.nios.ac.in/media/documents/dled/Block2_506.pdf', directPdfUrl: 'https://www.nios.ac.in/media/documents/dled/Block2_506.pdf',
+      description: 'Published openly by National Institute of Open Schooling, NOIDA. Useful for: Paper-I & II - Child Development & Pedagogy. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-I & II - Child Development & Pedagogy',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-96', 'D.El.Ed. Course-506 Understanding Children in Inclusive Context, Block-2: Personality Development of Children', 'https://www.nios.ac.in/media/documents/dled/Block2_506.pdf', 'National Institute of Open Schooling, NOIDA')
+    },
+    {
+      id: 'res-tgtet-97', title: 'D.El.Ed. Course-506 Understanding Children in Inclusive Context, Block-3: Inclusive Education', subject: 'Child Development & Pedagogy',
+      author: 'National Institute of Open Schooling, NOIDA', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'STUDY_MATERIAL',
+      url: 'https://www.nios.ac.in/media/documents/dled/Block3_506.pdf', directPdfUrl: 'https://www.nios.ac.in/media/documents/dled/Block3_506.pdf',
+      description: 'Published openly by National Institute of Open Schooling, NOIDA. Useful for: Paper-I & II - Child Development & Pedagogy. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-I & II - Child Development & Pedagogy',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-97', 'D.El.Ed. Course-506 Understanding Children in Inclusive Context, Block-3: Inclusive Education', 'https://www.nios.ac.in/media/documents/dled/Block3_506.pdf', 'National Institute of Open Schooling, NOIDA')
+    },
+    {
+      id: 'res-tgtet-98', title: 'D.El.Ed. Course-506 Understanding Children in Inclusive Context, Block-4: Girl Child and Child Right', subject: 'Child Development & Pedagogy',
+      author: 'National Institute of Open Schooling, NOIDA', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'STUDY_MATERIAL',
+      url: 'https://www.nios.ac.in/media/documents/dled/Block4_506.pdf', directPdfUrl: 'https://www.nios.ac.in/media/documents/dled/Block4_506.pdf',
+      description: 'Published openly by National Institute of Open Schooling, NOIDA. Useful for: Paper-I & II - Child Development & Pedagogy. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-I & II - Child Development & Pedagogy',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-98', 'D.El.Ed. Course-506 Understanding Children in Inclusive Context, Block-4: Girl Child and Child Right', 'https://www.nios.ac.in/media/documents/dled/Block4_506.pdf', 'National Institute of Open Schooling, NOIDA')
+    },
+    {
+      id: 'res-tgtet-99', title: 'D.El.Ed. Pedagogic Processes in Elementary Schools (Course 502), Block-1: Learning and Teaching Process', subject: 'Child Development & Pedagogy',
+      author: 'National Institute of Open Schooling, NOIDA', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'STUDY_MATERIAL',
+      url: 'https://www.nios.ac.in/media/documents/dled/Block1_502.pdf', directPdfUrl: 'https://www.nios.ac.in/media/documents/dled/Block1_502.pdf',
+      description: 'Published openly by National Institute of Open Schooling, NOIDA. Useful for: Paper-I & II - Child Development & Pedagogy. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-I & II - Child Development & Pedagogy',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-99', 'D.El.Ed. Pedagogic Processes in Elementary Schools (Course 502), Block-1: Learning and Teaching Process', 'https://www.nios.ac.in/media/documents/dled/Block1_502.pdf', 'National Institute of Open Schooling, NOIDA')
+    },
+    {
+      id: 'res-tgtet-100', title: 'Jangam Vishwanath Psychology Guru (Sri Vidya Publications) — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'Jangam Vishwanath Psychology Guru (Sri Vidya Publications) (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UC4KDQIL74u8kCIwiURsPrDg', youtubeUrl: 'https://www.youtube.com/channel/UC4KDQIL74u8kCIwiURsPrDg',
+      description: 'A free YouTube channel candidates widely follow (274K subscribers as read on its own page on 2026-10-06). Useful for: Paper-I & II - Child Development & Pedagogy (educational psychology, Telugu). Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with the Department of School Education, Telangana’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Paper-I & II - Child Development & Pedagogy (educational psychology, Telugu).',
+      officialTag: 'FREE ON YOUTUBE · 274K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-tgtet-100', 'Jangam Vishwanath Psychology Guru (Sri Vidya Publications)', 'https://www.youtube.com/channel/UC4KDQIL74u8kCIwiURsPrDg', '274K', 'the Department of School Education, Telangana')
+    },
+    {
+      id: 'res-tgtet-101', title: 'Ctet Telugu — free YouTube lessons', subject: 'Child Development & Pedagogy',
+      author: 'Ctet Telugu (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UC19fmbOecAVoxWthIhe5sgg', youtubeUrl: 'https://www.youtube.com/channel/UC19fmbOecAVoxWthIhe5sgg',
+      description: 'A free YouTube channel candidates widely follow (137K subscribers as read on its own page on 2026-10-06). Useful for: Paper-I & II - Child Development & Pedagogy (TS & AP TET). Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with the Department of School Education, Telangana’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Paper-I & II - Child Development & Pedagogy (TS & AP TET).',
+      officialTag: 'FREE ON YOUTUBE · 137K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-tgtet-101', 'Ctet Telugu', 'https://www.youtube.com/channel/UC19fmbOecAVoxWthIhe5sgg', '137K', 'the Department of School Education, Telangana')
+    },
+    {
+      id: 'res-tgtet-102', title: 'Telugu TET,CTET Classes — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'Telugu TET,CTET Classes (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCmgDpkHDfP-hYYVT6Z44wIA', youtubeUrl: 'https://www.youtube.com/channel/UCmgDpkHDfP-hYYVT6Z44wIA',
+      description: 'A free YouTube channel candidates widely follow (118K subscribers as read on its own page on 2026-10-06). Useful for: Paper-I & II - general TET/DSC preparation in Telugu. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with the Department of School Education, Telangana’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Paper-I & II - general TET/DSC preparation in Telugu.',
+      officialTag: 'FREE ON YOUTUBE · 118K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-tgtet-102', 'Telugu TET,CTET Classes', 'https://www.youtube.com/channel/UCmgDpkHDfP-hYYVT6Z44wIA', '118K', 'the Department of School Education, Telangana')
+    },
+    {
+      id: 'res-tgtet-103', title: 'Keshavarao Psychology Pedagogy — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'Keshavarao Psychology Pedagogy (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCTiCI_u7WsCp2HlvXeiq6UA', youtubeUrl: 'https://www.youtube.com/channel/UCTiCI_u7WsCp2HlvXeiq6UA',
+      description: 'A free YouTube channel candidates widely follow (82.1K subscribers as read on its own page on 2026-10-06). Useful for: Paper-I & II - CDP; EVS/Science pedagogy. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with the Department of School Education, Telangana’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Paper-I & II - CDP; EVS/Science pedagogy.',
+      officialTag: 'FREE ON YOUTUBE · 82.1K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-tgtet-103', 'Keshavarao Psychology Pedagogy', 'https://www.youtube.com/channel/UCTiCI_u7WsCp2HlvXeiq6UA', '82.1K', 'the Department of School Education, Telangana')
+    },
+    {
+      id: 'res-tgtet-104', title: 'TJR STUDIES — free YouTube lessons', subject: 'Languages',
+      author: 'TJR STUDIES (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCMadu57yimDNxXPErimmzng', youtubeUrl: 'https://www.youtube.com/channel/UCMadu57yimDNxXPErimmzng',
+      description: 'A free YouTube channel candidates widely follow (164K subscribers as read on its own page on 2026-10-06). Useful for: Paper-I & II - Language-I Telugu; CDP. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with the Department of School Education, Telangana’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Paper-I & II - Language-I Telugu; CDP.',
+      officialTag: 'FREE ON YOUTUBE · 164K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-tgtet-104', 'TJR STUDIES', 'https://www.youtube.com/channel/UCMadu57yimDNxXPErimmzng', '164K', 'the Department of School Education, Telangana')
+    },
+    {
+      id: 'res-tgtet-105', title: 'Telugu Online Teaching — free YouTube lessons', subject: 'Languages',
+      author: 'Telugu Online Teaching (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCXJIgaJ8vACGbSgZ0wJ33xw', youtubeUrl: 'https://www.youtube.com/channel/UCXJIgaJ8vACGbSgZ0wJ33xw',
+      description: 'A free YouTube channel candidates widely follow (101K subscribers as read on its own page on 2026-10-06). Useful for: Paper-I & II - Language-I Telugu (grammar: sandhulu, samasalu, chandassu). Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with the Department of School Education, Telangana’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Paper-I & II - Language-I Telugu (grammar: sandhulu, samasalu, chandassu).',
+      officialTag: 'FREE ON YOUTUBE · 101K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-tgtet-105', 'Telugu Online Teaching', 'https://www.youtube.com/channel/UCXJIgaJ8vACGbSgZ0wJ33xw', '101K', 'the Department of School Education, Telangana')
+    },
+    {
+      id: 'res-tgtet-106', title: 'Handbook Academy — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'Handbook Academy (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCYHnJVY6h2aaD43m9luXb8A', youtubeUrl: 'https://www.youtube.com/channel/UCYHnJVY6h2aaD43m9luXb8A',
+      description: 'A free YouTube channel candidates widely follow (91.9K subscribers as read on its own page on 2026-10-06). Useful for: Paper-I & II - Mathematics (reads the Telangana/AP Telugu Academy maths textbooks line by line). Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with the Department of School Education, Telangana’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Paper-I & II - Mathematics (reads the Telangana/AP Telugu Academy maths textbooks line by line).',
+      officialTag: 'FREE ON YOUTUBE · 91.9K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-tgtet-106', 'Handbook Academy', 'https://www.youtube.com/channel/UCYHnJVY6h2aaD43m9luXb8A', '91.9K', 'the Department of School Education, Telangana')
+    },
+    {
+      id: 'res-tgtet-107', title: 'English By Sandeep sir — free YouTube lessons', subject: 'Languages',
+      author: 'English By Sandeep sir (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCSbm-Icz_qSKyxjTNEzGlFQ', youtubeUrl: 'https://www.youtube.com/channel/UCSbm-Icz_qSKyxjTNEzGlFQ',
+      description: 'A free YouTube channel candidates widely follow (208K subscribers as read on its own page on 2026-10-06). Useful for: Paper-I & II - Language-II English (for Telugu-medium learners). Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with the Department of School Education, Telangana’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Paper-I & II - Language-II English (for Telugu-medium learners).',
+      officialTag: 'FREE ON YOUTUBE · 208K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-tgtet-107', 'English By Sandeep sir', 'https://www.youtube.com/channel/UCSbm-Icz_qSKyxjTNEzGlFQ', '208K', 'the Department of School Education, Telangana')
     }
   ],
   faqs: [
@@ -22392,6 +24380,442 @@ export const JEE_MAIN_2026_EXAM: Exam = {
       type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'RESULT', url: JEE_SOURCES.RES.url, directPdfUrl: JEE_SOURCES.RES.url,
       description: 'NTA’s declaration of the Paper 1 result for both sessions: the dates held, candidates registered and appeared, and the category-wise cut-off NTA score for JEE (Advanced) - 2026.',
       recommendedFor: 'Reading the cut-offs as NTA printed them.', officialTag: 'NTA PRESS RELEASE', linkVerifiedDate: JEE_CHECK, provenance: jeeP_resDeclared
+    },
+    // ---- added JEE_MAIN_2026_EXAM resources: linked, never stored; checked 2026-10-06
+    {
+      id: 'res-jee-01', title: 'NCERT-DIKSHA', subject: 'Foundation Textbooks & Open Courses',
+      author: 'NCERT', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://diksha.gov.in/ncert/',
+      description: 'Published openly by NCERT. Useful for: Paper 1 - NCERT textbooks for Physics, Chemistry, Mathematics (entry point to every book below). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 - NCERT textbooks for Physics, Chemistry, Mathematics (entry point to every book below)',
+      officialTag: 'OFFICIAL OPEN RESOURCE', isEssential: true,
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-01', 'NCERT-DIKSHA', 'https://diksha.gov.in/ncert/', 'NCERT')
+    },
+    {
+      id: 'res-jee-02', title: '(NEW) Physics Part 1 - NCERT Class 11 textbook (English)', subject: 'Physics',
+      author: 'NCERT', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://diksha.gov.in/play/collection/do_31307360994716057613258?contentType=TextBook',
+      description: 'Published openly by NCERT. Useful for: Paper 1 Physics - Class 11 ch. 1-7 (Units and Measurements to Gravitation). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 Physics - Class 11 ch. 1-7 (Units and Measurements to Gravitation)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-02', '(NEW) Physics Part 1 - NCERT Class 11 textbook (English)', 'https://diksha.gov.in/play/collection/do_31307360994716057613258?contentType=TextBook', 'NCERT')
+    },
+    {
+      id: 'res-jee-03', title: '(NEW) Physics Part II - NCERT Class 11 textbook (English)', subject: 'Physics',
+      author: 'NCERT', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://diksha.gov.in/play/collection/do_31307360987577548812153?contentType=TextBook',
+      description: 'Published openly by NCERT. Useful for: Paper 1 Physics - Class 11 ch. 8-14 (Mechanical Properties of Solids to Waves). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 Physics - Class 11 ch. 8-14 (Mechanical Properties of Solids to Waves)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-03', '(NEW) Physics Part II - NCERT Class 11 textbook (English)', 'https://diksha.gov.in/play/collection/do_31307360987577548812153?contentType=TextBook', 'NCERT')
+    },
+    {
+      id: 'res-jee-04', title: '(NEW) Chemistry Part-1 - NCERT Class 11 textbook (English)', subject: 'Chemistry',
+      author: 'NCERT', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://diksha.gov.in/play/collection/do_31307360991884083212735?contentType=TextBook',
+      description: 'Published openly by NCERT. Useful for: Paper 1 Chemistry - Class 11 ch. 1-6 (Basic Concepts to Equilibrium). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 Chemistry - Class 11 ch. 1-6 (Basic Concepts to Equilibrium)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-04', '(NEW) Chemistry Part-1 - NCERT Class 11 textbook (English)', 'https://diksha.gov.in/play/collection/do_31307360991884083212735?contentType=TextBook', 'NCERT')
+    },
+    {
+      id: 'res-jee-05', title: '(NEW) Chemistry Part-2 - NCERT Class 11 textbook (English)', subject: 'Chemistry',
+      author: 'NCERT', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://diksha.gov.in/play/collection/do_31307360993733836812154?contentType=TextBook',
+      description: 'Published openly by NCERT. Useful for: Paper 1 Chemistry - Class 11 ch. 7-9 (Redox, Organic Basic Principles, Hydrocarbons). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 Chemistry - Class 11 ch. 7-9 (Redox, Organic Basic Principles, Hydrocarbons)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-05', '(NEW) Chemistry Part-2 - NCERT Class 11 textbook (English)', 'https://diksha.gov.in/play/collection/do_31307360993733836812154?contentType=TextBook', 'NCERT')
+    },
+    {
+      id: 'res-jee-06', title: '(NEW) Physics Part I - NCERT Class 12 textbook (English)', subject: 'Physics',
+      author: 'NCERT', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://diksha.gov.in/play/collection/do_31307360994997043212822?contentType=TextBook',
+      description: 'Published openly by NCERT. Useful for: Paper 1 Physics - Class 12 ch. 1-8 (Electric Charges to EM Waves). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 Physics - Class 12 ch. 1-8 (Electric Charges to EM Waves)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-06', '(NEW) Physics Part I - NCERT Class 12 textbook (English)', 'https://diksha.gov.in/play/collection/do_31307360994997043212822?contentType=TextBook', 'NCERT')
+    },
+    {
+      id: 'res-jee-07', title: '(NEW) Physics Part II - NCERT Class 12 textbook (English)', subject: 'Physics',
+      author: 'NCERT', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://diksha.gov.in/play/collection/do_31307360987826585612731?contentType=TextBook',
+      description: 'Published openly by NCERT. Useful for: Paper 1 Physics - Class 12 ch. 9-14 (Ray Optics to Semiconductor Electronics). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 Physics - Class 12 ch. 9-14 (Ray Optics to Semiconductor Electronics)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-07', '(NEW) Physics Part II - NCERT Class 12 textbook (English)', 'https://diksha.gov.in/play/collection/do_31307360987826585612731?contentType=TextBook', 'NCERT')
+    },
+    {
+      id: 'res-jee-08', title: '(NEW) Chemistry Part 1 - NCERT Class 12 textbook (English)', subject: 'Chemistry',
+      author: 'NCERT', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://diksha.gov.in/play/collection/do_31307361000887910413075?contentType=TextBook',
+      description: 'Published openly by NCERT. Useful for: Paper 1 Chemistry - Class 12 ch. 1-5 (Solutions to Coordination Compounds). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 Chemistry - Class 12 ch. 1-5 (Solutions to Coordination Compounds)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-08', '(NEW) Chemistry Part 1 - NCERT Class 12 textbook (English)', 'https://diksha.gov.in/play/collection/do_31307361000887910413075?contentType=TextBook', 'NCERT')
+    },
+    {
+      id: 'res-jee-09', title: '(NEW) Chemistry Part II - NCERT Class 12 textbook (English)', subject: 'Chemistry',
+      author: 'NCERT', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://diksha.gov.in/play/collection/do_31307361001588326413385?contentType=TextBook',
+      description: 'Published openly by NCERT. Useful for: Paper 1 Chemistry - Class 12 ch. 6-10 (Haloalkanes to Biomolecules). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 Chemistry - Class 12 ch. 6-10 (Haloalkanes to Biomolecules)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-09', '(NEW) Chemistry Part II - NCERT Class 12 textbook (English)', 'https://diksha.gov.in/play/collection/do_31307361001588326413385?contentType=TextBook', 'NCERT')
+    },
+    {
+      id: 'res-jee-10', title: '(NEW) Mathematics Part I - NCERT Class 12 textbook (English)', subject: 'Mathematics',
+      author: 'NCERT', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://diksha.gov.in/play/collection/do_31307361013557657613661?contentType=TextBook',
+      description: 'Published openly by NCERT. Useful for: Paper 1 and Papers 2A/2B Mathematics - Class 12 ch. 1-6 (Relations to Application of Derivatives). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 and Papers 2A/2B Mathematics - Class 12 ch. 1-6 (Relations to Application of Derivatives)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-10', '(NEW) Mathematics Part I - NCERT Class 12 textbook (English)', 'https://diksha.gov.in/play/collection/do_31307361013557657613661?contentType=TextBook', 'NCERT')
+    },
+    {
+      id: 'res-jee-11', title: '(NEW) Mathematics Part II - NCERT Class 12 textbook (English)', subject: 'Mathematics',
+      author: 'NCERT', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://diksha.gov.in/play/collection/do_31307360997163827212155?contentType=TextBook',
+      description: 'Published openly by NCERT. Useful for: Paper 1 and Papers 2A/2B Mathematics - Class 12 ch. 7-13 (Integrals to Probability). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 and Papers 2A/2B Mathematics - Class 12 ch. 7-13 (Integrals to Probability)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-11', '(NEW) Mathematics Part II - NCERT Class 12 textbook (English)', 'https://diksha.gov.in/play/collection/do_31307360997163827212155?contentType=TextBook', 'NCERT')
+    },
+    {
+      id: 'res-jee-12', title: 'SATHEE - Free JEE, NEET, SSC, CUET Coaching by IIT Kanpur', subject: 'Foundation Textbooks & Open Courses',
+      author: 'Ministry of Education with IIT Kanpur', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'PRACTICE_TOOL',
+      url: 'https://sathee.iitk.ac.in/',
+      description: 'Published openly by Ministry of Education with IIT Kanpur. Useful for: Paper 1 - whole PCM syllabus (lectures, PYQs, mock tests, live doubt clearing); free, some parts need a free login. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 - whole PCM syllabus (lectures, PYQs, mock tests, live doubt clearing); free, some parts need a free login',
+      officialTag: 'OFFICIAL OPEN RESOURCE', isEssential: true,
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-12', 'SATHEE - Free JEE, NEET, SSC, CUET Coaching by IIT Kanpur', 'https://sathee.iitk.ac.in/', 'Ministry of Education with IIT Kanpur')
+    },
+    {
+      id: 'res-jee-13', title: 'Physics 11 | SATHEE JEE', subject: 'Physics',
+      author: 'SATHEE (Ministry of Education + IIT Kanpur)', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://sathee.iitk.ac.in/sathee-jee/jee/physics_11/',
+      description: 'Published openly by SATHEE (Ministry of Education + IIT Kanpur). Useful for: Paper 1 Physics - Class 11, chapter by chapter (e.g. Prof. Sanjeev Sanghi, Prof. H C Verma). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 Physics - Class 11, chapter by chapter (e.g. Prof. Sanjeev Sanghi, Prof. H C Verma)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-13', 'Physics 11 | SATHEE JEE', 'https://sathee.iitk.ac.in/sathee-jee/jee/physics_11/', 'SATHEE (Ministry of Education + IIT Kanpur)')
+    },
+    {
+      id: 'res-jee-14', title: 'Physics 12 | SATHEE JEE', subject: 'Physics',
+      author: 'SATHEE (Ministry of Education + IIT Kanpur)', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://sathee.iitk.ac.in/sathee-jee/jee/physics_12/',
+      description: 'Published openly by SATHEE (Ministry of Education + IIT Kanpur). Useful for: Paper 1 Physics - Class 12, chapter by chapter. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 Physics - Class 12, chapter by chapter',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-14', 'Physics 12 | SATHEE JEE', 'https://sathee.iitk.ac.in/sathee-jee/jee/physics_12/', 'SATHEE (Ministry of Education + IIT Kanpur)')
+    },
+    {
+      id: 'res-jee-15', title: 'Chemistry 11 | SATHEE JEE', subject: 'Chemistry',
+      author: 'SATHEE (Ministry of Education + IIT Kanpur)', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://sathee.iitk.ac.in/sathee-jee/jee/chemistry_11/',
+      description: 'Published openly by SATHEE (Ministry of Education + IIT Kanpur). Useful for: Paper 1 Chemistry - Class 11, chapter by chapter. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 Chemistry - Class 11, chapter by chapter',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-15', 'Chemistry 11 | SATHEE JEE', 'https://sathee.iitk.ac.in/sathee-jee/jee/chemistry_11/', 'SATHEE (Ministry of Education + IIT Kanpur)')
+    },
+    {
+      id: 'res-jee-16', title: 'Chemistry 12 | SATHEE JEE', subject: 'Chemistry',
+      author: 'SATHEE (Ministry of Education + IIT Kanpur)', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://sathee.iitk.ac.in/sathee-jee/jee/chemistry_12/',
+      description: 'Published openly by SATHEE (Ministry of Education + IIT Kanpur). Useful for: Paper 1 Chemistry - Class 12, chapter by chapter (e.g. Prof. Ashish Kumar Gupta, Prof. Mintu Halder). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 Chemistry - Class 12, chapter by chapter (e.g. Prof. Ashish Kumar Gupta, Prof. Mintu Halder)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-16', 'Chemistry 12 | SATHEE JEE', 'https://sathee.iitk.ac.in/sathee-jee/jee/chemistry_12/', 'SATHEE (Ministry of Education + IIT Kanpur)')
+    },
+    {
+      id: 'res-jee-17', title: 'Maths 11 | SATHEE JEE', subject: 'Mathematics',
+      author: 'SATHEE (Ministry of Education + IIT Kanpur)', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://sathee.iitk.ac.in/sathee-jee/jee/maths_11/',
+      description: 'Published openly by SATHEE (Ministry of Education + IIT Kanpur). Useful for: Paper 1 and Papers 2A/2B Mathematics - Class 11. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 and Papers 2A/2B Mathematics - Class 11',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-17', 'Maths 11 | SATHEE JEE', 'https://sathee.iitk.ac.in/sathee-jee/jee/maths_11/', 'SATHEE (Ministry of Education + IIT Kanpur)')
+    },
+    {
+      id: 'res-jee-18', title: 'Maths 12 | SATHEE JEE', subject: 'Mathematics',
+      author: 'SATHEE (Ministry of Education + IIT Kanpur)', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://sathee.iitk.ac.in/sathee-jee/jee/maths_12/',
+      description: 'Published openly by SATHEE (Ministry of Education + IIT Kanpur). Useful for: Paper 1 and Papers 2A/2B Mathematics - Class 12 (e.g. Dr. Saif K. Mohammed). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 and Papers 2A/2B Mathematics - Class 12 (e.g. Dr. Saif K. Mohammed)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-18', 'Maths 12 | SATHEE JEE', 'https://sathee.iitk.ac.in/sathee-jee/jee/maths_12/', 'SATHEE (Ministry of Education + IIT Kanpur)')
+    },
+    {
+      id: 'res-jee-19', title: 'JEE NCERT Exemplar | SATHEE JEE', subject: 'Foundation Textbooks & Open Courses',
+      author: 'SATHEE (Ministry of Education + IIT Kanpur)', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://sathee.iitk.ac.in/sathee-jee/ncert-books/jee-ncert-exemplar/',
+      description: 'Published openly by SATHEE (Ministry of Education + IIT Kanpur). Useful for: Paper 1 - NCERT Exemplar for Physics, Chemistry, Maths, Class 11 and 12. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 - NCERT Exemplar for Physics, Chemistry, Maths, Class 11 and 12',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-19', 'JEE NCERT Exemplar | SATHEE JEE', 'https://sathee.iitk.ac.in/sathee-jee/ncert-books/jee-ncert-exemplar/', 'SATHEE (Ministry of Education + IIT Kanpur)')
+    },
+    {
+      id: 'res-jee-20', title: 'JEE Mock Tests - SATHEE practice portal', subject: 'Foundation Textbooks & Open Courses',
+      author: 'SATHEE (Ministry of Education + IIT Kanpur)', type: 'ONLINE_TOOL', resourceFormat: 'ONLINE_TOOL', role: 'PRACTICE_TOOL',
+      url: 'https://sathee.iitk.ac.in/jee-mock-tests',
+      description: 'Published openly by SATHEE (Ministry of Education + IIT Kanpur). Useful for: Paper 1 - full and subject-wise mock tests. The page asks you to sign in to SATHEE (free) before a test starts. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 - full and subject-wise mock tests',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-20', 'JEE Mock Tests - SATHEE practice portal', 'https://sathee.iitk.ac.in/jee-mock-tests', 'SATHEE (Ministry of Education + IIT Kanpur)')
+    },
+    {
+      id: 'res-jee-21', title: 'Mock Test - NTA Test Practice Centre', subject: 'Foundation Textbooks & Open Courses',
+      author: 'National Testing Agency (Ministry of Education)', type: 'ONLINE_TOOL', resourceFormat: 'ONLINE_TOOL', role: 'PRACTICE_TOOL',
+      url: 'https://nta.ac.in/Quiz',
+      description: 'Published openly by National Testing Agency (Ministry of Education). Useful for: Paper 1 / Paper 2 - familiarity with the computer-based test (choose \'JEE-Main\'). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 / Paper 2 - familiarity with the computer-based test (choose \'JEE-Main\')',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-21', 'Mock Test - NTA Test Practice Centre', 'https://nta.ac.in/Quiz', 'National Testing Agency (Ministry of Education)')
+    },
+    {
+      id: 'res-jee-22', title: 'National Test Abhyas', subject: 'Foundation Textbooks & Open Courses',
+      author: 'National Testing Agency', type: 'ONLINE_TOOL', resourceFormat: 'ONLINE_TOOL', role: 'PRACTICE_TOOL',
+      url: 'https://nta.ac.in/Abhyas',
+      description: 'Published openly by National Testing Agency. Useful for: Paper 1 - daily mock tests for Engineering (app-based). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 - daily mock tests for Engineering (app-based)',
+      officialTag: 'OFFICIAL OPEN RESOURCE', isEssential: true,
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-22', 'National Test Abhyas', 'https://nta.ac.in/Abhyas', 'National Testing Agency')
+    },
+    {
+      id: 'res-jee-23', title: 'Content Based Lectures by [IIT PAL] - for JEE MAIN and NEET-UG', subject: 'Foundation Textbooks & Open Courses',
+      author: 'National Testing Agency', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://nta.ac.in/LecturesContent',
+      description: 'Published openly by National Testing Agency. Useful for: Paper 1 - Physics, Chemistry, Mathematics lecture channels. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 - Physics, Chemistry, Mathematics lecture channels',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-23', 'Content Based Lectures by [IIT PAL] - for JEE MAIN and NEET-UG', 'https://nta.ac.in/LecturesContent', 'National Testing Agency')
+    },
+    {
+      id: 'res-jee-24', title: 'SATHEE (Competitive Exam) - SWAYAM PRABHA', subject: 'Foundation Textbooks & Open Courses',
+      author: 'SWAYAM PRABHA (INFLIBNET Centre, Ministry of Education)', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.swayamprabha.gov.in/about/competitive',
+      description: 'Published openly by SWAYAM PRABHA (INFLIBNET Centre, Ministry of Education). Useful for: Paper 1 - SATHEE\'s free 24x7 engineering-entrance channel (DTH and web). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 - SATHEE\'s free 24x7 engineering-entrance channel (DTH and web)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-24', 'SATHEE (Competitive Exam) - SWAYAM PRABHA', 'https://www.swayamprabha.gov.in/about/competitive', 'SWAYAM PRABHA (INFLIBNET Centre, Ministry of Education)')
+    },
+    {
+      id: 'res-jee-25', title: 'CH 22: IIT Delhi: Physics [ IIT-PAL]', subject: 'Physics',
+      author: 'IIT-PAL / SWAYAM PRABHA Channel 22 (IIT Delhi)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCwNr8peMxn8-Nc2V_RZsRvg',
+      description: 'Published openly by IIT-PAL / SWAYAM PRABHA Channel 22 (IIT Delhi). Useful for: Paper 1 Physics - topic playlists (kinematics, rotation, electrostatics, EM waves, optics ...). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 Physics - topic playlists (kinematics, rotation, electrostatics, EM waves, optics ...)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-25', 'CH 22: IIT Delhi: Physics [ IIT-PAL]', 'https://www.youtube.com/channel/UCwNr8peMxn8-Nc2V_RZsRvg', 'IIT-PAL / SWAYAM PRABHA Channel 22 (IIT Delhi)')
+    },
+    {
+      id: 'res-jee-26', title: 'CH-22 Chemistry [ IIT-PAL]', subject: 'Chemistry',
+      author: 'IIT-PAL / SWAYAM PRABHA Channel 22', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UC3Zv0XxBjYlWMjbMv8ODE8Q',
+      description: 'Published openly by IIT-PAL / SWAYAM PRABHA Channel 22. Useful for: Paper 1 Chemistry - chapter playlists (atomic structure to biomolecules). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 Chemistry - chapter playlists (atomic structure to biomolecules)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-26', 'CH-22 Chemistry [ IIT-PAL]', 'https://www.youtube.com/channel/UC3Zv0XxBjYlWMjbMv8ODE8Q', 'IIT-PAL / SWAYAM PRABHA Channel 22')
+    },
+    {
+      id: 'res-jee-27', title: 'Ch-22 Mathematics [ IIT-PAL]', subject: 'Mathematics',
+      author: 'IIT-PAL / SWAYAM PRABHA Channel 22', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCfz4W0rG8HoyyrrK6qNc1rA',
+      description: 'Published openly by IIT-PAL / SWAYAM PRABHA Channel 22. Useful for: Paper 1 and Papers 2A/2B Mathematics - topic playlists (complex numbers, matrices, calculus, probability ...). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 and Papers 2A/2B Mathematics - topic playlists (complex numbers, matrices, calculus, probability ...)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-27', 'Ch-22 Mathematics [ IIT-PAL]', 'https://www.youtube.com/channel/UCfz4W0rG8HoyyrrK6qNc1rA', 'IIT-PAL / SWAYAM PRABHA Channel 22')
+    },
+    {
+      id: 'res-jee-28', title: 'SATHEE live classes — the Prutor Ai channel', subject: 'Foundation Textbooks & Open Courses',
+      author: 'Prutor Ai (runs SATHEE’s lessons; linked from sathee.iitk.ac.in)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCCCGFJEyhssBpgFGmNTfzZQ',
+      description: 'SATHEE’s live classes and lectures (JEE among other exams), on the YouTube channel “Prutor Ai”. SATHEE is an initiative of IIT Kanpur and the Ministry of Education, and its website links to this channel — but the channel is run by Prutor Ai, not by IIT Kanpur or the Ministry, so GovOS does not present it as an official source. GovOS links to it and stores nothing.',
+      recommendedFor: 'Paper 1 - SATHEE live classes and lectures (JEE among other exams)',
+      officialTag: 'LINKED FROM SATHEE · NOT A GOVERNMENT CHANNEL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: {
+        id: 'prov-res-jee-28', documentTitle: 'Prutor Ai (YouTube channel)', officialUrl: 'https://www.youtube.com/channel/UCCCGFJEyhssBpgFGmNTfzZQ', publishedDate: '',
+        verifiedDate: RESOURCE_CHECK, verifiedBy: `GovOS link check — channel identity read from its own page on ${RESOURCE_CHECK}; sathee.iitk.ac.in links to it`,
+        taxonomyType: 'RECOMMENDATION', verificationLevel: 'UNDER_VERIFICATION',
+        excerptText: 'The channel describes itself as “SATHEE - An Initiative by IIT Kanpur & Ministry of Education (Govt. of India)” and SATHEE’s website links to it, but it is run by Prutor Ai. Being linked from an official site does not make it official; GovOS has not fact-checked its lessons, and NTA’s documents govern wherever a lesson disagrees.'
+      }
+    },
+    {
+      id: 'res-jee-29', title: 'NCERT Physics Class 11 | Khan Academy', subject: 'Physics',
+      author: 'Khan Academy (non-profit)', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.khanacademy.org/science/in-in-class11th-physics',
+      description: 'Published openly by Khan Academy (non-profit). Useful for: Paper 1 Physics - Class 11 (units follow the NCERT book). GovOS links to the publisher’s own copy and stores nothing. It is not a government publication.',
+      recommendedFor: 'Paper 1 Physics - Class 11 (units follow the NCERT book)',
+      officialTag: 'OPEN RESOURCE (TRUSTED, NOT A GOVERNMENT BODY)',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: { ...openResource('prov-res-jee-29', 'NCERT Physics Class 11 | Khan Academy', 'https://www.khanacademy.org/science/in-in-class11th-physics', 'Khan Academy (non-profit)'), taxonomyType: 'RECOMMENDATION', verificationLevel: 'UNDER_VERIFICATION' }
+    },
+    {
+      id: 'res-jee-30', title: 'NCERT Physics Class 12 | Khan Academy', subject: 'Physics',
+      author: 'Khan Academy (non-profit)', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.khanacademy.org/science/in-in-class-12th-physics-india',
+      description: 'Published openly by Khan Academy (non-profit). Useful for: Paper 1 Physics - Class 12, units 1-14. GovOS links to the publisher’s own copy and stores nothing. It is not a government publication.',
+      recommendedFor: 'Paper 1 Physics - Class 12, units 1-14',
+      officialTag: 'OPEN RESOURCE (TRUSTED, NOT A GOVERNMENT BODY)',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: { ...openResource('prov-res-jee-30', 'NCERT Physics Class 12 | Khan Academy', 'https://www.khanacademy.org/science/in-in-class-12th-physics-india', 'Khan Academy (non-profit)'), taxonomyType: 'RECOMMENDATION', verificationLevel: 'UNDER_VERIFICATION' }
+    },
+    {
+      id: 'res-jee-31', title: 'NCERT Chemistry Class 11 | Khan Academy', subject: 'Chemistry',
+      author: 'Khan Academy (non-profit)', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.khanacademy.org/science/class-11-chemistry-india',
+      description: 'Published openly by Khan Academy (non-profit). Useful for: Paper 1 Chemistry - Class 11, units 1-9. GovOS links to the publisher’s own copy and stores nothing. It is not a government publication.',
+      recommendedFor: 'Paper 1 Chemistry - Class 11, units 1-9',
+      officialTag: 'OPEN RESOURCE (TRUSTED, NOT A GOVERNMENT BODY)',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: { ...openResource('prov-res-jee-31', 'NCERT Chemistry Class 11 | Khan Academy', 'https://www.khanacademy.org/science/class-11-chemistry-india', 'Khan Academy (non-profit)'), taxonomyType: 'RECOMMENDATION', verificationLevel: 'UNDER_VERIFICATION' }
+    },
+    {
+      id: 'res-jee-32', title: 'NCERT Chemistry Class 12 | Khan Academy', subject: 'Chemistry',
+      author: 'Khan Academy (non-profit)', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.khanacademy.org/science/class-12-chemistry-india',
+      description: 'Published openly by Khan Academy (non-profit). Useful for: Paper 1 Chemistry - Class 12, units 1-10. GovOS links to the publisher’s own copy and stores nothing. It is not a government publication.',
+      recommendedFor: 'Paper 1 Chemistry - Class 12, units 1-10',
+      officialTag: 'OPEN RESOURCE (TRUSTED, NOT A GOVERNMENT BODY)',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: { ...openResource('prov-res-jee-32', 'NCERT Chemistry Class 12 | Khan Academy', 'https://www.khanacademy.org/science/class-12-chemistry-india', 'Khan Academy (non-profit)'), taxonomyType: 'RECOMMENDATION', verificationLevel: 'UNDER_VERIFICATION' }
+    },
+    {
+      id: 'res-jee-33', title: 'NCERT Math Class 11 | Khan Academy', subject: 'Mathematics',
+      author: 'Khan Academy (non-profit)', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.khanacademy.org/math/ncert-class-11',
+      description: 'Published openly by Khan Academy (non-profit). Useful for: Paper 1 and Papers 2A/2B Mathematics - Class 11. GovOS links to the publisher’s own copy and stores nothing. It is not a government publication.',
+      recommendedFor: 'Paper 1 and Papers 2A/2B Mathematics - Class 11',
+      officialTag: 'OPEN RESOURCE (TRUSTED, NOT A GOVERNMENT BODY)',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: { ...openResource('prov-res-jee-33', 'NCERT Math Class 11 | Khan Academy', 'https://www.khanacademy.org/math/ncert-class-11', 'Khan Academy (non-profit)'), taxonomyType: 'RECOMMENDATION', verificationLevel: 'UNDER_VERIFICATION' }
+    },
+    {
+      id: 'res-jee-34', title: 'NCERT Math Class 12 | Khan Academy', subject: 'Mathematics',
+      author: 'Khan Academy (non-profit)', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.khanacademy.org/math/ncert-class-12',
+      description: 'Published openly by Khan Academy (non-profit). Useful for: Paper 1 and Papers 2A/2B Mathematics - Class 12, units 1-13. GovOS links to the publisher’s own copy and stores nothing. It is not a government publication.',
+      recommendedFor: 'Paper 1 and Papers 2A/2B Mathematics - Class 12, units 1-13',
+      officialTag: 'OPEN RESOURCE (TRUSTED, NOT A GOVERNMENT BODY)',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: { ...openResource('prov-res-jee-34', 'NCERT Math Class 12 | Khan Academy', 'https://www.khanacademy.org/math/ncert-class-12', 'Khan Academy (non-profit)'), taxonomyType: 'RECOMMENDATION', verificationLevel: 'UNDER_VERIFICATION' }
+    },
+    {
+      id: 'res-jee-35', title: 'JEE Wallah — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'JEE Wallah (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCVJU_IChPMOe8RWkdVQjtfQ', youtubeUrl: 'https://www.youtube.com/channel/UCVJU_IChPMOe8RWkdVQjtfQ',
+      description: 'A free YouTube channel candidates widely follow (3.39M subscribers as read on its own page on 2026-10-06). Useful for: Paper 1 - Physics, Chemistry, Maths (PW\'s JEE channel). Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with NTA’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Paper 1 - Physics, Chemistry, Maths (PW\'s JEE channel).',
+      officialTag: 'FREE ON YOUTUBE · 3.39M SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-jee-35', 'JEE Wallah', 'https://www.youtube.com/channel/UCVJU_IChPMOe8RWkdVQjtfQ', '3.39M', 'NTA')
+    },
+    {
+      id: 'res-jee-36', title: 'Vedantu JEE Made Ejee — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'Vedantu JEE Made Ejee (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UC91RZv71f8p0VV2gaFI07pg', youtubeUrl: 'https://www.youtube.com/channel/UC91RZv71f8p0VV2gaFI07pg',
+      description: 'A free YouTube channel candidates widely follow (2.51M subscribers as read on its own page on 2026-10-06). Useful for: Paper 1 - Physics, Chemistry, Maths. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with NTA’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Paper 1 - Physics, Chemistry, Maths.',
+      officialTag: 'FREE ON YOUTUBE · 2.51M SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-jee-36', 'Vedantu JEE Made Ejee', 'https://www.youtube.com/channel/UC91RZv71f8p0VV2gaFI07pg', '2.51M', 'NTA')
+    },
+    {
+      id: 'res-jee-37', title: 'Unacademy JEE Official — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'Unacademy JEE Official (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCZNNx4KYmCkwxCLdsHyWqQA', youtubeUrl: 'https://www.youtube.com/channel/UCZNNx4KYmCkwxCLdsHyWqQA',
+      description: 'A free YouTube channel candidates widely follow (2.26M subscribers as read on its own page on 2026-10-06). Useful for: Paper 1 - Physics, Chemistry, Maths. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with NTA’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Paper 1 - Physics, Chemistry, Maths.',
+      officialTag: 'FREE ON YOUTUBE · 2.26M SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-jee-37', 'Unacademy JEE Official', 'https://www.youtube.com/channel/UCZNNx4KYmCkwxCLdsHyWqQA', '2.26M', 'NTA')
+    },
+    {
+      id: 'res-jee-38', title: 'Mohit Tyagi — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'Mohit Tyagi (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCpyc1eTpM1cA3P0ZWym4clw', youtubeUrl: 'https://www.youtube.com/channel/UCpyc1eTpM1cA3P0ZWym4clw',
+      description: 'A free YouTube channel candidates widely follow (2.22M subscribers as read on its own page on 2026-10-06). Useful for: Paper 1 - mainly Mathematics, with Physics and Chemistry. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with NTA’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Paper 1 - mainly Mathematics, with Physics and Chemistry.',
+      officialTag: 'FREE ON YOUTUBE · 2.22M SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-jee-38', 'Mohit Tyagi', 'https://www.youtube.com/channel/UCpyc1eTpM1cA3P0ZWym4clw', '2.22M', 'NTA')
+    },
+    {
+      id: 'res-jee-39', title: 'Physics Galaxy — free YouTube lessons', subject: 'Physics',
+      author: 'Physics Galaxy (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCgBmfNILAlXmGv3CsJ8oFJA', youtubeUrl: 'https://www.youtube.com/channel/UCgBmfNILAlXmGv3CsJ8oFJA',
+      description: 'A free YouTube channel candidates widely follow (1.38M subscribers as read on its own page on 2026-10-06). Useful for: Paper 1 Physics. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with NTA’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Paper 1 Physics.',
+      officialTag: 'FREE ON YOUTUBE · 1.38M SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-jee-39', 'Physics Galaxy', 'https://www.youtube.com/channel/UCgBmfNILAlXmGv3CsJ8oFJA', '1.38M', 'NTA')
+    },
+    {
+      id: 'res-jee-40', title: 'Motion - NV Sir — free YouTube lessons', subject: 'Physics',
+      author: 'Motion - NV Sir (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCVUjsfIErUfWI57ep1L7B6Q', youtubeUrl: 'https://www.youtube.com/channel/UCVUjsfIErUfWI57ep1L7B6Q',
+      description: 'A free YouTube channel candidates widely follow (1.03M subscribers as read on its own page on 2026-10-06). Useful for: Paper 1 - Physics mainly. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with NTA’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Paper 1 - Physics mainly.',
+      officialTag: 'FREE ON YOUTUBE · 1.03M SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-jee-40', 'Motion - NV Sir', 'https://www.youtube.com/channel/UCVUjsfIErUfWI57ep1L7B6Q', '1.03M', 'NTA')
+    },
+    {
+      id: 'res-jee-41', title: 'MathonGo — free YouTube lessons', subject: 'Mathematics',
+      author: 'MathonGo (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCNn75PJi2J5OmZGuLCZGJPg', youtubeUrl: 'https://www.youtube.com/channel/UCNn75PJi2J5OmZGuLCZGJPg',
+      description: 'A free YouTube channel candidates widely follow (538K subscribers as read on its own page on 2026-10-06). Useful for: Paper 1 Mathematics (also used for 2A/2B Mathematics). Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with NTA’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Paper 1 Mathematics (also used for 2A/2B Mathematics).',
+      officialTag: 'FREE ON YOUTUBE · 538K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-jee-41', 'MathonGo', 'https://www.youtube.com/channel/UCNn75PJi2J5OmZGuLCZGJPg', '538K', 'NTA')
+    },
+    {
+      id: 'res-jee-42', title: 'Sachin Rana [IITB] — free YouTube lessons', subject: 'Chemistry',
+      author: 'Sachin Rana [IITB] (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UC1-ZdFLBukC6fTZ8QRWvpDw', youtubeUrl: 'https://www.youtube.com/channel/UC1-ZdFLBukC6fTZ8QRWvpDw',
+      description: 'A free YouTube channel candidates widely follow (287K subscribers as read on its own page on 2026-10-06). Useful for: Paper 1 Chemistry. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with NTA’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Paper 1 Chemistry.',
+      officialTag: 'FREE ON YOUTUBE · 287K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-jee-42', 'Sachin Rana [IITB]', 'https://www.youtube.com/channel/UC1-ZdFLBukC6fTZ8QRWvpDw', '287K', 'NTA')
+    },
+    {
+      id: 'res-jee-43', title: 'PW Design & Arch — free YouTube lessons', subject: 'Architecture & Planning Aptitude',
+      author: 'PW Design & Arch (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCNxT9vCRqFKeYVuwUWImY8w', youtubeUrl: 'https://www.youtube.com/channel/UCNxT9vCRqFKeYVuwUWImY8w',
+      description: 'A free YouTube channel candidates widely follow (53.3K subscribers as read on its own page on 2026-10-06). Useful for: Paper 2A B.Arch / 2B B.Planning - aptitude and drawing (description lists NATA and JEE Main B.Arch). Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with NTA’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Paper 2A B.Arch / 2B B.Planning - aptitude and drawing (description lists NATA and JEE Main B.Arch).',
+      officialTag: 'FREE ON YOUTUBE · 53.3K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-jee-43', 'PW Design & Arch', 'https://www.youtube.com/channel/UCNxT9vCRqFKeYVuwUWImY8w', '53.3K', 'NTA')
     }
   ],
   faqs: [

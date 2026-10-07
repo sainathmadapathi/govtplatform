@@ -3,7 +3,8 @@
 Single-page React app (light, card-based UI) that turns fragmented Indian government
 recruitment notifications into a verified, provenance-cited, personalized exam journey.
 SSC CGL 2026 is the "Golden Journey" reference exam and UPSC CSE 2026 is authored to the
-same depth from UPSC's own documents; IBPS PO and the two APPSC exams are thin skeletons; the Special
+same depth from UPSC's own documents; APPSC Group-I 2026 is authored from the Commission's Notification No. 07/2026;
+IBPS PO and APPSC Group-II are thin skeletons; the Special
 TG TET 2026-II (Telangana's Teacher Eligibility Test for in-service teachers) is authored from the
 Department of School Education's own documents and is the register's first eligibility test; JEE (Main)
 2026 is authored from the National Testing Agency's own documents and is its first admission test.
@@ -323,7 +324,8 @@ Four candidate-facing gaps on TGPSC, each fixed for every machine-read exam:
 - `SSC_CGL_EXAM` (40 posts, 12 dates incl. four superseded, 4 stages, 22 syllabus topics,
   3 roadmap tracks, 38 resources, 6 FAQs, admit-card events, full application guide),
   `UPSC_CSE_EXAM`, `IBPS_PO_EXAM`, `APPSC_*`, `ALL_EXAMS`. **SSC CGL and UPSC CSE are the
-  two authored exams**; IBPS and APPSC are skeletons. Never fill a thin exam with material
+  two authored exams** (APPSC Group-I, TG TET and JEE (Main) have since been authored too; IBPS and APPSC Group-II are
+  skeletons). Never fill a thin exam with material
   derived from another exam — author it from that authority's own documents, as UPSC was.
 - **`UPSC_CSE_EXAM` was read from UPSC's own documents on 2026-09-12**, every one fetched
   from upsc.gov.in and named in a provenance: Examination Notice No. 05/2026-CSE (4 Feb
@@ -380,8 +382,50 @@ Four candidate-facing gaps on TGPSC, each fixed for every machine-read exam:
   six category-wise **JEE (Advanced) eligibility percentiles** as value-only `cutoffsHistory` rows (`cutoffType`
   says what they are; the marks-based self-assessment never compares a mark to a percentile); 64 syllabus topics
   plus a `syllabusTree`; a three-step practice form with fifteen cited traps; nine NTA question papers (Session 2,
-  Paper 1) and three final answer keys as role-tagged links; twelve FAQs. No learning material: the bulletin names
-  none, so the library's empty state stands. csab.nic.in timed out from this machine and is not linked.
+  Paper 1) and three final answer keys as role-tagged links; twelve FAQs. csab.nic.in timed out from this machine
+  and is not linked. Its learning library is in the next bullet.
+- **Resource libraries for IBPS PO, APPSC Group-I / Group-II, TG TET and JEE (Main), added 2026-10-06** — every
+  link opened from the authoring machine (HTTP 200, final address compared with the one requested), every official
+  page's publisher read from the page itself, every YouTube channel's identity and subscriber count read from its own
+  `/channel/UC…` page (several obvious `@handles` were impostors or dead). Built with `openResource()` (FACT /
+  OFFICIALLY_VERIFIED, the quote is the page's own title, no publication date) and `coachingSource()` (RECOMMENDATION /
+  UNDER_VERIFICATION, naming the exam's own authority as the one that governs — `communitySource()` is SSC-worded and
+  stays SSC's). Each card carries an explicit `role`, so placement follows the one model: notifications, syllabus
+  pages, old papers and keys go to their sections, only study material, lessons and practice tools to the library.
+  Learning entries: IBPS 37 (RBI, India Budget / Economic Survey, PIB, DFS, DICGC, NIOS lessons, NCERT maths on
+  DIKSHA, NCFE, 8 coaching channels); APPSC Group-I 21 / Group-II 20 (AP budget volumes, the Constitution, the AP
+  Reorganisation Act from MHA, NIOS, ISRO, PRS's budget analysis, 8 Telugu coaching channels; each item filtered to the
+  exam it serves); TG TET 34
+  (T-SAT's own TG TET 2026 playlists per paper and subject — the Government of Telangana's channel — NIOS D.El.Ed,
+  DIKSHA Telangana, 8 coaching channels); JEE 43 (NCERT Class 11–12 books on DIKSHA, SATHEE — Ministry of Education
+  with IIT Kanpur — NTA's mock test and Abhyas, IIT-PAL channels, Khan Academy, 9 coaching channels). SATHEE's lessons
+  are on a YouTube channel run by Prutor Ai, which sathee.iitk.ac.in links to; it is labelled "linked from SATHEE · not a
+  government channel" (RECOMMENDATION / UNDER_VERIFICATION) — a link from an official site does not make it official.
+  **Removed on 2026-10-07** because they stopped answering from this machine (connection timed out, in curl and in the
+  browser): apsdps.ap.gov.in (AP Socio Economic Survey 2024-25, Swarna Andhra @2047, the Publications page) and
+  cse.ap.gov.in (AP school textbooks) — 4 cards from each APPSC library; add them back once they open. Left out on
+  purpose: SCERT Telangana's 74 textbook PDFs (the host dropped ~70% of connections — add them once they open from
+  the candidate's network), DIKSHA's "English" Class 11 Maths book (it serves NCERT's Hindi chapters), a budget PDF
+  whose address contains a literal "...", India Year Book (sold, not free), and every re-hosted copy. A study page its
+  publisher titles "Syllabus" (NIOS's course outline) is retitled "course material", so "what is the syllabus" never
+  hands it over.
+- **`APPSC_GROUP1_EXAM` was read on 2026-10-07 from APPSC Notification No. 07/2026 (06/10/2026)**, the Commission's
+  66-page PDF (text layer; the fee amounts and a few words the text layer drops were read from the page images),
+  cited by page with `apg1(id, page, clause, excerpt)`. **It replaced a record with no APPSC document behind it** — a
+  January 2026 notification, an April 2026 Prelims, 89 vacancies, a 2024 cut-off of 84.50, an "OFFICIAL_PYQ" and a
+  photo spec of 3.5 × 4.5 cm, all cited to one homepage provenance (`appscProvenance`, which Group-II still uses). The
+  record: 166 vacancies (5 carried forward) in 13 posts with their age bands (18–44; DSP (Civil) 21–30; DSP
+  (Communications) 18–30, which also needs a B.E./B.Tech. in ECE/ETE/Radio — a post `ruleGroup`) and pay scales;
+  applications 06–27/10/2026 11:59 PM, corrections for 7 days after at ₹100 each (a tentative date, since it is a
+  rule); the Screening Test on 24/01/2027 and **no Mains date** ("announced later"); three stages — a Screening Test of
+  two 120-mark papers that only shortlists (50 per vacancy), a descriptive Mains (Telugu and English qualifying at
+  40/35/30%, Papers I–V 750 marks) and a 75-mark interview (825); age relaxations as printed (SC, ST, BC and EWS 5,
+  PBD 10, service-based ones as conditions); 86 syllabus topics from Annexure-II plus a `syllabusTree` in its layout;
+  the fee (₹250 processing + ₹120 examination, the latter exempt for SC/ST/BC/PBD/ESM, white-card families and
+  unemployed youth); BC Non-Creamy Layer and EWS certificate windows; Hall Tickets as a release rule; exam-day rules
+  from Annexure-III; 14 FAQs. No cut-offs and no practice questions: APPSC publishes neither for this cycle. The
+  Mains Paper-II node uses the syllabus heading "History, Culture and Geography…" (the scheme table prints
+  "History and Cultural…"), which is what lets the study plan split its 150 marks between History and Geography.
 - **Resource library (SSC CGL only), links only.** `officialSource()` / `pendingSource()` build
   `DataProvenance` for external links. Every `OFFICIAL_PORTAL` entry was HTTP-checked on 2026-09-09 and carries
   `linkVerifiedDate`; `ncert.nic.in` timed out from the authoring machine so it is marked
@@ -1479,6 +1523,33 @@ GovOS keeps adding exams, so a fix is a data-driven rule or it is not done. Befo
   its stage-one plan, and "for  is on record" reads "for your category". The no-engine practice page lists the
   authority's own question-paper PDFs (`OfficialPapersPanel`). Checks: `eligibility_test_check.ts` (JEE and a
   synthetic admission test), `results_pathways_check.ts` (one-stage exams).
+- **Every exam gets a study plan, built from its record.** Section 07 opens on `GeneratedStudyPlan`: the candidate
+  picks 60/90/120/180 days (or the days left to a firm, exact exam date — `studyPlanDefaultDays`) and hours a day;
+  `generateStudyPlan` splits the days ~60/25/15 into learning, a second pass and full papers on the clock, and lays
+  learning out week by week with every subject moving together. `studyPlanUnits` decides the weights and says how in
+  `basis`: a subject's share follows the marks of the pattern stage that names most subjects (`patternMarkNodes`,
+  `patternNodesFor`; a qualifying paper and an unnamed subject take the average — a screening stage "not counted for
+  merit" is still competitive), a topic's share its `weightagePercentage` where every topic of the subject has one, else
+  its sub-topic count; a syllabus under `PLAN_THIN_SYLLABUS` (10) topics is planned from the pattern's sections and
+  modules (printed question counts where given). Alternative papers ("Paper X · Subject": JEE, TG TET) are a choice
+  (`studyPlanTracks`); subjects can be left out; ticked syllabus topics drop out and the rest is re-planned. Choices in
+  `govos_study_plan`. `PreparationPlanner` shows only authored tracks with phases (SSC, UPSC). Check: `study_plan_check.ts`.
+- **Placeholder records say they are placeholders.** IBPS PO and APPSC Group-II were written before GovOS read their
+  authorities' documents; their one shared provenance each (`ibpsProvenance`, `appscProvenance`) named an invented
+  advertisement page and a "Senior Verification Officer #108 / #404" and claimed OFFICIALLY_VERIFIED. Both now say "No …
+  document read yet (placeholder record)", with no URL, no quote and UNDER_VERIFICATION, so every fact on them reads "No
+  official source on record — not verified" and carries no Evidence button. A provenance with no source and no words is
+  counted as unverified, never as "not in its quoted source" (`withClaim`). The home hero's countdown stickers take only
+  dates verified by their own evidence, so a placeholder date is never advertised there. Author both from their own
+  notifications to fix them properly.
+- **"Is there an interview?"** is its own intent (`interview`), answered from the record's stages — a stage whose tier is
+  INTERVIEW or whose name says interview / personality test — with its marks and rule, or "No interview is on record"
+  with the stages listed.
+- **The home page lists what the register holds.** The exam deck is one card per exam in `exams` (register plus
+  published registry), its sketch from the record (`authoritySketchOf`: category, then career fields — teaching and
+  engineering got drawings of their own); the hero chips open each held exam. It used to be five hand-written cards
+  (one an exam GovOS does not hold, RRB NTPC) found by `id.includes(...)`. `namedResourceAnswer` ignores the words that
+  only name the exam (its code, its authority's acronym): "syllabus for ibps po" no longer hands over the IBPS notice.
 - **The proof is `future_exam_check.ts`.** It runs an invented exam (`future_exam_fixture.ts`, typed
   against `Exam` by `check:frontend`) through the unchanged assistant, banners, exam page and paper rules,
   checks no other exam's words or evidence reach it, and scans the functions above for exam ids,
@@ -2118,7 +2189,7 @@ Remaining by design, not defects:
   map sends candidates to the wrong tab, which is worse than no answer.
 - **The past-paper corpus is 35 templates** (see `data.ts` above). Custom tests are not
   limited to it — they generate per topic — but full shift papers still cycle these.
-- **IBPS and APPSC datasets are thin** next to SSC CGL and UPSC CSE, but the *features* now
+- **IBPS and APPSC Group-II datasets are thin** next to the authored exams, but the *features* now
   work for all five and the thin parts say precisely what is missing rather than showing an
   empty shell. Every exam has its own posts, dates, stages, syllabus, resources, FAQs,
   cutoffs, roadmap track and application guide; `officialLinks`, `eligibilityHighlights` and
@@ -2203,9 +2274,11 @@ Remaining by design, not defects:
 - **Government hosts are intermittent from Indian networks; links must open for the candidate.**
   `ncert.nic.in` timed out in the user's own browser (ERR_CONNECTION_TIMED_OUT) even though it
   answered from a server-side crawler, so every NCERT link now points at a host that answers: the question
-  sources and the Exemplar entry use NCERT's own upload on the Internet Archive
-  (`archive.org/download/ncert-jeep2/jeepNNN.pdf`, creator NCERT, collection ncert-textbooks —
-  identical file codes), and the textbook-portal entry uses DIKSHA (`diksha.gov.in/ncert`,
+  sources and the Exemplar entry use a copy on the Internet Archive
+  (`archive.org/download/ncert-jeep2/jeepNNN.pdf`, identical file codes) — **not NCERT's own upload**, as this file
+  used to say: its "creator: NCERT" is only the author field, and the uploader is an anonymous account
+  (patron-library-collection, June 2021, pre-2023 editions; found 2026-10-06). They should move to NCERT's books on
+  DIKSHA; until then they are third-party mirrors. The textbook-portal entry uses DIKSHA (`diksha.gov.in/ncert`,
   Ministry of Education). Census likewise links to the data.gov.in census catalogue with
   censusindia.gov.in named as canonical. `egazette.gov.in` occasionally exceeds the checker's
   10 s timeout but answers in under a second on retry, so it stays. Rule going forward: a link

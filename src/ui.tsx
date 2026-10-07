@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 // GovOS UI: every candidate-facing and admin component, in dependency order.
 
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Activity,
@@ -226,7 +226,8 @@ import {
   INTERACTION_HALF_LIVES_HOURS,
   SIGNAL_STRENGTH_MULTIPLIER,
   RECOMMENDATION_HALF_LIFE_HOURS,
-  statedWhen
+  statedWhen,
+  type StudyPlanPrefs
 } from './services';
 
 // ==========================================================================
@@ -319,7 +320,9 @@ function _oneInQuote(p: DataProvenance | null | undefined, value: string): boole
  *  quotation does not contain, which presents it as neither direct nor verified. */
 export function withClaim(p: DataProvenance | null | undefined, value: ClaimValue): DataProvenance | null | undefined {
   const alts = _alternatives(value);
-  if (!p || alts.length === 0) return p;
+  // A provenance with no source and no words quotes nothing, so nothing can be "not in its quotation": it is
+  // simply unverified, and the badge counts it so.
+  if (!p || alts.length === 0 || !provenanceHasEvidence(p)) return p;
   const claimsQuote = evidenceKind(p) === 'DIRECT' || provenanceIsVerified(p);
   if (!claimsQuote || claimInQuote(p, alts)) return p;
   return { ...p, claimNotInQuote: alts[0] };
@@ -2150,8 +2153,10 @@ export const ClubHero: React.FC<ClubHeroProps> = ({ exams, searchQuery, onSearch
     return () => io.disconnect();
   }, []);
   const now = Date.now();
+  // The hero advertises a countdown, so it takes only dates verified by their own evidence: a date the record
+  // holds without an official quotation for it may be shown on its exam's page, labelled, but is not promoted here.
   const milestones = exams
-    .map(exam => ({ exam, next: nextMilestoneOf(exam, now) }))
+    .map(exam => ({ exam, next: nextMilestoneOf({ ...exam, dates: exam.dates.filter(d => factVerification(d.provenance, dateClaim(d)) === 'VERIFIED') }, now) }))
     .filter((m): m is { exam: Exam; next: NonNullable<ReturnType<typeof nextMilestoneOf>> } => !!m.next)
     .sort((a, b) => (a.next.days ?? 9999) - (b.next.days ?? 9999))
     .slice(0, 2);
@@ -2179,7 +2184,7 @@ export const ClubHero: React.FC<ClubHeroProps> = ({ exams, searchQuery, onSearch
             <input
               type="text"
               aria-label="Search exams"
-              placeholder="Search SSC CGL, UPSC, IBPS…"
+              placeholder={`Search ${exams.slice(0, 3).map(e => examDisplayCode(e).split(' ').slice(0, 2).join(' ')).join(', ')}…`}
               value={searchQuery}
               onChange={e => onSearch(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') onFind(); }}
@@ -2190,8 +2195,9 @@ export const ClubHero: React.FC<ClubHeroProps> = ({ exams, searchQuery, onSearch
             <button className="btn club-ghost" onClick={onExplore}><JiggleLabel text="Explore exams" /></button>
           </div>
           <div className="club-chips club-in" style={{ ['--hi' as any]: 3 }}>
-            {['SSC CGL', 'UPSC CSE', 'RRB NTPC', 'IBPS PO', 'State PSC'].map(name => (
-              <button key={name} className="chip club-chip" onClick={() => onSearch(name)}>{name}</button>
+            {/* One chip per exam held, opening it -- these used to name exams GovOS does not hold (RRB NTPC). */}
+            {exams.map(exam => (
+              <button key={exam.id} className="chip club-chip" onClick={() => onOpenExam(exam)} title={`Open ${exam.title}`}>{examDisplayCode(exam)}</button>
             ))}
           </div>
           <dl className="club-figures club-in" style={{ ['--hi' as any]: 4 }}>
@@ -2221,7 +2227,23 @@ const CLUB_TONE: Record<ReturnType<typeof passToneOf>, string> = { ink: 'violet'
 
 /** Line-art sketches of each authority's world, drawn here in one ink. They are not the authorities' logos or the
  *  State Emblem: those are protected marks, and on a non-government site they would read as an endorsement. */
-export type AuthoritySketch = 'selection' | 'civil' | 'banking' | 'state' | 'railway';
+export type AuthoritySketch = 'selection' | 'civil' | 'banking' | 'state' | 'railway' | 'teaching' | 'engineering';
+
+/** Which world an exam's card shows, read from the record's own category and career fields -- never its id or
+ *  title -- so an exam added to the register (or published to the registry) gets its card with no code change.
+ *  None fits: the card has no sketch. */
+export const authoritySketchOf = (exam: Exam): AuthoritySketch | undefined => {
+  const f = exam.careerFields || [];
+  if (exam.categoryTag === 'BANKING' || f.includes('Banking & Financial Sector')) return 'banking';
+  if (exam.categoryTag === 'RAILWAYS' || f.includes('Indian Railways')) return 'railway';
+  if (exam.categoryTag === 'STATE_PSC' || f.includes('State Public Services')) return 'state';
+  if (exam.categoryTag === 'CIVIL_SERVICES') return 'civil';
+  if (exam.categoryTag === 'STAFF_SELECTION') return 'selection';
+  if (f.includes('Teaching & Education')) return 'teaching';
+  if (f.includes('Engineering & Technology')) return 'engineering';
+  if (f.includes('Civil Services & Governance')) return 'civil';
+  return undefined;
+};
 const INK = '#14213d';
 const SKETCH_LINE = { fill: 'none', stroke: INK, strokeWidth: 3, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
 const AuthorityArt: React.FC<{ kind: AuthoritySketch }> = ({ kind }) => (
@@ -2257,6 +2279,36 @@ const AuthorityArt: React.FC<{ kind: AuthoritySketch }> = ({ kind }) => (
         <rect {...SKETCH_LINE} x="16" y="107" width="148" height="9" fill={INK} />
         <rect {...SKETCH_LINE} x="122" y="86" width="30" height="22" rx="4" fill="#ffffff" />
         <path {...SKETCH_LINE} d="M131 86 v-5 h12 v5 M122 96 h30" />
+      </g>
+    )}
+    {kind === 'teaching' && (
+      <g>
+        {/* a blackboard on its stand with a sum being written, a stack of books and an apple */}
+        <rect {...SKETCH_LINE} x="16" y="14" width="104" height="70" rx="5" fill={INK} />
+        <path stroke="#ffffff" strokeWidth={3} strokeLinecap="round" fill="none" d="M32 34 h14 M39 27 v14 M56 34 h10 M78 30 l8 8 M86 30 l-8 8 M32 60 q10 -12 22 0 t22 0" />
+        <path {...SKETCH_LINE} d="M34 84 l-10 34 M102 84 l10 34 M68 84 v34" />
+        <rect {...SKETCH_LINE} x="132" y="96" width="40" height="10" rx="2" fill="#ffffff" />
+        <rect {...SKETCH_LINE} x="136" y="86" width="34" height="10" rx="2" fill={INK} />
+        <rect {...SKETCH_LINE} x="134" y="76" width="36" height="10" rx="2" fill="#ffffff" />
+        <path {...SKETCH_LINE} d="M152 70 c-9 -6 -16 2 -13 9 c3 8 9 8 13 5 c4 3 10 3 13 -5 c3 -7 -4 -15 -13 -9 z" fill="#ffffff" transform="translate(0 -14)" />
+        <path {...SKETCH_LINE} d="M152 56 c0 -5 3 -8 7 -9" />
+      </g>
+    )}
+    {kind === 'engineering' && (
+      <g>
+        {/* a drawing sheet, a set-square and a pair of compasses, with a gear turning beside them */}
+        <rect {...SKETCH_LINE} x="14" y="40" width="86" height="76" rx="4" fill="#ffffff" />
+        <path {...SKETCH_LINE} d="M26 104 h62 M26 104 v-52" />
+        <path {...SKETCH_LINE} d="M30 98 L30 62 L66 98 Z" fill={INK} />
+        <path {...SKETCH_LINE} d="M62 22 l-22 66 M62 22 l20 66 M56 40 h12" />
+        <circle {...SKETCH_LINE} cx="62" cy="18" r="5" fill="#ffffff" />
+        <g className="deck-gear" style={{ transformOrigin: '140px 72px' }}>
+          <circle {...SKETCH_LINE} cx="140" cy="72" r="22" fill="#ffffff" />
+          <circle {...SKETCH_LINE} cx="140" cy="72" r="8" fill={INK} />
+          {[0, 45, 90, 135, 180, 225, 270, 315].map(a => (
+            <rect key={a} {...SKETCH_LINE} x="136" y="42" width="8" height="10" rx="1.5" fill={INK} transform={`rotate(${a} 140 72)`} />
+          ))}
+        </g>
       </g>
     )}
     {kind === 'banking' && (
@@ -2610,15 +2662,6 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
     refreshRecommendations();
   };
 
-  /** A popular-exam card opens that authority's exam where GovOS holds one, and otherwise searches for it —
-   *  never another exam by its position in the register. */
-  const openPopular = (idPart: string) => {
-    const held = ALL_EXAMS.find(e => e.id.includes(idPart));
-    if (held) { onSelectExam(held); return; }
-    handleSearchChange(idPart.toUpperCase());
-    document.getElementById('exam-finder-engine')?.scrollIntoView({ behavior: 'smooth' });
-  };
-
   const handleSearchChange = (val: string) => {
     setSearchQuery(val);
     if (val.trim().length >= 3) {
@@ -2735,18 +2778,16 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
               View all exams <ArrowRight size={15} />
             </button>
           </div>
-          <ExamPassRail items={[
-            { name: 'SSC CGL', sub: 'Staff Selection Commission', sketch: 'selection', exam: ALL_EXAMS.find(e => e.id.includes('ssc')), onClick: () => openPopular('ssc') },
-            { name: 'UPSC CSE', sub: 'Union Public Service Commission', sketch: 'civil', exam: ALL_EXAMS.find(e => e.id.includes('upsc')), onClick: () => openPopular('upsc') },
-            { name: 'IBPS PO', sub: 'Institute of Banking Personnel', sketch: 'banking', exam: ALL_EXAMS.find(e => e.id.includes('ibps')), onClick: () => openPopular('ibps') },
-            { name: 'State PSC', sub: 'State Public Service Commission', sketch: 'state', exam: ALL_EXAMS.find(e => e.id.includes('appsc')), onClick: () => openPopular('appsc') },
-            {
-              name: 'RRB NTPC', sub: 'Railway Recruitment Board', sketch: 'railway', onClick: () => {
-                handleSearchChange('RRB NTPC');
-                document.getElementById('exam-finder-engine')?.scrollIntoView({ behavior: 'smooth' });
-              }
-            }
-          ]} />
+          {/* Every exam GovOS holds -- the register and the published registry alike -- so an exam added to either
+              appears here the day it lands. It used to be five hand-picked cards, one of them an exam GovOS does
+              not hold, and TG TET and JEE (Main) never appeared. */}
+          <ExamPassRail items={exams.map(exam => ({
+            name: examDisplayCode(exam),
+            sub: exam.authorityName,
+            sketch: authoritySketchOf(exam),
+            exam,
+            onClick: () => onSelectExam(exam)
+          }))} />
         </section>
 
         {/* Every exam and authority GovOS holds, on a bright field */}
@@ -5529,7 +5570,8 @@ const FACT_SUBJECTS: Record<string, string> = {
   attempts: 'the number of attempts',
   physical: 'the physical standards',
   tentative: 'whether the dates are final',
-  documents: 'the documents to upload'
+  documents: 'the documents to upload',
+  interview: 'the interview'
 };
 
 /**
@@ -5540,7 +5582,7 @@ const FACT_CANONICAL: Record<string, string> = {
   targetPost: 'my target post', nextStep: 'what should i do next', studyPlan: 'what should i study', age: 'age limit',
   eligibility: 'eligibility', dates: 'exam date', pattern: 'exam pattern', vacancy: 'vacancies', pay: 'salary',
   syllabus: 'syllabus', fee: 'fee', resources: 'resources', admitCard: 'admit card', cutoff: 'cutoff', apply: 'apply',
-  practice: 'practice', attempts: 'attempts', physical: 'physical test', tentative: 'tentative'
+  practice: 'practice', attempts: 'attempts', physical: 'physical test', tentative: 'tentative', interview: 'interview'
 };
 const SUBJECT_TO_CANONICAL: Record<string, string> = Object.fromEntries(
   Object.entries(FACT_SUBJECTS).map(([id, label]) => [label, FACT_CANONICAL[id] || label])
@@ -5570,7 +5612,16 @@ export function namedResourceAnswer(q: string, minScore: number = 6, exam: Exam 
   // the candidate named a specific document needs a library big enough for the match to
   // mean something; below that, a section answer is the honest one.
   if (library.length < 5) return null;
-  const { results } = rankResourcesForQuery(q, library, 3);
+  // The words that name the exam itself (its code, its authority's acronym) are carried by every entry of its
+  // library, so they name no entry: "the syllabus for ibps po" must not hand over the IBPS notification because
+  // its title says IBPS. Dropped before ranking; a question that is nothing but the exam's name names no entry.
+  const examWords = new Set([
+    ...normaliseQuery((exam.code || '').replace(/_/g, ' ')).split(' '),
+    ...normaliseQuery((exam.authorityName.match(/\(([^)]+)\)/) || [])[1] || '').split(' ')
+  ].filter(w => w && !/^\d+$/.test(w)));
+  const asked = normaliseQuery(q).split(' ').filter(w => w && !examWords.has(w)).join(' ');
+  if (contentWordsOf(asked).length === 0) return null;
+  const { results } = rankResourcesForQuery(asked, library, 3);
   if (results.length === 0 || results[0].score < minScore) return null;
   const top = results[0].resource;
   // Route to where the entry is actually shown: only learning material is in Resources. A lead is not
@@ -5627,6 +5678,7 @@ const FACT_INTENTS: { id: string; keys: string[] }[] = [
   { id: 'admitCard', keys: ['admit card', 'hall ticket', 'hall pass', 'e admit card', 'admission certificate', 'call letter'] },
   { id: 'cutoff', keys: ['cutoff', 'cut off', 'marks needed', 'safe score', 'qualifying marks', 'minimum marks', 'csat cutoff', 'pass marks', 'pass mark', 'pass percentage'] },
   { id: 'attempts', keys: ['attempts', 'number of attempts', 'how many attempts', 'how many times can i', 'chances'] },
+  { id: 'interview', keys: ['is there an interview', 'interview', 'personality test', 'viva voce', 'interview marks'] },
   { id: 'physical', keys: ['physical test', 'physical standard', 'physical standards', 'running test', 'walking test', 'fitness test', 'height', 'chest', 'medical standard'] },
   { id: 'tentative', keys: ['tentative', 'is that final', 'is it final', 'final or tentative', 'confirmed', 'fixed date', 'can it change'] },
   { id: 'documents', keys: ['documents required', 'required documents', 'documents needed', 'which documents', 'what documents', 'documents to upload', 'certificates required'] },
@@ -6083,15 +6135,26 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
         new RegExp(cat, 'i').test(entry.category));
       if (published && published.status === 'NOT_PUBLISHED') return 0;
       if (published && published.status === 'VERIFIED' && typeof published.years === 'number') return published.years;
-      const m = ageCard && new RegExp(`${cat}[^.;]*?(\\d+) years`, 'i').exec(ageCard.body);
+      const m = ageCard && new RegExp(`(?:${cat})[^.;]*?(\\d+) years`, 'i').exec(ageCard.body);
       return m ? Number(m[1]) : null;
     };
-    const relax: [string, number | null][] = [['OBC', relaxOf('OBC|Other Backward')], ['SC/ST', relaxOf('SC/ST|Scheduled Caste|Scheduled Tribe')], ['PwBD', relaxOf('Benchmark Disabilit|PwBD')]];
+    // SC and ST are read apart (an authority may print them as two rows) and shown together only when equal; EWS is
+    // listed only where the record states it. A combined PwBD relaxation is claimed only where the record carries one.
+    const sc = relaxOf('\\bSC\\b|Scheduled Caste');
+    const st = relaxOf('\\bST\\b|Scheduled Tribe');
+    const ews = relaxOf('\\bEWS\\b|Economically Weaker');
+    const relax: [string, number | null][] = [['OBC', relaxOf('OBC|Other Backward')],
+      ...(sc === st ? [['SC/ST', sc]] : [['SC', sc], ['ST', st]]) as [string, number | null][],
+      ...(ews !== null ? [['EWS', ews]] : []) as [string, number | null][], ['PwBD', relaxOf('Benchmark Disabilit|PwBD')]];
+    const combinesPwbd = (exam.ageRelaxations || []).some(e => /pwbd|benchmark/i.test(e.category) && /\b(obc|sc|st)\b|backward|scheduled/i.test(e.category));
     const asked = /\bobc\b/.test(q) ? 'OBC' : /\b(sc|st|sc st|sc\/st)\b/.test(q) ? 'SC/ST' : /\bpwbd|disab/.test(q) ? 'PwBD' : /\bews\b/.test(q) ? 'EWS' : /\b(ur|general|unreserved)\b/.test(q) ? 'General' : '';
     const examName = examDisplayCode(exam);
     if (asked) {
-      const years = asked === 'EWS' || asked === 'General' ? 0 : relax.find(r => r[0] === asked)![1];
-      if (years === null) {
+      const years = asked === 'General' ? 0
+        : asked === 'EWS' ? ews
+        : asked === 'SC/ST' ? (sc === st ? sc : /\bst\b/.test(q) && !/\bsc\b/.test(q) ? st : sc)
+        : relax.find(r => r[0] === asked)![1];
+      if (years === null || !Number.isFinite(years)) {
         return {
           verified: false,
           subject: FACT_SUBJECTS.age,
@@ -6104,7 +6167,7 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
         verified: true,
         subject: FACT_SUBJECTS.age,
         text: years > 0
-          ? `For ${asked} candidates the upper age limit of ${examName} relaxes by ${years} years: up to ${maxAge + years} on the crucial date, ${exam.crucialEligibilityDate}${asked === 'PwBD' ? ' (and a PwBD candidate who is also OBC or SC/ST gets both relaxations)' : ''}. The lower limit stays ${minAge}.`
+          ? `For ${asked} candidates the upper age limit of ${examName} relaxes by ${years} years: up to ${maxAge + years} on the crucial date, ${exam.crucialEligibilityDate}${asked === 'PwBD' && combinesPwbd ? ' (and a PwBD candidate who is also OBC or SC/ST gets both relaxations)' : ''}. The lower limit stays ${minAge}.`
           : `${asked} candidates get no age relaxation in ${examName}: the limit is ${minAge} to ${maxAge} years on the crucial date, ${exam.crucialEligibilityDate}.`,
         citation: citeFrom(ageCard ? ageCard.provenance : post.provenance, `${exam.title} Official Notice`),
         action: { label: 'Check my age eligibility', tab: 'ELIGIBILITY' }
@@ -6112,7 +6175,7 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
     }
     return {
       verified: true,
-      text: `Age limits run from ${minAge} to ${maxAge} years across the ${exam.posts.length} ${examName} posts${minAge !== Math.max(...exam.posts.map(p => p.minAge)) || maxAge !== Math.min(...exam.posts.map(p => p.maxAge)) ? ' — each post sets its own band, so check the one you are targeting' : ''}.\n\nAge is counted as on the crucial date, ${exam.crucialEligibilityDate}, not the date you apply.\n\nRelaxation on the upper limit: ${relax.map(r => `${r[0]} +${r[1]} years`).join(', ')} (a PwBD candidate who is also OBC or SC/ST gets both).\n\nThe Am I Eligible? tab applies all of this to your date of birth and tells you post by post.`,
+      text: `Age limits run from ${minAge} to ${maxAge} years across the ${exam.posts.length} ${examName} posts${minAge !== Math.max(...exam.posts.map(p => p.minAge)) || maxAge !== Math.min(...exam.posts.map(p => p.maxAge)) ? ' — each post sets its own band, so check the one you are targeting' : ''}.\n\nAge is counted as on the crucial date, ${exam.crucialEligibilityDate}, not the date you apply.\n\nRelaxation on the upper limit: ${relax.filter(r => r[1] !== null).map(r => `${r[0]} +${r[1]} years`).join(', ') || 'none read from the notice yet'}${combinesPwbd ? ' (a PwBD candidate who is also OBC or SC/ST gets both)' : ''}.${relax.some(r => r[1] === null) ? ` GovOS has not read a relaxation for ${relax.filter(r => r[1] === null).map(r => r[0]).join(', ')} from this exam's notice.` : ''}\n\nThe Am I Eligible? tab applies all of this to your date of birth and tells you post by post.`,
       citation: citeFrom(ageCard ? ageCard.provenance : post.provenance, `${exam.title} Official Notice`),
       action: { label: 'Check my age eligibility', tab: 'ELIGIBILITY' }
     };
@@ -6138,6 +6201,30 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
       text: `${physical.length} of the ${exam.posts.length} ${exam.title} posts carry physical standards:\n\n${lines}\n\nThe other ${exam.posts.length - physical.length} posts have no physical test. The Am I Eligible? tab has a physical-fitness declaration that filters these posts for you.`,
       citation: citeFrom(physical[0].provenance, `${exam.title} Official Notice`),
       action: { label: 'Check my eligibility', tab: 'ELIGIBILITY' }
+    };
+  }
+
+  if (factId === 'interview') {
+    // Read from the record's own stages: an interview is a stage the record names as one, never assumed.
+    const interview = exam.stages.find(st => st.tier === 'INTERVIEW' || /interview|personality test/i.test(st.stageName));
+    if (interview) {
+      return {
+        verified: true, subject: FACT_SUBJECTS.interview,
+        text: `Yes. ${exam.title} has an interview: ${interview.stageName}${interview.totalMarks ? `, ${interview.totalMarks} marks` : ''}.${interview.qualifyingNature ? `
+
+${interview.qualifyingNature}` : ''}`,
+        citation: citeFrom(interview.provenance, `${exam.title} Official Notice`),
+        action: { label: 'Open Exam Pattern', tab: 'EXAM_DETAIL', section: 5 }
+      };
+    }
+    if (exam.stages.length === 0) {
+      return { verified: false, subject: FACT_SUBJECTS.interview, text: `The record holds no stages for ${exam.title}, so GovOS cannot say whether it has an interview. Check the notice in Official Links.`, action: { label: 'Open Official Links', tab: 'EXAM_DETAIL', section: 12 } };
+    }
+    return {
+      verified: true, subject: FACT_SUBJECTS.interview,
+      text: `No interview is on record for ${exam.title}. Its stages, as the record holds them: ${exam.stages.map(st => st.stageName).join(' → ')}.`,
+      citation: citeFrom(exam.stages[0].provenance, `${exam.title} Official Notice`),
+      action: { label: 'Open Exam Pattern', tab: 'EXAM_DETAIL', section: 5 }
     };
   }
 
@@ -10283,6 +10370,525 @@ const SyllabusRoadmap: React.FC<{
   );
 };
 
+// ==========================================================================
+// The generated study plan (section 07)
+// ==========================================================================
+// GovOS guidance, sized by the candidate (days and hours a day) and built only from the exam's own record:
+// its syllabus topics, the weightage those topics carry where the record gives one, and otherwise the marks its
+// pattern gives each subject and the breadth the syllabus prints for each topic. It is never an official
+// schedule, says on screen what each share was computed from, and re-plans from whatever is still unticked.
+
+/** A record whose syllabus lists fewer topics than this is planned from its exam pattern's own sections. */
+export const PLAN_THIN_SYLLABUS = 10;
+export const PLAN_DAY_PRESETS = [60, 90, 120, 180];
+/** GovOS's split of the days: learning, a second pass, then full papers on the clock. Guidance, not a rule. */
+const PLAN_PHASE_SHARES = { learn: 0.6, revise: 0.25 };
+
+export interface StudyPlanUnit {
+  id: string;
+  subject: string;
+  name: string;
+  subtopics: string[];
+  weight: number;
+  /** The syllabus topic this unit is, where it is one (ticking it in section 06 or here marks it done). */
+  topicId?: string;
+  provenance?: DataProvenance;
+}
+export interface StudyPlanSubject {
+  name: string;
+  /** Fraction of the plan's time (0–1) among the subjects included. */
+  share: number;
+  /** The marks its share was read from, where it was read from marks. */
+  marks?: number;
+  units: StudyPlanUnit[];
+  hours: number;
+  included: boolean;
+}
+export interface StudyPlanItem { subject: string; unit: StudyPlanUnit; hours: number; continued?: boolean }
+export interface StudyPlanWeek {
+  week: number;
+  fromDay: number;
+  toDay: number;
+  phase: 'LEARN' | 'REVISE' | 'PRACTICE';
+  items: StudyPlanItem[];
+}
+export interface StudyPlan {
+  days: number;
+  hoursPerDay: number;
+  learnDays: number;
+  reviseDays: number;
+  practiceDays: number;
+  /** The papers a candidate chooses between, where the syllabus is organised by alternative papers. */
+  tracks: string[];
+  track: string | null;
+  subjects: StudyPlanSubject[];
+  weeks: StudyPlanWeek[];
+  /** What each share was computed from, in words, for the screen. */
+  basis: string[];
+  unitsLeft: number;
+  unitsDone: number;
+  hoursPerUnit: number;
+  tight: boolean;
+}
+
+const PLAN_STOP = new Set(['and', 'or', 'the', 'of', 'in', 'for', 'a', 'an', 'to', 'with']);
+const planTokens = (s: string): string[] => s.toLowerCase()
+  .replace(/[()[\],:;&/.'’"–—·]/g, ' ').replace(/-/g, ' ')
+  .split(/\s+/).filter(w => w && !PLAN_STOP.has(w));
+const tokensWithin = (a: string[], b: string[]) => a.length > 0 && a.every(w => b.includes(w));
+/** "Paper 1 · Physics" -> the paper and the subject within it; a subject with no paper has none. */
+const splitPaper = (subject: string): { paper: string | null; core: string } => {
+  const i = subject.indexOf(' · ');
+  return i > 0 ? { paper: subject.slice(0, i), core: subject.slice(i + 3) } : { paper: null, core: subject };
+};
+
+/** Every part of the exam's pattern that states its marks, with the words of the parts above it. */
+type PlanMarkNode = { name: string; path: string[]; marks: number; depth: number; key: string; qualifying: boolean; stage: string };
+function patternMarkNodes(exam: Exam): PlanMarkNode[] {
+  const out: PlanMarkNode[] = [];
+  const says = (words: string) => /\bqualifying\b/i.test(words);
+  const walk = (nodes: ExamPatternNode[], path: string[], depth: number, inherited: boolean, stage: string) => nodes.forEach(n => {
+    const inStage = depth === 0 ? n.name : stage;
+    // A screening stage that does not count for the merit is still competitive; only a paper or section that is
+    // itself qualifying (a minimum to clear, not a rank) is.
+    const qualifying = inherited || says(n.name) || n.qualifying?.qualifyingOnly === true || (n.level !== 'STAGE' && n.qualifying?.countsTowardsMerit === false);
+    if (typeof n.marks === 'number' && n.marks > 0) out.push({ name: n.name, path, marks: n.marks, depth, key: n.id, qualifying, stage: inStage });
+    if (n.children) walk(n.children, [...path, ...planTokens(`${n.name} ${n.code || ''}`)], depth + 1, n.level === 'STAGE' ? inherited : qualifying, inStage);
+  });
+  if ((exam.patternTree || []).length > 0) walk(exam.patternTree!, [], 0, false, '');
+  else exam.stages.filter(st => st.tier !== 'INTERVIEW').forEach(st => st.sections.forEach((sec, i) => {
+    if (sec.marks > 0) out.push({ name: sec.sectionName, path: planTokens(st.stageName), marks: sec.marks, depth: 1, key: `${st.id}-${i}`, qualifying: says(sec.sectionName), stage: st.stageName.split(' — ')[0] });
+  }));
+  return out;
+}
+
+/** The deepest part of the pattern that names this subject (and, for "Paper X · Subject", sits under paper X). */
+function patternNodesFor(subject: string, nodes: PlanMarkNode[]): PlanMarkNode[] {
+  const { paper, core } = splitPaper(subject);
+  const coreT = planTokens(core);
+  const paperT = paper ? planTokens(paper) : [];
+  return nodes
+    .filter(n => {
+      const own = planTokens(n.name);
+      return (tokensWithin(own, coreT) || tokensWithin(coreT, own)) && (paperT.length === 0 || tokensWithin(paperT, [...n.path, ...own]));
+    })
+    .sort((a, b) => b.depth - a.depth);
+}
+
+/** The papers a candidate chooses between, where the syllabus subjects are named "Paper X · Subject". */
+export function studyPlanTracks(exam: Exam): string[] {
+  const papers: string[] = [];
+  exam.syllabus.forEach(t => { const p = splitPaper(String(t.subject)).paper; if (p && !papers.includes(p)) papers.push(p); });
+  return papers.length >= 2 ? papers : [];
+}
+
+/** The units of study and how the record weighs them, with the basis in words. Pure. */
+export function studyPlanUnits(exam: Exam, track: string | null): { subjects: Omit<StudyPlanSubject, 'hours' | 'included'>[]; basis: string[] } {
+  const topics = exam.syllabus.filter(t => !track || splitPaper(String(t.subject)).paper === track || !splitPaper(String(t.subject)).paper);
+  const topicUnit = (t: SyllabusTopic, weight: number): StudyPlanUnit => ({
+    id: `unit-${t.id}`, subject: String(t.subject), name: t.topicName, subtopics: t.subtopics || [], weight, topicId: t.id, provenance: t.officialProvenance
+  });
+  const basis: string[] = [];
+
+  // ---- a syllabus the record holds in some depth: plan from its topics
+  if (exam.syllabus.length >= PLAN_THIN_SYLLABUS) {
+    const bySubject = new Map<string, SyllabusTopic[]>();
+    topics.forEach(t => bySubject.set(String(t.subject), [...(bySubject.get(String(t.subject)) || []), t]));
+    const nodes = patternMarkNodes(exam);
+    // Marks are read from one stage, so that subjects are weighed on the same paper: the stage that names the most
+    // of them. A subject that stage does not name takes its deepest match in another; one named nowhere, the average.
+    const allHits = Array.from(bySubject.keys()).map(name => ({ name, nodes: patternNodesFor(name, nodes) }));
+    const stageCount = new Map<string, number>();
+    allHits.forEach(h => Array.from(new Set(h.nodes.map(n => n.stage))).forEach(st => stageCount.set(st, (stageCount.get(st) || 0) + 1)));
+    const mainStage = Array.from(stageCount.entries()).sort((a, b) => b[1] - a[1])[0]?.[0];
+    const hits = allHits.map(h => ({ name: h.name, node: h.nodes.find(n => n.stage === mainStage) || h.nodes[0] }));
+    // A qualifying part is not counted for the merit, so its marks do not buy it time: it gets the average.
+    const scored = hits.filter(h => h.node && !h.node.qualifying);
+    const sharing = new Map<string, number>();
+    scored.forEach(h => sharing.set(h.node!.key, (sharing.get(h.node!.key) || 0) + 1));
+    const known = scored.map(h => h.node!.marks / (sharing.get(h.node!.key) || 1));
+    const fallback = known.length > 0 ? known.reduce((x, y) => x + y, 0) / known.length : 1;
+    const subjects = hits.map(h => {
+      const marks = h.node && !h.node.qualifying ? h.node.marks / (sharing.get(h.node.key) || 1) : undefined;
+      const ts = bySubject.get(h.name)!;
+      const weighted = ts.every(t => t.weightagePercentage > 0);
+      return {
+        name: h.name, share: marks ?? fallback, marks,
+        units: ts.map(t => topicUnit(t, weighted ? t.weightagePercentage : Math.max(1, (t.subtopics || []).length)))
+      };
+    });
+    const total = subjects.reduce((x, y) => x + y.share, 0) || 1;
+    subjects.forEach(x => { x.share = x.share / total; });
+    const qualifying = hits.filter(h => h.node && h.node.qualifying).map(h => h.name);
+    const unmatched = hits.filter(h => !h.node).map(h => h.name);
+    const list = (names: string[]) => names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+    basis.push(known.length > 0
+      ? `Time per subject follows the marks the exam pattern (section 05) gives it${mainStage && stageCount.size > 1 ? ` in ${mainStage}, the stage that names the most of these subjects` : ''}.${qualifying.length ? ` ${list(qualifying)} ${qualifying.length === 1 ? 'is a qualifying part' : 'are qualifying parts'} (not counted for the merit), so ${qualifying.length === 1 ? 'it gets' : 'they get'} the average share rather than ${qualifying.length === 1 ? 'its' : 'their'} marks.` : ''}${unmatched.length ? ` ${list(unmatched)} ${unmatched.length === 1 ? 'has' : 'have'} no marks of ${unmatched.length === 1 ? 'its' : 'their'} own there, so ${unmatched.length === 1 ? 'it gets' : 'they get'} the average share.` : ''}`
+      : 'The exam pattern gives these subjects no marks of their own, so each subject gets an equal share.');
+    const weightedSubjects = subjects.filter(x => bySubject.get(x.name)!.every(t => t.weightagePercentage > 0)).length;
+    if (weightedSubjects > 0) {
+      const owned = topics.some(t => t.weightageProvenance && t.weightageProvenance.verificationLevel !== 'OFFICIALLY_VERIFIED');
+      basis.push(`Within ${weightedSubjects === subjects.length ? 'a subject' : 'a subject whose topics all carry one'}, time per topic follows the weightage the record gives it in the syllabus section${owned ? ' (where that weightage is GovOS’s own count of past papers rather than an official figure, the syllabus section says so)' : ''}${weightedSubjects < subjects.length ? '; elsewhere it follows the topic’s breadth — the number of sub-topics the syllabus prints' : ''}.`);
+    } else {
+      basis.push('Within a subject, time per topic follows its breadth — the number of sub-topics the syllabus prints for it. The authority publishes no topic weightage for this exam, and GovOS does not invent one.');
+    }
+    return { subjects, basis };
+  }
+
+  // ---- a thin syllabus: plan from the pattern's own sections and what each one names
+  const sections: { name: string; marks: number; modules: string[] }[] = [];
+  exam.stages.filter(st => st.tier !== 'INTERVIEW').forEach(st => st.sections.forEach(sec => {
+    if (!(sec.marks > 0)) return;
+    const same = sections.find(x => planTokens(x.name).join(' ') === planTokens(sec.sectionName).join(' '));
+    if (same) { same.marks += sec.marks; sec.modules.forEach(m => { if (!same.modules.includes(m)) same.modules.push(m); }); }
+    else sections.push({ name: sec.sectionName, marks: sec.marks, modules: [...sec.modules] });
+  }));
+  if (sections.length === 0 && topics.length === 0) return { subjects: [], basis };
+  const qCount = (m: string) => { const hit = m.match(/\((\d+)\s*Q\)/i); return hit ? Number(hit[1]) : 1; };
+  const subjects: { name: string; share: number; marks?: number; units: StudyPlanUnit[] }[] = sections.map((sec, si) => ({
+    name: sec.name, share: sec.marks, marks: sec.marks,
+    units: (sec.modules.length > 0 ? sec.modules : [sec.name]).map((m, mi) => ({
+      id: `unit-sec-${si}-${mi}`, subject: sec.name, name: m.replace(/\s*\(\d+\s*Q\)\s*/i, '').trim(), subtopics: [], weight: qCount(m)
+    } as StudyPlanUnit))
+  }));
+  // Each syllabus topic joins the section whose words it shares most, replacing the module it names.
+  topics.forEach(t => {
+    const tWords = planTokens(`${t.subject} ${t.topicName}`);
+    let best: (typeof subjects)[number] | undefined; let bestScore = 0;
+    subjects.forEach(s => {
+      const sWords = planTokens(`${s.name} ${s.units.map(u => u.name).join(' ')}`);
+      const score = tWords.filter(w => sWords.includes(w)).length;
+      if (score > bestScore) { best = s; bestScore = score; }
+    });
+    if (!best) { subjects.push({ name: String(t.subject), share: 0, units: [topicUnit(t, 1)] }); return; }
+    const nameWords = planTokens(t.topicName);
+    const module = best.units.find(u => !u.topicId && planTokens(u.name).filter(w => nameWords.includes(w)).length * 2 >= planTokens(u.name).length);
+    if (module) { const i = best.units.indexOf(module); best.units[i] = topicUnit(t, module.weight); }
+    else best.units.push(topicUnit(t, 1));
+  });
+  const marked = subjects.filter(s => s.marks);
+  const avg = marked.length ? marked.reduce((a, s) => a + s.share, 0) / marked.length : 1;
+  subjects.forEach(s => { if (!s.marks) s.share = avg; });
+  const total = subjects.reduce((a, s) => a + s.share, 0) || 1;
+  subjects.forEach(s => { s.share = s.share / total; });
+  basis.push(`The record’s syllabus lists only ${topics.length} topic${topics.length === 1 ? '' : 's'}, so the plan is built from the exam pattern’s own sections (section 05) and what each one names, with the syllabus topics placed in the section they belong to.`);
+  basis.push('Time per section follows its marks in the pattern; within a section, the question counts the pattern prints where it prints them, otherwise equal time per part.');
+  return { subjects, basis };
+}
+
+/** The candidate's default plan length: the days left to the next firm examination date on record, else 90. */
+export function studyPlanDefaultDays(exam: Exam, now: Date = new Date()): { days: number; reason: string | null } {
+  const next = exam.dates
+    .filter(d => (d.type === 'EXAM_TIER1' || d.type === 'EXAM_TIER2') && d.status !== 'SUPERSEDED' && !d.isTentative && !d.displayWhen)
+    .map(d => ({ d, at: new Date(d.dateTimeStr.replace(' ', 'T')) }))
+    .filter(x => !Number.isNaN(x.at.getTime()) && x.at.getTime() > now.getTime())
+    .sort((a, b) => a.at.getTime() - b.at.getTime())[0];
+  if (!next) return { days: 90, reason: null };
+  const days = Math.ceil((next.at.getTime() - now.getTime()) / 86400000);
+  return { days: Math.min(365, Math.max(30, days)), reason: `${days} days left until ${next.d.label}` };
+}
+
+/** Hours as the plan shows them: to the half hour, never below half an hour. */
+export const planHours = (h: number) => Math.max(0.5, Math.round(h * 2) / 2);
+
+/** The whole plan: phases, subject shares, and week-by-week work over what is still left. Pure. */
+export function generateStudyPlan(exam: Exam, opts: { days: number; hoursPerDay: number; done?: Record<string, boolean>; track?: string | null; excludedSubjects?: string[] }): StudyPlan {
+  const tracks = studyPlanTracks(exam);
+  const track = tracks.length > 0 ? (opts.track && tracks.includes(opts.track) ? opts.track : tracks[0]) : null;
+  const days = Math.max(14, Math.round(opts.days));
+  const H = Math.max(0.5, opts.hoursPerDay);
+  const learnDays = Math.max(7, Math.round(days * PLAN_PHASE_SHARES.learn));
+  const reviseDays = Math.round(days * PLAN_PHASE_SHARES.revise);
+  const practiceDays = Math.max(0, days - learnDays - reviseDays);
+  const done = opts.done || {};
+  const excluded = new Set(opts.excludedSubjects || []);
+  const { subjects: raw, basis } = studyPlanUnits(exam, track);
+
+  const isDone = (u: StudyPlanUnit) => !!(u.topicId && done[u.topicId]);
+  const included = raw.filter(s => !excluded.has(s.name) && s.units.some(u => !isDone(u)));
+  const shareTotal = included.reduce((a, s) => a + s.share, 0) || 1;
+  const learnHours = learnDays * H;
+  const subjects: StudyPlanSubject[] = raw.map(s => {
+    const on = included.includes(s);
+    return { ...s, share: on ? s.share / shareTotal : 0, hours: on ? learnHours * s.share / shareTotal : 0, included: !excluded.has(s.name) };
+  });
+  const unitsLeft = included.reduce((a, s) => a + s.units.filter(u => !isDone(u)).length, 0);
+  const unitsDone = raw.reduce((a, s) => a + s.units.filter(isDone).length, 0);
+
+  // Learning: every subject moves through its own topics in the syllabus's order, all subjects in parallel,
+  // each week's hours split by the subjects' shares.
+  const queues = subjects.filter(s => s.hours > 0).map(s => {
+    const left = s.units.filter(u => !isDone(u));
+    const wTotal = left.reduce((a, u) => a + u.weight, 0) || 1;
+    return { s, left: left.map(u => ({ unit: u, hours: s.hours * u.weight / wTotal, started: false })) };
+  });
+  const weeks: StudyPlanWeek[] = [];
+  const learnWeeks = Math.ceil(learnDays / 7);
+  for (let w = 0; w < learnWeeks; w++) {
+    const fromDay = w * 7 + 1;
+    const toDay = Math.min(learnDays, fromDay + 6);
+    const items: StudyPlanItem[] = [];
+    queues.forEach(q => {
+      let budget = q.s.hours * (toDay - fromDay + 1) / learnDays;
+      if (w === learnWeeks - 1) budget = q.left.reduce((a, x) => a + x.hours, 0);
+      while (budget > 0.01 && q.left.length > 0) {
+        const head = q.left[0];
+        const take = Math.min(budget, head.hours);
+        items.push({ subject: q.s.name, unit: head.unit, hours: take, continued: head.started });
+        head.hours -= take; budget -= take; head.started = true;
+        if (head.hours <= 0.01) q.left.shift();
+      }
+    });
+    weeks.push({ week: w + 1, fromDay, toDay, phase: 'LEARN', items });
+  }
+
+  // Revision: a second pass, every subject by its share, heaviest topics first.
+  const revSubjects = subjects.filter(s => s.included && s.units.length > 0 && included.some(x => x.name === s.name));
+  const revShareTotal = revSubjects.reduce((a, s) => a + (s.share || 0), 0) || 1;
+  for (let d = 0; d < reviseDays; d += 7) {
+    const fromDay = learnDays + d + 1;
+    const toDay = Math.min(learnDays + reviseDays, fromDay + 6);
+    const weekHours = (toDay - fromDay + 1) * H;
+    weeks.push({
+      week: weeks.length + 1, fromDay, toDay, phase: 'REVISE',
+      items: revSubjects.map(s => ({
+        subject: s.name,
+        unit: {
+          id: `rev-${s.name}`, subject: s.name, name: `Second pass — ${s.name}`, weight: 1,
+          subtopics: [...s.units].sort((a, b) => b.weight - a.weight).slice(0, 4).map(u => u.name)
+        },
+        hours: weekHours * (s.share || 0) / revShareTotal
+      }))
+    });
+  }
+
+  // Full papers on the clock, built to the exam's own pattern.
+  const stage = exam.stages[0];
+  const unstated = new Set(stage?.unstatedFields || []);
+  const shape = stage ? [
+    stage.totalQuestions > 0 && !unstated.has('totalQuestions') ? `${stage.totalQuestions} questions` : '',
+    stage.totalMarks > 0 && !unstated.has('totalMarks') ? `${stage.totalMarks} marks` : '',
+    stage.durationMinutes > 0 && !unstated.has('durationMinutes') ? `${stage.durationMinutes} minutes` : ''
+  ].filter(Boolean).join(' · ') : '';
+  const hasOwnPapers = exam.resources.some(r => (r.subject === 'Previous Year Papers' && r.type === 'OFFICIAL_PDF') || r.role === 'QUESTION_PAPER');
+  for (let d = 0; d < practiceDays; d += 7) {
+    const fromDay = learnDays + reviseDays + d + 1;
+    const toDay = Math.min(days, fromDay + 6);
+    const n = toDay - fromDay + 1;
+    weeks.push({
+      week: weeks.length + 1, fromDay, toDay, phase: 'PRACTICE',
+      items: [{
+        subject: 'Full papers',
+        unit: {
+          id: `practice-${fromDay}`, subject: 'Full papers', name: `${Math.max(1, Math.floor(n / 2))} full paper${Math.floor(n / 2) === 1 ? '' : 's'} on the clock, each reviewed the next day`, weight: 1,
+          subtopics: [
+            shape ? `Sit it as the pattern sets it: ${stage!.stageName.split(' — ')[0]}, ${shape}${stage!.negativeMarking ? `, ${stage!.negativeMarking.split(';')[0]}` : ''}.` : 'Sit it as the exam pattern (section 05) sets it.',
+            hasOwnPapers ? `Use ${exam.authorityName.split(' (')[0]}’s own question papers in Practice & PYQs first.` : 'Practice & PYQs shows what this exam’s authority has published.',
+            'On the review day, redo every wrong and skipped question and note the topic it came from.'
+          ]
+        },
+        hours: n * H
+      }]
+    });
+  }
+
+  basis.push(`GovOS splits the ${days} days ${learnDays} / ${reviseDays} / ${practiceDays}: learning, a second pass, then full papers on the clock. This is GovOS’s guidance, not a rule of the exam.`);
+  const hoursPerUnit = unitsLeft > 0 ? learnHours / unitsLeft : 0;
+  return { days, hoursPerDay: H, learnDays, reviseDays, practiceDays, tracks, track, subjects, weeks, basis, unitsLeft, unitsDone, hoursPerUnit, tight: unitsLeft > 0 && hoursPerUnit < 2 };
+}
+
+/** Section 07's plan: the candidate picks the days and hours; everything else is read from the record. */
+export const GeneratedStudyPlan: React.FC<{
+  exam: Exam;
+  completedTopics: Record<string, boolean>;
+  onToggleTopic: (topicId: string) => void;
+  onOpenProvenanceModal: (p: DataProvenance) => void;
+}> = ({ exam, completedTopics, onToggleTopic, onOpenProvenanceModal }) => {
+  const def = studyPlanDefaultDays(exam);
+  const savedHours = storageService.getDailyStudyHours();
+  const [prefs, setPrefs] = useState<StudyPlanPrefs>(() => storageService.getStudyPlanPrefs(exam.id));
+  const [prefsExam, setPrefsExam] = useState(exam.id);
+  const [openWeeks, setOpenWeeks] = useState<Record<number, boolean>>({ 1: true });
+  if (prefsExam !== exam.id) {
+    setPrefsExam(exam.id);
+    setPrefs(storageService.getStudyPlanPrefs(exam.id));
+    setOpenWeeks({ 1: true });
+  }
+  const update = (next: StudyPlanPrefs) => { setPrefs(next); storageService.setStudyPlanPrefs(exam.id, next); };
+  const days = prefs.days ?? def.days;
+  const hoursAssumed = prefs.hoursPerDay == null && savedHours == null;
+  const hours = prefs.hoursPerDay ?? savedHours ?? 4;
+  const plan = useMemo(() => generateStudyPlan(exam, { days, hoursPerDay: hours, done: completedTopics, track: prefs.track ?? null, excludedSubjects: prefs.excludedSubjects }),
+    [exam, days, hours, completedTopics, prefs.track, prefs.excludedSubjects]);
+
+  if (plan.subjects.length === 0) {
+    return (
+      <div className="glass-card" style={{ padding: '22px' }} data-study-plan="none">
+        <span className="badge badge-pending">GOVOS STUDY PLAN</span>
+        <p style={{ margin: '10px 0 0', color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.6 }}>
+          The record holds neither syllabus topics nor pattern sections with marks for {exam.title}, so there is nothing to plan from yet. Nothing is borrowed from another exam.
+        </p>
+      </div>
+    );
+  }
+
+  const phaseStyle: Record<StudyPlanWeek['phase'], { label: string; bg: string; fg: string }> = {
+    LEARN: { label: 'Learn', bg: 'var(--primary-soft)', fg: 'var(--primary)' },
+    REVISE: { label: 'Second pass', bg: 'var(--amber-soft)', fg: 'var(--amber)' },
+    PRACTICE: { label: 'Full papers', bg: 'var(--emerald-soft)', fg: 'var(--emerald)' }
+  };
+  const pill = (active: boolean): React.CSSProperties => ({
+    padding: '6px 12px', borderRadius: '999px', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer',
+    border: '1px solid var(--border-color)', background: active ? 'var(--primary)' : 'var(--surface-2)', color: active ? '#fff' : 'var(--text-primary)'
+  });
+  const dayChoices = Array.from(new Set([...(def.reason ? [def.days] : []), ...PLAN_DAY_PRESETS])).sort((a, b) => a - b);
+
+  return (
+    <div className="glass-card animate-fade-in" data-study-plan={exam.id} style={{ padding: '22px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <span className="badge badge-pending" style={{ alignSelf: 'flex-start' }}>GOVOS STUDY PLAN · GUIDANCE, NOT AN OFFICIAL SCHEDULE</span>
+        <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+          A {plan.days}-day plan for {exam.title}{plan.track ? ` — ${plan.track}` : ''}
+        </h3>
+        <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+          Built from this exam&apos;s own syllabus and pattern. Choose how long you have and how many hours a day; tick a topic when it is done and the rest is re-planned from what is left.
+        </p>
+      </div>
+
+      {/* The candidate's choices */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {plan.tracks.length > 0 && (
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Paper</span>
+            {plan.tracks.map(t => (
+              <button key={t} type="button" style={pill(t === plan.track)} onClick={() => update({ ...prefs, track: t, excludedSubjects: [] })}>{t}</button>
+            ))}
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Days</span>
+          {dayChoices.map(d => (
+            <button key={d} type="button" style={pill(d === plan.days)} onClick={() => update({ ...prefs, days: d })}>
+              {d}{def.reason && d === def.days ? ' (to the exam)' : ''}
+            </button>
+          ))}
+        </div>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <label htmlFor={`plan-hours-${exam.id}`} style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Hours a day</label>
+          <select id={`plan-hours-${exam.id}`} value={hours}
+            onChange={e => { const h = Number(e.target.value); update({ ...prefs, hoursPerDay: h }); storageService.setDailyStudyHours(h); }}
+            style={{ padding: '6px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontWeight: 700 }}>
+            {[1, 2, 3, 4, 5, 6, 7, 8, 10, 12].map(h => <option key={h} value={h}>{h}</option>)}
+          </select>
+          {hoursAssumed && <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>4 is a starting assumption — set your own.</span>}
+          {def.reason && <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>· {def.reason}</span>}
+        </div>
+      </div>
+
+      {/* Totals */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(150px, 100%), 1fr))', gap: '10px' }}>
+        {[
+          { label: 'Hours in all', value: String(Math.round(plan.days * plan.hoursPerDay)) },
+          { label: 'Learn · second pass · papers', value: `${plan.learnDays} · ${plan.reviseDays} · ${plan.practiceDays} days` },
+          { label: 'Topics left', value: `${plan.unitsLeft}${plan.unitsDone ? ` (${plan.unitsDone} done)` : ''}` },
+          { label: 'Learning hours per topic', value: plan.unitsLeft ? `about ${Math.round(plan.hoursPerUnit * 10) / 10}` : '—' }
+        ].map(t => (
+          <div key={t.label} style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)' }}>
+            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t.label}</div>
+            <div style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)' }}>{t.value}</div>
+          </div>
+        ))}
+      </div>
+      {plan.tight && (
+        <div data-plan-tight style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'var(--amber-soft)', color: 'var(--amber)', fontSize: '0.86rem', fontWeight: 600 }}>
+          This is tight: about {Math.round(plan.hoursPerUnit * 10) / 10} learning hours per topic. More days or more hours a day would give each topic room.
+        </div>
+      )}
+      {plan.unitsLeft === 0 && (
+        <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'var(--emerald-soft)', color: 'var(--emerald)', fontSize: '0.86rem', fontWeight: 600 }}>
+          Every topic in this plan is ticked as done. The second pass and full papers below are what is left.
+        </div>
+      )}
+
+      {/* Subjects and their shares */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)' }}>Where the learning hours go</h4>
+        {plan.subjects.map(s => (
+          <div key={s.name} style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: '1 1 220px', fontSize: '0.88rem', color: s.included ? 'var(--text-primary)' : 'var(--text-muted)', cursor: 'pointer' }}>
+              <input type="checkbox" checked={s.included}
+                onChange={() => {
+                  const ex = new Set(prefs.excludedSubjects || []);
+                  if (ex.has(s.name)) ex.delete(s.name); else ex.add(s.name);
+                  update({ ...prefs, excludedSubjects: Array.from(ex) });
+                }} />
+              <span style={{ fontWeight: 700, minWidth: 0 }}>{s.name}</span>
+            </label>
+            <div style={{ flex: '2 1 200px', height: '8px', borderRadius: '999px', background: 'var(--surface-3)', overflow: 'hidden' }}>
+              <div style={{ width: `${Math.round(s.share * 100)}%`, height: '100%', background: 'var(--primary)' }} />
+            </div>
+            <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', minWidth: '140px' }}>
+              {s.included ? `${Math.round(s.share * 100)}% · ${Math.round(s.hours)} h${s.marks ? ` · ${s.marks} marks` : ''}` : 'left out of this plan'}
+            </span>
+          </div>
+        ))}
+        <ul style={{ margin: '4px 0 0', paddingLeft: '18px', fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+          {plan.basis.map(b => <li key={b}>{b}</li>)}
+        </ul>
+      </div>
+
+      {/* Week by week */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)' }}>Week by week</h4>
+        {plan.weeks.map(w => {
+          const st = phaseStyle[w.phase];
+          const open = !!openWeeks[w.week];
+          return (
+            <div key={w.week} data-plan-week={w.phase} style={{ borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', background: 'var(--surface-2)' }}>
+              <button type="button" onClick={() => setOpenWeeks({ ...openWeeks, [w.week]: !open })} aria-expanded={open}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', color: 'var(--text-primary)' }}>
+                <ChevronRight size={16} style={{ transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }} />
+                <span style={{ fontWeight: 800 }}>Week {w.week}</span>
+                <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>Days {w.fromDay}–{w.toDay}</span>
+                <span style={{ marginLeft: 'auto', padding: '2px 10px', borderRadius: '999px', background: st.bg, color: st.fg, fontSize: '0.74rem', fontWeight: 800 }}>{st.label}</span>
+              </button>
+              {open && (
+                <div style={{ padding: '0 14px 12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {w.items.length === 0 && <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Nothing left to learn this week — move on to the next.</div>}
+                  {w.items.map((it, i) => {
+                    const topicId = it.unit.topicId;
+                    const isDone = !!(topicId && completedTopics[topicId]);
+                    return (
+                      <div key={`${it.unit.id}-${i}`} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                        {topicId ? (
+                          <input type="checkbox" checked={isDone} onChange={() => onToggleTopic(topicId)} aria-label={`Mark ${it.unit.name} done`} style={{ marginTop: '4px' }} />
+                        ) : <span style={{ width: '13px', flexShrink: 0 }} />}
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ fontSize: '0.88rem', color: 'var(--text-primary)', textDecoration: isDone ? 'line-through' : 'none' }}>
+                            <span style={{ color: 'var(--text-muted)', fontWeight: 700 }}>{it.subject} · </span>
+                            <strong>{it.unit.name}</strong>{it.continued ? ' (continued)' : ''}
+                            <span style={{ color: 'var(--text-secondary)' }}> — {planHours(it.hours)} h</span>
+                          </div>
+                          {it.unit.subtopics.length > 0 && (
+                            <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                              {it.unit.subtopics.slice(0, 6).join('; ')}{it.unit.subtopics.length > 6 ? `; and ${it.unit.subtopics.length - 6} more` : ''}
+                            </div>
+                          )}
+                        </div>
+                        {it.unit.provenance && <EvidenceButton provenance={it.unit.provenance} onOpen={onOpenProvenanceModal} compact />}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 export const PreparationPlanner: React.FC<PreparationPlannerProps> = ({ exam }) => {
   const tracks = exam.roadmapTracks || [];
   const [selectedTrackId, setSelectedTrackId] = useState<string>(tracks[0]?.id || 'TRACK_90_DAYS');
@@ -10321,20 +10927,9 @@ export const PreparationPlanner: React.FC<PreparationPlannerProps> = ({ exam }) 
     return <SyllabusRoadmap exam={exam} completed={completedGoals} onToggle={toggleGoal} />;
   }
 
-  // No track on record: GovOS has generated no study guidance for this exam, and none is
-  // borrowed from another exam. Said plainly, with what does exist -- never a crash.
-  if (!currentTrack) {
-    return (
-      <div className="glass-card animate-fade-in" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        <span className="badge badge-pending" style={{ alignSelf: 'flex-start' }}>GOVOS STUDY GUIDANCE — NOT YET GENERATED</span>
-        <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>GovOS study guidance not yet generated for {exam.title}</h3>
-        <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
-          A study roadmap is GovOS guidance, not part of the official notice, and none has been generated for this exam.
-          Nothing is shown in its place from another exam. What is on record: {exam.syllabus.length > 0 ? `its ${exam.syllabus.length}-topic syllabus in section 06` : 'its syllabus section (06)'}{(exam.patternTree?.length || exam.stages.length) ? ' and its exam pattern in section 05' : ''}, both read from {exam.authorityName}&apos;s own documents.
-        </p>
-      </div>
-    );
-  }
+  // No authored track with phases: the generated plan above is this exam's roadmap, and nothing is
+  // borrowed from another exam. (A track named without its phases used to show here as two empty panels.)
+  if (!currentTrack || !tracks.some(t => (t.phases || []).length > 0)) return null;
 
   const totalGoals = currentTrack.phases.reduce((acc, phase) => {
     return acc + phase.weeklySchedule.reduce((wAcc, w) => wAcc + w.goals.length, 0);
@@ -12142,9 +12737,9 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
         <div className="glass-card" style={{ padding: '0', overflow: 'hidden', border: '1px solid rgba(16, 185, 129, 0.35)', background: 'linear-gradient(135deg, #ffffff 0%, #ecfdf5 100%)', display: 'flex', flexDirection: 'column', height: '620px' }}>
           
           {/* Chat Header */}
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--surface-3)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.2)', border: '1px solid #10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#137638' }}>
+          <div style={{ padding: '14px clamp(12px, 3vw, 20px)', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px 12px', background: 'var(--surface-3)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: '1 1 220px' }}>
+              <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.2)', border: '1px solid #10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#137638', flexShrink: 0 }}>
                 <Bot size={20} />
               </div>
               <div>
@@ -12182,7 +12777,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
           </div>
 
           {/* Chat Messages Stream */}
-          <div style={{ flex: 1, padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ flex: 1, padding: '16px clamp(10px, 3vw, 20px)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {chatMessages.map(msg => (
               <div
                 key={msg.id}
@@ -12201,8 +12796,9 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
 
                 <div
                   style={{
-                    maxWidth: '80%',
-                    padding: '14px 18px',
+                    maxWidth: msg.sender === 'user' ? '85%' : 'calc(100% - 40px)',
+                    minWidth: 0,
+                    padding: '12px clamp(12px, 3vw, 18px)',
                     borderRadius: 'var(--radius-md)',
                     background: msg.sender === 'user' ? 'var(--primary)' : '#ffffff',
                     border: msg.sender === 'user' ? '1px solid #60a5fa' : '1px solid var(--border-color)',
@@ -19006,7 +19602,9 @@ const SourceRow: React.FC<{
       {sub && <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '2px' }}>{sub}</div>}
       {note && <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '4px', lineHeight: 1.45 }}>{note}</div>}
     </div>
-    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flexShrink: 0 }}>
+    {/* May shrink: a non-shrinking group is as wide as its chip and buttons side by side, which at phone width
+        pushed "Open" and "Evidence" past the card's edge. Shrinking lets them wrap inside the card instead. */}
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: '0 1 auto', minWidth: 0, maxWidth: '100%' }}>
       <SourceChip text={source.text} tone={source.tone} />
       <a href={url} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ fontSize: '0.76rem', padding: '5px 12px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
         Open <ExternalLink size={12} />
@@ -23067,7 +23665,10 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
 
         {/* Section 07: Study Roadmap (Embeds PreparationPlanner) */}
         {activeSection === 7 && (
-          <PreparationPlanner exam={exam} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <GeneratedStudyPlan exam={exam} completedTopics={completedTopics} onToggleTopic={toggleTopic} onOpenProvenanceModal={onOpenProvenanceModal} />
+            <PreparationPlanner exam={exam} />
+          </div>
         )}
 
         {/* Section 08: Resource Library (searchable, grouped, bookmarkable) */}

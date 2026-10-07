@@ -2689,7 +2689,9 @@
         .deck-slot:hover .deck-tick-2 { animation-delay: 0.3s; }
         .deck-slot:hover .deck-chart { animation: chartDraw 0.8s cubic-bezier(0.22, 1, 0.36, 1) backwards; }
         .deck-slot:hover .deck-lamp { fill: #f4b942; transition: fill 0.3s; }
+        .deck-slot:hover .deck-gear { animation: gearTurn 3s linear infinite; }
       }
+      @keyframes gearTurn { to { transform: rotate(360deg); } }
       .deck-chart { stroke-dasharray: 80; }
       @keyframes tickDraw { from { stroke-dashoffset: 40; } }
       @keyframes chartDraw { from { stroke-dashoffset: 80; } }

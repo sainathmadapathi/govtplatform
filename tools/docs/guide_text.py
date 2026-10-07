@@ -61,8 +61,11 @@ GovOS holds a small set of exams, and it is honest about how deep each one goes:
 
 - **SSC CGL 2026** and **UPSC Civil Services 2026** were written by hand from the commissions' own
   documents. Every date, post, rule and syllabus topic was read from the official PDF or exam page.
-- **IBPS PO 2026** and **APPSC Group-I and Group-II** are thinner. The features work for them, but where
-  something has not been read yet, the screen says exactly what is missing.
+- **APPSC Group-I 2026** was written by hand from the Commission's Notification No. 07/2026: its 13 posts and 166
+  vacancies, dates, three stages, full syllabus, fee and rules, each cited to the notification's page.
+- **IBPS PO 2026** and **APPSC Group-II** are placeholders: they were written before GovOS read those authorities'
+  documents. The features work for them, but every one of their facts is shown as "not verified", has no Evidence
+  button, and is never advertised on the home page.
 - **TGPSC Group-I** was read by GovOS's own machine reader from the commission's website and stored in the
   database. It is a "machine-read" exam.
 - **TG TET 2026-II** (the Special Teacher Eligibility Test for in-service teachers in Telangana) was written by
@@ -220,12 +223,22 @@ new canvas. The live watch is `GET /api/syllabus/watch` with six states (`syllab
 merged by [[applySyllabusRevisions]]. See {{doc:The syllabus, also as a map}}."""),
 
     ('Part 7 — Study Roadmap', 'p7', """
-A study plan for the exam: phases, goals you can tick off, and progress. For machine-read exams the
-roadmap follows the exam's own stages and papers, with each paper's topics as a checklist. GovOS does not
-invent "study 3 hours a day" numbers. Where a plan has no phases yet, it says what is missing.""",
-     """[[PreparationPlanner]] for authored roadmap tracks (goals in `govos_roadmap_goals`), [[SyllabusRoadmap]]
-for a machine exam's study guidance: stages, each with its official schedule in the authority's words, papers
-as cards with topic checklists. There are no durations, because none are published."""),
+Every exam opens this part on a study plan GovOS builds for you. You choose how many days you have (60, 90,
+120 or 180 — or the days left to the exam, when a firm date is on record) and how many hours a day you can
+study; the plan splits the days into learning, a second pass and full papers on the clock, and lays the
+learning out week by week, every subject moving forward together. Each subject's share of the time follows
+the marks the exam's own pattern gives it; each topic's share follows the weightage the record gives it, or
+otherwise how much the syllabus prints under it. The page says which of these it used. Tick a topic when it is
+done (here or in the Syllabus part) and the rest is re-planned from what is left. It is GovOS's guidance, never
+an official schedule. Below it, an exam with an authored track (SSC CGL, UPSC CSE) still shows that track.""",
+     """[[GeneratedStudyPlan]] renders [[generateStudyPlan]] (pure): [[studyPlanUnits]] reads the units and their
+weights — subject shares from the marks of the pattern stage that names most subjects ([[patternMarkNodes]],
+qualifying parts and unnamed subjects take the average), topic weights from `weightagePercentage` where every
+topic of the subject has one, else sub-topic count; a syllabus under `PLAN_THIN_SYLLABUS` topics is planned
+from the pattern's sections and their modules. [[studyPlanTracks]] offers alternative papers ("Paper X ·
+Subject"); [[studyPlanDefaultDays]] counts down only to a firm, exact exam date. Choices persist in
+`govos_study_plan`; ticks are the syllabus ticks. [[PreparationPlanner]] then shows authored tracks that have
+phases (goals in `govos_roadmap_goals`), and [[SyllabusRoadmap]] a machine exam's study guidance."""),
 
     ('Part 8 — Resources', 'p8', """
 A library of study material: official PDFs (NCERT books, the Constitution), official portals, single
