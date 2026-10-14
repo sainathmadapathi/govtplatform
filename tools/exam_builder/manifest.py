@@ -113,17 +113,21 @@ def to_source_set(manifest: SourceManifest) -> SourceSet:
     them exactly as it would on a fresh build.
     """
     out = SourceSet(exam_id=manifest.exam_id, authority_domain=manifest.authority_domain)
-    for s in manifest.sources:
-        out.docs.append(DiscoveredDoc(
+
+    def doc(s: ManifestSource) -> DiscoveredDoc:
+        return DiscoveredDoc(
             url=s.url,
-            kind=DocKind(s.document_type) if s.document_type in DocKind.__members__.values()
-            else DocKind(s.document_type) if s.document_type in [k.value for k in DocKind]
+            kind=DocKind(s.document_type) if s.document_type in [k.value for k in DocKind]
             else DocKind.UNKNOWN,
             title=s.title,
             relevance=Relevance(s.relevance) if s.relevance in [r.value for r in Relevance]
             else Relevance.DIRECT,
             matched=list(s.discovery_evidence),
-            found_on=s.found_on))
+            found_on=s.found_on)
+    out.docs = [doc(s) for s in manifest.sources]
+    # The documents discovery turned away travel too: a replay that dropped them would lose the
+    # audit of what was considered and refused.
+    out.rejected = [doc(s) for s in manifest.rejected]
     out.infrastructure_failed = manifest.infrastructure_failed
     out.log.append(f'replayed from a manifest captured {manifest.discovered_at} '
                    f'({len(out.docs)} source(s)); every document is re-fetched and '
@@ -168,7 +172,8 @@ def save(manifest: SourceManifest, *, directory: str = MANIFEST_DIR) -> str:
 
 
 def load(path: str) -> SourceManifest:
-    data = json.load(io.open(path, encoding='utf-8'))
+    with io.open(path, encoding='utf-8') as fh:
+        data = json.load(fh)
     version = data.get('schema_version', 0)
     if version != SCHEMA_VERSION:
         raise ValueError(

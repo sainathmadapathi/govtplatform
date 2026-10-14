@@ -94,11 +94,13 @@ def extract_corrigenda(doc: SourceDocument, text: str, *,
     for line in lines:
         m_date = _DATE_EXTENSION.search(line)
         if m_date:
+            # An unverified date reading drops only the date: the same line's vacancy revision
+            # (checked below) stands or falls on its own evidence. A `continue` here skipped it.
             ev = Evidence(span=line, source_url=doc.url, document_title=doc.title, page=1,
                           reading='date extension/rescheduling statement')
             if ev.verify(text) is not EvidenceStatus.VERIFIED:
-                continue
-
+                m_date = None
+        if m_date:
             # Parse out the revised date string
             groups = [g for g in m_date.groups() if g is not None]
             new_val = groups[-1].strip() if groups else ''

@@ -1204,8 +1204,9 @@ class Eligibility:
         return out
 
     def age_rules_for(self, scope: Scope) -> list[AgeRule]:
-        """Rules that govern the given scope, most general first."""
-        return [r for r in self.age_rules if r.scope.covers(scope)]
+        """Rules that govern the given scope, most general first (fewest scope references), so a
+        reader applying them in order lets the more specific rule speak last. Stable otherwise."""
+        return sorted((r for r in self.age_rules if r.scope.covers(scope)), key=lambda r: len(r.scope.refs))
 
     @property
     def global_age_rule(self) -> Optional[AgeRule]:

@@ -632,7 +632,15 @@ export interface ResourceItem {
     | 'Ethics, Essay & Answer Writing'
     | 'CSAT & Aptitude'
     | 'Previous Year Papers'
-    | 'Optional Subjects';
+    | 'Optional Subjects'
+    | 'Physics'
+    | 'Chemistry'
+    | 'Mathematics'
+    | 'Architecture & Planning Aptitude'
+    | 'Child Development & Pedagogy'
+    | 'Languages'
+    | 'Environmental Studies'
+    | 'Social Studies';
   author: string;
   /** THIRD_PARTY: a page GovOS did not write and no authority published (a coaching portal, say). Never counted as official. */
   type: 'OFFICIAL_PDF' | 'OFFICIAL_PORTAL' | 'SIMPLIFIED_GUIDE' | 'RECOMMENDED_BOOK' | 'VIDEO_LECTURE' | 'ONLINE_TOOL' | 'THIRD_PARTY';
@@ -1426,7 +1434,9 @@ export type ExamCareerField =
   | 'Banking & Financial Sector'
   | 'Indian Railways'
   | 'Defence & Armed Forces'
-  | 'State Public Services';
+  | 'State Public Services'
+  | 'Teaching & Education'
+  | 'Engineering & Technology';
 
 export type ExamCategoryTag =
   | 'CIVIL_SERVICES'
@@ -1474,6 +1484,14 @@ export interface Exam {
   isGoldenJourney: boolean;
   isDemoData: boolean;
   overviewDescription: string;
+  /**
+   * What passing the exam gives a candidate. RECRUITMENT (the default when absent): it fills posts, so posts,
+   * vacancies, pay and post-wise age bands apply. ELIGIBILITY_TEST: a qualifying test (a TET, say) that fills no
+   * post; it has no vacancies, pay or post-wise age band, and nothing may describe those as "not announced yet".
+   * ADMISSION_TEST: an entrance test whose scores decide admission to institutions (JEE (Main), say); it fills no
+   * post either, and its merit is the authority's own score, not a recruitment's posts.
+   */
+  examNature?: 'RECRUITMENT' | 'ELIGIBILITY_TEST' | 'ADMISSION_TEST';
   vacanciesTotal?: string;
   /** Evidence for this record's scalar facts (vacanciesTotal, crucialEligibilityDate), keyed by
    *  field name. A fact with no entry has no cited source and shows no Evidence action. */

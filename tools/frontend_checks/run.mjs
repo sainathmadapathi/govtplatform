@@ -9,7 +9,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..', '..');
 const outDir = join(root, 'exam_data');
 mkdirSync(outDir, { recursive: true });
-const CHECKS = ['claude_services_check.ts', 'resource_roles_check.ts', 'assistant_practice_check.ts', 'assistant_application_check.ts', 'exam_display_check.ts', 'sync_payload_check.ts', 'practice_papers_check.ts', 'future_exam_check.ts', 'results_skill_check.ts', 'ask_verification_check.ts', 'assistant_action_exam_check.ts', 'syllabus_tree_keys_check.ts', 'results_pathways_check.ts', 'eligibility_cutoffs_check.ts', 'exam_isolation_check.ts', 'evidence_boundary_check.ts', 'persistence_check.ts'];
+const CHECKS = ['claude_services_check.ts', 'resource_roles_check.ts', 'assistant_practice_check.ts', 'assistant_application_check.ts', 'exam_display_check.ts', 'sync_payload_check.ts', 'practice_papers_check.ts', 'future_exam_check.ts', 'results_skill_check.ts', 'ask_verification_check.ts', 'assistant_action_exam_check.ts', 'syllabus_tree_keys_check.ts', 'results_pathways_check.ts', 'eligibility_cutoffs_check.ts', 'exam_isolation_check.ts', 'evidence_boundary_check.ts', 'persistence_check.ts', 'eligibility_test_check.ts', 'study_plan_check.ts'];
 let status = 0;
 
 // The future-exam fixture is "validated data" only if it types against the same Exam model every real

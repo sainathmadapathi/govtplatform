@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 // GovOS UI: every candidate-facing and admin component, in dependency order.
 
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Activity,
@@ -226,7 +226,8 @@ import {
   INTERACTION_HALF_LIVES_HOURS,
   SIGNAL_STRENGTH_MULTIPLIER,
   RECOMMENDATION_HALF_LIFE_HOURS,
-  statedWhen
+  statedWhen,
+  type StudyPlanPrefs
 } from './services';
 
 // ==========================================================================
@@ -319,7 +320,9 @@ function _oneInQuote(p: DataProvenance | null | undefined, value: string): boole
  *  quotation does not contain, which presents it as neither direct nor verified. */
 export function withClaim(p: DataProvenance | null | undefined, value: ClaimValue): DataProvenance | null | undefined {
   const alts = _alternatives(value);
-  if (!p || alts.length === 0) return p;
+  // A provenance with no source and no words quotes nothing, so nothing can be "not in its quotation": it is
+  // simply unverified, and the badge counts it so.
+  if (!p || alts.length === 0 || !provenanceHasEvidence(p)) return p;
   const claimsQuote = evidenceKind(p) === 'DIRECT' || provenanceIsVerified(p);
   if (!claimsQuote || claimInQuote(p, alts)) return p;
   return { ...p, claimNotInQuote: alts[0] };
@@ -925,224 +928,8 @@ export const EvidencePanel: React.FC<EvidencePanelProps> = ({ provenance: p, onC
 // ==========================================================================
 // Header.tsx
 // ==========================================================================
-/** The nine top-level views. `main.tsx` switches on this; the assistant navigates with it. */
+/** The top-level views. `main.tsx` switches on this; the assistant navigates with it. */
 export type GovOSTab = 'FINDER' | 'ELIGIBILITY' | 'EXAM_DETAIL' | 'PLANNER' | 'PRACTICE' | 'RESOURCES' | 'COMPARE' | 'CALENDAR' | 'AI_ASSISTANT' | 'ADMIN' | 'MY_EXAMS';
-
-// ==========================================================================
-// UserProfileModal.tsx — Admin & Candidate Profile representation
-// ==========================================================================
-export interface UserProfileModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onNavigate: (tab: GovOSTab, section?: number) => void;
-  trackedCount?: number;
-}
-
-export const UserProfileModal: React.FC<UserProfileModalProps> = ({
-  isOpen,
-  onClose,
-  onNavigate,
-  trackedCount = 0
-}) => {
-  if (!isOpen) return null;
-
-  const modalContent = (
-    <div
-      className="modal-overlay animate-fade-in"
-      onClick={onClose}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 99999,
-        background: 'rgba(15, 23, 42, 0.55)',
-        backdropFilter: 'blur(6px)',
-        WebkitBackdropFilter: 'blur(6px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '20px'
-      }}
-    >
-      <div
-        className="modal-content animate-fade-in"
-        onClick={e => e.stopPropagation()}
-        style={{
-          maxWidth: '520px',
-          width: '100%',
-          padding: '26px 28px',
-          borderRadius: '24px',
-          background: '#ffffff',
-          boxShadow: '0 25px 60px -15px rgba(15, 23, 42, 0.35)',
-          border: '1px solid #e2e8f0',
-          position: 'relative',
-          maxHeight: '90vh',
-          overflowY: 'auto'
-        }}
-      >
-        {/* Header with Close */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span className="badge badge-verified" style={{ fontSize: '0.72rem' }}>
-              <ShieldCheck size={13} /> Official Admin Session
-            </span>
-          </div>
-          <button
-            className="icon-btn"
-            onClick={onClose}
-            aria-label="Close"
-            style={{ width: '32px', height: '32px', border: 'none', background: 'var(--surface-2)' }}
-          >
-            <X size={16} />
-          </button>
-        </div>
-
-        {/* User Identity Card */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '16px',
-          padding: '18px 20px',
-          background: 'linear-gradient(135deg, #f0f6ff 0%, #ffffff 100%)',
-          border: '1px solid var(--border-color)',
-          borderRadius: '16px',
-          marginBottom: '20px'
-        }}>
-          <div style={{
-            position: 'relative',
-            width: '56px',
-            height: '56px',
-            borderRadius: '50%',
-            background: 'var(--primary)',
-            color: '#fff',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '1.4rem',
-            fontWeight: 800,
-            boxShadow: 'var(--shadow-glow)',
-            flexShrink: 0
-          }}>
-            S
-            <span style={{
-              position: 'absolute',
-              bottom: '0',
-              right: '0',
-              width: '14px',
-              height: '14px',
-              background: '#10b981',
-              borderRadius: '50%',
-              border: '2px solid #fff'
-            }} title="Active" />
-          </div>
-
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-                Sainath
-              </h3>
-              <span className="badge badge-demo" style={{ fontSize: '0.65rem', padding: '2px 8px' }}>
-                ADMIN
-              </span>
-            </div>
-            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-              admin@govos.in · System Administrator
-            </div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--emerald)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
-              <CheckCircle2 size={12} /> Full Platform & Engine Privileges
-            </div>
-          </div>
-        </div>
-
-        {/* System & Session Specs */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', marginBottom: '20px' }}>
-          <div style={{ padding: '12px 14px', background: '#fafcff', border: '1px solid var(--border-color)', borderRadius: '12px' }}>
-            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Current Role</div>
-            <div style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Lock size={13} color="var(--primary)" /> Administrator
-            </div>
-          </div>
-          <div style={{ padding: '12px 14px', background: '#fafcff', border: '1px solid var(--border-color)', borderRadius: '12px' }}>
-            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Database Sync</div>
-            <div style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Database size={13} color="var(--emerald)" /> SQLite 3 Active
-            </div>
-          </div>
-        </div>
-
-        {/* Quick Navigation & Administrative Controls */}
-        <div style={{ marginBottom: '16px' }}>
-          <div style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '10px' }}>
-            Administrative Actions & Navigation
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <button
-              className="side-link"
-              onClick={() => { onClose(); onNavigate('ADMIN'); }}
-              style={{ padding: '12px 14px', background: 'var(--surface-2)', border: '1px solid var(--border-color)', borderRadius: '12px' }}
-            >
-              <ShieldCheck size={18} color="var(--primary)" />
-              <div style={{ flex: 1, textAlign: 'left' }}>
-                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>Trust Panel & Audit Reports</div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Review candidate error submissions and verify official source notices</div>
-              </div>
-              <ChevronRight size={16} color="var(--text-muted)" />
-            </button>
-
-            <button
-              className="side-link"
-              onClick={() => { onClose(); onNavigate('MY_EXAMS'); }}
-              style={{ padding: '12px 14px', background: '#fff', border: '1px solid var(--border-color)', borderRadius: '12px' }}
-            >
-              <Bookmark size={18} color="#6d28d9" />
-              <div style={{ flex: 1, textAlign: 'left' }}>
-                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>My Tracked Exams</div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>View bookmarked exam workspaces ({trackedCount} currently tracked)</div>
-              </div>
-              <ChevronRight size={16} color="var(--text-muted)" />
-            </button>
-
-            <button
-              className="side-link"
-              onClick={() => { onClose(); onNavigate('ELIGIBILITY'); }}
-              style={{ padding: '12px 14px', background: '#fff', border: '1px solid var(--border-color)', borderRadius: '12px' }}
-            >
-              <UserCheck size={18} color="var(--emerald)" />
-              <div style={{ flex: 1, textAlign: 'left' }}>
-                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>Candidate Profile & Eligibility</div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Configure degree, category, and age parameters for diagnostic testing</div>
-              </div>
-              <ChevronRight size={16} color="var(--text-muted)" />
-            </button>
-
-            <button
-              className="side-link"
-              onClick={() => { onClose(); onNavigate('AI_ASSISTANT'); }}
-              style={{ padding: '12px 14px', background: '#fff', border: '1px solid var(--border-color)', borderRadius: '12px' }}
-            >
-              <Bot size={18} color="var(--primary)" />
-              <div style={{ flex: 1, textAlign: 'left' }}>
-                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>Ask GovOS AI</div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Query official notices, pattern breakdown, and dates across all exams</div>
-              </div>
-              <ChevronRight size={16} color="var(--text-muted)" />
-            </button>
-          </div>
-        </div>
-
-        {/* Footer actions */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '16px', paddingTop: '14px', borderTop: '1px solid var(--border-color)' }}>
-          <button className="btn btn-secondary" onClick={onClose} style={{ fontSize: '0.85rem', padding: '8px 16px' }}>
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  return typeof document !== 'undefined'
-    ? createPortal(modalContent, document.body)
-    : modalContent;
-};
 
 interface HeaderProps {
   activeTab: GovOSTab;
@@ -1152,7 +939,6 @@ interface HeaderProps {
   trackedCount?: number;
   onOpenNotifications?: () => void;
   onOpenTimeline?: () => void;
-  onOpenProfile?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -1162,8 +948,7 @@ export const Header: React.FC<HeaderProps> = ({
   unreadCount = 0,
   trackedCount = 0,
   onOpenNotifications,
-  onOpenTimeline,
-  onOpenProfile
+  onOpenTimeline
 }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
@@ -1983,19 +1768,6 @@ export const JourneyStory: React.FC<{ steps: JourneyStep[] }> = ({ steps }) => (
   </section>
 );
 
-/** A typographic pause between chapters; its words settle in as it scrolls into view. */
-export const PullQuote: React.FC<{ text: string }> = ({ text }) => (
-  <figure className="pull-quote" data-reveal>
-    <Quote size={34} aria-hidden="true" />
-    <blockquote className="accent-serif">
-      <span className="sr-only">{text}</span>
-      {text.split(' ').map((w, i) => (
-        <span key={i} className="pq-word" aria-hidden="true" style={{ ['--qi' as any]: i }}>{w} </span>
-      ))}
-    </blockquote>
-  </figure>
-);
-
 // =============================================================================================
 // The club composition (presentation only): flat colour fields, wavy grounds, stacked display type and
 // handwritten asides. Every figure is read from the exam records; every button calls a handler the page owned.
@@ -2381,8 +2153,10 @@ export const ClubHero: React.FC<ClubHeroProps> = ({ exams, searchQuery, onSearch
     return () => io.disconnect();
   }, []);
   const now = Date.now();
+  // The hero advertises a countdown, so it takes only dates verified by their own evidence: a date the record
+  // holds without an official quotation for it may be shown on its exam's page, labelled, but is not promoted here.
   const milestones = exams
-    .map(exam => ({ exam, next: nextMilestoneOf(exam, now) }))
+    .map(exam => ({ exam, next: nextMilestoneOf({ ...exam, dates: exam.dates.filter(d => factVerification(d.provenance, dateClaim(d)) === 'VERIFIED') }, now) }))
     .filter((m): m is { exam: Exam; next: NonNullable<ReturnType<typeof nextMilestoneOf>> } => !!m.next)
     .sort((a, b) => (a.next.days ?? 9999) - (b.next.days ?? 9999))
     .slice(0, 2);
@@ -2410,7 +2184,7 @@ export const ClubHero: React.FC<ClubHeroProps> = ({ exams, searchQuery, onSearch
             <input
               type="text"
               aria-label="Search exams"
-              placeholder="Search SSC CGL, UPSC, IBPS…"
+              placeholder={`Search ${exams.slice(0, 3).map(e => examDisplayCode(e).split(' ').slice(0, 2).join(' ')).join(', ')}…`}
               value={searchQuery}
               onChange={e => onSearch(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') onFind(); }}
@@ -2421,8 +2195,9 @@ export const ClubHero: React.FC<ClubHeroProps> = ({ exams, searchQuery, onSearch
             <button className="btn club-ghost" onClick={onExplore}><JiggleLabel text="Explore exams" /></button>
           </div>
           <div className="club-chips club-in" style={{ ['--hi' as any]: 3 }}>
-            {['SSC CGL', 'UPSC CSE', 'RRB NTPC', 'IBPS PO', 'State PSC'].map(name => (
-              <button key={name} className="chip club-chip" onClick={() => onSearch(name)}>{name}</button>
+            {/* One chip per exam held, opening it -- these used to name exams GovOS does not hold (RRB NTPC). */}
+            {exams.map(exam => (
+              <button key={exam.id} className="chip club-chip" onClick={() => onOpenExam(exam)} title={`Open ${exam.title}`}>{examDisplayCode(exam)}</button>
             ))}
           </div>
           <dl className="club-figures club-in" style={{ ['--hi' as any]: 4 }}>
@@ -2452,7 +2227,23 @@ const CLUB_TONE: Record<ReturnType<typeof passToneOf>, string> = { ink: 'violet'
 
 /** Line-art sketches of each authority's world, drawn here in one ink. They are not the authorities' logos or the
  *  State Emblem: those are protected marks, and on a non-government site they would read as an endorsement. */
-export type AuthoritySketch = 'selection' | 'civil' | 'banking' | 'state' | 'railway';
+export type AuthoritySketch = 'selection' | 'civil' | 'banking' | 'state' | 'railway' | 'teaching' | 'engineering';
+
+/** Which world an exam's card shows, read from the record's own category and career fields -- never its id or
+ *  title -- so an exam added to the register (or published to the registry) gets its card with no code change.
+ *  None fits: the card has no sketch. */
+export const authoritySketchOf = (exam: Exam): AuthoritySketch | undefined => {
+  const f = exam.careerFields || [];
+  if (exam.categoryTag === 'BANKING' || f.includes('Banking & Financial Sector')) return 'banking';
+  if (exam.categoryTag === 'RAILWAYS' || f.includes('Indian Railways')) return 'railway';
+  if (exam.categoryTag === 'STATE_PSC' || f.includes('State Public Services')) return 'state';
+  if (exam.categoryTag === 'CIVIL_SERVICES') return 'civil';
+  if (exam.categoryTag === 'STAFF_SELECTION') return 'selection';
+  if (f.includes('Teaching & Education')) return 'teaching';
+  if (f.includes('Engineering & Technology')) return 'engineering';
+  if (f.includes('Civil Services & Governance')) return 'civil';
+  return undefined;
+};
 const INK = '#14213d';
 const SKETCH_LINE = { fill: 'none', stroke: INK, strokeWidth: 3, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
 const AuthorityArt: React.FC<{ kind: AuthoritySketch }> = ({ kind }) => (
@@ -2488,6 +2279,36 @@ const AuthorityArt: React.FC<{ kind: AuthoritySketch }> = ({ kind }) => (
         <rect {...SKETCH_LINE} x="16" y="107" width="148" height="9" fill={INK} />
         <rect {...SKETCH_LINE} x="122" y="86" width="30" height="22" rx="4" fill="#ffffff" />
         <path {...SKETCH_LINE} d="M131 86 v-5 h12 v5 M122 96 h30" />
+      </g>
+    )}
+    {kind === 'teaching' && (
+      <g>
+        {/* a blackboard on its stand with a sum being written, a stack of books and an apple */}
+        <rect {...SKETCH_LINE} x="16" y="14" width="104" height="70" rx="5" fill={INK} />
+        <path stroke="#ffffff" strokeWidth={3} strokeLinecap="round" fill="none" d="M32 34 h14 M39 27 v14 M56 34 h10 M78 30 l8 8 M86 30 l-8 8 M32 60 q10 -12 22 0 t22 0" />
+        <path {...SKETCH_LINE} d="M34 84 l-10 34 M102 84 l10 34 M68 84 v34" />
+        <rect {...SKETCH_LINE} x="132" y="96" width="40" height="10" rx="2" fill="#ffffff" />
+        <rect {...SKETCH_LINE} x="136" y="86" width="34" height="10" rx="2" fill={INK} />
+        <rect {...SKETCH_LINE} x="134" y="76" width="36" height="10" rx="2" fill="#ffffff" />
+        <path {...SKETCH_LINE} d="M152 70 c-9 -6 -16 2 -13 9 c3 8 9 8 13 5 c4 3 10 3 13 -5 c3 -7 -4 -15 -13 -9 z" fill="#ffffff" transform="translate(0 -14)" />
+        <path {...SKETCH_LINE} d="M152 56 c0 -5 3 -8 7 -9" />
+      </g>
+    )}
+    {kind === 'engineering' && (
+      <g>
+        {/* a drawing sheet, a set-square and a pair of compasses, with a gear turning beside them */}
+        <rect {...SKETCH_LINE} x="14" y="40" width="86" height="76" rx="4" fill="#ffffff" />
+        <path {...SKETCH_LINE} d="M26 104 h62 M26 104 v-52" />
+        <path {...SKETCH_LINE} d="M30 98 L30 62 L66 98 Z" fill={INK} />
+        <path {...SKETCH_LINE} d="M62 22 l-22 66 M62 22 l20 66 M56 40 h12" />
+        <circle {...SKETCH_LINE} cx="62" cy="18" r="5" fill="#ffffff" />
+        <g className="deck-gear" style={{ transformOrigin: '140px 72px' }}>
+          <circle {...SKETCH_LINE} cx="140" cy="72" r="22" fill="#ffffff" />
+          <circle {...SKETCH_LINE} cx="140" cy="72" r="8" fill={INK} />
+          {[0, 45, 90, 135, 180, 225, 270, 315].map(a => (
+            <rect key={a} {...SKETCH_LINE} x="136" y="42" width="8" height="10" rx="1.5" fill={INK} transform={`rotate(${a} 140 72)`} />
+          ))}
+        </g>
       </g>
     )}
     {kind === 'banking' && (
@@ -2812,7 +2633,6 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
 }) => {
   const [selectedPersona, setSelectedPersona] = useState<string>('Graduation (Any Stream)');
   const [selectedInterest, setSelectedInterest] = useState<string>('Government Job');
-  const [ageInput, setAgeInput] = useState<number>(21);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   // --- Smarter Personalized Recommendations (Time-Decayed BPR) ---
@@ -2826,8 +2646,6 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
     storageService.getBookmarkedExams()
   );
   const [showInteractionsModal, setShowInteractionsModal] = useState<boolean>(false);
-  const [simulationNotice, setSimulationNotice] = useState<string | null>(null);
-
   const refreshRecommendations = () => {
     setRecommendations(storageService.getPersonalizedRecommendations(exams));
     setInteractions(storageService.getUserInteractions());
@@ -2842,15 +2660,6 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
     const updated = storageService.toggleBookmarkExam(examId);
     setBookmarkedIds(updated);
     refreshRecommendations();
-  };
-
-  /** A popular-exam card opens that authority's exam where GovOS holds one, and otherwise searches for it —
-   *  never another exam by its position in the register. */
-  const openPopular = (idPart: string) => {
-    const held = ALL_EXAMS.find(e => e.id.includes(idPart));
-    if (held) { onSelectExam(held); return; }
-    handleSearchChange(idPart.toUpperCase());
-    document.getElementById('exam-finder-engine')?.scrollIntoView({ behavior: 'smooth' });
   };
 
   const handleSearchChange = (val: string) => {
@@ -2873,90 +2682,6 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
     }
   };
 
-  const runSimulationPreset = (preset: 'CIVIL_SERVICES_TARGET' | 'COMMITMENT_TEST' | 'BANKING' | 'STAFF_SELECTION' | 'RESET') => {
-    if (preset === 'RESET') {
-      storageService.clearUserInteractions();
-      setSimulationNotice('Activity history cleared! Recommendations reset to default profile prior.');
-      refreshRecommendations();
-      setTimeout(() => setSimulationNotice(null), 4000);
-      return;
-    }
-
-    if (preset === 'CIVIL_SERVICES_TARGET') {
-      // User recently: Viewed -> UPSC, Saved -> APPSC Group 1, Read -> Civil Services syllabus
-      storageService.clearUserInteractions();
-      storageService.recordInteraction({
-        type: 'VIEW',
-        examId: 'exam-upsc-cse-2026',
-        metadata: { title: 'UPSC CSE 2026 Guide & Scheme' }
-      });
-      storageService.recordInteraction({
-        type: 'BOOKMARK',
-        examId: 'exam-appsc-group1-2026',
-        metadata: { title: 'APPSC Group-I Notification Bookmarked' }
-      });
-      storageService.recordInteraction({
-        type: 'SYLLABUS_READ',
-        examId: 'exam-upsc-cse-2026',
-        metadata: { section: '06 - Civil Services General Studies Syllabus & Blueprint' }
-      });
-      setSimulationNotice('🎯 Target Scenario Applied: Viewed UPSC + Saved APPSC Gr 1 + Read CS Syllabus! GovOS recommends: 1. UPSC CSE, 2. APPSC Group 1, 3. APPSC Group 2.');
-      refreshRecommendations();
-      setTimeout(() => setSimulationNotice(null), 5000);
-    } else if (preset === 'COMMITMENT_TEST') {
-      // Candidate Activity: FOLLOW UPSC (180d, 2x) + BOOKMARK APPSC Group 1 (60d, 1.5x) vs VIEW IBPS PO once (3d, 1x)
-      storageService.clearUserInteractions();
-      storageService.recordInteraction({
-        type: 'FOLLOW',
-        examId: 'exam-upsc-cse-2026',
-        metadata: { action: 'Tracked UPSC CSE in Timeline (T½=180d, 2.0x signal)' }
-      });
-      storageService.recordInteraction({
-        type: 'BOOKMARK',
-        examId: 'exam-appsc-group1-2026',
-        metadata: { action: 'Saved APPSC Group-I to Shortlist (T½=60d, 1.5x signal)' }
-      });
-      storageService.recordInteraction({
-        type: 'VIEW',
-        examId: 'exam-ibps-po-2026',
-        metadata: { action: 'Exploratory View of IBPS PO (T½=3d, 1.0x signal)' }
-      });
-      setSimulationNotice('🎯 Commitment Dominance Applied: Long-term tracking (Follow UPSC + Bookmark APPSC Gr 1) massively outranks transient clicks (View IBPS PO)!');
-      refreshRecommendations();
-      setTimeout(() => setSimulationNotice(null), 5000);
-    } else if (preset === 'BANKING') {
-      storageService.clearUserInteractions();
-      storageService.recordInteraction({
-        type: 'VIEW',
-        examId: 'exam-ibps-po-2026',
-        metadata: { title: 'IBPS PO 2026 Guide' }
-      });
-      storageService.recordInteraction({
-        type: 'FOLLOW',
-        examId: 'exam-ibps-po-2026',
-        metadata: { action: 'Tracked in timeline' }
-      });
-      setSimulationNotice('🏦 Applied Banking Focus: Viewed & Tracked IBPS PO!');
-      refreshRecommendations();
-      setTimeout(() => setSimulationNotice(null), 5000);
-    } else if (preset === 'STAFF_SELECTION') {
-      storageService.clearUserInteractions();
-      storageService.recordInteraction({
-        type: 'VIEW',
-        examId: 'exam-ssc-cgl-2026',
-        metadata: { title: 'SSC CGL 2026 Golden Journey' }
-      });
-      storageService.recordInteraction({
-        type: 'SYLLABUS_READ',
-        examId: 'exam-ssc-cgl-2026',
-        metadata: { section: '06 - Tier 1 & Tier 2 Syllabus' }
-      });
-      setSimulationNotice('📋 Applied Staff Selection Focus: Viewed & Studied SSC CGL Blueprint!');
-      refreshRecommendations();
-      setTimeout(() => setSimulationNotice(null), 5000);
-    }
-  };
-
   const personas = [
     'Class 10th Pass',
     'Class 12th (MPC / Science)',
@@ -2966,14 +2691,17 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
     'Postgraduate / Master\'s'
   ];
 
-  const interests = [
+  // The standard fields first, then any field an exam's own record declares (a TET's "Teaching & Education"), so a
+  // new kind of exam can be found by its field without a code change.
+  const interests = Array.from(new Set([
     'Government Job',
     'Civil Services & Governance',
     'Banking & Financial Sector',
     'Indian Railways',
     'Defence & Armed Forces',
-    'State Public Services'
-  ];
+    'State Public Services',
+    ...exams.flatMap(e => e.careerFields || [])
+  ]));
 
   // Rank of each qualification, so a graduate also sees exams that only need 12th.
   const QUALIFICATION_RANK: Record<ExamQualificationLevel, number> = {
@@ -3050,18 +2778,16 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
               View all exams <ArrowRight size={15} />
             </button>
           </div>
-          <ExamPassRail items={[
-            { name: 'SSC CGL', sub: 'Staff Selection Commission', sketch: 'selection', exam: ALL_EXAMS.find(e => e.id.includes('ssc')), onClick: () => openPopular('ssc') },
-            { name: 'UPSC CSE', sub: 'Union Public Service Commission', sketch: 'civil', exam: ALL_EXAMS.find(e => e.id.includes('upsc')), onClick: () => openPopular('upsc') },
-            { name: 'IBPS PO', sub: 'Institute of Banking Personnel', sketch: 'banking', exam: ALL_EXAMS.find(e => e.id.includes('ibps')), onClick: () => openPopular('ibps') },
-            { name: 'State PSC', sub: 'State Public Service Commission', sketch: 'state', exam: ALL_EXAMS.find(e => e.id.includes('appsc')), onClick: () => openPopular('appsc') },
-            {
-              name: 'RRB NTPC', sub: 'Railway Recruitment Board', sketch: 'railway', onClick: () => {
-                handleSearchChange('RRB NTPC');
-                document.getElementById('exam-finder-engine')?.scrollIntoView({ behavior: 'smooth' });
-              }
-            }
-          ]} />
+          {/* Every exam GovOS holds -- the register and the published registry alike -- so an exam added to either
+              appears here the day it lands. It used to be five hand-picked cards, one of them an exam GovOS does
+              not hold, and TG TET and JEE (Main) never appeared. */}
+          <ExamPassRail items={exams.map(exam => ({
+            name: examDisplayCode(exam),
+            sub: exam.authorityName,
+            sketch: authoritySketchOf(exam),
+            exam,
+            onClick: () => onSelectExam(exam)
+          }))} />
         </section>
 
         {/* Every exam and authority GovOS holds, on a bright field */}
@@ -3149,68 +2875,6 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
               Activity Log ({interactions.length})
             </button>
           </div>
-        </div>
-
-        {/* Behavioral Simulation Toolbar */}
-        <div style={{ padding: '14px 18px', background: 'var(--surface-3)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', marginBottom: '22px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '10px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Zap size={16} color="var(--amber)" />
-              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#af5109' }}>
-                Behaviour Simulation Lab:
-              </span>
-              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                Test candidate interaction sequences in 1 click:
-              </span>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <button
-              className="btn btn-emerald"
-              onClick={() => runSimulationPreset('CIVIL_SERVICES_TARGET')}
-              style={{ fontSize: '0.78rem', padding: '7px 14px' }}
-              title="Viewed UPSC + Saved APPSC Gr 1 + Read CS syllabus -> Recommends UPSC CSE, APPSC Gr 1, APPSC Gr 2"
-            >
-              ✨ Target Test: Viewed UPSC + Saved APPSC 1 + Read CS Syllabus
-            </button>
-            <button
-              className="btn btn-primary"
-              onClick={() => runSimulationPreset('COMMITMENT_TEST')}
-              style={{ fontSize: '0.78rem', padding: '7px 14px' }}
-              title="Follow UPSC + Bookmark APPSC Gr 1 vs View IBPS PO (Demonstrates explicit tracking anchor vs fleeting view)"
-            >
-              🎯 Commitment Dominance (Follow UPSC + Save APPSC vs View IBPS)
-            </button>
-            <button
-              className="btn btn-secondary"
-              onClick={() => runSimulationPreset('BANKING')}
-              style={{ fontSize: '0.78rem', padding: '7px 14px' }}
-            >
-              🏦 Banking Focus (IBPS PO)
-            </button>
-            <button
-              className="btn btn-secondary"
-              onClick={() => runSimulationPreset('STAFF_SELECTION')}
-              style={{ fontSize: '0.78rem', padding: '7px 14px' }}
-            >
-              📋 Staff Selection (SSC CGL)
-            </button>
-            <button
-              className="btn btn-secondary"
-              onClick={() => runSimulationPreset('RESET')}
-              style={{ fontSize: '0.78rem', padding: '7px 14px', color: '#b71f1f' }}
-            >
-              <RotateCcw size={13} /> Reset Behaviour
-            </button>
-          </div>
-
-          {simulationNotice && (
-            <div className="animate-fade-in" style={{ marginTop: '10px', padding: '8px 12px', borderRadius: 'var(--radius-sm)', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#137638', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <CheckCircle2 size={15} />
-              {simulationNotice}
-            </div>
-          )}
         </div>
 
         {/* Recommendation Cards Grid */}
@@ -3469,7 +3133,7 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
 
             {interactions.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                No interaction events recorded yet. Try browsing exams, reading syllabus blueprints, or using the Simulation Lab!
+                No interaction events recorded yet. Try browsing exams or reading a syllabus.
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -3545,7 +3209,7 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
           <h3 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Career & Exam Discovery Engine</h3>
         </div>
 
-        <div className="grid-3" style={{ marginBottom: '24px' }}>
+        <div className="grid-2" style={{ marginBottom: '24px' }}>
           {/* Step 1: Persona */}
           <div>
             <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px' }}>
@@ -3594,27 +3258,6 @@ export const ExamFinder: React.FC<ExamFinderProps> = ({
             </select>
           </div>
 
-          {/* Step 3: Age */}
-          <div>
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px' }}>
-              3. Target Recruitment Year
-            </label>
-            <select 
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                borderRadius: 'var(--radius-md)',
-                background: 'var(--bg-input)',
-                border: '1px solid var(--border-color)',
-                color: 'var(--text-primary)',
-                fontSize: '0.95rem',
-                fontFamily: 'var(--font-sans)',
-                outline: 'none'
-              }}
-            >
-              <option value="2026">2026 Recruitment Cycle</option>
-            </select>
-          </div>
         </div>
 
         {/* Search Bar */}
@@ -5448,6 +5091,7 @@ const ASSISTANT_FILLER = new Set(['the', 'a', 'an', 'is', 'are', 'was', 'do', 'd
  * Order matters only where two patterns could both fire; each appends, none replaces.
  */
 const ASSISTANT_PARAPHRASES: { pattern: RegExp; means: string }[] = [
+  { pattern: /\bwho (can|may|is allowed to|are allowed to) (apply|appear|write|sit|take)\b/, means: 'eligibility' },
   { pattern: /\b(till|until|by) when\b|\bfill (in |up )?(the )?form\b|\bform (close|closes|closing|shut)|\bsubmit the form\b/, means: 'last date to apply' },
   { pattern: /\bwrong (tick|answer|option|mark|attempt)s?\b|\blose marks?\b|\bpenalt(y|ies)\b|\bdeduct|\bminus marks?\b|\bnegative\b/, means: 'negative marking' },
   { pattern: /\bhow much (do|does|will|would) (they|it|the job|the post|the government) pay\b|\bearn\b|\bstipend\b|\btake.?home\b|\bmonthly pay\b|\bpay of\b/, means: 'salary' },
@@ -5472,6 +5116,16 @@ function expandParaphrases(q: string): string {
     if (pattern.test(q) && !added.includes(means)) added.push(means);
   });
   return added.length > 0 ? `${q} ${added.join(' ')}` : q;
+}
+
+/** The question as typed, without the meanings `expandParaphrases` appended to it. */
+function withoutParaphrases(q: string): string {
+  const added: string[] = [];
+  ASSISTANT_PARAPHRASES.forEach(({ pattern, means }) => {
+    if (pattern.test(q) && !added.includes(means)) added.push(means);
+  });
+  const suffix = ` ${added.join(' ')}`;
+  return added.length > 0 && q.endsWith(suffix) ? q.slice(0, -suffix.length) : q;
 }
 
 /**
@@ -5514,6 +5168,8 @@ const assistantVocab = (): Set<string> => {
     'certificate', 'category', 'relaxation', 'marking', 'negative', 'pattern', 'question', 'questions', 'resources',
     'calendar', 'timeline', 'roadmap', 'bookmark', 'simulator'].forEach(w => vocab.add(w));
   ALL_EXAMS.forEach(ex => (ex.resources || []).forEach(r => { add(r.title); add(r.subject); }));
+  // An exam's own FAQ questions are its candidates' words ("percentile" is not a typo of "percentage").
+  ALL_EXAMS.forEach(ex => (ex.faqs || []).forEach(f => add(f.question)));
   COMMON_WORDS.forEach(w => vocab.add(w));
   ASSISTANT_PARAPHRASES.forEach(pp => add(pp.means));
   assistantVocabulary = vocab;
@@ -5913,7 +5569,9 @@ const FACT_SUBJECTS: Record<string, string> = {
   practice: 'practice and mock tests',
   attempts: 'the number of attempts',
   physical: 'the physical standards',
-  tentative: 'whether the dates are final'
+  tentative: 'whether the dates are final',
+  documents: 'the documents to upload',
+  interview: 'the interview'
 };
 
 /**
@@ -5924,7 +5582,7 @@ const FACT_CANONICAL: Record<string, string> = {
   targetPost: 'my target post', nextStep: 'what should i do next', studyPlan: 'what should i study', age: 'age limit',
   eligibility: 'eligibility', dates: 'exam date', pattern: 'exam pattern', vacancy: 'vacancies', pay: 'salary',
   syllabus: 'syllabus', fee: 'fee', resources: 'resources', admitCard: 'admit card', cutoff: 'cutoff', apply: 'apply',
-  practice: 'practice', attempts: 'attempts', physical: 'physical test', tentative: 'tentative'
+  practice: 'practice', attempts: 'attempts', physical: 'physical test', tentative: 'tentative', interview: 'interview'
 };
 const SUBJECT_TO_CANONICAL: Record<string, string> = Object.fromEntries(
   Object.entries(FACT_SUBJECTS).map(([id, label]) => [label, FACT_CANONICAL[id] || label])
@@ -5954,7 +5612,16 @@ export function namedResourceAnswer(q: string, minScore: number = 6, exam: Exam 
   // the candidate named a specific document needs a library big enough for the match to
   // mean something; below that, a section answer is the honest one.
   if (library.length < 5) return null;
-  const { results } = rankResourcesForQuery(q, library, 3);
+  // The words that name the exam itself (its code, its authority's acronym) are carried by every entry of its
+  // library, so they name no entry: "the syllabus for ibps po" must not hand over the IBPS notification because
+  // its title says IBPS. Dropped before ranking; a question that is nothing but the exam's name names no entry.
+  const examWords = new Set([
+    ...normaliseQuery((exam.code || '').replace(/_/g, ' ')).split(' '),
+    ...normaliseQuery((exam.authorityName.match(/\(([^)]+)\)/) || [])[1] || '').split(' ')
+  ].filter(w => w && !/^\d+$/.test(w)));
+  const asked = normaliseQuery(q).split(' ').filter(w => w && !examWords.has(w)).join(' ');
+  if (contentWordsOf(asked).length === 0) return null;
+  const { results } = rankResourcesForQuery(asked, library, 3);
   if (results.length === 0 || results[0].score < minScore) return null;
   const top = results[0].resource;
   // Route to where the entry is actually shown: only learning material is in Resources. A lead is not
@@ -6002,17 +5669,19 @@ const FACT_INTENTS: { id: string; keys: string[] }[] = [
   { id: 'age', keys: ['age limit', 'maximum age', 'minimum age', 'age relaxation', 'how old', 'upper age', 'age criteria', 'crucial date', 'age as on', 'too old', 'age bar'] },
   { id: 'eligibility', keys: ['eligib', 'qualification', 'graduate', 'graduation', 'degree', 'b tech', 'btech', 'can i apply', 'final year eligibility', 'can i still'] },
   { id: 'dates', keys: ['last date', 'deadline', 'closing date', 'application date', 'when can i apply', 'apply by', 'important date', 'exam date', 'when is the exam', 'notification date', 'tier 1 exam', 'tier 2 exam', 'when is tier', 'exam schedule', 'exam month', 'which month', 'last date to apply', 'when is prelims', 'prelims date', 'when is mains', 'mains date', 'when is the interview', 'interview date', 'when is'] },
-  { id: 'pattern', keys: ['negative marking', 'marking scheme', 'exam pattern', 'pattern', 'how many questions', 'how many marks', 'duration', 'tier 1', 'tier 2', 'paper pattern', 'dest', 'data entry speed test', 'qualifying', 'csat qualifying', 'wrong answer', 'penalty'] },
+  { id: 'pattern', keys: ['negative marking', 'marking scheme', 'exam pattern', 'pattern', 'how many questions', 'how many papers', 'how many marks', 'duration', 'tier 1', 'tier 2', 'paper pattern', 'dest', 'data entry speed test', 'qualifying', 'csat qualifying', 'wrong answer', 'penalty'] },
   { id: 'vacancy', keys: ['vacancy', 'vacancies', 'how many post', 'number of post', 'seats', 'how many services', 'which services', 'services can i get', 'posts can i get', 'openings'] },
   { id: 'pay', keys: ['salary', 'pay level', 'pay scale', 'in hand', 'grade pay', 'how much do they pay', 'earn', 'stipend', 'take home', 'pay of'] },
   { id: 'syllabus', keys: ['syllabus', 'what to study', 'topics'] },
   { id: 'fee', keys: ['fee', 'payment', 'how much to pay', 'application fee', 'fees'] },
   { id: 'resources', keys: ['resource', 'material', 'book', 'pdf', 'video', 'ncert', 'free course', 'youtube', 'channel', 'coaching', 'teacher'] },
   { id: 'admitCard', keys: ['admit card', 'hall ticket', 'hall pass', 'e admit card', 'admission certificate', 'call letter'] },
-  { id: 'cutoff', keys: ['cutoff', 'cut off', 'marks needed', 'safe score', 'qualifying marks', 'minimum marks', 'csat cutoff'] },
+  { id: 'cutoff', keys: ['cutoff', 'cut off', 'marks needed', 'safe score', 'qualifying marks', 'minimum marks', 'csat cutoff', 'pass marks', 'pass mark', 'pass percentage'] },
   { id: 'attempts', keys: ['attempts', 'number of attempts', 'how many attempts', 'how many times can i', 'chances'] },
+  { id: 'interview', keys: ['is there an interview', 'interview', 'personality test', 'viva voce', 'interview marks'] },
   { id: 'physical', keys: ['physical test', 'physical standard', 'physical standards', 'running test', 'walking test', 'fitness test', 'height', 'chest', 'medical standard'] },
   { id: 'tentative', keys: ['tentative', 'is that final', 'is it final', 'final or tentative', 'confirmed', 'fixed date', 'can it change'] },
+  { id: 'documents', keys: ['documents required', 'required documents', 'documents needed', 'which documents', 'what documents', 'documents to upload', 'certificates required'] },
   { id: 'apply', keys: ['apply', 'application', 'otr', 'registration', 'photo', 'signature'] },
   { id: 'practice', keys: ['practice', 'mock', 'test', 'pyq', 'previous year'] }
 ];
@@ -6124,7 +5793,7 @@ const PLATFORM_MAP: { keys: string[]; answer: string; action: AssistantAction }[
   },
   {
     keys: ['admit card', 'hall ticket', 'call letter'],
-    answer: 'Section 14 Admit Card of the Exam Guide covers when the card is released, which regional website issues it, what you must carry with it, and what to do if the download fails.',
+    answer: 'Section 14 Admit Card of the Exam Guide covers when the card is released, which website issues it, what you must carry with it, and what to do if the download fails.',
     action: { label: 'Open Admit Card', tab: 'EXAM_DETAIL', section: 14 }
   },
   {
@@ -6149,7 +5818,7 @@ const PLATFORM_MAP: { keys: string[]; answer: string; action: AssistantAction }[
   },
   {
     keys: ['result', 'after the exam', 'document verification', 'next step'],
-    answer: 'Section 16 Result & Next Steps of the Exam Guide covers the stages after the exam: answer key and challenge window, result, document verification and final posting.',
+    answer: 'Section 16 Result & Next Steps of the Exam Guide covers what comes after the exam: the result declarations on record, and the next steps the record states.',
     action: { label: 'Open Result & Next Steps', tab: 'EXAM_DETAIL', section: 16 }
   },
   {
@@ -6210,6 +5879,73 @@ function threadExam(ctx: ChatContext): Exam {
   const lastId = [...ctx.history].reverse().find(t => t.role === 'assistant')?.examId;
   if (!lastId || lastId === ctx.exam.id) return ctx.exam;
   return ALL_EXAMS.find(e => e.id === lastId) || ctx.exam;
+}
+
+/** Facts only a recruitment has: an exam with no posts answers these from what its record does state. */
+const POST_SHAPED_FACTS = new Set(['age', 'vacancy', 'pay', 'physical', 'targetPost', 'studyPlan', 'eligibility']);
+
+/**
+ * The answer for an exam with no posts. An ELIGIBILITY_TEST (a TET) or an ADMISSION_TEST (an entrance test) fills no
+ * post by design, so it has no vacancies, pay, post-wise age band or physical standard, and its notice states who may
+ * appear instead; any other exam with no posts on record is said to hold none yet. Every statement is about the record
+ * or quotes it.
+ */
+export function noPostsReply(exam: Exam, factId: string): AssistantReply {
+  const kind = exam.examNature === 'ELIGIBILITY_TEST' ? 'an eligibility test' : exam.examNature === 'ADMISSION_TEST' ? 'an admission test' : null;
+  const cards = exam.eligibilityHighlights || [];
+  const who = cards[0];
+  // Who may appear answers every one of these; the full set of rules only where eligibility itself was asked.
+  const shown = factId === 'eligibility' || factId === 'age' ? cards : cards.slice(0, 2);
+  const whoLines = shown.map(c => `• **${c.title}** — ${c.body}`).join('\n');
+  const what: Record<string, string> = {
+    age: 'age limit', vacancy: 'vacancies', pay: 'pay scale', physical: 'physical standard', posts: 'posts',
+    targetPost: 'target post to choose', studyPlan: 'target post to plan around', eligibility: 'post-by-post eligibility check'
+  };
+  const lead = kind
+    ? `${exam.title} is ${kind}, not a recruitment: it fills no post, so the record has no ${what[factId] || 'post-wise rule'} for it.`
+    : `The record holds no posts for ${exam.title} yet, so GovOS has no ${what[factId] || 'post-wise rule'} to state.`;
+  const studyLine = factId === 'studyPlan' || factId === 'targetPost'
+    ? `\n\nWork from its syllabus instead: ${exam.syllabus.length} topics in section 06, which you can tick off as you finish them.` : '';
+  return {
+    verified: !!who,
+    sourceKind: who ? 'OFFICIAL' : 'PLATFORM',
+    subject: FACT_SUBJECTS[factId] || 'eligibility',
+    text: `${lead}${whoLines ? `\n\nWhat its notice states instead:\n${whoLines}` : ''}${studyLine}`,
+    citation: who ? citeFrom(who.provenance, `${exam.title} official notice`) : undefined,
+    action: factId === 'studyPlan' || factId === 'targetPost'
+      ? { label: 'Open the syllabus', tab: 'EXAM_DETAIL', section: 6 }
+      : { label: 'Open Eligibility & Posts', tab: 'EXAM_DETAIL', section: 3 }
+  };
+}
+
+/**
+ * An answer from the exam's own FAQs, when the question shares most of one FAQ's distinctive words. A FAQ is part of the
+ * record and carries its own clause and provenance, so this is a cited answer, not a guess.
+ */
+export function faqAnswerFor(q: string, exam: Exam, whole = false): AssistantReply | null {
+  const STOP = new Set(['what', 'which', 'when', 'where', 'who', 'how', 'can', 'could', 'should', 'will', 'would', 'the', 'and', 'for', 'this', 'that',
+    'with', 'from', 'are', 'is', 'there', 'any', 'have', 'has', 'does', 'do', 'did', 'my', 'me', 'you', 'your', 'i', 'a', 'an', 'of', 'to', 'in', 'on', 'it', 'be', 'or']);
+  const words = (t: string) => new Set(normaliseQuery(t).split(' ').filter(w => w.length >= 3 && !STOP.has(w)));
+  const asked = words(q);
+  if (asked.size === 0) return null;
+  let best: { faq: Exam['faqs'][number]; score: number } | null = null;
+  for (const faq of exam.faqs || []) {
+    const own = words(faq.question + ' ' + faq.answer.split('.')[0]);
+    const shared = Array.from(asked).filter(w => own.has(w) || Array.from(own).some(o => o.length >= 5 && (o.startsWith(w) || w.startsWith(o)))).length;
+    const score = shared / asked.size;
+    // A one-word question ("percentile") is that FAQ's only when the word is long and in the FAQ's own question.
+    const lone = whole && asked.size === 1 && Array.from(asked).every(w => w.length >= 7 && words(faq.question).has(w));
+    if ((shared >= 2 || lone) && score >= (whole ? 1 : 0.5) && (!best || score > best.score)) best = { faq, score };
+  }
+  if (!best) return null;
+  return {
+    verified: true,
+    sourceKind: 'OFFICIAL',
+    subject: best.faq.question,
+    text: `${best.faq.answer}\n\n(${exam.title} FAQ — ${best.faq.officialClause})`,
+    citation: citeFrom(best.faq.provenance, `${exam.title} official notice`),
+    action: { label: 'Open FAQs', tab: 'EXAM_DETAIL', section: 11 }
+  };
 }
 
 export function answerCandidateQuery(query: string, context?: ChatContext): AssistantReply {
@@ -6340,6 +6076,11 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
   // intent matched confidently, or "what about the admit card" would return a portal link
   // instead of the admit-card answer.
   const confidentIntent = Math.max(nav ? nav.score : 0, fact ? fact.score : 0) >= 6;
+  // A question every one of whose words one of this exam's own FAQs carries ("who can take jee advanced", "can i change
+  // my exam centre") is answered by that FAQ, cited -- ahead of a section pointer or a document that merely shares a word.
+  // Not when it asks where something is, and not over a fact intent the question plainly names.
+  const wholeFaq = !asksLocation(q) && !(fact && fact.score >= 6) ? faqAnswerFor(withoutParaphrases(q), exam, true) : null;
+  if (wholeFaq) return wholeFaq;
   if (!confidentIntent) {
     const stronglyNamed = namedResourceAnswer(q, 10, exam);
     if (stronglyNamed) return stronglyNamed.reply;
@@ -6348,6 +6089,7 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
   // Answer with navigation when the candidate asks where something is, or when a specific
   // multi-word request ("application practice") outscores whatever single words also matched.
   if (nav && (asksLocation(q) || (nav.score >= 6 && nav.score > (fact ? fact.score : 0)))) {
+    if (exam.posts.length === 0 && /\{posts\}/.test(nav.entry.answer)) return noPostsReply(exam, /Am I Eligible/.test(nav.entry.answer) ? 'eligibility' : 'posts');
     // If that section answer is really about one entry, hand over the entry as well.
     // Resources is section 08 of the exam now, so recognise it by section as well as by the
     // legacy tab id — otherwise a "where is the constitution pdf" answer stops handing over
@@ -6374,6 +6116,11 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
   }
 
   // ---- facts, read out of the register
+  // An exam that fills no post (an eligibility test such as a TET, or a record that holds no posts yet) has no
+  // vacancies, pay, post-wise age band or physical standard; the branches below would print "0 posts" or
+  // "Infinity to -Infinity". Answer from what its record does state.
+  if (exam.posts.length === 0 && POST_SHAPED_FACTS.has(factId)) return noPostsReply(exam, factId);
+
   if (factId === 'age') {
     const minAge = Math.min(...exam.posts.map(p => p.minAge));
     const maxAge = Math.max(...exam.posts.map(p => p.maxAge));
@@ -6388,15 +6135,26 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
         new RegExp(cat, 'i').test(entry.category));
       if (published && published.status === 'NOT_PUBLISHED') return 0;
       if (published && published.status === 'VERIFIED' && typeof published.years === 'number') return published.years;
-      const m = ageCard && new RegExp(`${cat}[^.;]*?(\\d+) years`, 'i').exec(ageCard.body);
+      const m = ageCard && new RegExp(`(?:${cat})[^.;]*?(\\d+) years`, 'i').exec(ageCard.body);
       return m ? Number(m[1]) : null;
     };
-    const relax: [string, number | null][] = [['OBC', relaxOf('OBC|Other Backward')], ['SC/ST', relaxOf('SC/ST|Scheduled Caste|Scheduled Tribe')], ['PwBD', relaxOf('Benchmark Disabilit|PwBD')]];
+    // SC and ST are read apart (an authority may print them as two rows) and shown together only when equal; EWS is
+    // listed only where the record states it. A combined PwBD relaxation is claimed only where the record carries one.
+    const sc = relaxOf('\\bSC\\b|Scheduled Caste');
+    const st = relaxOf('\\bST\\b|Scheduled Tribe');
+    const ews = relaxOf('\\bEWS\\b|Economically Weaker');
+    const relax: [string, number | null][] = [['OBC', relaxOf('OBC|Other Backward')],
+      ...(sc === st ? [['SC/ST', sc]] : [['SC', sc], ['ST', st]]) as [string, number | null][],
+      ...(ews !== null ? [['EWS', ews]] : []) as [string, number | null][], ['PwBD', relaxOf('Benchmark Disabilit|PwBD')]];
+    const combinesPwbd = (exam.ageRelaxations || []).some(e => /pwbd|benchmark/i.test(e.category) && /\b(obc|sc|st)\b|backward|scheduled/i.test(e.category));
     const asked = /\bobc\b/.test(q) ? 'OBC' : /\b(sc|st|sc st|sc\/st)\b/.test(q) ? 'SC/ST' : /\bpwbd|disab/.test(q) ? 'PwBD' : /\bews\b/.test(q) ? 'EWS' : /\b(ur|general|unreserved)\b/.test(q) ? 'General' : '';
     const examName = examDisplayCode(exam);
     if (asked) {
-      const years = asked === 'EWS' || asked === 'General' ? 0 : relax.find(r => r[0] === asked)![1];
-      if (years === null) {
+      const years = asked === 'General' ? 0
+        : asked === 'EWS' ? ews
+        : asked === 'SC/ST' ? (sc === st ? sc : /\bst\b/.test(q) && !/\bsc\b/.test(q) ? st : sc)
+        : relax.find(r => r[0] === asked)![1];
+      if (years === null || !Number.isFinite(years)) {
         return {
           verified: false,
           subject: FACT_SUBJECTS.age,
@@ -6409,7 +6167,7 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
         verified: true,
         subject: FACT_SUBJECTS.age,
         text: years > 0
-          ? `For ${asked} candidates the upper age limit of ${examName} relaxes by ${years} years: up to ${maxAge + years} on the crucial date, ${exam.crucialEligibilityDate}${asked === 'PwBD' ? ' (and a PwBD candidate who is also OBC or SC/ST gets both relaxations)' : ''}. The lower limit stays ${minAge}.`
+          ? `For ${asked} candidates the upper age limit of ${examName} relaxes by ${years} years: up to ${maxAge + years} on the crucial date, ${exam.crucialEligibilityDate}${asked === 'PwBD' && combinesPwbd ? ' (and a PwBD candidate who is also OBC or SC/ST gets both relaxations)' : ''}. The lower limit stays ${minAge}.`
           : `${asked} candidates get no age relaxation in ${examName}: the limit is ${minAge} to ${maxAge} years on the crucial date, ${exam.crucialEligibilityDate}.`,
         citation: citeFrom(ageCard ? ageCard.provenance : post.provenance, `${exam.title} Official Notice`),
         action: { label: 'Check my age eligibility', tab: 'ELIGIBILITY' }
@@ -6417,7 +6175,7 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
     }
     return {
       verified: true,
-      text: `Age limits run from ${minAge} to ${maxAge} years across the ${exam.posts.length} ${examName} posts${minAge !== Math.max(...exam.posts.map(p => p.minAge)) || maxAge !== Math.min(...exam.posts.map(p => p.maxAge)) ? ' — each post sets its own band, so check the one you are targeting' : ''}.\n\nAge is counted as on the crucial date, ${exam.crucialEligibilityDate}, not the date you apply.\n\nRelaxation on the upper limit: ${relax.map(r => `${r[0]} +${r[1]} years`).join(', ')} (a PwBD candidate who is also OBC or SC/ST gets both).\n\nThe Am I Eligible? tab applies all of this to your date of birth and tells you post by post.`,
+      text: `Age limits run from ${minAge} to ${maxAge} years across the ${exam.posts.length} ${examName} posts${minAge !== Math.max(...exam.posts.map(p => p.minAge)) || maxAge !== Math.min(...exam.posts.map(p => p.maxAge)) ? ' — each post sets its own band, so check the one you are targeting' : ''}.\n\nAge is counted as on the crucial date, ${exam.crucialEligibilityDate}, not the date you apply.\n\nRelaxation on the upper limit: ${relax.filter(r => r[1] !== null).map(r => `${r[0]} +${r[1]} years`).join(', ') || 'none read from the notice yet'}${combinesPwbd ? ' (a PwBD candidate who is also OBC or SC/ST gets both)' : ''}.${relax.some(r => r[1] === null) ? ` GovOS has not read a relaxation for ${relax.filter(r => r[1] === null).map(r => r[0]).join(', ')} from this exam's notice.` : ''}\n\nThe Am I Eligible? tab applies all of this to your date of birth and tells you post by post.`,
       citation: citeFrom(ageCard ? ageCard.provenance : post.provenance, `${exam.title} Official Notice`),
       action: { label: 'Check my age eligibility', tab: 'ELIGIBILITY' }
     };
@@ -6427,7 +6185,8 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
     const card = (exam.eligibilityHighlights || []).find(c => /attempt/i.test(c.title));
     return card
       ? { verified: true, subject: FACT_SUBJECTS.attempts, text: `${card.body}\n\nThat is the rule as the notice states it; the age limit still applies on top.`, citation: citeFrom(card.provenance, `${exam.title} Official Notice`), action: { label: 'Open Eligibility & Posts', tab: 'EXAM_DETAIL', section: 3 } }
-      : { verified: true, subject: FACT_SUBJECTS.attempts, text: `The ${exam.title} notice sets no limit on the number of attempts: you may appear every year you are within the age limit (counted on ${exam.crucialEligibilityDate}) and hold the qualification. Only the age band caps it.`, citation: citeFrom(exam.posts[0]?.provenance, `${exam.title} Official Notice`), action: { label: 'Open Eligibility & Posts', tab: 'EXAM_DETAIL', section: 3 } };
+      // No attempt rule on record is not "the notice sets no limit": GovOS says what it holds, not what a notice omits.
+      : { verified: false, subject: FACT_SUBJECTS.attempts, text: `GovOS holds no limit on the number of attempts for ${exam.title} from its notice.${exam.posts.length > 0 && exam.crucialEligibilityDate ? ` The age band, counted on ${exam.crucialEligibilityDate}, still applies to every attempt.` : ''} Section 03 has the rules the record does hold.`, action: { label: 'Open Eligibility & Posts', tab: 'EXAM_DETAIL', section: 3 } };
   }
 
   if (factId === 'physical') {
@@ -6442,6 +6201,30 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
       text: `${physical.length} of the ${exam.posts.length} ${exam.title} posts carry physical standards:\n\n${lines}\n\nThe other ${exam.posts.length - physical.length} posts have no physical test. The Am I Eligible? tab has a physical-fitness declaration that filters these posts for you.`,
       citation: citeFrom(physical[0].provenance, `${exam.title} Official Notice`),
       action: { label: 'Check my eligibility', tab: 'ELIGIBILITY' }
+    };
+  }
+
+  if (factId === 'interview') {
+    // Read from the record's own stages: an interview is a stage the record names as one, never assumed.
+    const interview = exam.stages.find(st => st.tier === 'INTERVIEW' || /interview|personality test/i.test(st.stageName));
+    if (interview) {
+      return {
+        verified: true, subject: FACT_SUBJECTS.interview,
+        text: `Yes. ${exam.title} has an interview: ${interview.stageName}${interview.totalMarks ? `, ${interview.totalMarks} marks` : ''}.${interview.qualifyingNature ? `
+
+${interview.qualifyingNature}` : ''}`,
+        citation: citeFrom(interview.provenance, `${exam.title} Official Notice`),
+        action: { label: 'Open Exam Pattern', tab: 'EXAM_DETAIL', section: 5 }
+      };
+    }
+    if (exam.stages.length === 0) {
+      return { verified: false, subject: FACT_SUBJECTS.interview, text: `The record holds no stages for ${exam.title}, so GovOS cannot say whether it has an interview. Check the notice in Official Links.`, action: { label: 'Open Official Links', tab: 'EXAM_DETAIL', section: 12 } };
+    }
+    return {
+      verified: true, subject: FACT_SUBJECTS.interview,
+      text: `No interview is on record for ${exam.title}. Its stages, as the record holds them: ${exam.stages.map(st => st.stageName).join(' → ')}.`,
+      citation: citeFrom(exam.stages[0].provenance, `${exam.title} Official Notice`),
+      action: { label: 'Open Exam Pattern', tab: 'EXAM_DETAIL', section: 5 }
     };
   }
 
@@ -6482,7 +6265,10 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
 
   if (factId === 'nextStep') {
     const close = ctx.daysToApplicationClose;
-    const post = ctx.targetPost ? `your target post, ${ctx.targetPost.postName}` : 'a target post (set one in section 01 so the roadmap and analysis follow it)';
+    // An exam with no posts has no target post to set; its syllabus is what the time goes on.
+    const post = exam.posts.length === 0 ? 'its papers' : ctx.targetPost ? `your target post, ${ctx.targetPost.postName}` : 'a target post (set one in section 01 so the roadmap and analysis follow it)';
+    // "Before notification" is wrong once the notification date has passed and only the window is still ahead.
+    const notified = ctx.stage === 'BEFORE_NOTIFICATION' && exam.dates.some(d => d.type === 'NOTIFICATION' && d.status !== 'SUPERSEDED' && new Date(d.dateTimeStr.replace(' ', 'T')) <= new Date());
     const byStage: Record<string, { line: string; action: AssistantAction }> = {
       BEFORE_NOTIFICATION: {
         line: `Applications for ${exam.title} have not opened yet. Use the time on the syllabus and on ${post}, and track the exam so GovOS tells you the day the window opens.`,
@@ -6505,12 +6291,17 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
         action: { label: 'Open Result & Next Steps', tab: 'EXAM_DETAIL', section: 16 }
       }
     };
+    const declared = exam.dates.filter(d => d.type === 'RESULT' && !d.isTentative && d.status !== 'SUPERSEDED' && new Date(d.dateTimeStr.replace(' ', 'T')) <= new Date());
+    if (ctx.stage === 'POST_EXAM' && declared.length > 0) {
+      const last = declared[declared.length - 1];
+      byStage.POST_EXAM.line = `${last.label}: ${shownWhen(last, true)}. Section 16 has what was declared and what the record says follows it.`;
+    }
     const chosen = byStage[ctx.stage] || byStage.BEFORE_NOTIFICATION;
     return {
       verified: true,
       sourceKind: 'GUIDANCE',
       subject: 'what to do next',
-      text: `You are at the **${ctx.stage.replace(/_/g, ' ').toLowerCase()}** stage of ${exam.title}, going by the dates on record.\n\n${chosen.line}`,
+      text: `You are at the **${notified ? 'notified, applications not yet open' : ctx.stage.replace(/_/g, ' ').toLowerCase()}** stage of ${exam.title}, going by the dates on record.\n\n${chosen.line}`,
       action: chosen.action
     };
   }
@@ -6572,6 +6363,19 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
     const fmt = (d: ImportantDate) => `• ${d.label}: ${shownWhen(d, true)}${d.isTentative ? ' (tentative)' : ''}`;
     const close = dateOfType('APPLICATION_CLOSE', exam);
     const superseded = exam.dates.filter(d => d.status === 'SUPERSEDED');
+    // An authority may print a release rule ("03-04 days before the date of the Examination") or a month, not a date.
+    const admitEvents = wanted.includes('ADMIT_CARD') && chosen.length === 0
+      ? (exam.admitCardEvents || []).filter(e => e.releaseRule || e.releasedAt || e.releaseNote) : [];
+    if (admitEvents.length > 0) {
+      const when = (e: ExamAdmitCardEvent) => e.releaseRule || (e.releaseNote ? e.releaseNote.replace(/^printed /, '') : e.releasedAt);
+      return {
+        verified: true,
+        subject: FACT_SUBJECTS.admitCard || FACT_SUBJECTS.dates,
+        text: `${exam.authorityName.split(' (')[0]} prints no admit-card date for ${exam.title}; it states:\n\n${admitEvents.map(e => `• ${e.officialLabel}${e.stageLabel ? ` — ${e.stageLabel}` : ''}: ${when(e)}`).join('\n')}\n\nSection 14 has each one with where it is issued.`,
+        citation: admitEvents[0].provenance ? citeFrom(admitEvents[0].provenance, `${exam.title} official notice`) : undefined,
+        action: { label: 'Open Admit Card', tab: 'EXAM_DETAIL', section: 14 }
+      };
+    }
     if (chosen.length > 0) {
       const anyTentative = chosen.some(d => d.isTentative);
       return {
@@ -6660,6 +6464,19 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
   }
 
   if (factId === 'fee') {
+    // The fee as the application guide records it, where it does: the amounts as printed, with the exemptions stated.
+    const fee = exam.applicationGuide?.fee;
+    if (fee && fee.rules.length > 0) {
+      const lines = fee.rules.map(r => `• ${r.scope}: ${r.isExempt ? 'exempt' : r.amount}`).join('\n');
+      const exempt = fee.exemptions.length > 0 ? `\n\nExempt: ${fee.exemptions.map(x => x.category).join(', ')}.` : '';
+      return {
+        verified: true,
+        subject: FACT_SUBJECTS.fee,
+        text: `The fee for ${exam.title}, as the notice prints it:\n\n${lines}${exempt}${fee.acceptedModes.length ? `\n\nPaid by: ${fee.acceptedModes.join('; ')}.` : ''}`,
+        citation: fee.provenance ? citeFrom(fee.provenance, `${exam.title} official notice`) : undefined,
+        action: { label: 'Open the application guide', tab: 'EXAM_DETAIL', section: 4 }
+      };
+    }
     const feeCard = (exam.eligibilityHighlights || []).find(c => /fee/i.test(c.title));
     if (feeCard) {
       return {
@@ -6672,7 +6489,9 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
     }
     return {
       verified: false,
-      text: `The application fee is paid on ${authority}'s own portal while submitting the form; women, SC, ST, PwBD and ex-servicemen candidates are exempted under the notice.\n\nGovOS does not hold the current fee figure as a verified field, so check the fee clause of the notice itself before paying — section 04 links to it, and I can search official domains live if you want the current figure.`,
+      // It used to add "women, SC, ST, PwBD and ex-servicemen candidates are exempted under the notice" for every
+      // exam -- one authority's rule stated as any notice's.
+      text: `GovOS does not hold the ${exam.title} fee as a verified field, so check the fee clause of ${authority}'s notice itself before paying — section 04 links to it.`,
       action: { label: 'Open the application guide', tab: 'EXAM_DETAIL', section: 4 }
     };
   }
@@ -6704,7 +6523,11 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
     const ruled = !ac ? (exam.admitCardEvents || []).find(e => e.kind === 'ADMIT_CARD' && (e.releaseRule || e.releasedAt)) : undefined;
     return {
       verified: true,
-      text: `${ac ? `Admit card: ${shownWhen(ac, true)}${ac.isTentative ? ' (tentative)' : ''}.\n\n` : ruled ? `${ruled.officialLabel}${ruled.stageLabel ? ` (${ruled.stageLabel})` : ''}: ${ruled.releaseRule || ruled.releasedAt}${ruled.examDateNote ? `. ${ruled.examDateNote}` : ruled.examDate ? `; examination ${ruled.examDate}` : ''}.\n\n` : 'The admit card date has not been announced in the register yet.\n\n'}Admit cards are issued by ${authority} for your centre, and you must carry a printed copy with an original photo ID. Section 14 covers the download steps and what to do if it fails.`,
+      text: `${ac ? `Admit card: ${shownWhen(ac, true)}${ac.isTentative ? ' (tentative)' : ''}.\n\n` : ruled ? `${ruled.officialLabel}${ruled.stageLabel ? ` (${ruled.stageLabel})` : ''}: ${ruled.releaseRule || ruled.releasedAt}${ruled.examDateNote ? `. ${ruled.examDateNote}` : ruled.examDate ? `; examination ${ruled.examDate}` : ''}.\n\n` : 'The admit card date has not been announced in the register yet.\n\n'}${(() => {
+        // What the record says to do, where it says it; it used to tell every candidate to carry "an original photo ID".
+        const event = (exam.admitCardEvents || []).find(e => e.kind === 'ADMIT_CARD' && (e.instructions || []).length > 0);
+        return event ? `From ${authority}'s own documents:\n${event.instructions!.map(i => `• ${i}`).join('\n')}\n\n` : '';
+      })()}Section 14 covers where it is issued and what the record says about it.`,
       citation: ac ? citeFrom(ac.provenance, `${exam.title} official notice`) : ruled?.provenance ? citeFrom(ruled.provenance, `${exam.title} notice`) : undefined,
       action: { label: 'Open Admit Card', tab: 'EXAM_DETAIL', section: 14 }
     };
@@ -6712,12 +6535,14 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
 
   if (factId === 'cutoff') {
     // A minimum qualifying standard is a rule, not a cut-off; answer with the rule where the record states one.
-    const minimum = /minimum|qualifying marks|pass marks/.test(q) ? (exam.eligibilityHighlights || []).find(h => /qualifying marks/i.test(h.title)) : undefined;
+    const passTest = exam.examNature === 'ELIGIBILITY_TEST';
+    const minimum = (passTest || /minimum|qualifying marks|pass marks|pass mark|pass percentage/.test(q))
+      ? (exam.eligibilityHighlights || []).find(h => /qualifying marks|pass marks/i.test(h.title)) : undefined;
     if (minimum) {
       return {
         verified: true,
         subject: FACT_SUBJECTS.cutoff,
-        text: `${minimum.title}: ${minimum.body}\n\nThese are the minimum standards the notice sets; the cut-off that decides who goes through in a given year is published with that year's result.`,
+        text: `${minimum.title}: ${minimum.body}\n\n${passTest ? `${exam.title} is an eligibility test: these pass marks are the standard it sets, and GovOS holds no cut-off for it.` : 'These are the minimum standards the notice sets; the cut-off that decides who goes through in a given year is published with that year\'s result.'}`,
         citation: citeFrom(minimum.provenance, `${exam.title} official notice`),
         action: { label: 'Open Cutoffs', tab: 'EXAM_DETAIL', section: 10 }
       };
@@ -6745,14 +6570,22 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
         action: { label: 'Open the pattern section', tab: 'EXAM_DETAIL', section: 5 }
       };
     }
+    // Asked for a pass mark the record does not hold: say so before listing cut-offs, which are a different thing.
+    const noPassMark = !minimum && /pass mark|pass marks|pass percentage|passing marks|minimum marks|qualifying marks/.test(q)
+      ? `The record holds no pass mark for ${exam.title}. ` : '';
     if (picked.length > 0) {
       // The stage and post each figure belongs to, where recorded: one category can have several
       // cut-offs in a year (one list per group of posts).
-      const lines = picked.map(r => `• ${r.category}: ${r.stage || label1} ${cutoffFigure(r)}${r.tier2Cutoff ? ` · ${label2} ${r.tier2Cutoff}` : ''}${r.post ? ` · ${r.post}` : ''}${r.postsEligible ? ` · ${r.postsEligible}` : ''}`).join('\n');
+      const lines = picked.map(r => `• ${r.category}: ${r.stage || label1} ${cutoffFigure(r)}${r.cutoffType ? ` (${r.cutoffType})` : ''}${r.tier2Cutoff ? ` · ${label2} ${r.tier2Cutoff}` : ''}${r.post ? ` · ${r.post}` : ''}${r.postsEligible ? ` · ${r.postsEligible}` : ''}`).join('\n');
+      // The cycle the record is for: the year of its own examination dates. A cut-off of that year is this cycle's.
+      const examYears = exam.dates.filter(d => (d.type === 'EXAM_TIER1' || d.type === 'EXAM_TIER2') && d.status !== 'SUPERSEDED').map(d => Number(d.dateTimeStr.slice(0, 4)));
+      const thisCycle = examYears.length > 0 && year === Math.min(...examYears);
+      const latestNote = thisCycle ? `These are the cut-offs ${authority} published for this cycle. `
+        : year === latestYear ? 'That is the most recent year published; this cycle\'s cut-off does not exist yet. ' : '';
       return {
         verified: true,
         subject: FACT_SUBJECTS.cutoff,
-        text: `${cat ? 'Cut-off' : 'Cut-offs'} on record for ${year}${cat ? ` (${picked[0].category})` : ''}:\n\n${lines}\n\n${year === latestYear ? 'That is the most recent year published; this cycle\'s cut-off does not exist yet. ' : ''}Cut-offs move with vacancies and paper difficulty, so treat them as a band to clear with margin, not a promise.`,
+        text: `${noPassMark}${cat ? 'Cut-off' : 'Cut-offs'} on record for ${year}${cat ? ` (${picked[0].category})` : ''}:\n\n${lines}\n\n${latestNote}Cut-offs move ${exam.posts.length > 0 ? 'with vacancies and paper difficulty' : 'from cycle to cycle'}, so treat them as a band to clear with margin, not a promise.`,
         citation: citeFrom(picked[0].provenance, `${exam.title} cut-off sheet`),
         action: { label: 'Open Cutoffs', tab: 'EXAM_DETAIL', section: 10 }
       };
@@ -6760,13 +6593,26 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
     return {
       verified: true,
       subject: FACT_SUBJECTS.cutoff,
-      text: `${latestYear ? `Most recent cut-off on record: ${latestYear} — ${rows.filter(r => r.year === latestYear).map(r => `${r.category} ${cutoffFigure(r)}`).join(', ')} (${label1}). Ask for a category or a year and I will give that row; the full table is in section 10.` : 'Cut-off history is listed in section 10 of the exam page.'}\n\nCut-offs move every year with vacancies and paper difficulty, so use them as a target band rather than a promise.`,
+      text: `${latestYear ? `Most recent cut-off on record: ${latestYear} — ${rows.filter(r => r.year === latestYear).map(r => `${r.category} ${cutoffFigure(r)}`).join(', ')} (${label1}). Ask for a category or a year and I will give that row; the full table is in section 10.` : `No cut-off is on record for ${exam.title}.`}${latestYear ? '\n\nCut-offs move every year with vacancies and paper difficulty, so use them as a target band rather than a promise.' : ''}`,
       citation: rows[0] ? citeFrom(rows[0].provenance, `${exam.title} cut-off sheet`) : undefined,
       action: { label: 'Open Cutoffs', tab: 'EXAM_DETAIL', section: 10 }
     };
   }
 
-  if (factId === 'apply') {
+  if (factId === 'documents') {
+    const docs = exam.applicationGuide?.requiredDocuments || [];
+    if (docs.length > 0) {
+      return {
+        verified: true,
+        subject: FACT_SUBJECTS.documents,
+        text: `The ${exam.title} notice asks for:\n\n${docs.map(d => `• ${d.name}${d.specifications.length ? ` — ${d.specifications.join('; ')}` : ''}`).join('\n')}\n\nSection 04 has the upload rules and the mistakes that get applications rejected.`,
+        citation: docs[0].provenance ? citeFrom(docs[0].provenance, `${exam.title} official notice`) : undefined,
+        action: { label: 'Open the application guide', tab: 'EXAM_DETAIL', section: 4 }
+      };
+    }
+  }
+
+  if (factId === 'apply' || factId === 'documents') {
     return {
       verified: true,
       text: applicationAnswerFor(exam),
@@ -6784,11 +6630,18 @@ function answerCorrectedQuery(q: string, ctx: ChatContext): AssistantReply {
 
   // Not phrased as a location question, but plainly about a part of the platform
   // ("study plan", "roadmap", "compare exams") — route it rather than fall back.
-  if (nav) return { verified: true, sourceKind: 'PLATFORM', text: fillCounts(nav.entry.answer, exam), action: nav.entry.action };
+  if (nav) {
+    if (exam.posts.length === 0 && /\{posts\}/.test(nav.entry.answer)) return noPostsReply(exam, /Am I Eligible/.test(nav.entry.answer) ? 'eligibility' : 'posts');
+    return { verified: true, sourceKind: 'PLATFORM', text: fillCounts(nav.entry.answer, exam), action: nav.entry.action };
+  }
 
   // Last chance before refusing: did they name something in the library?
   const namedLate = namedResourceAnswer(q, 6, exam);
   if (namedLate) return namedLate.reply;
+
+  // Or ask something this exam's own FAQs answer? ("can I use this pass for DSC?", "how long is the certificate valid?")
+  const faq = faqAnswerFor(q, exam);
+  if (faq) return faq;
 
   // ---- a location question we could not place
   if (asksLocation(q)) {
@@ -10517,6 +10370,525 @@ const SyllabusRoadmap: React.FC<{
   );
 };
 
+// ==========================================================================
+// The generated study plan (section 07)
+// ==========================================================================
+// GovOS guidance, sized by the candidate (days and hours a day) and built only from the exam's own record:
+// its syllabus topics, the weightage those topics carry where the record gives one, and otherwise the marks its
+// pattern gives each subject and the breadth the syllabus prints for each topic. It is never an official
+// schedule, says on screen what each share was computed from, and re-plans from whatever is still unticked.
+
+/** A record whose syllabus lists fewer topics than this is planned from its exam pattern's own sections. */
+export const PLAN_THIN_SYLLABUS = 10;
+export const PLAN_DAY_PRESETS = [60, 90, 120, 180];
+/** GovOS's split of the days: learning, a second pass, then full papers on the clock. Guidance, not a rule. */
+const PLAN_PHASE_SHARES = { learn: 0.6, revise: 0.25 };
+
+export interface StudyPlanUnit {
+  id: string;
+  subject: string;
+  name: string;
+  subtopics: string[];
+  weight: number;
+  /** The syllabus topic this unit is, where it is one (ticking it in section 06 or here marks it done). */
+  topicId?: string;
+  provenance?: DataProvenance;
+}
+export interface StudyPlanSubject {
+  name: string;
+  /** Fraction of the plan's time (0–1) among the subjects included. */
+  share: number;
+  /** The marks its share was read from, where it was read from marks. */
+  marks?: number;
+  units: StudyPlanUnit[];
+  hours: number;
+  included: boolean;
+}
+export interface StudyPlanItem { subject: string; unit: StudyPlanUnit; hours: number; continued?: boolean }
+export interface StudyPlanWeek {
+  week: number;
+  fromDay: number;
+  toDay: number;
+  phase: 'LEARN' | 'REVISE' | 'PRACTICE';
+  items: StudyPlanItem[];
+}
+export interface StudyPlan {
+  days: number;
+  hoursPerDay: number;
+  learnDays: number;
+  reviseDays: number;
+  practiceDays: number;
+  /** The papers a candidate chooses between, where the syllabus is organised by alternative papers. */
+  tracks: string[];
+  track: string | null;
+  subjects: StudyPlanSubject[];
+  weeks: StudyPlanWeek[];
+  /** What each share was computed from, in words, for the screen. */
+  basis: string[];
+  unitsLeft: number;
+  unitsDone: number;
+  hoursPerUnit: number;
+  tight: boolean;
+}
+
+const PLAN_STOP = new Set(['and', 'or', 'the', 'of', 'in', 'for', 'a', 'an', 'to', 'with']);
+const planTokens = (s: string): string[] => s.toLowerCase()
+  .replace(/[()[\],:;&/.'’"–—·]/g, ' ').replace(/-/g, ' ')
+  .split(/\s+/).filter(w => w && !PLAN_STOP.has(w));
+const tokensWithin = (a: string[], b: string[]) => a.length > 0 && a.every(w => b.includes(w));
+/** "Paper 1 · Physics" -> the paper and the subject within it; a subject with no paper has none. */
+const splitPaper = (subject: string): { paper: string | null; core: string } => {
+  const i = subject.indexOf(' · ');
+  return i > 0 ? { paper: subject.slice(0, i), core: subject.slice(i + 3) } : { paper: null, core: subject };
+};
+
+/** Every part of the exam's pattern that states its marks, with the words of the parts above it. */
+type PlanMarkNode = { name: string; path: string[]; marks: number; depth: number; key: string; qualifying: boolean; stage: string };
+function patternMarkNodes(exam: Exam): PlanMarkNode[] {
+  const out: PlanMarkNode[] = [];
+  const says = (words: string) => /\bqualifying\b/i.test(words);
+  const walk = (nodes: ExamPatternNode[], path: string[], depth: number, inherited: boolean, stage: string) => nodes.forEach(n => {
+    const inStage = depth === 0 ? n.name : stage;
+    // A screening stage that does not count for the merit is still competitive; only a paper or section that is
+    // itself qualifying (a minimum to clear, not a rank) is.
+    const qualifying = inherited || says(n.name) || n.qualifying?.qualifyingOnly === true || (n.level !== 'STAGE' && n.qualifying?.countsTowardsMerit === false);
+    if (typeof n.marks === 'number' && n.marks > 0) out.push({ name: n.name, path, marks: n.marks, depth, key: n.id, qualifying, stage: inStage });
+    if (n.children) walk(n.children, [...path, ...planTokens(`${n.name} ${n.code || ''}`)], depth + 1, n.level === 'STAGE' ? inherited : qualifying, inStage);
+  });
+  if ((exam.patternTree || []).length > 0) walk(exam.patternTree!, [], 0, false, '');
+  else exam.stages.filter(st => st.tier !== 'INTERVIEW').forEach(st => st.sections.forEach((sec, i) => {
+    if (sec.marks > 0) out.push({ name: sec.sectionName, path: planTokens(st.stageName), marks: sec.marks, depth: 1, key: `${st.id}-${i}`, qualifying: says(sec.sectionName), stage: st.stageName.split(' — ')[0] });
+  }));
+  return out;
+}
+
+/** The deepest part of the pattern that names this subject (and, for "Paper X · Subject", sits under paper X). */
+function patternNodesFor(subject: string, nodes: PlanMarkNode[]): PlanMarkNode[] {
+  const { paper, core } = splitPaper(subject);
+  const coreT = planTokens(core);
+  const paperT = paper ? planTokens(paper) : [];
+  return nodes
+    .filter(n => {
+      const own = planTokens(n.name);
+      return (tokensWithin(own, coreT) || tokensWithin(coreT, own)) && (paperT.length === 0 || tokensWithin(paperT, [...n.path, ...own]));
+    })
+    .sort((a, b) => b.depth - a.depth);
+}
+
+/** The papers a candidate chooses between, where the syllabus subjects are named "Paper X · Subject". */
+export function studyPlanTracks(exam: Exam): string[] {
+  const papers: string[] = [];
+  exam.syllabus.forEach(t => { const p = splitPaper(String(t.subject)).paper; if (p && !papers.includes(p)) papers.push(p); });
+  return papers.length >= 2 ? papers : [];
+}
+
+/** The units of study and how the record weighs them, with the basis in words. Pure. */
+export function studyPlanUnits(exam: Exam, track: string | null): { subjects: Omit<StudyPlanSubject, 'hours' | 'included'>[]; basis: string[] } {
+  const topics = exam.syllabus.filter(t => !track || splitPaper(String(t.subject)).paper === track || !splitPaper(String(t.subject)).paper);
+  const topicUnit = (t: SyllabusTopic, weight: number): StudyPlanUnit => ({
+    id: `unit-${t.id}`, subject: String(t.subject), name: t.topicName, subtopics: t.subtopics || [], weight, topicId: t.id, provenance: t.officialProvenance
+  });
+  const basis: string[] = [];
+
+  // ---- a syllabus the record holds in some depth: plan from its topics
+  if (exam.syllabus.length >= PLAN_THIN_SYLLABUS) {
+    const bySubject = new Map<string, SyllabusTopic[]>();
+    topics.forEach(t => bySubject.set(String(t.subject), [...(bySubject.get(String(t.subject)) || []), t]));
+    const nodes = patternMarkNodes(exam);
+    // Marks are read from one stage, so that subjects are weighed on the same paper: the stage that names the most
+    // of them. A subject that stage does not name takes its deepest match in another; one named nowhere, the average.
+    const allHits = Array.from(bySubject.keys()).map(name => ({ name, nodes: patternNodesFor(name, nodes) }));
+    const stageCount = new Map<string, number>();
+    allHits.forEach(h => Array.from(new Set(h.nodes.map(n => n.stage))).forEach(st => stageCount.set(st, (stageCount.get(st) || 0) + 1)));
+    const mainStage = Array.from(stageCount.entries()).sort((a, b) => b[1] - a[1])[0]?.[0];
+    const hits = allHits.map(h => ({ name: h.name, node: h.nodes.find(n => n.stage === mainStage) || h.nodes[0] }));
+    // A qualifying part is not counted for the merit, so its marks do not buy it time: it gets the average.
+    const scored = hits.filter(h => h.node && !h.node.qualifying);
+    const sharing = new Map<string, number>();
+    scored.forEach(h => sharing.set(h.node!.key, (sharing.get(h.node!.key) || 0) + 1));
+    const known = scored.map(h => h.node!.marks / (sharing.get(h.node!.key) || 1));
+    const fallback = known.length > 0 ? known.reduce((x, y) => x + y, 0) / known.length : 1;
+    const subjects = hits.map(h => {
+      const marks = h.node && !h.node.qualifying ? h.node.marks / (sharing.get(h.node.key) || 1) : undefined;
+      const ts = bySubject.get(h.name)!;
+      const weighted = ts.every(t => t.weightagePercentage > 0);
+      return {
+        name: h.name, share: marks ?? fallback, marks,
+        units: ts.map(t => topicUnit(t, weighted ? t.weightagePercentage : Math.max(1, (t.subtopics || []).length)))
+      };
+    });
+    const total = subjects.reduce((x, y) => x + y.share, 0) || 1;
+    subjects.forEach(x => { x.share = x.share / total; });
+    const qualifying = hits.filter(h => h.node && h.node.qualifying).map(h => h.name);
+    const unmatched = hits.filter(h => !h.node).map(h => h.name);
+    const list = (names: string[]) => names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+    basis.push(known.length > 0
+      ? `Time per subject follows the marks the exam pattern (section 05) gives it${mainStage && stageCount.size > 1 ? ` in ${mainStage}, the stage that names the most of these subjects` : ''}.${qualifying.length ? ` ${list(qualifying)} ${qualifying.length === 1 ? 'is a qualifying part' : 'are qualifying parts'} (not counted for the merit), so ${qualifying.length === 1 ? 'it gets' : 'they get'} the average share rather than ${qualifying.length === 1 ? 'its' : 'their'} marks.` : ''}${unmatched.length ? ` ${list(unmatched)} ${unmatched.length === 1 ? 'has' : 'have'} no marks of ${unmatched.length === 1 ? 'its' : 'their'} own there, so ${unmatched.length === 1 ? 'it gets' : 'they get'} the average share.` : ''}`
+      : 'The exam pattern gives these subjects no marks of their own, so each subject gets an equal share.');
+    const weightedSubjects = subjects.filter(x => bySubject.get(x.name)!.every(t => t.weightagePercentage > 0)).length;
+    if (weightedSubjects > 0) {
+      const owned = topics.some(t => t.weightageProvenance && t.weightageProvenance.verificationLevel !== 'OFFICIALLY_VERIFIED');
+      basis.push(`Within ${weightedSubjects === subjects.length ? 'a subject' : 'a subject whose topics all carry one'}, time per topic follows the weightage the record gives it in the syllabus section${owned ? ' (where that weightage is GovOS’s own count of past papers rather than an official figure, the syllabus section says so)' : ''}${weightedSubjects < subjects.length ? '; elsewhere it follows the topic’s breadth — the number of sub-topics the syllabus prints' : ''}.`);
+    } else {
+      basis.push('Within a subject, time per topic follows its breadth — the number of sub-topics the syllabus prints for it. The authority publishes no topic weightage for this exam, and GovOS does not invent one.');
+    }
+    return { subjects, basis };
+  }
+
+  // ---- a thin syllabus: plan from the pattern's own sections and what each one names
+  const sections: { name: string; marks: number; modules: string[] }[] = [];
+  exam.stages.filter(st => st.tier !== 'INTERVIEW').forEach(st => st.sections.forEach(sec => {
+    if (!(sec.marks > 0)) return;
+    const same = sections.find(x => planTokens(x.name).join(' ') === planTokens(sec.sectionName).join(' '));
+    if (same) { same.marks += sec.marks; sec.modules.forEach(m => { if (!same.modules.includes(m)) same.modules.push(m); }); }
+    else sections.push({ name: sec.sectionName, marks: sec.marks, modules: [...sec.modules] });
+  }));
+  if (sections.length === 0 && topics.length === 0) return { subjects: [], basis };
+  const qCount = (m: string) => { const hit = m.match(/\((\d+)\s*Q\)/i); return hit ? Number(hit[1]) : 1; };
+  const subjects: { name: string; share: number; marks?: number; units: StudyPlanUnit[] }[] = sections.map((sec, si) => ({
+    name: sec.name, share: sec.marks, marks: sec.marks,
+    units: (sec.modules.length > 0 ? sec.modules : [sec.name]).map((m, mi) => ({
+      id: `unit-sec-${si}-${mi}`, subject: sec.name, name: m.replace(/\s*\(\d+\s*Q\)\s*/i, '').trim(), subtopics: [], weight: qCount(m)
+    } as StudyPlanUnit))
+  }));
+  // Each syllabus topic joins the section whose words it shares most, replacing the module it names.
+  topics.forEach(t => {
+    const tWords = planTokens(`${t.subject} ${t.topicName}`);
+    let best: (typeof subjects)[number] | undefined; let bestScore = 0;
+    subjects.forEach(s => {
+      const sWords = planTokens(`${s.name} ${s.units.map(u => u.name).join(' ')}`);
+      const score = tWords.filter(w => sWords.includes(w)).length;
+      if (score > bestScore) { best = s; bestScore = score; }
+    });
+    if (!best) { subjects.push({ name: String(t.subject), share: 0, units: [topicUnit(t, 1)] }); return; }
+    const nameWords = planTokens(t.topicName);
+    const module = best.units.find(u => !u.topicId && planTokens(u.name).filter(w => nameWords.includes(w)).length * 2 >= planTokens(u.name).length);
+    if (module) { const i = best.units.indexOf(module); best.units[i] = topicUnit(t, module.weight); }
+    else best.units.push(topicUnit(t, 1));
+  });
+  const marked = subjects.filter(s => s.marks);
+  const avg = marked.length ? marked.reduce((a, s) => a + s.share, 0) / marked.length : 1;
+  subjects.forEach(s => { if (!s.marks) s.share = avg; });
+  const total = subjects.reduce((a, s) => a + s.share, 0) || 1;
+  subjects.forEach(s => { s.share = s.share / total; });
+  basis.push(`The record’s syllabus lists only ${topics.length} topic${topics.length === 1 ? '' : 's'}, so the plan is built from the exam pattern’s own sections (section 05) and what each one names, with the syllabus topics placed in the section they belong to.`);
+  basis.push('Time per section follows its marks in the pattern; within a section, the question counts the pattern prints where it prints them, otherwise equal time per part.');
+  return { subjects, basis };
+}
+
+/** The candidate's default plan length: the days left to the next firm examination date on record, else 90. */
+export function studyPlanDefaultDays(exam: Exam, now: Date = new Date()): { days: number; reason: string | null } {
+  const next = exam.dates
+    .filter(d => (d.type === 'EXAM_TIER1' || d.type === 'EXAM_TIER2') && d.status !== 'SUPERSEDED' && !d.isTentative && !d.displayWhen)
+    .map(d => ({ d, at: new Date(d.dateTimeStr.replace(' ', 'T')) }))
+    .filter(x => !Number.isNaN(x.at.getTime()) && x.at.getTime() > now.getTime())
+    .sort((a, b) => a.at.getTime() - b.at.getTime())[0];
+  if (!next) return { days: 90, reason: null };
+  const days = Math.ceil((next.at.getTime() - now.getTime()) / 86400000);
+  return { days: Math.min(365, Math.max(30, days)), reason: `${days} days left until ${next.d.label}` };
+}
+
+/** Hours as the plan shows them: to the half hour, never below half an hour. */
+export const planHours = (h: number) => Math.max(0.5, Math.round(h * 2) / 2);
+
+/** The whole plan: phases, subject shares, and week-by-week work over what is still left. Pure. */
+export function generateStudyPlan(exam: Exam, opts: { days: number; hoursPerDay: number; done?: Record<string, boolean>; track?: string | null; excludedSubjects?: string[] }): StudyPlan {
+  const tracks = studyPlanTracks(exam);
+  const track = tracks.length > 0 ? (opts.track && tracks.includes(opts.track) ? opts.track : tracks[0]) : null;
+  const days = Math.max(14, Math.round(opts.days));
+  const H = Math.max(0.5, opts.hoursPerDay);
+  const learnDays = Math.max(7, Math.round(days * PLAN_PHASE_SHARES.learn));
+  const reviseDays = Math.round(days * PLAN_PHASE_SHARES.revise);
+  const practiceDays = Math.max(0, days - learnDays - reviseDays);
+  const done = opts.done || {};
+  const excluded = new Set(opts.excludedSubjects || []);
+  const { subjects: raw, basis } = studyPlanUnits(exam, track);
+
+  const isDone = (u: StudyPlanUnit) => !!(u.topicId && done[u.topicId]);
+  const included = raw.filter(s => !excluded.has(s.name) && s.units.some(u => !isDone(u)));
+  const shareTotal = included.reduce((a, s) => a + s.share, 0) || 1;
+  const learnHours = learnDays * H;
+  const subjects: StudyPlanSubject[] = raw.map(s => {
+    const on = included.includes(s);
+    return { ...s, share: on ? s.share / shareTotal : 0, hours: on ? learnHours * s.share / shareTotal : 0, included: !excluded.has(s.name) };
+  });
+  const unitsLeft = included.reduce((a, s) => a + s.units.filter(u => !isDone(u)).length, 0);
+  const unitsDone = raw.reduce((a, s) => a + s.units.filter(isDone).length, 0);
+
+  // Learning: every subject moves through its own topics in the syllabus's order, all subjects in parallel,
+  // each week's hours split by the subjects' shares.
+  const queues = subjects.filter(s => s.hours > 0).map(s => {
+    const left = s.units.filter(u => !isDone(u));
+    const wTotal = left.reduce((a, u) => a + u.weight, 0) || 1;
+    return { s, left: left.map(u => ({ unit: u, hours: s.hours * u.weight / wTotal, started: false })) };
+  });
+  const weeks: StudyPlanWeek[] = [];
+  const learnWeeks = Math.ceil(learnDays / 7);
+  for (let w = 0; w < learnWeeks; w++) {
+    const fromDay = w * 7 + 1;
+    const toDay = Math.min(learnDays, fromDay + 6);
+    const items: StudyPlanItem[] = [];
+    queues.forEach(q => {
+      let budget = q.s.hours * (toDay - fromDay + 1) / learnDays;
+      if (w === learnWeeks - 1) budget = q.left.reduce((a, x) => a + x.hours, 0);
+      while (budget > 0.01 && q.left.length > 0) {
+        const head = q.left[0];
+        const take = Math.min(budget, head.hours);
+        items.push({ subject: q.s.name, unit: head.unit, hours: take, continued: head.started });
+        head.hours -= take; budget -= take; head.started = true;
+        if (head.hours <= 0.01) q.left.shift();
+      }
+    });
+    weeks.push({ week: w + 1, fromDay, toDay, phase: 'LEARN', items });
+  }
+
+  // Revision: a second pass, every subject by its share, heaviest topics first.
+  const revSubjects = subjects.filter(s => s.included && s.units.length > 0 && included.some(x => x.name === s.name));
+  const revShareTotal = revSubjects.reduce((a, s) => a + (s.share || 0), 0) || 1;
+  for (let d = 0; d < reviseDays; d += 7) {
+    const fromDay = learnDays + d + 1;
+    const toDay = Math.min(learnDays + reviseDays, fromDay + 6);
+    const weekHours = (toDay - fromDay + 1) * H;
+    weeks.push({
+      week: weeks.length + 1, fromDay, toDay, phase: 'REVISE',
+      items: revSubjects.map(s => ({
+        subject: s.name,
+        unit: {
+          id: `rev-${s.name}`, subject: s.name, name: `Second pass — ${s.name}`, weight: 1,
+          subtopics: [...s.units].sort((a, b) => b.weight - a.weight).slice(0, 4).map(u => u.name)
+        },
+        hours: weekHours * (s.share || 0) / revShareTotal
+      }))
+    });
+  }
+
+  // Full papers on the clock, built to the exam's own pattern.
+  const stage = exam.stages[0];
+  const unstated = new Set(stage?.unstatedFields || []);
+  const shape = stage ? [
+    stage.totalQuestions > 0 && !unstated.has('totalQuestions') ? `${stage.totalQuestions} questions` : '',
+    stage.totalMarks > 0 && !unstated.has('totalMarks') ? `${stage.totalMarks} marks` : '',
+    stage.durationMinutes > 0 && !unstated.has('durationMinutes') ? `${stage.durationMinutes} minutes` : ''
+  ].filter(Boolean).join(' · ') : '';
+  const hasOwnPapers = exam.resources.some(r => (r.subject === 'Previous Year Papers' && r.type === 'OFFICIAL_PDF') || r.role === 'QUESTION_PAPER');
+  for (let d = 0; d < practiceDays; d += 7) {
+    const fromDay = learnDays + reviseDays + d + 1;
+    const toDay = Math.min(days, fromDay + 6);
+    const n = toDay - fromDay + 1;
+    weeks.push({
+      week: weeks.length + 1, fromDay, toDay, phase: 'PRACTICE',
+      items: [{
+        subject: 'Full papers',
+        unit: {
+          id: `practice-${fromDay}`, subject: 'Full papers', name: `${Math.max(1, Math.floor(n / 2))} full paper${Math.floor(n / 2) === 1 ? '' : 's'} on the clock, each reviewed the next day`, weight: 1,
+          subtopics: [
+            shape ? `Sit it as the pattern sets it: ${stage!.stageName.split(' — ')[0]}, ${shape}${stage!.negativeMarking ? `, ${stage!.negativeMarking.split(';')[0]}` : ''}.` : 'Sit it as the exam pattern (section 05) sets it.',
+            hasOwnPapers ? `Use ${exam.authorityName.split(' (')[0]}’s own question papers in Practice & PYQs first.` : 'Practice & PYQs shows what this exam’s authority has published.',
+            'On the review day, redo every wrong and skipped question and note the topic it came from.'
+          ]
+        },
+        hours: n * H
+      }]
+    });
+  }
+
+  basis.push(`GovOS splits the ${days} days ${learnDays} / ${reviseDays} / ${practiceDays}: learning, a second pass, then full papers on the clock. This is GovOS’s guidance, not a rule of the exam.`);
+  const hoursPerUnit = unitsLeft > 0 ? learnHours / unitsLeft : 0;
+  return { days, hoursPerDay: H, learnDays, reviseDays, practiceDays, tracks, track, subjects, weeks, basis, unitsLeft, unitsDone, hoursPerUnit, tight: unitsLeft > 0 && hoursPerUnit < 2 };
+}
+
+/** Section 07's plan: the candidate picks the days and hours; everything else is read from the record. */
+export const GeneratedStudyPlan: React.FC<{
+  exam: Exam;
+  completedTopics: Record<string, boolean>;
+  onToggleTopic: (topicId: string) => void;
+  onOpenProvenanceModal: (p: DataProvenance) => void;
+}> = ({ exam, completedTopics, onToggleTopic, onOpenProvenanceModal }) => {
+  const def = studyPlanDefaultDays(exam);
+  const savedHours = storageService.getDailyStudyHours();
+  const [prefs, setPrefs] = useState<StudyPlanPrefs>(() => storageService.getStudyPlanPrefs(exam.id));
+  const [prefsExam, setPrefsExam] = useState(exam.id);
+  const [openWeeks, setOpenWeeks] = useState<Record<number, boolean>>({ 1: true });
+  if (prefsExam !== exam.id) {
+    setPrefsExam(exam.id);
+    setPrefs(storageService.getStudyPlanPrefs(exam.id));
+    setOpenWeeks({ 1: true });
+  }
+  const update = (next: StudyPlanPrefs) => { setPrefs(next); storageService.setStudyPlanPrefs(exam.id, next); };
+  const days = prefs.days ?? def.days;
+  const hoursAssumed = prefs.hoursPerDay == null && savedHours == null;
+  const hours = prefs.hoursPerDay ?? savedHours ?? 4;
+  const plan = useMemo(() => generateStudyPlan(exam, { days, hoursPerDay: hours, done: completedTopics, track: prefs.track ?? null, excludedSubjects: prefs.excludedSubjects }),
+    [exam, days, hours, completedTopics, prefs.track, prefs.excludedSubjects]);
+
+  if (plan.subjects.length === 0) {
+    return (
+      <div className="glass-card" style={{ padding: '22px' }} data-study-plan="none">
+        <span className="badge badge-pending">GOVOS STUDY PLAN</span>
+        <p style={{ margin: '10px 0 0', color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.6 }}>
+          The record holds neither syllabus topics nor pattern sections with marks for {exam.title}, so there is nothing to plan from yet. Nothing is borrowed from another exam.
+        </p>
+      </div>
+    );
+  }
+
+  const phaseStyle: Record<StudyPlanWeek['phase'], { label: string; bg: string; fg: string }> = {
+    LEARN: { label: 'Learn', bg: 'var(--primary-soft)', fg: 'var(--primary)' },
+    REVISE: { label: 'Second pass', bg: 'var(--amber-soft)', fg: 'var(--amber)' },
+    PRACTICE: { label: 'Full papers', bg: 'var(--emerald-soft)', fg: 'var(--emerald)' }
+  };
+  const pill = (active: boolean): React.CSSProperties => ({
+    padding: '6px 12px', borderRadius: '999px', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer',
+    border: '1px solid var(--border-color)', background: active ? 'var(--primary)' : 'var(--surface-2)', color: active ? '#fff' : 'var(--text-primary)'
+  });
+  const dayChoices = Array.from(new Set([...(def.reason ? [def.days] : []), ...PLAN_DAY_PRESETS])).sort((a, b) => a - b);
+
+  return (
+    <div className="glass-card animate-fade-in" data-study-plan={exam.id} style={{ padding: '22px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <span className="badge badge-pending" style={{ alignSelf: 'flex-start' }}>GOVOS STUDY PLAN · GUIDANCE, NOT AN OFFICIAL SCHEDULE</span>
+        <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+          A {plan.days}-day plan for {exam.title}{plan.track ? ` — ${plan.track}` : ''}
+        </h3>
+        <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+          Built from this exam&apos;s own syllabus and pattern. Choose how long you have and how many hours a day; tick a topic when it is done and the rest is re-planned from what is left.
+        </p>
+      </div>
+
+      {/* The candidate's choices */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {plan.tracks.length > 0 && (
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Paper</span>
+            {plan.tracks.map(t => (
+              <button key={t} type="button" style={pill(t === plan.track)} onClick={() => update({ ...prefs, track: t, excludedSubjects: [] })}>{t}</button>
+            ))}
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Days</span>
+          {dayChoices.map(d => (
+            <button key={d} type="button" style={pill(d === plan.days)} onClick={() => update({ ...prefs, days: d })}>
+              {d}{def.reason && d === def.days ? ' (to the exam)' : ''}
+            </button>
+          ))}
+        </div>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <label htmlFor={`plan-hours-${exam.id}`} style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Hours a day</label>
+          <select id={`plan-hours-${exam.id}`} value={hours}
+            onChange={e => { const h = Number(e.target.value); update({ ...prefs, hoursPerDay: h }); storageService.setDailyStudyHours(h); }}
+            style={{ padding: '6px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontWeight: 700 }}>
+            {[1, 2, 3, 4, 5, 6, 7, 8, 10, 12].map(h => <option key={h} value={h}>{h}</option>)}
+          </select>
+          {hoursAssumed && <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>4 is a starting assumption — set your own.</span>}
+          {def.reason && <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>· {def.reason}</span>}
+        </div>
+      </div>
+
+      {/* Totals */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(150px, 100%), 1fr))', gap: '10px' }}>
+        {[
+          { label: 'Hours in all', value: String(Math.round(plan.days * plan.hoursPerDay)) },
+          { label: 'Learn · second pass · papers', value: `${plan.learnDays} · ${plan.reviseDays} · ${plan.practiceDays} days` },
+          { label: 'Topics left', value: `${plan.unitsLeft}${plan.unitsDone ? ` (${plan.unitsDone} done)` : ''}` },
+          { label: 'Learning hours per topic', value: plan.unitsLeft ? `about ${Math.round(plan.hoursPerUnit * 10) / 10}` : '—' }
+        ].map(t => (
+          <div key={t.label} style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)' }}>
+            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t.label}</div>
+            <div style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)' }}>{t.value}</div>
+          </div>
+        ))}
+      </div>
+      {plan.tight && (
+        <div data-plan-tight style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'var(--amber-soft)', color: 'var(--amber)', fontSize: '0.86rem', fontWeight: 600 }}>
+          This is tight: about {Math.round(plan.hoursPerUnit * 10) / 10} learning hours per topic. More days or more hours a day would give each topic room.
+        </div>
+      )}
+      {plan.unitsLeft === 0 && (
+        <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'var(--emerald-soft)', color: 'var(--emerald)', fontSize: '0.86rem', fontWeight: 600 }}>
+          Every topic in this plan is ticked as done. The second pass and full papers below are what is left.
+        </div>
+      )}
+
+      {/* Subjects and their shares */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)' }}>Where the learning hours go</h4>
+        {plan.subjects.map(s => (
+          <div key={s.name} style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: '1 1 220px', fontSize: '0.88rem', color: s.included ? 'var(--text-primary)' : 'var(--text-muted)', cursor: 'pointer' }}>
+              <input type="checkbox" checked={s.included}
+                onChange={() => {
+                  const ex = new Set(prefs.excludedSubjects || []);
+                  if (ex.has(s.name)) ex.delete(s.name); else ex.add(s.name);
+                  update({ ...prefs, excludedSubjects: Array.from(ex) });
+                }} />
+              <span style={{ fontWeight: 700, minWidth: 0 }}>{s.name}</span>
+            </label>
+            <div style={{ flex: '2 1 200px', height: '8px', borderRadius: '999px', background: 'var(--surface-3)', overflow: 'hidden' }}>
+              <div style={{ width: `${Math.round(s.share * 100)}%`, height: '100%', background: 'var(--primary)' }} />
+            </div>
+            <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', minWidth: '140px' }}>
+              {s.included ? `${Math.round(s.share * 100)}% · ${Math.round(s.hours)} h${s.marks ? ` · ${s.marks} marks` : ''}` : 'left out of this plan'}
+            </span>
+          </div>
+        ))}
+        <ul style={{ margin: '4px 0 0', paddingLeft: '18px', fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+          {plan.basis.map(b => <li key={b}>{b}</li>)}
+        </ul>
+      </div>
+
+      {/* Week by week */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)' }}>Week by week</h4>
+        {plan.weeks.map(w => {
+          const st = phaseStyle[w.phase];
+          const open = !!openWeeks[w.week];
+          return (
+            <div key={w.week} data-plan-week={w.phase} style={{ borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', background: 'var(--surface-2)' }}>
+              <button type="button" onClick={() => setOpenWeeks({ ...openWeeks, [w.week]: !open })} aria-expanded={open}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', color: 'var(--text-primary)' }}>
+                <ChevronRight size={16} style={{ transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }} />
+                <span style={{ fontWeight: 800 }}>Week {w.week}</span>
+                <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>Days {w.fromDay}–{w.toDay}</span>
+                <span style={{ marginLeft: 'auto', padding: '2px 10px', borderRadius: '999px', background: st.bg, color: st.fg, fontSize: '0.74rem', fontWeight: 800 }}>{st.label}</span>
+              </button>
+              {open && (
+                <div style={{ padding: '0 14px 12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {w.items.length === 0 && <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Nothing left to learn this week — move on to the next.</div>}
+                  {w.items.map((it, i) => {
+                    const topicId = it.unit.topicId;
+                    const isDone = !!(topicId && completedTopics[topicId]);
+                    return (
+                      <div key={`${it.unit.id}-${i}`} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                        {topicId ? (
+                          <input type="checkbox" checked={isDone} onChange={() => onToggleTopic(topicId)} aria-label={`Mark ${it.unit.name} done`} style={{ marginTop: '4px' }} />
+                        ) : <span style={{ width: '13px', flexShrink: 0 }} />}
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ fontSize: '0.88rem', color: 'var(--text-primary)', textDecoration: isDone ? 'line-through' : 'none' }}>
+                            <span style={{ color: 'var(--text-muted)', fontWeight: 700 }}>{it.subject} · </span>
+                            <strong>{it.unit.name}</strong>{it.continued ? ' (continued)' : ''}
+                            <span style={{ color: 'var(--text-secondary)' }}> — {planHours(it.hours)} h</span>
+                          </div>
+                          {it.unit.subtopics.length > 0 && (
+                            <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                              {it.unit.subtopics.slice(0, 6).join('; ')}{it.unit.subtopics.length > 6 ? `; and ${it.unit.subtopics.length - 6} more` : ''}
+                            </div>
+                          )}
+                        </div>
+                        {it.unit.provenance && <EvidenceButton provenance={it.unit.provenance} onOpen={onOpenProvenanceModal} compact />}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 export const PreparationPlanner: React.FC<PreparationPlannerProps> = ({ exam }) => {
   const tracks = exam.roadmapTracks || [];
   const [selectedTrackId, setSelectedTrackId] = useState<string>(tracks[0]?.id || 'TRACK_90_DAYS');
@@ -10555,20 +10927,9 @@ export const PreparationPlanner: React.FC<PreparationPlannerProps> = ({ exam }) 
     return <SyllabusRoadmap exam={exam} completed={completedGoals} onToggle={toggleGoal} />;
   }
 
-  // No track on record: GovOS has generated no study guidance for this exam, and none is
-  // borrowed from another exam. Said plainly, with what does exist -- never a crash.
-  if (!currentTrack) {
-    return (
-      <div className="glass-card animate-fade-in" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        <span className="badge badge-pending" style={{ alignSelf: 'flex-start' }}>GOVOS STUDY GUIDANCE — NOT YET GENERATED</span>
-        <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>GovOS study guidance not yet generated for {exam.title}</h3>
-        <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
-          A study roadmap is GovOS guidance, not part of the official notice, and none has been generated for this exam.
-          Nothing is shown in its place from another exam. What is on record: {exam.syllabus.length > 0 ? `its ${exam.syllabus.length}-topic syllabus in section 06` : 'its syllabus section (06)'}{(exam.patternTree?.length || exam.stages.length) ? ' and its exam pattern in section 05' : ''}, both read from {exam.authorityName}&apos;s own documents.
-        </p>
-      </div>
-    );
-  }
+  // No authored track with phases: the generated plan above is this exam's roadmap, and nothing is
+  // borrowed from another exam. (A track named without its phases used to show here as two empty panels.)
+  if (!currentTrack || !tracks.some(t => (t.phases || []).length > 0)) return null;
 
   const totalGoals = currentTrack.phases.reduce((acc, phase) => {
     return acc + phase.weeklySchedule.reduce((wAcc, w) => wAcc + w.goals.length, 0);
@@ -12376,9 +12737,9 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
         <div className="glass-card" style={{ padding: '0', overflow: 'hidden', border: '1px solid rgba(16, 185, 129, 0.35)', background: 'linear-gradient(135deg, #ffffff 0%, #ecfdf5 100%)', display: 'flex', flexDirection: 'column', height: '620px' }}>
           
           {/* Chat Header */}
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--surface-3)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.2)', border: '1px solid #10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#137638' }}>
+          <div style={{ padding: '14px clamp(12px, 3vw, 20px)', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px 12px', background: 'var(--surface-3)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: '1 1 220px' }}>
+              <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.2)', border: '1px solid #10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#137638', flexShrink: 0 }}>
                 <Bot size={20} />
               </div>
               <div>
@@ -12416,7 +12777,7 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
           </div>
 
           {/* Chat Messages Stream */}
-          <div style={{ flex: 1, padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ flex: 1, padding: '16px clamp(10px, 3vw, 20px)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {chatMessages.map(msg => (
               <div
                 key={msg.id}
@@ -12435,8 +12796,9 @@ export const PracticeEngine: React.FC<PracticeEngineProps> = ({ exam, onOpenProv
 
                 <div
                   style={{
-                    maxWidth: '80%',
-                    padding: '14px 18px',
+                    maxWidth: msg.sender === 'user' ? '85%' : 'calc(100% - 40px)',
+                    minWidth: 0,
+                    padding: '12px clamp(12px, 3vw, 18px)',
                     borderRadius: 'var(--radius-md)',
                     background: msg.sender === 'user' ? 'var(--primary)' : '#ffffff',
                     border: msg.sender === 'user' ? '1px solid #60a5fa' : '1px solid var(--border-color)',
@@ -16893,11 +17255,12 @@ export function resultPathway(
     missing: `The record ties no syllabus topic to ${name}.`,
     action: syllabus,
   });
+  const forCategory = ctx.category || 'your category';
   const cutoffs = (which: 'tier1Cutoff' | 'tier2Cutoff', name: string): ResultPathwayBlock => ({
     key: `cutoffs-${which}`,
-    heading: `Recorded ${name} cut-offs for ${ctx.category}`,
+    heading: `Recorded ${name} cut-offs for ${forCategory}`,
     items: cutoffItems(exam, ctx.category, which),
-    missing: `No ${name} cut-off for ${ctx.category} is on record. GovOS sets no target of its own.`,
+    missing: `No ${name} cut-off for ${forCategory} is on record. GovOS sets no target of its own.`,
     action: { label: 'Open cut-off history', section: 10 },
   });
   const skillTestsAt = (st: StageOf | undefined): ResultPathwayItem[] => skillTestsOf(exam).filter(t => !st || t.stage === st)
@@ -16911,7 +17274,7 @@ export function resultPathway(
   const laterStages: ResultPathwayItem[] = exam.stages.slice(2).map(st => ({ title: stageShortName(st, `Stage ${st.stageNumber}`), body: st.qualifyingNature || undefined, provenance: st.provenance }));
   // A missing cut-off is said first: "compare them with the recorded cut-off" promised one the record lacks.
   const standingLine = (st: ResultStanding, name: string, cut: string) =>
-    st.cutoff === null ? `No ${name} cut-off for ${ctx.category} is on record${st.score !== null ? ` to compare your ${st.score} with` : ''}.`
+    st.cutoff === null ? `No ${name} cut-off for ${forCategory} is on record${st.score !== null ? ` to compare your ${st.score} with` : ''}.`
       : st.score === null ? `Enter your ${name} marks above to compare them with ${cut}.`
       : st.margin !== null && st.margin >= 0 ? `Your ${name} score of ${st.score} is +${st.margin} above ${year} ${ctx.category} cut-off of ${st.cutoff}.`
       : `Your ${name} score of ${st.score} is ${Math.abs(st.margin ?? 0)} below ${year} ${ctx.category} cut-off of ${st.cutoff}.`;
@@ -17099,6 +17462,8 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
     st ? st.stageName.split(/[:—(]/)[0].trim() || fallback : fallback;
   const stageOneName = shortStage(stageOne, 'Stage 1');
   const stageTwoName = shortStage(stageTwo, 'Stage 2');
+  /** One stage on record (an eligibility or admission test): no second stage's marks, plan or gap to offer. */
+  const hasStageTwo = !!stageTwo;
   /** Skill tests come from the record's `ExamStage.skillTest` and nothing else. A stage-name regex used
    *  to decide this and then show every such exam SSC CGL's CKT / DEST card and thresholds. */
   const skillTests = skillTestsOf(exam);
@@ -17164,7 +17529,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
 
   // IBPS PO is judged by the stage engine below, whose tabs are the stage statuses; 'IBPS_MAINS_PREP'
   // selected a tab that does not exist.
-  const [selectedStatus, setSelectedStatus] = useState<CandidateResultStatus>(isUPSC ? 'UPSC_MAINS_PREP' : 'TIER2_PREP');
+  const [selectedStatus, setSelectedStatus] = useState<CandidateResultStatus>(isUPSC ? 'UPSC_MAINS_PREP' : exam.stages.length > 1 ? 'TIER2_PREP' : 'TIER1_FAILED_RECOVERY');
   const [statusChosenManually, setStatusChosenManually] = useState<boolean>(false);
   const [parsing, setParsing] = useState<boolean>(false);
   const [parsed, setParsed] = useState<{ ok: boolean; reason?: string; message?: string; confidence?: string; method?: 'TEXT_LAYER' | 'OCR'; fields?: any; notes?: string[]; excerpt?: string } | null>(null);
@@ -17206,7 +17571,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
     } else {
       setTier1Input(saved?.tier1Marks !== undefined ? String(saved.tier1Marks) : (saved ? String(saved.marks) : ''));
       setTier2Input(saved?.tier2Marks !== undefined ? String(saved.tier2Marks) : '');
-      setSelectedStatus('TIER2_PREP');
+      setSelectedStatus(exam.stages.length > 1 ? 'TIER2_PREP' : 'TIER1_FAILED_RECOVERY');
     }
   }, [exam.id]);
 
@@ -17965,7 +18330,8 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
             <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0 }}>
               {isUPSC 
                 ? 'Type marks for Prelims GS-I, CSAT, Mains Written, and Personality Test, or upload your official UPSC mark sheet scan.'
-                : `Upload your official scorecard or type marks for ${stageOneName} and ${stageTwoName}. GovOS evaluates all stages together.`}
+                : hasStageTwo ? `Upload your official scorecard or type marks for ${stageOneName} and ${stageTwoName}. GovOS evaluates all stages together.`
+                : `Upload your official scorecard or type your ${stageOneName} marks.`}
             </p>
           </div>
 
@@ -18052,7 +18418,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                 />
               </div>
 
-              <div>
+              {hasStageTwo && <div>
                 <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', fontWeight: 700 }}>{s2} marks</label>
                 <input
                   type="number" step="0.01" min={0} max={700}
@@ -18061,7 +18427,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                   placeholder="e.g. 255.95"
                   style={{ width: '140px', padding: '9px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontSize: '0.9rem' }}
                 />
-              </div>
+              </div>}
             </>
           )}
 
@@ -18542,6 +18908,8 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
             </>
           ) : (
             <>
+              {/* The three second-stage pathways exist only where the record has a second stage. */}
+              {hasStageTwo && <>
               {/* SSC Tab 1: Tier 2 Prep */}
               <button 
                 className={`btn ${(selectedStatus === 'TIER2_PREP' || selectedStatus === 'QUALIFIED_TIER2') ? 'btn-primary' : 'btn-secondary'}`}
@@ -18595,6 +18963,7 @@ export const ResultNextStepsSection: React.FC<ResultNextStepsSectionProps> = ({
                   <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>{stageOneName} cleared · merit shortfall plan</div>
                 </div>
               </button>
+              </>}
 
               {/* SSC Tab 4: Tier-1 Not Cleared Comeback */}
               <button 
@@ -19233,7 +19602,9 @@ const SourceRow: React.FC<{
       {sub && <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '2px' }}>{sub}</div>}
       {note && <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '4px', lineHeight: 1.45 }}>{note}</div>}
     </div>
-    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flexShrink: 0 }}>
+    {/* May shrink: a non-shrinking group is as wide as its chip and buttons side by side, which at phone width
+        pushed "Open" and "Evidence" past the card's edge. Shrinking lets them wrap inside the card instead. */}
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: '0 1 auto', minWidth: 0, maxWidth: '100%' }}>
       <SourceChip text={source.text} tone={source.tone} />
       <a href={url} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ fontSize: '0.76rem', padding: '5px 12px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
         Open <ExternalLink size={12} />
@@ -20265,7 +20636,7 @@ const PatternNodeCard: React.FC<{
   if (node.questions !== undefined) figures.push({ label: 'Questions', value: String(node.questions), field: 'questions' });
   if (node.marks !== undefined) figures.push({ label: 'Marks', value: String(node.marks), field: 'marks' });
   if (node.durationMinutes !== undefined) figures.push({ label: 'Minutes', value: String(node.durationMinutes), field: 'durationMinutes' });
-  if (node.marksPerQuestion !== undefined) figures.push({ label: 'Marks / question', value: String(node.marksPerQuestion), field: 'marksPerQuestion' });
+  if (node.marksPerQuestion !== undefined) figures.push({ label: node.marksPerQuestion === 1 ? 'Mark / question' : 'Marks / question', value: String(node.marksPerQuestion), field: 'marksPerQuestion' });
 
   return (
     <div style={{
@@ -20975,8 +21346,9 @@ export const UPSCPracticeEngine: React.FC<{
   scope?: PracticeScope;
   onOpenProvenanceModal: (provenance: DataProvenance) => void;
 }> = ({ exam, scope = 'ALL', onOpenProvenanceModal }) => {
-  if (!assertExamMatches('UPSCPracticeEngine', UPSC_PRACTICE_CONFIG.examId, exam)) return null;
+  // Hooks before the guard: React requires the same hooks on every render, and the guard returns early.
   const [group, setGroup] = useState<'Prelims' | 'Mains'>('Prelims');
+  if (!assertExamMatches('UPSCPracticeEngine', UPSC_PRACTICE_CONFIG.examId, exam)) return null;
 
   const sectionFor = (re: RegExp) => {
     for (const st of exam.stages) {
@@ -21232,7 +21604,8 @@ const UnavailablePracticeEngine: React.FC<{
   onOpenProvenanceModal: (provenance: DataProvenance) => void;
 }> = ({ exam, scope, onOpenProvenanceModal }) => {
   const stage = exam.stages[0];
-  const hasOfficial = (exam.officialPapers?.length ?? 0) > 0 || (exam.answerKeys?.length ?? 0) > 0;
+  const hasOfficial = (exam.officialPapers?.length ?? 0) > 0 || (exam.answerKeys?.length ?? 0) > 0
+    || exam.resources.some(r => r.subject === 'Previous Year Papers' && r.type === 'OFFICIAL_PDF');
   return (
     <div className="animate-fade-in glass-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
       <div>
@@ -21279,8 +21652,9 @@ const UnavailablePracticeEngine: React.FC<{
           ))}
         </div>
       )}
-      {/* The authority's own papers and keys, bound to their exact paper identity. Both render
+      {/* The authority's own papers and keys, bound to their exact paper identity. Each renders
           nothing when the record has none. */}
+      <OfficialPapersPanel exam={exam} onOpenProvenanceModal={onOpenProvenanceModal} />
       <OfficialPaperCatalogue exam={exam} onOpenProvenanceModal={onOpenProvenanceModal} />
       <AnswerKeyPanel exam={exam} onOpenProvenanceModal={onOpenProvenanceModal} />
     </div>
@@ -21996,8 +22370,6 @@ interface ExamDetailViewProps {
   onOpenProvenanceModal: (provenance: DataProvenance) => void;
   onOpenReportModal: (entityType: string, entityId: string) => void;
   onNavigateEligibility?: () => void;
-  onNavigatePlanner?: () => void;
-  onNavigatePractice?: () => void;
   isTracked?: boolean;
   onToggleTrack?: () => void;
   initialSection?: number;
@@ -22197,8 +22569,6 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
   onOpenProvenanceModal,
   onOpenReportModal,
   onNavigateEligibility,
-  onNavigatePlanner,
-  onNavigatePractice,
   isTracked = false,
   onToggleTrack,
   initialSection = 1,
@@ -22265,18 +22635,10 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
     examHasStudyPaths(exam) ? 'POST_STUDY_PATH' : 'OFFICIAL_BLUEPRINT';
   const [syllabusViewMode, setSyllabusViewMode] = useState<'POST_STUDY_PATH' | 'OFFICIAL_BLUEPRINT' | 'TREE_MAP'>(defaultSyllabusView);
   useEffect(() => { setSyllabusViewMode(defaultSyllabusView()); }, [exam.id]);
+  // Only what the candidate ticked. A first visit used to start with four SSC topics marked done,
+  // which is progress nobody made (and SSC's ids on any exam).
   const [completedTopics, setCompletedTopics] = useState<Record<string, boolean>>(
-    () => {
-      const saved = storageService.getCompletedTopics(exam.id);
-      if (Object.keys(saved).length > 0) return saved;
-      // First visit for this exam: start from the standard baseline.
-      return {
-        'syl-quant-arithmetic': true,
-        'syl-reas-analogy-series': true,
-        'syl-eng-grammar': true,
-        'syl-ga-polity': true
-      };
-    }
+    () => storageService.getCompletedTopics(exam.id)
   );
 
   // Reload the saved ticks whenever the candidate switches to a different exam.
@@ -22349,6 +22711,9 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
     goToSection(secNum);
     requestAnimationFrame(() => sectionCardRef.current?.scrollIntoView({ block: 'start', behavior: prefersReducedMotion() ? 'auto' : 'smooth' }));
   };
+  // Practice is this exam's own part 09. It used to be handed in by the shell as a switch to the PRACTICE
+  // safety-net tab, which left the exam page instead of turning to its part.
+  const onNavigatePractice = () => turnTo(9);
 
   // Opening the Syllabus section re-reads the verifier's revisions, so a change applied in the
   // Trust Panel reaches the list and the tree map without leaving the exam page.
@@ -22385,7 +22750,9 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
   const tiles = [
     ...examHeaderWindowTiles(liveDates),
     tileFor(['EXAM_TIER1'], stageLabel(0, 'Exam — Stage 1')),
-    tileFor(['EXAM_TIER2'], stageLabel(1, 'Exam — Stage 2'))
+    // A second-stage tile only where the record has a second stage or a date for one; "Stage 2: TBA" on a
+    // single-stage exam announced a stage that does not exist.
+    ...(exam.stages.length >= 2 || liveDates.some(d => d.type === 'EXAM_TIER2') ? [tileFor(['EXAM_TIER2'], stageLabel(1, 'Exam — Stage 2'))] : [])
   ];
   const headerInitials = examInitials(exam);
   const headerNext = nextMilestoneOf({ ...exam, dates: liveDates } as Exam);
@@ -22574,9 +22941,11 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                 <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px' }}>Quick Info</h4>
                 {[
                   { icon: <Building size={16} />, label: 'Conducting Body', value: exam.authorityName },
-                  { icon: <Award size={16} />, label: 'Exam Level', value: exam.minimumQualification === 'GRADUATION' ? 'Graduation' : (exam.minimumQualification || 'See notice') },
+                  { icon: <Award size={16} />, label: 'Exam Level', value: exam.minimumQualification ? QUALIFICATION_WORDS[exam.minimumQualification] : 'See notice' },
                   { icon: <Briefcase size={16} />, label: 'Posts', value: exam.posts.length > 0
                     ? `${exam.posts.length} posts${exam.posts.some(p => p.classification) ? ` · ${Array.from(new Set(exam.posts.map(p => p.classification).filter(Boolean))).join(', ')}` : ''}`
+                    : exam.examNature === 'ELIGIBILITY_TEST' ? 'None — an eligibility test fills no post'
+                    : exam.examNature === 'ADMISSION_TEST' ? 'None — an admission test fills no post'
                     : exam.materialization?.heldForReview?.posts ? 'Post list under review — see the notice' : 'Not stated in the record' },
                   { icon: <Layers size={16} />, label: exam.stages.some(st => st.derivedFrom) ? 'Stages in the notice' : 'Selection Process', value: exam.stages.length === 0 ? 'Not stated in the record' : Array.from(new Set(exam.stages.map(st => st.stageName.split(' — ')[0].split(':')[0]))).join(exam.stages.some(st => st.derivedFrom) ? '; ' : ' → ') },
                   { icon: <Globe size={16} />, label: 'Official Website', value: exam.officialDomain, href: exam.officialDomain }
@@ -22647,17 +23016,19 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: '16px' }}>
               {exam.posts.map(p => (
                 <div key={p.id} style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
-                    <div>
-                      <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>{p.postName}</h4>
-                      <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '2px' }}>{p.department}</div>
-                      {p.ministry && <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{p.ministry}</div>}
-                    </div>
-                    <span className="badge badge-verified" style={{ fontSize: '0.75rem' }}>{p.payLevel}</span>
+                  <div style={{ minWidth: 0 }}>
+                    <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>{p.postName}</h4>
+                    <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '2px' }}>{p.department}</div>
+                    {p.ministry && <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{p.ministry}</div>}
+                    {/* Its own line, in the record's own words. A neutral tag, not the green "verified" badge: a pay level
+                        is only as verified as its provenance (UPSC's is the record's reading, the notice prints no pay),
+                        and a pill squeezed beside a long post name wrapped into a tall oval. */}
+                    {p.payLevel && <span className="pay-tag">{p.payLevel}</span>}
                   </div>
 
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                    <span className="glass-pill" style={{ color: '#137638', borderColor: 'rgba(16,185,129,0.3)', fontSize: '0.75rem' }}>{p.payScale}</span>
+                    {/* Neutral like the pay tag (green read as "verified"); squared corners, so a scale that wraps stays a box. */}
+                    <span className="glass-pill" style={{ fontSize: '0.75rem', borderRadius: '8px' }}>{p.payScale}</span>
                     <span className="glass-pill" style={{ fontSize: '0.75rem' }}>Age: {p.minAge}–{p.maxAge} Yrs</span>
                     <span
                       className="glass-pill"
@@ -23294,7 +23665,10 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
 
         {/* Section 07: Study Roadmap (Embeds PreparationPlanner) */}
         {activeSection === 7 && (
-          <PreparationPlanner exam={exam} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <GeneratedStudyPlan exam={exam} completedTopics={completedTopics} onToggleTopic={toggleTopic} onOpenProvenanceModal={onOpenProvenanceModal} />
+            <PreparationPlanner exam={exam} />
+          </div>
         )}
 
         {/* Section 08: Resource Library (searchable, grouped, bookmarkable) */}
@@ -23356,7 +23730,7 @@ export const ExamDetailView: React.FC<ExamDetailViewProps> = ({
                       <td style={{ padding: '12px', fontWeight: 700, color: 'var(--text-primary)' }}>{c.year}</td>
                       <td style={{ padding: '12px' }}>{c.stage || 'Not stated'}</td>
                       <td style={{ padding: '12px', color: '#235ddd' }}>{c.category}</td>
-                      <td style={{ padding: '12px' }}>{c.post || 'All posts (as recorded)'}</td>
+                      <td style={{ padding: '12px' }}>{c.post || (exam.posts.length === 0 ? '—' : 'All posts (as recorded)')}</td>
                       <td style={{ padding: '12px', fontWeight: 700, color: 'var(--emerald)', fontFamily: 'var(--font-mono)' }}>{c.value ?? c.tier1Cutoff}{c.cutoffType ? ` (${c.cutoffType})` : ''}</td>
                       <td style={{ padding: '12px' }}>
                         <EvidenceButton provenance={c.provenance} onOpen={onOpenProvenanceModal} />

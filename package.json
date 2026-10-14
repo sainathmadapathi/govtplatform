@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "prebuild": "node tools/export_authored_exams.mjs",
+    "prebuild": "node tools/export_authored_exams.mjs && python tools/docs/build_guide.py --quiet",
+    "docs": "python tools/docs/build_guide.py",
     "export:authored": "node tools/export_authored_exams.mjs",
     "check:frontend": "node tools/frontend_checks/run.mjs",
     "build": "vite build",

@@ -441,6 +441,43 @@ def test_no_exam_is_named_in_the_readers() -> None:
                   branch in source, False)
 
 
+def _final_key(key_id: str, answers: dict) -> AnswerKey:
+    return AnswerKey(paper=paper(), kind=AnswerKeyKind.FINAL, id=key_id,
+                     entries=[AnswerEntry(question_number=q, paper=paper(), accepted=[a],
+                                          status=AnswerStatus.PUBLISHED) for q, a in answers.items()])
+
+
+def test_aj_a_same_kind_key_that_disagrees_is_refused_not_confirmed() -> None:
+    from .merge import MergeAction
+    from .pyq_merge import merge_answer_keys
+    held = {'id': 'k-held', 'paper': paper(), 'kind': AnswerKeyKind.FINAL,
+            'entries': [{'question_number': '47', 'accepted': ['c']}, {'question_number': '48', 'accepted': ['b']}]}
+    report = merge_answer_keys([held], [_final_key('k-new', {'47': 'a', '48': 'b'})])
+    check('two final keys that answer question 47 differently are a conflict',
+          [d.action for d in report.decisions], [MergeAction.CONFLICTED])
+    check('the conflict names the question', '47' in report.decisions[0].reason, True)
+    check('and the incoming key is not added beside it as if it were new',
+          report.of(MergeAction.ADDED), [])
+    copies = merge_answer_keys([{'id': 'k-held', 'paper': paper(), 'kind': AnswerKeyKind.FINAL}],
+                               [_final_key('k-1', {'5': 'a'}), _final_key('k-2', {'5': 'd'})])
+    check('two extracted copies of one final key that disagree are a conflict too',
+          [d.action for d in copies.decisions], [MergeAction.CONFLICTED])
+
+
+def test_ak_a_same_kind_key_that_agrees_is_confirmed() -> None:
+    from .merge import MergeAction
+    from .pyq_merge import merge_answer_keys
+    held = {'id': 'k-held', 'paper': paper(), 'kind': AnswerKeyKind.FINAL,
+            'entries': [{'question_number': '47', 'accepted': ['C']}]}
+    report = merge_answer_keys([held], [_final_key('k-new', {'47': 'c', '90': 'a'})])
+    check('the same answers (case aside) confirm the key', [d.action for d in report.decisions],
+          [MergeAction.CONFIRMED])
+    unread = merge_answer_keys([{'id': 'k-held', 'paper': paper(), 'kind': AnswerKeyKind.FINAL}],
+                               [_final_key('k-new', {'47': 'c'})])
+    check('a key whose answers the record never held is not a disagreement',
+          [d.action for d in unread.decisions], [MergeAction.CONFIRMED])
+
+
 def main() -> int:
     for fn in (test_a_a_basic_mcq,
                test_b_a_descriptive_question_gets_no_options,
@@ -478,7 +515,9 @@ def main() -> int:
                test_ah_no_answer_is_fabricated,
                test_ai_an_unreadable_paper_says_why,
                test_a_listing_of_many_examinations_is_filtered_by_the_file_itself,
-               test_no_exam_is_named_in_the_readers):
+               test_no_exam_is_named_in_the_readers,
+               test_aj_a_same_kind_key_that_disagrees_is_refused_not_confirmed,
+               test_ak_a_same_kind_key_that_agrees_is_confirmed):
         fn()
     if _FAILURES:
         print(f'{len(_FAILURES)} FAILURE(S):')

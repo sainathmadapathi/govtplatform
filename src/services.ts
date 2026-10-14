@@ -574,7 +574,9 @@ export function evaluateEligibility(exam: Exam, profile: UserProfile): Eligibili
       days: detailedAge.days,
       crucialDate
     },
-    categoryRelaxationApplied: `${profile.category} (+${relaxation} Years Relaxation Applied)`,
+    categoryRelaxationApplied: relaxation > 0
+      ? `${profile.category} (+${relaxation} ${relaxation === 1 ? 'Year' : 'Years'} Relaxation Applied)`
+      : `${profile.category} (no age relaxation)`,
     totalEligiblePosts: eligibleCount,
     totalAvailablePosts: totalCount,
     legalClauses,
@@ -741,8 +743,17 @@ const STORAGE_KEYS = {
   COMPLETED_TOPICS: 'govos_completed_syllabus_topics',
   ROADMAP_GOALS: 'govos_roadmap_goals',
   PENDING_REPORTS: 'govos_pending_reports',
-  USER_INTERACTIONS: 'govos_user_interactions'
+  USER_INTERACTIONS: 'govos_user_interactions',
+  STUDY_PLAN: 'govos_study_plan'
 };
+
+/** The candidate's choices for one exam's generated study plan. Every field is optional: absent means not chosen. */
+export interface StudyPlanPrefs {
+  days?: number;
+  hoursPerDay?: number;
+  track?: string | null;
+  excludedSubjects?: string[];
+}
 
 export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreference = {
   channels: {
@@ -1593,6 +1604,29 @@ class StorageService {
       console.warn('LocalStorage save error for completed topics:', e);
     }
     return next;
+  }
+
+  // --- 7b-ii. Generated study plan choices (per exam) ---
+
+  getStudyPlanPrefs(examId: string): StudyPlanPrefs {
+    try {
+      const all = readStoredJson<Record<string, any>>(STORAGE_KEYS.STUDY_PLAN, isPlainObject, {});
+      return isPlainObject(all[examId]) ? all[examId] as StudyPlanPrefs : {};
+    } catch {
+      return {};
+    }
+  }
+
+  setStudyPlanPrefs(examId: string, prefs: StudyPlanPrefs): boolean {
+    try {
+      const all = readStoredJson<Record<string, any>>(STORAGE_KEYS.STUDY_PLAN, isPlainObject, {});
+      all[examId] = prefs;
+      localStorage.setItem(STORAGE_KEYS.STUDY_PLAN, JSON.stringify(all));
+      return true;
+    } catch (e) {
+      console.warn('LocalStorage save error for the study plan:', e);
+      return false;
+    }
   }
 
   // --- 7c. Roadmap Weekly Goal Checkboxes (per exam) ---

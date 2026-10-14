@@ -474,7 +474,9 @@ def _narrowest_span(chunk: str, spec: FieldSpec, value: object) -> str:
         if len(s) < 25:
             continue
         try:
-            if spec.normalise(s) is not None and len(s) < len(best):
+            # The quote must yield *this* value. It only checked for some value, so a shorter
+            # sentence stating a different figure could become the evidence for this one.
+            if len(s) < len(best) and spec.normalise(s) == value:
                 best = s
         except Exception:                                   # noqa: BLE001
             continue

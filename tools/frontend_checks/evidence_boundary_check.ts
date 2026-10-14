@@ -178,5 +178,25 @@ check('ui: no exam lookup falls back to the first or Nth exam', !/\)\s*\|\|\s*AL
 check('ui: a link check is not called a verification of the content', !/Link verified/.test(uiSrc));
 check('ui: the verdict says GovOS holds no cut-off rather than "not published yet"', !/cut-?off[^`'"\n]{0,60}not (?:been )?published yet/i.test(uiSrc));
 
+// ======================================================================= 8. nothing invented as the candidate's, and hooks stay legal
+// A first visit started with four SSC topics ticked done, and a home-page "simulation lab" wrote made-up activity
+// into the candidate's own history, which drives their recommendations.
+check('ui: no syllabus topic starts ticked as done', !/'syl-[a-z0-9-]+':\s*true/.test(uiSrc));
+check('ui: no simulated candidate activity', !/runSimulationPreset|Simulation Lab/.test(uiSrc));
+// React needs the same hooks on every render. UPSCPracticeEngine called useState after its exam guard's early
+// `return null`, so the hook ran on some renders and not others.
+const hookAfterReturn: string[] = [];
+for (const block of uiSrc.split(/\n(?=export const [A-Z]\w*: React\.FC|const [A-Z]\w*: React\.FC)/)) {
+  const lines = block.split('\n');
+  const name = (lines[0].match(/const (\w+)/) || [])[1];
+  let returned = false;
+  for (const line of lines.slice(1)) {
+    if (/^};/.test(line)) break;
+    if (/^  if \(.*\) return\b/.test(line)) returned = true;
+    else if (returned && /^  (?:(?:const|let) [^=]*=\s*)?(?:React\.)?use[A-Z]\w*[<(]/.test(line)) { hookAfterReturn.push(`${name}: ${line.trim()}`); break; }
+  }
+}
+check('ui: no component calls a hook after an early return', hookAfterReturn.length === 0, hookAfterReturn.join(' | '));
+
 if (failures) { console.log(`\n${failures} evidence-boundary check(s) failed`); process.exit(1); }
 console.log('evidence boundary: all checks passed');

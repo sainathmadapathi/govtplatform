@@ -357,5 +357,19 @@ class NoSecondaryOfficialFactTests(Guarded):
         self.assertFalse({n for n in public if any(w in n.lower() for w in ('publish', 'register', 'materialize', 'save'))})
 
 
+
+class CalendarDateTests(unittest.TestCase):
+    """A date a source prints is kept only if it is a real day; 31/02 used to pass as 2026-02-31."""
+
+    def test_impossible_days_are_refused(self):
+        self.assertIsNone(SI._iso(2026, 2, 31))
+        self.assertIsNone(SI._iso(2026, 4, 31))
+        self.assertIsNone(SI._iso(2023, 2, 29))
+
+    def test_real_days_are_kept(self):
+        self.assertEqual(SI._iso(2024, 2, 29), '2024-02-29')
+        self.assertEqual(SI._iso('2024', '3', '16'), '2024-03-16')
+
+
 if __name__ == '__main__':
     unittest.main()

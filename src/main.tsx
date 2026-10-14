@@ -228,11 +228,17 @@ export const App: React.FC = () => {
     initNotificationsAndTimeline();
   }, []);
 
+  // The alerts above are built before the server's registry exams arrive; once they do, build them again so a
+  // tracked registry exam (TGPSC, say) gets its reminders too. Read state is kept by id.
+  useEffect(() => {
+    if (registryExams.length) setNotifications(storageService.generatePersonalizedNotificationsForTrackedExams(examUniverse));
+  }, [examUniverse]);
+
   const handleToggleTrackExam = async (examId: string) => {
     const updated = await storageService.toggleTrackExam(examId);
     setTrackedExamIds(updated);
     // Regenerate notifications scoped strictly to newly tracked exams
-    const regenerated = storageService.generatePersonalizedNotificationsForTrackedExams(getExamUniverse(ALL_EXAMS));
+    const regenerated = storageService.generatePersonalizedNotificationsForTrackedExams(examUniverse);
     setNotifications(regenerated);
   };
 
@@ -249,7 +255,7 @@ export const App: React.FC = () => {
   const handleSavePreferences = async (newPrefs: NotificationPreference) => {
     await storageService.saveNotificationPreferences(newPrefs);
     setNotificationPreferences(newPrefs);
-    const regenerated = storageService.generatePersonalizedNotificationsForTrackedExams(getExamUniverse(ALL_EXAMS));
+    const regenerated = storageService.generatePersonalizedNotificationsForTrackedExams(examUniverse);
     setNotifications(regenerated);
   };
 
@@ -384,8 +390,6 @@ export const App: React.FC = () => {
             onOpenProvenanceModal={handleOpenProvenance}
             onOpenReportModal={handleOpenReport}
             onNavigateEligibility={() => setActiveTab('ELIGIBILITY')}
-            onNavigatePlanner={() => setActiveTab('PLANNER')}
-            onNavigatePractice={() => setActiveTab('PRACTICE')}
             isTracked={trackedExamIds.includes(selectedExam.id)}
             onToggleTrack={() => handleToggleTrackExam(selectedExam.id)}
           />

@@ -45,7 +45,9 @@ SOURCE_SUFFIXES = frozenset({
 #: Files with no (or an unhelpful) suffix that are source/config. `.env` itself is deliberately NOT
 #: here: the real file holds the operator's settings and is never read by a test.
 SOURCE_NAMES = frozenset({'.gitignore', '.env.example', 'requirements.txt'})
-SKIP_FILES = frozenset({'package-lock.json'})
+#: The project guide is generated (tools/docs/build_guide.py) and quotes every other file, including the
+#: allowlisted negative tests; each line it quotes is checked here at its source instead.
+SKIP_FILES = frozenset({'package-lock.json', 'GovOS_Guide.html'})
 
 # --------------------------------------------------------------------------- what is forbidden
 FORBIDDEN = {

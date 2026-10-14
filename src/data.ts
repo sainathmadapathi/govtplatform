@@ -2,6 +2,9 @@
 
 import {
   ApplicationSimulatorSpec,
+  ExamPatternNode,
+  ExamSyllabusNode,
+  SyllabusTopic,
   OfficialPaperQuestion,
   DataProvenance,
   DetailedExplanation,
@@ -58,6 +61,41 @@ const communitySource = (
   taxonomyType: 'RECOMMENDATION',
   verificationLevel: 'UNDER_VERIFICATION',
   excerptText: `Free coaching content, not a government publication. GovOS lists it because it is widely followed by SSC candidates (${audience}, checked ${CHECK_DATE}) and costs nothing to watch; GovOS does not endorse it, is not affiliated with it, and has not fact-checked its lessons. Where a lesson disagrees with the SSC notice, the notice is right.`
+});
+
+// Links added on 2026-10-06 for IBPS PO, the two APPSC exams, TG TET and JEE (Main). Each was opened from the
+// authoring machine (HTTP 200, the final address compared with the one requested), each official page's publisher
+// read from the page itself, and each YouTube channel's identity and subscriber count read from its own
+// /channel/UC… page. The helpers name the exam's own authority, never SSC's.
+const RESOURCE_CHECK = '2026-10-06';
+
+/** A learning resource an official body publishes openly, linked where it publishes it. The quote is the page's
+ *  own title; GovOS stores nothing from it. */
+const openResource = (id: string, title: string, url: string, owner: string): DataProvenance => ({
+  id,
+  documentTitle: `${title} — ${owner}`,
+  officialUrl: url,
+  publishedDate: '',
+  verifiedDate: RESOURCE_CHECK,
+  verifiedBy: `GovOS link check — HTTP 200 from ${url} on ${RESOURCE_CHECK}; the page names ${owner} as its publisher`,
+  taxonomyType: 'FACT',
+  verificationLevel: 'OFFICIALLY_VERIFIED',
+  excerptText: title,
+  authorityName: owner
+});
+
+/** Free coaching content: not a government publication, listed because candidates widely follow it, labelled so,
+ *  and never fact-checked by GovOS. The exam's own authority's notice governs wherever a lesson disagrees. */
+const coachingSource = (id: string, channelTitle: string, url: string, subscribers: string, examAuthority: string): DataProvenance => ({
+  id,
+  documentTitle: `${channelTitle} (YouTube channel)`,
+  officialUrl: url,
+  publishedDate: '',
+  verifiedDate: RESOURCE_CHECK,
+  verifiedBy: `GovOS link check — channel identity and ${subscribers} subscribers read from its own page on ${RESOURCE_CHECK}`,
+  taxonomyType: 'RECOMMENDATION',
+  verificationLevel: 'UNDER_VERIFICATION',
+  excerptText: `Free coaching content, not a government publication. GovOS lists it because it is widely followed (${subscribers} subscribers on its channel page, ${RESOURCE_CHECK}) and costs nothing to watch; GovOS does not endorse it, is not affiliated with it, and has not fact-checked its lessons. Where a lesson disagrees with ${examAuthority}'s notice, the notice is right.`
 });
 
 const pendingSource = (
@@ -18153,16 +18191,14 @@ const IBPS_APPLICATION_SIMULATOR: ApplicationSimulatorSpec = {
 
 const ibpsProvenance: DataProvenance = {
   id: 'prov-ibps-01',
-  documentTitle: 'IBPS CRP PO/MT-XVI Detailed Advertisement.pdf',
-  officialUrl: 'https://ibps.in',
-  pageNumber: 1,
-  clauseNumber: 'Section 1 (Notification CRP PO/MT-XVI)',
-  publishedDate: '2026-08-01',
-  verifiedDate: '2026-08-02',
-  verifiedBy: 'Senior Verification Officer #108',
+  documentTitle: 'No IBPS document read yet (placeholder record)',
+  officialUrl: '',
+  publishedDate: '',
+  verifiedDate: '',
+  verifiedBy: 'Not verified — this placeholder record was written before GovOS read IBPS’s own documents; nothing in it has been checked against the advertisement',
   taxonomyType: 'FACT',
-  verificationLevel: 'OFFICIALLY_VERIFIED',
-  excerptText: 'Common Recruitment Process for selection of personnel in Probationary Officer / Management Trainee posts in the Participating Banks is scheduled in October/November 2026.'
+  verificationLevel: 'UNDER_VERIFICATION',
+  excerptText: ''
 };
 
 export const IBPS_PO_EXAM: Exam = {
@@ -18901,6 +18937,397 @@ export const IBPS_PO_EXAM: Exam = {
       description: 'The official IBPS portal hosting genuine CRP PO/MT recruitment notices, participating bank vacancies, and candidate guidelines.',
       recommendedFor: 'Banking aspirants targeting Scale-I PO recruitments.',
       officialTag: 'OFFICIAL IBPS PORTAL'
+    },
+    // ---- added IBPS_PO_EXAM resources: linked, never stored; checked 2026-10-06
+    {
+      id: 'res-ibps-01', title: 'Notification for Common Recruitment Process for CRP- PO/MTs-XVI', subject: 'Official Gazette',
+      author: 'Institute of Banking Personnel Selection (IBPS)', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'NOTIFICATION',
+      url: 'https://www.ibps.in/wp-content/uploads/Detailed-Notification_CRP-PO-XVI_Final_V1_30.06.2026.pdf', directPdfUrl: 'https://www.ibps.in/wp-content/uploads/Detailed-Notification_CRP-PO-XVI_Final_V1_30.06.2026.pdf',
+      description: 'Published openly by Institute of Banking Personnel Selection (IBPS). Useful for: Exam pattern & syllabus scope (Structure of Examination, pp.15-16). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Exam pattern & syllabus scope (Structure of Examination, pp.15-16)',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-01', 'Notification for Common Recruitment Process for CRP- PO/MTs-XVI', 'https://www.ibps.in/wp-content/uploads/Detailed-Notification_CRP-PO-XVI_Final_V1_30.06.2026.pdf', 'Institute of Banking Personnel Selection (IBPS)')
+    },
+    {
+      id: 'res-ibps-02', title: 'CRP Process Probationary Officers / Management Trainees XVI', subject: 'Official Gazette',
+      author: 'IBPS', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'EXAM_PAGE',
+      url: 'https://www.ibps.in/index.php/management-trainees-xvi/',
+      description: 'Published openly by IBPS. Useful for: Official notices for this cycle. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Official notices for this cycle',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-02', 'CRP Process Probationary Officers / Management Trainees XVI', 'https://www.ibps.in/index.php/management-trainees-xvi/', 'IBPS')
+    },
+    {
+      id: 'res-ibps-03', title: 'Annual Report', subject: 'Banking & Financial Awareness',
+      author: 'Reserve Bank of India', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://rbi.org.in/Scripts/AnnualReportMainDisplay.aspx',
+      description: 'Published openly by Reserve Bank of India. Useful for: Mains General/Economy/Banking Awareness; Descriptive. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Mains General/Economy/Banking Awareness; Descriptive',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-03', 'Annual Report', 'https://rbi.org.in/Scripts/AnnualReportMainDisplay.aspx', 'Reserve Bank of India')
+    },
+    {
+      id: 'res-ibps-04', title: 'Monetary Policy', subject: 'Banking & Financial Awareness',
+      author: 'Reserve Bank of India', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.rbi.org.in/Scripts/Annualpolicy.aspx',
+      description: 'Published openly by Reserve Bank of India. Useful for: Mains Economy/Banking Awareness. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Mains Economy/Banking Awareness',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-04', 'Monetary Policy', 'https://www.rbi.org.in/Scripts/Annualpolicy.aspx', 'Reserve Bank of India')
+    },
+    {
+      id: 'res-ibps-05', title: 'Monetary Policy Report', subject: 'Banking & Financial Awareness',
+      author: 'Reserve Bank of India', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.rbi.org.in/Scripts/HalfYearlyPublications.aspx?head=Monetary%20Policy%20Report',
+      description: 'Published openly by Reserve Bank of India. Useful for: Mains Economy/Banking Awareness. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Mains Economy/Banking Awareness',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-05', 'Monetary Policy Report', 'https://www.rbi.org.in/Scripts/HalfYearlyPublications.aspx?head=Monetary%20Policy%20Report', 'Reserve Bank of India')
+    },
+    {
+      id: 'res-ibps-06', title: 'Trend and Progress of Banking in India', subject: 'Banking & Financial Awareness',
+      author: 'Reserve Bank of India', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.rbi.org.in/Scripts/AnnualPublications.aspx?head=Trend%20and%20Progress%20of%20Banking%20in%20India',
+      description: 'Published openly by Reserve Bank of India. Useful for: Mains Banking Awareness; Interview. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Mains Banking Awareness; Interview',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-06', 'Trend and Progress of Banking in India', 'https://www.rbi.org.in/Scripts/AnnualPublications.aspx?head=Trend%20and%20Progress%20of%20Banking%20in%20India', 'Reserve Bank of India')
+    },
+    {
+      id: 'res-ibps-07', title: 'Financial Stability Report', subject: 'Banking & Financial Awareness',
+      author: 'Reserve Bank of India', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.rbi.org.in/Scripts/FsReports.aspx',
+      description: 'Published openly by Reserve Bank of India. Useful for: Mains Banking Awareness. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Mains Banking Awareness',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-07', 'Financial Stability Report', 'https://www.rbi.org.in/Scripts/FsReports.aspx', 'Reserve Bank of India')
+    },
+    {
+      id: 'res-ibps-08', title: 'Frequently Asked Questions', subject: 'Banking & Financial Awareness',
+      author: 'Reserve Bank of India', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.rbi.org.in/Scripts/FAQDisplay.aspx',
+      description: 'Published openly by Reserve Bank of India. Useful for: Mains Banking Awareness. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Mains Banking Awareness',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-08', 'Frequently Asked Questions', 'https://www.rbi.org.in/Scripts/FAQDisplay.aspx', 'Reserve Bank of India')
+    },
+    {
+      id: 'res-ibps-09', title: 'Handbook of Statistics on Indian Economy', subject: 'Banking & Financial Awareness',
+      author: 'Reserve Bank of India', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.rbi.org.in/Scripts/AnnualPublications.aspx?head=Handbook%20of%20Statistics%20on%20Indian%20Economy',
+      description: 'Published openly by Reserve Bank of India. Useful for: Mains Economy Awareness; Data Analysis & Interpretation. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Mains Economy Awareness; Data Analysis & Interpretation',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-09', 'Handbook of Statistics on Indian Economy', 'https://www.rbi.org.in/Scripts/AnnualPublications.aspx?head=Handbook%20of%20Statistics%20on%20Indian%20Economy', 'Reserve Bank of India')
+    },
+    {
+      id: 'res-ibps-10', title: 'RBI Financial Education', subject: 'Banking & Financial Awareness',
+      author: 'Reserve Bank of India', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.rbi.org.in/FinancialEducation/Home.aspx',
+      description: 'Published openly by Reserve Bank of India. Useful for: Banking Awareness basics. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Banking Awareness basics',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-10', 'RBI Financial Education', 'https://www.rbi.org.in/FinancialEducation/Home.aspx', 'Reserve Bank of India')
+    },
+    {
+      id: 'res-ibps-11', title: 'RBI Financial Education - Basic Banking', subject: 'Banking & Financial Awareness',
+      author: 'Reserve Bank of India', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.rbi.org.in/FinancialEducation/BasicBanking.aspx',
+      description: 'Published openly by Reserve Bank of India. Useful for: Banking Awareness basics. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Banking Awareness basics',
+      officialTag: 'OFFICIAL OPEN RESOURCE', isEssential: true,
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-11', 'RBI Financial Education - Basic Banking', 'https://www.rbi.org.in/FinancialEducation/BasicBanking.aspx', 'Reserve Bank of India')
+    },
+    {
+      id: 'res-ibps-12', title: 'India Budget', subject: 'Banking & Financial Awareness',
+      author: 'Ministry of Finance, Government of India', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.indiabudget.gov.in/',
+      description: 'Published openly by Ministry of Finance, Government of India. Useful for: Mains Economy Awareness; Descriptive. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Mains Economy Awareness; Descriptive',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-12', 'India Budget', 'https://www.indiabudget.gov.in/', 'Ministry of Finance, Government of India')
+    },
+    {
+      id: 'res-ibps-13', title: 'Economic Survey', subject: 'Banking & Financial Awareness',
+      author: 'Ministry of Finance, Government of India', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.indiabudget.gov.in/economicsurvey/',
+      description: 'Published openly by Ministry of Finance, Government of India. Useful for: Mains Economy Awareness; Descriptive; Interview. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Mains Economy Awareness; Descriptive; Interview',
+      officialTag: 'OFFICIAL OPEN RESOURCE', isEssential: true,
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-13', 'Economic Survey', 'https://www.indiabudget.gov.in/economicsurvey/', 'Ministry of Finance, Government of India')
+    },
+    {
+      id: 'res-ibps-14', title: 'Press Information Bureau - Home Page', subject: 'Current Affairs & Governance',
+      author: 'Press Information Bureau, Government of India', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.pib.gov.in/index.aspx?reg=3&lang=1',
+      description: 'Published openly by Press Information Bureau, Government of India. Useful for: Mains General Awareness (current affairs). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Mains General Awareness (current affairs)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-14', 'Press Information Bureau - Home Page', 'https://www.pib.gov.in/index.aspx?reg=3&lang=1', 'Press Information Bureau, Government of India')
+    },
+    {
+      id: 'res-ibps-15', title: 'Department of Financial Services: Home', subject: 'Banking & Financial Awareness',
+      author: 'Department of Financial Services, Ministry of Finance', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://financialservices.gov.in/',
+      description: 'Published openly by Department of Financial Services, Ministry of Finance. Useful for: Banking Awareness; Interview. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Banking Awareness; Interview',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-15', 'Department of Financial Services: Home', 'https://financialservices.gov.in/', 'Department of Financial Services, Ministry of Finance')
+    },
+    {
+      id: 'res-ibps-16', title: 'Pradhan Mantri Jan-Dhan Yojana', subject: 'Banking & Financial Awareness',
+      author: 'Department of Financial Services, Ministry of Finance', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://pmjdy.gov.in/',
+      description: 'Published openly by Department of Financial Services, Ministry of Finance. Useful for: Banking Awareness (financial inclusion). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Banking Awareness (financial inclusion)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-16', 'Pradhan Mantri Jan-Dhan Yojana', 'https://pmjdy.gov.in/', 'Department of Financial Services, Ministry of Finance')
+    },
+    {
+      id: 'res-ibps-17', title: 'Jan-Dhan Se Jan Suraksha', subject: 'Banking & Financial Awareness',
+      author: 'Department of Financial Services', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://jansuraksha.gov.in/',
+      description: 'Published openly by Department of Financial Services. Useful for: Banking Awareness (social-security schemes). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Banking Awareness (social-security schemes)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-17', 'Jan-Dhan Se Jan Suraksha', 'https://jansuraksha.gov.in/', 'Department of Financial Services')
+    },
+    {
+      id: 'res-ibps-18', title: 'DICGC Home', subject: 'Banking & Financial Awareness',
+      author: 'Deposit Insurance and Credit Guarantee Corporation', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.dicgc.org.in/',
+      description: 'Published openly by Deposit Insurance and Credit Guarantee Corporation. Useful for: Banking Awareness (deposit insurance). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Banking Awareness (deposit insurance)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-18', 'DICGC Home', 'https://www.dicgc.org.in/', 'Deposit Insurance and Credit Guarantee Corporation')
+    },
+    {
+      id: 'res-ibps-19', title: 'NCERT-DIKSHA', subject: 'Quantitative Aptitude',
+      author: 'NCERT on DIKSHA (Ministry of Education)', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://diksha.gov.in/ncert/',
+      description: 'Published openly by NCERT on DIKSHA (Ministry of Education). Useful for: Quantitative Aptitude basics. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Quantitative Aptitude basics',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-19', 'NCERT-DIKSHA', 'https://diksha.gov.in/ncert/', 'NCERT on DIKSHA (Ministry of Education)')
+    },
+    {
+      id: 'res-ibps-20', title: '(NEW) Mathematics Textbook for Class VIII', subject: 'Quantitative Aptitude',
+      author: 'DIKSHA', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://diksha.gov.in/play/collection/do_31310347515146240011465?contentType=TextBook',
+      description: 'Published openly by DIKSHA. Useful for: Quantitative Aptitude basics (percentages, ratio, comparing quantities). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Quantitative Aptitude basics (percentages, ratio, comparing quantities)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-20', '(NEW) Mathematics Textbook for Class VIII', 'https://diksha.gov.in/play/collection/do_31310347515146240011465?contentType=TextBook', 'DIKSHA')
+    },
+    {
+      id: 'res-ibps-21', title: '(NEW) Mathematics Textbook for Class IX', subject: 'Quantitative Aptitude',
+      author: 'DIKSHA', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://diksha.gov.in/play/collection/do_3131034751904808961736?contentType=TextBook',
+      description: 'Published openly by DIKSHA. Useful for: Quantitative Aptitude basics. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Quantitative Aptitude basics',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-21', '(NEW) Mathematics Textbook for Class IX', 'https://diksha.gov.in/play/collection/do_3131034751904808961736?contentType=TextBook', 'DIKSHA')
+    },
+    {
+      id: 'res-ibps-22', title: '(NEW) Mathematics textbook for class X', subject: 'Quantitative Aptitude',
+      author: 'DIKSHA', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://diksha.gov.in/play/collection/do_31310347523356262411428?contentType=TextBook',
+      description: 'Published openly by DIKSHA. Useful for: Quantitative Aptitude basics. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Quantitative Aptitude basics',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-22', '(NEW) Mathematics textbook for class X', 'https://diksha.gov.in/play/collection/do_31310347523356262411428?contentType=TextBook', 'DIKSHA')
+    },
+    {
+      id: 'res-ibps-23', title: 'Mathematics (211) — course material', subject: 'Quantitative Aptitude',
+      author: 'The National Institute of Open Schooling (NIOS)', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://nios.ac.in/online-course-material/secondary-courses/Mathematics-(211)-Syllabus.aspx',
+      description: 'Published openly by The National Institute of Open Schooling (NIOS). Useful for: Quantitative Aptitude; Data Analysis & Interpretation. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Quantitative Aptitude; Data Analysis & Interpretation',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-23', 'Mathematics (211) Syllabus', 'https://nios.ac.in/online-course-material/secondary-courses/Mathematics-(211)-Syllabus.aspx', 'The National Institute of Open Schooling (NIOS)')
+    },
+    {
+      id: 'res-ibps-24', title: 'Percentage and Its Applications (Mathematics Secondary Course, Lesson 8)', subject: 'Quantitative Aptitude',
+      author: 'NIOS', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'STUDY_MATERIAL',
+      url: 'https://nios.ac.in/media/documents/SecMathcour/Eng/Chapter-8.pdf', directPdfUrl: 'https://nios.ac.in/media/documents/SecMathcour/Eng/Chapter-8.pdf',
+      description: 'Published openly by NIOS. Useful for: Quantitative Aptitude (arithmetic: profit & loss, discount, SI, CI). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Quantitative Aptitude (arithmetic: profit & loss, discount, SI, CI)',
+      officialTag: 'OFFICIAL PDF', isEssential: true,
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-24', 'Percentage and Its Applications (Mathematics Secondary Course, Lesson 8)', 'https://nios.ac.in/media/documents/SecMathcour/Eng/Chapter-8.pdf', 'NIOS')
+    },
+    {
+      id: 'res-ibps-25', title: 'Data and their Representations (Mathematics Secondary Course, Lesson 24)', subject: 'Quantitative Aptitude',
+      author: 'NIOS', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'STUDY_MATERIAL',
+      url: 'https://nios.ac.in/media/documents/SecMathcour/Eng/Chapter-24.pdf', directPdfUrl: 'https://nios.ac.in/media/documents/SecMathcour/Eng/Chapter-24.pdf',
+      description: 'Published openly by NIOS. Useful for: Mains Data Analysis & Interpretation. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Mains Data Analysis & Interpretation',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-25', 'Data and their Representations (Mathematics Secondary Course, Lesson 24)', 'https://nios.ac.in/media/documents/SecMathcour/Eng/Chapter-24.pdf', 'NIOS')
+    },
+    {
+      id: 'res-ibps-26', title: 'Economics (318)', subject: 'Banking & Financial Awareness',
+      author: 'NIOS', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://nios.ac.in/online-course-material/sr-secondary-courses/Economics-(318).aspx',
+      description: 'Published openly by NIOS. Useful for: Economy Awareness foundations. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Economy Awareness foundations',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-26', 'Economics (318)', 'https://nios.ac.in/online-course-material/sr-secondary-courses/Economics-(318).aspx', 'NIOS')
+    },
+    {
+      id: 'res-ibps-27', title: 'Money and Banking (Economics 318, Lesson 28)', subject: 'Banking & Financial Awareness',
+      author: 'NIOS', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'STUDY_MATERIAL',
+      url: 'https://nios.ac.in/media/documents/SrSec318NEW/318_Economics_Eng/318_Economics_Eng_Lesson28.pdf', directPdfUrl: 'https://nios.ac.in/media/documents/SrSec318NEW/318_Economics_Eng/318_Economics_Eng_Lesson28.pdf',
+      description: 'Published openly by NIOS. Useful for: Banking Awareness foundations. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Banking Awareness foundations',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-27', 'Money and Banking (Economics 318, Lesson 28)', 'https://nios.ac.in/media/documents/SrSec318NEW/318_Economics_Eng/318_Economics_Eng_Lesson28.pdf', 'NIOS')
+    },
+    {
+      id: 'res-ibps-28', title: 'Government and the Budget (Economics 318, Lesson 29)', subject: 'Banking & Financial Awareness',
+      author: 'NIOS', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'STUDY_MATERIAL',
+      url: 'https://nios.ac.in/media/documents/SrSec318NEW/318_Economics_Eng/318_Economics_Eng_Lesson29.pdf', directPdfUrl: 'https://nios.ac.in/media/documents/SrSec318NEW/318_Economics_Eng/318_Economics_Eng_Lesson29.pdf',
+      description: 'Published openly by NIOS. Useful for: Economy Awareness. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Economy Awareness',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-28', 'Government and the Budget (Economics 318, Lesson 29)', 'https://nios.ac.in/media/documents/SrSec318NEW/318_Economics_Eng/318_Economics_Eng_Lesson29.pdf', 'NIOS')
+    },
+    {
+      id: 'res-ibps-29', title: 'Computer Science (330)', subject: 'Computer & Typing',
+      author: 'NIOS', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://nios.ac.in/online-course-material/sr-secondary-courses/Computer-Science-(330).aspx',
+      description: 'Published openly by NIOS. Useful for: Mains Computer Aptitude. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Mains Computer Aptitude',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-29', 'Computer Science (330)', 'https://nios.ac.in/online-course-material/sr-secondary-courses/Computer-Science-(330).aspx', 'NIOS')
+    },
+    {
+      id: 'res-ibps-30', title: 'Computer Fundamentals (Computer Science 330, Lesson 1)', subject: 'Computer & Typing',
+      author: 'NIOS', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'STUDY_MATERIAL',
+      url: 'https://nios.ac.in/media/documents/330srsec/online_course_material_330/Theory/Lesson_01.pdf', directPdfUrl: 'https://nios.ac.in/media/documents/330srsec/online_course_material_330/Theory/Lesson_01.pdf',
+      description: 'Published openly by NIOS. Useful for: Mains Computer Aptitude. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Mains Computer Aptitude',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-ibps-30', 'Computer Fundamentals (Computer Science 330, Lesson 1)', 'https://nios.ac.in/media/documents/330srsec/online_course_material_330/Theory/Lesson_01.pdf', 'NIOS')
+    },
+    {
+      id: 'res-ibps-31', title: 'NCFE E-Library | Free Financial Resources', subject: 'Banking & Financial Awareness',
+      author: 'National Centre for Financial Education (Section 8 company promoted by RBI, SEBI, IRDAI, PFRDA)', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://ncfe.org.in/e-library/',
+      description: 'Published openly by National Centre for Financial Education (Section 8 company promoted by RBI, SEBI, IRDAI, PFRDA). Useful for: Banking/financial awareness basics. GovOS links to the publisher’s own copy and stores nothing. It is not a government publication.',
+      recommendedFor: 'Banking/financial awareness basics',
+      officialTag: 'OPEN RESOURCE (TRUSTED, NOT A GOVERNMENT BODY)',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: { ...openResource('prov-res-ibps-31', 'NCFE E-Library | Free Financial Resources', 'https://ncfe.org.in/e-library/', 'National Centre for Financial Education (Section 8 company promoted by RBI, SEBI, IRDAI, PFRDA)'), taxonomyType: 'RECOMMENDATION', verificationLevel: 'UNDER_VERIFICATION' }
+    },
+    {
+      id: 'res-ibps-32', title: 'Adda247 Banking Exams — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'Adda247 Banking Exams (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UC1L2JoMpcY6MRLhFd3gg5Xg', youtubeUrl: 'https://www.youtube.com/channel/UC1L2JoMpcY6MRLhFd3gg5Xg',
+      description: 'A free YouTube channel candidates widely follow (9.45M subscribers as read on its own page on 2026-10-06). Useful for: All sections. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with IBPS’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for All sections.',
+      officialTag: 'FREE ON YOUTUBE · 9.45M SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-ibps-32', 'Adda247 Banking Exams', 'https://www.youtube.com/channel/UC1L2JoMpcY6MRLhFd3gg5Xg', '9.45M', 'IBPS')
+    },
+    {
+      id: 'res-ibps-33', title: 'Studified — free YouTube lessons', subject: 'Quantitative Aptitude',
+      author: 'Studified (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCYa4_JrOrf8R5Kz2uOtccXQ', youtubeUrl: 'https://www.youtube.com/channel/UCYa4_JrOrf8R5Kz2uOtccXQ',
+      description: 'A free YouTube channel candidates widely follow (1.31M subscribers as read on its own page on 2026-10-06). Useful for: Quantitative Aptitude; Data Analysis & Interpretation. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with IBPS’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Quantitative Aptitude; Data Analysis & Interpretation.',
+      officialTag: 'FREE ON YOUTUBE · 1.31M SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-ibps-33', 'Studified', 'https://www.youtube.com/channel/UCYa4_JrOrf8R5Kz2uOtccXQ', '1.31M', 'IBPS')
+    },
+    {
+      id: 'res-ibps-34', title: 'Banking by Rojgar With Ankit — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'Banking by Rojgar With Ankit (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCHZyAHx9RsBminUd9-15s4w', youtubeUrl: 'https://www.youtube.com/channel/UCHZyAHx9RsBminUd9-15s4w',
+      description: 'A free YouTube channel candidates widely follow (1.1M subscribers as read on its own page on 2026-10-06). Useful for: All sections (Hindi medium). Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with IBPS’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for All sections (Hindi medium).',
+      officialTag: 'FREE ON YOUTUBE · 1.1M SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-ibps-34', 'Banking by Rojgar With Ankit', 'https://www.youtube.com/channel/UCHZyAHx9RsBminUd9-15s4w', '1.1M', 'IBPS')
+    },
+    {
+      id: 'res-ibps-35', title: 'BANKING CHRONICLE — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'BANKING CHRONICLE (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCzARHhsjYS-qcaaIRv5A0mA', youtubeUrl: 'https://www.youtube.com/channel/UCzARHhsjYS-qcaaIRv5A0mA',
+      description: 'A free YouTube channel candidates widely follow (1.09M subscribers as read on its own page on 2026-10-06). Useful for: Reasoning Ability; Reasoning & Computer Aptitude. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with IBPS’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Reasoning Ability; Reasoning & Computer Aptitude.',
+      officialTag: 'FREE ON YOUTUBE · 1.09M SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-ibps-35', 'BANKING CHRONICLE', 'https://www.youtube.com/channel/UCzARHhsjYS-qcaaIRv5A0mA', '1.09M', 'IBPS')
+    },
+    {
+      id: 'res-ibps-36', title: 'Banking Wallah — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'Banking Wallah (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCg5_K50hLTKerLkSE7I1yWQ', youtubeUrl: 'https://www.youtube.com/channel/UCg5_K50hLTKerLkSE7I1yWQ',
+      description: 'A free YouTube channel candidates widely follow (1.07M subscribers as read on its own page on 2026-10-06). Useful for: All sections. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with IBPS’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for All sections.',
+      officialTag: 'FREE ON YOUTUBE · 1.07M SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-ibps-36', 'Banking Wallah', 'https://www.youtube.com/channel/UCg5_K50hLTKerLkSE7I1yWQ', '1.07M', 'IBPS')
+    },
+    {
+      id: 'res-ibps-37', title: 'CAREER DEFINER — free YouTube lessons', subject: 'Quantitative Aptitude',
+      author: 'CAREER DEFINER (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCjO0g7qbAcZX-vtdIFCA41Q', youtubeUrl: 'https://www.youtube.com/channel/UCjO0g7qbAcZX-vtdIFCA41Q',
+      description: 'A free YouTube channel candidates widely follow (1M subscribers as read on its own page on 2026-10-06). Useful for: Quantitative Aptitude; Data Analysis & Interpretation. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with IBPS’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Quantitative Aptitude; Data Analysis & Interpretation.',
+      officialTag: 'FREE ON YOUTUBE · 1M SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-ibps-37', 'CAREER DEFINER', 'https://www.youtube.com/channel/UCjO0g7qbAcZX-vtdIFCA41Q', '1M', 'IBPS')
+    },
+    {
+      id: 'res-ibps-38', title: 'Oliveboard — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'Oliveboard (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCRvrHAyNdOMI_JBkE2pjZtw', youtubeUrl: 'https://www.youtube.com/channel/UCRvrHAyNdOMI_JBkE2pjZtw',
+      description: 'A free YouTube channel candidates widely follow (906K subscribers as read on its own page on 2026-10-06). Useful for: All sections. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with IBPS’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for All sections.',
+      officialTag: 'FREE ON YOUTUBE · 906K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-ibps-38', 'Oliveboard', 'https://www.youtube.com/channel/UCRvrHAyNdOMI_JBkE2pjZtw', '906K', 'IBPS')
+    },
+    {
+      id: 'res-ibps-39', title: 'Anil Aggarwal — free YouTube lessons', subject: 'Banking & Financial Awareness',
+      author: 'Anil Aggarwal (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCngdIjToGTKfOyoRCBLq0vg', youtubeUrl: 'https://www.youtube.com/channel/UCngdIjToGTKfOyoRCBLq0vg',
+      description: 'A free YouTube channel candidates widely follow (376K subscribers as read on its own page on 2026-10-06). Useful for: Interview; Banking Awareness. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with IBPS’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Interview; Banking Awareness.',
+      officialTag: 'FREE ON YOUTUBE · 376K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-ibps-39', 'Anil Aggarwal', 'https://www.youtube.com/channel/UCngdIjToGTKfOyoRCBLq0vg', '376K', 'IBPS')
     }
   ],
   faqs: [
@@ -19153,255 +19580,757 @@ export const IBPS_PO_EXAM: Exam = {
 
 const appscProvenance: DataProvenance = {
   id: 'prov-appsc-01',
-  documentTitle: 'APPSC Group-I & Group-II Services General Recruitment Notification 2026',
-  officialUrl: 'https://psc.ap.gov.in',
-  pageNumber: 1,
-  clauseNumber: 'Notification No. 12/2026',
-  publishedDate: '2026-01-10',
-  verifiedDate: '2026-01-12',
-  verifiedBy: 'Senior State Verification Officer #404',
+  documentTitle: 'No APPSC Group-II notification read yet (placeholder record)',
+  officialUrl: '',
+  publishedDate: '',
+  verifiedDate: '',
+  verifiedBy: 'Not verified — this placeholder record was written before GovOS read APPSC’s own notifications; nothing in it has been checked against an APPSC document',
   taxonomyType: 'FACT',
-  verificationLevel: 'OFFICIALLY_VERIFIED',
-  excerptText: 'Andhra Pradesh Public Service Commission invites online applications for executive posts in Group-I and Group-II Services from eligible graduates.'
+  verificationLevel: 'UNDER_VERIFICATION',
+  excerptText: ''
+};
+
+// ---------------------------------------------------------------------------------------------
+// APPSC Group-I Services — Notification No. 07/2026, dated 06/10/2026, read on 2026-10-07 from the
+// Commission's own PDF (66 pp., text layer; the fee amounts, which the text layer drops, were read
+// from the page image). Every value below is cited to the page it is printed on with `apg1(...)`.
+// The record used to carry a January 2026 notification, an April 2026 Prelims, 89 vacancies, a 2024
+// cut-off and an "official" practice question, none of which came from an APPSC document.
+// ---------------------------------------------------------------------------------------------
+const APG1_AUTHORITY = 'Andhra Pradesh Public Service Commission (APPSC)';
+const APG1_SITE = 'https://psc.ap.gov.in';
+const APG1_CHECK = '2026-10-07';
+const APG1_NOTICE = {
+  title: 'APPSC Notification No. 07/2026, dated 06/10/2026 — Direct Recruitment to Group-I Services (General/Limited Recruitment)',
+  url: 'https://psc.ap.gov.in/Documents/NotificationDocuments/Group_I_07_2026.pdf',
+  published: '2026-10-06'
+} as const;
+const APG1_SCREENING = 'Screening Test';
+const APG1_MAINS = 'Main Examination';
+
+/** A clause of APPSC's Notification No. 07/2026, cited by its printed page (the PDF's pages are numbered the same). */
+const apg1 = (id: string, pageNumber: number, clauseNumber: string, excerptText: string,
+  how: string = 'from the text of the Commission’s PDF'): DataProvenance => ({
+  id, documentTitle: APG1_NOTICE.title, officialUrl: APG1_NOTICE.url, pageNumber, clauseNumber,
+  publishedDate: APG1_NOTICE.published, verifiedDate: APG1_CHECK,
+  verifiedBy: `GovOS verifier — read ${how} on ${APG1_CHECK}`,
+  taxonomyType: 'FACT', verificationLevel: 'OFFICIALLY_VERIFIED', excerptText, authorityName: APG1_AUTHORITY
+});
+
+const apg1P_notice = apg1('prov-apg1-notice', 1, 'Title', 'NOTIFICATION NO. 07/2026, DATED: 06/10/2026 DIRECT RECRUITMENT TO GROUP – I SERVICES (GENERAL/LIMITED RECRUITMENT)');
+const apg1P_window = apg1('prov-apg1-window', 1, 'Para 1.1',
+  'The applicants shall apply online through Commission’s Website https://psc.ap.gov.in from 06/10/2026 to 27/10/2026 up to 11:59 P.M.');
+const apg1P_total = apg1('prov-apg1-total', 1, 'Para 1.2 — table of vacancies',
+  '13 Divisional Development Officer in A.P. Panchayat Raj Service. 35 18-44 65,360- 1,54,980 TOTAL 166');
+const apg1P_cf = apg1('prov-apg1-cf', 2, 'Para 1.2, Note (i)',
+  'The above carried forward vacancies brought forward from previous recruitments. Selection/Appointment to such reserved vacancies as the case will be made first before the fresh vacancies');
+const apg1P_variation = apg1('prov-apg1-variation', 2, 'Para 1.2, Note (ii)',
+  'The number of vacancies and Departments are subject to variation on intimation being received from the Department concerned. Addition of vacancies if any will be accepted only before the date of Screening Test and an addendum to that effect will be issued.');
+const apg1P_otpr = apg1('prov-apg1-otpr', 2, 'Para 1.4',
+  'In case, applying for the first time to the posts notified by APPSC, he/she shall register his/her bio-data particulars through One Time Profile Registration (OTPR) on the Commission’s Website viz., https://psc.ap.gov.in');
+const apg1P_mode = apg1('prov-apg1-mode', 2, 'Para 1.5',
+  'The Screening test (objective type) will be held in offline mode (OMR based) and the Main Examination would be in Descriptive type.');
+const apg1P_mainsOptions = apg1('prov-apg1-mains-options', 2, 'Para 1.6',
+  'Option of medium for writing Main Examination and Post/Multi-Zonal/Zonal preferences etc., will be taken through online from the candidates before Main Examination.');
+const apg1P_dates = apg1('prov-apg1-dates', 2, 'Para 1.7', 'The Screening Test will be held on 24/01/2027. The Dates for the Main Examination will be announced later.');
+const apg1P_hallTicket = apg1('prov-apg1-hall-ticket', 2, 'Para 1.9',
+  'HALL TICKETS For Screening and Main Examination will be hosted on the Commission’s website. Instructions would be given through the website regarding downloading of Hall Tickets.');
+const apg1P_citizen = apg1('prov-apg1-citizen', 3, 'Para 2 (iv)', 'He/ She is a citizen of India.');
+const apg1P_qualDate = apg1('prov-apg1-qual-date', 3, 'Para 3 — Educational Qualifications',
+  'Applicants must possess the prescribed academic qualification from the recognized University as on the date of Detailed notification.');
+const apg1P_qualDegree = apg1('prov-apg1-qual-degree', 3, 'Para 3 — Post Code No. 01',
+  'Must hold the Bachelor’s Degree of any University in India established or incorporated by or under a Central Act, Provincial Act or a State Act or the Institution recognized by the University Grants Commission or an equivalent qualification.');
+const apg1P_qual04 = apg1('prov-apg1-qual-04', 3, 'Para 3 — Post Code No. 04',
+  'Must possesses B.E/ B.Tech in Electronics and Communication Engineering or Electronics and Telecommunication Engineering or Radio Engineering of a University in India established or incorporated by or under a Central Act, State Act or a Provincial Act or of an Institution recognized by the University Grants Commission or an equivalent qualification.');
+const apg1P_physical = apg1('prov-apg1-physical', 4, 'Para 3 — Physical Requirements',
+  'For Post Code No. 03 & 04: Must not be less than 167.6 Cms in height and must not be less than 86.3 Cms round the Chest on full inspiration and has a chest expansion of not less than 5 Cms on full inspiration. For S.T: Must not be less than 164 Cms in height and is not less than 83.8 Cms round the Chest with a minimum expansion of not less than 5 Cms on full inspiration. For Post Code No. 03 & 04 (Women): Shall not be less than 152.5 Cms in height and shall not be less than 45.5 Kgs in weight.');
+const apg1P_colour03 = apg1('prov-apg1-colour-03', 5, 'Para 3 — Vision, Post Code No. 03 (e)',
+  'Inability to distinguish the Principal colours will not be regarded as cause for rejection, but the fact will be noted in the proceedings and the candidate will be informed.');
+const apg1P_colour04 = apg1('prov-apg1-colour-04', 5, 'Para 3 — Vision, Post Code No. 04 (iii)',
+  'Cololur blindness, squint or any morbid condition of the eye or lids of either eye knock knees, and pigeon chest, flat foot vericose veins, hammer toes, fractured limbs and decayed tooth shall be deemed to be disqualification.');
+const apg1P_women = apg1('prov-apg1-women', 6, 'Para 4.2', 'There shall be Reservation to Women horizontally to an extent of 33 1/3%');
+const apg1P_msp = apg1('prov-apg1-msp', 6, 'Para 4.3', 'There shall be Reservation to Meritorious Sports Persons to an extent of 3%');
+const apg1P_pbd = apg1('prov-apg1-pbd', 6, 'Para 4.4',
+  'There shall be Reservations in respect of Persons with Benchmark Disabilities (PBD) as per Rule 22, 22 (A) and 22 (B) of State and Subordinate Service Rules and read with Departmental Special Rules except Post Code Nos. 03, 04.');
+const apg1P_bcNcl = apg1('prov-apg1-bc-ncl', 7, 'Para 4.9',
+  'The candidates belonging to Backward classes (BC’s) applying for this Notification must produce Non Creamy layer certificate … from the competent authority (Tahsildar) and issued on or after 01.04.2026 (after the completion of FY 2025-2026) but not later than the closing date of the submission of Application Form for this Notification');
+const apg1P_ews = apg1('prov-apg1-ews', 7, 'Para 4.10',
+  'whose gross annual family income is below Rs.8.00 lakh. … The applicants/candidates who claim the EWS Reservation must possess the EWS certificate based on the income for FY 2025-2026 a issued by the competent Revenue Authority in the rank of Tahsildar in digital format only on / after 01.04.2026 (after the completion of FY 2025-2026) but not later than the closing date of the submission of Application Form for this Notification');
+const apg1P_otherStates = apg1('prov-apg1-other-states', 7, 'Para 4.12', 'BCs, SCs, STs & EWS belonging to other States are not entitled for reservation.');
+const apg1P_age = apg1('prov-apg1-age', 8, 'Para 5.1', 'Minimum 18/21 years & Maximum 30/44 years as on 01/07/2026, as per Rule 12 of APS&SS, Rules,1996');
+const apg1P_relax = apg1('prov-apg1-relax', 8, 'Para 5.2 — Age Relaxation',
+  '1 SC, ST, BCs and EWS 5 Years 2 Persons with Benchmark Disabilities (PBD) 10 years');
+const apg1P_relaxEsm = apg1('prov-apg1-relax-esm', 8, 'Para 5.2 — Age Relaxation, S. No. 3 and 4',
+  '3 Ex-Servicemen Shall be allowed to deduct from his age a period of 3 years in addition to the length of service rendered by him in the armed forces / NCC. 4 N.C.C. (who have worked as Instructor in N.C.C.)');
+const apg1P_relaxState = apg1('prov-apg1-relax-state', 8, 'Para 5.2 — Age Relaxation, S. No. 5',
+  'Regular A.P. State Government Employees (Employees of Corporations,Municipalit-ies etc. are not eligible). Allowed to deduct from his age the length of regular Service under State Government up to a maximum of five years for the purposes of the maximum age limit.');
+const apg1P_relaxCensus = apg1('prov-apg1-relax-census', 8, 'Para 5.2 — Age Relaxation, S. No. 6',
+  'Retrenched temporary employees in the State Census Department with a minimum service of 6 months. 3 Years');
+const apg1P_local = apg1('prov-apg1-local', 9, 'Para 6.1–6.3',
+  'The benefit of 95 % of Local Reservation as provided in Presidential Order 2025 will go to local candidates of each Multi Zone mentioned hereunder.');
+const apg1P_stateCadre = apg1('prov-apg1-state-cadre', 9, 'Para 6.2', 'Post Code No.04: The Rule of Reservation is not applicable as the post is State cadre.');
+const apg1P_localDef = apg1('prov-apg1-local-def', 10, 'Para 7.2 A.1 — Definition of Local Candidate',
+  'a candidate for direct recruitment to any post shall be regarded as a local candidate in relation to a local areas where he/ she has studied in Educational Institution(s) for not less than four consecutive academic years prior to and including the year in which he/she appeared for 7th class or its equivalent Examination.');
+const apg1P_steps = apg1('prov-apg1-steps', 11, 'Para 8 — How to Apply, STEP-I and STEP-II',
+  'STEP-I: The applicant desires to apply for this Notification shall login to the Commission’s Website with his/her registered OTPR number. … STEP-II: … After Login, the Applicant has to click on the “Online Application Submission” present in the bottom right corner of the Commission’s website.');
+const apg1P_saveSubmit = apg1('prov-apg1-save-submit', 11, 'Para 8, NOTE 3',
+  'Saving the application alone will not be sufficient. The application will be considered complete only when the candidate clicks the Save & Submit button and successfully completes the submission process.');
+const apg1P_otprFrozen = apg1('prov-apg1-otpr-frozen', 11, 'Para 8, NOTE 4',
+  'Applicant shall note that the data displayed from OTPR at the time of submitting the application will be considered for the purpose of this notification only. Any changes made by the applicant in OTPR data at a later date shall not be considered for Recruitment Notification.');
+const apg1P_payment = apg1('prov-apg1-payment', 12, 'Para 8 — Payment Process',
+  'Once the payment form is submitted, the respective details (used for Calculation of fee and age relaxation) will not be altered in any stage of application processing.');
+const apg1P_correction = apg1('prov-apg1-correction', 12, 'Para 8, STEP-V',
+  'corrections in the application will be enabled after the last date of the submission of application and will be allowed up to 7 days only from the last date of applications. … The corrections can be made in the application form itself by making a payment of Rs.100/- for each correction in said stipulated time. Fields which affect the Name, fee, age relaxations are not enabled for corrections.');
+const apg1P_blank = apg1('prov-apg1-blank', 12, 'Para 8, NOTE D and E',
+  'Incomplete / incorrect application form will be summarily rejected. … No relevant column of the application form should be left blank; otherwise, application form will not be accepted.');
+const apg1P_fee = apg1('prov-apg1-fee', 12, 'Para 9.1',
+  'Applicant must pay Rs. 250/- (Rupees two hundred and fifty only) towards application processing fee and Rs.120/- (Rupees One hundred and twenty only) towards examination fee.',
+  'from the page image of the Commission’s PDF (its text layer drops the amounts)');
+const apg1P_feeExempt = apg1('prov-apg1-fee-exempt', 13, 'Para 9.2',
+  'However, the following categories of candidates are exempted from payment of examination fee Rs. 120/-only. i) SC, ST, BC, PBDs & Ex-Servicemen. ii) Families having Household Supply White Card issued by Civil Supplies Department, A.P. Government (Residents of Andhra Pradesh). iii) Un-employed youth as per G.O.Ms.No.439, G.A (Ser-A) Dept., dated: 18/10/1996 should submit declaration at an appropriate time to the Commission.',
+  'from the page images of the Commission’s PDF (pp. 12–13; its text layer drops the amount)');
+const apg1P_feeOther = apg1('prov-apg1-fee-other', 13, 'Para 9.2 (iv)–(v)',
+  'Applicants belonging to other States shall pay the prescribed fee of Rs. 120/- (Rupees One twenty only), along with processing fee of Rs. 250/- (Rupees Two Hundred and Fifty only).',
+  'from the page image of the Commission’s PDF (its text layer drops the amount)');
+const apg1P_feeMode = apg1('prov-apg1-fee-mode', 13, 'Para 9.3 — Mode of Payment of Fee',
+  'The Fee mentioned in the above paragraph is to be paid online using payment gateway using Net Banking/ Credit card / Debit Card. … The fee once remitted shall not be refunded or adjusted under any circumstances. … IPOs / Demand Drafts are not accepted.');
+const apg1P_negative = apg1('prov-apg1-negative', 13, 'Para 10.2',
+  'As per G.O. Ms. No.235, Finance (HR-I, Plg & Policy) Dept., Dt. 06/12/2016, each wrong answer will be penalized with 1/3rd of the marks prescribed for the question.');
+const apg1P_screeningMin = apg1('prov-apg1-screening-min', 13, 'Para 10.3',
+  'the Andhra Pradesh Public Service Commission is empowered to pick up candidates, who obtains such minimum qualifying marks in Screening Test as may be fixed by the Commission at its discretion to the Main Examination in all direct recruitment examinations.');
+const apg1P_centres = apg1('prov-apg1-centres', 13, 'Para 11.1',
+  'Screening Test will be held in all District Centers including newly organized Districts. However, the Commission reserves the right either to increase or decrease the number of Centers.');
+const apg1P_centrePrefs = apg1('prov-apg1-centre-prefs', 14, 'Para 11.2',
+  'the applicant may choose the Test center from the above with three preferences for Screening Test. However, the Commission reserves the right to allot the applicant to any center of examination depending on the availability of the resources.');
+const apg1P_mainsCentres = apg1('prov-apg1-mains-centres', 14, 'Para 11.3–11.4',
+  'The Main Written Examination will be held at the following Four Centers only. … 1. VISAKHAPATNAM 2. VIJAYAWADA 3. TIRUPATI 4. ANANTHAPURAMU … Applicants should choose only one of the above centers for Main examination. Centre once chosen shall be final.');
+const apg1P_omr = apg1('prov-apg1-omr', 14, 'Para 12.1 (a)–(b)',
+  'If any applicant fails to bubble or wrongly bubble the Booklet Series in the OMR Answer Sheet, such Answer sheets are invariably invalidated … Tampering of OMR answer sheet by using whitener, eraser, blade and chalk powder etc., and also tampering of barcode by any means leads to invalidation.');
+const apg1P_key = apg1('prov-apg1-key', 14, 'Para 12.2 and 12.4',
+  'If the candidates have any objections with regard to the initial key / questions they shall have to file the objections within three days after publication of the initial key in the prescribed proforma available in the website. … The candidate shall pay Rs.100/- per objection raised by him/her against question / initial answer key');
+const apg1P_englishAuth = apg1('prov-apg1-english-auth', 15, 'Para 12.5',
+  'The question paper is set in English and translated in to Telugu language. English version will be considered as the authentic version for valuation purpose.');
+const apg1P_languages = apg1('prov-apg1-languages', 15, 'Para 12.8',
+  'In the main examination, the papers of Telugu and English are in qualifying in nature and the marks secured in these papers are not counted for merit. The minimum qualifying marks for Telugu & English for each individual paper is 40 % for OC’s/Sports Persons/EWS; 35 % for B. C’s; 30% for SC/ST/ PBD.');
+const apg1P_medium = apg1('prov-apg1-medium', 15, 'Para 12.9',
+  'All papers except Telugu & English may be answered in English or Telugu or Urdu chosen by the candidates at the time of filling the online option for medium of writing main examination … All 05 (Five) papers have to be written in the medium chosen only. And also different papers cannot be written in different languages.');
+const apg1P_interview = apg1('prov-apg1-interview', 15, 'Para 12.10',
+  'After Main written examination, eligible candidates will be called for an Interview (Personality Test) as per G.O.Ms.No.100, GA (SER-A) Department, dt: 30/09/2022 at the ratio of 1:2 with reference to the number of vacancies');
+const apg1P_noWaitingList = apg1('prov-apg1-no-waiting-list', 15, 'Para 13.1', 'The recruitment will be made to the vacancies notified only. There shall be no waiting list');
+const apg1P_distance = apg1('prov-apg1-distance', 17, 'Para 13.8',
+  'The Degrees through Open Universities / Distance Education mode shall required to have recognition by the Distance Education Council, Government of India. Unless such Degrees have been recognised by the D.E.C. they will not be accepted for purpose of Educational Qualification.');
+const apg1P_screening = apg1('prov-apg1-screening', 18, 'Para 15.1',
+  'There will be a Screening Test (Objective Type) comprising of two papers (Paper-I and Paper-II). The test is meant for shortlisting the number of candidates to be admitted to the Main Written (Conventional) Type Examination. The number of candidates to be admitted to the Written Examination (Conventional Type) would be 50 times to the vacancies available irrespective of communities.');
+const apg1P_allScreening = apg1('prov-apg1-all-screening', 18, 'Para 15.2',
+  'The candidates must appear in all the papers of Screening Test. Absence in any of the papers will render him / her liable for disqualification.');
+const apg1P_selection = apg1('prov-apg1-selection', 18, 'Para 15.3',
+  'The selection of candidates for appointment to the posts shall be based on the merit in the Main Written examination and Interview (Personality Test) as per G.O.Ms.No.100, GA (Ser-A) Department, dt: 30/09/2022');
+const apg1P_allMains = apg1('prov-apg1-all-mains', 18, 'Para 15.4',
+  'Appearance in all the papers of Main Written examination (descriptive) is compulsory. Absence in any of the papers will automatically render the disqualification of the candidature.');
+const apg1P_minMarks = apg1('prov-apg1-min-marks', 18, 'Para 15.5',
+  'The minimum qualifying marks on aggregate for the vacancies notified under different categories are as follows … 1. OC, Sportspersons & EWS : 40% 2. Backward Class : 35% 3. SCs, STs & PBDs : 30%');
+const apg1P_ties = apg1('prov-apg1-ties', 18, 'Para 15.8',
+  'if two or more candidates get equal total number of marks, those candidates shall be bracketed. Candidates within the same bracket shall then be ranked 1, 2, 3 etc., according to age i.e., oldest being considered for admission.');
+const apg1P_prefs = apg1('prov-apg1-prefs', 19, 'Para 15.9',
+  'However, the submission of option for Post preferences and Multizonal/Zonal preferences at the time of verification of certificates is mandatory and will be considered as final.');
+const apg1P_marksMemo = apg1('prov-apg1-marks-memo', 19, 'Para 15.12',
+  'After publication of final selection list,the marks list (total marks) of the successful candidates will be displayed on the Commission’s website. However, the marks of all the candidates who have attended the Written Examination will be available in their individual logins.');
+const apg1P_debar = apg1('prov-apg1-debar', 19, 'Para 16.1',
+  'Any applicant furnishing in-correct information or making false declaration regarding his/her eligibility at any stage or suppressing any information is liable TO BE DEBARRED UPTO FIVE YEARS FROM APPEARING FOR ANY OF THE EXAMINATIONS CONDUCTED BY THE COMMISSION');
+const apg1P_gadgets = apg1('prov-apg1-gadgets', 20, 'Para 16.5 — Electronic Gadgets Banned',
+  'The use of any mobile (even in switched off mode), calculator or any electronic equipment or programmable device or storage media like pen drive, smart watches etc., or camera or blue tooth devices … during the examination is strictly prohibited.');
+const apg1P_horizontal = apg1('prov-apg1-horizontal', 24, 'Annexure-I, Note A — Women & PBD’s',
+  'Since the above vacancies shown at Note A is under Horizontal Reservation. All eligible candidates irrespective category/ Community/ Gender may apply.');
+const apg1P_scheme1 = apg1('prov-apg1-scheme-1', 26, 'Annexure-II — Screening Test, Paper-I',
+  'Screening Test (Objective Type) Paper -I General Studies. This paper consists of 04 parts i.e., ABCD each part carries 30 marks. A. History and Culture. B. Constitution, Polity, Social Justice and international relations. C. Indian and Andhra Pradesh Economy and Planning. D. Geography. 120 Questions 120 Minutes 120 Marks');
+const apg1P_scheme2 = apg1('prov-apg1-scheme-2', 26, 'Annexure-II — Screening Test, Paper-II',
+  'Screening Test (Objective Type) Paper -II General Aptitude. This paper consists 2 parts i.e., A and B each part carries 60 Marks (Part-A - 60 Marks, Part -B (i) - 30 Marks and B (ii) - 30 Marks). … 120 Questions 120 Minutes 120 Marks');
+const apg1P_schemeMains = apg1('prov-apg1-scheme-mains', 26, 'Annexure-II — Mains, Written Examination (Descriptive Type)',
+  'Paper in Telugu Qualifying Nature 180 minutes 150 Marks Paper in English Qualifying Nature 180 minutes 150 Marks Paper - I General Essay … 180 minutes 150 Marks');
+const apg1P_schemeTotal = apg1('prov-apg1-scheme-total', 26, 'Annexure-II — Mains, Written Examination (Descriptive Type)',
+  'Paper -V Science, Technology and Environmental Issues. - 180 minutes 150 Marks INTERVIEW 75 Marks TOTAL MARKS 825 Marks');
+const apg1P_photo = apg1('prov-apg1-photo', 40, 'Annexure-III, A.4', 'Applicants must compulsorily upload his/her own scanned photo and signature through jpg format.');
+const apg1P_formats = apg1('prov-apg1-formats', 40, 'Annexure-III, A.8',
+  'The following certificate formats are available on the Commission’s Website (https://psc.ap.gov.in) for reference. A.8.1. Community, Nativity and Date of Birth Certificate A.8.2. Declaration by the Un-Employed A.8.3. School Study Certificate A.8.4. Certificate of Residence');
+const apg1P_pen = apg1('prov-apg1-pen', 41, 'Annexure-III, B.3',
+  'The OMR Sheet is to be bubbled by Ball Point Pen (Blue or Black) only. Bubbling by Pencil / Ink Pen / Gel Pen is not permitted in this examination.');
+const apg1P_topSheet = apg1('prov-apg1-top-sheet', 40, 'Annexure-III, B.2',
+  'After writing the examination the candidate has to handover the original OMR sheet (Top Sheet) to the invigilator in the examination hall. If any candidate takes away the original OMR Sheet (Top Sheet) his/her candidature will be rejected.');
+const apg1P_biometric = apg1('prov-apg1-biometric', 41, 'Annexure-III, C.1',
+  'Biometric identification would be conducted before entry into examination hall. The entry time would be mentioned in the hall ticket. Late entry after the given entry time would not be allowed.');
+const apg1P_fullTime = apg1('prov-apg1-full-time', 41, 'Annexure-III, C.3',
+  'Candidates will not be permitted to leave the examination hall till the expiry of full time. If any candidate leaves the examination hall in the middle, he would be disqualified.');
+const apg1P_carry = apg1('prov-apg1-carry', 41, 'Annexure-III, C.6',
+  'In case you are carrying articles other than the admit card, photo identity proof and pen, please leave them outside the exam room.');
+const apg1P_calculator = apg1('prov-apg1-calculator', 42, 'Annexure-III, D.5',
+  'Non programmable calculators would be permitted, wherever necessary.');
+const apg1P_scribe = apg1('prov-apg1-scribe', 42, 'Annexure-III, D.9 (a) and (c)',
+  'Wherever the candidates are totally blind, they will be provided a scribe to write the examination and 20 minutes extra time is permitted to them per hour. … An extra time of 20 minutes per hour is also permitted for the candidates with locomotor disability and CEREBRAL PALSY where dominant (writing) extremity is affected');
+const apg1P_htPhoto = apg1('prov-apg1-ht-photo', 42, 'Annexure-III, D.10',
+  'In case the Hall-Ticket is without photo or too small, he/she should affix a passport size photo on Hall-ticket and appear by duly getting attested by Gazetted Officer.');
+const apg1P_htDiscrepancy = apg1('prov-apg1-ht-discrepancy', 41, 'Annexure-III, D.1',
+  'If the candidate notices any discrepancy printed on the Hall ticket, as to community, date of birth etc., he/she may immediately bring it to the notice of Commission’s officials/Chief Superintendent in the examination centre');
+
+/** One row of the vacancy table on p.1, as printed. */
+/** One row of the vacancy table on p.1, as printed: the post's name in the notice's own words (so its Evidence
+ *  quotes it), its vacancies (which `PostRequirement` has no field for, so they lead its conditions), age band and pay. */
+const apg1Post = (code: string, id: string, postName: string, department: string, vacancies: string, minAge: number, maxAge: number, pay: string, row: string,
+  extra: Partial<PostRequirement> = {}): PostRequirement => ({
+  id, postName: `${postName} (Post Code ${code})`, department, payLevel: `Scale of Pay ₹${pay}`, payScale: `₹${pay.replace('-', ' – ')}`,
+  classification: 'Group-I Services', minAge, maxAge,
+  provenance: apg1(`prov-apg1-post-${code}`, 1, `Para 1.2 — Post Code No. ${code}`, row), ...extra,
+  postConditions: [`Vacancies: ${vacancies} (para 1.2; the break-up by multi-zone, community and women is in Annexure-I)`, ...(extra.postConditions || [])]
+});
+
+/** Annexure-II's syllabus, one row per numbered item (or per question type for the language papers):
+ *  [slug, stage, paper, part, subject, topic name, page, the item's opening words as printed, sub-topics]. */
+type Apg1SyllabusRow = [string, 'S' | 'M', string, string, string, string, number, string, string[]];
+const APG1_PAPERS: Record<string, { title: string; marks: number; page: number }> = {
+  'S-I': { title: 'PAPER —I GENERAL STUDIES (DEGREE STANDARD) — Marks: 120 No.of Questions:120 Time: 120 Minutes', marks: 120, page: 27 },
+  'S-II': { title: 'PAPER -II — GENERAL APTITUDE (DEGREE STANDARD) — Marks:120 No.of Questions:120 Time: 120 Minutes', marks: 120, page: 29 },
+  'M-T': { title: 'TELUGU (S.S.C STANDARD) — Marks-150 Medium: Telugu Time- 180 Minutes (qualifying)', marks: 150, page: 32 },
+  'M-E': { title: 'ENGLISH (S.S.C STANDARD) — Marks — 150 Medium: English Time- 180 Minutes (qualifying)', marks: 150, page: 31 },
+  'M-I': { title: 'PAPER-I - GENERAL ESSSAY (DEGREE STANDARD) — Marks - 150 Time- 180 Minutes', marks: 150, page: 33 },
+  'M-II': { title: 'PAPER — II: HISTORY, CULTURE AND GEOGRAPHY OF INDIA AND ANDHRA PRADESH (DEGREE STANDARD) — Marks — 150 Time- 180 Minutes', marks: 150, page: 33 },
+  'M-III': { title: 'PAPER III - POLITY, CONSTITUTION, GOVERNANCE, LAW AND ETHICS (DEGREE STANDARD) — Marks — 150 Time- 180 Minutes', marks: 150, page: 35 },
+  'M-IV': { title: 'Paper - IV - ECONOMY AND DEVELOPMENT OF INDIA AND ANDHRA PRADESH (DEGREE STANDARD) — Marks — 150 Time - 180 Minutes', marks: 150, page: 37 },
+  'M-V': { title: 'Paper -V SCIENCE AND TECHNOLOGY (DEGREE STANDARD) — Marks — 150 Time- 180 Minutes', marks: 150, page: 38 }
+};
+const APG1_SYLLABUS_ROWS: Apg1SyllabusRow[] = [
+  // ---- Screening Test, Paper-I General Studies (pp. 27–29)
+  ['s1a-1', 'S', 'S-I', '(A) HISTORY & CULTURE', 'History & Culture', 'Indus Valley Civilization to the Gupta Empire', 27,
+    '1. Indus Valley Civilization: Features, Sites, Society, Cultural History, Art and Religion. Vedic Age- Mahajanapadas, Religions-Jainism and Buddhism.',
+    ['Indus Valley Civilization: features, sites, society, cultural history, art and religion', 'Vedic Age; Mahajanapadas; Jainism and Buddhism', 'The Magadhas, the Mauryas, foreign invasions on India and their impact, the Kushans', 'The Satavahanas, the Sangam Age, the Sungas', 'The Gupta Empire: administration; social, religious and economic conditions; art, architecture, literature, science and technology']],
+  ['s1a-2', 'S', 'S-I', '(A) HISTORY & CULTURE', 'History & Culture', 'The Kanauj and South Indian Dynasties', 27,
+    '2. The Kanauj and their Contributions, South Indian Dynasties - The Badami Chalukyas, the Eastarn Chalukyas, the Rastrakutas, the Kalyani Chalukyas, the Cholas, the Hoyasalas, the Yedavas, the Kakatiyas and the Reddis.',
+    ['The Kanauj and their contributions', 'The Badami Chalukyas, the Eastern Chalukyas, the Rashtrakutas, the Kalyani Chalukyas', 'The Cholas, the Hoysalas, the Yadavas, the Kakatiyas and the Reddis']],
+  ['s1a-3', 'S', 'S-I', '(A) HISTORY & CULTURE', 'History & Culture', 'Delhi Sultanate, Vijayanagara and Mughal Empires; Bhakti and Sufism', 27,
+    '3. The Delhi Sultanate, the Vijaynagar Empire and the Mughal Empire, the Bhakti Movement and Sufism - Administration, Economy, Society, Religion, Literature, Arts and Architecture.',
+    ['The Delhi Sultanate', 'The Vijayanagara Empire', 'The Mughal Empire', 'The Bhakti Movement and Sufism', 'Administration, economy, society, religion, literature, arts and architecture']],
+  ['s1a-4', 'S', 'S-I', '(A) HISTORY & CULTURE', 'History & Culture', 'European Trading Companies in India', 27,
+    '4. The European Trading companies in India- their struggle for supremacy-with special reference to Bengal, Bombay, Madras, Mysore, Andhra and Nizam, Governor-Generals and Viceroys.',
+    ['Their struggle for supremacy', 'With special reference to Bengal, Bombay, Madras, Mysore, Andhra and Nizam', 'Governor-Generals and Viceroys']],
+  ['s1a-5', 'S', 'S-I', '(A) HISTORY & CULTURE', 'History & Culture', '1857, Reform Movements and the Freedom Movement', 27,
+    '5. Indian War of Independence of 1857 - Origin, Nature, causes, consequences and significance with special reference to Concerned State',
+    ['Indian War of Independence of 1857: origin, nature, causes, consequences and significance, with special reference to the State', 'Religious and social reform movements in 19th-century India and the State', 'India’s Freedom Movement', 'Revolutionaries in India and abroad']],
+  ['s1a-6', 'S', 'S-I', '(A) HISTORY & CULTURE', 'History & Culture', 'Gandhi, Patel, Bose, Ambedkar and India after Independence', 27,
+    '6. Mahatma Gandhi, his thoughts, Principles and Philosophy. Important Satyagrahas, the Role of Sardar Patel, Subash Chandrabose in Freedom Movement and Post independence consolidation.',
+    ['Mahatma Gandhi: his thoughts, principles and philosophy; important Satyagrahas', 'The role of Sardar Patel and Subhas Chandra Bose in the Freedom Movement and post-independence consolidation', 'Dr. B.R. Ambedkar: his life and contribution to the making of the Indian Constitution', 'India after Independence: reorganization of the States']],
+  ['s1b-1', 'S', 'S-I', '(B) CONSTITUTION, POLITY, SOCIAL JUSTICE AND INTERNATIONAL RELATIONS', 'Polity & Governance', 'Indian Constitution', 27,
+    '1. Indian Constitution: Evolution, features, Preamble, Fundamental Rights, Fundamental Duties, Directive Principles of State Policy, Amendments, Significant Provisions and Basic Structure.',
+    ['Evolution, features and the Preamble', 'Fundamental Rights, Fundamental Duties, Directive Principles of State Policy', 'Amendments, significant provisions and the Basic Structure']],
+  ['s1b-2', 'S', 'S-I', '(B) CONSTITUTION, POLITY, SOCIAL JUSTICE AND INTERNATIONAL RELATIONS', 'Polity & Governance', 'Union, States, Legislatures and the Federal Structure', 27,
+    '2. Functions and Responsibilities of the Union and the States, Parliament and State Legislatures: Structure, Function, Power and Privileges.',
+    ['Functions and responsibilities of the Union and the States', 'Parliament and State Legislatures: structure, function, power and privileges', 'Federal structure: devolution of power and finances up to local levels, and its challenges']],
+  ['s1b-3', 'S', 'S-I', '(B) CONSTITUTION, POLITY, SOCIAL JUSTICE AND INTERNATIONAL RELATIONS', 'Polity & Governance', 'Constitutional Authorities, Panchayati Raj and Public Policy', 27,
+    '3. Constitutional Authorities: Powers, Functions and Responsibilities - Panchayati Raj - Public Policy and Governance.',
+    ['Constitutional authorities: powers, functions and responsibilities', 'Panchayati Raj', 'Public policy and governance']],
+  ['s1b-4', 'S', 'S-I', '(B) CONSTITUTION, POLITY, SOCIAL JUSTICE AND INTERNATIONAL RELATIONS', 'Polity & Governance', 'Liberalization and Governance; Statutory, Regulatory and Quasi-judicial Bodies', 27,
+    '4. Impact of Liberalization, Privatization and Globalization on Governance - Statutory, Regulatory and Quasi-judicial bodies.',
+    ['Impact of liberalization, privatization and globalization on governance', 'Statutory, regulatory and quasi-judicial bodies']],
+  ['s1b-5', 'S', 'S-I', '(B) CONSTITUTION, POLITY, SOCIAL JUSTICE AND INTERNATIONAL RELATIONS', 'Polity & Governance', 'Rights Issues', 27,
+    '5. Rights Issues (Human rights, Women rights, SC/ST rights, Child rights) etc.',
+    ['Human rights', 'Women’s rights', 'SC/ST rights', 'Child rights']],
+  ['s1b-6', 'S', 'S-I', '(B) CONSTITUTION, POLITY, SOCIAL JUSTICE AND INTERNATIONAL RELATIONS', 'Polity & Governance', 'India’s Foreign Policy and International Relations', 28,
+    '6. India\'s Foreign Policy — International Relations — Important Institutions, Agencies and Fora, their structure and mandate - Important Policies and Programmes of Central and State Governments.',
+    ['India’s foreign policy and international relations', 'Important institutions, agencies and fora: their structure and mandate', 'Important policies and programmes of the Central and State Governments']],
+  ['s1c-1', 'S', 'S-I', '(C) INDIAN AND ANDHRA PRADESH ECONOMY AND PLANNING', 'Economy', 'Indian Economy, Planning and Sustainable Development', 28,
+    '1. Basic characteristics of Indian Economy as a developing economy – Economic development since independence objectives and achievements of planning - NITI Ayog and its approach to economic development',
+    ['Basic characteristics of the Indian economy as a developing economy', 'Economic development since independence; objectives and achievements of planning', 'NITI Aayog and its approach to economic development', 'Growth and distributive justice; Human Development Index and India’s rank', 'Environmental degradation; sustainable development; environmental policy']],
+  ['s1c-2', 'S', 'S-I', '(C) INDIAN AND ANDHRA PRADESH ECONOMY AND PLANNING', 'Economy', 'National Income, Demography, Poverty and Employment', 28,
+    '2. National Income and its concepts and components –India’s National Accounts –Demographic issues - Poverty and Inequalities – Occupational Structure and Unemployment',
+    ['National income: concepts and components; India’s National Accounts', 'Demographic issues; poverty and inequalities', 'Occupational structure and unemployment; schemes of employment and poverty eradication', 'Rural development and urban development']],
+  ['s1c-3', 'S', 'S-I', '(C) INDIAN AND ANDHRA PRADESH ECONOMY AND PLANNING', 'Economy', 'Agriculture, Industry, Reforms and Trade', 28,
+    '3. Indian Agriculture –Irrigation and water – Inputs of agriculture – Agricultural Strategy and Agricultural Policy – Agrarian Crisis and land reforms',
+    ['Agriculture: irrigation and water, inputs, strategy and policy', 'Agrarian crisis and land reforms; agricultural credit; Minimum Support Prices; malnutrition and food security', 'Industry and industrial policy; Make in India; Start-up and Stand-up programmes; SEZs and industrial corridors', 'Energy and power policies; economic reforms – liberalisation, privatisation and globalisation', 'International trade and balance of payments; India and the WTO']],
+  ['s1c-4', 'S', 'S-I', '(C) INDIAN AND ANDHRA PRADESH ECONOMY AND PLANNING', 'Economy', 'Money, Banking, Taxation and Public Finance', 28,
+    '4. Financial Institutions – RBI and Monetary Policy – Banking and Financial Sector Reforms – Commercial Banks and NPAs',
+    ['RBI and monetary policy; banking and financial sector reforms; commercial banks and NPAs', 'Financial markets; stock exchanges and SEBI', 'The Indian tax system and recent changes; GST and its impact on commerce and industry', 'Centre–State financial relations; Finance Commissions; sharing of resources and devolution', 'Public debt and public expenditure; fiscal policy and the budget']],
+  ['s1c-5', 'S', 'S-I', '(C) INDIAN AND ANDHRA PRADESH ECONOMY AND PLANNING', 'Economy', 'Andhra Pradesh Economy after Bifurcation; A.P. Reorganisation Act, 2014', 28,
+    '5. i) The characteristics/ basic features of Andhra Pradesh economy after bifurcation in 2014 – Impact of bifurcation on the endowment of natural resources and state revenue',
+    ['Basic features of the Andhra Pradesh economy after bifurcation in 2014; impact on natural resources and State revenue', 'River-water sharing disputes and their impact on irrigation; new challenges to industry and commerce', 'Infrastructure, power and transport; information technology and e-governance', 'Development initiatives in agriculture, industry and the social sector; urbanization and smart cities; skill development; social welfare programmes', 'A.P. Reorganisation Act, 2014: economic issues; central assistance for a new capital, compensation for loss of revenue, development of backward districts', 'Vizag railway zone, Kadapa steel factory, Dugarajapatnam airport, expressways and industrial corridors', 'Special Status and Special Assistance: the controversy, the Government’s stand and measures']],
+  ['s1d-1', 'S', 'S-I', '(D) GEOGRAPHY', 'Geography', 'General Geography', 28,
+    '1. General Geography: Earth in Solar system, Motion of the Earth, Concept of time, Season, Internal Structure of the Earth, Major landfornns and their features.',
+    ['Earth in the solar system, motion of the Earth, concept of time, seasons', 'Internal structure of the Earth; major landforms and their features', 'Atmosphere: structure and composition, elements and factors of climate, air masses and fronts, atmospheric disturbances, climate change', 'Oceans: physical, chemical and biological characteristics; hydrological disasters; marine and continental resources']],
+  ['s1d-2', 'S', 'S-I', '(D) GEOGRAPHY', 'Geography', 'Physical Geography: World, India and the State', 28,
+    '2. Physical: World, India and concerned State : Major physical divisions, Earthquakes, landslides, Natural drainage, climatic changes and regions, Monsoon, Natural Vegetation, Parks and Sanctuaries, Major Soil types, Rocks and Minerals.',
+    ['Major physical divisions', 'Earthquakes and landslides', 'Natural drainage', 'Climatic changes and regions; the monsoon', 'Natural vegetation, parks and sanctuaries', 'Major soil types, rocks and minerals']],
+  ['s1d-3', 'S', 'S-I', '(D) GEOGRAPHY', 'Geography', 'Social Geography: World, India and the State', 29,
+    '3. Social: World, India and concerned State : distribution, density, growth, Sex-ratio, Literacy, Occupational Structure, SC and ST Population, Rural-Urban components',
+    ['Distribution, density, growth, sex ratio, literacy', 'Occupational structure; SC and ST population; rural–urban components', 'Racial, tribal, religious and linguistic groups', 'Urbanization, migration and metropolitan regions']],
+  ['s1d-4', 'S', 'S-I', '(D) GEOGRAPHY', 'Geography', 'Economic Geography: World, India and the State', 29,
+    '4. Economic: World, India and concerned State: Major sectors of economy, Agriculture, Industry and Services, their salient features.',
+    ['Major sectors of the economy: agriculture, industry and services', 'Basic industries: agro, mineral, forest, fuel and manpower based', 'Transport and trade: pattern and issues']],
+  // ---- Screening Test, Paper-II General Aptitude (pp. 29–30)
+  ['s2a-1', 'S', 'S-II', '(A). GENERAL MENTAL AND PSYCOLOGICAL ABILITIES', 'Mental & Psychological Abilities', 'Logical and Analytical Reasoning', 29,
+    '1. Logical Reasoning and Analytical Ability. 2. Number Series, Coding —Decoding. 3. Problems Related to Relations. 4. Shapes and their Sub-sections, Venn Diagram. 5. Problems based on Clocks, Calendar and Age.',
+    ['Logical reasoning and analytical ability', 'Number series; coding–decoding', 'Problems related to relations', 'Shapes and their sub-sections; Venn diagrams', 'Clocks, calendar and age']],
+  ['s2a-2', 'S', 'S-II', '(A). GENERAL MENTAL AND PSYCOLOGICAL ABILITIES', 'Mental & Psychological Abilities', 'Number System and Arithmetic', 29,
+    '6. Number system and order of Magnitude. 7. Ratio, proportion and variation. 8. Central Tendencies - mean, median, mode — including weighted mean.',
+    ['Number system and order of magnitude', 'Ratio, proportion and variation', 'Mean, median and mode, including the weighted mean', 'Powers and exponents, squares, square roots, cube roots, HCF and LCM', 'Percentage, simple and compound interest, profit and loss', 'Time and work, time and distance, speed and distance']],
+  ['s2a-3', 'S', 'S-II', '(A). GENERAL MENTAL AND PSYCOLOGICAL ABILITIES', 'Mental & Psychological Abilities', 'Mensuration and Geometry', 29,
+    '12. Area and Perimeter of Simple Geometrical Shapes, Volume and Surface Area of Sphere, Cone, Cylinder, cubes and Cuboids. 13. Lines, angels and common geometrical figures',
+    ['Area and perimeter of simple geometrical shapes', 'Volume and surface area of the sphere, cone, cylinder, cube and cuboid', 'Lines and angles; properties of transversals and parallel lines', 'Properties of triangles, quadrilaterals, rectangles, parallelograms and rhombuses']],
+  ['s2a-4', 'S', 'S-II', '(A). GENERAL MENTAL AND PSYCOLOGICAL ABILITIES', 'Mental & Psychological Abilities', 'Algebra, Data Interpretation and Probability', 29,
+    '14. Introduction to algebra — BODMAS, simplification of weird symbols. 15. Data interpretation, Data Analysis, Data sufficiency, and concepts of Probability.',
+    ['Introduction to algebra: BODMAS, simplification of symbols', 'Data interpretation and data analysis', 'Data sufficiency', 'Concepts of probability']],
+  ['s2a-5', 'S', 'S-II', '(A). GENERAL MENTAL AND PSYCOLOGICAL ABILITIES', 'Mental & Psychological Abilities', 'Emotional and Social Intelligence', 29,
+    '16. Emotional Intelligence: Understanding and analyzing emotions, Dimensions of emotional intelligence, coping with emotions, empathy and coping with stress. 17. Social Intelligence',
+    ['Emotional intelligence: understanding and analysing emotions, its dimensions, coping with emotions, empathy, coping with stress', 'Social intelligence and interpersonal skills', 'Decision making, critical thinking and problem solving', 'Assessment of personality']],
+  ['s2b-1', 'S', 'S-II', '(B)(i) SCIENCE AND TECHNOLOGY', 'Science & Technology', 'Science and Technology: Scope, Policy and Institutions', 29,
+    '18. Science and Technology: Nature and Scope of Science & Technology; Relevance of Science & Technology to the day-to-day life; National Policy on Science, Technology and Innovation',
+    ['Nature and scope of science and technology; relevance to day-to-day life', 'National Policy on Science, Technology and Innovation', 'Institutes and organizations in India promoting science, technology and innovation', 'Contribution of prominent Indian scientists']],
+  ['s2b-2', 'S', 'S-II', '(B)(i) SCIENCE AND TECHNOLOGY', 'Science & Technology', 'Information and Communication Technology', 29,
+    '19. Information and Communication Technology (ICT): Nature and Scope of ICT; ICT in day-to-day life; ICT and Industry; ICT and Governance',
+    ['Nature and scope of ICT; ICT in day-to-day life and in industry', 'ICT and governance: government schemes, e-governance programmes and services', 'Netiquette; cyber security concerns; National Cyber Crime Policy']],
+  ['s2b-3', 'S', 'S-II', '(B)(i) SCIENCE AND TECHNOLOGY', 'Science & Technology', 'Technology in Space and Defence', 30,
+    '20. Technology in Space & Defence: Evolution of Indian Space Programme; Indian Space Research Organization (ISRO) — it\'s activities and achievements',
+    ['Evolution of the Indian space programme; ISRO’s activities and achievements', 'Satellite programmes: telecommunication, IRNSS, IRS, defence and academic (EDUSAT) satellites', 'DRDO: vision, mission and activities']],
+  ['s2b-4', 'S', 'S-II', '(B)(i) SCIENCE AND TECHNOLOGY', 'Science & Technology', 'Energy Requirement and Efficiency', 30,
+    '21. Energy Requirement and Efficiency: India\'s existing energy needs and deficit; India\'s Energy Resources and Dependence, Energy policy of India Government Policies and Programmes. Solar, Wind and Nuclear energy',
+    ['India’s energy needs and deficit; energy resources and dependence', 'India’s energy policy: government policies and programmes', 'Solar, wind and nuclear energy']],
+  ['s2b-5', 'S', 'S-II', '(B)(i) SCIENCE AND TECHNOLOGY', 'Science & Technology', 'Environmental Science, Biotechnology and Nanotechnology', 30,
+    '22. Environmental Science: Issues and concerns related to environment; Its legal aspects, policies and treaties for the protection of environment at the national and the international level',
+    ['Environmental issues; legal aspects, policies and treaties, national and international', 'Biodiversity; climate change, international initiatives and India’s commitment', 'Forest and wildlife: the legal framework for conservation in India', 'Environmental hazards, pollution, carbon emission, global warming; national action plans on climate change and disaster management', 'Biotechnology and nanotechnology: nature, scope, applications; ethical, social and legal issues; government policies', 'Genetic engineering and its impact on human life; health and environment']],
+  ['s2b-6', 'S', 'S-II', '(ii) CURRENT EVENTS OF REGIONAL, NATIONAL AND INTERNATIONAL IMPORTANCE', 'Current Affairs', 'Current Events of Regional, National and International Importance', 30,
+    '(ii) CURRENT EVENTS OF REGIONAL, NATIONAL AND INTERNATIONAL IMPORTANCE', []],
+  // ---- Main Examination, the two qualifying language papers (pp. 31–32)
+  ['mt-1', 'M', 'M-T', '', 'Telugu (Qualifying)', 'Telugu — thirteen question types (150 marks)', 32,
+    'TELUGU (S.S.C STANDARD) Marks-150 Medium: Telugu Time- 180 Minutes',
+    ['Essay, 200–250 words, one of three topics (20 marks)', 'Elaborating the meaning of a poem or verse, two of three, about 100 words — Vemana and Sumathi Satakam (20)', 'Précis: a one-third summary of a passage (10)', 'Comprehension: a passage of about 250 words, five short answers (10)', 'Formal speech or a speech for a press conference, about 150 words (10)', 'Statements for publicity media: a press note, about 100 words (10)', 'Letter writing, about 100 words (10)', 'Application writing, about 150 words (10)', 'Report writing, about 150 words (10)', 'Translation, English to Telugu (10)', 'Translation, Telugu to English (10)', 'Word meanings, English to Telugu and Telugu to English (10)', 'Synonyms and antonyms, English to Telugu and Telugu to English (10)']],
+  ['me-1', 'M', 'M-E', '', 'English (Qualifying)', 'English — ten question types (150 marks)', 31,
+    'ENGLISH (S.S.C STANDARD) Marks — 150 Medium: English Time- 180 Minutes',
+    ['Essay, 200–250 words, one of five topics (20 marks)', 'Letter writing: a formal letter, about 100 words (10)', 'Press release or appeal, about 100 words (10)', 'Report writing, about 150 words (15)', 'Writing on visual information: a graph, image, flow chart or table, about 150 words (15)', 'Formal speech, about 150 words (15)', 'Précis: about 100 words from a 300-word passage (15)', 'Reading comprehension: a passage of about 250 words with short answers (15)', 'Grammar, multiple choice: tenses, voice, narration, transformation, articles and determiners, prepositions, phrasal verbs, idioms, administrative glossary, synonyms and antonyms, one-word substitution, connectives, affixes, confusable words (20)', 'Translation of a passage of about 150 words from the regional language into English (15)']],
+  // ---- Main Examination, Paper-I General Essay (p. 33)
+  ['m1-1', 'M', 'M-I', '', 'General Essay', 'Three essays, one from each section, about 800 words each', 33,
+    'The candidates are required to attempt three essays, one from each of the three sections, in about 800 words each.',
+    ['Section I: current affairs', 'Section II: socio-political, socio-economic and socio-environmental issues', 'Section III: cultural and historical aspects, issues related to civic awareness, reflective topics', 'Credit is given for the established rules and format of an essay, grammatical correctness, and originality of thought and expression']],
+  // ---- Main Examination, Paper-II History, Culture and Geography of India and Andhra Pradesh (pp. 33–35)
+  ['m2a-1', 'M', 'M-II', 'A. History and Culture of India', 'History & Culture', 'Pre-Historic Cultures to the Guptas', 33,
+    '1. Pre-Historic Cultures in India- Indus Valley Civilization- Vedic Culture- Mahajanapadas- Emergence of New Religions-Jainism, Buddhism- Rise of the Magadha and Age of the Mauryas- Ashoka Dharma',
+    ['Pre-historic cultures; the Indus Valley Civilization; Vedic culture; Mahajanapadas', 'New religions: Jainism and Buddhism', 'Rise of Magadha and the Age of the Mauryas; Ashoka’s Dharma; foreign invasions; the Kushans', 'The Satavahanas, the Sangam Age, the Sungas, the Guptas, the Kanauj', 'Accounts of foreign travellers; early educational institutions']],
+  ['m2a-2', 'M', 'M-II', 'A. History and Culture of India', 'History & Culture', 'South Indian Kingdoms, the Delhi Sultanate and the Bhakti and Sufi Movements', 33,
+    '2. The Pallavas, the Badami Chalukyas, the Eastern Chalukyas, the Rashtrakutas, the Kalyani Chalukyas and the Cholas- Socio Cultural Contributions, Language, Literature Art and Architecture',
+    ['The Pallavas, the Badami, Eastern and Kalyani Chalukyas, the Rashtrakutas and the Cholas: socio-cultural contributions, language, literature, art and architecture', 'The Delhi Sultanate; the advent of Islam and its impact', 'Bhakti and Sufi movements and their influence', 'Growth of vernacular languages, scripts, literature and fine arts', 'The Kakatiyas, the Vijayanagaras, the Bahmanis, the Qutub Shahis and their contemporary South Indian kingdoms']],
+  ['m2a-3', 'M', 'M-II', 'A. History and Culture of India', 'History & Culture', 'The Mughals, the Marathas and the Coming of the Europeans', 34,
+    '3. The Mughals Administration, Socio-Religious life and Cultural developments- Shivaji and Rise of Maratha Empire- Advent of Europeans in India.',
+    ['Mughal administration, socio-religious life and cultural developments', 'Shivaji and the rise of the Maratha Empire', 'Advent of the Europeans; trade practices; rise of the East India Company and its hegemony', 'Changes in administration and in the social and cultural spheres; the role of Christian missionaries']],
+  ['m2a-4', 'M', 'M-II', 'A. History and Culture of India', 'History & Culture', 'British Rule, 1857, Reform and the Rise of Nationalism', 34,
+    '4. Rise of British rule in India from 1757 to 1856- Land Revenue Settlement, Permanent Settlement, Ryothvari and Mahalvari-1857 Revolt and its Impact',
+    ['British rule from 1757 to 1856; land revenue settlements – Permanent, Ryotwari and Mahalwari', 'The 1857 Revolt and its impact; education, the press and cultural change', 'Socio-religious reform movements of the 19th century: Raja Ram Mohan Roy, Dayananda Saraswati, Swami Vivekananda, Annie Besant, Sir Syed Ahmad Khan and others', 'Rise of Indian nationalism; the Indian National Congress; Vandemataram and Home Rule movements', 'The Self-Respect Movement: Jyotiba Phule, Narayana Guru, Periyar', 'Gandhi, Subhas Chandra Bose, Vallabhbhai Patel; Satyagraha; Quit India; Dr B.R. Ambedkar']],
+  ['m2a-5', 'M', 'M-II', 'A. History and Culture of India', 'History & Culture', 'The Freedom Struggle in Three Phases and India after Independence', 34,
+    '5. Indian Nationalism in three phases- Freedom Struggle 1885-1905, 1905-1920 and Gandhi Phase 1920-1947- Peasant, Women, Tribal and Workers Movements',
+    ['The freedom struggle 1885–1905, 1905–1920 and the Gandhian phase 1920–1947', 'Peasant, women, tribal and workers’ movements; parties, local and regional movements; inter-religious unity and communalism', 'Independence and Partition; rehabilitation after Partition', 'Linguistic reorganization of States; integration of the Indian States; the Constitution; economic policies; foreign-policy initiatives']],
+  ['m2b-1', 'M', 'M-II', 'B. History and Culture of Andhra Pradesh', 'History & Culture', 'Ancient Andhra', 34,
+    '6. Ancient: The Satavahanas, the Ikshvakus, the Salankayanas, the Pallavas and the Vishnukundins',
+    ['The Satavahanas, the Ikshvakus, the Salankayanas, the Pallavas and the Vishnukundins: society, economy, religion, Telugu language, literature, art and architecture', 'Jainism and Buddhism in Andhra', 'The Eastern Chalukyas, the Rashtrakutas, the Renati Cholas and others: socio-cultural life, religion, Telugu script and language, literature, art and architecture']],
+  ['m2b-2', 'M', 'M-II', 'B. History and Culture of Andhra Pradesh', 'History & Culture', 'Medieval Andhra, 1000–1565 A.D.', 34,
+    '7. Medieval: Socio- Cultural and Religious Conditions in Andhradesa 1000 to 1565 A.D.-Antiquity, Origin and Growth Telugu Language and Literature (Kavitraya- Asthadiggajas)',
+    ['Socio-cultural and religious conditions in Andhradesa, 1000–1565 A.D.', 'Origin and growth of Telugu language and literature: the Kavitraya and the Ashtadiggajas', 'Fine arts, art and architecture under the Kakatiyas, Reddis, Gajapatis and Vijayanagaras and their feudatories', 'Historical monuments; the Qutub Shahis’ contribution; regional literature; Praja Kavi Vemana and others']],
+  ['m2b-3', 'M', 'M-II', 'B. History and Culture of Andhra Pradesh', 'History & Culture', 'Modern Andhra', 34,
+    '8. Modern: European Trade Establishments in Andhra- Andhra Under the Company Rule- Role of Christian Missionaries- Socio-Cultural, Literary Awakening',
+    ['European trade establishments; Andhra under Company rule; Christian missionaries', 'Socio-cultural and literary awakening: C.P. Brown, Thomas Munro, Mackenzie', 'Zamindari and Poligar systems; native states and little kings', 'Social reformers: Gurajada Apparao, Kandukuri Veeresalingam, Raghupati Venkataratnam Naidu, Gidugu Ramamurthy, Annie Besant and others', 'The library movement; newspapers; folk and tribal culture, oral traditions, subaltern culture, the role of women']],
+  ['m2b-4', 'M', 'M-II', 'B. History and Culture of Andhra Pradesh', 'History & Culture', 'The Nationalist Movement in Andhra and the Making of Andhra Pradesh', 34,
+    '9. Nationalist Movement: Role of Andhra leaders- Justice Party, Non-Brahmin Movement- Nationalist and Revolutionary Literature',
+    ['Role of Andhra leaders; the Justice Party; the non-Brahmin movement', 'Nationalist and revolutionary literature: Gurram Jashuva, Boyi Bheemanna, Sri Sri, Garimella Satyanarayana, Rayaprolu Subbarao, Unnava Lakshminarayana, Tripuraneni Ramaswamy Choudary and others', 'Andhra Mahasabhas and the Andhra Movement: Alluri Sitarama Raju, Duggirala Gopalakrishnaiah, Konda Venkatappayya, Pattabhi Seetaramaiah, Ponaka Kanakamma, Dokka Sitamma', 'The Grandhalaya movement', 'Potti Sreeramulu; formation of Andhra State, 1953; emergence of Andhra Pradesh, 1956; Andhra Pradesh 1956–2014; causes of bifurcation']],
+  ['m2b-5', 'M', 'M-II', 'B. History and Culture of Andhra Pradesh', 'History & Culture', 'Bifurcation of Andhra Pradesh and its Impact', 35,
+    '10. Andhra Pradesh: Bifurcation of Andhra Pradesh and its impact on Administrative, Economic, Social, Political, Cultural and Legal Implications',
+    ['Administrative, economic, social, political, cultural and legal implications', 'Loss of the capital city; building a new capital and its financial implications', 'Division of employees and their native issues', 'Effect on trade, commerce and industry; the State’s financial resources', 'River-water sharing; the Andhra Pradesh Reorganization Act, 2014 and its contested provisions']],
+  ['m2c-1', 'M', 'M-II', 'C. Geography: India and Andhra Pradesh', 'Geography', 'Physical Features and Resources', 35,
+    '11. Physical Features and Resources: India and Andhra Pradesh, Major land forms, Climatic changes, Soil types, Rivers, Water, Streams, Geology, Rocks, Mineral Resources',
+    ['Major landforms, climatic changes, soil types', 'Rivers, streams, reservoirs and dams', 'Geology, rocks, mineral resources, metals, clays, construction materials', 'Forests, mountains, hills, plateaus, flora and fauna; vegetation classification']],
+  ['m2c-2', 'M', 'M-II', 'C. Geography: India and Andhra Pradesh', 'Geography', 'Economic Geography', 35,
+    '12. Economic Geography : Agriculture, Live stocks, Forestry, Fishery, Quarrying, Mining, House hold Manufacturing, Industries',
+    ['Agriculture, livestock, forestry, fishery', 'Quarrying, mining, household manufacturing', 'Industries: agro, mineral, forest, fuel and manpower based', 'Trade and commerce, communication, road transport, storage']],
+  ['m2c-3', 'M', 'M-II', 'C. Geography: India and Andhra Pradesh', 'Geography', 'Social Geography', 35,
+    '13. Social Geography: Population Movements and Distribution, Human Habitations, Density, Age, Sex, Rural, Urban, Race, Caste, Tribe, Religion, Linguistic, Urban Migration, Education Characteristics.',
+    ['Population movements and distribution; human habitations; density', 'Age, sex, rural and urban composition', 'Race, caste, tribe, religion and language', 'Urban migration; educational characteristics']],
+  ['m2c-4', 'M', 'M-II', 'C. Geography: India and Andhra Pradesh', 'Geography', 'Faunal and Floral Geography', 35,
+    '14. Fauna and Floral Geography: Wild Animals, Animals, Birds, Reptiles, Mammals, Trees and Plants and others.',
+    ['Wild animals, birds, reptiles and mammals', 'Trees and plants']],
+  ['m2c-5', 'M', 'M-II', 'C. Geography: India and Andhra Pradesh', 'Geography', 'Environmental Geography and Disaster Management', 35,
+    '15. Environmental Geography: Sustainable Development, Globalization, Temperature, Humidity, Cloudiness, Winds, Special Weather Phenomena',
+    ['Sustainable development and globalization', 'Temperature, humidity, cloudiness, winds, special weather phenomena', 'Natural hazards: earthquakes, landslides, floods, cyclones, cloudbursts; disaster management', 'Impact assessment; environmental pollution and its management']],
+  // ---- Main Examination, Paper-III Polity, Constitution, Governance, Law and Ethics (pp. 35–36)
+  ['m3a-1', 'M', 'M-III', '(A) Indian Polity and Constitution', 'Polity & Governance', 'The Constitution and the Union and State Governments', 35,
+    '1. Indian Constitution and its salient features - Functions and duties of the Indian Union and the State Governments.',
+    ['Salient features of the Constitution', 'Functions and duties of the Union and the State Governments']],
+  ['m3a-2', 'M', 'M-III', '(A) Indian Polity and Constitution', 'Polity & Governance', 'The Federal Structure and the Governor', 35,
+    '2. Issues and challenges pertaining to the Federal structure — Role of Governor in States - Distribution of powers between the Union and States',
+    ['Issues and challenges of the federal structure', 'Role of the Governor', 'Distribution of powers: Union, State and Concurrent lists']],
+  ['m3a-3', 'M', 'M-III', '(A) Indian Polity and Constitution', 'Polity & Governance', 'Local Governance and Constitutional Authorities', 35,
+    '3. Rural and Urban Local Governance under 73rd and 74th Constitutional Amendment - Constitutional Authorities and their Role.',
+    ['Rural and urban local governance under the 73rd and 74th Amendments', 'Constitutional authorities and their role']],
+  ['m3a-4', 'M', 'M-III', '(A) Indian Polity and Constitution', 'Polity & Governance', 'Parliament and State Legislatures', 35,
+    '4. Parliament and State Legislatures — structure, functioning, conduct of business, powers & privileges and issues arising out of these.',
+    ['Structure and functioning', 'Conduct of business', 'Powers and privileges, and the issues arising from them']],
+  ['m3a-5', 'M', 'M-III', '(A) Indian Polity and Constitution', 'Polity & Governance', 'The Judiciary', 35,
+    '5. Judiciary in India — Structure and functions, important provisions relating to emergency and constitutional amendments, judicial review, Public Interest Litigation.',
+    ['Structure and functions', 'Emergency provisions and constitutional amendments', 'Judicial review; Public Interest Litigation']],
+  ['m3b-1', 'M', 'M-III', '(B) Public Administration and Governance', 'Polity & Governance', 'Public Administration: Meaning, Scope and Evolution in India', 36,
+    '6. Meaning, Nature and Scope of Public Administration —Evolution in India —Administrative ideas in Kautilya\'s Arthashastra; Mughal administration; Legacy of British rule.',
+    ['Meaning, nature and scope of public administration', 'Administrative ideas in Kautilya’s Arthashastra; Mughal administration; the legacy of British rule']],
+  ['m3b-2', 'M', 'M-III', '(B) Public Administration and Governance', 'Polity & Governance', 'Government Policies and Interventions for Development', 36,
+    '7. Government policies and interventions for development in various sectors and issues and problems of implementation.',
+    ['Policies and interventions for development in various sectors', 'Issues and problems of implementation']],
+  ['m3b-3', 'M', 'M-III', '(B) Public Administration and Governance', 'Polity & Governance', 'Development Processes: Civil Society and NGOs', 36,
+    '8. Development processes - the role of civil society, NGOs and other stakeholders',
+    ['The role of civil society, NGOs and other stakeholders']],
+  ['m3b-4', 'M', 'M-III', '(B) Public Administration and Governance', 'Polity & Governance', 'Statutory, Regulatory and Quasi-judicial Authorities; the Civil Services', 36,
+    '9. Statutory, regulatory and various quasi-judicial authorities - Role of Civil Services in Democracy.',
+    ['Statutory, regulatory and quasi-judicial authorities', 'The role of the civil services in a democracy']],
+  ['m3b-5', 'M', 'M-III', '(B) Public Administration and Governance', 'Polity & Governance', 'Good Governance and e-Governance', 36,
+    '10.Good governance and e-governance- Transparency, accountability and responsiveness in governance — Citizen\'s Charter. RTI, Public Service Act and their implications, Concept of Social Audit and its importance.',
+    ['Transparency, accountability and responsiveness', 'Citizen’s Charter; RTI; the Public Service Act', 'Social audit and its importance']],
+  ['m3c-1', 'M', 'M-III', '(C). Ethics in Public Service and knowledge of law', 'Ethics & Law', 'Ethics and Human Interface', 36,
+    '11. Ethics and Human Interface: Essence, determinants and Consequences of Ethics in Human actions: dimensions of Ethics',
+    ['Essence, determinants and consequences of ethics in human actions; dimensions of ethics', 'Ethics in private and public relationships', 'Ethics, integrity and accountability in public service']],
+  ['m3c-2', 'M', 'M-III', '(C). Ethics in Public Service and knowledge of law', 'Ethics & Law', 'Human Values', 36,
+    '12.Human values: Understanding the Harmony in existence Human relationships in the society and in the Nature.',
+    ['Harmony in existence; human relationships in society and in nature', 'Gender equality in relationships', 'The role of family, society and educational institutions in imparting values', 'Lessons from the lives and teachings of great leaders, reformers and administrators']],
+  ['m3c-3', 'M', 'M-III', '(C). Ethics in Public Service and knowledge of law', 'Ethics & Law', 'Attitude and Emotional Intelligence', 36,
+    '13.Attitude: Content, Functions, its influence and relation with thought and behaviour, Moral and Political attitudes, role of Social influence and persuasion.',
+    ['Attitude: content, functions, its relation with thought and behaviour', 'Moral and political attitudes; social influence and persuasion', 'Emotional intelligence: concepts and their use in administration and governance']],
+  ['m3c-4', 'M', 'M-III', '(C). Ethics in Public Service and knowledge of law', 'Ethics & Law', 'Public Service, Codes of Conduct and Ethics in Governance', 36,
+    '14.Concept of Public Service, "Philosophical basis of Governance professional Ethics in the light of right understanding and Vision for Holistic Technologies',
+    ['Concept of public service; philosophical basis of governance; professional ethics', 'Codes of ethics and codes of conduct; RTI; the Public Service Act', 'Leadership ethics; work culture; ethical principles within an organization', 'Ethical and moral values in governance; ethics in international relations', 'Corruption; Lokpal and Lokayukta']],
+  ['m3c-5', 'M', 'M-III', '(C). Ethics in Public Service and knowledge of law', 'Ethics & Law', 'Basic Knowledge of Laws in India', 36,
+    '15.Basic Knowledge of Laws in India Constitution of India: Nature and salient features – Fundamental Rights and Directive Principles of State Policy',
+    ['Constitution: nature and salient features; Fundamental Rights and Directive Principles; Union, State and Concurrent lists; powers of the judiciary, executive and legislature', 'Civil and criminal laws: hierarchy of courts; substantive and procedural law; order and decree; new developments in criminal law; the Nirbhaya Act', 'Labour law: social welfare legislation; changing employment and the need for new labour laws', 'Cyber law: the Information Technology Act; cyber security and cyber crime; jurisdiction of courts in cyber crime', 'Tax law: income, profits, wealth tax, corporate tax; GST']],
+  // ---- Main Examination, Paper-IV Economy and Development of India and Andhra Pradesh (pp. 37–38)
+  ['m4-1', 'M', 'M-IV', '', 'Economy', 'Major Challenges of the Indian Economy', 37,
+    '1) Major Challenges of Indian Economy – Inconsistent growth rate, Low growth rates of agriculture and manufacturing sectors, inflation and oil prices',
+    ['Inconsistent growth; low growth of agriculture and manufacturing', 'Inflation and oil prices; current account deficit and balance of payments; the falling rupee', 'Growing NPAs and capital infusion; money laundering and black money', 'Insufficient financial resources and capital; lack of inclusive growth and sustainable development: causes, consequences and solutions']],
+  ['m4-2', 'M', 'M-IV', '', 'Economy', 'Resource Mobilization in the Indian Economy', 37,
+    '2) Resource Mobilization in Indian Economy: Sources of financial resources for public and private sectors - budgetary resources – tax revenue and non-tax revenue',
+    ['Sources of finance for the public and private sectors; tax and non-tax revenue', 'Public debt: market borrowings, loans and grants; external debt from multilateral agencies', 'FII and FDI: desirability and consequences', 'Monetary and fiscal policies; financial markets and development-finance institutions', 'Investment in industry and infrastructure; physical and energy resources']],
+  ['m4-3', 'M', 'M-IV', '', 'Economy', 'Resource Mobilization in Andhra Pradesh', 37,
+    '3) Resource mobilization in Andhra Pradesh – Budgetary resources and constraints - Fulfillment of the conditions of A.P Bifurcation Act',
+    ['Budgetary resources and constraints', 'Fulfilment of the conditions of the A.P. Bifurcation Act; central assistance and issues of conflict', 'Public debt and externally assisted projects', 'Mineral and forest resources; water disputes with neighbouring States']],
+  ['m4-4', 'M', 'M-IV', '', 'Economy', 'Government Budgeting (Union)', 37,
+    '4) Government Budgeting: Structure of Government budget and its components –Budgeting process and recent changes',
+    ['Structure and components of the budget; the budgeting process and recent changes', 'Types of budget and of deficits; their impact and management', 'Highlights and analysis of the current year’s Union budget', 'GST; central assistance to States; federal finance; the latest Finance Commission’s recommendations']],
+  ['m4-5', 'M', 'M-IV', '', 'Economy', 'Government Budgeting in Andhra Pradesh', 37,
+    '5) Government budgeting in Andhra Pradesh – Budget constraints –Central assistance and issues of conflict after bifurcation of the state',
+    ['Budget constraints; central assistance and issues of conflict after bifurcation', 'Management of deficits', 'Highlights and analysis of the current year’s State budget', 'The State Finance Commission and local finance']],
+  ['m4-6', 'M', 'M-IV', '', 'Economy', 'Inclusive Growth', 37,
+    '6) Inclusive Growth: Meaning of inclusion - Causes of exclusion in India – Strategies for and instruments of inclusion',
+    ['Meaning of inclusion; causes of exclusion', 'Instruments: poverty alleviation and employment, health and education, women’s empowerment, social welfare schemes', 'Food security and the Public Distribution System; sustainable agriculture; integrated rural development', 'Financial inclusion; partnership for inclusive growth', 'Andhra Pradesh government’s current schemes for inclusive growth and financial inclusion; PDS and DWCRA']],
+  ['m4-7', 'M', 'M-IV', '', 'Economy', 'Agricultural Development (India)', 37,
+    '7) Agricultural Development: Role of agriculture in economic development – Contribution of to GDP– Issues of finance, production, marketing',
+    ['Role of agriculture in economic development; contribution to GDP', 'Issues of finance, production and marketing', 'Green revolution and the turn to dryland, organic and sustainable farming', 'Minimum support prices; agricultural policy; the Swaminathan Commission; the Rainbow Revolution']],
+  ['m4-8', 'M', 'M-IV', '', 'Economy', 'Agricultural Development in Andhra Pradesh', 37,
+    '8) Agriculture Development in Andhra Pradesh: Contribution to SGDP-Regional disparities in irrigation and agricultural development',
+    ['Contribution to GSDP; regional disparities in irrigation and agriculture', 'Changing cropping pattern; horticulture, fisheries and dairying', 'Government schemes to promote agriculture in Andhra Pradesh']],
+  ['m4-9', 'M', 'M-IV', '', 'Economy', 'Industrial Development and Policy (India)', 37,
+    '9) Industrial Development and Policy : Role of industrial sector in economic development – Evolution of industrial policy since independence',
+    ['Role of industry; evolution of industrial policy since independence', 'The Industrial Policy, 1991 and its impact; the public sector’s contribution', 'Liberalization, privatization and globalization; disinvestment', 'Core industries; MSMEs and their policy; industrial sickness', 'Manufacturing policy; Make in India; Start-up; NIMZs, SEZs and industrial corridors']],
+  ['m4-10', 'M', 'M-IV', '', 'Economy', 'Industrial Policy of Andhra Pradesh', 38,
+    '10) Industrial Policy of the AP Government – Incentives to industries – Industrial corridors in and SEZs in Andhra Pradesh',
+    ['Incentives to industries', 'Industrial corridors and SEZs in Andhra Pradesh', 'Bottlenecks for industrial development; power projects']],
+  ['m4-11', 'M', 'M-IV', '', 'Economy', 'Infrastructure in India', 38,
+    '11) Infrastructure in India: Transport infrastructure : Ports, Roads, Airports, Railways – Major projects of transport infrastructure in India',
+    ['Transport: ports, roads, airports, railways; major projects', 'Communication; information technology, e-governance, Digital India', 'Energy and power; urban infrastructure, smart cities, solid waste management', 'Weather forecasting and disaster management', 'Finance, ownership, operation and maintenance; PPP; pricing of utilities; environmental impact']],
+  ['m4-12', 'M', 'M-IV', '', 'Economy', 'Infrastructure Development in Andhra Pradesh', 38,
+    '12) Infrastructure Development in Andhra Pradesh – Transport , Energy and ICT infrastructure – Bottlenecks – Government policy – Ongoing projects.',
+    ['Transport, energy and ICT infrastructure', 'Bottlenecks and government policy', 'Ongoing projects']],
+  // ---- Main Examination, Paper-V Science and Technology (pp. 38–39)
+  ['m5-1', 'M', 'M-V', '', 'Science & Technology', 'Science, Technology and Innovation for Better Human Life', 38,
+    '1. Integration of Science, Technology and Innovation for better human life; Science & Technology in everyday life; National Policies on proliferation of Science, Technology and Innovation',
+    ['Science and technology in everyday life; national policies on science, technology and innovation', 'India’s contribution; concerns and challenges; the role of science in nation building', 'Major scientific and R&D institutes in Andhra Pradesh and India', 'Achievements of Indian scientists; indigenous and new technologies']],
+  ['m5-2', 'M', 'M-V', '', 'Science & Technology', 'Information and Communication Technology', 38,
+    '2. Information and Communication Technology (ICT) - its importance, advantages and challenges; E-governance and India; Cyber Crime and policies to address security concerns.',
+    ['Importance, advantages and challenges of ICT', 'E-governance in India', 'Cyber crime and security policy', 'Government of India’s IT policy; IT development in Andhra Pradesh and India']],
+  ['m5-3', 'M', 'M-V', '', 'Science & Technology', 'The Indian Space Programme and DRDO', 38,
+    '3. Indian Space Programme - Past, Present and Future; Indian Space Research Organization (ISRO) — it\'s activities and achievements',
+    ['The Indian space programme, past, present and future; ISRO’s activities and achievements', 'Satellite programmes and uses of satellites in health, education, communication and weather forecasting', 'The Defence Research and Development Organization (DRDO)']],
+  ['m5-4', 'M', 'M-V', '', 'Science & Technology', 'Energy Needs, Resources and Nuclear Policy', 38,
+    '4. Indian\'s energy needs, efficiency and resources; Clean energy resources; Energy policy of India - Government Policies and Programmes.',
+    ['Energy needs, efficiency and resources; clean energy', 'Energy policy; conventional and non-conventional sources – thermal, solar, wind, bio and waste based, geothermal and tidal; energy security', 'India’s nuclear policy and programmes; international nuclear policies and India’s stand']],
+  ['m5-5', 'M', 'M-V', '', 'Science & Technology', 'Development and Environment; Natural Resources', 39,
+    '5. Development Vs. Nature / Environment; Depletion of Natural Resources- Metals, Minerals — Conservation Policy.',
+    ['Development versus environment; depletion of natural resources; conservation policy', 'Pollution and environmental degradation; sustainable development; climate change and climate justice', 'Environment impact assessment; natural disasters – cyclones, earthquakes, landslides, tsunamis – prediction and management', 'Health and environment; social forestry, afforestation and deforestation; mining in Andhra Pradesh and India', 'Natural resources: forest, fishery, fossil fuels, minerals, water (watershed management), land (soils and reclamation)']],
+  ['m5-6', 'M', 'M-V', '', 'Science & Technology', 'Pollution, Solid Waste and Environmental Legislation', 39,
+    '6. Environmental pollution and Solid waste management: Sources, impacts and control of - air pollution, water pollution and soil pollution.',
+    ['Air, water, soil and noise pollution: sources, impacts and control', 'Solid waste: types, impacts, recycling and reuse; soil and coastal erosion', 'Ozone depletion, acid rain, global warming', 'International law: Montreal and Kyoto protocols, UNFCCC, CITES, COP 21, the Sustainable Development Goals', 'Indian law: the Environment (Protection) Act 1986, Forest Conservation Act, Wildlife Protection Act, Biodiversity Bill; National Disaster Management Policy, 2016', 'White Revolution, Green Revolution and Green Pharmacy']],
+  ['m5-7', 'M', 'M-V', '', 'Science & Technology', 'Biotechnology and Nanotechnology', 39,
+    '7. Nature, Scope and Applications of Biotechnology and Nanotechnology in India; Ethical, Social and Legal concerns, Government policies',
+    ['Nature, scope and applications in India; ethical, social and legal concerns; government policies', 'Genetic engineering and its impact on human life', 'Biodiversity, fermentation, immuno-diagnosis techniques']],
+  ['m5-8', 'M', 'M-V', '', 'Science & Technology', 'Human Diseases, Genetic Engineering and Vaccines', 39,
+    '8. Human diseases-microbial infections. Common infections and preventive measures. Introduction to bacterial, viral, protozoal and fungal infections.',
+    ['Microbial infections and their prevention: diarrhoea, dysentery, cholera, tuberculosis, malaria, HIV, encephalitis, chikungunya, bird flu', 'Basic concepts of genetic engineering; tissue culture', 'Biotechnology in agriculture: bio-pesticides, bio-fertilizers, bio-fuels, GM crops; transgenic animals', 'Vaccines: immunity, vaccination, the production of modern vaccines (hepatitis vaccine)']],
+  ['m5-9', 'M', 'M-V', '', 'Science & Technology', 'Intellectual Property Rights; Promotion of Science', 39,
+    '9. Issues related to Intellectual Property Rights in the field of Science and Technology. Promotion of Science in AP and India.',
+    ['Intellectual property rights in science and technology', 'Promotion of science in Andhra Pradesh and India']]
+];
+
+const APG1_SYLLABUS_TOPICS: SyllabusTopic[] = APG1_SYLLABUS_ROWS.map(([slug, stage, paper, part, subject, topicName, page, excerpt, subtopics]) => ({
+  id: `syl-appsc1-${slug}`, subject, tier: stage === 'S' ? APG1_SCREENING : APG1_MAINS, topicName,
+  ...(subtopics.length ? { subtopics } : {}),
+  weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+  officialProvenance: apg1(`prov-syl-appsc1-${slug}`, page, `Annexure-II — ${stage === 'S' ? 'Screening Test' : 'Main Examination'}, ${APG1_PAPERS[paper].title.split(' — ')[0]}${part ? `, ${part}` : ''}`, excerpt)
+}));
+
+/** Annexure-II in its own layout: stage → paper → part (where the paper has parts) → item. */
+const APG1_SYLLABUS_TREE: ExamSyllabusNode[] = (['S', 'M'] as const).map((stage, si) => {
+  const rows = APG1_SYLLABUS_ROWS.filter(r => r[1] === stage);
+  const papers = Array.from(new Set(rows.map(r => r[2])));
+  return {
+    id: `tree-appsc1-${stage.toLowerCase()}`, levelLabel: 'Stage', order: si + 1, status: 'VERIFIED',
+    title: stage === 'S' ? 'SYLLABUS FOR GROUP - 1 SERVICES SCREENING TEST' : 'SYLLABUS FOR GROUP-I MAINS EXAMINATION',
+    scope: [{ kind: 'STAGE', label: stage === 'S' ? APG1_SCREENING : APG1_MAINS }],
+    provenance: stage === 'S' ? apg1P_scheme1 : apg1P_schemeMains,
+    children: papers.map((paper, pi) => {
+      const own = rows.filter(r => r[2] === paper);
+      const parts = Array.from(new Set(own.map(r => r[3])));
+      const item = (r: Apg1SyllabusRow, i: number): ExamSyllabusNode => ({
+        id: `tree-syl-appsc1-${r[0]}`, title: r[5], levelLabel: 'Item', order: i + 1, status: 'VERIFIED',
+        ...(r[8].length ? { note: r[8].join('; ') } : {}),
+        provenance: APG1_SYLLABUS_TOPICS.find(t => t.id === `syl-appsc1-${r[0]}`)!.officialProvenance
+      });
+      return {
+        id: `tree-appsc1-${paper.toLowerCase()}`, title: APG1_PAPERS[paper].title, levelLabel: 'Paper', order: pi + 1, status: 'VERIFIED',
+        scope: [{ kind: 'PAPER', label: APG1_PAPERS[paper].title.split(' — ')[0] }],
+        children: parts.length === 1 && !parts[0]
+          ? own.map(item)
+          : parts.map((part, ki) => ({
+            id: `tree-appsc1-${paper.toLowerCase()}-${ki + 1}`, title: part, levelLabel: 'Part', order: ki + 1, status: 'VERIFIED',
+            children: own.filter(r => r[3] === part).map(item)
+          }))
+      };
+    })
+  };
+});
+
+/** A paper of the Main examination as Annexure-II prints it: 180 minutes, 150 marks. */
+const apg1MainsPaper = (id: string, code: string, name: string, order: number, extra: Partial<ExamPatternNode> = {}): ExamPatternNode => ({
+  id, level: 'PAPER', levelLabel: 'Paper', code, name, order, status: 'VERIFIED', marks: 150, durationMinutes: 180,
+  questionType: 'Descriptive (conventional)', provenance: apg1P_schemeMains, ...extra
+});
+const APG1_LANGUAGE_QUALIFYING: ExamPatternNode['qualifying'] = {
+  asPrinted: 'Qualifying in nature; not counted for merit. Minimum in each paper: 40% for OC / Sports Persons / EWS, 35% for BC, 30% for SC / ST / PBD (para 12.8).',
+  qualifyingOnly: true, countsTowardsMerit: false
 };
 
 export const APPSC_GROUP1_EXAM: Exam = {
   id: 'exam-appsc-group1-2026',
   code: 'APPSC_GROUP1_2026',
   title: 'APPSC Group-I Services Examination 2026',
-  authorityName: 'Andhra Pradesh Public Service Commission (APPSC)',
-  officialDomain: 'https://psc.ap.gov.in',
+  authorityName: APG1_AUTHORITY,
+  officialDomain: APG1_SITE,
   crucialEligibilityDate: '2026-07-01',
   minimumQualification: 'GRADUATION',
   careerFields: ['State Public Services', 'Civil Services & Governance', 'Government Job'],
   categoryTag: 'STATE_PSC',
   isGoldenJourney: false,
   isDemoData: false,
-  overviewDescription: 'Premier State Civil Services examination in Andhra Pradesh recruiting for top administrative leadership posts including Deputy Collector, DSP, Commercial Tax Officer, and Regional Transport Officer.',
-  vacanciesTotal: '89 (Direct Recruitment)',
+  overviewDescription:
+    'The Andhra Pradesh Public Service Commission’s direct recruitment to Group-I Services under Notification No. 07/2026 (06/10/2026): 166 vacancies in 13 posts — Deputy Collector, Assistant Commissioner of State Tax, DSP (Civil) and DSP (Communications), District Educational Officer, Regional Transport Officer, District Tribal Welfare Officer, Deputy Registrar, Municipal Commissioner Grade-II, Assistant Treasury / Accounts Officer, District Employment Officer, Assistant Audit Officer and Divisional Development Officer. Selection is in three steps: an objective, OMR-based Screening Test of two papers (held on 24/01/2027) that only shortlists 50 candidates per vacancy; a descriptive Main examination of five papers counted for merit plus qualifying Telugu and English papers; and an interview. Applications are online at psc.ap.gov.in from 06/10/2026 to 27/10/2026, 11:59 PM, through the One Time Profile Registration (OTPR).',
+  vacanciesTotal: '166 (5 of them carried forward)',
+  factEvidence: { vacanciesTotal: apg1P_total, crucialEligibilityDate: apg1P_age },
+  ageRelaxations: [
+    { category: 'SC', years: 5, status: 'VERIFIED', provenance: apg1P_relax },
+    { category: 'ST', years: 5, status: 'VERIFIED', provenance: apg1P_relax },
+    { category: 'BCs (Backward Classes; OBC in your profile)', years: 5, status: 'VERIFIED', provenance: apg1P_relax },
+    { category: 'EWS', years: 5, status: 'VERIFIED', provenance: apg1P_relax },
+    { category: 'Persons with Benchmark Disabilities (PBD)', years: 10, status: 'VERIFIED', provenance: apg1P_relax },
+    { category: 'Ex-Servicemen; N.C.C. instructors', condition: '3 years plus the length of service in the armed forces / NCC, deducted from age; after the deduction the age may not exceed the post’s maximum (Explanation, p.9)', status: 'VERIFIED', provenance: apg1P_relaxEsm },
+    { category: 'Regular A.P. State Government employees', condition: 'The length of regular service under the State Government, up to five years, deducted from age (employees of corporations, municipalities etc. are not eligible)', status: 'VERIFIED', provenance: apg1P_relaxState },
+    { category: 'Retrenched temporary employees of the State Census Department', years: 3, condition: 'With a minimum service of 6 months', status: 'VERIFIED', provenance: apg1P_relaxCensus }
+  ],
   posts: [
-    {
-      id: 'post-appsc-deputy-collector',
-      postName: 'Deputy Collector (Civil Services Executive)',
-      department: 'Revenue Department (Andhra Pradesh)',
-      payLevel: 'Scale ₹61,960 - ₹1,51,990',
-      payScale: '₹61,960 – ₹1,51,990',
-      classification: 'Group A (Gazetted)',
-      minAge: 18,
-      maxAge: 42,
-      natureOfWork: 'District administration, revenue collection, law & order coordination, and disaster management.',
-      provenance: appscProvenance
-    },
-    {
-      id: 'post-appsc-dsp',
-      postName: 'Deputy Superintendent of Police (DSP - Category 2)',
-      department: 'Home (Police) Department',
-      payLevel: 'Scale ₹61,960 - ₹1,51,990',
-      payScale: '₹61,960 – ₹1,51,990',
-      classification: 'Group A (Gazetted)',
-      minAge: 21,
-      maxAge: 30,
-      physicalRequired: true,
-      physicalNote: 'Height: Male 167.6 cm, Female 152.5 cm. Chest: 86.3 cm with 5 cm expansion.',
-      natureOfWork: 'Sub-divisional police administration, crime supervision, and public security maintenance.',
-      provenance: appscProvenance
-    },
-    {
-      id: 'post-appsc-cto',
-      postName: 'Commercial Tax Officer (CTO)',
-      department: 'Commercial Taxes Department',
-      payLevel: 'Scale ₹61,960 - ₹1,51,990',
-      payScale: '₹61,960 – ₹1,51,990',
-      classification: 'Group A (Gazetted)',
-      minAge: 18,
-      maxAge: 42,
-      natureOfWork: 'State GST assessments, enforcement, tax audits, and revenue collection.',
-      provenance: appscProvenance
-    }
+    apg1Post('01', 'post-appsc1-deputy-collector', 'Deputy Collectors', 'A.P. Civil Service (Executive Branch)', '12', 18, 44, '61,960-1,51,370',
+      '01 Deputy Collectors in A.P.Civil Service (Executive Branch). 12 18-44 61,960- 1,51,370'),
+    apg1Post('02', 'post-appsc1-acst', 'Asst. Commissioner of State Tax', 'A.P. State Tax Service', '14', 18, 44, '61,960-1,51,370',
+      '02 Asst. Commissioner of State Tax in A.P.State Tax Service. 14 18-44 61,960- 1,51,370'),
+    apg1Post('03', 'post-appsc1-dsp-civil', 'Deputy Supdt. of Police (Civil) Cat-2', 'A.P. Police Service', '36 (03 carried forward)', 21, 30, '61,960-1,51,370',
+      '03 Deputy Supdt. of Police (Civil)Cat-2 in A.P. Police Service. 36 (03 CF) 21-30 61,960- 1,51,370',
+      { physicalRequired: true, colorBlindnessAllowed: true,
+        physicalNote: 'Men: at least 167.6 cm tall and 86.3 cm round the chest on full inspiration, with at least 5 cm expansion (ST: 164 cm and 83.8 cm). Women: at least 152.5 cm and 45.5 kg. Vision certified by a Medical Board without contact glasses; colour blindness is noted but is not a cause for rejection (para 3; Annexure-V). Not open to the PBD reservation (para 4.4).',
+        postConditions: ['Physical standards and a Medical Board’s vision certificate (para 3, pp. 4–5)', 'No reservation for Persons with Benchmark Disabilities (para 4.4)'] }),
+    apg1Post('04', 'post-appsc1-dsp-comms', 'DSP (Communications)', 'A.P. Police Service', '03', 18, 30, '61,960-1,51,370',
+      '04 DSP (Communications) in A.P. Police Service. 03 18-30 61,960- 1,51,370',
+      { physicalRequired: true, colorBlindnessAllowed: false,
+        specialQualification: 'B.E. / B.Tech. in Electronics and Communication Engineering, Electronics and Telecommunication Engineering or Radio Engineering (para 3, Post Code No. 04).',
+        physicalNote: 'Men: at least 167.6 cm tall and 86.3 cm round the chest on full inspiration, with at least 5 cm expansion (ST: 164 cm and 83.8 cm). Women: at least 152.5 cm and 45.5 kg. Vision standards without glasses; colour blindness, squint, knock knees, flat foot, varicose veins and similar conditions disqualify (para 3, p.5). A State-cadre post: no local reservation (para 6.2); not open to the PBD reservation (para 4.4).',
+        postConditions: ['State cadre — the rule of local reservation does not apply (para 6.2)', 'No reservation for Persons with Benchmark Disabilities (para 4.4)'],
+        ruleGroup: { id: 'rg-appsc1-dsp-comms', operator: 'AND', rules: [
+          { id: 'rule-appsc1-dsp-comms-deg', ruleType: 'DEGREE_REQUIRED', operator: '=', ruleValue: ['Bachelor Degree'], statedAs: 'B.E / B.Tech', category: 'GENERAL', provenance: apg1P_qual04 },
+          { id: 'rule-appsc1-dsp-comms-branch', ruleType: 'BRANCH_SPECIALIZATION', operator: 'IN', ruleValue: ['Electronics and Communication Engineering', 'Electronics and Telecommunication Engineering', 'Radio Engineering'], category: 'GENERAL', provenance: apg1P_qual04 }
+        ] } }),
+    apg1Post('05', 'post-appsc1-deo', 'District Educational Officer', 'A.P. Educational Service', '14', 18, 44, '61,960-1,51,370',
+      '05 District Educational Officer in A.P. Educational Service. 14 18-44 61,960- 1,51,370'),
+    apg1Post('06', 'post-appsc1-rto', 'Regional Transport Officers', 'A.P. Transport Service', '03', 18, 44, '57,100-1,47,760',
+      '06 Regional Transport Officers in A.P. Transport Service. 03 18-44 57,100- 1,47,760'),
+    apg1Post('07', 'post-appsc1-dtwo', 'District Tribal Welfare Officer', 'A.P. Tribal Welfare Service', '01', 18, 44, '57,100-1,47,760',
+      '07 District Tribal Welfare Officer in A.P. Tribal Welfare Service. 01 18-44 57,100- 1,47,760'),
+    apg1Post('08', 'post-appsc1-deputy-registrar', 'Deputy Registrar', 'A.P. Cooperative Service', '16 (01 carried forward)', 18, 44, '57,100-1,47,760',
+      '08 Deputy Registrar in A.P. Cooperative Service. 16 (01 CF) 18-44 57,100- 1,47,760'),
+    apg1Post('09', 'post-appsc1-municipal-commissioner', 'Municipal Commissioner Grade-II', 'A.P. Municipal Administration Service', '12', 18, 44, '54,060-1,40,540',
+      '09 Municipal Commissioner Grade-II in A.P. Municipal Administration Service. 12 18-44 54,060- 1,40,540'),
+    apg1Post('10', 'post-appsc1-ato', 'Asst. Treasury Officer/Asst. Accounts Officer', 'A.P. Treasury & Accounts Service', '02', 18, 44, '54,060-1,40,540',
+      '10 Asst. Treasury Officer/Asst. Accounts Officer in A.P. Treasury & Accounts Service. 02 18-44 54,060- 1,40,540'),
+    apg1Post('11', 'post-appsc1-deo-employment', 'District Employment Officer', 'A.P. Employment Exchange Service', '03 (01 carried forward)', 18, 44, '54,060-1,40,540',
+      '11 District Employment Officer in A.P Employment Exchange Service. 03 (01 CF) 18-44 54,060- 1,40,540'),
+    apg1Post('12', 'post-appsc1-aao', 'Assistant Audit Officer', 'A.P. State Audit Service', '15', 18, 44, '54,060-1,40,540',
+      '12 Assistant Audit Officer in A.P. State Audit Service. 15 18-44 54,060- 1,40,540',
+      { postConditions: ['Organised in zonal cadre (Zones I–VI): 95% local reservation by zone (para 6.4)'] }),
+    apg1Post('13', 'post-appsc1-ddo', 'Divisional Development Officer', 'A.P. Panchayat Raj Service', '35', 18, 44, '65,360-1,54,980',
+      '13 Divisional Development Officer in A.P. Panchayat Raj Service. 35 18-44 65,360- 1,54,980')
   ],
   dates: [
-    {
-      id: 'date-appsc1-notif',
-      type: 'NOTIFICATION',
-      label: 'Official Group-I Notification Release',
-      dateTimeStr: '2026-01-10 10:00:00',
-      timezone: 'Asia/Kolkata (IST)',
-      isTentative: false,
-      status: 'AVAILABLE',
-      provenance: appscProvenance
-    },
-    {
-      id: 'date-appsc1-app-close',
-      type: 'APPLICATION_CLOSE',
-      label: 'Application Window Closing Date',
-      dateTimeStr: '2026-02-28 23:59:00',
-      timezone: 'Asia/Kolkata (IST)',
-      isTentative: false,
-      status: 'AVAILABLE',
-      provenance: appscProvenance
-    },
-    {
-      id: 'date-appsc1-prelims',
-      type: 'EXAM_TIER1',
-      label: 'Preliminary Screening Test (Objective CBT)',
-      dateTimeStr: '2026-04-19 10:00:00',
-      timezone: 'Asia/Kolkata (IST)',
-      isTentative: false,
-      status: 'AVAILABLE',
-      provenance: appscProvenance
-    },
-    {
-      id: 'date-appsc1-mains',
-      type: 'EXAM_TIER2',
-      label: 'Main Written Examination (Descriptive)',
-      dateTimeStr: '2026-09-15 09:00:00',
-      timezone: 'Asia/Kolkata (IST)',
-      isTentative: true,
-      status: 'AVAILABLE',
-      provenance: appscProvenance
-    }
+    { id: 'date-appsc1-notif', type: 'NOTIFICATION', label: 'Notification No. 07/2026 published', dateTimeStr: '2026-10-06 00:00:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: apg1P_notice, displayWhen: '06/10/2026' },
+    { id: 'date-appsc1-app-open', type: 'APPLICATION_OPEN', label: 'Online applications open at psc.ap.gov.in', dateTimeStr: '2026-10-06 00:00:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: apg1P_window, displayWhen: '06/10/2026' },
+    { id: 'date-appsc1-app-close', type: 'APPLICATION_CLOSE', label: 'Last date to apply online (up to 11:59 PM)', dateTimeStr: '2026-10-27 23:59:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: apg1P_window },
+    { id: 'date-appsc1-corrections', type: 'CORRECTION_WINDOW', label: 'Application corrections, ₹100 each — up to 7 days from the last date (not name, fee or age relaxation)', dateTimeStr: '2026-11-03 23:59:00', timezone: 'Asia/Kolkata (IST)', isTentative: true, status: 'AVAILABLE', provenance: apg1P_correction, displayWhen: 'Up to 7 days from the last date of applications' },
+    { id: 'date-appsc1-screening', type: 'EXAM_TIER1', label: 'Screening Test (Objective Type, OMR) — Paper-I and Paper-II', dateTimeStr: '2027-01-24 00:00:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: apg1P_dates, stageLabel: APG1_SCREENING }
   ],
   globalRuleGroup: {
     id: 'rg-appsc1-global',
     operator: 'AND',
     rules: [
-      {
-        id: 'rule-appsc1-age-min',
-        ruleType: 'AGE_MIN',
-        operator: '>=',
-        ruleValue: 18,
-        category: 'GENERAL',
-        provenance: appscProvenance
-      },
-      {
-        id: 'rule-appsc1-age-max',
-        ruleType: 'AGE_MAX',
-        operator: '<=',
-        ruleValue: 42,
-        category: 'GENERAL',
-        provenance: appscProvenance
-      },
-      {
-        id: 'rule-appsc1-deg',
-        ruleType: 'DEGREE_REQUIRED',
-        operator: '=',
-        ruleValue: ['Bachelor Degree', 'Graduation', 'B.Tech', 'B.Sc', 'B.Com', 'B.A'],
-        category: 'GENERAL',
-        provenance: appscProvenance
-      }
+      { id: 'rule-appsc1-degree', ruleType: 'DEGREE_REQUIRED', operator: '=', ruleValue: ['Bachelor Degree'],
+        statedAs: 'A Bachelor’s Degree of a University in India established or incorporated by or under a Central, Provincial or State Act, or an institution recognised by the UGC, or an equivalent qualification (para 3; Post Code 04 needs a B.E./B.Tech. in a named branch)', category: 'GENERAL', provenance: apg1P_qualDegree },
+      { id: 'rule-appsc1-nationality', ruleType: 'NATIONALITY', operator: '=', ruleValue: 'Indian', category: 'GENERAL', provenance: apg1P_citizen }
     ]
   },
   stages: [
     {
-      id: 'stage-appsc1-pre',
+      id: 'stage-appsc1-screening',
       stageNumber: 1,
-      stageName: 'Preliminary Screening Test (Objective Type CBT)',
-      tier: 'TIER_1',
-      durationMinutes: 120,
-      totalQuestions: 120,
-      totalMarks: 120,
-      negativeMarking: '-0.33 marks per incorrect response (1/3rd penalty)',
-      mode: 'Online CBT / OMR based Screening Test',
-      qualifyingNature: 'Shortlisting for Mains examination (1:50 ratio).',
+      stageName: 'Screening Test (Objective Type) — Paper-I General Studies and Paper-II General Aptitude',
+      tier: APG1_SCREENING,
+      durationMinutes: 240,
+      totalQuestions: 240,
+      totalMarks: 240,
+      negativeMarking: 'Each wrong answer is penalised with 1/3rd of the marks prescribed for the question',
+      mode: 'Offline, OMR based, in the district centres; question paper in English with a Telugu translation (the English version is authentic)',
+      qualifyingNature: 'Shortlisting only: the Main examination admits 50 candidates per vacancy, irrespective of communities, from those who reach the minimum the Commission fixes. The selection is on the Main written examination and the Interview (paras 15.1, 15.3, 10.3). Both papers are compulsory.',
       sections: [
-        {
-          sectionName: 'General Studies & Mental Ability',
-          modules: ['Indian History & Geography', 'Polity & Constitution', 'Indian & AP Economy', 'Science & Technology', 'Mental Ability & Data Interpretation'],
-          questions: 120,
-          marks: 120,
-          durationMinutes: 120,
-          negativeMarking: '-0.33'
-        }
+        { sectionName: 'Paper-I General Studies · A. History and Culture', modules: ['Part A of Paper-I'], questions: 30, marks: 30, durationMinutes: 0, negativeMarking: '1/3 of the marks for the question' },
+        { sectionName: 'Paper-I General Studies · B. Constitution, Polity, Social Justice and International Relations', modules: ['Part B of Paper-I'], questions: 30, marks: 30, durationMinutes: 0, negativeMarking: '1/3 of the marks for the question' },
+        { sectionName: 'Paper-I General Studies · C. Indian and Andhra Pradesh Economy and Planning', modules: ['Part C of Paper-I'], questions: 30, marks: 30, durationMinutes: 0, negativeMarking: '1/3 of the marks for the question' },
+        { sectionName: 'Paper-I General Studies · D. Geography', modules: ['Part D of Paper-I'], questions: 30, marks: 30, durationMinutes: 0, negativeMarking: '1/3 of the marks for the question' },
+        { sectionName: 'Paper-II General Aptitude · A. General Mental Ability, Administrative and Psychological Abilities', modules: ['Part A of Paper-II'], questions: 60, marks: 60, durationMinutes: 0, negativeMarking: '1/3 of the marks for the question' },
+        { sectionName: 'Paper-II General Aptitude · B (i). Science and Technologies', modules: ['Part B (i) of Paper-II'], questions: 30, marks: 30, durationMinutes: 0, negativeMarking: '1/3 of the marks for the question' },
+        { sectionName: 'Paper-II General Aptitude · B (ii). Current events of Regional, National and International importance', modules: ['Part B (ii) of Paper-II'], questions: 30, marks: 30, durationMinutes: 0, negativeMarking: '1/3 of the marks for the question' }
       ],
-      provenance: appscProvenance
+      unstatedFields: ['sections.durationMinutes', 'sections.questions'],
+      provenance: apg1P_screening
     },
     {
       id: 'stage-appsc1-mains',
       stageNumber: 2,
-      stageName: 'Main Written Examination (Conventional Descriptive Papers)',
-      tier: 'TIER_2',
-      durationMinutes: 900,
-      totalQuestions: 35,
-      totalMarks: 750,
-      negativeMarking: 'No negative marking in descriptive papers',
-      mode: 'Offline Pen-and-Paper Descriptive Examination',
-      qualifyingNature: 'Marks counted for Interview shortlisting and final merit list.',
+      stageName: 'Main Written Examination (Descriptive Type) — Telugu and English (qualifying), Papers I–V',
+      tier: APG1_MAINS,
+      durationMinutes: 1260,
+      totalQuestions: 0,
+      totalMarks: 1050,
+      meritMarks: 750,
+      negativeMarking: 'None stated — the notice states a penalty only for the objective Screening Test',
+      mode: 'Descriptive (conventional), at Visakhapatnam, Vijayawada, Tirupati or Ananthapuramu; Papers I–V in English, Telugu or Urdu, one medium for all five',
+      qualifyingNature: 'Telugu and English are qualifying (at least 40% for OC / Sports Persons / EWS, 35% for BC, 30% for SC / ST / PBD in each) and not counted for merit; Papers I–V (750 marks) count. Every paper is compulsory. Candidates are called to the Interview at 1:2 of the vacancies (paras 12.8, 12.10, 15.4). The dates will be announced later.',
       sections: [
-        {
-          sectionName: 'General Essay, History & Geography, Polity & Law, Economy, Science & Technology',
-          modules: ['Paper I: General Essay', 'Paper II: History & AP Culture', 'Paper III: Indian Constitution & Governance', 'Paper IV: Economy & Development', 'Paper V: Science, Technology & Environment'],
-          questions: 35,
-          marks: 750,
-          durationMinutes: 900,
-          negativeMarking: 'None'
-        }
+        { sectionName: 'Paper in Telugu (Qualifying)', modules: ['S.S.C standard'], questions: 0, marks: 150, durationMinutes: 180, negativeMarking: 'None stated' },
+        { sectionName: 'Paper in English (Qualifying)', modules: ['S.S.C standard'], questions: 0, marks: 150, durationMinutes: 180, negativeMarking: 'None stated' },
+        { sectionName: 'Paper-I General Essay', modules: ['Three essays, one from each section, about 800 words each'], questions: 3, marks: 150, durationMinutes: 180, negativeMarking: 'None stated' },
+        { sectionName: 'Paper-II History, Culture and Geography of India and Andhra Pradesh', modules: ['A. History and Culture of India', 'B. History and Culture of Andhra Pradesh', 'C. Geography: India and Andhra Pradesh'], questions: 0, marks: 150, durationMinutes: 180, negativeMarking: 'None stated' },
+        { sectionName: 'Paper-III Polity, Constitution, Governance, Law and Ethics', modules: ['(A) Indian Polity and Constitution', '(B) Public Administration and Governance', '(C) Ethics in Public Service and knowledge of law'], questions: 0, marks: 150, durationMinutes: 180, negativeMarking: 'None stated' },
+        { sectionName: 'Paper-IV Economy and Development of India and Andhra Pradesh', modules: ['Twelve units'], questions: 0, marks: 150, durationMinutes: 180, negativeMarking: 'None stated' },
+        { sectionName: 'Paper-V Science, Technology and Environmental Issues', modules: ['Nine units'], questions: 0, marks: 150, durationMinutes: 180, negativeMarking: 'None stated' }
       ],
-      provenance: appscProvenance
-    }
-  ],
-  syllabus: [
-    {
-      id: 'syl-appsc1-gs',
-      subject: 'General Awareness',
-      tier: 'TIER_1',
-      topicName: 'Indian Polity, Governance & AP Reorganisation Act',
-      weightagePercentage: 35,
-      avgQuestions: 40,
-      isHighYield: true,
-      officialProvenance: appscProvenance
+      unstatedFields: ['totalQuestions', 'sections.questions'],
+      provenance: apg1P_schemeMains
     },
     {
-      id: 'syl-appsc1-econ',
-      subject: 'General Awareness',
-      tier: 'TIER_1',
-      topicName: 'Indian Economy & AP Socio-Economic Survey',
-      weightagePercentage: 35,
-      avgQuestions: 40,
-      isHighYield: true,
-      officialProvenance: appscProvenance
+      id: 'stage-appsc1-interview',
+      stageNumber: 3,
+      stageName: 'Interview (Personality Test)',
+      tier: 'INTERVIEW',
+      durationMinutes: 0,
+      totalQuestions: 0,
+      totalMarks: 75,
+      negativeMarking: 'Not applicable',
+      mode: 'Interview',
+      qualifyingNature: 'Called at 1:2 of the vacancies after the Main examination; its 75 marks and Papers I–V’s 750 make the 825 the selection is on (para 12.10; Annexure-II).',
+      sections: [{ sectionName: 'Interview (Personality Test)', modules: [], questions: 0, marks: 75, durationMinutes: 0, negativeMarking: 'Not applicable' }],
+      unstatedFields: ['durationMinutes', 'totalQuestions'],
+      provenance: apg1P_schemeTotal
+    }
+  ],
+  patternTree: [
+    {
+      id: 'appsc1-screening', level: 'STAGE', levelLabel: 'Stage', code: 'Screening Test', name: 'Screening Test — Written Examination (Objective Type)', order: 1, status: 'VERIFIED',
+      marks: 240, durationMinutes: 240, mode: 'Offline, OMR based', questionType: 'Objective type', languages: ['English', 'Telugu'],
+      negativeMarking: '1/3rd of the marks prescribed for the question, for each wrong answer', negativeFractionOfMarks: 1 / 3,
+      qualifying: { asPrinted: 'For shortlisting: 50 times the vacancies are admitted to the Main examination, irrespective of communities (para 15.1); the minimum qualifying marks are fixed by the Commission (para 10.3).', countsTowardsMerit: false },
+      note: 'Both papers are compulsory (para 15.2). The question paper is set in English and translated into Telugu; the English version is authentic (para 12.5).',
+      provenance: apg1P_screening,
+      children: [
+        { id: 'appsc1-s-p1', level: 'PAPER', levelLabel: 'Paper', code: 'Paper-I', name: 'Paper-I General Studies', order: 1, status: 'VERIFIED', questions: 120, marks: 120, durationMinutes: 120,
+          negativeFractionOfMarks: 1 / 3, provenance: apg1P_scheme1,
+          children: [
+            { id: 'appsc1-s-p1-a', level: 'PART', levelLabel: 'Part', code: 'A', name: 'History and Culture', order: 1, status: 'VERIFIED', marks: 30, provenance: apg1P_scheme1 },
+            { id: 'appsc1-s-p1-b', level: 'PART', levelLabel: 'Part', code: 'B', name: 'Constitution, Polity, Social Justice and International Relations', order: 2, status: 'VERIFIED', marks: 30, provenance: apg1P_scheme1 },
+            { id: 'appsc1-s-p1-c', level: 'PART', levelLabel: 'Part', code: 'C', name: 'Indian and Andhra Pradesh Economy and Planning', order: 3, status: 'VERIFIED', marks: 30, provenance: apg1P_scheme1 },
+            { id: 'appsc1-s-p1-d', level: 'PART', levelLabel: 'Part', code: 'D', name: 'Geography', order: 4, status: 'VERIFIED', marks: 30, provenance: apg1P_scheme1 }
+          ] },
+        { id: 'appsc1-s-p2', level: 'PAPER', levelLabel: 'Paper', code: 'Paper-II', name: 'Paper-II General Aptitude', order: 2, status: 'VERIFIED', questions: 120, marks: 120, durationMinutes: 120,
+          negativeFractionOfMarks: 1 / 3, provenance: apg1P_scheme2,
+          children: [
+            { id: 'appsc1-s-p2-a', level: 'PART', levelLabel: 'Part', code: 'A', name: 'General Mental Ability, Administrative and Psychological Abilities', order: 1, status: 'VERIFIED', marks: 60, provenance: apg1P_scheme2 },
+            { id: 'appsc1-s-p2-b1', level: 'PART', levelLabel: 'Part', code: 'B (i)', name: 'Science and Technologies', order: 2, status: 'VERIFIED', marks: 30, provenance: apg1P_scheme2 },
+            { id: 'appsc1-s-p2-b2', level: 'PART', levelLabel: 'Part', code: 'B (ii)', name: 'Current events of Regional, National and International importance', order: 3, status: 'VERIFIED', marks: 30, provenance: apg1P_scheme2 }
+          ] }
+      ]
     },
     {
-      id: 'syl-appsc1-reason',
-      subject: 'Reasoning & General Intelligence',
-      tier: 'TIER_1',
-      topicName: 'Mental Ability, Logical Reasoning & Data Interpretation',
-      weightagePercentage: 30,
-      avgQuestions: 40,
-      isHighYield: true,
-      officialProvenance: appscProvenance
-    }
-  ],
-  practiceQuestions: [
+      id: 'appsc1-mains', level: 'STAGE', levelLabel: 'Stage', code: 'Mains', name: 'Mains — Written Examination (Descriptive Type)', order: 2, status: 'VERIFIED',
+      marks: 1050, durationMinutes: 1260, mode: 'Descriptive (conventional); at Visakhapatnam, Vijayawada, Tirupati or Ananthapuramu',
+      languages: ['English', 'Telugu', 'Urdu'],
+      note: 'Papers I–V may be written in English, Telugu or Urdu, chosen online before the Main examination; all five in the one medium (para 12.9). Every paper is compulsory (para 15.4).',
+      provenance: apg1P_schemeMains,
+      children: [
+        apg1MainsPaper('appsc1-m-telugu', 'Telugu', 'Paper in Telugu — Qualifying Nature (S.S.C standard)', 1, { qualifying: APG1_LANGUAGE_QUALIFYING, languages: ['Telugu'], note: 'Thirteen question types, from an essay to synonyms and antonyms (Annexure-II, p.32).' }),
+        apg1MainsPaper('appsc1-m-english', 'English', 'Paper in English — Qualifying Nature (S.S.C standard)', 2, { qualifying: APG1_LANGUAGE_QUALIFYING, languages: ['English'], note: 'Ten question types, from an essay to translation (Annexure-II, p.31).' }),
+        apg1MainsPaper('appsc1-m-p1', 'Paper-I', 'General Essay — on contemporary themes and issues of regional, national and international importance', 3, { note: 'Three essays, one from each of three sections, about 800 words each (p.33).' }),
+        apg1MainsPaper('appsc1-m-p2', 'Paper-II', 'History, Culture and Geography of India and Andhra Pradesh', 4, { note: 'The scheme table prints “History and Cultural and Geography of India and Andhra Pradesh”; the syllabus heading (p.33) is used here.' }),
+        apg1MainsPaper('appsc1-m-p3', 'Paper-III', 'Polity, Constitution, Governance, Law and Ethics', 5),
+        apg1MainsPaper('appsc1-m-p4', 'Paper-IV', 'Economy and Development of India and Andhra Pradesh', 6),
+        apg1MainsPaper('appsc1-m-p5', 'Paper-V', 'Science, Technology and Environmental Issues', 7, { provenance: apg1P_schemeTotal })
+      ]
+    },
     {
-      id: 'q-appsc1-01',
-      topicId: 'syl-appsc1-gs',
-      subject: 'General Awareness',
-      topicName: 'Indian Polity & Governance',
-      tier: 'TIER_1',
-      shiftInfo: 'APPSC Group-I Prelims 2024',
-      questionType: 'OFFICIAL_PYQ',
-      questionText: 'Under which Article of the Constitution of India is the Finance Commission of India constituted?',
-      options: [
-        { id: 0, text: 'Article 280' },
-        { id: 1, text: 'Article 324' },
-        { id: 2, text: 'Article 312' },
-        { id: 3, text: 'Article 356' }
-      ],
-      correctOptionIndex: 0,
-      explanation: 'Article 280 provides for the constitution of the Finance Commission by the President of India every fifth year.',
-      difficulty: 'MEDIUM',
-      provenance: appscProvenance
+      id: 'appsc1-interview', level: 'STAGE', levelLabel: 'Stage', code: 'Interview', name: 'Interview (Personality Test)', order: 3, status: 'VERIFIED', marks: 75,
+      note: 'At 1:2 of the vacancies (para 12.10). Total marks for the selection: 825.', provenance: apg1P_interview
     }
   ],
+  admitCardEvents: [
+    {
+      id: 'exam-appsc-group1-2026-screening-hall-ticket', examId: 'exam-appsc-group1-2026', kind: 'ADMIT_CARD', officialLabel: 'Hall Ticket', sourceLabel: 'Hall Tickets for Screening and Main Examination',
+      status: 'VERIFIED', cycle: '2026', stageLabel: APG1_SCREENING, examDate: '2027-01-24', examDateNote: 'The Screening Test is on 24/01/2027 (para 1.7).',
+      releaseRuleNote: 'The notification gives no release date: Hall Tickets are hosted on the Commission’s website, with download instructions given there (para 1.9).',
+      portalUrl: APG1_SITE, portalNote: 'The Commission’s website, where the Hall Ticket is hosted. GovOS cannot see your login.',
+      instructions: [
+        'The entry time is printed on the Hall Ticket; late entry after it is not allowed, and biometric identification is taken before entry (Annexure-III, C.1).',
+        'If the Hall Ticket has no photo or a very small one, affix a passport-size photo attested by a Gazetted Officer and bring a similar photo for each paper (D.10).',
+        'A discrepancy in community, date of birth etc. on the Hall Ticket is reported at once to the Chief Superintendent, who corrects the Nominal Roll (D.1).'
+      ],
+      provenance: apg1P_hallTicket
+    },
+    {
+      id: 'exam-appsc-group1-2026-mains-hall-ticket', examId: 'exam-appsc-group1-2026', kind: 'ADMIT_CARD', officialLabel: 'Hall Ticket', sourceLabel: 'Hall Tickets for Screening and Main Examination',
+      status: 'VERIFIED', cycle: '2026', stageLabel: APG1_MAINS, examDateNote: 'The dates of the Main examination will be announced later (para 1.7).',
+      releaseRuleNote: 'The notification gives no release date: Hall Tickets are hosted on the Commission’s website (para 1.9).',
+      portalUrl: APG1_SITE, portalNote: 'The Commission’s website. GovOS cannot see your login.',
+      provenance: apg1P_hallTicket
+    }
+  ],
+  syllabus: APG1_SYLLABUS_TOPICS,
+  syllabusTree: APG1_SYLLABUS_TREE,
+  practiceQuestions: [],
   corrigendums: [],
-  cutoffsHistory: [
-    {
-      year: 2024,
-      category: 'General (UR)',
-      tier1Cutoff: 84.50,
-      provenance: appscProvenance
-    }
-  ],
+  cutoffsHistory: [],
   resources: [
     {
       id: 'res-appsc1-portal',
@@ -19414,59 +20343,519 @@ export const APPSC_GROUP1_EXAM: Exam = {
       description: 'Official portal for APPSC notifications, web notes, syllabus PDFs, and OTR registration.',
       recommendedFor: 'Essential primary portal for AP State Civil Services candidates.',
       officialTag: 'OFFICIAL STATE COMMISSION'
+    },
+    // ---- added APPSC_GROUP1_EXAM resources: linked, never stored; checked 2026-10-06
+    {
+      id: 'res-appsc-g1-01', title: 'Notification No. 07/2026, Dated 06/10/2026 - Direct Recruitment to Group-I Services (General/Limited Recruitment), incl. Annexure-II Scheme and Syllabus', subject: 'Official Gazette',
+      author: 'Andhra Pradesh Public Service Commission, Vijayawada', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'NOTIFICATION',
+      url: 'https://psc.ap.gov.in/Documents/NotificationDocuments/Group_I_07_2026.pdf', directPdfUrl: 'https://psc.ap.gov.in/Documents/NotificationDocuments/Group_I_07_2026.pdf',
+      description: 'Published openly by Andhra Pradesh Public Service Commission, Vijayawada. The notification for Group-I Services, 2026: applications from 06/10/2026 to 27/10/2026, the Screening Test on 24/01/2027 (para 1.7), and in Annexure-II the scheme of examination (p.26) and the syllabus of the Screening Test (pp.27–30) and the Main Examination (pp.31–39). GovOS has not yet re-read the Group-I record from it. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'The 2026 notification: dates, the scheme of examination and the syllabus.',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-01', 'Notification No. 07/2026, Dated 06/10/2026 - Direct Recruitment to Group-I Services (General/Limited Recruitment), incl. Annexure-II Scheme and Syllabus', 'https://psc.ap.gov.in/Documents/NotificationDocuments/Group_I_07_2026.pdf', 'Andhra Pradesh Public Service Commission, Vijayawada')
+    },
+    {
+      id: 'res-appsc-g1-03', title: 'Syllabus (Groups Syllabus page)', subject: 'Official Gazette',
+      author: 'Andhra Pradesh Public Service Commission', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'SYLLABUS',
+      url: 'https://portal-psc.ap.gov.in/HomePages/GroupsSyllabus.aspx',
+      description: 'Published openly by Andhra Pradesh Public Service Commission. Useful for: Syllabus listing. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Syllabus listing',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-03', 'Syllabus (Groups Syllabus page)', 'https://portal-psc.ap.gov.in/HomePages/GroupsSyllabus.aspx', 'Andhra Pradesh Public Service Commission')
+    },
+    {
+      id: 'res-appsc-g1-04', title: 'Old Question Papers (Question Papers of Various Notifications)', subject: 'Official Gazette',
+      author: 'Andhra Pradesh Public Service Commission', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'QUESTION_PAPER',
+      url: 'https://portal-psc.ap.gov.in/HomePages/QuestionPapersofVariousNotifications.aspx',
+      description: 'Published openly by Andhra Pradesh Public Service Commission. Useful for: Previous papers (Group-I Mains 27/2018, 28/2022, 12/2023; 2016 screening tests). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Previous papers (Group-I Mains 27/2018, 28/2022, 12/2023; 2016 screening tests)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-04', 'Old Question Papers (Question Papers of Various Notifications)', 'https://portal-psc.ap.gov.in/HomePages/QuestionPapersofVariousNotifications.aspx', 'Andhra Pradesh Public Service Commission')
+    },
+    {
+      id: 'res-appsc-g1-05', title: 'Keys & Objections', subject: 'Official Gazette',
+      author: 'Andhra Pradesh Public Service Commission', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'ANSWER_KEY',
+      url: 'https://portal-psc.ap.gov.in/HomePages/KeysToPapers.aspx',
+      description: 'Published openly by Andhra Pradesh Public Service Commission. Useful for: Initial/final keys, many in question-paper format. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Initial/final keys, many in question-paper format',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-05', 'Keys & Objections', 'https://portal-psc.ap.gov.in/HomePages/KeysToPapers.aspx', 'Andhra Pradesh Public Service Commission')
+    },
+    {
+      id: 'res-appsc-g1-06', title: 'Group-I Mains (Notification 12/2023), 2025 - SAE-104 General Essay, Paper I', subject: 'Previous Year Papers',
+      author: 'Andhra Pradesh Public Service Commission', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'QUESTION_PAPER',
+      url: 'https://psc.ap.gov.in/Documents/GroupI_QuesPapersMains_122023/PaperI_General_Essay_122023_05052025.pdf', directPdfUrl: 'https://psc.ap.gov.in/Documents/GroupI_QuesPapersMains_122023/PaperI_General_Essay_122023_05052025.pdf',
+      description: 'Published openly by Andhra Pradesh Public Service Commission. Useful for: Mains Paper-I General Essay. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Mains Paper-I General Essay',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-06', 'Group-I Mains (Notification 12/2023), 2025 - SAE-104 General Essay, Paper I', 'https://psc.ap.gov.in/Documents/GroupI_QuesPapersMains_122023/PaperI_General_Essay_122023_05052025.pdf', 'Andhra Pradesh Public Service Commission')
+    },
+    {
+      id: 'res-appsc-g1-07', title: 'Group-I Mains (Notification 12/2023) - Paper II History, Cultural and Geography of India and Andhra Pradesh', subject: 'Previous Year Papers',
+      author: 'Andhra Pradesh Public Service Commission', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'QUESTION_PAPER',
+      url: 'https://psc.ap.gov.in/Documents/GroupI_QuesPapersMains_122023/PaperII_History_Cultural_Geography_India_Andhra%20Pradesh_122023_06052025.pdf', directPdfUrl: 'https://psc.ap.gov.in/Documents/GroupI_QuesPapersMains_122023/PaperII_History_Cultural_Geography_India_Andhra%20Pradesh_122023_06052025.pdf',
+      description: 'Published openly by Andhra Pradesh Public Service Commission. Useful for: Mains Paper-II. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Mains Paper-II',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-07', 'Group-I Mains (Notification 12/2023) - Paper II History, Cultural and Geography of India and Andhra Pradesh', 'https://psc.ap.gov.in/Documents/GroupI_QuesPapersMains_122023/PaperII_History_Cultural_Geography_India_Andhra%20Pradesh_122023_06052025.pdf', 'Andhra Pradesh Public Service Commission')
+    },
+    {
+      id: 'res-appsc-g1-08', title: 'Group-I Mains (Notification 12/2023) - Paper III Polity, Constitution, Governance, Law and Ethics', subject: 'Previous Year Papers',
+      author: 'Andhra Pradesh Public Service Commission', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'QUESTION_PAPER',
+      url: 'https://psc.ap.gov.in/Documents/GroupI_QuesPapersMains_122023/PaperIIIPolityConstitutionGovernanceLawandEthics_122023_07052025.pdf', directPdfUrl: 'https://psc.ap.gov.in/Documents/GroupI_QuesPapersMains_122023/PaperIIIPolityConstitutionGovernanceLawandEthics_122023_07052025.pdf',
+      description: 'Published openly by Andhra Pradesh Public Service Commission. Useful for: Mains Paper-III. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Mains Paper-III',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-08', 'Group-I Mains (Notification 12/2023) - Paper III Polity, Constitution, Governance, Law and Ethics', 'https://psc.ap.gov.in/Documents/GroupI_QuesPapersMains_122023/PaperIIIPolityConstitutionGovernanceLawandEthics_122023_07052025.pdf', 'Andhra Pradesh Public Service Commission')
+    },
+    {
+      id: 'res-appsc-g1-09', title: 'Group-I Mains (Notification 12/2023) - Paper IV Economy and Development of India and Andhra Pradesh', subject: 'Previous Year Papers',
+      author: 'Andhra Pradesh Public Service Commission', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'QUESTION_PAPER',
+      url: 'https://psc.ap.gov.in/Documents/GroupI_QuesPapersMains_122023/PaperIVEconomyandDevelopmentofIndiaandAndhraPradesh_122023_08052025.pdf', directPdfUrl: 'https://psc.ap.gov.in/Documents/GroupI_QuesPapersMains_122023/PaperIVEconomyandDevelopmentofIndiaandAndhraPradesh_122023_08052025.pdf',
+      description: 'Published openly by Andhra Pradesh Public Service Commission. Useful for: Mains Paper-IV. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Mains Paper-IV',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-09', 'Group-I Mains (Notification 12/2023) - Paper IV Economy and Development of India and Andhra Pradesh', 'https://psc.ap.gov.in/Documents/GroupI_QuesPapersMains_122023/PaperIVEconomyandDevelopmentofIndiaandAndhraPradesh_122023_08052025.pdf', 'Andhra Pradesh Public Service Commission')
+    },
+    {
+      id: 'res-appsc-g1-10', title: 'Group-I Mains (Notification 12/2023) - Paper V Science, Technology and Environmental Issues', subject: 'Previous Year Papers',
+      author: 'Andhra Pradesh Public Service Commission', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'QUESTION_PAPER',
+      url: 'https://psc.ap.gov.in/Documents/GroupI_QuesPapersMains_122023/PaperVScienceTechnologyandEnvironmentalIssues_122023_09052025.pdf', directPdfUrl: 'https://psc.ap.gov.in/Documents/GroupI_QuesPapersMains_122023/PaperVScienceTechnologyandEnvironmentalIssues_122023_09052025.pdf',
+      description: 'Published openly by Andhra Pradesh Public Service Commission. Useful for: Mains Paper-V. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Mains Paper-V',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-10', 'Group-I Mains (Notification 12/2023) - Paper V Science, Technology and Environmental Issues', 'https://psc.ap.gov.in/Documents/GroupI_QuesPapersMains_122023/PaperVScienceTechnologyandEnvironmentalIssues_122023_09052025.pdf', 'Andhra Pradesh Public Service Commission')
+    },
+    {
+      id: 'res-appsc-g1-11', title: 'Group-I Services Notification No.12/2023 Screening test - Final Keys (12/04/2024): Paper-I (General Studies, GS/1G/100)', subject: 'Official Gazette',
+      author: 'Andhra Pradesh Public Service Commission', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'ANSWER_KEY',
+      url: 'https://psc.ap.gov.in/Documents/KEYS/122023/FinalKeys/Group-I%20Paper-I%20Final%20KEY_122023_13042024.pdf', directPdfUrl: 'https://psc.ap.gov.in/Documents/KEYS/122023/FinalKeys/Group-I%20Paper-I%20Final%20KEY_122023_13042024.pdf',
+      description: 'Published openly by Andhra Pradesh Public Service Commission. Useful for: Screening Paper-I General Studies. GovOS links to the publisher’s own copy and stores nothing. A large scanned file (64 pp., 20.8 MB.) with no text layer: it opens slowly on a mobile connection and cannot be searched.',
+      recommendedFor: 'Screening Paper-I General Studies',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-11', 'Group-I Services Notification No.12/2023 Screening test - Final Keys (12/04/2024): Paper-I (General Studies, GS/1G/100)', 'https://psc.ap.gov.in/Documents/KEYS/122023/FinalKeys/Group-I%20Paper-I%20Final%20KEY_122023_13042024.pdf', 'Andhra Pradesh Public Service Commission')
+    },
+    {
+      id: 'res-appsc-g1-12', title: 'Group-I Services Notification No.12/2023 Screening test - Final Keys (12/04/2024): Paper-II (General Aptitude)', subject: 'Official Gazette',
+      author: 'Andhra Pradesh Public Service Commission', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'ANSWER_KEY',
+      url: 'https://psc.ap.gov.in/Documents/KEYS/122023/FinalKeys/Group-I%20Paper-II%20Final%20Key_122023_13042024.pdf', directPdfUrl: 'https://psc.ap.gov.in/Documents/KEYS/122023/FinalKeys/Group-I%20Paper-II%20Final%20Key_122023_13042024.pdf',
+      description: 'Published openly by Andhra Pradesh Public Service Commission. Useful for: Screening Paper-II General Aptitude. GovOS links to the publisher’s own copy and stores nothing. A large scanned file (52 pp., 49.3 MB.) with no text layer: it opens slowly on a mobile connection and cannot be searched.',
+      recommendedFor: 'Screening Paper-II General Aptitude',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-12', 'Group-I Services Notification No.12/2023 Screening test - Final Keys (12/04/2024): Paper-II (General Aptitude)', 'https://psc.ap.gov.in/Documents/KEYS/122023/FinalKeys/Group-I%20Paper-II%20Final%20Key_122023_13042024.pdf', 'Andhra Pradesh Public Service Commission')
+    },
+    {
+      id: 'res-appsc-g1-17', title: 'Socio Economic Survey (editions 2017-18 to 2024-25)', subject: 'Economy',
+      author: 'Finance Department, Government of Andhra Pradesh', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://apfinance.gov.in/socio.html',
+      description: 'Published openly by Finance Department, Government of Andhra Pradesh. Useful for: AP economy. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'AP economy',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-17', 'Socio Economic Survey (editions 2017-18 to 2024-25)', 'https://apfinance.gov.in/socio.html', 'Finance Department, Government of Andhra Pradesh')
+    },
+    {
+      id: 'res-appsc-g1-19', title: 'Previous Budget Volumes', subject: 'Economy',
+      author: 'Finance Department, Government of Andhra Pradesh', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://apfinance.gov.in/budget.html',
+      description: 'Published openly by Finance Department, Government of Andhra Pradesh. Useful for: AP economy / public finance. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'AP economy / public finance',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-19', 'Previous Budget Volumes', 'https://apfinance.gov.in/budget.html', 'Finance Department, Government of Andhra Pradesh')
+    },
+    {
+      id: 'res-appsc-g1-23', title: 'The Constitution of India (official full text, PDF)', subject: 'Polity & Governance',
+      author: 'Legislative Department, Ministry of Law & Justice, Government of India', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'STUDY_MATERIAL',
+      url: 'https://www.legislative.gov.in/static/uploads/2025/07/c9fe9c9b6840524844316f74bb1c556c.pdf', directPdfUrl: 'https://www.legislative.gov.in/static/uploads/2025/07/c9fe9c9b6840524844316f74bb1c556c.pdf',
+      description: 'Published openly by Legislative Department, Ministry of Law & Justice, Government of India. Useful for: G-I Prelims Paper-I B / Mains Paper-III; G-II Mains Paper-I Section B. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'G-I Prelims Paper-I B / Mains Paper-III; G-II Mains Paper-I Section B',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-23', 'The Constitution of India (official full text, PDF)', 'https://www.legislative.gov.in/static/uploads/2025/07/c9fe9c9b6840524844316f74bb1c556c.pdf', 'Legislative Department, Ministry of Law & Justice, Government of India')
+    },
+    {
+      id: 'res-appsc-g1-24', title: 'The Andhra Pradesh Reorganisation Act, 2014 (No. 6 of 2014)', subject: 'Polity & Governance',
+      author: 'Ministry of Home Affairs, Government of India', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'STUDY_MATERIAL',
+      url: 'https://www.mha.gov.in/sites/default/files/2022-08/APRegACT2014_0%5B1%5D.pdf', directPdfUrl: 'https://www.mha.gov.in/sites/default/files/2022-08/APRegACT2014_0%5B1%5D.pdf',
+      description: 'Published openly by Ministry of Home Affairs, Government of India. Useful for: G-I Mains Papers II-IV; G-II Mains Paper-I Section A and Paper-II Section A. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'G-I Mains Papers II-IV; G-II Mains Paper-I Section A and Paper-II Section A',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-24', 'The Andhra Pradesh Reorganisation Act, 2014 (No. 6 of 2014)', 'https://www.mha.gov.in/sites/default/files/2022-08/APRegACT2014_0%5B1%5D.pdf', 'Ministry of Home Affairs, Government of India')
+    },
+    {
+      id: 'res-appsc-g1-25', title: 'NCERT-DIKSHA (NCERT textbooks)', subject: 'Foundation Textbooks & Open Courses',
+      author: 'NCERT, on DIKSHA (Ministry of Education, Government of India)', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://diksha.gov.in/ncert/',
+      description: 'Published openly by NCERT, on DIKSHA (Ministry of Education, Government of India). Useful for: History, Geography, Polity, Economy, Science foundations. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'History, Geography, Polity, Economy, Science foundations',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-25', 'NCERT-DIKSHA (NCERT textbooks)', 'https://diksha.gov.in/ncert/', 'NCERT, on DIKSHA (Ministry of Education, Government of India)')
+    },
+    {
+      id: 'res-appsc-g1-26', title: 'Economic Survey', subject: 'Economy',
+      author: 'Ministry of Finance, Government of India', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.indiabudget.gov.in/economicsurvey/',
+      description: 'Published openly by Ministry of Finance, Government of India. Useful for: Indian economy (G-I Prelims C / Mains Paper-IV; G-II Mains Paper-II Section A). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Indian economy (G-I Prelims C / Mains Paper-IV; G-II Mains Paper-II Section A)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-26', 'Economic Survey', 'https://www.indiabudget.gov.in/economicsurvey/', 'Ministry of Finance, Government of India')
+    },
+    {
+      id: 'res-appsc-g1-27', title: 'Press Information Bureau (English)', subject: 'Current Affairs & Governance',
+      author: 'Press Information Bureau, Government of India', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.pib.gov.in/indexd.aspx?reg=3&lang=1',
+      description: 'Published openly by Press Information Bureau, Government of India. Useful for: Current affairs (G-I Paper-II B(ii); G-II Current Affairs). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Current affairs (G-I Paper-II B(ii); G-II Current Affairs)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-27', 'Press Information Bureau (English)', 'https://www.pib.gov.in/indexd.aspx?reg=3&lang=1', 'Press Information Bureau, Government of India')
+    },
+    {
+      id: 'res-appsc-g1-28', title: 'Indian Space Research Organisation', subject: 'Science & Technology',
+      author: 'ISRO, Department of Space, Government of India', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.isro.gov.in/',
+      description: 'Published openly by ISRO, Department of Space, Government of India. Useful for: Science & Technology (space). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Science & Technology (space)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-28', 'Indian Space Research Organisation', 'https://www.isro.gov.in/', 'ISRO, Department of Space, Government of India')
+    },
+    {
+      id: 'res-appsc-g1-29', title: 'History (315) - Senior Secondary course material', subject: 'History & Culture',
+      author: 'National Institute of Open Schooling (NIOS), Ministry of Education', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.nios.ac.in/online-course-material/sr-secondary-courses/History-(315).aspx',
+      description: 'Published openly by National Institute of Open Schooling (NIOS), Ministry of Education. Useful for: Indian History. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Indian History',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-29', 'History (315) - Senior Secondary course material', 'https://www.nios.ac.in/online-course-material/sr-secondary-courses/History-(315).aspx', 'National Institute of Open Schooling (NIOS), Ministry of Education')
+    },
+    {
+      id: 'res-appsc-g1-30', title: 'Geography (316)-New (effective from session 2023-24)', subject: 'Geography & Environment',
+      author: 'National Institute of Open Schooling (NIOS), Ministry of Education', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.nios.ac.in/online-course-material/sr-secondary-courses/geography-(316)-new.aspx',
+      description: 'Published openly by National Institute of Open Schooling (NIOS), Ministry of Education. Useful for: Geography. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Geography',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-30', 'Geography (316)-New (effective from session 2023-24)', 'https://www.nios.ac.in/online-course-material/sr-secondary-courses/geography-(316)-new.aspx', 'National Institute of Open Schooling (NIOS), Ministry of Education')
+    },
+    {
+      id: 'res-appsc-g1-31', title: 'Political Science (317)', subject: 'Polity & Governance',
+      author: 'National Institute of Open Schooling (NIOS), Ministry of Education', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.nios.ac.in/online-course-material/sr-secondary-courses/political-science-(317).aspx',
+      description: 'Published openly by National Institute of Open Schooling (NIOS), Ministry of Education. Useful for: Constitution / Polity. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Constitution / Polity',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-31', 'Political Science (317)', 'https://www.nios.ac.in/online-course-material/sr-secondary-courses/political-science-(317).aspx', 'National Institute of Open Schooling (NIOS), Ministry of Education')
+    },
+    {
+      id: 'res-appsc-g1-32', title: 'Economics (318)', subject: 'Economy',
+      author: 'National Institute of Open Schooling (NIOS), Ministry of Education', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.nios.ac.in/online-course-material/sr-secondary-courses/Economics-(318).aspx',
+      description: 'Published openly by National Institute of Open Schooling (NIOS), Ministry of Education. Useful for: Economy. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Economy',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-32', 'Economics (318)', 'https://www.nios.ac.in/online-course-material/sr-secondary-courses/Economics-(318).aspx', 'National Institute of Open Schooling (NIOS), Ministry of Education')
+    },
+    {
+      id: 'res-appsc-g1-34', title: 'Enviornmental Science (333)', subject: 'Science & Technology',
+      author: 'National Institute of Open Schooling (NIOS), Ministry of Education', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.nios.ac.in/online-course-material/sr-secondary-courses/enviornmental-science-(333).aspx',
+      description: 'Published openly by National Institute of Open Schooling (NIOS), Ministry of Education. Useful for: Mains Paper-V Environmental Issues. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Mains Paper-V Environmental Issues',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g1-34', 'Enviornmental Science (333)', 'https://www.nios.ac.in/online-course-material/sr-secondary-courses/enviornmental-science-(333).aspx', 'National Institute of Open Schooling (NIOS), Ministry of Education')
+    },
+    {
+      id: 'res-appsc-g1-35', title: 'Andhra Pradesh Budget Analysis 2026-27', subject: 'Economy',
+      author: 'PRS Legislative Research', type: 'ONLINE_TOOL', resourceFormat: 'ONLINE_TOOL', role: 'STUDY_MATERIAL',
+      url: 'https://prsindia.org/budgets/states/andhra-pradesh-budget-analysis-2026-27',
+      description: 'Published openly by PRS Legislative Research. Useful for: AP economy / public finance. GovOS links to the publisher’s own copy and stores nothing. It is not a government publication.',
+      recommendedFor: 'AP economy / public finance',
+      officialTag: 'OPEN RESOURCE (TRUSTED, NOT A GOVERNMENT BODY)',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: { ...openResource('prov-res-appsc-g1-35', 'Andhra Pradesh Budget Analysis 2026-27', 'https://prsindia.org/budgets/states/andhra-pradesh-budget-analysis-2026-27', 'PRS Legislative Research'), taxonomyType: 'RECOMMENDATION', verificationLevel: 'UNDER_VERIFICATION' }
+    },
+    {
+      id: 'res-appsc-g1-36', title: 'Adda247 Telugu — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'Adda247 Telugu (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCqqDD-1K6WTjS16Y8pdY1_Q', youtubeUrl: 'https://www.youtube.com/channel/UCqqDD-1K6WTjS16Y8pdY1_Q',
+      description: 'A free YouTube channel candidates widely follow (1.22M subscribers as read on its own page on 2026-10-06). Useful for: All GS; APPSC Group-1 Mains topics; GS & Mental Ability batches. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with APPSC’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for All GS; APPSC Group-1 Mains topics; GS & Mental Ability batches.',
+      officialTag: 'FREE ON YOUTUBE · 1.22M SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-appsc-g1-36', 'Adda247 Telugu', 'https://www.youtube.com/channel/UCqqDD-1K6WTjS16Y8pdY1_Q', '1.22M', 'APPSC')
+    },
+    {
+      id: 'res-appsc-g1-37', title: 'RK Tutorial - RK sir — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'RK Tutorial - RK sir (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCAvSGKYCrmBxW4l9N9ZRhzA', youtubeUrl: 'https://www.youtube.com/channel/UCAvSGKYCrmBxW4l9N9ZRhzA',
+      description: 'A free YouTube channel candidates widely follow (696K subscribers as read on its own page on 2026-10-06). Useful for: GS MCQs; AP Group-2 model papers. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with APPSC’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for GS MCQs; AP Group-2 model papers.',
+      officialTag: 'FREE ON YOUTUBE · 696K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-appsc-g1-37', 'RK Tutorial - RK sir', 'https://www.youtube.com/channel/UCAvSGKYCrmBxW4l9N9ZRhzA', '696K', 'APPSC')
+    },
+    {
+      id: 'res-appsc-g1-38', title: 'HAREESH THE BEST ACADEMY — free YouTube lessons', subject: 'Current Affairs & Governance',
+      author: 'HAREESH THE BEST ACADEMY (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCvMSKsiXCDfjX41dUNn92yQ', youtubeUrl: 'https://www.youtube.com/channel/UCvMSKsiXCDfjX41dUNn92yQ',
+      description: 'A free YouTube channel candidates widely follow (684K subscribers as read on its own page on 2026-10-06). Useful for: Current affairs (daily, Telugu). Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with APPSC’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Current affairs (daily, Telugu).',
+      officialTag: 'FREE ON YOUTUBE · 684K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-appsc-g1-38', 'HAREESH THE BEST ACADEMY', 'https://www.youtube.com/channel/UCvMSKsiXCDfjX41dUNn92yQ', '684K', 'APPSC')
+    },
+    {
+      id: 'res-appsc-g1-40', title: 'Shine India Academy - Saeed Sir — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'Shine India Academy - Saeed Sir (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCIAwmOj2qC6qV0MkBV-XBsQ', youtubeUrl: 'https://www.youtube.com/channel/UCIAwmOj2qC6qV0MkBV-XBsQ',
+      description: 'A free YouTube channel candidates widely follow (392K subscribers as read on its own page on 2026-10-06). Useful for: History; Telugu current affairs. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with APPSC’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for History; Telugu current affairs.',
+      officialTag: 'FREE ON YOUTUBE · 392K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-appsc-g1-40', 'Shine India Academy - Saeed Sir', 'https://www.youtube.com/channel/UCIAwmOj2qC6qV0MkBV-XBsQ', '392K', 'APPSC')
+    },
+    {
+      id: 'res-appsc-g1-41', title: 'Mana La Excellence — free YouTube lessons', subject: 'History & Culture',
+      author: 'Mana La Excellence (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCAWrbro8XL4w97n8bolXckQ', youtubeUrl: 'https://www.youtube.com/channel/UCAWrbro8XL4w97n8bolXckQ',
+      description: 'A free YouTube channel candidates widely follow (388K subscribers as read on its own page on 2026-10-06). Useful for: APPSC Group-1 AP History / AP-specific modules (Telugu). Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with APPSC’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for APPSC Group-1 AP History / AP-specific modules (Telugu).',
+      officialTag: 'FREE ON YOUTUBE · 388K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-appsc-g1-41', 'Mana La Excellence', 'https://www.youtube.com/channel/UCAWrbro8XL4w97n8bolXckQ', '388K', 'APPSC')
+    },
+    {
+      id: 'res-appsc-g1-42', title: 'SVR ACADEMY — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'SVR ACADEMY (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCI20M_CVSwi26xF1X6q4OFA', youtubeUrl: 'https://www.youtube.com/channel/UCI20M_CVSwi26xF1X6q4OFA',
+      description: 'A free YouTube channel candidates widely follow (324K subscribers as read on its own page on 2026-10-06). Useful for: Group-2 Indian Society; Group 1/2 preparation. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with APPSC’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Group-2 Indian Society; Group 1/2 preparation.',
+      officialTag: 'FREE ON YOUTUBE · 324K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-appsc-g1-42', 'SVR ACADEMY', 'https://www.youtube.com/channel/UCI20M_CVSwi26xF1X6q4OFA', '324K', 'APPSC')
+    },
+    {
+      id: 'res-appsc-g1-43', title: 'Swayam Krushi — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'Swayam Krushi (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCFUU6ypeFNfvtasfqg05AHw', youtubeUrl: 'https://www.youtube.com/channel/UCFUU6ypeFNfvtasfqg05AHw',
+      description: 'A free YouTube channel candidates widely follow (219K subscribers as read on its own page on 2026-10-06). Useful for: APPSC Group-1 Mains syllabus explanation: AP History, Polity & Governance, Ethics, Laws, Economy. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with APPSC’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for APPSC Group-1 Mains syllabus explanation: AP History, Polity & Governance, Ethics, Laws, Economy.',
+      officialTag: 'FREE ON YOUTUBE · 219K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-appsc-g1-43', 'Swayam Krushi', 'https://www.youtube.com/channel/UCFUU6ypeFNfvtasfqg05AHw', '219K', 'APPSC')
     }
   ],
   faqs: [
-    {
-      id: 'faq-appsc1-01',
-      question: 'What is the upper age limit for General category in APPSC Group-I?',
-      answer: 'The upper age limit is 42 years for General category candidates (except for DSP which has a maximum age of 30 years). Age relaxations apply for reserved categories.',
-      officialClause: 'Para 5, Age Concessions',
-      provenance: appscProvenance
-    }
+    { id: 'faq-appsc1-01', question: 'How many vacancies are there, and in which posts?',
+      answer: '166 vacancies in 13 posts, 5 of them carried forward from earlier recruitments: Deputy Collector 12, Assistant Commissioner of State Tax 14, DSP (Civil) Cat-2 36, DSP (Communications) 3, District Educational Officer 14, Regional Transport Officer 3, District Tribal Welfare Officer 1, Deputy Registrar 16, Municipal Commissioner Grade-II 12, Assistant Treasury / Accounts Officer 2, District Employment Officer 3, Assistant Audit Officer 15, Divisional Development Officer 35. The number may change, and vacancies can be added only before the Screening Test, by an addendum.',
+      officialClause: 'Para 1.2 and its Note, pp.1–2', provenance: apg1P_total },
+    { id: 'faq-appsc1-02', question: 'What is the age limit for APPSC Group-I?',
+      answer: '18 to 44 years as on 01/07/2026 for every post except DSP (Civil) Cat-2 (21 to 30) and DSP (Communications) (18 to 30). The upper limit is relaxed by 5 years for SC, ST, BC and EWS, 10 years for Persons with Benchmark Disabilities, and by service for ex-servicemen, NCC instructors and regular A.P. State Government employees (up to 5 years).',
+      officialClause: 'Para 5.1–5.2, p.8', provenance: apg1P_age },
+    { id: 'faq-appsc1-03', question: 'What qualification do I need?',
+      answer: 'A Bachelor’s degree of a recognised university in India, or an equivalent qualification, held on the date of the notification. DSP (Communications) needs a B.E. / B.Tech. in Electronics and Communication, Electronics and Telecommunication, or Radio Engineering. A degree through an open university or distance education counts only if the Distance Education Council recognises it.',
+      officialClause: 'Para 3, pp.3–4; para 13.8, p.17', provenance: apg1P_qualDate },
+    { id: 'faq-appsc1-04', question: 'What is the application fee?',
+      answer: '₹250 application processing fee plus ₹120 examination fee, paid online by net banking, credit card or debit card. SC, ST, BC, PBD and ex-servicemen candidates, families with an A.P. white card, and unemployed youth (who submit a declaration) are exempted from the ₹120 examination fee; everyone pays the ₹250 processing fee. Candidates from other States pay both and get no exemption (except PBD and ex-servicemen). The fee is not refunded.',
+      officialClause: 'Para 9.1–9.3, pp.12–13', provenance: apg1P_fee },
+    { id: 'faq-appsc1-05', question: 'What is the Screening Test pattern, and is there negative marking?',
+      answer: 'Two objective papers on OMR sheets, both compulsory: Paper-I General Studies (120 questions, 120 marks, 120 minutes; History and Culture, Polity, Economy, Geography at 30 marks each) and Paper-II General Aptitude (120 questions, 120 marks, 120 minutes; Mental Ability 60, Science and Technology 30, Current Events 30). Each wrong answer costs 1/3 of the marks for the question.',
+      officialClause: 'Annexure-II, p.26; para 10.2, p.13', provenance: apg1P_scheme1 },
+    { id: 'faq-appsc1-06', question: 'Do my Screening Test marks count for the final selection?',
+      answer: 'No. The Screening Test only shortlists — 50 candidates per vacancy, irrespective of communities, from those who reach the minimum the Commission fixes. The selection is on the Main written examination (Papers I–V, 750 marks) and the Interview (75 marks).',
+      officialClause: 'Para 15.1 and 15.3, p.18; para 10.3, p.13', provenance: apg1P_screening },
+    { id: 'faq-appsc1-07', question: 'Are the Telugu and English papers in the Mains counted?',
+      answer: 'They are qualifying only and not counted for merit, but you must reach the minimum in each: 40% for OC, Sports Persons and EWS, 35% for BC, 30% for SC, ST and PBD. Both are of S.S.C standard, 150 marks and 3 hours each.',
+      officialClause: 'Para 12.8, p.15; Annexure-II, pp.26, 31–32', provenance: apg1P_languages },
+    { id: 'faq-appsc1-08', question: 'In which language can I write the Mains?',
+      answer: 'Papers I–V in English, Telugu or Urdu, chosen online before the Main examination. All five must be written in that one medium; writing part of a paper, or a different paper, in another language makes the candidature invalid.',
+      officialClause: 'Para 12.9, p.15', provenance: apg1P_medium },
+    { id: 'faq-appsc1-09', question: 'Can I correct my application after submitting it?',
+      answer: 'Yes, for up to 7 days from the last date (27/10/2026), at ₹100 a correction, in the form itself. Fields that affect your name, the fee or the age relaxation cannot be corrected, and nothing can be changed after that window. Details used for the fee and age relaxation are frozen once you pay.',
+      officialClause: 'Para 8, STEP-V and Note B, p.12', provenance: apg1P_correction },
+    { id: 'faq-appsc1-10', question: 'When and where is the examination?',
+      answer: 'The Screening Test is on 24/01/2027, in the district centres (you give three preferences; the Commission may allot any centre). The Main examination’s dates will be announced later; it is held only at Visakhapatnam, Vijayawada, Tirupati and Ananthapuramu, and the centre you choose is final.',
+      officialClause: 'Para 1.7, p.2; para 11, pp.13–14', provenance: apg1P_dates },
+    { id: 'faq-appsc1-11', question: 'Can I object to the Screening Test answer key?',
+      answer: 'Yes. The Commission publishes an initial key; objections are filed within three days, in the proforma on its website, at ₹100 per objection (refunded if the objection is sustained). Three subject experts examine them and the final key is final.',
+      officialClause: 'Para 12.2–12.4, p.14', provenance: apg1P_key },
+    { id: 'faq-appsc1-12', question: 'Who is a local candidate, and how much is reserved for locals?',
+      answer: 'Broadly, a candidate who studied for four consecutive academic years up to and including Class VII in a local area (or, without schooling, resided there). 95% of the posts of each multi-zone (or zone, for Assistant Audit Officer) go to its local candidates under the Presidential Order 2025; DSP (Communications) is a State-cadre post with no local reservation.',
+      officialClause: 'Paras 6–7, pp.9–11', provenance: apg1P_localDef },
+    { id: 'faq-appsc1-13', question: 'Is there a waiting list?',
+      answer: 'No. Recruitment is made only to the vacancies notified, and there is no waiting list.',
+      officialClause: 'Para 13.1, p.15', provenance: apg1P_noWaitingList },
+    { id: 'faq-appsc1-14', question: 'What certificates should BC and EWS candidates have ready?',
+      answer: 'BC candidates need a Non-Creamy Layer certificate from the Tahsildar, and EWS candidates an EWS certificate (income for FY 2025-26, in digital format) from the Tahsildar — both issued on or after 01/04/2026 and no later than the last date of the application. Without it on the day of verification, the reservation is lost.',
+      officialClause: 'Para 4.9–4.10, p.7', provenance: apg1P_bcNcl }
   ],
   applicationGuide: {
-    officialPortal: 'https://psc.ap.gov.in',
+    officialPortal: APG1_SITE,
     otrSteps: [
       {
         stepNumber: 1,
         title: 'One Time Profile Registration (OTPR)',
-        portalUrl: 'https://psc.ap.gov.in',
-        instructions: ['Register OTPR with Aadhaar verification', 'Fill personal and educational credentials', 'Generate APPSC OTPR ID'],
-        mandatoryFields: ['Full Name', 'DoB', 'Aadhaar UID', 'Mobile', 'Email'],
-        commonMistakesToAvoid: ['Incorrect district local candidature declaration']
+        portalUrl: APG1_SITE,
+        instructions: [
+          'Applying to APPSC for the first time: register your bio-data through OTPR on psc.ap.gov.in; a user ID is sent to your registered mobile number and email.',
+          'Already registered: log in with your OTPR number. To change a detail, use “modify OTPR”, save it, and then apply.',
+          'OTPR is not an application for any post.'
+        ],
+        mandatoryFields: ['Bio-data particulars', 'Mobile number', 'Email ID'],
+        commonMistakesToAvoid: ['Changing OTPR after applying — the OTPR data shown when you submit is what counts for this notification.'],
+        provenance: apg1P_otpr
+      },
+      {
+        stepNumber: 2,
+        title: 'Fill the application for Notification No. 07/2026',
+        portalUrl: APG1_SITE,
+        instructions: [
+          'Log in, click “Online Application Submission” at the bottom right of the website, and “Fill Application” against Notification No. 07/2026.',
+          'Fill the application-specific data — Local / Non-Local status, white card details (both used to calculate the fee), qualification, post preferences and examination centres (three preferences for the Screening Test, one centre for the Mains).',
+          'Upload your own scanned photo and signature in JPG format. Leave no relevant column blank.'
+        ],
+        mandatoryFields: ['Local / Non-Local status', 'White card details', 'Qualification details', 'Post preferences', 'Screening Test centres (three preferences)', 'Main examination centre', 'Photo (JPG)', 'Signature (JPG)'],
+        commonMistakesToAvoid: [
+          'Leaving a relevant column blank — such a form is not accepted.',
+          'Choosing a Mains centre casually: the centre once chosen is final.'
+        ],
+        provenance: apg1P_steps
+      },
+      {
+        stepNumber: 3,
+        title: 'Save & Submit, and pay online',
+        portalUrl: APG1_SITE,
+        instructions: [
+          '“Save” only saves the form; “Save & Submit” generates the payment link. The application is complete only after Save & Submit and a successful payment.',
+          'Check the details pre-filled for the fee and age relaxation — once the payment form is submitted they cannot be altered.',
+          'Pay by net banking, credit card or debit card; on success a payment reference ID is sent by SMS, and you can download the filled application PDF. If the payment fails, start a fresh payment.'
+        ],
+        mandatoryFields: ['Fee payment (unless exempt from the examination fee)'],
+        commonMistakesToAvoid: ['Stopping at “Save” — an application not submitted is treated as incomplete.', 'Paying by IPO or demand draft — not accepted.'],
+        provenance: apg1P_saveSubmit
+      },
+      {
+        stepNumber: 4,
+        title: 'Corrections window (optional)',
+        portalUrl: APG1_SITE,
+        instructions: [
+          'For up to 7 days from the last date, corrections can be made in the form itself at ₹100 each.',
+          'Name, fee and age-relaxation fields cannot be corrected; nothing at all can be changed after the window, and no manual request is entertained.'
+        ],
+        mandatoryFields: [],
+        commonMistakesToAvoid: ['Planning to fix the community or reservation category later — not entertained after the window.'],
+        provenance: apg1P_correction
       }
     ],
     photoRules: {
       documentType: 'Photograph',
-      dimensions: '3.5 cm x 4.5 cm',
-      fileFormat: 'JPG / JPEG',
-      fileSize: '50 KB max',
-      rules: ['Recent colour photo taken against light background'],
-      sampleDescription: 'Front face clear passport photo'
+      dimensions: 'Not printed in the notification',
+      fileFormat: 'JPG',
+      fileSize: 'Not printed in the notification',
+      rules: [
+        'Upload your own scanned photo (Annexure-III, A.4).',
+        'A recent colour passport photo; bring the same photograph to verification, and do not change your appearance until the recruitment is complete (D.4).'
+      ],
+      sampleDescription: 'Your own recent colour passport-size photograph.',
+      provenance: apg1P_photo
     },
     signatureRules: {
       documentType: 'Signature',
-      dimensions: '3.5 cm x 1.5 cm',
-      fileFormat: 'JPG / JPEG',
-      fileSize: '30 KB max',
-      rules: ['Black ink on white paper'],
-      sampleDescription: 'Signature in running handwriting'
+      dimensions: 'Not printed in the notification',
+      fileFormat: 'JPG',
+      fileSize: 'Not printed in the notification',
+      rules: ['Upload your own scanned signature (Annexure-III, A.4).'],
+      sampleDescription: 'Your own signature, scanned.',
+      provenance: apg1P_photo
     },
-    certificateRules: [],
-    rejectionPitfalls: []
-  },
-  roadmapTracks: [
-    {
-      id: 'TRACK_180_DAYS',
-      name: '6-Month APPSC Group-I Integrated Pathway',
-      subtitle: 'Integrated Prelims-cum-Mains state administration syllabus schedule',
-      targetDailyHours: 7,
-      suitableFor: 'Aspirants targeting Andhra Pradesh Administrative Leadership (Group-I)',
-      phases: [],
-      dailyTimetable: []
+    certificateRules: [
+      { category: 'OBC_NCL', title: 'Non-Creamy Layer certificate (Backward Classes)', issuingAuthority: ['Tahsildar'], financialYearValidity: 'Issued after the completion of FY 2025-26',
+        crucialDate: 'Issued on or after 01/04/2026 and not later than the last date of the application (27/10/2026)', officialAnnexure: 'Para 4.9, p.7',
+        keyConditions: ['Produced at verification; without it on that day, the BC reservation is lost.', 'BCs of other States are not entitled to reservation (para 4.12).'] },
+      { category: 'EWS', title: 'EWS certificate', issuingAuthority: ['Revenue Authority in the rank of Tahsildar'], financialYearValidity: 'Income for FY 2025-26; gross annual family income below ₹8.00 lakh',
+        crucialDate: 'Issued in digital format on or after 01/04/2026 and not later than the last date of the application (27/10/2026)', officialAnnexure: 'Para 4.10, p.7',
+        keyConditions: ['Only those not covered by the SC, ST and BC reservations.', 'Produced at certificate verification.', 'EWS candidates of other States are not entitled to reservation (para 4.12).'] }
+    ],
+    rejectionPitfalls: [
+      { pitfall: 'Clicking only “Save”', consequence: 'The application is not submitted and is treated as incomplete.', prevention: 'Click “Save & Submit” and complete the payment.' },
+      { pitfall: 'A relevant column left blank, or incorrect details', consequence: 'Summarily rejected — even at the final stage — and a false declaration can debar you for up to five years.', prevention: 'Check every field against your certificates before Save & Submit.' },
+      { pitfall: 'A BC Non-Creamy Layer or EWS certificate dated before 01/04/2026 or after the last date', consequence: 'The reservation is not given.', prevention: 'Get it from the Tahsildar between 01/04/2026 and 27/10/2026.' },
+      { pitfall: 'Booklet Series not bubbled, or bubbled wrongly, on the OMR sheet', consequence: 'The answer sheet is invalidated, with no reconsideration.', prevention: 'Bubble the Booklet Series with a blue or black ball-point pen, and use no whitener or eraser.' },
+      { pitfall: 'Absent from any paper of the Screening Test or the Mains', consequence: 'Disqualification.', prevention: 'Sit every paper.' }
+    ],
+    requiredDocuments: [
+      { id: 'doc-appsc1-photo', name: 'Scanned photograph', required: true, specifications: ['JPG', 'Your own recent colour photograph'], provenance: apg1P_photo },
+      { id: 'doc-appsc1-signature', name: 'Scanned signature', required: true, specifications: ['JPG'], provenance: apg1P_photo },
+      { id: 'doc-appsc1-community', name: 'Community, Nativity and Date of Birth Certificate (SC / ST / BC / EWS)', required: false, specifications: ['Revenue authority not below the rank of Tahsildar', 'Format on the Commission’s website (A.8.1)'], provenance: apg1P_formats },
+      { id: 'doc-appsc1-ncl', name: 'Non-Creamy Layer certificate (BC)', required: false, specifications: ['Tahsildar', 'Issued 01/04/2026 – 27/10/2026'], provenance: apg1P_bcNcl },
+      { id: 'doc-appsc1-ews', name: 'EWS certificate', required: false, specifications: ['Tahsildar, digital format', 'Income for FY 2025-26', 'Issued 01/04/2026 – 27/10/2026'], provenance: apg1P_ews },
+      { id: 'doc-appsc1-study', name: 'School Study Certificates (Class I–VII) or a Residence Certificate (local status)', required: false, specifications: ['Study certificates are compulsory if you studied in a school up to Class VII', 'Residence certificate from an officer not below a Mandal Revenue Officer'], provenance: apg1P_localDef },
+      { id: 'doc-appsc1-unemployed', name: 'Declaration by the Un-Employed (examination-fee exemption)', required: false, specifications: ['Format on the Commission’s website (A.8.2)'], provenance: apg1P_formats },
+      { id: 'doc-appsc1-disability', name: 'Disability certificate (PBD), and for a scribe the certificate of the percentage of disability', required: false, specifications: ['At least 40% disability, certified by a medical authority'], provenance: apg1P_scribe }
+    ],
+    fee: {
+      amounts: ['250', '120', '100'],
+      rules: [
+        { scope: 'Every applicant', amount: '₹250', isExempt: false, feeType: 'Application processing fee', statedAs: apg1P_fee.excerptText },
+        { scope: 'Every applicant not exempted', amount: '₹120', isExempt: false, feeType: 'Examination fee', statedAs: apg1P_fee.excerptText },
+        { scope: 'Applicants from other States', amount: '₹250 + ₹120', isExempt: false, statedAs: apg1P_feeOther.excerptText },
+        { scope: 'Each correction in the 7-day window after the last date', amount: '₹100', isExempt: false, feeType: 'Correction fee', statedAs: apg1P_correction.excerptText }
+      ],
+      acceptedModes: ['Net Banking', 'Credit Card', 'Debit Card'],
+      exemptions: [
+        { category: 'SC, ST, BC, PBD and Ex-Servicemen', statedAs: 'i) SC, ST, BC, PBDs & Ex-Servicemen.', exemptedFeeType: 'Examination fee', provenance: apg1P_feeExempt },
+        { category: 'Families with a Household Supply White Card (A.P. residents)', statedAs: 'ii) Families having Household Supply White Card issued by Civil Supplies Department, A.P. Government (Residents of Andhra Pradesh).', exemptedFeeType: 'Examination fee', provenance: apg1P_feeExempt },
+        { category: 'Unemployed youth (with a declaration)', statedAs: 'iii) Un-employed youth as per G.O.Ms.No.439, G.A (Ser-A) Dept., dated: 18/10/1996 should submit declaration at an appropriate time to the Commission.', exemptedFeeType: 'Examination fee', provenance: apg1P_feeExempt }
+      ],
+      statedAs: apg1P_fee.excerptText,
+      provenance: apg1P_fee
     }
-  ]
+  },
+  roadmapTracks: [],
+  examDayChecklist: [
+    { id: 'ed-appsc1-hall-ticket', category: 'DOCUMENTS', title: 'Hall Ticket, photo identity proof and pen — nothing else', description: 'Articles other than the admit card, photo identity proof and pen are left outside the exam room. If the Hall Ticket has no photo or a very small one, affix a passport-size photo attested by a Gazetted Officer.', isMandatory: true, provenance: apg1P_carry },
+    { id: 'ed-appsc1-entry', category: 'TIMING', title: 'Be in your seat by the entry time on the Hall Ticket', description: 'Biometric identification is taken before entry; late entry after the given time is not allowed.', isMandatory: true, provenance: apg1P_biometric },
+    { id: 'ed-appsc1-full-time', category: 'TIMING', title: 'You cannot leave before the full time', description: 'A candidate who leaves the examination hall in the middle is disqualified.', isMandatory: true, provenance: apg1P_fullTime },
+    { id: 'ed-appsc1-ball-pen', category: 'ITEMS_ALLOWED', title: 'A blue or black ball-point pen (and a smooth writing pad) for the OMR sheet', description: 'Bubble every block, including the Booklet Series, with a blue or black ball-point pen. Pencil, ink pen and gel pen are not permitted.', isMandatory: true, provenance: apg1P_pen },
+    { id: 'ed-appsc1-omr', category: 'CENTRE_INSTRUCTIONS', title: 'Bubble the Booklet Series; never use whitener or an eraser', description: 'A missing or wrong Booklet Series, or any whitener, eraser, blade, chalk powder or tampering, invalidates the OMR sheet with no reconsideration.', isMandatory: true, provenance: apg1P_omr },
+    { id: 'ed-appsc1-top-sheet', category: 'CENTRE_INSTRUCTIONS', title: 'Hand the original OMR sheet (top sheet) to the invigilator', description: 'Taking it away gets your candidature rejected; you may keep the duplicate (bottom) sheet.', isMandatory: true, provenance: apg1P_topSheet },
+    { id: 'ed-appsc1-gadgets', category: 'ITEMS_PROHIBITED', title: 'No mobile (even switched off), smart watch, Bluetooth device, camera or storage media', description: 'Any infringement brings disciplinary action including a ban from future examinations; there is no safe-keeping at the venue. Only non-programmable calculators are permitted, and only where necessary.', isMandatory: true, provenance: apg1P_gadgets },
+    { id: 'ed-appsc1-scribe', category: 'CENTRE_INSTRUCTIONS', title: 'Scribe and extra time (20 minutes an hour) where eligible', description: 'Totally blind candidates get a scribe and 20 minutes an hour extra; candidates with locomotor disability or cerebral palsy affecting the writing hand (at least 40%) get the extra time but no scribe.', isMandatory: false, provenance: apg1P_scribe }
+  ],
+  eligibilityHighlights: [
+    { title: 'Age as on 01/07/2026', body: '18 to 44 years for eleven posts; DSP (Civil) Cat-2 21 to 30; DSP (Communications) 18 to 30. Upper-age relaxation: 5 years for SC, ST, BC and EWS; 10 for Persons with Benchmark Disabilities; service-based for ex-servicemen, NCC instructors and A.P. State Government employees (paras 5.1–5.2).', provenance: apg1P_age },
+    { title: 'Educational qualification', body: 'A Bachelor’s degree of a recognised university in India (or equivalent), held on the date of the notification. DSP (Communications): B.E. / B.Tech. in Electronics and Communication, Electronics and Telecommunication, or Radio Engineering. Open-university and distance degrees need Distance Education Council recognition (paras 3, 13.8).', provenance: apg1P_qualDate },
+    { title: 'Physical standards for the two DSP posts', body: 'Men at least 167.6 cm and 86.3 cm chest with 5 cm expansion (ST: 164 cm and 83.8 cm); women at least 152.5 cm and 45.5 kg; vision standards certified by a Medical Board. Colour blindness disqualifies for DSP (Communications) only (para 3, pp.4–5).', provenance: apg1P_physical },
+    { title: 'Local status and reservation', body: '95% of each multi-zone’s (or zone’s) posts go to its local candidates under the Presidential Order 2025 — local by four years of study up to Class VII, or residence. Women 33⅓% and Meritorious Sports Persons 3%, horizontally; no PBD reservation in the two DSP posts; BCs, SCs, STs and EWS of other States get no reservation (paras 4, 6, 7).', provenance: apg1P_local },
+    { title: 'Citizenship and health', body: 'A citizen of India, of sound health and active habits, with character and antecedents suited to the service (para 2).', provenance: apg1P_citizen },
+    { title: 'Minimum qualifying marks', body: 'On the aggregate, to be shortlisted for selection: 40% for OC, Sportspersons and EWS; 35% for Backward Classes; 30% for SCs, STs and PBDs — reaching it confers no right to selection (para 15.5). The Mains Telugu and English papers need the same 40% / 35% / 30% in each paper, and are not counted for merit (para 12.8). The Screening Test’s minimum is fixed by the Commission at its discretion (para 10.3).', provenance: apg1P_minMarks }
+  ],
+  officialLinks: [
+    { title: 'Andhra Pradesh Public Service Commission', url: APG1_SITE, note: 'OTPR, the online application, Hall Tickets, answer keys, results and every notice; the notification says to visit it regularly.', provenance: apg1P_otpr },
+    { title: 'Notification No. 07/2026 — Group-I Services (PDF, 66 pages)', url: APG1_NOTICE.url, note: 'Posts, vacancies, eligibility, fee, how to apply, the scheme and syllabus (Annexure-II), instructions (Annexure-III), the caste lists and physical standards.', provenance: apg1P_notice }
+  ],
+  syllabusSourceNote: 'Annexure-II of APPSC Notification No. 07/2026 — Scheme and Syllabus for Group-I Services: the Screening Test’s two papers and the Main examination’s two qualifying language papers and Papers I–V (pp. 26–39)'
 };
 
 export const APPSC_GROUP2_EXAM: Exam = {
@@ -19714,6 +21103,277 @@ export const APPSC_GROUP2_EXAM: Exam = {
       description: 'Authoritative scheme of examination and syllabus for Group-II executive and non-executive posts.',
       recommendedFor: 'All APPSC Group-II executive aspirants.',
       officialTag: 'OFFICIAL STATE COMMISSION'
+    },
+    // ---- added APPSC_GROUP2_EXAM resources: linked, never stored; checked 2026-10-06
+    {
+      id: 'res-appsc-g2-02', title: 'Syllabus for Screening and Main Examination for the Recruitment to the Post of Group - II Services (published 27/04/2023)', subject: 'Official Gazette',
+      author: 'Andhra Pradesh Public Service Commission, Vijayawada', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'SYLLABUS',
+      url: 'https://psc.ap.gov.in/Documents/NotificationDocuments/Syllabus%20for%20GROUP%20II%20Services_01052023.pdf', directPdfUrl: 'https://psc.ap.gov.in/Documents/NotificationDocuments/Syllabus%20for%20GROUP%20II%20Services_01052023.pdf',
+      description: 'Published openly by Andhra Pradesh Public Service Commission, Vijayawada. Useful for: Screening (History, Geography, Indian Society, Current Affairs, Mental Ability) and Mains Paper-I/II. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Screening (History, Geography, Indian Society, Current Affairs, Mental Ability) and Mains Paper-I/II',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g2-02', 'Syllabus for Screening and Main Examination for the Recruitment to the Post of Group - II Services (published 27/04/2023)', 'https://psc.ap.gov.in/Documents/NotificationDocuments/Syllabus%20for%20GROUP%20II%20Services_01052023.pdf', 'Andhra Pradesh Public Service Commission, Vijayawada')
+    },
+    {
+      id: 'res-appsc-g2-03', title: 'Syllabus (Groups Syllabus page)', subject: 'Official Gazette',
+      author: 'Andhra Pradesh Public Service Commission', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'SYLLABUS',
+      url: 'https://portal-psc.ap.gov.in/HomePages/GroupsSyllabus.aspx',
+      description: 'Published openly by Andhra Pradesh Public Service Commission. Useful for: Syllabus listing. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Syllabus listing',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g2-03', 'Syllabus (Groups Syllabus page)', 'https://portal-psc.ap.gov.in/HomePages/GroupsSyllabus.aspx', 'Andhra Pradesh Public Service Commission')
+    },
+    {
+      id: 'res-appsc-g2-04', title: 'Old Question Papers (Question Papers of Various Notifications)', subject: 'Official Gazette',
+      author: 'Andhra Pradesh Public Service Commission', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'QUESTION_PAPER',
+      url: 'https://portal-psc.ap.gov.in/HomePages/QuestionPapersofVariousNotifications.aspx',
+      description: 'Published openly by Andhra Pradesh Public Service Commission. Useful for: Previous papers (Group-I Mains 27/2018, 28/2022, 12/2023; 2016 screening tests). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Previous papers (Group-I Mains 27/2018, 28/2022, 12/2023; 2016 screening tests)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g2-04', 'Old Question Papers (Question Papers of Various Notifications)', 'https://portal-psc.ap.gov.in/HomePages/QuestionPapersofVariousNotifications.aspx', 'Andhra Pradesh Public Service Commission')
+    },
+    {
+      id: 'res-appsc-g2-05', title: 'Keys & Objections', subject: 'Official Gazette',
+      author: 'Andhra Pradesh Public Service Commission', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'ANSWER_KEY',
+      url: 'https://portal-psc.ap.gov.in/HomePages/KeysToPapers.aspx',
+      description: 'Published openly by Andhra Pradesh Public Service Commission. Useful for: Initial/final keys, many in question-paper format. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Initial/final keys, many in question-paper format',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g2-05', 'Keys & Objections', 'https://portal-psc.ap.gov.in/HomePages/KeysToPapers.aspx', 'Andhra Pradesh Public Service Commission')
+    },
+    {
+      id: 'res-appsc-g2-13', title: 'Group-II Services Notification No.11/2023 Screening Test - Final Key (10/04/2024): General Studies & Mental Ability (GS/2G/200)', subject: 'Official Gazette',
+      author: 'Andhra Pradesh Public Service Commission', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'ANSWER_KEY',
+      url: 'https://psc.ap.gov.in/Documents/KEYS/112023/FinalKeys/Group-II_ScreeningTest_11_2023_FinalKey.pdf', directPdfUrl: 'https://psc.ap.gov.in/Documents/KEYS/112023/FinalKeys/Group-II_ScreeningTest_11_2023_FinalKey.pdf',
+      description: 'Published openly by Andhra Pradesh Public Service Commission. Useful for: Screening test. GovOS links to the publisher’s own copy and stores nothing. A large scanned file (56 pp., 15.4 MB.) with no text layer: it opens slowly on a mobile connection and cannot be searched.',
+      recommendedFor: 'Screening test',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g2-13', 'Group-II Services Notification No.11/2023 Screening Test - Final Key (10/04/2024): General Studies & Mental Ability (GS/2G/200)', 'https://psc.ap.gov.in/Documents/KEYS/112023/FinalKeys/Group-II_ScreeningTest_11_2023_FinalKey.pdf', 'Andhra Pradesh Public Service Commission')
+    },
+    {
+      id: 'res-appsc-g2-14', title: 'Group-II Services Notification No.11/2023 Mains - Final Key in Question Paper Format for Paper-I Series-A (04/04/2025)', subject: 'Official Gazette',
+      author: 'Andhra Pradesh Public Service Commission', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'ANSWER_KEY',
+      url: 'https://psc.ap.gov.in/Documents/KEYS/112023/MainsFinalKeys_04042025/GroupIIMainsPaper_I_SeriesAFinalKey112023.pdf', directPdfUrl: 'https://psc.ap.gov.in/Documents/KEYS/112023/MainsFinalKeys_04042025/GroupIIMainsPaper_I_SeriesAFinalKey112023.pdf',
+      description: 'Published openly by Andhra Pradesh Public Service Commission. Useful for: Mains Paper-I (Social & Cultural History of AP; Indian Constitution). GovOS links to the publisher’s own copy and stores nothing. A large scanned file (48 pp., 13.0 MB.) with no text layer: it opens slowly on a mobile connection and cannot be searched.',
+      recommendedFor: 'Mains Paper-I (Social & Cultural History of AP; Indian Constitution)',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g2-14', 'Group-II Services Notification No.11/2023 Mains - Final Key in Question Paper Format for Paper-I Series-A (04/04/2025)', 'https://psc.ap.gov.in/Documents/KEYS/112023/MainsFinalKeys_04042025/GroupIIMainsPaper_I_SeriesAFinalKey112023.pdf', 'Andhra Pradesh Public Service Commission')
+    },
+    {
+      id: 'res-appsc-g2-15', title: 'Group-II Services Notification No.11/2023 Mains - Final Key in Question Paper Format for Paper-II Series-A (04/04/2025)', subject: 'Official Gazette',
+      author: 'Andhra Pradesh Public Service Commission', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'ANSWER_KEY',
+      url: 'https://psc.ap.gov.in/Documents/KEYS/112023/MainsFinalKeys_04042025/Group_II_Mains_Paper_II_Series_A_FinalKey112023.pdf', directPdfUrl: 'https://psc.ap.gov.in/Documents/KEYS/112023/MainsFinalKeys_04042025/Group_II_Mains_Paper_II_Series_A_FinalKey112023.pdf',
+      description: 'Published openly by Andhra Pradesh Public Service Commission. Useful for: Mains Paper-II (Indian & AP Economy; Science & Technology). GovOS links to the publisher’s own copy and stores nothing. A large scanned file (48 pp., 11.0 MB.) with no text layer: it opens slowly on a mobile connection and cannot be searched.',
+      recommendedFor: 'Mains Paper-II (Indian & AP Economy; Science & Technology)',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g2-15', 'Group-II Services Notification No.11/2023 Mains - Final Key in Question Paper Format for Paper-II Series-A (04/04/2025)', 'https://psc.ap.gov.in/Documents/KEYS/112023/MainsFinalKeys_04042025/Group_II_Mains_Paper_II_Series_A_FinalKey112023.pdf', 'Andhra Pradesh Public Service Commission')
+    },
+    {
+      id: 'res-appsc-g2-17', title: 'Socio Economic Survey (editions 2017-18 to 2024-25)', subject: 'Economy',
+      author: 'Finance Department, Government of Andhra Pradesh', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://apfinance.gov.in/socio.html',
+      description: 'Published openly by Finance Department, Government of Andhra Pradesh. Useful for: AP economy. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'AP economy',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g2-17', 'Socio Economic Survey (editions 2017-18 to 2024-25)', 'https://apfinance.gov.in/socio.html', 'Finance Department, Government of Andhra Pradesh')
+    },
+    {
+      id: 'res-appsc-g2-19', title: 'Previous Budget Volumes', subject: 'Economy',
+      author: 'Finance Department, Government of Andhra Pradesh', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://apfinance.gov.in/budget.html',
+      description: 'Published openly by Finance Department, Government of Andhra Pradesh. Useful for: AP economy / public finance. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'AP economy / public finance',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g2-19', 'Previous Budget Volumes', 'https://apfinance.gov.in/budget.html', 'Finance Department, Government of Andhra Pradesh')
+    },
+    {
+      id: 'res-appsc-g2-23', title: 'The Constitution of India (official full text, PDF)', subject: 'Polity & Governance',
+      author: 'Legislative Department, Ministry of Law & Justice, Government of India', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'STUDY_MATERIAL',
+      url: 'https://www.legislative.gov.in/static/uploads/2025/07/c9fe9c9b6840524844316f74bb1c556c.pdf', directPdfUrl: 'https://www.legislative.gov.in/static/uploads/2025/07/c9fe9c9b6840524844316f74bb1c556c.pdf',
+      description: 'Published openly by Legislative Department, Ministry of Law & Justice, Government of India. Useful for: G-I Prelims Paper-I B / Mains Paper-III; G-II Mains Paper-I Section B. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'G-I Prelims Paper-I B / Mains Paper-III; G-II Mains Paper-I Section B',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g2-23', 'The Constitution of India (official full text, PDF)', 'https://www.legislative.gov.in/static/uploads/2025/07/c9fe9c9b6840524844316f74bb1c556c.pdf', 'Legislative Department, Ministry of Law & Justice, Government of India')
+    },
+    {
+      id: 'res-appsc-g2-24', title: 'The Andhra Pradesh Reorganisation Act, 2014 (No. 6 of 2014)', subject: 'Polity & Governance',
+      author: 'Ministry of Home Affairs, Government of India', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'STUDY_MATERIAL',
+      url: 'https://www.mha.gov.in/sites/default/files/2022-08/APRegACT2014_0%5B1%5D.pdf', directPdfUrl: 'https://www.mha.gov.in/sites/default/files/2022-08/APRegACT2014_0%5B1%5D.pdf',
+      description: 'Published openly by Ministry of Home Affairs, Government of India. Useful for: G-I Mains Papers II-IV; G-II Mains Paper-I Section A and Paper-II Section A. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'G-I Mains Papers II-IV; G-II Mains Paper-I Section A and Paper-II Section A',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g2-24', 'The Andhra Pradesh Reorganisation Act, 2014 (No. 6 of 2014)', 'https://www.mha.gov.in/sites/default/files/2022-08/APRegACT2014_0%5B1%5D.pdf', 'Ministry of Home Affairs, Government of India')
+    },
+    {
+      id: 'res-appsc-g2-25', title: 'NCERT-DIKSHA (NCERT textbooks)', subject: 'Foundation Textbooks & Open Courses',
+      author: 'NCERT, on DIKSHA (Ministry of Education, Government of India)', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://diksha.gov.in/ncert/',
+      description: 'Published openly by NCERT, on DIKSHA (Ministry of Education, Government of India). Useful for: History, Geography, Polity, Economy, Science foundations. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'History, Geography, Polity, Economy, Science foundations',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g2-25', 'NCERT-DIKSHA (NCERT textbooks)', 'https://diksha.gov.in/ncert/', 'NCERT, on DIKSHA (Ministry of Education, Government of India)')
+    },
+    {
+      id: 'res-appsc-g2-26', title: 'Economic Survey', subject: 'Economy',
+      author: 'Ministry of Finance, Government of India', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.indiabudget.gov.in/economicsurvey/',
+      description: 'Published openly by Ministry of Finance, Government of India. Useful for: Indian economy (G-I Prelims C / Mains Paper-IV; G-II Mains Paper-II Section A). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Indian economy (G-I Prelims C / Mains Paper-IV; G-II Mains Paper-II Section A)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g2-26', 'Economic Survey', 'https://www.indiabudget.gov.in/economicsurvey/', 'Ministry of Finance, Government of India')
+    },
+    {
+      id: 'res-appsc-g2-27', title: 'Press Information Bureau (English)', subject: 'Current Affairs & Governance',
+      author: 'Press Information Bureau, Government of India', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.pib.gov.in/indexd.aspx?reg=3&lang=1',
+      description: 'Published openly by Press Information Bureau, Government of India. Useful for: Current affairs (G-I Paper-II B(ii); G-II Current Affairs). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Current affairs (G-I Paper-II B(ii); G-II Current Affairs)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g2-27', 'Press Information Bureau (English)', 'https://www.pib.gov.in/indexd.aspx?reg=3&lang=1', 'Press Information Bureau, Government of India')
+    },
+    {
+      id: 'res-appsc-g2-28', title: 'Indian Space Research Organisation', subject: 'Science & Technology',
+      author: 'ISRO, Department of Space, Government of India', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.isro.gov.in/',
+      description: 'Published openly by ISRO, Department of Space, Government of India. Useful for: Science & Technology (space). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Science & Technology (space)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g2-28', 'Indian Space Research Organisation', 'https://www.isro.gov.in/', 'ISRO, Department of Space, Government of India')
+    },
+    {
+      id: 'res-appsc-g2-29', title: 'History (315) - Senior Secondary course material', subject: 'History & Culture',
+      author: 'National Institute of Open Schooling (NIOS), Ministry of Education', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.nios.ac.in/online-course-material/sr-secondary-courses/History-(315).aspx',
+      description: 'Published openly by National Institute of Open Schooling (NIOS), Ministry of Education. Useful for: Indian History. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Indian History',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g2-29', 'History (315) - Senior Secondary course material', 'https://www.nios.ac.in/online-course-material/sr-secondary-courses/History-(315).aspx', 'National Institute of Open Schooling (NIOS), Ministry of Education')
+    },
+    {
+      id: 'res-appsc-g2-30', title: 'Geography (316)-New (effective from session 2023-24)', subject: 'Geography & Environment',
+      author: 'National Institute of Open Schooling (NIOS), Ministry of Education', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.nios.ac.in/online-course-material/sr-secondary-courses/geography-(316)-new.aspx',
+      description: 'Published openly by National Institute of Open Schooling (NIOS), Ministry of Education. Useful for: Geography. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Geography',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g2-30', 'Geography (316)-New (effective from session 2023-24)', 'https://www.nios.ac.in/online-course-material/sr-secondary-courses/geography-(316)-new.aspx', 'National Institute of Open Schooling (NIOS), Ministry of Education')
+    },
+    {
+      id: 'res-appsc-g2-31', title: 'Political Science (317)', subject: 'Polity & Governance',
+      author: 'National Institute of Open Schooling (NIOS), Ministry of Education', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.nios.ac.in/online-course-material/sr-secondary-courses/political-science-(317).aspx',
+      description: 'Published openly by National Institute of Open Schooling (NIOS), Ministry of Education. Useful for: Constitution / Polity. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Constitution / Polity',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g2-31', 'Political Science (317)', 'https://www.nios.ac.in/online-course-material/sr-secondary-courses/political-science-(317).aspx', 'National Institute of Open Schooling (NIOS), Ministry of Education')
+    },
+    {
+      id: 'res-appsc-g2-32', title: 'Economics (318)', subject: 'Economy',
+      author: 'National Institute of Open Schooling (NIOS), Ministry of Education', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.nios.ac.in/online-course-material/sr-secondary-courses/Economics-(318).aspx',
+      description: 'Published openly by National Institute of Open Schooling (NIOS), Ministry of Education. Useful for: Economy. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Economy',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g2-32', 'Economics (318)', 'https://www.nios.ac.in/online-course-material/sr-secondary-courses/Economics-(318).aspx', 'National Institute of Open Schooling (NIOS), Ministry of Education')
+    },
+    {
+      id: 'res-appsc-g2-33', title: 'Sociology (331)', subject: 'Foundation Textbooks & Open Courses',
+      author: 'National Institute of Open Schooling (NIOS), Ministry of Education', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.nios.ac.in/online-course-material/sr-secondary-courses/Sociology-(331).aspx',
+      description: 'Published openly by National Institute of Open Schooling (NIOS), Ministry of Education. Useful for: Screening: Indian Society (also useful for G-I Social Justice). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Screening: Indian Society (also useful for G-I Social Justice)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-appsc-g2-33', 'Sociology (331)', 'https://www.nios.ac.in/online-course-material/sr-secondary-courses/Sociology-(331).aspx', 'National Institute of Open Schooling (NIOS), Ministry of Education')
+    },
+    {
+      id: 'res-appsc-g2-35', title: 'Andhra Pradesh Budget Analysis 2026-27', subject: 'Economy',
+      author: 'PRS Legislative Research', type: 'ONLINE_TOOL', resourceFormat: 'ONLINE_TOOL', role: 'STUDY_MATERIAL',
+      url: 'https://prsindia.org/budgets/states/andhra-pradesh-budget-analysis-2026-27',
+      description: 'Published openly by PRS Legislative Research. Useful for: AP economy / public finance. GovOS links to the publisher’s own copy and stores nothing. It is not a government publication.',
+      recommendedFor: 'AP economy / public finance',
+      officialTag: 'OPEN RESOURCE (TRUSTED, NOT A GOVERNMENT BODY)',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: { ...openResource('prov-res-appsc-g2-35', 'Andhra Pradesh Budget Analysis 2026-27', 'https://prsindia.org/budgets/states/andhra-pradesh-budget-analysis-2026-27', 'PRS Legislative Research'), taxonomyType: 'RECOMMENDATION', verificationLevel: 'UNDER_VERIFICATION' }
+    },
+    {
+      id: 'res-appsc-g2-36', title: 'Adda247 Telugu — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'Adda247 Telugu (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCqqDD-1K6WTjS16Y8pdY1_Q', youtubeUrl: 'https://www.youtube.com/channel/UCqqDD-1K6WTjS16Y8pdY1_Q',
+      description: 'A free YouTube channel candidates widely follow (1.22M subscribers as read on its own page on 2026-10-06). Useful for: All GS; APPSC Group-1 Mains topics; GS & Mental Ability batches. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with APPSC’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for All GS; APPSC Group-1 Mains topics; GS & Mental Ability batches.',
+      officialTag: 'FREE ON YOUTUBE · 1.22M SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-appsc-g2-36', 'Adda247 Telugu', 'https://www.youtube.com/channel/UCqqDD-1K6WTjS16Y8pdY1_Q', '1.22M', 'APPSC')
+    },
+    {
+      id: 'res-appsc-g2-37', title: 'RK Tutorial - RK sir — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'RK Tutorial - RK sir (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCAvSGKYCrmBxW4l9N9ZRhzA', youtubeUrl: 'https://www.youtube.com/channel/UCAvSGKYCrmBxW4l9N9ZRhzA',
+      description: 'A free YouTube channel candidates widely follow (696K subscribers as read on its own page on 2026-10-06). Useful for: GS MCQs; AP Group-2 model papers. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with APPSC’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for GS MCQs; AP Group-2 model papers.',
+      officialTag: 'FREE ON YOUTUBE · 696K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-appsc-g2-37', 'RK Tutorial - RK sir', 'https://www.youtube.com/channel/UCAvSGKYCrmBxW4l9N9ZRhzA', '696K', 'APPSC')
+    },
+    {
+      id: 'res-appsc-g2-38', title: 'HAREESH THE BEST ACADEMY — free YouTube lessons', subject: 'Current Affairs & Governance',
+      author: 'HAREESH THE BEST ACADEMY (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCvMSKsiXCDfjX41dUNn92yQ', youtubeUrl: 'https://www.youtube.com/channel/UCvMSKsiXCDfjX41dUNn92yQ',
+      description: 'A free YouTube channel candidates widely follow (684K subscribers as read on its own page on 2026-10-06). Useful for: Current affairs (daily, Telugu). Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with APPSC’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Current affairs (daily, Telugu).',
+      officialTag: 'FREE ON YOUTUBE · 684K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-appsc-g2-38', 'HAREESH THE BEST ACADEMY', 'https://www.youtube.com/channel/UCvMSKsiXCDfjX41dUNn92yQ', '684K', 'APPSC')
+    },
+    {
+      id: 'res-appsc-g2-39', title: 'AKSHARAM EDUCATIONS — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'AKSHARAM EDUCATIONS (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCQeKIHR9EjyjbeKencnojKA', youtubeUrl: 'https://www.youtube.com/channel/UCQeKIHR9EjyjbeKencnojKA',
+      description: 'A free YouTube channel candidates widely follow (398K subscribers as read on its own page on 2026-10-06). Useful for: Indian History, Indian Geography (Group-2 screening). Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with APPSC’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Indian History, Indian Geography (Group-2 screening).',
+      officialTag: 'FREE ON YOUTUBE · 398K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-appsc-g2-39', 'AKSHARAM EDUCATIONS', 'https://www.youtube.com/channel/UCQeKIHR9EjyjbeKencnojKA', '398K', 'APPSC')
+    },
+    {
+      id: 'res-appsc-g2-40', title: 'Shine India Academy - Saeed Sir — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'Shine India Academy - Saeed Sir (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCIAwmOj2qC6qV0MkBV-XBsQ', youtubeUrl: 'https://www.youtube.com/channel/UCIAwmOj2qC6qV0MkBV-XBsQ',
+      description: 'A free YouTube channel candidates widely follow (392K subscribers as read on its own page on 2026-10-06). Useful for: History; Telugu current affairs. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with APPSC’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for History; Telugu current affairs.',
+      officialTag: 'FREE ON YOUTUBE · 392K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-appsc-g2-40', 'Shine India Academy - Saeed Sir', 'https://www.youtube.com/channel/UCIAwmOj2qC6qV0MkBV-XBsQ', '392K', 'APPSC')
+    },
+    {
+      id: 'res-appsc-g2-42', title: 'SVR ACADEMY — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'SVR ACADEMY (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCI20M_CVSwi26xF1X6q4OFA', youtubeUrl: 'https://www.youtube.com/channel/UCI20M_CVSwi26xF1X6q4OFA',
+      description: 'A free YouTube channel candidates widely follow (324K subscribers as read on its own page on 2026-10-06). Useful for: Group-2 Indian Society; Group 1/2 preparation. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with APPSC’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Group-2 Indian Society; Group 1/2 preparation.',
+      officialTag: 'FREE ON YOUTUBE · 324K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-appsc-g2-42', 'SVR ACADEMY', 'https://www.youtube.com/channel/UCI20M_CVSwi26xF1X6q4OFA', '324K', 'APPSC')
     }
   ],
   faqs: [
@@ -19833,12 +21493,3526 @@ export const officialQuestionsForExam = (examId: string): OfficialPaperQuestion[
 /** The authored question bank, shift papers, sectionals and drills are written to this exam's pattern. */
 export const PRACTICE_BANK_EXAM_ID = 'exam-ssc-cgl-2026';
 
+// ==========================================================================
+// Telangana Teacher Eligibility Test — Special TGTET-In-service Teachers-2026-II
+// ==========================================================================
+// Read on 2026-10-06 from the Department of School Education's own documents, all published
+// 01.10.2026 at https://tgtet.aptonline.in (the TG TET portal the Department's site links to as
+// "Click Here for TG TET - In-Service Teachers - 2026"):
+//   the Notification (Rc.No.444, 5 pp.), the Information Bulletin (15 pp.) and the Press Note
+//   (1 p.) -- all three are scans with no text layer, read page by page from their images -- and
+//   the Paper-I and Paper-II syllabus files (Telugu medium) served by the portal's syllabus page.
+// This cycle is open to in-service teachers ONLY, and its pass cannot be used for direct
+// recruitment (Notification para 5). It is an eligibility test: it fills no post, so the record
+// carries no posts, vacancies, pay or age band (`examNature: 'ELIGIBILITY_TEST'`).
+// The regular TG TET (open to all) is a different exam; its June 2026 bulletin had been removed
+// from the portal by the day this was read, so nothing here is taken from it.
+const TGTET_EXAM_ID = 'exam-tgtet-inservice-2026-ii';
+const TGTET_AUTHORITY = 'Department of School Education, Government of Telangana';
+const TGTET_CHECK = '2026-10-06';
+const TGTET_DOCS = 'https://tgtet.aptonline.in/Documents/';
+const TGTET_PORTAL = 'https://tgtet.aptonline.in/UI/HomePage/HomePage.aspx';
+const TGTET_SYLLABUS_PAGE = 'https://tgtet.aptonline.in/UI/HomePage/Syllabus.aspx';
+const TGTET_DSE = 'https://schooledu.telangana.gov.in';
+const TGTET_SOURCES = {
+  NOTIF: { title: 'Special TGTET-In-service Teachers-2026-II — Notification for Online Applications (Rc.No.444/Special-TGTET-In-service Teachers-2026-II/2026, Dt.01.10.2026)', url: TGTET_DOCS + 'NotificationTGTET-In-Serviceteachers2026-II.pdf', published: '2026-10-01' },
+  IB: { title: 'Teacher Eligibility Test (Special TGTET-In-service Teachers-2026-II) — Information Bulletin', url: TGTET_DOCS + 'InformationBulletinTGTET_In-ServiceTeachers2026-II.pdf', published: '2026-10-01' },
+  PRESS: { title: 'Special TGTET-In-service Teachers-2026-II — Press Note (Rc.No.444, Dt.01.10.2026)', url: TGTET_DOCS + 'Press_Note_Notification-Special_TGTET_Inservice_Teachers-2026-II.pdf', published: '2026-10-01' },
+  SYL1: { title: 'Special TGTET- In-service Teachers -2026-II — Paper I Syllabus (Telugu medium file, served by the portal’s syllabus page)', url: TGTET_SYLLABUS_PAGE, published: '2026-10-01' },
+  SYL2: { title: 'Special TGTET- In-service Teachers -2026-II — Paper II Syllabus (Telugu medium file, served by the portal’s syllabus page)', url: TGTET_SYLLABUS_PAGE, published: '2026-10-01' }
+} as const;
+
+/** A clause of one of the Department's own TG TET documents, cited by page. */
+const tgtet = (id: string, doc: keyof typeof TGTET_SOURCES, pageNumber: number, clauseNumber: string, excerptText: string,
+  taxonomyType: DataProvenance['taxonomyType'] = 'FACT'): DataProvenance => ({
+  id, documentTitle: TGTET_SOURCES[doc].title, officialUrl: TGTET_SOURCES[doc].url, pageNumber, clauseNumber,
+  publishedDate: TGTET_SOURCES[doc].published, verifiedDate: TGTET_CHECK,
+  verifiedBy: `GovOS verifier — read from the page image of the Department's document on ${TGTET_CHECK}`,
+  taxonomyType, verificationLevel: 'OFFICIALLY_VERIFIED', excerptText, authorityName: TGTET_AUTHORITY
+});
+
+/** A Language-I (Telugu) entry of a syllabus file: the Telugu is quoted as printed (read from the page image, since
+ *  the file's Telugu text layer drops conjunct letters); the English beside it in the topic is GovOS's rendering. */
+const tgtetTelugu = (id: string, doc: 'SYL1' | 'SYL2', clauseNumber: string, excerptText: string): DataProvenance => ({
+  ...tgtet(id, doc, 2, clauseNumber, excerptText, 'INTERPRETATION'),
+  verificationLevel: 'UNDER_VERIFICATION',
+  verifiedBy: `GovOS verifier — the Telugu entry is quoted from the page image on ${TGTET_CHECK}; the English rendering beside it is GovOS's, not the Department's`
+});
+
+const tgP_notified = tgtet('prov-tgtet-notified', 'NOTIF', 2, 'Header and para 1',
+  'Rc.No.444/Special-TGTET-In-service Teachers-2026-II/2026 Dt.01.10.2026');
+const tgP_window = tgtet('prov-tgtet-window', 'NOTIF', 1, 'Notification',
+  'Candidates can pay fee and submit their application Online from 07.10.2026 to 16.10.2026 at https://schooledu.telangana.gov.in.');
+const tgP_cbt = tgtet('prov-tgtet-cbt', 'NOTIF', 2, 'Para 1',
+  'to be conducted Online as Computer Based Test (CBT) by Department of School Education, Government of Telangana between 16.11.2026 and 21.11.2026.');
+const tgP_sessions = tgtet('prov-tgtet-sessions', 'IB', 4, 'Para 5 — Schedule of Examination',
+  'Special TGTET-In-service Teachers-2026-II shall be conducted Online as Computer Based Test (CBT) on the dates as given below in Two sessions per day.');
+const tgP_schedule = tgtet('prov-tgtet-schedule', 'NOTIF', 5, 'Para 14 — Important dates', 'Download of Hall Tickets 09.11.2026 onwards');
+const tgP_results = tgtet('prov-tgtet-results', 'NOTIF', 5, 'Para 14 — Important dates', 'Declaration of Results Between 09.12.2026 to 11.12.2026');
+const tgP_helpdesk = tgtet('prov-tgtet-helpdesk', 'NOTIF', 5, 'Para 14 — Important dates', 'Help Desk services on all working days 01.10.2026 to 11.12.2026');
+const tgP_who = tgtet('prov-tgtet-who', 'NOTIF', 3, 'Para 5 (i) — TET for in-service teachers',
+  'All In-service Teachers working in Government / Local Body / TGREIS / Government Welfare Societies Residential / Telangana Model Schools / Teachers working in other Government departments ONLY are permitted to appear for Special-TGTET-In-service Teachers-2026-II.');
+const tgP_purpose = tgtet('prov-tgtet-purpose', 'NOTIF', 3, 'Para 5 (ii) — TET for in-service teachers',
+  'Pass in Special-TGTET-In-service Teachers-2026-II shall be considered as qualified only for fulfillment of the mandatory condition of passing in TET by all teachers either for continuing in their present post of working or promotion to the next higher post from the present post of working');
+const tgP_noRecruit = tgtet('prov-tgtet-no-recruitment', 'NOTIF', 3, 'Para 5 (iii) — TET for in-service teachers',
+  'Pass in Special-TGTET-In-service Teachers-2026-II CANNOT be used for appearing in any direct recruitment in future. For appearing in any direct recruitments’ candidates need to appear for the regular TETs to be conducted twice in a year by the State Government or CTET.');
+const tgP_paper1Who = tgtet('prov-tgtet-paper1-who', 'NOTIF', 3, 'Para 5 (iv)',
+  'Secondary Grade Teachers and LFL Head Masters working in Government and Local Body Schools appointed with both D.El.Ed. and B.Ed. qualification are permitted to appear for Paper I.');
+const tgP_paper2Who = tgtet('prov-tgtet-paper2-who', 'NOTIF', 3, 'Para 5 (v)',
+  'School Assistants, TGTs, Language Pandits, Head Masters of High Schools are permitted to appear for Paper II.');
+const tgP_papers = tgtet('prov-tgtet-papers', 'NOTIF', 3, 'Para 4',
+  'Teachers for classes I to V have to appear for Paper-I and teachers for classes VI to VIII have to appear for Paper-II. However, teachers of classes I to V who intend to be teachers for classes VI to VIII (subject to condition of possessing other required qualifications) have to appear for both papers i.e. Paper-I and Paper-II.');
+const tgP_fee = tgtet('prov-tgtet-fee', 'NOTIF', 3, 'Para 7 — Exam fee',
+  'The exam fee prescribed for appearing for Special-TGTET-In-service Teachers-2026-II for General & BC candidates is Rs. 750/- (Rupees Seven Hundred and Fifty only) for either only Paper I or only Paper II and Rs.1000/- (Rupees One Thousand Only) for those appearing for both Papers I and II. For SC / ST / PwD candidates the exam fee would be Rs.700/- for one paper and Rs.950/- for two papers.');
+const tgP_pass = tgtet('prov-tgtet-pass', 'IB', 7, 'Para 9 (i) — Pass marks in TGTET',
+  'The percentage of pass marks for different categories are as shown below: General / EWS 60% and above BCs 50% and above SC / ST / Differently abled 40% and above');
+const tgP_validity = tgtet('prov-tgtet-validity', 'NOTIF', 5, 'Para 13 — Validity period',
+  'The validity period of Special TGTET-In-service teachers-2026-II certificate unless otherwise notified by the Government of Telangana, would remain valid for life for continuing in the present post of working or for promotion to next higher post from the present post of working.');
+const tgP_mcq = tgtet('prov-tgtet-mcq', 'IB', 5, 'Para 7 — Structure and content of TGTET',
+  'All questions will be Multiple Choice Questions (MCQs), each carrying one mark, with four alternatives out of which one answer will be correct. There will be no negative marking.');
+const tgP_p1 = tgtet('prov-tgtet-p1', 'IB', 5, 'Para 7 (a) — Paper-I',
+  'Paper- I: No. of Multiple-Choice Questions (MCQs) - 150 Duration of Examination: 2 hours and 30 minutes');
+const tgP_p2 = tgtet('prov-tgtet-p2', 'IB', 6, 'Para 7 (b) — Paper-II',
+  'Paper II : No. of Multiple Choice Questions (MCQs)- 150: Duration of Examination: 2 hours and 30 minutes');
+const tgP_lang1P1 = tgtet('prov-tgtet-lang1-p1', 'IB', 5, 'Para 7 (a), Note (2)',
+  'The following 8 languages are offered under first Language in schools under State Syllabus viz., Telugu, Urdu, Hindi, Bengali, Kannada, Marati, Tamil and Gujarati. A Candidate has to choose one of these 8 languages under Language-I of TGTET and those candidates should have compulsorily studied that language either as medium of study or as first language at least up to Class X.');
+const tgP_lang1P2 = tgtet('prov-tgtet-lang1-p2', 'IB', 6, 'Para 7 (b), Note (2)',
+  'The following 7 languages are offered under first Language in secondary schools under State Syllabus viz., Telugu, Urdu, Hindi, Kannada, Marathi, Tamil and Sanskrit.');
+const tgP_lang2 = tgtet('prov-tgtet-lang2', 'IB', 5, 'Para 7 (a), Note (3)', 'The Language-II shall be English for all candidates.');
+const tgP_medium = tgtet('prov-tgtet-medium', 'IB', 7, 'Para 8 — Medium of question paper',
+  'The question paper shall be bilingual i.e. English followed by the Language-I chosen by the candidates for all languages except Sanskrit. For the candidates choosing Sanskrit, the questions shall be in Telugu followed by Sanskrit (Devanagari script).');
+const tgP_p2Maths = tgtet('prov-tgtet-p2-mathsci', 'IB', 7, 'Para 7 (b), Note (4)',
+  '(i) Mathematics - 30 MCQs (Content 24; Pedagogy 06) (ii) Science - 30 MCQs (Content 24; Pedagogy 06) a) Content - Physical Science - 12MCQs b) Content - Biological Science - 12MCQs c) Science Pedagogy - 06MCQs.');
+const tgP_p2Social = tgtet('prov-tgtet-p2-social', 'IB', 7, 'Para 7 (b), Note (5)',
+  'For Paper II Social Studies, the syllabus will cover the sections/areas namely, History, Geography, Civics and Economics. Out of 60 marks, 48 will be on content and the remaining 12 on Pedagogy.');
+const tgP_apply = tgtet('prov-tgtet-apply', 'IB', 8, 'Para 13 — Mode of submission of application',
+  'A candidate can apply for the Special TGTET-In-service Teachers-2026-II Online by logging to the website https://schooledu.telangana.gov.in only. Before applying online, candidates shall ensure to have separate scanned images of latest photograph and signature in *.jpeg format only for uploading.');
+const tgP_journal = tgtet('prov-tgtet-journal', 'IB', 2, 'Important notes, 2 (c)',
+  'On receipt of online fee payment, the candidate shall be issued a ‘Journal Number’ with which she/he can proceed with submission of application online. Issue of Journal Number does not mean that the candidate has completed submission of application online.');
+const tgP_photo = tgtet('prov-tgtet-photo', 'IB', 3, 'Important notes, 2 (e) and (f)',
+  'The Candidate should be ready with scanned copy of the photograph of 500kb and Signature of 100kb before filling in the Online application.');
+const tgP_steps = tgtet('prov-tgtet-steps', 'IB', 10, 'Para 17 (g) — Initial steps before filling the Online Application Form',
+  'Enter your Journal Number, Date of Payment, Date of Birth given at the time of Online payment.');
+const tgP_noEdit = tgtet('prov-tgtet-no-edit', 'IB', 10, 'Para 17 (g) (i)',
+  'Application cannot be edited after final submission.');
+const tgP_hallTicket = tgtet('prov-tgtet-hall-ticket', 'IB', 8, 'Para 14 — Hall Ticket',
+  'Candidates can download their Hall Tickets from the website at https://schooledu.telangana.gov.in from 09.11.2026.');
+const tgP_key = tgtet('prov-tgtet-key', 'NOTIF', 4, 'Para 11 (c)',
+  'The final key shall be published for the information of candidates. Any representation / petition / objection on the key after the above stipulated period shall not be entertained.');
+const tgP_centres = tgtet('prov-tgtet-centres', 'IB', 8, 'Para 12 — Examination Centers',
+  'Candidates can submit order of preference of the examination centers (district) given in the online application form. However, Convenor, Special TGTET-In-service Teachers-2026-II has the discretion to allot candidates to the examination districts depending on the capacity of any particular district.');
+const tgP_cbtConduct = tgtet('prov-tgtet-cbt-conduct', 'IB', 12, 'Para 18 — Procedure for conduct of CBT',
+  'Total duration of examination is 150 minutes (2½ hours).');
+const tgP_syllabus = tgtet('prov-tgtet-syllabus', 'IB', 14, 'Para 20 — Syllabus',
+  'Details of the Syllabus of the Special TGTET-In-service Teachers-2026-II Examination for Paper I & Paper II can be downloaded from https://schooledu.telangana.gov.in.');
+
+/** The practice form: the portal's two steps as the Information Bulletin sets them out (fee payment, which issues a
+ *  Journal Number, then the application itself), with traps that fire on the bulletin's and notification's own rules. */
+const TGTET_APPLICATION_SIMULATOR: ApplicationSimulatorSpec = {
+  examId: TGTET_EXAM_ID,
+  portalName: 'TG TET online application on schooledu.telangana.gov.in',
+  portalUrl: TGTET_DSE,
+  sourceDocumentTitle: TGTET_SOURCES.IB.title,
+  sourceDocumentUrl: TGTET_SOURCES.IB.url,
+  modelledOnNote:
+    'This mock follows the two steps the Information Bulletin sets out (Important Notes para 2 and para 17): pay the fee online, which issues a Journal Number, then submit the application with that Journal Number. It is a practice form inside GovOS — nothing here reaches the TGTET Cell, and no application is submitted on your behalf.',
+  cleanSubmissionNote:
+    'No rule in the notification or the bulletin was broken by these answers. On the real portal, pressing SUBMIT freezes the application — it cannot be edited afterwards — and an SMS reaches your registered mobile. Keep the payment ID and Journal Number, take a printout for yourself, and do not post it to the TGTET Cell.',
+  provenance: tgP_apply,
+  modules: [
+    {
+      moduleNumber: 1,
+      cardName: 'Step 1 — Payment of fee online',
+      title: 'Pay the fee and get your Journal Number',
+      introduction:
+        'The bulletin’s first step after reading it: pay the fee online. At payment you give the preliminary data (name, date of birth, whether you belong to Telangana, mobile number). The Journal Number you receive confirms the fee only — it is not a submitted application.',
+      noticeReference: 'Information Bulletin p.2, Important Notes 2 (b)–(c); Notification p.3, para 5 and para 7',
+      fields: [
+        {
+          id: 'serviceStatus',
+          label: 'Your present employment',
+          kind: 'SELECT',
+          defaultValue: 'GOVT_TEACHER',
+          options: [
+            { value: 'GOVT_TEACHER', label: 'In-service teacher — Government / Local Body / TGREIS / Welfare Residential Society / Telangana Model School / other Government department' },
+            { value: 'PRIVATE_TEACHER', label: 'Teacher in a private school' },
+            { value: 'ASPIRANT', label: 'Not yet a teacher (preparing for recruitment)' }
+          ],
+          noteFromNotice: 'Only in-service teachers of these Government institutions may appear in this special TET (Notification para 5 (i)).'
+        },
+        {
+          id: 'teacherPost',
+          label: 'Your post',
+          kind: 'SELECT',
+          defaultValue: 'SGT',
+          options: [
+            { value: 'SGT', label: 'Secondary Grade Teacher / LFL Head Master (appointed with D.El.Ed. and B.Ed.)' },
+            { value: 'SA', label: 'School Assistant' },
+            { value: 'TGT', label: 'TGT' },
+            { value: 'LP', label: 'Language Pandit' },
+            { value: 'HM_HIGH', label: 'Head Master of a High School' }
+          ],
+          noteFromNotice: 'The notification says which posts may appear for which paper: para 5 (iv) for Paper I and para 5 (v) for Paper II.'
+        },
+        {
+          id: 'papers',
+          label: 'Paper(s) you will appear for',
+          kind: 'RADIO',
+          defaultValue: 'P1',
+          options: [
+            { value: 'P1', label: 'Paper I only' },
+            { value: 'P2', label: 'Paper II only' },
+            { value: 'BOTH', label: 'Both Paper I and Paper II' }
+          ],
+          noteFromNotice: 'Classes I–V: Paper I; classes VI–VIII: Paper II; a teacher of classes I–V who intends to teach VI–VIII appears for both (para 4).'
+        },
+        {
+          id: 'category',
+          label: 'Category',
+          kind: 'SELECT',
+          defaultValue: 'GENERAL',
+          options: [
+            { value: 'GENERAL', label: 'General' },
+            { value: 'BC', label: 'BC' },
+            { value: 'SC', label: 'SC' },
+            { value: 'ST', label: 'ST' },
+            { value: 'PWD', label: 'PwD' }
+          ]
+        },
+        {
+          id: 'feeClaimed',
+          label: 'Fee you are paying',
+          kind: 'SELECT',
+          defaultValue: 'RS_750',
+          options: [
+            { value: 'RS_750', label: 'Rs. 750' },
+            { value: 'RS_1000', label: 'Rs. 1000' },
+            { value: 'RS_700', label: 'Rs. 700' },
+            { value: 'RS_950', label: 'Rs. 950' }
+          ],
+          noteFromNotice: 'General & BC: Rs. 750 for one paper, Rs. 1000 for both. SC / ST / PwD: Rs. 700 for one paper, Rs. 950 for two (para 7). Fee once remitted is not refunded.'
+        },
+        {
+          id: 'paymentDate',
+          label: 'Date you pay the fee',
+          kind: 'DATE',
+          defaultValue: '2026-10-10',
+          noteFromNotice: 'Fee payment is open from 07.10.2026 to 16.10.2026 on https://schooledu.telangana.gov.in. The notice prints no closing hour.'
+        }
+      ]
+    },
+    {
+      moduleNumber: 2,
+      cardName: 'Step 2 — Application Submission',
+      title: 'Open the application with your Journal Number and submit it',
+      introduction:
+        'On the website, click Application Submission, enter the Journal Number, the date of payment and the date of birth you gave at payment, fill every mandatory field, upload the photograph and signature, preview, and SUBMIT.',
+      noticeReference: 'Information Bulletin p.10, para 17 (g); p.8, para 13; p.11, para 17 (i) and (l)',
+      fields: [
+        {
+          id: 'language1',
+          label: 'Have you studied your chosen Language-I up to Class X, as medium or as first language?',
+          kind: 'RADIO',
+          defaultValue: 'YES',
+          options: [
+            { value: 'YES', label: 'Yes' },
+            { value: 'NO', label: 'No' }
+          ],
+          noteFromNotice: 'Language-I must have been studied compulsorily, as medium of study or as first language, at least up to Class X (bulletin p.5 Note 2 and p.6 Note 2). Language pandits choose the language of their pandit training.'
+        },
+        {
+          id: 'photoFormat',
+          label: 'Photograph and signature files',
+          kind: 'SELECT',
+          defaultValue: 'JPEG',
+          options: [
+            { value: 'JPEG', label: 'Separate scanned images, *.jpeg' },
+            { value: 'PNG', label: 'PNG images' },
+            { value: 'PDF', label: 'One PDF with both' }
+          ],
+          noteFromNotice: 'Separate scanned images of the latest photograph and signature, in *.jpeg format only; the photograph 500kb and the signature 100kb (bulletin p.8 para 13; p.3 note 2 (e)).'
+        },
+        {
+          id: 'submissionMode',
+          label: 'How you submit',
+          kind: 'SELECT',
+          defaultValue: 'ONLINE',
+          options: [
+            { value: 'ONLINE', label: 'Online, on https://schooledu.telangana.gov.in' },
+            { value: 'MANUAL', label: 'A filled paper form handed in at the office' }
+          ]
+        },
+        {
+          id: 'afterSubmit',
+          label: 'After submitting, you will…',
+          kind: 'SELECT',
+          defaultValue: 'KEEP',
+          options: [
+            { value: 'KEEP', label: 'Keep a printout and the payment ID / Journal Number myself' },
+            { value: 'POST', label: 'Post the printout to the TGTET Cell' },
+            { value: 'EDIT_LATER', label: 'Correct any mistakes later' }
+          ]
+        },
+        {
+          id: 'purpose',
+          label: 'What you will use the pass for',
+          kind: 'SELECT',
+          defaultValue: 'CONTINUE',
+          options: [
+            { value: 'CONTINUE', label: 'Continuing in my present post, or promotion to the next higher post' },
+            { value: 'DIRECT', label: 'Applying in a future direct recruitment' }
+          ]
+        }
+      ]
+    }
+  ],
+  traps: [
+    {
+      id: 'tgtet-trap-not-in-service',
+      rule: { kind: 'VALUE_IN', fieldId: 'serviceStatus', values: ['PRIVATE_TEACHER', 'ASPIRANT'] },
+      severity: 'CRITICAL',
+      title: 'This special TET is not open to you',
+      problem: 'Only in-service teachers of Government, Local Body, TGREIS, Government Welfare Residential Societies, Telangana Model Schools and other Government departments may appear.',
+      whyItMatters: 'The notification says "ONLY". A private-school teacher or an aspirant has to take the regular TG TET (held twice a year) or CTET.',
+      rememberRule: 'Special TGTET-In-service Teachers-2026-II is for those in-service teachers only.',
+      officialClause: tgP_who.excerptText!,
+      noticeReference: 'Notification p.3, para 5 (i)'
+    },
+    {
+      id: 'tgtet-trap-direct-recruitment',
+      rule: { kind: 'VALUE_IN', fieldId: 'purpose', values: ['DIRECT'] },
+      severity: 'CRITICAL',
+      title: 'This pass cannot be used for direct recruitment',
+      problem: 'A pass in this special TET counts only for continuing in your present post or for promotion to the next higher post.',
+      whyItMatters: 'For any direct recruitment you need the regular TET the State conducts twice a year, or CTET.',
+      rememberRule: 'Special TET pass: present post or promotion only — never direct recruitment.',
+      officialClause: tgP_noRecruit.excerptText!,
+      noticeReference: 'Notification p.3, para 5 (iii)'
+    },
+    {
+      id: 'tgtet-trap-fee-general-concession',
+      rule: { kind: 'VALUE_IN_ALL', conditions: [
+        { fieldId: 'category', values: ['GENERAL', 'BC'] },
+        { fieldId: 'feeClaimed', values: ['RS_700', 'RS_950'] }
+      ] },
+      severity: 'CRITICAL',
+      title: 'The SC / ST / PwD fee is being paid by a General or BC candidate',
+      problem: 'Rs. 700 and Rs. 950 are the SC / ST / PwD fees. General and BC candidates pay Rs. 750 for one paper or Rs. 1000 for both.',
+      whyItMatters: 'The fee decides the papers you are registered for, and the bulletin says fee once remitted is not refunded under any circumstances.',
+      rememberRule: 'General & BC: 750 / 1000. SC / ST / PwD: 700 / 950.',
+      officialClause: tgP_fee.excerptText!,
+      noticeReference: 'Notification p.3, para 7'
+    },
+    {
+      id: 'tgtet-trap-fee-one-paper-for-two',
+      rule: { kind: 'VALUE_IN_ALL', conditions: [
+        { fieldId: 'papers', values: ['BOTH'] },
+        { fieldId: 'feeClaimed', values: ['RS_750', 'RS_700'] }
+      ] },
+      severity: 'CRITICAL',
+      title: 'Both papers are chosen, but a one-paper fee is being paid',
+      problem: 'Both papers cost Rs. 1000 (General & BC) or Rs. 950 (SC / ST / PwD). Rs. 750 and Rs. 700 are one-paper fees.',
+      whyItMatters: 'The fee you pay is what the portal registers you for; it cannot be topped up after the window, and nothing is refunded.',
+      rememberRule: 'Two papers: Rs. 1000, or Rs. 950 for SC / ST / PwD.',
+      officialClause: tgP_fee.excerptText!,
+      noticeReference: 'Notification p.3, para 7'
+    },
+    {
+      id: 'tgtet-trap-fee-window',
+      rule: { kind: 'DATE_OUTSIDE', fieldId: 'paymentDate', earliest: '2026-10-07', latest: '2026-10-16' },
+      severity: 'CRITICAL',
+      title: 'The fee is being paid outside the window',
+      problem: 'Payment of fees online runs from 07.10.2026 to 16.10.2026.',
+      whyItMatters: 'The application can only be opened with a Journal Number, and the Journal Number comes only from a fee paid in the window.',
+      rememberRule: 'Pay between 07.10.2026 and 16.10.2026 — and do it early, because the notice prints no closing hour.',
+      officialClause: tgP_window.excerptText!,
+      noticeReference: 'Notification p.1; p.5, para 14'
+    },
+    {
+      id: 'tgtet-trap-paper-for-post',
+      rule: { kind: 'VALUE_IN_ALL', conditions: [
+        { fieldId: 'teacherPost', values: ['SA', 'TGT', 'LP', 'HM_HIGH'] },
+        { fieldId: 'papers', values: ['P1'] }
+      ] },
+      severity: 'WARNING',
+      title: 'Your post is listed for Paper II, not Paper I',
+      problem: 'The notification permits School Assistants, TGTs, Language Pandits and Head Masters of High Schools to appear for Paper II. It permits Paper I to Secondary Grade Teachers and LFL Head Masters appointed with both D.El.Ed. and B.Ed.',
+      whyItMatters: 'The pass is for continuing in, or being promoted from, the post you hold; a paper the notice does not list for your post may not serve that.',
+      rememberRule: 'SGT / LFL HM: Paper I. SA / TGT / Language Pandit / High-school HM: Paper II.',
+      officialClause: tgP_paper2Who.excerptText!,
+      noticeReference: 'Notification p.3, para 5 (iv) and (v)'
+    },
+    {
+      id: 'tgtet-trap-language1',
+      rule: { kind: 'VALUE_IN', fieldId: 'language1', values: ['NO'] },
+      severity: 'CRITICAL',
+      title: 'Language-I must be a language you studied up to Class X',
+      problem: 'The Language-I you choose must have been your medium of study or first language at least up to Class X.',
+      whyItMatters: 'The bulletin makes it compulsory. Language pandits choose the language of their pandit training instead.',
+      rememberRule: 'Choose a Language-I you studied up to Class X (CBSE / ICSE candidates: the language they studied up to Class X).',
+      officialClause: tgP_lang1P1.excerptText!,
+      noticeReference: 'Information Bulletin p.5, Note (2); p.6, Note (2)'
+    },
+    {
+      id: 'tgtet-trap-photo-format',
+      rule: { kind: 'VALUE_IN', fieldId: 'photoFormat', values: ['PNG', 'PDF'] },
+      severity: 'CRITICAL',
+      title: 'The photograph and signature must be separate *.jpeg images',
+      problem: 'The bulletin asks for separate scanned images of the latest photograph and signature in *.jpeg format only.',
+      whyItMatters: 'Applications with no photo and signature, or an unclear or inadequate one, are rejected, and no Hall Ticket is issued to them.',
+      rememberRule: 'Two separate .jpeg files: photograph 500kb, signature 100kb.',
+      officialClause: tgP_apply.excerptText!,
+      noticeReference: 'Information Bulletin p.8, para 13; p.3, note 2 (e)–(f)'
+    },
+    {
+      id: 'tgtet-trap-manual',
+      rule: { kind: 'VALUE_IN', fieldId: 'submissionMode', values: ['MANUAL'] },
+      severity: 'CRITICAL',
+      title: 'There is no paper application',
+      problem: 'Applications are made online only, on https://schooledu.telangana.gov.in.',
+      whyItMatters: 'The bulletin says applications will not be received in any kind of manual form.',
+      rememberRule: 'Online only.',
+      officialClause: 'In any case applications will not be received in any kind of manual form.',
+      noticeReference: 'Information Bulletin p.11, para 17 (l)'
+    },
+    {
+      id: 'tgtet-trap-post-printout',
+      rule: { kind: 'VALUE_IN', fieldId: 'afterSubmit', values: ['POST'] },
+      severity: 'WARNING',
+      title: 'Do not post the printout',
+      problem: 'Keep the printout yourself; the TGTET Cell does not want it posted.',
+      whyItMatters: 'Nothing is completed by posting it. What you need later is the payment ID, the Journal Number and the printout in your own hands.',
+      rememberRule: 'Print it, keep it, do not post it.',
+      officialClause: 'On completion of submission, the candidates shall take a printout of the application and store it for future use. Candidates should not post the printout of the application to TGTET Cell.',
+      noticeReference: 'Information Bulletin p.11, para 17 (i)'
+    },
+    {
+      id: 'tgtet-trap-edit-later',
+      rule: { kind: 'VALUE_IN', fieldId: 'afterSubmit', values: ['EDIT_LATER'] },
+      severity: 'CRITICAL',
+      title: 'There is no correction after SUBMIT',
+      problem: 'Clicking Submit freezes the application.',
+      whyItMatters: 'The bulletin says the application cannot be edited after final submission, and that complaints about a mismatched photograph or details are not accepted afterwards.',
+      rememberRule: 'Use Preview, check every field, then SUBMIT once.',
+      officialClause: tgP_noEdit.excerptText!,
+      noticeReference: 'Information Bulletin p.10, para 17 (g) (i); p.3, note 2 (g)'
+    }
+  ]
+};
+
+const tgtetPaperNode = (id: string, code: string, name: string, order: number, provenance: DataProvenance, children: ExamPatternNode[]): ExamPatternNode => ({
+  id, level: 'PAPER', levelLabel: 'Paper', name, code, order, status: 'VERIFIED',
+  questions: 150, marks: 150, durationMinutes: 150, marksPerQuestion: 1,
+  negativeMarking: 'No negative marking', negativeMarkPerWrong: 0, mode: 'Online (Computer Based Test)', questionType: 'Multiple Choice Questions, four alternatives',
+  qualifying: { asPrinted: 'Pass: General / EWS 60% and above; BCs 50% and above; SC / ST / Differently abled 40% and above' },
+  provenance, children
+});
+const tgtetSubject = (id: string, name: string, order: number, questions: number, note: string, provenance: DataProvenance, languages?: string[]): ExamPatternNode => ({
+  id, level: 'SUBJECT', levelLabel: 'Subject', name, order, status: 'VERIFIED', questions, marks: questions, marksPerQuestion: 1, note, provenance,
+  ...(languages ? { languages } : {})
+});
+
+export const TG_TET_INSERVICE_2026_II_EXAM: Exam = {
+  id: TGTET_EXAM_ID,
+  code: 'TG_TET_2026_II',
+  title: 'TG TET 2026-II — Special TET for In-service Teachers',
+  authorityName: TGTET_AUTHORITY,
+  officialDomain: TGTET_DSE,
+  crucialEligibilityDate: '',
+  careerFields: ['Teaching & Education'],
+  examNature: 'ELIGIBILITY_TEST',
+  isGoldenJourney: false,
+  isDemoData: false,
+  overviewDescription:
+    'A special Telangana Teacher Eligibility Test held only for teachers already in service in Telangana’s Government, Local Body, TGREIS, Welfare Residential Society, Model School and other Government-department schools. A pass meets the condition of passing TET for continuing in the present post or for promotion; it cannot be used in any direct recruitment. Two papers of 150 one-mark questions each, 2½ hours, no negative marking, held as a Computer Based Test between 16.11.2026 and 21.11.2026.',
+  posts: [],
+  dates: [
+    { id: 'date-tgtet-notification', type: 'NOTIFICATION', label: 'Notification issued (Rc.No.444)', dateTimeStr: '2026-10-01 00:00:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: tgP_notified },
+    { id: 'date-tgtet-open', type: 'APPLICATION_OPEN', label: 'Online fee payment and application open', dateTimeStr: '2026-10-07 00:00:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: tgP_window },
+    { id: 'date-tgtet-close', type: 'APPLICATION_CLOSE', label: 'Last date for fee payment and online application (no closing hour printed)', dateTimeStr: '2026-10-16 23:59:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: tgP_window, displayWhen: '16.10.2026' },
+    { id: 'date-tgtet-hall-ticket', type: 'ADMIT_CARD', label: 'Hall Tickets available for download', dateTimeStr: '2026-11-09 00:00:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: tgP_schedule },
+    { id: 'date-tgtet-cbt', type: 'EXAM_TIER1', label: 'Computer Based Test, Paper-I and Paper-II (paper-wise schedule to be notified)', dateTimeStr: '2026-11-21 16:30:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: tgP_cbt, displayWhen: '16.11.2026 to 21.11.2026', stageLabel: 'Computer Based Test' },
+    { id: 'date-tgtet-result', type: 'RESULT', label: 'Declaration of Results', dateTimeStr: '2026-12-11 23:59:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: tgP_results, displayWhen: '09.12.2026 to 11.12.2026' },
+    { id: 'date-tgtet-helpdesk', type: 'OTHER', label: 'Help desk on all working days', dateTimeStr: '2026-12-11 17:00:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: tgP_helpdesk, displayWhen: '01.10.2026 to 11.12.2026' }
+  ],
+  globalRuleGroup: {
+    id: 'rg-tgtet-global',
+    operator: 'AND',
+    rules: [
+      { id: 'rule-tgtet-in-service', ruleType: 'STATED_CONDITION', operator: '=', ruleValue: 'In-service teacher of a Telangana Government institution',
+        statedAs: 'In-service Teachers working in Government / Local Body / TGREIS / Government Welfare Societies Residential / Telangana Model Schools / Teachers working in other Government departments ONLY', category: 'GENERAL', provenance: tgP_who }
+    ]
+  },
+  stages: [
+    {
+      id: 'stage-tgtet-cbt',
+      stageNumber: 1,
+      stageName: 'Computer Based Test — Paper-I (classes I–V) and/or Paper-II (classes VI–VIII)',
+      tier: 'CBT',
+      durationMinutes: 150,
+      totalQuestions: 150,
+      totalMarks: 150,
+      negativeMarking: 'No negative marking',
+      mode: 'Online, Computer Based Test; two sessions a day (09.00–11.30 AM and 2.00–4.30 PM)',
+      qualifyingNature: 'Each paper has 150 one-mark questions in 2½ hours. A candidate sits Paper-I, Paper-II or both, by the classes they teach. Pass: General / EWS 60% and above, BCs 50%, SC / ST / Differently abled 40%.',
+      sections: [
+        { sectionName: 'Paper-I · Child Development and Pedagogy', modules: ['Educational psychology of teaching and learning relevant to the primary level'], questions: 30, marks: 30, durationMinutes: 0, negativeMarking: 'None' },
+        { sectionName: 'Paper-I · Language I', modules: ['One of Telugu, Urdu, Hindi, Bengali, Kannada, Marathi, Tamil, Gujarati', '6 questions on pedagogy of language'], questions: 30, marks: 30, durationMinutes: 0, negativeMarking: 'None' },
+        { sectionName: 'Paper-I · Language II (English)', modules: ['English for all candidates', '6 questions on pedagogy of language'], questions: 30, marks: 30, durationMinutes: 0, negativeMarking: 'None' },
+        { sectionName: 'Paper-I · Mathematics', modules: ['24 content', '6 pedagogy'], questions: 30, marks: 30, durationMinutes: 0, negativeMarking: 'None' },
+        { sectionName: 'Paper-I · Environmental Studies', modules: ['24 content', '6 pedagogy'], questions: 30, marks: 30, durationMinutes: 0, negativeMarking: 'None' },
+        { sectionName: 'Paper-II · Child Development and Pedagogy', modules: ['Educational psychology of teaching and learning relevant to the elementary level'], questions: 30, marks: 30, durationMinutes: 0, negativeMarking: 'None' },
+        { sectionName: 'Paper-II · Language I', modules: ['One of Telugu, Urdu, Hindi, Kannada, Marathi, Tamil, Sanskrit', '6 questions on pedagogy of language'], questions: 30, marks: 30, durationMinutes: 0, negativeMarking: 'None' },
+        { sectionName: 'Paper-II · Language II (English)', modules: ['English for all candidates', '6 questions on pedagogy of language'], questions: 30, marks: 30, durationMinutes: 0, negativeMarking: 'None' },
+        { sectionName: 'Paper-II · Mathematics and Science, or Social Studies', modules: ['Mathematics & Science teachers: Mathematics 30 (24 content, 6 pedagogy) + Science 30 (12 physical, 12 biological, 6 pedagogy)', 'Social Studies teachers: 60 (48 content, 12 pedagogy)', 'Any other teacher: either'], questions: 60, marks: 60, durationMinutes: 0, negativeMarking: 'None' }
+      ],
+      unstatedFields: ['sections.durationMinutes'],
+      provenance: tgP_mcq
+    }
+  ],
+  patternTree: [
+    {
+      id: 'tgtet-cbt', level: 'STAGE', levelLabel: 'Examination', name: 'Computer Based Test (CBT)', order: 1, status: 'VERIFIED',
+      mode: 'Online, two sessions per day', questionType: 'Multiple Choice Questions',
+      negativeMarking: 'No negative marking', negativeMarkPerWrong: 0, marksPerQuestion: 1,
+      languages: ['Bilingual: English followed by the Language-I chosen (for Sanskrit: Telugu followed by Sanskrit in Devanagari)'],
+      note: 'A teacher of classes I–V sits Paper-I; of classes VI–VIII, Paper-II; a teacher of classes I–V who intends to teach VI–VIII sits both.',
+      provenance: tgP_sessions,
+      children: [
+        tgtetPaperNode('tgtet-paper-1', 'Paper-I', 'Paper-I (classes I to V)', 1, tgP_p1, [
+          tgtetSubject('tgtet-p1-cdp', 'Child Development and Pedagogy', 1, 30, 'Educational psychology of teaching and learning relevant to the primary level.', tgP_p1),
+          tgtetSubject('tgtet-p1-l1', 'Language I', 2, 30, 'Studied as medium or first language at least up to Class X; 6 of the 30 questions on pedagogy of language.', tgP_lang1P1,
+            ['Telugu', 'Urdu', 'Hindi', 'Bengali', 'Kannada', 'Marathi', 'Tamil', 'Gujarati']),
+          tgtetSubject('tgtet-p1-l2', 'Language II (English)', 3, 30, 'English for all candidates; 6 of the 30 questions on pedagogy of language.', tgP_lang2),
+          tgtetSubject('tgtet-p1-maths', 'Mathematics', 4, 30, '24 questions on content and 6 on pedagogy; topics of classes I to V, difficulty up to Class X.', tgP_p1),
+          tgtetSubject('tgtet-p1-evs', 'Environmental Studies', 5, 30, '24 questions on content and 6 on pedagogy; topics of classes I to V, difficulty up to Class X.', tgP_p1)
+        ]),
+        tgtetPaperNode('tgtet-paper-2', 'Paper-II', 'Paper-II (classes VI to VIII)', 2, tgP_p2, [
+          tgtetSubject('tgtet-p2-cdp', 'Child Development and Pedagogy', 1, 30, 'Educational psychology of teaching and learning relevant to the elementary level.', tgP_p2),
+          tgtetSubject('tgtet-p2-l1', 'Language I', 2, 30, 'Language pandits choose the language of their pandit training; 6 of the 30 questions on pedagogy of language.', tgP_lang1P2,
+            ['Telugu', 'Urdu', 'Hindi', 'Kannada', 'Marathi', 'Tamil', 'Sanskrit']),
+          tgtetSubject('tgtet-p2-l2', 'Language II (English)', 3, 30, 'English for all candidates; 6 of the 30 questions on pedagogy of language.', tgP_lang2),
+          {
+            id: 'tgtet-p2-iv', level: 'SUBJECT', levelLabel: 'Subject', name: 'Mathematics and Science, or Social Studies', order: 4, status: 'VERIFIED', questions: 60, marks: 60, marksPerQuestion: 1,
+            note: 'Mathematics and Science teachers: Mathematics and Science. Social Studies teachers: Social Studies. Any other teacher: either.',
+            provenance: tgP_p2,
+            children: [
+              { id: 'tgtet-p2-maths', level: 'SECTION', levelLabel: 'Section', name: 'Mathematics', order: 1, status: 'VERIFIED', questions: 30, marks: 30, note: 'Content 24; Pedagogy 06.', provenance: tgP_p2Maths },
+              { id: 'tgtet-p2-science', level: 'SECTION', levelLabel: 'Section', name: 'Science', order: 2, status: 'VERIFIED', questions: 30, marks: 30, note: 'Physical Science 12, Biological Science 12, Science Pedagogy 06.', provenance: tgP_p2Maths },
+              { id: 'tgtet-p2-social', level: 'SECTION', levelLabel: 'Section', name: 'Social Studies (the alternative to Mathematics and Science)', order: 3, status: 'VERIFIED', questions: 60, marks: 60, note: 'History, Geography, Civics and Economics: 48 on content, 12 on pedagogy.', provenance: tgP_p2Social }
+            ]
+          }
+        ])
+      ]
+    }
+  ],
+  admitCardEvents: [
+    {
+      id: 'exam-tgtet-inservice-2026-ii-hall-ticket',
+      examId: TGTET_EXAM_ID,
+      kind: 'ADMIT_CARD',
+      officialLabel: 'Hall Ticket',
+      sourceLabel: 'Download of Hall Tickets',
+      status: 'VERIFIED',
+      cycle: '2026-II',
+      stageLabel: 'Computer Based Test',
+      releasedAt: '2026-11-09',
+      releasePrecision: 'DAY',
+      examDateNote: 'The examination is between 16.11.2026 and 21.11.2026; the paper-wise schedule is to be notified later.',
+      portalUrl: TGTET_DSE,
+      portalNote: 'Hall Tickets are downloaded from this website (Information Bulletin para 14). It is the Department’s site, not a direct link to your own Hall Ticket, and GovOS cannot see your login.',
+      instructions: [
+        'If you cannot download it, contact the Director, SCERT & Ex-officio Director, TGTET, at the O/o SCERT, Opp. L.B. Stadium E Gate, Basheerbagh, Hyderabad – 500001, in person, 10.30 AM to 5.00 PM on working days between 09.11.2026 and 21.11.2026 (or earlier, depending on the last date of exam).',
+        'Bring the Journal Number of the fee paid, the candidate ID or payment reference of the application, a printout of the application form and one photograph like the one in the form.',
+        'A duplicate Hall Ticket is not issued after the examination in any case.',
+        'Without the Hall Ticket issued by the TGTET Office you are not permitted into the examination.'
+      ],
+      provenance: tgP_hallTicket
+    }
+  ],
+  resultDeclarations: [
+    {
+      id: 'exam-tgtet-inservice-2026-ii-result-scheduled',
+      examId: TGTET_EXAM_ID,
+      kind: 'SCHEDULED',
+      label: 'Declaration of Results',
+      isDeclaration: false,
+      status: 'VERIFIED',
+      lifecycle: 'ORIGINAL',
+      cycle: '2026-II',
+      stageLabel: 'Computer Based Test',
+      expectedAt: '2026-12-09',
+      expectedPrecision: 'DAY',
+      expectedNote: 'printed as a range, “Between 09.12.2026 to 11.12.2026”; shown here by its first day',
+      nextStep: 'The Director, SCERT and the Member Convener, TGTET issue Memos / Pass certificates to the candidates.',
+      provenance: tgP_results
+    }
+  ],
+  syllabus: [
+    { id: 'syl-tgtet-p1-cdp-1', subject: 'Paper-I · Child Development and Pedagogy', tier: 'CBT', topicName: 'Development of Child',
+      subtopics: ['Development, Growth & Maturation - Concept & Nature', 'Principles of Development & their educational implications', 'Factors influencing Development - Biological, Psychological, Sociological', 'Dimensions of Development and their interrelationships - Physical & Motor, Cognitive, Emotional, Social, Moral, Language relating to Infancy, early Childhood, late Child hood, Adolescence', 'Understanding Development - Piaget, Kohlberg, Chomsky, Carl Rogers and Erikson', 'Individual differences - Intra & Inter Individual differences in the areas of Attitudes, Aptitude', 'Interest, Habits, Thinking (Divergent & Convergent), Intelligence and their Assessment', 'Development of Personality - Concept, Factors effecting development of Personality, Child Rearing Practices, Self-Concept', 'Adjustment, Behavioural problems, Defense Mechanisms, Mental Health', 'Methods and Approaches of Child Development – Introspection, Observation, Interview, Case study, Experimental, Rating Scales, Anecdotal Records, Questionnaire, Cross sectional and Longitudinal', 'Developmental tasks and Hazards'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p1-cdp-1', 'SYL1', 1, 'Paper I syllabus, Child Development and Pedagogy', '1. DEVELOPMENT OF CHILD') },
+    { id: 'syl-tgtet-p1-cdp-2', subject: 'Paper-I · Child Development and Pedagogy', tier: 'CBT', topicName: 'Understanding Learning',
+      subtopics: ['Concept, Nature of Learning - Input - Process - Outcome', 'Factors of Learning - Personal and Environmental', 'Approaches to Learning and their applicability - Behaviourism (Skinner, Pavlov, Thorndike), Constructivism (Piaget, Vygotsky), Gestalt (Kohler, Koffka) and Observational (Bandura)', 'Dimensions of Learning - Cognitive, Affective and Performance', 'Motivation and Sustenance -its role in learning', 'Memory & Forgetting', 'Transfer of Learning'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p1-cdp-2', 'SYL1', 1, 'Paper I syllabus, Child Development and Pedagogy', '2. UNDERSTANDING LEARNING') },
+    { id: 'syl-tgtet-p1-cdp-3', subject: 'Paper-I · Child Development and Pedagogy', tier: 'CBT', topicName: 'Pedagogical Concerns',
+      subtopics: ['Teaching and its relationship with learning and learner', 'Learners in Contexts: Situating learner in the socio-political and cultural context', 'Children from diverse contexts - Children With Special Needs (CWSN), Inclusive Education', 'Understanding of Pedagogic methods - Enquiry based learning, Project based learning, Survey, Observation and Activity based learning, Co-operative & Collaborative learning', 'Individual and Group learning: Issues and concerns with respect to organizing learning in class room like Study habits, Self learning and Learning to learn skills', 'Organizing learning in heterogeneous class room groups - Socio-economic background, Abilities and Interest', 'Paradigms of organizing Learning - Teacher centric, Subject centric and Learner centric', 'Theory of Instruction - Bruner', 'Teaching as Planned activity - Elements of Planning', 'Phases of Teaching - Pre active, Interactive and Post active', 'General and Subject related skills, competencies required in teaching and attributes of good facilitator', 'Learning resources - Self, Home, School, Play, Community, Technology', 'Class room Management: Role of student, teacher, Leadership style of teacher, Creation of non-threatening learning environment, Managing behavioural problems, Guidance & Counselling, Child Abuse, Punishment and its legal implications, Rights of a child, Time Management', 'Distinction between Assessment for Learning & Assessment of Learning, School based Assessment, Continuous & Comprehensive Evaluation: Perspective & Practice', 'Understanding teaching & learning in the context of NCF, 2005 & Right to Education Act, 2009'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p1-cdp-3', 'SYL1', 1, 'Paper I syllabus, Child Development and Pedagogy', '3. PEDAGOGICAL CONCERNS') },
+    { id: 'syl-tgtet-p1-eng-content', subject: 'Paper-I · Language-II (English)', tier: 'CBT', topicName: 'English: content (24 marks)',
+      subtopics: ['Parts of Speech', 'Tenses', 'Types of Sentences', 'Prepositions & Articles', 'Degrees of Comparison', 'Direct and Indirect Speech', 'Questions and question tags', 'Active & Passive voice', 'Phrasal verbs', 'Reading Comprehension', 'Composition', 'Vocabulary', 'Meaning of idiomatic expressions', 'Correction of Sentences', 'Sequencing of the Sentences in the given paragraph', 'Error identification within a sentence.'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p1-eng-content', 'SYL1', 3, 'Paper I syllabus, Language-II (English)', 'CONTENT (Marks: 24) 1. Parts of Speech 2. Tenses 3.Types of Sentences') },
+    { id: 'syl-tgtet-p1-eng-pedagogy', subject: 'Paper-I · Language-II (English)', tier: 'CBT', topicName: 'English: pedagogy (6 marks)',
+      subtopics: ['Aspects of English :- (a) English language - History, nature, importance, principles of English as second language (b) Problems of teaching / learning English', 'Objectives of teaching English.', 'Phonetics', 'Development of Language skills:- (a) Listening, Speaking, Reading & Writing (LSRW). (b) Communicative skills.', 'Approaches, Methods, Techniques of teaching English. (a) Introduction, Definition and Types of approaches methods and techniques of teaching English (b)Remedial teaching.', 'Teaching of structures and vocabulary items.', 'Teaching learning materials in English', 'Lesson Planning', 'Curriculum & Textbooks', 'Evaluation in English language Teaching – CCE'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p1-eng-pedagogy', 'SYL1', 3, 'Paper I syllabus, Language-II (English)', 'PEDAGOGY (Marks: 06) 1. Aspects of English') },
+    { id: 'syl-tgtet-p1-maths-1', subject: 'Paper-I · Mathematics', tier: 'CBT', topicName: 'Number System',
+      subtopics: ['Natural Numbers', 'Whole Numbers', 'Integers', 'Rational Numbers & their fundamental operations (addition, subtraction, multiplication and division)', 'Primes Composite Numbers', 'Co-Primes', 'Twin Primes', 'Relationship between LCM & GCD', 'Indian currency', 'Representation of Natural', 'Whole', 'integers and rational numbers on a number line', 'Terminating and Non-terminating decimals', 'Non-terminating but recurring decimals', 'square', 'square root', 'cube', 'cube roots of numbers', 'Pythagorean triplets', 'Applications on number system'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p1-maths-1', 'SYL1', 3, 'Paper I syllabus, Mathematics', '1. Number System:') },
+    { id: 'syl-tgtet-p1-maths-2', subject: 'Paper-I · Mathematics', tier: 'CBT', topicName: 'Fractions',
+      subtopics: ['Concept of Fractions', 'Proper Fractions', 'Improper Fractions', 'Mixed Fractions', 'Decimal Fractions', 'Comparison', 'Fundamental operations on fractions (addition, subtraction, multiplication and division)', 'Representation of a fraction in pictorial form and on a number line', 'reciprocal of fraction', 'uses of fractions in daily life'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p1-maths-2', 'SYL1', 3, 'Paper I syllabus, Mathematics', '2. Fractions:') },
+    { id: 'syl-tgtet-p1-maths-3', subject: 'Paper-I · Mathematics', tier: 'CBT', topicName: 'Arithmetic',
+      subtopics: ['Unitary method', 'percentages', 'profit and loss', 'ratio and proportion', 'direct proportion', 'discount', 'simple interest', 'compound interest', 'time and work', 'time and distance', 'tax (Vat)'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p1-maths-3', 'SYL1', 3, 'Paper I syllabus, Mathematics', '3. Arithmetic:') },
+    { id: 'syl-tgtet-p1-maths-4', subject: 'Paper-I · Mathematics', tier: 'CBT', topicName: 'Geometry',
+      subtopics: ['Basic idea of geometry (2D & 3D shapes)', 'types of angles', 'construction and measurement of angles', 'types of angles', 'lines', 'triangles', 'types of triangles', 'quadrilaterals', 'types of quadrilaterals', 'congruence', 'property of congruencies of triangles (SAS, SSS, ASA, RHS)', 'construction of triangles and quadrilaterals', 'patterns with geometrical shapes', 'representing 3D Shapes into 2D Shapes', 'Euler\'s relation', 'Properties of triangles', 'parallelogram', 'trapezium', 'Rhombus', 'Rectangle', 'Square and Kite', 'Concept of Circles', 'Symmetry'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p1-maths-4', 'SYL1', 4, 'Paper I syllabus, Mathematics', '4. Geometry:') },
+    { id: 'syl-tgtet-p1-maths-5', subject: 'Paper-I · Mathematics', tier: 'CBT', topicName: 'Measurements',
+      subtopics: ['Length', 'Weight', 'Capacity', 'Time and their Standard Units', 'Surface Area and volume of a cube and a cuboids', 'perimeter and area of triangle', 'quadrilateral', 'parallelogram', 'rectangle', 'Rhombus', 'Square and Trapezium', 'Circumference of a circle', 'Area of Circle', 'Circular paths', 'other polygons and sector in a circle'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p1-maths-5', 'SYL1', 4, 'Paper I syllabus, Mathematics', '5. Measurements:') },
+    { id: 'syl-tgtet-p1-maths-6', subject: 'Paper-I · Mathematics', tier: 'CBT', topicName: 'Data Applications',
+      subtopics: ['Introduction to Data', 'Data Presentation', 'Preparation of Frequency distribution table', 'Bar Graph', 'Pictograph', 'Histogram', 'Mean', 'Median and Mode of ungrouped data', 'determination of Mean by deviation method', 'Cumulative Frequency Distribution Table', 'Frequency Polygon', 'Frequency Curve and Cumulative Frequency Curves'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p1-maths-6', 'SYL1', 4, 'Paper I syllabus, Mathematics', '6. Data Applications:') },
+    { id: 'syl-tgtet-p1-maths-7', subject: 'Paper-I · Mathematics', tier: 'CBT', topicName: 'Algebra',
+      subtopics: ['Introduction to Algebra', 'Simple equations', 'solving linear equation in one variable', 'exponents and powers', 'Algebraic expressions', 'Addition', 'Subtraction', 'Multiplication', 'Division and Factorisation of algebraic expressions', 'algebraic identities'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p1-maths-7', 'SYL1', 4, 'Paper I syllabus, Mathematics', '7. Algebra:') },
+    { id: 'syl-tgtet-p1-maths-ped', subject: 'Paper-I · Mathematics', tier: 'CBT', topicName: 'Mathematics: pedagogy (6 marks)',
+      subtopics: ['Definitions and Nature of Mathematics', 'Aims, values, instructional objectives of teaching Mathematics and Academic Standards', 'Methods of Teaching Mathematics', 'Instructional material in Mathematics - TLM in Mathematics', 'Instructional Planning', 'Continuous Comprehensive Evaluation (CCE) – Formative Assessment, Summative Assessment – Processes and procedures', 'Designing, Administration, Analysis of scholastic Achievement test (SAT)', 'Diagnostic and Remedial Teaching', 'The Mathematics Teacher', 'Resource Utilization', 'Curriculum and Text Book'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p1-maths-ped', 'SYL1', 4, 'Paper I syllabus, Mathematics', 'PEDAGOGY (Marks: 06) 1. Definitions and Nature of Mathematics') },
+    { id: 'syl-tgtet-p1-evs-1', subject: 'Paper-I · Environmental Studies', tier: 'CBT', topicName: 'My Family',
+      subtopics: ['My Family', 'Family tree', 'migration', 'changing structures of family -nuclear and joint families', 'festivals'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p1-evs-1', 'SYL1', 4, 'Paper I syllabus, Environmental Studies', '1. My Family') },
+    { id: 'syl-tgtet-p1-evs-2', subject: 'Paper-I · Environmental Studies', tier: 'CBT', topicName: 'Work & Play',
+      subtopics: ['Occupations', 'Child labour', 'Games', 'Local', 'National and International', 'Marshal Arts', 'Effects of games on respiration and breathing', 'fairs', 'Circus'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p1-evs-2', 'SYL1', 4, 'Paper I syllabus, Environmental Studies', '2. Work & Play') },
+    { id: 'syl-tgtet-p1-evs-3', subject: 'Paper-I · Environmental Studies', tier: 'CBT', topicName: 'Plants and Animals',
+      subtopics: ['Plants & animals in our surroundings', 'Plant & Animal products', 'parts of a plant', 'photosynthesis', 'parts of a flower', 'pollination', 'fertilization', 'fruits', 'seeds', 'Wild & cultivated plants', 'wild & domestic animals their food', 'arrangement of teeth in animals'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p1-evs-3', 'SYL1', 4, 'Paper I syllabus, Environmental Studies', '3. Plants and Animals') },
+    { id: 'syl-tgtet-p1-evs-4', subject: 'Paper-I · Environmental Studies', tier: 'CBT', topicName: 'Our Food',
+      subtopics: ['Different types of food', 'storage of grains and vegetables', 'storage of food', 'Food', 'animal husbandry', 'Nutrients of food', 'deficiency diseases'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p1-evs-4', 'SYL1', 5, 'Paper I syllabus, Environmental Studies', '4. Our Food') },
+    { id: 'syl-tgtet-p1-evs-5', subject: 'Paper-I · Environmental Studies', tier: 'CBT', topicName: 'Shelter',
+      subtopics: ['Need', 'different types of houses', 'electrical appliances', 'their use', 'social life in ants and honey bees', 'Animals shelter', 'variation'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p1-evs-5', 'SYL1', 5, 'Paper I syllabus, Environmental Studies', '5. Shelter') },
+    { id: 'syl-tgtet-p1-evs-6', subject: 'Paper-I · Environmental Studies', tier: 'CBT', topicName: 'Air',
+      subtopics: ['Importance of air', 'composition of air', 'atmospheric pressure', 'diseases spread through air and their prevention', 'air pollution', 'causes', 'its impact', 'and measures to prevent', 'Green House effect'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p1-evs-6', 'SYL1', 5, 'Paper I syllabus, Environmental Studies', '6. Air') },
+    { id: 'syl-tgtet-p1-evs-7', subject: 'Paper-I · Environmental Studies', tier: 'CBT', topicName: 'Energy',
+      subtopics: ['Renewable', 'Non-renewable', 'Future Energy'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p1-evs-7', 'SYL1', 5, 'Paper I syllabus, Environmental Studies', '7. Energy') },
+    { id: 'syl-tgtet-p1-evs-8', subject: 'Paper-I · Environmental Studies', tier: 'CBT', topicName: 'Water',
+      subtopics: ['Importance', 'water resources', 'tanks', 'aquatic flora and fauna', 'measurement of liquids', 'Water pollution', 'causes', 'impact', 'measures to prevent', 'purification of water', 'drought', 'floods'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p1-evs-8', 'SYL1', 5, 'Paper I syllabus, Environmental Studies', '8. Water') },
+    { id: 'syl-tgtet-p1-evs-9', subject: 'Paper-I · Environmental Studies', tier: 'CBT', topicName: 'Our Body',
+      subtopics: ['Health', 'Cleanliness', 'External', 'Internal parts of our body', 'Bones', 'Muscles', 'Sense organs', 'Digestion', 'Respiration', 'Nervous system', 'Excretory system', 'Circulatory system', 'First Aid'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p1-evs-9', 'SYL1', 5, 'Paper I syllabus, Environmental Studies', '9. Our Body') },
+    { id: 'syl-tgtet-p1-evs-10', subject: 'Paper-I · Environmental Studies', tier: 'CBT', topicName: 'Mapping',
+      subtopics: ['Direction', 'Mandal', 'District', 'State', 'India'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p1-evs-10', 'SYL1', 5, 'Paper I syllabus, Environmental Studies', '10. Mapping') },
+    { id: 'syl-tgtet-p1-evs-11', subject: 'Paper-I · Environmental Studies', tier: 'CBT', topicName: 'History and culture of India',
+      subtopics: ['Evolution of Man', 'Pre-historic period', 'Indian culture and Heritage', 'Civilization', 'Medieval period culture', 'Ancient monuments', 'Religious movements: Jainism', 'Buddhism', 'Bhakti movement', 'Great personalities', 'Indian freedom movement', 'Modern India'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p1-evs-11', 'SYL1', 5, 'Paper I syllabus, Environmental Studies', '11. History and culture of India') },
+    { id: 'syl-tgtet-p1-evs-12', subject: 'Paper-I · Environmental Studies', tier: 'CBT', topicName: 'Our country (India)',
+      subtopics: ['Location', 'Area', 'Physical features', 'Climate', 'Natural resources', 'Continents and Oceans', 'Historical places in India', 'Population'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p1-evs-12', 'SYL1', 5, 'Paper I syllabus, Environmental Studies', '12. Our country (India)') },
+    { id: 'syl-tgtet-p1-evs-13', subject: 'Paper-I · Environmental Studies', tier: 'CBT', topicName: 'Our state (Telangana)',
+      subtopics: ['Culture', 'State Government', 'Gram Panchayat', 'Mandal Parishad', 'Municipality', 'Municipal Corporation', 'Local Emergency services', 'our state symbols', 'Livelihood', 'Civilization', 'Impact of rivers'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p1-evs-13', 'SYL1', 5, 'Paper I syllabus, Environmental Studies', '13. Our state (Telangana)') },
+    { id: 'syl-tgtet-p1-evs-14', subject: 'Paper-I · Environmental Studies', tier: 'CBT', topicName: 'Indian constitution',
+      subtopics: ['Preamble', 'Major concepts', 'Fundamental rights', 'Fundamental duties', 'Child Rights'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p1-evs-14', 'SYL1', 5, 'Paper I syllabus, Environmental Studies', '14. Indian constitution') },
+    { id: 'syl-tgtet-p1-evs-15', subject: 'Paper-I · Environmental Studies', tier: 'CBT', topicName: 'Security',
+      subtopics: ['Earth Quakes', 'Floods', 'Fire', 'First Aid', '108', '104 Vehicles'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p1-evs-15', 'SYL1', 5, 'Paper I syllabus, Environmental Studies', '15. Security') },
+    { id: 'syl-tgtet-p1-evs-ped', subject: 'Paper-I · Environmental Studies', tier: 'CBT', topicName: 'Environmental Studies: pedagogy (6 marks)',
+      subtopics: ['Concept and scope of Environmental Studies (Science & Social Studies)', 'Aims & Objectives of teaching Environmental Studies (Science & Social Studies) Academic Standards of Teaching EVS', 'Relation to Science and Social Studies', 'Curriculum and its transaction', 'Learning Environment', 'CCE'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p1-evs-ped', 'SYL1', 5, 'Paper I syllabus, Environmental Studies', 'PEDAGOGY (Marks: 06) 1. Concept and scope of Environmental Studies (Science & Social Studies)') },
+    { id: 'syl-tgtet-p2-cdp-1', subject: 'Paper-II · Child Development and Pedagogy', tier: 'CBT', topicName: 'Development of Child',
+      subtopics: ['Development, Growth & Maturation - Concept & Nature', 'Principles of development & their implications', 'Factors influencing Development - Biological, Psychological, Sociological', 'Dimensions of Development and their interrelationships - Physical & Motor, Cognitive, Emotional, Social, Moral, Language relating to Infancy, early Childhood, late Child hood, Adolescence', 'Understanding Development - Piaget, Kohlberg, Chomsky, Carl Rogers and Erikson', 'Individual differences - Intra & Inter Individual differences in the areas of Attitudes, Aptitude, Interest, Habits, Thinking (Divergent & Convergent), Intelligence and their Assessment', 'Development of Personality - Concept, Factors effecting development of Personality, Child Rearing Practices, Self-Concept', 'Adjustment, Behavioural problems, Defense Mechanisms, Mental Health', 'Methods and Approaches of Child Development – Introspection, Observation, Interview, Case study, Experimental. Anecdotal Records, Questionnaire, Rating Scales, Cross sectional and Longitudinal - Developmental tasks and Hazards'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p2-cdp-1', 'SYL2', 1, 'Paper II syllabus, Child Development and Pedagogy', '1. DEVELOPMENT OF CHILD') },
+    { id: 'syl-tgtet-p2-cdp-2', subject: 'Paper-II · Child Development and Pedagogy', tier: 'CBT', topicName: 'Understanding Learning',
+      subtopics: ['Concept, Nature of Learning - input - process - outcome', 'Factors of Learning - Personal and Environmental', 'Approaches to Learning and their applicability-Behaviourism (Skinner, Pavlov, Thorndike), Constructivism (Piaget, Vygotsky), Gestalt(Kohler, Koffka) and Observational (Bandura)', 'Dimensions of Learning - Cognitive, Affective and Performance', 'Motivation and Sustenance -its role in learning', 'Memory & Forgetting', 'Transfer of Learning'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p2-cdp-2', 'SYL2', 1, 'Paper II syllabus, Child Development and Pedagogy', '2. UNDERSTANDING LEARNING') },
+    { id: 'syl-tgtet-p2-cdp-3', subject: 'Paper-II · Child Development and Pedagogy', tier: 'CBT', topicName: 'Pedagogical Concerns',
+      subtopics: ['Teaching and its relationship with learning and learner', 'Learners in Contexts: Situating learner in the socio-political and cultural context', 'Children from diverse contexts-Children With Special Needs (CWSN), Inclusive Education', 'Understanding of pedagogic methods - Enquiry based learning, Project based learning, Survey, Observation and Activity based learning, Co-operative & Collaborative Learning', 'Individual and Group learning: Issues and concerns with respect to organizing learning in class room like Study habits, Self learning and Learning to learn skills', 'Organizing learning in heterogeneous class room groups - Socio-economic background, Abilities and Interest', 'Paradigms of organizing Learning-Teacher centric, Subject centric and Learner centric', 'Theory of Instruction - Bruner', 'Teaching as Planned activity - Elements of Planning', 'Phases of Teaching - Pre active, Interactive and Post active', 'General and Subject related skills, competencies required in teaching and attributes of good facilitator', 'Learning resources - Self, Home, School, Play, Community, Technology', 'Class room Management: Role of student, teacher, Leadership style of teacher, Creation of non-threatening learning environment, Managing behaviour problems, Guidance & Counselling, Child abuse, Punishment and its legal implications, Rights of a child, Time Management', 'Distinction between Assessment for Learning & Assessment of Learning, School based Assessment, Continuous & Comprehensive Evaluation: Perspective & Practice', 'Understanding teaching & learning in the context of NCF, 2005 & Right To Education Act, 2009'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p2-cdp-3', 'SYL2', 1, 'Paper II syllabus, Child Development and Pedagogy', '3. PEDAGOGICAL CONCERNS') },
+    { id: 'syl-tgtet-p2-eng-content', subject: 'Paper-II · Language-II (English)', tier: 'CBT', topicName: 'English: content (24 marks)',
+      subtopics: ['Parts of Speech', 'Tenses', 'Active voice & Passive voice', 'Prepositions and Articles', 'Degrees of comparison', 'Clauses', 'Verbs - Main Verbs - Auxiliary Verbs', 'Adverbs - Types of Adverbs', 'Conjunction - coordinating conjunction - subordinating conjunction.', 'Direct and Indirect speech', 'Questions and question tags', 'Types of sentences - simple, compound and complex - synthesis of sentences', 'Phrases - uses of phrases.', 'Composition - letter writing – precise writing', 'Comprehension', 'Vocabulary - Antonyms, Synonyms and Spellings', 'Meaning of idiomatic expressions', 'Correction of Sentences', 'Sequencing of the Sentences in the given paragraph', 'Error identification within a sentence'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p2-eng-content', 'SYL2', 3, 'Paper II syllabus, Language-II (English)', 'CONTENT (Marks: 24) (1) Parts of Speech (2) Tenses (3) Active voice & Passive voice') },
+    { id: 'syl-tgtet-p2-eng-pedagogy', subject: 'Paper-II · Language-II (English)', tier: 'CBT', topicName: 'English: pedagogy (6 marks)',
+      subtopics: ['Aspects of English :- (a) English language - History, nature, importance, principles of English as second language. (b) Problems of teaching / learning English.', 'Objectives of teaching English.', 'Phonetics / Transcription.', 'Development of Language skills:- (a) Listening, Speaking, Reading & Writing (LSRW). (b) Communicative skills - Imparting values through Communication.', 'Approaches, Methods, Techniques of teaching English:- (a) Introduction, definition & types of Approaches, Methods &Techniques of teaching English (b) Remedial teaching.', 'Teaching of structures and vocabulary.', 'Teaching learning materials in English Language Teaching.', 'Lesson Planning.', 'Curriculum & Textbooks - Importance and its need.', 'Evaluation in English Language Teaching - CCE'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p2-eng-pedagogy', 'SYL2', 3, 'Paper II syllabus, Language-II (English)', 'PEDAGOGY (Marks: 06) 1. Aspects of English') },
+    { id: 'syl-tgtet-p2-maths-1', subject: 'Paper-II · Mathematics', tier: 'CBT', topicName: 'Number System',
+      subtopics: ['Prime and Composite Numbers', 'Tests of divisibility', 'whole numbers', 'integers', 'fractions', 'decimal fractions', 'L.C.M. and G.C.D. rational numbers and irrational numbers', 'Properties of numbers', 'Real numbers', 'laws of exponents', 'squares', 'square roots', 'cubes', 'cube roots', 'finding missing number represented as alphabets in sums involving array of four operations', 'number patterns', 'number puzzles', 'Euclid division lemma', 'concept of logarithms'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p2-maths-1', 'SYL2', 3, 'Paper II syllabus, Mathematics', '1. Number System') },
+    { id: 'syl-tgtet-p2-maths-2', subject: 'Paper-II · Mathematics', tier: 'CBT', topicName: 'Arithmetic',
+      subtopics: ['Ratio and proportion', 'simple interest', 'compound interest', 'Time and distance', 'Discount', 'tax', 'time and work', 'profit and loss'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p2-maths-2', 'SYL2', 3, 'Paper II syllabus, Mathematics', '2. Arithmetic') },
+    { id: 'syl-tgtet-p2-maths-3', subject: 'Paper-II · Mathematics', tier: 'CBT', topicName: 'Sets',
+      subtopics: ['Concept of set', 'set language', 'empty set', 'finite and infinite sets', 'subset and equality of sets', 'cardinal number of set', 'set operations', 'representation of sets', 'Venn diagrams and their properties'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p2-maths-3', 'SYL2', 3, 'Paper II syllabus, Mathematics', '3. Sets') },
+    { id: 'syl-tgtet-p2-maths-4', subject: 'Paper-II · Mathematics', tier: 'CBT', topicName: 'Algebra',
+      subtopics: ['Introduction to Algebra', 'expressions', 'exponents and powers', 'Factorization special products and expansions', 'linear equations and their graphs', 'polynomials', 'Quadratic equations and its applications', 'concept of progressions', 'progressions (AP and GP).nth term and sum of the first n terms in AP', 'nth term of GP'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p2-maths-4', 'SYL2', 3, 'Paper II syllabus, Mathematics', '4. Algebra') },
+    { id: 'syl-tgtet-p2-maths-5', subject: 'Paper-II · Mathematics', tier: 'CBT', topicName: 'Geometry',
+      subtopics: ['History of Geometry', 'Contribution of India in the Development of Geometry', 'Euclid Geometry', 'Lines and Angles', 'Similar Triangles', 'Pythagoras theorem', 'congruency of triangles', 'Properties of Circles', 'Triangles', 'Quadrilaterals and polygons', 'Parts of Circle : Construction of Circle', 'Triangles and Quadrilaterals', 'Circles and concurrent lines in triangles', 'Co-ordinate Geometry', 'Co-ordinates of a point', 'plotting of points', 'representing of linear equations in two variables (of the form ax+by+c=0) in the Cartesian coordination system)', 'Linear equations with 2 variables', 'slope of a line', 'distance between two points in a plane', 'section formula', 'Area of a triangle', 'collinearity of points in a co-ordinate plane', 'centroid of a triangle', 'symmetry'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p2-maths-5', 'SYL2', 3, 'Paper II syllabus, Mathematics', '5. Geometry') },
+    { id: 'syl-tgtet-p2-maths-6', subject: 'Paper-II · Mathematics', tier: 'CBT', topicName: 'Mensuration',
+      subtopics: ['Perimeter and Area of a Square and Rectangle', 'Area of Triangle', 'Circle', 'Ring and Quadrilaterals', 'Surface area and volume of Cube', 'Cuboid', 'Lateral & total Surface area and volume of a cylinder', 'cone', 'sphere and hemisphere', 'conversion of one solid to another shape', 'surface area and volume of combination of solids'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p2-maths-6', 'SYL2', 3, 'Paper II syllabus, Mathematics', '6. Mensuration') },
+    { id: 'syl-tgtet-p2-maths-7', subject: 'Paper-II · Mathematics', tier: 'CBT', topicName: 'Data Handling',
+      subtopics: ['Collection and Classification of Data', 'Frequency distribution table', 'Tally marks', 'Bar graph', 'Pictograph and Pie diagrams', 'mean', 'median and mode for un-grouped and grouped data', 'cumulative frequency table and ogive curves', 'concept of probability', 'simple problems (day to day life situation) on single events', 'concept of complementary events'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p2-maths-7', 'SYL2', 3, 'Paper II syllabus, Mathematics', '7. Data Handling') },
+    { id: 'syl-tgtet-p2-maths-8', subject: 'Paper-II · Mathematics', tier: 'CBT', topicName: 'Trigonometry',
+      subtopics: ['Introduction of Trigonometry', 'Relationship between ratios', 'values of trigonometric ratios', '(0o , 30o , 45o , 60o and 90o ) Trigonometric identities', 'trigonometric ratios of complementary angles', 'applications of trigonometry', 'Angle of elevation and depression', 'simple problems'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p2-maths-8', 'SYL2', 4, 'Paper II syllabus, Mathematics', '8. Trigonometry') },
+    { id: 'syl-tgtet-p2-maths-ped', subject: 'Paper-II · Mathematics', tier: 'CBT', topicName: 'Mathematics: pedagogy (6 marks)',
+      subtopics: ['Definition and Nature of Mathematics', 'Aims, values, instructional objectives of teaching Mathematics and Academic Standards', 'Methods of Teaching Mathematics', 'Instructional material in Mathematics - TLM in Mathematics', 'Instructional Planning', 'Continuous Comprehensive Evaluation (CCE) – Formative Assessment, Summative Assessment – Processes and procedures', 'Designing, Administration, Analysis of scholastic Achievement Test (SAT)', 'Diagnostic and Remedial Teaching', 'The Mathematics Teacher', 'Resource Utilization', 'Curriculum and Text Book'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p2-maths-ped', 'SYL2', 4, 'Paper II syllabus, Mathematics', 'PEDAGOGY (Marks: 06) 1. Definition and Nature of Mathematics') },
+    { id: 'syl-tgtet-p2-sci-1', subject: 'Paper-II · Science', tier: 'CBT', topicName: 'Natural Resources',
+      subtopics: ['Air', 'Water: Water pollution', 'Harnessing of water', 'States of water', 'Hardness of water', 'water pressure Air pollution', 'Atmospheric Pressure', 'Air pressure', 'Archimedes\' principle', 'Pascal\'s law', 'Bernoulli\'s Principle', 'Hydrometer', 'Barometer', 'Laws of floatation', 'Specific gravity', 'Surface tension', 'Fluid Mechanics'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p2-sci-1', 'SYL2', 4, 'Paper II syllabus, Science', '1. Natural Resources') },
+    { id: 'syl-tgtet-p2-sci-2', subject: 'Paper-II · Science', tier: 'CBT', topicName: 'Our Universe',
+      subtopics: ['Solar eclipse', 'lunar eclipse', 'Constellation', 'Zodiac', 'Space travel', 'Solar system', 'Satellites', 'stars', 'comets', 'Earth'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p2-sci-2', 'SYL2', 4, 'Paper II syllabus, Science', '2. Our Universe') },
+    { id: 'syl-tgtet-p2-sci-3', subject: 'Paper-II · Science', tier: 'CBT', topicName: 'Natural Phenomenon',
+      subtopics: ['Light: How can we see objects', 'shadows', 'Reflection of light', 'laws of reflection', 'plane mirrors and images', 'Virtual image', 'real image', 'pinhole camera', 'periscope', 'kaleidoscope', 'spherical mirrors and images', 'Fermat\'s Principal', 'Applications of reflection of light', 'Refraction of light', 'laws of refraction', 'refractive index', 'Snell\'s law', 'total internal reflection and its applications', 'refraction through glass prisms and slabs', 'refraction at curved surfaces and through lenses', 'images formed by lenses and ray diagrams', 'construction of human eye', 'least distinct vision', 'defects of vision-formation of rainbow-dispersion of light', 'Sound: Sources of sound', 'Production and propagation of sound', 'construction of human ear and its working', 'Properties of sound', 'auditable range', 'Sound Pollution', 'Sound Waves', 'Kinds of Sound Waves', 'characteristics of sound waves', 'reflection of sound', 'echo', 'uses of ultrasonic sounds', 'Musical instruments', 'Heat: Concept of heat and temperature', 'thermal equilibrium', 'Measurement of Temperature', 'Types of Thermometers', 'specific heat and its applications in daily life', 'methods of mixtures', 'evaporation', 'condensation', 'boiling point', 'melting point'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p2-sci-3', 'SYL2', 4, 'Paper II syllabus, Science', '3. Natural Phenomenon') },
+    { id: 'syl-tgtet-p2-sci-4', subject: 'Paper-II · Science', tier: 'CBT', topicName: 'Mechanics',
+      subtopics: ['Kinematics', 'Dynamics: Concept of motion and rest', 'Types of Motion', 'Speed', 'Velocity', 'Acceleration', 'Newton\'s Laws of Motion', 'force', 'types of force', 'resultant force', 'Friction', 'types of friction', 'factors influencing the friction', 'fluid friction', 'gravitation', 'Newton\'s law of gravitation', 'centre of gravity and stability', 'Work and energy', 'types of energy', 'conservation of energy'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p2-sci-4', 'SYL2', 4, 'Paper II syllabus, Science', '4. Mechanics') },
+    { id: 'syl-tgtet-p2-sci-5', subject: 'Paper-II · Science', tier: 'CBT', topicName: 'Magnetism and Electricity',
+      subtopics: ['Magnetism: Natural Magnets and Artificial Magnets', 'properties of Magnets', 'uses magnets', 'methods of magnetization', 'Magnetic Induction', 'magnetic field', 'Magnetic lines of force', 'Electricity: Electric Circuit', 'Primary Cells', 'conductors and insulators', 'electric charge', 'electric field', 'electric potential', 'potential difference', 'EMF', 'Ohm\'s law', 'resistance', 'specific resistance', 'resistances in series and parallel', 'heating effects of electric current', 'electric power', 'magnetic effects of electric current', 'solenoid', 'Fleming\'s left hand rule', 'electric motor', 'electromagnetic induction', 'electric generator', 'electrical conductivity of liquids', 'electro plating', 'Faraday\'s laws of electrolysis'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p2-sci-5', 'SYL2', 4, 'Paper II syllabus, Science', '5. Magnetism and Electricity') },
+    { id: 'syl-tgtet-p2-sci-6', subject: 'Paper-II · Science', tier: 'CBT', topicName: 'Matter around us',
+      subtopics: ['States of matter', 'properties of matter', 'substances and mixtures', 'methods of separation of mixtures', 'fibers', 'types of fibers', 'plastics', 'types of plastics', 'use of plastics and environment', 'Acids', 'bases and salts', 'neutralization', 'metals and non metals', 'physical and chemical properties of metals and non-metals', 'Coal and petroleum', 'combustion and fuels', 'types of combustion', 'temperature of combustion', 'calorific value'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p2-sci-6', 'SYL2', 4, 'Paper II syllabus, Science', '6. Matter around us') },
+    { id: 'syl-tgtet-p2-sci-7', subject: 'Paper-II · Science', tier: 'CBT', topicName: 'Laws of Chemical Combination and Chemical Calculations',
+      subtopics: ['Physical change', 'chemical change Laws of chemical combination', 'chemical reactions and calculations', 'Types of chemical reactions'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p2-sci-7', 'SYL2', 5, 'Paper II syllabus, Science', '7. Laws of Chemical Combination and Chemical Calculations') },
+    { id: 'syl-tgtet-p2-sci-8', subject: 'Paper-II · Science', tier: 'CBT', topicName: 'Atomic Structure',
+      subtopics: ['Atoms and molecules', 'elements', 'atomicity', 'Dalton\'s atomic theory', 'Ions', 'atomic mass', 'valency', 'molecular mass', 'concept of mole', 'molar mass', 'Thomson model of atom', 'Rutherford model of atom', 'Bohr\'s model of atom', 'atomic number', 'Isotopes', 'quantum numbers', 'electronic configuration'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p2-sci-8', 'SYL2', 5, 'Paper II syllabus, Science', '8. Atomic Structure') },
+    { id: 'syl-tgtet-p2-sci-9', subject: 'Paper-II · Science', tier: 'CBT', topicName: 'Periodic classification and chemical bonding',
+      subtopics: ['Dobenier triads', 'Newlands law of octave', 'Mendaliev\'s periodic table', 'long form of periodic table', 'changes of properties of elements in groups and periods', 'Chemical Bond', 'ionic bond', 'covalent bond', 'shapes of molecules', 'electron valency theory', 'properties of ionic and covalent substances'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p2-sci-9', 'SYL2', 5, 'Paper II syllabus, Science', '9. Periodic classification and chemical bonding') },
+    { id: 'syl-tgtet-p2-sci-10', subject: 'Paper-II · Science', tier: 'CBT', topicName: 'Metallurgy',
+      subtopics: ['Extraction of metals and steps', 'reactivity of metals and its role in extraction of metals', 'various methods of extraction of metals'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p2-sci-10', 'SYL2', 5, 'Paper II syllabus, Science', '10. Metallurgy') },
+    { id: 'syl-tgtet-p2-sci-11', subject: 'Paper-II · Science', tier: 'CBT', topicName: 'Biology',
+      subtopics: ['Its importance in everyday life'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p2-sci-11', 'SYL2', 5, 'Paper II syllabus, Science', '11. Biology') },
+    { id: 'syl-tgtet-p2-sci-12', subject: 'Paper-II · Science', tier: 'CBT', topicName: 'Living World',
+      subtopics: ['Characteristics: Classification of Plants and Animals and their characteristics. a) Cell: Concept', 'Cell theory', 'differences between Plant cell and Animal cell', 'Cell divisions', 'Cell organelles. b) Tissues', 'Animal tissues', 'plant tissues'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p2-sci-12', 'SYL2', 5, 'Paper II syllabus, Science', '12. Living World') },
+    { id: 'syl-tgtet-p2-sci-13', subject: 'Paper-II · Science', tier: 'CBT', topicName: 'Plant World',
+      subtopics: ['Types of plants: Parts of a plant', 'their functions', 'seed dispersal', 'fibers from plants', 'Reproduction', 'Asexual', 'Sexual', 'Vegetative propagation', 'Nutrition', 'Photosynthesis', 'Excretion', 'Respiration', 'Economic importance of plants', 'Economic importance of Plants', 'Agriculture', 'Crop diseases & pest control measure'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p2-sci-13', 'SYL2', 5, 'Paper II syllabus, Science', '13. Plant World') },
+    { id: 'syl-tgtet-p2-sci-14', subject: 'Paper-II · Science', tier: 'CBT', topicName: 'Animal World',
+      subtopics: ['Movements', 'Organ systems and their functions including man Digestive system', 'Respiratory system', 'Circulatory system', 'Excretory system', 'Nervous system', 'Endocrine system', 'Skelton system', 'Reproductive system', 'Sense organs in man', 'Nutrition Deficiency diseases in man', 'First Aid', 'HIV/ AIDS', 'animal behaviour Economic importance of Animals', 'Animal husbandry', 'Pisciculture', 'Sericulture'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p2-sci-14', 'SYL2', 5, 'Paper II syllabus, Science', '14. Animal World') },
+    { id: 'syl-tgtet-p2-sci-15', subject: 'Paper-II · Science', tier: 'CBT', topicName: 'Microbes',
+      subtopics: ['Bacteria', 'Viruses', 'Fungi', 'Protozoan — useful and harmful microbes', 'microbial diseases in plants & animals'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p2-sci-15', 'SYL2', 5, 'Paper II syllabus, Science', '15. Microbes') },
+    { id: 'syl-tgtet-p2-sci-16', subject: 'Paper-II · Science', tier: 'CBT', topicName: 'Our Environment',
+      subtopics: ['Biotic & Abiotic factors', 'Natural resources', 'Biodiversity', 'different eco systems', 'air pollution', 'water pollution', 'soil pollution', 'carbon cycle', 'nitrogen cycle', 'oxygen cycle'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p2-sci-16', 'SYL2', 5, 'Paper II syllabus, Science', '16. Our Environment') },
+    { id: 'syl-tgtet-p2-sci-17', subject: 'Paper-II · Science', tier: 'CBT', topicName: 'Recent trends in Biology',
+      subtopics: ['Hybridization', 'Genetic engineering', 'Gene banks', 'Gene therapy', 'Tissue Culture'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p2-sci-17', 'SYL2', 5, 'Paper II syllabus, Science', '17. Recent trends in Biology') },
+    { id: 'syl-tgtet-p2-sci-ped', subject: 'Paper-II · Science', tier: 'CBT', topicName: 'Science: pedagogy (6 marks)',
+      subtopics: ['Definition, Nature, Structure and History of Science', 'Aims, Values , Instructional Objectives of teaching Science and Academic Standards in Science', 'Methods of Teaching Science', 'Instructional Material in Teaching Science - TLM in Science.', 'Instructional Planning', 'Science Laboratory', 'Science Teacher - Changing Roles', 'Science Curriculum and its transaction, NCF-2005, SCF-2011', 'Science Textbooks.', 'Evaluation - CCE - Formative Assessment, Summative Assessment - Designing and Administration- Analysis of Scholastic Achievement Test (SAT)'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p2-sci-ped', 'SYL2', 5, 'Paper II syllabus, Science', 'PEDAGOGY (Marks: 06) 1. Definition, Nature, Structure and History of Science') },
+    { id: 'syl-tgtet-p2-ss-1', subject: 'Paper-II · Social Studies', tier: 'CBT', topicName: 'Diversity on The Earth',
+      subtopics: ['Maps - scale - cardinal points - types of maps - evolution of maps - conventional signs - contour lines', 'Globe - oceans and continents - latitudes and longitudes - origin of earth - realms of the earth (lithosphere, atmosphere, hydrosphere, biosphere) - landforms - movements of the earth and its effect - seasons - interior of the earth', 'Solar Energy - insolation - temperature and its measuring - terrestrial radiation - polar regions', 'Elements of climate - types of rainfall', 'Europe, Africa - location - physical features - climate - forests and wild life - population - agriculture – minerals - industries - transportation - trade, exports and imports', 'Geography of India and Telangana - physical features - rivers and other water sources - seasons – forests - climate and its factors affecting - floods and droughts - forests and animal wealth - soils – electricity - agriculture - mineral wealth - industries - population, literacy rate - density of population – settlements and migration - transportation'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p2-ss-1', 'SYL2', 6, 'Paper II syllabus, Social Studies', 'I. DIVERSITY ON THE EARTH') },
+    { id: 'syl-tgtet-p2-ss-2', subject: 'Paper-II · Social Studies', tier: 'CBT', topicName: 'Production – Exchange and Livelihoods',
+      subtopics: ['Livelihood of earliest people – sites in Telangana – domestication – settled life Agriculture – types of farming – crop seasons – problems of agriculture and agricultural labourers and small farmers – contract farming – agriculture in Telangana – trade and marketing – Self Help Groups – agricultural markets yards – Minimum Support Price – trading paddy in Telangana – land holdings – phases in agricultural development – green revolution – organic farming', 'Production – handicrafts and handlooms – cooperative societies and their role – industrial revolution – sources of energy – trade in industrial products – urbanization and slums – production in a paper factory – process of making paper – transport system in Telangana – employment in transport – congestion and pollution', 'Industries – factors of location – agro based and mineral based industries – automobile industries and IT – phases in industrial development – Industrial policies – growth in production – environmental problems', 'Service Activities – categories – importance – challenges', 'Money and Banking – Barter System – exchange with money – evolution of money – emergence of banks – commercial banking – types of deposits – Cheques and Demand Drafts – loans – Internet Banking – credit in the financial system – financial literacy', 'Prices and Cost of Living – price\'s effect on people – inflation – consumer price index – regulation of prices – government budget and taxation – VAT', 'Production and Employment – sectors of the economy – National Income (GDP) – Percapita Income – HDI – employment – organized and unorganized sectors – impact of technology on three sectors of the economy', 'Public Health and Government – health care services – public and private health insurance', 'Globalization – flows in economic exchange – MNCs – Foreign trade – factors enabling globalization – WTO, IMF impact', 'Food Security and Nutritional Status of India – PDS – sustainable development meaning – sustainable development with equity'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p2-ss-2', 'SYL2', 6, 'Paper II syllabus, Social Studies', 'II. PRODUCTION – EXCHANGE AND LIVELIHOODS') },
+    { id: 'syl-tgtet-p2-ss-3', subject: 'Paper-II · Social Studies', tier: 'CBT', topicName: 'Political Systems and Governance',
+      subtopics: ['Tribal Panchayat system - present local body system (Gram Panchayat, Mandal Parishad and Zilla Parishad) & Urban Governments - formation and functions', 'Emergence of kingdoms and republics - first empires - Mouryas - Rajputs - Rastrakutas – Cholas – Deccan kingdoms - Satavahana - Kushants - Guptas', 'Regional Kingdoms : Kakatiyas - Vijayanagara Empires - Qutubshahis', 'Moghals - Asafjahis - British Empire - landlords and tenants under the British and Nizams and Moghals - peasant movement in Hyderabad', 'National Movement in India - Muslim League - partition and migration - merging of princely states - and Freedom Movement in Hyderabad State', 'Making of laws and implementation of laws - Assembly - Council and Parliament - Election process - WALTA Act-2002', 'Indian Constitution - formation - features and preamble - Justice - Rule of Law - Judicial System - civil and criminal laws - levels of courts', 'Changing cultural traditions in Europe 1300-1800 - renaissance - reformation - modern science', 'Democratic and National Movements - England, American and French revolutions - unification of Germany and Italy. Expansion of Democracy in Myanmar and Libya - Civil Liberties', 'Industrialization and social change - Britain, Germany and France - movements of women, workers (Socialism)', 'Colonialism in Latin America, Asia and Africa - impact on India and other regional movements', 'World Wars I and II - reasons -Treaty of Versailles - League of Nations Holocaust - Nazism - Facism, consequences - Great depression', 'National Liberation Movements in China, Vietnam and Nigeria', 'Post War World and India - UNO - NAM - west Asian conflicts - peace movements and collapse of USSR', 'Independent India - first general elections - SRC - Relation with neighboring countries – regional agitations and formation of parties - coalition governments - Emergency period - Mandal commission - economic liberalism', 'The Movement for the formation of Telangana - gentle men\'s agreement - reasons for Telangana demand - different JACs - TRS - achieving Telangana', 'Disaster management - types of disasters - drought - accident related - threat of terrorism - human induced disasters', 'Traffic Education - traffic signals - signs - necessary documents'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p2-ss-3', 'SYL2', 6, 'Paper II syllabus, Social Studies', 'III. POLITICAL SYSTEMS AND GOVERNANCE') },
+    { id: 'syl-tgtet-p2-ss-4', subject: 'Paper-II · Social Studies', tier: 'CBT', topicName: 'Social Organization and Inequities',
+      subtopics: ['Diversity in India - gender inequalities - sex ratio - employment - status of women and their work with wages - women protection acts', 'Caste discriminations - reformers initiations', 'Abolition of Zamindari System - Rural poverty at the time of independence - Land ceiling - Bhoodan Movement', 'Poverty – distress in rural areas – poverty as chronic hunger – food inequality – elimination of poverty – access to affordable food – the right to life', 'Human Rights and Fundamental Rights - Right to Information - Right to Education - Lok Adalat', 'Social Movements - Civil Rights movement in USA - Green Peace movements - Bhopal gas disaster – NBM - meria paibi - Human Rights Movement in USSR'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p2-ss-4', 'SYL2', 7, 'Paper II syllabus, Social Studies', 'IV. SOCIAL ORGANIZATION AND INEQUITIES') },
+    { id: 'syl-tgtet-p2-ss-5', subject: 'Paper-II · Social Studies', tier: 'CBT', topicName: 'Religion and Society',
+      subtopics: ['Religion and society in early times - Indus Valley Civilization - Vedas – Hinduism, Buddism, Jainism, Christionity, Islam Bhakti movement, new religious developments in India', 'Folk - religion – communal worship of folk deities. The antiquity of folk traditions – inter mixing of village deities and high religious traditions', 'Social and Religious Reforms Movement – Christian Missionaries and Oriental Scholars – Religious Movements of Bengal and Punjab – Reform and Education among Muslims – Reform Movements in Nizam Dominions – Women and Dalits in freedom movements', 'Understanding Secularism'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p2-ss-5', 'SYL2', 7, 'Paper II syllabus, Social Studies', 'V. RELIGION AND SOCIETY') },
+    { id: 'syl-tgtet-p2-ss-6', subject: 'Paper-II · Social Studies', tier: 'CBT', topicName: 'Culture and Communication',
+      subtopics: ['Indian Heritage and Culture - Historical sites', 'Language, writing and script – Vedas – epics – jataka stories – sangam literature in Tamil', 'culpture and Buildings – Harappan cities – Buddhist Stupas and Viharas – rock cut chaityas', 'Rulers and Buildings – Engineering skills and construction (temples, mosques, tombs, forts and tanks) destruction of temples – imperial style of Vijayanagara period', 'Performing arts - Film and Print Media – Evolution of cinema – influence of films on the society – role of newspapers in cultural awakening and freedom movement', 'Sports: Nationalism and Commerce'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p2-ss-6', 'SYL2', 7, 'Paper II syllabus, Social Studies', 'VI. CULTURE AND COMMUNICATION') },
+    { id: 'syl-tgtet-p2-ss-ped', subject: 'Paper-II · Social Studies', tier: 'CBT', topicName: 'Social Studies: pedagogy (12 marks)',
+      subtopics: ['Social Sciences as on integrating area of study: Context and concerns - Distinguishing between Natural and Social Sciences - Social Studies and various Social Sciences – contributions of some eminent Social Scientists', 'Aims and objectives of learning Social Sciences - values through Social Sciences - learning objectives and illustrations - learning objectives in constructivist approach - Academic Standards', 'School curriculum and resources in Social Sciences - NCF-2005, RTE-2009, SCF-2011 - syllabus - Resources - Dale\'s Cone of Experience', 'Teaching – Learning Geography – space, resources and development', 'Teaching – Learning Economics – State, market and development', 'Approaches and strategies for learning Social Sciences - collaborative learning approach – 5E learning model – problem solving approach – planning – concept mapping', 'Teaching – Learning History', 'Teaching – Learning of Political Science, Democracy and Development', 'Community Resources and Social Sciences Laboratory', 'Tools and techniques of assessment for learning: Social Sciences Evaluation – CCE – assessment framework – assessment learning of students with special needs'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtet('prov-syl-tgtet-p2-ss-ped', 'SYL2', 8, 'Paper II syllabus, Social Studies', 'PEDAGOGY (Marks: 12)') },
+    { id: 'syl-tgtet-p1-l1-1', subject: 'Paper-I · Language-I (Telugu)', tier: 'CBT', topicName: 'పఠనావగాహన — reading comprehension (poetry, prose)',
+      subtopics: ['పద్యం (poetry)', 'గద్యం (prose)'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtetTelugu('prov-syl-tgtet-p1-l1-1', 'SYL1', 'II. LANGUAGE - I - Telugu (Marks: 30), ఎ) విషయం (content)', '1. పఠనావగాహన (పద్యం, గద్యం)') },
+    { id: 'syl-tgtet-p1-l1-2', subject: 'Paper-I · Language-I (Telugu)', tier: 'CBT', topicName: 'తెలంగాణ సాహిత్యం, సంస్కృతి — Telangana literature and culture (classical, modern)',
+      subtopics: ['2015లో రూపొందించిన పాఠ్య పుస్తకాల ఆధారంగా (based on the textbooks prepared in 2015)', 'తెలంగాణ కవులు, రచయితలు, నూతన పాఠ్య పుస్తకాలలోని ఇతర తెలుగు కవులు, రచయితలు (Telangana poets and writers; other Telugu poets and writers in the new textbooks)', 'ప్రక్రియలు (literary forms)', 'శతకాలు (śatakas)', 'కళలు, కళాకారులు (arts and artists)', 'వేడుకలు (celebrations)', 'క్రీడలు/పాటలు (games / songs)'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtetTelugu('prov-syl-tgtet-p1-l1-2', 'SYL1', 'II. LANGUAGE - I - Telugu (Marks: 30), ఎ) విషయం (content)', '2. తెలంగాణ సాహిత్యం, సంస్కృతి (ప్రాచీనం, ఆధునికం)') },
+    { id: 'syl-tgtet-p1-l1-3', subject: 'Paper-I · Language-I (Telugu)', tier: 'CBT', topicName: 'పదజాలం — vocabulary',
+      subtopics: ['సామెతలు (proverbs)', 'జాతీయాలు (idioms)', 'పొడుపు కథలు (riddles)', 'తెలంగాణ పదజాలం (Telangana vocabulary)', 'అర్థాలు (meanings)', 'నానార్థాలు (words with several meanings)', 'పర్యాయ పదాలు (synonyms)', 'వ్యుత్పత్త్యర్థాలు (etymological meanings)', 'ప్రకృతి వికృతులు (prakṛti and vikṛti forms)'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtetTelugu('prov-syl-tgtet-p1-l1-3', 'SYL1', 'II. LANGUAGE - I - Telugu (Marks: 30), ఎ) విషయం (content)', '3. పదజాలం') },
+    { id: 'syl-tgtet-p1-l1-4', subject: 'Paper-I · Language-I (Telugu)', tier: 'CBT', topicName: 'భాషాంశాలు — elements of the language (grammar)',
+      subtopics: ['ద్విత్వ, సంయుక్త, సంశ్లేష అక్షరాలు', 'వాక్యాలు', 'వర్గ యుక్కులు', 'పరుషాలు', 'సరళాలు', 'భాషా భాగాలు', 'లింగాలు', 'వచనాలు', 'కాలాలు', 'విభక్తులు', 'అవ్యయాలు', 'విరామ చిహ్నాలు', 'తెలుగు, సంస్కృత సంధులు', 'సమాసాలు', 'క్రియలు (సమాపక, అసమాపక)', 'వాక్యాలు రకాలు — ఆశ్చర్యార్థక, విధ్యర్థక, ప్రశ్నార్థక, సందేహార్థక, అనుమత్యర్థక, నిషేధార్థక', 'ప్రత్యక్ష, పరోక్ష', 'కర్తరి — కర్మణి', 'ఛందస్సు (prosody)', 'అలంకారాలు (figures of speech)', 'అర్థవిపరిణామం (semantic change)'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtetTelugu('prov-syl-tgtet-p1-l1-4', 'SYL1', 'II. LANGUAGE - I - Telugu (Marks: 30), ఎ) విషయం (content)', '4. భాషాంశాలు') },
+    { id: 'syl-tgtet-p1-l1-ped', subject: 'Paper-I · Language-I (Telugu)', tier: 'CBT', topicName: 'బోధనా పద్ధతులు — pedagogy (6 of the 30 questions)',
+      subtopics: ['భాష, మాతృభాష, మాతృభాష బోధన లక్ష్యాలు (language, mother tongue, aims of teaching the mother tongue)', 'భాష — వివిధ భావనలు, స్వభావం, తరగతి గది అన్వయం (concepts and nature of language, applied in the classroom)', 'భాషా నైపుణ్యాలు/సాధించాల్సిన సామర్థ్యాలు, తరగతి గది అన్వయం (language skills / competencies to be achieved, applied in the classroom)', 'బోధన పద్ధతులు (teaching methods)', 'ప్రణాళిక రచన, వనరుల వినియోగం, సహ పాఠ్య కార్యక్రమం (planning, use of resources, co-curricular activity)', 'బోధనాభ్యసన ఉపకరణాలు (teaching-learning aids)', 'నిరంతర సమగ్ర మూల్యాంకనం — నిర్మాణాత్మక మూల్యాంకనం — సంగ్రహణాత్మక మూల్యాంకనం (continuous and comprehensive evaluation: formative and summative)'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtetTelugu('prov-syl-tgtet-p1-l1-ped', 'SYL1', 'II. LANGUAGE - I - Telugu (Marks: 30), బి) బోధనా పద్ధతులు (pedagogy)', 'బి) బోధనా పద్ధతులు :') },
+    { id: 'syl-tgtet-p2-l1-1', subject: 'Paper-II · Language-I (Telugu)', tier: 'CBT', topicName: 'పఠనావగాహన — reading comprehension (poetry, prose)',
+      subtopics: ['పద్యం (poetry)', 'గద్యం (prose)'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtetTelugu('prov-syl-tgtet-p2-l1-1', 'SYL2', 'II. LANGUAGE - I Telugu (Marks : 30), ఎ) విషయం (content)', '1. పఠనావగాహన (పద్యం, గద్యం)') },
+    { id: 'syl-tgtet-p2-l1-2', subject: 'Paper-II · Language-I (Telugu)', tier: 'CBT', topicName: 'తెలంగాణ సాహిత్యం, సంస్కృతి — Telangana literature and culture (classical, modern)',
+      subtopics: ['2015లో రూపొందించిన పాఠ్య పుస్తకాల ఆధారంగా (based on the textbooks prepared in 2015)', 'తెలంగాణ కవులు, రచయితలు, నూతన పాఠ్య పుస్తకాలలోని ఇతర తెలుగు కవులు, రచయితలు (Telangana poets and writers; other Telugu poets and writers in the new textbooks)', 'ప్రక్రియలు (literary forms)', 'శతకాలు (śatakas)', 'కళలు, కళాకారులు (arts and artists)', 'వేడుకలు (celebrations)', 'క్రీడలు/పాటలు (games / songs)'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtetTelugu('prov-syl-tgtet-p2-l1-2', 'SYL2', 'II. LANGUAGE - I Telugu (Marks : 30), ఎ) విషయం (content)', '2. తెలంగాణ సాహిత్యం, సంస్కృతి (ప్రాచీనం, ఆధునికం)') },
+    { id: 'syl-tgtet-p2-l1-3', subject: 'Paper-II · Language-I (Telugu)', tier: 'CBT', topicName: 'పదజాలం — vocabulary',
+      subtopics: ['సామెతలు (proverbs)', 'జాతీయాలు (idioms)', 'పొడుపు కథలు (riddles)', 'తెలంగాణ పదజాలం (Telangana vocabulary)', 'అర్థాలు (meanings)', 'నానార్థాలు (words with several meanings)', 'పర్యాయ పదాలు (synonyms)', 'వ్యుత్పత్త్యర్థాలు (etymological meanings)', 'ప్రకృతి వికృతులు (prakṛti and vikṛti forms)'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtetTelugu('prov-syl-tgtet-p2-l1-3', 'SYL2', 'II. LANGUAGE - I Telugu (Marks : 30), ఎ) విషయం (content)', '3. పదజాలం') },
+    { id: 'syl-tgtet-p2-l1-4', subject: 'Paper-II · Language-I (Telugu)', tier: 'CBT', topicName: 'భాషాంశాలు — elements of the language (grammar)',
+      subtopics: ['ద్విత్వ, సంయుక్త, సంశ్లేష అక్షరాలు', 'వాక్యాలు', 'వర్గ యుక్కులు', 'పరుషాలు', 'సరళాలు', 'భాషా భాగాలు', 'లింగాలు', 'వచనాలు', 'కాలాలు', 'విభక్తులు', 'అవ్యయాలు', 'విరామ చిహ్నాలు', 'తెలుగు, సంస్కృత సంధులు', 'సమాసాలు', 'క్రియలు (సమాపక, అసమాపక)', 'వాక్యాలు రకాలు — ఆశ్చర్యార్థక, విధ్యర్థక, ప్రశ్నార్థక, సందేహార్థక, అనుమత్యర్థక, నిషేధార్థక', 'ప్రత్యక్ష, పరోక్ష', 'కర్తరి — కర్మణి', 'ఛందస్సు (prosody)', 'అలంకారాలు (figures of speech)', 'అర్థవిపరిణామం (semantic change)'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtetTelugu('prov-syl-tgtet-p2-l1-4', 'SYL2', 'II. LANGUAGE - I Telugu (Marks : 30), ఎ) విషయం (content)', '4. భాషాంశాలు') },
+    { id: 'syl-tgtet-p2-l1-ped', subject: 'Paper-II · Language-I (Telugu)', tier: 'CBT', topicName: 'బోధనా పద్ధతులు — pedagogy (6 of the 30 questions)',
+      subtopics: ['భాష, మాతృభాష, మాతృభాష బోధన లక్ష్యాలు (language, mother tongue, aims of teaching the mother tongue)', 'భాష — వివిధ భావనలు, స్వభావం, తరగతి గది అన్వయం (concepts and nature of language, applied in the classroom)', 'భాషా నైపుణ్యాలు/సాధించాల్సిన సామర్థ్యాలు, తరగతి గది అన్వయం (language skills / competencies to be achieved, applied in the classroom)', 'ప్రణాళిక రచన — పాఠ్య గ్రంథాలు (planning; textbooks)', 'సాహిత్య ప్రక్రియలు — బోధన పద్ధతులు, బోధనలో ఆధునిక ధోరణులు, బోధన నైపుణ్యాలు (literary forms: teaching methods, modern trends in teaching, teaching skills)', 'బోధనాభ్యసన సామాగ్రి (teaching-learning material)', 'నిరంతర సమగ్ర మూల్యాంకనం — నిర్మాణాత్మక మూల్యాంకనం — సంగ్రహణాత్మక మూల్యాంకనం (continuous and comprehensive evaluation: formative and summative)'],
+      weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+      officialProvenance: tgtetTelugu('prov-syl-tgtet-p2-l1-ped', 'SYL2', 'II. LANGUAGE - I Telugu (Marks : 30), బి) బోధనా పద్ధతులు (pedagogy)', 'బి) బోధనా పద్ధతులు :') }
+  ],
+  syllabusTree: [
+    { id: 'tree-tgtet-p1', title: 'PAPER I – SYLLABUS', levelLabel: 'Paper', order: 1, status: 'VERIFIED',
+      scope: [{ kind: 'PAPER', label: 'Paper-I' }],
+      provenance: tgtet('prov-tree-tgtet-p1', 'SYL1', 1, 'PAPER I – SYLLABUS', 'PAPER I – SYLLABUS'),
+      children: [
+        { id: 'tree-tgtet-p1-1', title: 'I. CHILD DEVELOPMENT AND PEDAGOGY (Marks: 30)', levelLabel: 'Subject', order: 1, status: 'VERIFIED',
+          provenance: tgtet('prov-tree-tgtet-p1-1', 'SYL1', 1, 'I. CHILD DEVELOPMENT AND PEDAGOGY (Marks: 30)', 'I. CHILD DEVELOPMENT AND PEDAGOGY (Marks: 30)'),
+          children: [
+          { id: 'tree-syl-tgtet-p1-cdp-1', title: 'Development of Child', levelLabel: 'Unit', order: 1, status: 'VERIFIED', note: 'Development, Growth & Maturation - Concept & Nature; Principles of Development & their educational implications; Factors influencing Development - Biological, Psychological, Sociological; Dimensions of Development and their interrelationships - Physical & Motor, Cognitive, Emotional, Social, Moral, Language relating to Infancy, early Childhood, late Child hood, Adolescence; Understanding Development - Piaget, Kohlberg, Chomsky, Carl Rogers and Erikson; Individual differences - Intra & Inter Individual differences in the areas of Attitudes, Aptitude; Interest, Habits, Thinking (Divergent & Convergent), Intelligence and their Assessment; Development of Personality - Concept, Factors effecting development of Personality, Child Rearing Practices, Self-Concept; Adjustment, Behavioural problems, Defense Mechanisms, Mental Health; Methods and Approaches of Child Development – Introspection, Observation, Interview, Case study, Experimental, Rating Scales, Anecdotal Records, Questionnaire, Cross sectional and Longitudinal; Developmental tasks and Hazards' },
+          { id: 'tree-syl-tgtet-p1-cdp-2', title: 'Understanding Learning', levelLabel: 'Unit', order: 2, status: 'VERIFIED', note: 'Concept, Nature of Learning - Input - Process - Outcome; Factors of Learning - Personal and Environmental; Approaches to Learning and their applicability - Behaviourism (Skinner, Pavlov, Thorndike), Constructivism (Piaget, Vygotsky), Gestalt (Kohler, Koffka) and Observational (Bandura); Dimensions of Learning - Cognitive, Affective and Performance; Motivation and Sustenance -its role in learning; Memory & Forgetting; Transfer of Learning' },
+          { id: 'tree-syl-tgtet-p1-cdp-3', title: 'Pedagogical Concerns', levelLabel: 'Unit', order: 3, status: 'VERIFIED', note: 'Teaching and its relationship with learning and learner; Learners in Contexts: Situating learner in the socio-political and cultural context; Children from diverse contexts - Children With Special Needs (CWSN), Inclusive Education; Understanding of Pedagogic methods - Enquiry based learning, Project based learning, Survey, Observation and Activity based learning, Co-operative & Collaborative learning; Individual and Group learning: Issues and concerns with respect to organizing learning in class room like Study habits, Self learning and Learning to learn skills; Organizing learning in heterogeneous class room groups - Socio-economic background, Abilities and Interest; Paradigms of organizing Learning - Teacher centric, Subject centric and Learner centric; Theory of Instruction - Bruner; Teaching as Planned activity - Elements of Planning; Phases of Teaching - Pre active, Interactive and Post active; General and Subject related skills, competencies required in teaching and attributes of good facilitator; Learning resources - Self, Home, School, Play, Community, Technology; Class room Management: Role of student, teacher, Leadership style of teacher, Creation of non-threatening learning environment, Managing behavioural problems, Guidance & Counselling, Child Abuse, Punishment and its legal implications, Rights of a child, Time Management; Distinction between Assessment for Learning & Assessment of Learning, School based Assessment, Continuous & Comprehensive Evaluation: Perspective & Practice; Understanding teaching & learning in the context of NCF, 2005 & Right to Education Act, 2009' }
+          ] },
+        { id: 'tree-tgtet-p1-2', title: 'II. LANGUAGE - I - Telugu (Marks: 30)', levelLabel: 'Subject', order: 2, status: 'VERIFIED',
+          provenance: tgtet('prov-tree-tgtet-p1-2', 'SYL1', 2, 'II. LANGUAGE - I - Telugu (Marks: 30)', 'II. LANGUAGE - I - Telugu (Marks: 30)'),
+          children: [
+          { id: 'tree-syl-tgtet-p1-l1-1', title: 'పఠనావగాహన — reading comprehension (poetry, prose)', levelLabel: 'Unit', order: 1, status: 'VERIFIED', note: 'పద్యం (poetry); గద్యం (prose)' },
+          { id: 'tree-syl-tgtet-p1-l1-2', title: 'తెలంగాణ సాహిత్యం, సంస్కృతి — Telangana literature and culture (classical, modern)', levelLabel: 'Unit', order: 2, status: 'VERIFIED', note: '2015లో రూపొందించిన పాఠ్య పుస్తకాల ఆధారంగా (based on the textbooks prepared in 2015); తెలంగాణ కవులు, రచయితలు, నూతన పాఠ్య పుస్తకాలలోని ఇతర తెలుగు కవులు, రచయితలు (Telangana poets and writers; other Telugu poets and writers in the new textbooks); ప్రక్రియలు (literary forms); శతకాలు (śatakas); కళలు, కళాకారులు (arts and artists); వేడుకలు (celebrations); క్రీడలు/పాటలు (games / songs)' },
+          { id: 'tree-syl-tgtet-p1-l1-3', title: 'పదజాలం — vocabulary', levelLabel: 'Unit', order: 3, status: 'VERIFIED', note: 'సామెతలు (proverbs); జాతీయాలు (idioms); పొడుపు కథలు (riddles); తెలంగాణ పదజాలం (Telangana vocabulary); అర్థాలు (meanings); నానార్థాలు (words with several meanings); పర్యాయ పదాలు (synonyms); వ్యుత్పత్త్యర్థాలు (etymological meanings); ప్రకృతి వికృతులు (prakṛti and vikṛti forms)' },
+          { id: 'tree-syl-tgtet-p1-l1-4', title: 'భాషాంశాలు — elements of the language (grammar)', levelLabel: 'Unit', order: 4, status: 'VERIFIED', note: 'ద్విత్వ, సంయుక్త, సంశ్లేష అక్షరాలు; వాక్యాలు; వర్గ యుక్కులు; పరుషాలు; సరళాలు; భాషా భాగాలు; లింగాలు; వచనాలు; కాలాలు; విభక్తులు; అవ్యయాలు; విరామ చిహ్నాలు; తెలుగు, సంస్కృత సంధులు; సమాసాలు; క్రియలు (సమాపక, అసమాపక); వాక్యాలు రకాలు — ఆశ్చర్యార్థక, విధ్యర్థక, ప్రశ్నార్థక, సందేహార్థక, అనుమత్యర్థక, నిషేధార్థక; ప్రత్యక్ష, పరోక్ష; కర్తరి — కర్మణి; ఛందస్సు (prosody); అలంకారాలు (figures of speech); అర్థవిపరిణామం (semantic change)' },
+          { id: 'tree-syl-tgtet-p1-l1-ped', title: 'బోధనా పద్ధతులు — pedagogy (6 of the 30 questions)', levelLabel: 'Unit', order: 5, status: 'VERIFIED', note: 'భాష, మాతృభాష, మాతృభాష బోధన లక్ష్యాలు (language, mother tongue, aims of teaching the mother tongue); భాష — వివిధ భావనలు, స్వభావం, తరగతి గది అన్వయం (concepts and nature of language, applied in the classroom); భాషా నైపుణ్యాలు/సాధించాల్సిన సామర్థ్యాలు, తరగతి గది అన్వయం (language skills / competencies to be achieved, applied in the classroom); బోధన పద్ధతులు (teaching methods); ప్రణాళిక రచన, వనరుల వినియోగం, సహ పాఠ్య కార్యక్రమం (planning, use of resources, co-curricular activity); బోధనాభ్యసన ఉపకరణాలు (teaching-learning aids); నిరంతర సమగ్ర మూల్యాంకనం — నిర్మాణాత్మక మూల్యాంకనం — సంగ్రహణాత్మక మూల్యాంకనం (continuous and comprehensive evaluation: formative and summative)' }
+          ] },
+        { id: 'tree-tgtet-p1-3', title: 'III. LANGUAGE - II (ENGLISH) (Marks: 30)', levelLabel: 'Subject', order: 3, status: 'VERIFIED',
+          provenance: tgtet('prov-tree-tgtet-p1-3', 'SYL1', 3, 'III. LANGUAGE - II (ENGLISH) (Marks: 30)', 'III. LANGUAGE - II (ENGLISH) (Marks: 30)'),
+          children: [
+          { id: 'tree-syl-tgtet-p1-eng-content', title: 'English: content (24 marks)', levelLabel: 'Unit', order: 1, status: 'VERIFIED', note: 'Parts of Speech; Tenses; Types of Sentences; Prepositions & Articles; Degrees of Comparison; Direct and Indirect Speech; Questions and question tags; Active & Passive voice; Phrasal verbs; Reading Comprehension; Composition; Vocabulary; Meaning of idiomatic expressions; Correction of Sentences; Sequencing of the Sentences in the given paragraph; Error identification within a sentence.' },
+          { id: 'tree-syl-tgtet-p1-eng-pedagogy', title: 'English: pedagogy (6 marks)', levelLabel: 'Unit', order: 2, status: 'VERIFIED', note: 'Aspects of English :- (a) English language - History, nature, importance, principles of English as second language (b) Problems of teaching / learning English; Objectives of teaching English.; Phonetics; Development of Language skills:- (a) Listening, Speaking, Reading & Writing (LSRW). (b) Communicative skills.; Approaches, Methods, Techniques of teaching English. (a) Introduction, Definition and Types of approaches methods and techniques of teaching English (b)Remedial teaching.; Teaching of structures and vocabulary items.; Teaching learning materials in English; Lesson Planning; Curriculum & Textbooks; Evaluation in English language Teaching – CCE' }
+          ] },
+        { id: 'tree-tgtet-p1-4', title: 'IV. MATHEMATICS (Marks: 30)', levelLabel: 'Subject', order: 4, status: 'VERIFIED',
+          provenance: tgtet('prov-tree-tgtet-p1-4', 'SYL1', 3, 'IV. MATHEMATICS (Marks: 30)', 'IV. MATHEMATICS (Marks: 30)'),
+          children: [
+          { id: 'tree-syl-tgtet-p1-maths-1', title: 'Number System', levelLabel: 'Unit', order: 1, status: 'VERIFIED', note: 'Natural Numbers; Whole Numbers; Integers; Rational Numbers & their fundamental operations (addition, subtraction, multiplication and division); Primes Composite Numbers; Co-Primes; Twin Primes; Relationship between LCM & GCD; Indian currency; Representation of Natural; Whole; integers and rational numbers on a number line; Terminating and Non-terminating decimals; Non-terminating but recurring decimals; square; square root; cube; cube roots of numbers; Pythagorean triplets; Applications on number system' },
+          { id: 'tree-syl-tgtet-p1-maths-2', title: 'Fractions', levelLabel: 'Unit', order: 2, status: 'VERIFIED', note: 'Concept of Fractions; Proper Fractions; Improper Fractions; Mixed Fractions; Decimal Fractions; Comparison; Fundamental operations on fractions (addition, subtraction, multiplication and division); Representation of a fraction in pictorial form and on a number line; reciprocal of fraction; uses of fractions in daily life' },
+          { id: 'tree-syl-tgtet-p1-maths-3', title: 'Arithmetic', levelLabel: 'Unit', order: 3, status: 'VERIFIED', note: 'Unitary method; percentages; profit and loss; ratio and proportion; direct proportion; discount; simple interest; compound interest; time and work; time and distance; tax (Vat)' },
+          { id: 'tree-syl-tgtet-p1-maths-4', title: 'Geometry', levelLabel: 'Unit', order: 4, status: 'VERIFIED', note: 'Basic idea of geometry (2D & 3D shapes); types of angles; construction and measurement of angles; types of angles; lines; triangles; types of triangles; quadrilaterals; types of quadrilaterals; congruence; property of congruencies of triangles (SAS, SSS, ASA, RHS); construction of triangles and quadrilaterals; patterns with geometrical shapes; representing 3D Shapes into 2D Shapes; Euler\'s relation; Properties of triangles; parallelogram; trapezium; Rhombus; Rectangle; Square and Kite; Concept of Circles; Symmetry' },
+          { id: 'tree-syl-tgtet-p1-maths-5', title: 'Measurements', levelLabel: 'Unit', order: 5, status: 'VERIFIED', note: 'Length; Weight; Capacity; Time and their Standard Units; Surface Area and volume of a cube and a cuboids; perimeter and area of triangle; quadrilateral; parallelogram; rectangle; Rhombus; Square and Trapezium; Circumference of a circle; Area of Circle; Circular paths; other polygons and sector in a circle' },
+          { id: 'tree-syl-tgtet-p1-maths-6', title: 'Data Applications', levelLabel: 'Unit', order: 6, status: 'VERIFIED', note: 'Introduction to Data; Data Presentation; Preparation of Frequency distribution table; Bar Graph; Pictograph; Histogram; Mean; Median and Mode of ungrouped data; determination of Mean by deviation method; Cumulative Frequency Distribution Table; Frequency Polygon; Frequency Curve and Cumulative Frequency Curves' },
+          { id: 'tree-syl-tgtet-p1-maths-7', title: 'Algebra', levelLabel: 'Unit', order: 7, status: 'VERIFIED', note: 'Introduction to Algebra; Simple equations; solving linear equation in one variable; exponents and powers; Algebraic expressions; Addition; Subtraction; Multiplication; Division and Factorisation of algebraic expressions; algebraic identities' },
+          { id: 'tree-syl-tgtet-p1-maths-ped', title: 'Mathematics: pedagogy (6 marks)', levelLabel: 'Unit', order: 8, status: 'VERIFIED', note: 'Definitions and Nature of Mathematics; Aims, values, instructional objectives of teaching Mathematics and Academic Standards; Methods of Teaching Mathematics; Instructional material in Mathematics - TLM in Mathematics; Instructional Planning; Continuous Comprehensive Evaluation (CCE) – Formative Assessment, Summative Assessment – Processes and procedures; Designing, Administration, Analysis of scholastic Achievement test (SAT); Diagnostic and Remedial Teaching; The Mathematics Teacher; Resource Utilization; Curriculum and Text Book' }
+          ] },
+        { id: 'tree-tgtet-p1-5', title: 'V. ENVIRONMENTAL STUDIES (Marks: 30)', levelLabel: 'Subject', order: 5, status: 'VERIFIED',
+          provenance: tgtet('prov-tree-tgtet-p1-5', 'SYL1', 4, 'V. ENVIRONMENTAL STUDIES (Marks: 30)', 'V. ENVIRONMENTAL STUDIES (Marks: 30)'),
+          children: [
+          { id: 'tree-syl-tgtet-p1-evs-1', title: 'My Family', levelLabel: 'Unit', order: 1, status: 'VERIFIED', note: 'My Family; Family tree; migration; changing structures of family -nuclear and joint families; festivals' },
+          { id: 'tree-syl-tgtet-p1-evs-2', title: 'Work & Play', levelLabel: 'Unit', order: 2, status: 'VERIFIED', note: 'Occupations; Child labour; Games; Local; National and International; Marshal Arts; Effects of games on respiration and breathing; fairs; Circus' },
+          { id: 'tree-syl-tgtet-p1-evs-3', title: 'Plants and Animals', levelLabel: 'Unit', order: 3, status: 'VERIFIED', note: 'Plants & animals in our surroundings; Plant & Animal products; parts of a plant; photosynthesis; parts of a flower; pollination; fertilization; fruits; seeds; Wild & cultivated plants; wild & domestic animals their food; arrangement of teeth in animals' },
+          { id: 'tree-syl-tgtet-p1-evs-4', title: 'Our Food', levelLabel: 'Unit', order: 4, status: 'VERIFIED', note: 'Different types of food; storage of grains and vegetables; storage of food; Food; animal husbandry; Nutrients of food; deficiency diseases' },
+          { id: 'tree-syl-tgtet-p1-evs-5', title: 'Shelter', levelLabel: 'Unit', order: 5, status: 'VERIFIED', note: 'Need; different types of houses; electrical appliances; their use; social life in ants and honey bees; Animals shelter; variation' },
+          { id: 'tree-syl-tgtet-p1-evs-6', title: 'Air', levelLabel: 'Unit', order: 6, status: 'VERIFIED', note: 'Importance of air; composition of air; atmospheric pressure; diseases spread through air and their prevention; air pollution; causes; its impact; and measures to prevent; Green House effect' },
+          { id: 'tree-syl-tgtet-p1-evs-7', title: 'Energy', levelLabel: 'Unit', order: 7, status: 'VERIFIED', note: 'Renewable; Non-renewable; Future Energy' },
+          { id: 'tree-syl-tgtet-p1-evs-8', title: 'Water', levelLabel: 'Unit', order: 8, status: 'VERIFIED', note: 'Importance; water resources; tanks; aquatic flora and fauna; measurement of liquids; Water pollution; causes; impact; measures to prevent; purification of water; drought; floods' },
+          { id: 'tree-syl-tgtet-p1-evs-9', title: 'Our Body', levelLabel: 'Unit', order: 9, status: 'VERIFIED', note: 'Health; Cleanliness; External; Internal parts of our body; Bones; Muscles; Sense organs; Digestion; Respiration; Nervous system; Excretory system; Circulatory system; First Aid' },
+          { id: 'tree-syl-tgtet-p1-evs-10', title: 'Mapping', levelLabel: 'Unit', order: 10, status: 'VERIFIED', note: 'Direction; Mandal; District; State; India' },
+          { id: 'tree-syl-tgtet-p1-evs-11', title: 'History and culture of India', levelLabel: 'Unit', order: 11, status: 'VERIFIED', note: 'Evolution of Man; Pre-historic period; Indian culture and Heritage; Civilization; Medieval period culture; Ancient monuments; Religious movements: Jainism; Buddhism; Bhakti movement; Great personalities; Indian freedom movement; Modern India' },
+          { id: 'tree-syl-tgtet-p1-evs-12', title: 'Our country (India)', levelLabel: 'Unit', order: 12, status: 'VERIFIED', note: 'Location; Area; Physical features; Climate; Natural resources; Continents and Oceans; Historical places in India; Population' },
+          { id: 'tree-syl-tgtet-p1-evs-13', title: 'Our state (Telangana)', levelLabel: 'Unit', order: 13, status: 'VERIFIED', note: 'Culture; State Government; Gram Panchayat; Mandal Parishad; Municipality; Municipal Corporation; Local Emergency services; our state symbols; Livelihood; Civilization; Impact of rivers' },
+          { id: 'tree-syl-tgtet-p1-evs-14', title: 'Indian constitution', levelLabel: 'Unit', order: 14, status: 'VERIFIED', note: 'Preamble; Major concepts; Fundamental rights; Fundamental duties; Child Rights' },
+          { id: 'tree-syl-tgtet-p1-evs-15', title: 'Security', levelLabel: 'Unit', order: 15, status: 'VERIFIED', note: 'Earth Quakes; Floods; Fire; First Aid; 108; 104 Vehicles' },
+          { id: 'tree-syl-tgtet-p1-evs-ped', title: 'Environmental Studies: pedagogy (6 marks)', levelLabel: 'Unit', order: 16, status: 'VERIFIED', note: 'Concept and scope of Environmental Studies (Science & Social Studies); Aims & Objectives of teaching Environmental Studies (Science & Social Studies) Academic Standards of Teaching EVS; Relation to Science and Social Studies; Curriculum and its transaction; Learning Environment; CCE' }
+          ] }
+      ] },
+    { id: 'tree-tgtet-p2', title: 'PAPER II – SYLLABUS', levelLabel: 'Paper', order: 2, status: 'VERIFIED',
+      scope: [{ kind: 'PAPER', label: 'Paper-II' }],
+      provenance: tgtet('prov-tree-tgtet-p2', 'SYL2', 1, 'PAPER II – SYLLABUS', 'PAPER II – SYLLABUS'),
+      children: [
+        { id: 'tree-tgtet-p2-1', title: 'I. CHILD DEVELOPMENT AND PEDAGOGY (Marks: 30)', levelLabel: 'Subject', order: 1, status: 'VERIFIED',
+          provenance: tgtet('prov-tree-tgtet-p2-1', 'SYL2', 1, 'I. CHILD DEVELOPMENT AND PEDAGOGY (Marks: 30)', 'I. CHILD DEVELOPMENT AND PEDAGOGY (Marks: 30)'),
+          children: [
+          { id: 'tree-syl-tgtet-p2-cdp-1', title: 'Development of Child', levelLabel: 'Unit', order: 1, status: 'VERIFIED', note: 'Development, Growth & Maturation - Concept & Nature; Principles of development & their implications; Factors influencing Development - Biological, Psychological, Sociological; Dimensions of Development and their interrelationships - Physical & Motor, Cognitive, Emotional, Social, Moral, Language relating to Infancy, early Childhood, late Child hood, Adolescence; Understanding Development - Piaget, Kohlberg, Chomsky, Carl Rogers and Erikson; Individual differences - Intra & Inter Individual differences in the areas of Attitudes, Aptitude, Interest, Habits, Thinking (Divergent & Convergent), Intelligence and their Assessment; Development of Personality - Concept, Factors effecting development of Personality, Child Rearing Practices, Self-Concept; Adjustment, Behavioural problems, Defense Mechanisms, Mental Health; Methods and Approaches of Child Development – Introspection, Observation, Interview, Case study, Experimental. Anecdotal Records, Questionnaire, Rating Scales, Cross sectional and Longitudinal - Developmental tasks and Hazards' },
+          { id: 'tree-syl-tgtet-p2-cdp-2', title: 'Understanding Learning', levelLabel: 'Unit', order: 2, status: 'VERIFIED', note: 'Concept, Nature of Learning - input - process - outcome; Factors of Learning - Personal and Environmental; Approaches to Learning and their applicability-Behaviourism (Skinner, Pavlov, Thorndike), Constructivism (Piaget, Vygotsky), Gestalt(Kohler, Koffka) and Observational (Bandura); Dimensions of Learning - Cognitive, Affective and Performance; Motivation and Sustenance -its role in learning; Memory & Forgetting; Transfer of Learning' },
+          { id: 'tree-syl-tgtet-p2-cdp-3', title: 'Pedagogical Concerns', levelLabel: 'Unit', order: 3, status: 'VERIFIED', note: 'Teaching and its relationship with learning and learner; Learners in Contexts: Situating learner in the socio-political and cultural context; Children from diverse contexts-Children With Special Needs (CWSN), Inclusive Education; Understanding of pedagogic methods - Enquiry based learning, Project based learning, Survey, Observation and Activity based learning, Co-operative & Collaborative Learning; Individual and Group learning: Issues and concerns with respect to organizing learning in class room like Study habits, Self learning and Learning to learn skills; Organizing learning in heterogeneous class room groups - Socio-economic background, Abilities and Interest; Paradigms of organizing Learning-Teacher centric, Subject centric and Learner centric; Theory of Instruction - Bruner; Teaching as Planned activity - Elements of Planning; Phases of Teaching - Pre active, Interactive and Post active; General and Subject related skills, competencies required in teaching and attributes of good facilitator; Learning resources - Self, Home, School, Play, Community, Technology; Class room Management: Role of student, teacher, Leadership style of teacher, Creation of non-threatening learning environment, Managing behaviour problems, Guidance & Counselling, Child abuse, Punishment and its legal implications, Rights of a child, Time Management; Distinction between Assessment for Learning & Assessment of Learning, School based Assessment, Continuous & Comprehensive Evaluation: Perspective & Practice; Understanding teaching & learning in the context of NCF, 2005 & Right To Education Act, 2009' }
+          ] },
+        { id: 'tree-tgtet-p2-2', title: 'II. LANGUAGE - I Telugu (Marks : 30)', levelLabel: 'Subject', order: 2, status: 'VERIFIED',
+          provenance: tgtet('prov-tree-tgtet-p2-2', 'SYL2', 2, 'II. LANGUAGE - I Telugu (Marks : 30)', 'II. LANGUAGE - I Telugu (Marks : 30)'),
+          children: [
+          { id: 'tree-syl-tgtet-p2-l1-1', title: 'పఠనావగాహన — reading comprehension (poetry, prose)', levelLabel: 'Unit', order: 1, status: 'VERIFIED', note: 'పద్యం (poetry); గద్యం (prose)' },
+          { id: 'tree-syl-tgtet-p2-l1-2', title: 'తెలంగాణ సాహిత్యం, సంస్కృతి — Telangana literature and culture (classical, modern)', levelLabel: 'Unit', order: 2, status: 'VERIFIED', note: '2015లో రూపొందించిన పాఠ్య పుస్తకాల ఆధారంగా (based on the textbooks prepared in 2015); తెలంగాణ కవులు, రచయితలు, నూతన పాఠ్య పుస్తకాలలోని ఇతర తెలుగు కవులు, రచయితలు (Telangana poets and writers; other Telugu poets and writers in the new textbooks); ప్రక్రియలు (literary forms); శతకాలు (śatakas); కళలు, కళాకారులు (arts and artists); వేడుకలు (celebrations); క్రీడలు/పాటలు (games / songs)' },
+          { id: 'tree-syl-tgtet-p2-l1-3', title: 'పదజాలం — vocabulary', levelLabel: 'Unit', order: 3, status: 'VERIFIED', note: 'సామెతలు (proverbs); జాతీయాలు (idioms); పొడుపు కథలు (riddles); తెలంగాణ పదజాలం (Telangana vocabulary); అర్థాలు (meanings); నానార్థాలు (words with several meanings); పర్యాయ పదాలు (synonyms); వ్యుత్పత్త్యర్థాలు (etymological meanings); ప్రకృతి వికృతులు (prakṛti and vikṛti forms)' },
+          { id: 'tree-syl-tgtet-p2-l1-4', title: 'భాషాంశాలు — elements of the language (grammar)', levelLabel: 'Unit', order: 4, status: 'VERIFIED', note: 'ద్విత్వ, సంయుక్త, సంశ్లేష అక్షరాలు; వాక్యాలు; వర్గ యుక్కులు; పరుషాలు; సరళాలు; భాషా భాగాలు; లింగాలు; వచనాలు; కాలాలు; విభక్తులు; అవ్యయాలు; విరామ చిహ్నాలు; తెలుగు, సంస్కృత సంధులు; సమాసాలు; క్రియలు (సమాపక, అసమాపక); వాక్యాలు రకాలు — ఆశ్చర్యార్థక, విధ్యర్థక, ప్రశ్నార్థక, సందేహార్థక, అనుమత్యర్థక, నిషేధార్థక; ప్రత్యక్ష, పరోక్ష; కర్తరి — కర్మణి; ఛందస్సు (prosody); అలంకారాలు (figures of speech); అర్థవిపరిణామం (semantic change)' },
+          { id: 'tree-syl-tgtet-p2-l1-ped', title: 'బోధనా పద్ధతులు — pedagogy (6 of the 30 questions)', levelLabel: 'Unit', order: 5, status: 'VERIFIED', note: 'భాష, మాతృభాష, మాతృభాష బోధన లక్ష్యాలు (language, mother tongue, aims of teaching the mother tongue); భాష — వివిధ భావనలు, స్వభావం, తరగతి గది అన్వయం (concepts and nature of language, applied in the classroom); భాషా నైపుణ్యాలు/సాధించాల్సిన సామర్థ్యాలు, తరగతి గది అన్వయం (language skills / competencies to be achieved, applied in the classroom); ప్రణాళిక రచన — పాఠ్య గ్రంథాలు (planning; textbooks); సాహిత్య ప్రక్రియలు — బోధన పద్ధతులు, బోధనలో ఆధునిక ధోరణులు, బోధన నైపుణ్యాలు (literary forms: teaching methods, modern trends in teaching, teaching skills); బోధనాభ్యసన సామాగ్రి (teaching-learning material); నిరంతర సమగ్ర మూల్యాంకనం — నిర్మాణాత్మక మూల్యాంకనం — సంగ్రహణాత్మక మూల్యాంకనం (continuous and comprehensive evaluation: formative and summative)' }
+          ] },
+        { id: 'tree-tgtet-p2-3', title: 'III. LANGUAGE - II (ENGLISH) (Marks: 30)', levelLabel: 'Subject', order: 3, status: 'VERIFIED',
+          provenance: tgtet('prov-tree-tgtet-p2-3', 'SYL2', 3, 'III. LANGUAGE - II (ENGLISH) (Marks: 30)', 'III. LANGUAGE - II (ENGLISH) (Marks: 30)'),
+          children: [
+          { id: 'tree-syl-tgtet-p2-eng-content', title: 'English: content (24 marks)', levelLabel: 'Unit', order: 1, status: 'VERIFIED', note: 'Parts of Speech; Tenses; Active voice & Passive voice; Prepositions and Articles; Degrees of comparison; Clauses; Verbs - Main Verbs - Auxiliary Verbs; Adverbs - Types of Adverbs; Conjunction - coordinating conjunction - subordinating conjunction.; Direct and Indirect speech; Questions and question tags; Types of sentences - simple, compound and complex - synthesis of sentences; Phrases - uses of phrases.; Composition - letter writing – precise writing; Comprehension; Vocabulary - Antonyms, Synonyms and Spellings; Meaning of idiomatic expressions; Correction of Sentences; Sequencing of the Sentences in the given paragraph; Error identification within a sentence' },
+          { id: 'tree-syl-tgtet-p2-eng-pedagogy', title: 'English: pedagogy (6 marks)', levelLabel: 'Unit', order: 2, status: 'VERIFIED', note: 'Aspects of English :- (a) English language - History, nature, importance, principles of English as second language. (b) Problems of teaching / learning English.; Objectives of teaching English.; Phonetics / Transcription.; Development of Language skills:- (a) Listening, Speaking, Reading & Writing (LSRW). (b) Communicative skills - Imparting values through Communication.; Approaches, Methods, Techniques of teaching English:- (a) Introduction, definition & types of Approaches, Methods &Techniques of teaching English (b) Remedial teaching.; Teaching of structures and vocabulary.; Teaching learning materials in English Language Teaching.; Lesson Planning.; Curriculum & Textbooks - Importance and its need.; Evaluation in English Language Teaching - CCE' }
+          ] },
+        { id: 'tree-tgtet-p2-4', title: 'IVa. MATHEMATICS & SCIENCE (Marks: 60) — Mathematics', levelLabel: 'Subject', order: 4, status: 'VERIFIED',
+          provenance: tgtet('prov-tree-tgtet-p2-4', 'SYL2', 3, 'IVa. MATHEMATICS & SCIENCE (Marks: 60)', 'IVa. MATHEMATICS & SCIENCE (Marks: 60)'),
+          children: [
+          { id: 'tree-syl-tgtet-p2-maths-1', title: 'Number System', levelLabel: 'Unit', order: 1, status: 'VERIFIED', note: 'Prime and Composite Numbers; Tests of divisibility; whole numbers; integers; fractions; decimal fractions; L.C.M. and G.C.D. rational numbers and irrational numbers; Properties of numbers; Real numbers; laws of exponents; squares; square roots; cubes; cube roots; finding missing number represented as alphabets in sums involving array of four operations; number patterns; number puzzles; Euclid division lemma; concept of logarithms' },
+          { id: 'tree-syl-tgtet-p2-maths-2', title: 'Arithmetic', levelLabel: 'Unit', order: 2, status: 'VERIFIED', note: 'Ratio and proportion; simple interest; compound interest; Time and distance; Discount; tax; time and work; profit and loss' },
+          { id: 'tree-syl-tgtet-p2-maths-3', title: 'Sets', levelLabel: 'Unit', order: 3, status: 'VERIFIED', note: 'Concept of set; set language; empty set; finite and infinite sets; subset and equality of sets; cardinal number of set; set operations; representation of sets; Venn diagrams and their properties' },
+          { id: 'tree-syl-tgtet-p2-maths-4', title: 'Algebra', levelLabel: 'Unit', order: 4, status: 'VERIFIED', note: 'Introduction to Algebra; expressions; exponents and powers; Factorization special products and expansions; linear equations and their graphs; polynomials; Quadratic equations and its applications; concept of progressions; progressions (AP and GP).nth term and sum of the first n terms in AP; nth term of GP' },
+          { id: 'tree-syl-tgtet-p2-maths-5', title: 'Geometry', levelLabel: 'Unit', order: 5, status: 'VERIFIED', note: 'History of Geometry; Contribution of India in the Development of Geometry; Euclid Geometry; Lines and Angles; Similar Triangles; Pythagoras theorem; congruency of triangles; Properties of Circles; Triangles; Quadrilaterals and polygons; Parts of Circle : Construction of Circle; Triangles and Quadrilaterals; Circles and concurrent lines in triangles; Co-ordinate Geometry; Co-ordinates of a point; plotting of points; representing of linear equations in two variables (of the form ax+by+c=0) in the Cartesian coordination system); Linear equations with 2 variables; slope of a line; distance between two points in a plane; section formula; Area of a triangle; collinearity of points in a co-ordinate plane; centroid of a triangle; symmetry' },
+          { id: 'tree-syl-tgtet-p2-maths-6', title: 'Mensuration', levelLabel: 'Unit', order: 6, status: 'VERIFIED', note: 'Perimeter and Area of a Square and Rectangle; Area of Triangle; Circle; Ring and Quadrilaterals; Surface area and volume of Cube; Cuboid; Lateral & total Surface area and volume of a cylinder; cone; sphere and hemisphere; conversion of one solid to another shape; surface area and volume of combination of solids' },
+          { id: 'tree-syl-tgtet-p2-maths-7', title: 'Data Handling', levelLabel: 'Unit', order: 7, status: 'VERIFIED', note: 'Collection and Classification of Data; Frequency distribution table; Tally marks; Bar graph; Pictograph and Pie diagrams; mean; median and mode for un-grouped and grouped data; cumulative frequency table and ogive curves; concept of probability; simple problems (day to day life situation) on single events; concept of complementary events' },
+          { id: 'tree-syl-tgtet-p2-maths-8', title: 'Trigonometry', levelLabel: 'Unit', order: 8, status: 'VERIFIED', note: 'Introduction of Trigonometry; Relationship between ratios; values of trigonometric ratios; (0o , 30o , 45o , 60o and 90o ) Trigonometric identities; trigonometric ratios of complementary angles; applications of trigonometry; Angle of elevation and depression; simple problems' },
+          { id: 'tree-syl-tgtet-p2-maths-ped', title: 'Mathematics: pedagogy (6 marks)', levelLabel: 'Unit', order: 9, status: 'VERIFIED', note: 'Definition and Nature of Mathematics; Aims, values, instructional objectives of teaching Mathematics and Academic Standards; Methods of Teaching Mathematics; Instructional material in Mathematics - TLM in Mathematics; Instructional Planning; Continuous Comprehensive Evaluation (CCE) – Formative Assessment, Summative Assessment – Processes and procedures; Designing, Administration, Analysis of scholastic Achievement Test (SAT); Diagnostic and Remedial Teaching; The Mathematics Teacher; Resource Utilization; Curriculum and Text Book' }
+          ] },
+        { id: 'tree-tgtet-p2-5', title: 'IV(a). SCIENCE', levelLabel: 'Subject', order: 5, status: 'VERIFIED',
+          provenance: tgtet('prov-tree-tgtet-p2-5', 'SYL2', 4, 'IV(a). SCIENCE', 'IV(a). SCIENCE'),
+          children: [
+          { id: 'tree-syl-tgtet-p2-sci-1', title: 'Natural Resources', levelLabel: 'Unit', order: 1, status: 'VERIFIED', note: 'Air; Water: Water pollution; Harnessing of water; States of water; Hardness of water; water pressure Air pollution; Atmospheric Pressure; Air pressure; Archimedes\' principle; Pascal\'s law; Bernoulli\'s Principle; Hydrometer; Barometer; Laws of floatation; Specific gravity; Surface tension; Fluid Mechanics' },
+          { id: 'tree-syl-tgtet-p2-sci-2', title: 'Our Universe', levelLabel: 'Unit', order: 2, status: 'VERIFIED', note: 'Solar eclipse; lunar eclipse; Constellation; Zodiac; Space travel; Solar system; Satellites; stars; comets; Earth' },
+          { id: 'tree-syl-tgtet-p2-sci-3', title: 'Natural Phenomenon', levelLabel: 'Unit', order: 3, status: 'VERIFIED', note: 'Light: How can we see objects; shadows; Reflection of light; laws of reflection; plane mirrors and images; Virtual image; real image; pinhole camera; periscope; kaleidoscope; spherical mirrors and images; Fermat\'s Principal; Applications of reflection of light; Refraction of light; laws of refraction; refractive index; Snell\'s law; total internal reflection and its applications; refraction through glass prisms and slabs; refraction at curved surfaces and through lenses; images formed by lenses and ray diagrams; construction of human eye; least distinct vision; defects of vision-formation of rainbow-dispersion of light; Sound: Sources of sound; Production and propagation of sound; construction of human ear and its working; Properties of sound; auditable range; Sound Pollution; Sound Waves; Kinds of Sound Waves; characteristics of sound waves; reflection of sound; echo; uses of ultrasonic sounds; Musical instruments; Heat: Concept of heat and temperature; thermal equilibrium; Measurement of Temperature; Types of Thermometers; specific heat and its applications in daily life; methods of mixtures; evaporation; condensation; boiling point; melting point' },
+          { id: 'tree-syl-tgtet-p2-sci-4', title: 'Mechanics', levelLabel: 'Unit', order: 4, status: 'VERIFIED', note: 'Kinematics; Dynamics: Concept of motion and rest; Types of Motion; Speed; Velocity; Acceleration; Newton\'s Laws of Motion; force; types of force; resultant force; Friction; types of friction; factors influencing the friction; fluid friction; gravitation; Newton\'s law of gravitation; centre of gravity and stability; Work and energy; types of energy; conservation of energy' },
+          { id: 'tree-syl-tgtet-p2-sci-5', title: 'Magnetism and Electricity', levelLabel: 'Unit', order: 5, status: 'VERIFIED', note: 'Magnetism: Natural Magnets and Artificial Magnets; properties of Magnets; uses magnets; methods of magnetization; Magnetic Induction; magnetic field; Magnetic lines of force; Electricity: Electric Circuit; Primary Cells; conductors and insulators; electric charge; electric field; electric potential; potential difference; EMF; Ohm\'s law; resistance; specific resistance; resistances in series and parallel; heating effects of electric current; electric power; magnetic effects of electric current; solenoid; Fleming\'s left hand rule; electric motor; electromagnetic induction; electric generator; electrical conductivity of liquids; electro plating; Faraday\'s laws of electrolysis' },
+          { id: 'tree-syl-tgtet-p2-sci-6', title: 'Matter around us', levelLabel: 'Unit', order: 6, status: 'VERIFIED', note: 'States of matter; properties of matter; substances and mixtures; methods of separation of mixtures; fibers; types of fibers; plastics; types of plastics; use of plastics and environment; Acids; bases and salts; neutralization; metals and non metals; physical and chemical properties of metals and non-metals; Coal and petroleum; combustion and fuels; types of combustion; temperature of combustion; calorific value' },
+          { id: 'tree-syl-tgtet-p2-sci-7', title: 'Laws of Chemical Combination and Chemical Calculations', levelLabel: 'Unit', order: 7, status: 'VERIFIED', note: 'Physical change; chemical change Laws of chemical combination; chemical reactions and calculations; Types of chemical reactions' },
+          { id: 'tree-syl-tgtet-p2-sci-8', title: 'Atomic Structure', levelLabel: 'Unit', order: 8, status: 'VERIFIED', note: 'Atoms and molecules; elements; atomicity; Dalton\'s atomic theory; Ions; atomic mass; valency; molecular mass; concept of mole; molar mass; Thomson model of atom; Rutherford model of atom; Bohr\'s model of atom; atomic number; Isotopes; quantum numbers; electronic configuration' },
+          { id: 'tree-syl-tgtet-p2-sci-9', title: 'Periodic classification and chemical bonding', levelLabel: 'Unit', order: 9, status: 'VERIFIED', note: 'Dobenier triads; Newlands law of octave; Mendaliev\'s periodic table; long form of periodic table; changes of properties of elements in groups and periods; Chemical Bond; ionic bond; covalent bond; shapes of molecules; electron valency theory; properties of ionic and covalent substances' },
+          { id: 'tree-syl-tgtet-p2-sci-10', title: 'Metallurgy', levelLabel: 'Unit', order: 10, status: 'VERIFIED', note: 'Extraction of metals and steps; reactivity of metals and its role in extraction of metals; various methods of extraction of metals' },
+          { id: 'tree-syl-tgtet-p2-sci-11', title: 'Biology', levelLabel: 'Unit', order: 11, status: 'VERIFIED', note: 'Its importance in everyday life' },
+          { id: 'tree-syl-tgtet-p2-sci-12', title: 'Living World', levelLabel: 'Unit', order: 12, status: 'VERIFIED', note: 'Characteristics: Classification of Plants and Animals and their characteristics. a) Cell: Concept; Cell theory; differences between Plant cell and Animal cell; Cell divisions; Cell organelles. b) Tissues; Animal tissues; plant tissues' },
+          { id: 'tree-syl-tgtet-p2-sci-13', title: 'Plant World', levelLabel: 'Unit', order: 13, status: 'VERIFIED', note: 'Types of plants: Parts of a plant; their functions; seed dispersal; fibers from plants; Reproduction; Asexual; Sexual; Vegetative propagation; Nutrition; Photosynthesis; Excretion; Respiration; Economic importance of plants; Economic importance of Plants; Agriculture; Crop diseases & pest control measure' },
+          { id: 'tree-syl-tgtet-p2-sci-14', title: 'Animal World', levelLabel: 'Unit', order: 14, status: 'VERIFIED', note: 'Movements; Organ systems and their functions including man Digestive system; Respiratory system; Circulatory system; Excretory system; Nervous system; Endocrine system; Skelton system; Reproductive system; Sense organs in man; Nutrition Deficiency diseases in man; First Aid; HIV/ AIDS; animal behaviour Economic importance of Animals; Animal husbandry; Pisciculture; Sericulture' },
+          { id: 'tree-syl-tgtet-p2-sci-15', title: 'Microbes', levelLabel: 'Unit', order: 15, status: 'VERIFIED', note: 'Bacteria; Viruses; Fungi; Protozoan — useful and harmful microbes; microbial diseases in plants & animals' },
+          { id: 'tree-syl-tgtet-p2-sci-16', title: 'Our Environment', levelLabel: 'Unit', order: 16, status: 'VERIFIED', note: 'Biotic & Abiotic factors; Natural resources; Biodiversity; different eco systems; air pollution; water pollution; soil pollution; carbon cycle; nitrogen cycle; oxygen cycle' },
+          { id: 'tree-syl-tgtet-p2-sci-17', title: 'Recent trends in Biology', levelLabel: 'Unit', order: 17, status: 'VERIFIED', note: 'Hybridization; Genetic engineering; Gene banks; Gene therapy; Tissue Culture' },
+          { id: 'tree-syl-tgtet-p2-sci-ped', title: 'Science: pedagogy (6 marks)', levelLabel: 'Unit', order: 18, status: 'VERIFIED', note: 'Definition, Nature, Structure and History of Science; Aims, Values , Instructional Objectives of teaching Science and Academic Standards in Science; Methods of Teaching Science; Instructional Material in Teaching Science - TLM in Science.; Instructional Planning; Science Laboratory; Science Teacher - Changing Roles; Science Curriculum and its transaction, NCF-2005, SCF-2011; Science Textbooks.; Evaluation - CCE - Formative Assessment, Summative Assessment - Designing and Administration- Analysis of Scholastic Achievement Test (SAT)' }
+          ] },
+        { id: 'tree-tgtet-p2-6', title: 'IVb. SOCIAL STUDIES (Marks : 60)', levelLabel: 'Subject', order: 6, status: 'VERIFIED',
+          provenance: tgtet('prov-tree-tgtet-p2-6', 'SYL2', 6, 'IVb. SOCIAL STUDIES (Marks : 60)', 'IVb. SOCIAL STUDIES (Marks : 60)'),
+          children: [
+          { id: 'tree-syl-tgtet-p2-ss-1', title: 'Diversity on The Earth', levelLabel: 'Unit', order: 1, status: 'VERIFIED', note: 'Maps - scale - cardinal points - types of maps - evolution of maps - conventional signs - contour lines; Globe - oceans and continents - latitudes and longitudes - origin of earth - realms of the earth (lithosphere, atmosphere, hydrosphere, biosphere) - landforms - movements of the earth and its effect - seasons - interior of the earth; Solar Energy - insolation - temperature and its measuring - terrestrial radiation - polar regions; Elements of climate - types of rainfall; Europe, Africa - location - physical features - climate - forests and wild life - population - agriculture – minerals - industries - transportation - trade, exports and imports; Geography of India and Telangana - physical features - rivers and other water sources - seasons – forests - climate and its factors affecting - floods and droughts - forests and animal wealth - soils – electricity - agriculture - mineral wealth - industries - population, literacy rate - density of population – settlements and migration - transportation' },
+          { id: 'tree-syl-tgtet-p2-ss-2', title: 'Production – Exchange and Livelihoods', levelLabel: 'Unit', order: 2, status: 'VERIFIED', note: 'Livelihood of earliest people – sites in Telangana – domestication – settled life Agriculture – types of farming – crop seasons – problems of agriculture and agricultural labourers and small farmers – contract farming – agriculture in Telangana – trade and marketing – Self Help Groups – agricultural markets yards – Minimum Support Price – trading paddy in Telangana – land holdings – phases in agricultural development – green revolution – organic farming; Production – handicrafts and handlooms – cooperative societies and their role – industrial revolution – sources of energy – trade in industrial products – urbanization and slums – production in a paper factory – process of making paper – transport system in Telangana – employment in transport – congestion and pollution; Industries – factors of location – agro based and mineral based industries – automobile industries and IT – phases in industrial development – Industrial policies – growth in production – environmental problems; Service Activities – categories – importance – challenges; Money and Banking – Barter System – exchange with money – evolution of money – emergence of banks – commercial banking – types of deposits – Cheques and Demand Drafts – loans – Internet Banking – credit in the financial system – financial literacy; Prices and Cost of Living – price\'s effect on people – inflation – consumer price index – regulation of prices – government budget and taxation – VAT; Production and Employment – sectors of the economy – National Income (GDP) – Percapita Income – HDI – employment – organized and unorganized sectors – impact of technology on three sectors of the economy; Public Health and Government – health care services – public and private health insurance; Globalization – flows in economic exchange – MNCs – Foreign trade – factors enabling globalization – WTO, IMF impact; Food Security and Nutritional Status of India – PDS – sustainable development meaning – sustainable development with equity' },
+          { id: 'tree-syl-tgtet-p2-ss-3', title: 'Political Systems and Governance', levelLabel: 'Unit', order: 3, status: 'VERIFIED', note: 'Tribal Panchayat system - present local body system (Gram Panchayat, Mandal Parishad and Zilla Parishad) & Urban Governments - formation and functions; Emergence of kingdoms and republics - first empires - Mouryas - Rajputs - Rastrakutas – Cholas – Deccan kingdoms - Satavahana - Kushants - Guptas; Regional Kingdoms : Kakatiyas - Vijayanagara Empires - Qutubshahis; Moghals - Asafjahis - British Empire - landlords and tenants under the British and Nizams and Moghals - peasant movement in Hyderabad; National Movement in India - Muslim League - partition and migration - merging of princely states - and Freedom Movement in Hyderabad State; Making of laws and implementation of laws - Assembly - Council and Parliament - Election process - WALTA Act-2002; Indian Constitution - formation - features and preamble - Justice - Rule of Law - Judicial System - civil and criminal laws - levels of courts; Changing cultural traditions in Europe 1300-1800 - renaissance - reformation - modern science; Democratic and National Movements - England, American and French revolutions - unification of Germany and Italy. Expansion of Democracy in Myanmar and Libya - Civil Liberties; Industrialization and social change - Britain, Germany and France - movements of women, workers (Socialism); Colonialism in Latin America, Asia and Africa - impact on India and other regional movements; World Wars I and II - reasons -Treaty of Versailles - League of Nations Holocaust - Nazism - Facism, consequences - Great depression; National Liberation Movements in China, Vietnam and Nigeria; Post War World and India - UNO - NAM - west Asian conflicts - peace movements and collapse of USSR; Independent India - first general elections - SRC - Relation with neighboring countries – regional agitations and formation of parties - coalition governments - Emergency period - Mandal commission - economic liberalism; The Movement for the formation of Telangana - gentle men\'s agreement - reasons for Telangana demand - different JACs - TRS - achieving Telangana; Disaster management - types of disasters - drought - accident related - threat of terrorism - human induced disasters; Traffic Education - traffic signals - signs - necessary documents' },
+          { id: 'tree-syl-tgtet-p2-ss-4', title: 'Social Organization and Inequities', levelLabel: 'Unit', order: 4, status: 'VERIFIED', note: 'Diversity in India - gender inequalities - sex ratio - employment - status of women and their work with wages - women protection acts; Caste discriminations - reformers initiations; Abolition of Zamindari System - Rural poverty at the time of independence - Land ceiling - Bhoodan Movement; Poverty – distress in rural areas – poverty as chronic hunger – food inequality – elimination of poverty – access to affordable food – the right to life; Human Rights and Fundamental Rights - Right to Information - Right to Education - Lok Adalat; Social Movements - Civil Rights movement in USA - Green Peace movements - Bhopal gas disaster – NBM - meria paibi - Human Rights Movement in USSR' },
+          { id: 'tree-syl-tgtet-p2-ss-5', title: 'Religion and Society', levelLabel: 'Unit', order: 5, status: 'VERIFIED', note: 'Religion and society in early times - Indus Valley Civilization - Vedas – Hinduism, Buddism, Jainism, Christionity, Islam Bhakti movement, new religious developments in India; Folk - religion – communal worship of folk deities. The antiquity of folk traditions – inter mixing of village deities and high religious traditions; Social and Religious Reforms Movement – Christian Missionaries and Oriental Scholars – Religious Movements of Bengal and Punjab – Reform and Education among Muslims – Reform Movements in Nizam Dominions – Women and Dalits in freedom movements; Understanding Secularism' },
+          { id: 'tree-syl-tgtet-p2-ss-6', title: 'Culture and Communication', levelLabel: 'Unit', order: 6, status: 'VERIFIED', note: 'Indian Heritage and Culture - Historical sites; Language, writing and script – Vedas – epics – jataka stories – sangam literature in Tamil; culpture and Buildings – Harappan cities – Buddhist Stupas and Viharas – rock cut chaityas; Rulers and Buildings – Engineering skills and construction (temples, mosques, tombs, forts and tanks) destruction of temples – imperial style of Vijayanagara period; Performing arts - Film and Print Media – Evolution of cinema – influence of films on the society – role of newspapers in cultural awakening and freedom movement; Sports: Nationalism and Commerce' },
+          { id: 'tree-syl-tgtet-p2-ss-ped', title: 'Social Studies: pedagogy (12 marks)', levelLabel: 'Unit', order: 7, status: 'VERIFIED', note: 'Social Sciences as on integrating area of study: Context and concerns - Distinguishing between Natural and Social Sciences - Social Studies and various Social Sciences – contributions of some eminent Social Scientists; Aims and objectives of learning Social Sciences - values through Social Sciences - learning objectives and illustrations - learning objectives in constructivist approach - Academic Standards; School curriculum and resources in Social Sciences - NCF-2005, RTE-2009, SCF-2011 - syllabus - Resources - Dale\'s Cone of Experience; Teaching – Learning Geography – space, resources and development; Teaching – Learning Economics – State, market and development; Approaches and strategies for learning Social Sciences - collaborative learning approach – 5E learning model – problem solving approach – planning – concept mapping; Teaching – Learning History; Teaching – Learning of Political Science, Democracy and Development; Community Resources and Social Sciences Laboratory; Tools and techniques of assessment for learning: Social Sciences Evaluation – CCE – assessment framework – assessment learning of students with special needs' }
+          ] }
+      ] }
+  ],
+  practiceQuestions: [],
+  corrigendums: [],
+  cutoffsHistory: [],
+  resources: [
+    {
+      id: 'res-tgtet-mock-test',
+      title: 'TG TET Mock Test (the portal’s own practice CBT)',
+      subject: 'Foundation Textbooks & Open Courses',
+      author: 'Linked from the TG TET portal’s “Mock Test” menu; hosted on g21.digialm.com',
+      type: 'ONLINE_TOOL',
+      resourceFormat: 'ONLINE_TOOL',
+      role: 'PRACTICE_TOOL',
+      url: 'https://g21.digialm.com//OnlineAssessment/index.html?1989@@M23',
+      description: 'The mock Computer Based Test the TG TET portal links to from its own menu. Use it to learn the screen: the subject bar, the question palette, Save & Next and Mark for Review, which the bulletin describes in para 18. It is hosted by the test platform at g21.digialm.com, not on a Telangana Government domain, and it does not score you against the pass marks.',
+      recommendedFor: 'Anyone sitting a TG TET Computer Based Test for the first time.',
+      officialTag: 'MOCK TEST · LINKED FROM THE TG TET PORTAL',
+      isEssential: true,
+      linkVerifiedDate: TGTET_CHECK,
+      provenance: { id: 'prov-tgtet-mock', documentTitle: 'TG TET portal — menu entry “Mock Test”', officialUrl: TGTET_PORTAL, publishedDate: TGTET_CHECK, verifiedDate: TGTET_CHECK,
+        verifiedBy: `GovOS verifier — read from the portal's menu on ${TGTET_CHECK}; the link answered HTTP 200`, taxonomyType: 'FACT', verificationLevel: 'OFFICIALLY_VERIFIED',
+        excerptText: 'Mock Test', authorityName: TGTET_AUTHORITY }
+    },
+    {
+      id: 'res-tgtet-syllabus-page',
+      title: 'TG TET syllabus files — Paper-I and Paper-II, by language (official page)',
+      subject: 'Official Gazette',
+      author: TGTET_AUTHORITY,
+      type: 'OFFICIAL_PORTAL',
+      resourceFormat: 'OFFICIAL_PORTAL',
+      role: 'SYLLABUS',
+      url: TGTET_SYLLABUS_PAGE,
+      description: 'The portal’s syllabus page: 15 files, Paper-I in Telugu, Hindi, Kannada, Marathi, Tamil, Gujarathi, Bengali and Urdu, and Paper-II in Telugu, Sanskrit, Hindi, Kannada, Marathi, Tamil and Urdu. Each file is served by the page’s Download button, so there is no direct link to a file.',
+      recommendedFor: 'The syllabus file of your own Language-I.',
+      officialTag: 'OFFICIAL SYLLABUS PAGE',
+      linkVerifiedDate: TGTET_CHECK,
+      provenance: tgP_syllabus
+    },
+    {
+      id: 'res-tgtet-exam-day',
+      title: 'Information Bulletin, para 18 — Procedure for conduct of the Computer Based Test',
+      subject: 'Official Gazette',
+      author: TGTET_AUTHORITY,
+      type: 'OFFICIAL_PDF',
+      resourceFormat: 'DIRECT_PDF',
+      role: 'EXAM_DAY_INSTRUCTIONS',
+      url: TGTET_SOURCES.IB.url,
+      directPdfUrl: TGTET_SOURCES.IB.url,
+      description: 'The bulletin’s own exam-day rules (pp. 12–14): the Hall Ticket, the 150-minute timer, no entry after the start, the question palette, what may not be carried, rough work and unfair means.',
+      recommendedFor: 'Reading before the examination day.',
+      officialTag: 'OFFICIAL BULLETIN (SCANNED PDF)',
+      linkVerifiedDate: TGTET_CHECK,
+      provenance: tgP_cbtConduct
+    },
+    {
+      id: 'res-tgtet-apply',
+      title: 'Department of School Education, Telangana — fee payment, application and Hall Tickets',
+      subject: 'Official Gazette',
+      author: TGTET_AUTHORITY,
+      type: 'OFFICIAL_PORTAL',
+      resourceFormat: 'OFFICIAL_PORTAL',
+      role: 'APPLICATION_PORTAL',
+      url: TGTET_DSE,
+      description: 'The website the notification names for the bulletin, the fee, the application and the Hall Tickets. Its home page links to the TG TET portal (“Click Here for TG TET - In-Service Teachers - 2026”).',
+      recommendedFor: 'Paying the fee and submitting the application, 07.10.2026 to 16.10.2026.',
+      officialTag: 'OFFICIAL WEBSITE',
+      linkVerifiedDate: TGTET_CHECK,
+      provenance: tgP_apply
+    },
+    // ---- added TG_TET_INSERVICE_2026_II_EXAM resources: linked, never stored; checked 2026-10-06
+    {
+      id: 'res-tgtet-75', title: 'TGTET 2026 - PAPER - I & II (Child Development and Pedagogy)', subject: 'Child Development & Pedagogy',
+      author: 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTwKyun3MlzOvOqP0HrQCh-p',
+      description: 'Published openly by T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana. Useful for: Paper-I & II - Child Development & Pedagogy (53 videos, a playlist on T-SAT Network). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-I & II - Child Development & Pedagogy (53 videos, a playlist on T-SAT Network)',
+      officialTag: 'OFFICIAL OPEN RESOURCE', isEssential: true,
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-75', 'TGTET 2026 - PAPER - I & II (Child Development and Pedagogy)', 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTwKyun3MlzOvOqP0HrQCh-p', 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana')
+    },
+    {
+      id: 'res-tgtet-76', title: 'TGTET 2026 - PAPER - I (Telugu)', subject: 'Languages',
+      author: 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTyab--Kxx2TVTjllYIGxH0r',
+      description: 'Published openly by T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana. Useful for: Paper-I - Language-I Telugu (29 videos, a playlist on T-SAT Network). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-I - Language-I Telugu (29 videos, a playlist on T-SAT Network)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-76', 'TGTET 2026 - PAPER - I (Telugu)', 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTyab--Kxx2TVTjllYIGxH0r', 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana')
+    },
+    {
+      id: 'res-tgtet-77', title: 'TGTET 2025 - PAPER -1 - Language – I (Telugu, Hindi, Urdu)', subject: 'Languages',
+      author: 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTxAsm1-gBOtxnx5y1cyXPOH',
+      description: 'Published openly by T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana. Useful for: Paper-I - Language-I (Telugu, Hindi, Urdu) [previous 2025 series] (13 videos, a playlist on T-SAT Network). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-I - Language-I (Telugu, Hindi, Urdu) [previous 2025 series] (13 videos, a playlist on T-SAT Network)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-77', 'TGTET 2025 - PAPER -1 - Language – I (Telugu, Hindi, Urdu)', 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTxAsm1-gBOtxnx5y1cyXPOH', 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana')
+    },
+    {
+      id: 'res-tgtet-78', title: 'TGTET 2026 - PAPER1 ENGLISH', subject: 'Languages',
+      author: 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTxeqnKAljiAQYH26lrNC6ID',
+      description: 'Published openly by T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana. Useful for: Paper-I - Language-II English (17 videos, a playlist on T-SAT Network). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-I - Language-II English (17 videos, a playlist on T-SAT Network)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-78', 'TGTET 2026 - PAPER1 ENGLISH', 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTxeqnKAljiAQYH26lrNC6ID', 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana')
+    },
+    {
+      id: 'res-tgtet-79', title: 'TGTET 2026 - PAPER - I (Language 2 - English)', subject: 'Languages',
+      author: 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTxZOiswtkG4DnWMtXCFyw7_',
+      description: 'Published openly by T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana. Useful for: Paper-I - Language-II English (20 videos, a playlist on T-SAT Network). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-I - Language-II English (20 videos, a playlist on T-SAT Network)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-79', 'TGTET 2026 - PAPER - I (Language 2 - English)', 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTxZOiswtkG4DnWMtXCFyw7_', 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana')
+    },
+    {
+      id: 'res-tgtet-80', title: 'TGTET 2026 - PAPER - I (Mathematics)', subject: 'Mathematics',
+      author: 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTxvXGTgU8XPvPi6nxTrMSCn',
+      description: 'Published openly by T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana. Useful for: Paper-I - Mathematics (20 videos, a playlist on T-SAT Network). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-I - Mathematics (20 videos, a playlist on T-SAT Network)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-80', 'TGTET 2026 - PAPER - I (Mathematics)', 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTxvXGTgU8XPvPi6nxTrMSCn', 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana')
+    },
+    {
+      id: 'res-tgtet-81', title: 'TGTET 2026 - PAPER - I (EVS)', subject: 'Environmental Studies',
+      author: 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTzpgu954hIjmwoujsuQotOQ',
+      description: 'Published openly by T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana. Useful for: Paper-I - EVS (19 videos, a playlist on T-SAT Network). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-I - EVS (19 videos, a playlist on T-SAT Network)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-81', 'TGTET 2026 - PAPER - I (EVS)', 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTzpgu954hIjmwoujsuQotOQ', 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana')
+    },
+    {
+      id: 'res-tgtet-82', title: 'TGTET 2026 - PAPER - II (Telugu)', subject: 'Languages',
+      author: 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTzd6kTaLnyBfQVPGS9K6Ky5',
+      description: 'Published openly by T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana. Useful for: Paper-II - Language-I Telugu (34 videos, a playlist on T-SAT Network). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-II - Language-I Telugu (34 videos, a playlist on T-SAT Network)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-82', 'TGTET 2026 - PAPER - II (Telugu)', 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTzd6kTaLnyBfQVPGS9K6Ky5', 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana')
+    },
+    {
+      id: 'res-tgtet-83', title: 'TGTET 2026 - PAPER- II ENGLISH', subject: 'Languages',
+      author: 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTxs60thY5Lu97YL4uaH208R',
+      description: 'Published openly by T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana. Useful for: Paper-II - Language-II English (10 videos, a playlist on T-SAT Network). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-II - Language-II English (10 videos, a playlist on T-SAT Network)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-83', 'TGTET 2026 - PAPER- II ENGLISH', 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTxs60thY5Lu97YL4uaH208R', 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana')
+    },
+    {
+      id: 'res-tgtet-84', title: 'TGTET 2026 - PAPER - II (Language 2 - English)', subject: 'Languages',
+      author: 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTz_0j-oolDWact6eBSl0BEl',
+      description: 'Published openly by T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana. Useful for: Paper-II - Language-II English (8 videos, a playlist on T-SAT Network). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-II - Language-II English (8 videos, a playlist on T-SAT Network)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-84', 'TGTET 2026 - PAPER - II (Language 2 - English)', 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTz_0j-oolDWact6eBSl0BEl', 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana')
+    },
+    {
+      id: 'res-tgtet-85', title: 'TGTET 2026 - PAPER - II (Mathematics)', subject: 'Mathematics',
+      author: 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTxy80kIHUmSQ6teK_7cM4pm',
+      description: 'Published openly by T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana. Useful for: Paper-II - Mathematics & Science (Mathematics) (31 videos, a playlist on T-SAT Network). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-II - Mathematics & Science (Mathematics) (31 videos, a playlist on T-SAT Network)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-85', 'TGTET 2026 - PAPER - II (Mathematics)', 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTxy80kIHUmSQ6teK_7cM4pm', 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana')
+    },
+    {
+      id: 'res-tgtet-86', title: 'TGTET 2026 - PAPER - II (Science)', subject: 'Science & Technology',
+      author: 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTwCo_5PVjNI3zELuKsN3hdF',
+      description: 'Published openly by T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana. Useful for: Paper-II - Mathematics & Science (Science) (7 videos, a playlist on T-SAT Network). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-II - Mathematics & Science (Science) (7 videos, a playlist on T-SAT Network)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-86', 'TGTET 2026 - PAPER - II (Science)', 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTwCo_5PVjNI3zELuKsN3hdF', 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana')
+    },
+    {
+      id: 'res-tgtet-87', title: 'TGTET 2026 - PAPER - II (Physics)', subject: 'Science & Technology',
+      author: 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTxaXMYYC4EFm9ukK4WFnSA5',
+      description: 'Published openly by T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana. Useful for: Paper-II - Mathematics & Science (Physics) (20 videos, a playlist on T-SAT Network). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-II - Mathematics & Science (Physics) (20 videos, a playlist on T-SAT Network)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-87', 'TGTET 2026 - PAPER - II (Physics)', 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTxaXMYYC4EFm9ukK4WFnSA5', 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana')
+    },
+    {
+      id: 'res-tgtet-88', title: 'TGTET 2026 - PAPER - II (Chemistry)', subject: 'Science & Technology',
+      author: 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTzifbz5kdLi4mo9eTlek8lu',
+      description: 'Published openly by T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana. Useful for: Paper-II - Mathematics & Science (Chemistry) (16 videos, a playlist on T-SAT Network). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-II - Mathematics & Science (Chemistry) (16 videos, a playlist on T-SAT Network)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-88', 'TGTET 2026 - PAPER - II (Chemistry)', 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTzifbz5kdLi4mo9eTlek8lu', 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana')
+    },
+    {
+      id: 'res-tgtet-89', title: 'TG TET 2026 - PAPER II (BIOLOGY)', subject: 'Science & Technology',
+      author: 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTyEwpoyVk--ePTDtPfyQv9P',
+      description: 'Published openly by T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana. Useful for: Paper-II - Mathematics & Science (Biology) (19 videos, a playlist on T-SAT Network). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-II - Mathematics & Science (Biology) (19 videos, a playlist on T-SAT Network)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-89', 'TG TET 2026 - PAPER II (BIOLOGY)', 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTyEwpoyVk--ePTDtPfyQv9P', 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana')
+    },
+    {
+      id: 'res-tgtet-90', title: 'TGTET 2026 - PAPER - II (Social)', subject: 'Social Studies',
+      author: 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTx5RObNhQFhQR0oLmsPZiqq',
+      description: 'Published openly by T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana. Useful for: Paper-II - Social Studies (31 videos, a playlist on T-SAT Network). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-II - Social Studies (31 videos, a playlist on T-SAT Network)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-90', 'TGTET 2026 - PAPER - II (Social)', 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTx5RObNhQFhQR0oLmsPZiqq', 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana')
+    },
+    {
+      id: 'res-tgtet-91', title: 'TGTET - 2026', subject: 'Foundation Textbooks & Open Courses',
+      author: 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTzmmKK23cUL2Q47REziWxHE',
+      description: 'Published openly by T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana. Useful for: Paper-I & II - final revision (6 videos, a playlist on T-SAT Network). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-I & II - final revision (6 videos, a playlist on T-SAT Network)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-91', 'TGTET - 2026', 'https://www.youtube.com/playlist?list=PLYCIZ-cwPGTzmmKK23cUL2Q47REziWxHE', 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana')
+    },
+    {
+      id: 'res-tgtet-92', title: 'T-SAT Network', subject: 'Foundation Textbooks & Open Courses',
+      author: 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCcwlOchFc_WJKoCSgfDcGZQ',
+      description: 'Published openly by T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana. Useful for: All TG TET subjects (TGTET 2026 series); the channel also carries other recruitments. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'All TG TET subjects (TGTET 2026 series); the channel also carries other recruitments',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-92', 'T-SAT Network', 'https://www.youtube.com/channel/UCcwlOchFc_WJKoCSgfDcGZQ', 'T-SAT (Telangana Skills, Academic & Training), Society for Telangana State Network (SoFTNET), Government of Telangana')
+    },
+    {
+      id: 'res-tgtet-93', title: 'Telangana - DIKSHA', subject: 'Foundation Textbooks & Open Courses',
+      author: 'DIKSHA, Ministry of Education, Government of India', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://diksha.gov.in/telangana/',
+      description: 'Published openly by DIKSHA, Ministry of Education, Government of India. Useful for: Paper-I & II - textbook-linked (QR) content, all subjects. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-I & II - textbook-linked (QR) content, all subjects',
+      officialTag: 'OFFICIAL OPEN RESOURCE', isEssential: true,
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-93', 'Telangana - DIKSHA', 'https://diksha.gov.in/telangana/', 'DIKSHA, Ministry of Education, Government of India')
+    },
+    {
+      id: 'res-tgtet-94', title: 'Diploma in Elementary Education (D.El.Ed) Study Material', subject: 'Child Development & Pedagogy',
+      author: 'National Institute of Open Schooling (NIOS), Ministry of Education, Government of India', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.nios.ac.in/dled/dledstudy.aspx',
+      description: 'Published openly by National Institute of Open Schooling (NIOS), Ministry of Education, Government of India. Useful for: Paper-I & II - Child Development & Pedagogy; subject pedagogy (language, maths, EVS, science, social science). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-I & II - Child Development & Pedagogy; subject pedagogy (language, maths, EVS, science, social science)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-94', 'Diploma in Elementary Education (D.El.Ed) Study Material', 'https://www.nios.ac.in/dled/dledstudy.aspx', 'National Institute of Open Schooling (NIOS), Ministry of Education, Government of India')
+    },
+    {
+      id: 'res-tgtet-95', title: 'D.El.Ed. Course-506 Understanding Children in Inclusive Context, Block-1: Child Growth and Development: Basics', subject: 'Child Development & Pedagogy',
+      author: 'National Institute of Open Schooling, NOIDA', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'STUDY_MATERIAL',
+      url: 'https://www.nios.ac.in/media/documents/dled/Block1_506.pdf', directPdfUrl: 'https://www.nios.ac.in/media/documents/dled/Block1_506.pdf',
+      description: 'Published openly by National Institute of Open Schooling, NOIDA. Useful for: Paper-I & II - Child Development & Pedagogy. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-I & II - Child Development & Pedagogy',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-95', 'D.El.Ed. Course-506 Understanding Children in Inclusive Context, Block-1: Child Growth and Development: Basics', 'https://www.nios.ac.in/media/documents/dled/Block1_506.pdf', 'National Institute of Open Schooling, NOIDA')
+    },
+    {
+      id: 'res-tgtet-96', title: 'D.El.Ed. Course-506 Understanding Children in Inclusive Context, Block-2: Personality Development of Children', subject: 'Child Development & Pedagogy',
+      author: 'National Institute of Open Schooling, NOIDA', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'STUDY_MATERIAL',
+      url: 'https://www.nios.ac.in/media/documents/dled/Block2_506.pdf', directPdfUrl: 'https://www.nios.ac.in/media/documents/dled/Block2_506.pdf',
+      description: 'Published openly by National Institute of Open Schooling, NOIDA. Useful for: Paper-I & II - Child Development & Pedagogy. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-I & II - Child Development & Pedagogy',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-96', 'D.El.Ed. Course-506 Understanding Children in Inclusive Context, Block-2: Personality Development of Children', 'https://www.nios.ac.in/media/documents/dled/Block2_506.pdf', 'National Institute of Open Schooling, NOIDA')
+    },
+    {
+      id: 'res-tgtet-97', title: 'D.El.Ed. Course-506 Understanding Children in Inclusive Context, Block-3: Inclusive Education', subject: 'Child Development & Pedagogy',
+      author: 'National Institute of Open Schooling, NOIDA', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'STUDY_MATERIAL',
+      url: 'https://www.nios.ac.in/media/documents/dled/Block3_506.pdf', directPdfUrl: 'https://www.nios.ac.in/media/documents/dled/Block3_506.pdf',
+      description: 'Published openly by National Institute of Open Schooling, NOIDA. Useful for: Paper-I & II - Child Development & Pedagogy. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-I & II - Child Development & Pedagogy',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-97', 'D.El.Ed. Course-506 Understanding Children in Inclusive Context, Block-3: Inclusive Education', 'https://www.nios.ac.in/media/documents/dled/Block3_506.pdf', 'National Institute of Open Schooling, NOIDA')
+    },
+    {
+      id: 'res-tgtet-98', title: 'D.El.Ed. Course-506 Understanding Children in Inclusive Context, Block-4: Girl Child and Child Right', subject: 'Child Development & Pedagogy',
+      author: 'National Institute of Open Schooling, NOIDA', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'STUDY_MATERIAL',
+      url: 'https://www.nios.ac.in/media/documents/dled/Block4_506.pdf', directPdfUrl: 'https://www.nios.ac.in/media/documents/dled/Block4_506.pdf',
+      description: 'Published openly by National Institute of Open Schooling, NOIDA. Useful for: Paper-I & II - Child Development & Pedagogy. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-I & II - Child Development & Pedagogy',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-98', 'D.El.Ed. Course-506 Understanding Children in Inclusive Context, Block-4: Girl Child and Child Right', 'https://www.nios.ac.in/media/documents/dled/Block4_506.pdf', 'National Institute of Open Schooling, NOIDA')
+    },
+    {
+      id: 'res-tgtet-99', title: 'D.El.Ed. Pedagogic Processes in Elementary Schools (Course 502), Block-1: Learning and Teaching Process', subject: 'Child Development & Pedagogy',
+      author: 'National Institute of Open Schooling, NOIDA', type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'STUDY_MATERIAL',
+      url: 'https://www.nios.ac.in/media/documents/dled/Block1_502.pdf', directPdfUrl: 'https://www.nios.ac.in/media/documents/dled/Block1_502.pdf',
+      description: 'Published openly by National Institute of Open Schooling, NOIDA. Useful for: Paper-I & II - Child Development & Pedagogy. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper-I & II - Child Development & Pedagogy',
+      officialTag: 'OFFICIAL PDF',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-tgtet-99', 'D.El.Ed. Pedagogic Processes in Elementary Schools (Course 502), Block-1: Learning and Teaching Process', 'https://www.nios.ac.in/media/documents/dled/Block1_502.pdf', 'National Institute of Open Schooling, NOIDA')
+    },
+    {
+      id: 'res-tgtet-100', title: 'Jangam Vishwanath Psychology Guru (Sri Vidya Publications) — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'Jangam Vishwanath Psychology Guru (Sri Vidya Publications) (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UC4KDQIL74u8kCIwiURsPrDg', youtubeUrl: 'https://www.youtube.com/channel/UC4KDQIL74u8kCIwiURsPrDg',
+      description: 'A free YouTube channel candidates widely follow (274K subscribers as read on its own page on 2026-10-06). Useful for: Paper-I & II - Child Development & Pedagogy (educational psychology, Telugu). Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with the Department of School Education, Telangana’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Paper-I & II - Child Development & Pedagogy (educational psychology, Telugu).',
+      officialTag: 'FREE ON YOUTUBE · 274K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-tgtet-100', 'Jangam Vishwanath Psychology Guru (Sri Vidya Publications)', 'https://www.youtube.com/channel/UC4KDQIL74u8kCIwiURsPrDg', '274K', 'the Department of School Education, Telangana')
+    },
+    {
+      id: 'res-tgtet-101', title: 'Ctet Telugu — free YouTube lessons', subject: 'Child Development & Pedagogy',
+      author: 'Ctet Telugu (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UC19fmbOecAVoxWthIhe5sgg', youtubeUrl: 'https://www.youtube.com/channel/UC19fmbOecAVoxWthIhe5sgg',
+      description: 'A free YouTube channel candidates widely follow (137K subscribers as read on its own page on 2026-10-06). Useful for: Paper-I & II - Child Development & Pedagogy (TS & AP TET). Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with the Department of School Education, Telangana’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Paper-I & II - Child Development & Pedagogy (TS & AP TET).',
+      officialTag: 'FREE ON YOUTUBE · 137K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-tgtet-101', 'Ctet Telugu', 'https://www.youtube.com/channel/UC19fmbOecAVoxWthIhe5sgg', '137K', 'the Department of School Education, Telangana')
+    },
+    {
+      id: 'res-tgtet-102', title: 'Telugu TET,CTET Classes — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'Telugu TET,CTET Classes (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCmgDpkHDfP-hYYVT6Z44wIA', youtubeUrl: 'https://www.youtube.com/channel/UCmgDpkHDfP-hYYVT6Z44wIA',
+      description: 'A free YouTube channel candidates widely follow (118K subscribers as read on its own page on 2026-10-06). Useful for: Paper-I & II - general TET/DSC preparation in Telugu. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with the Department of School Education, Telangana’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Paper-I & II - general TET/DSC preparation in Telugu.',
+      officialTag: 'FREE ON YOUTUBE · 118K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-tgtet-102', 'Telugu TET,CTET Classes', 'https://www.youtube.com/channel/UCmgDpkHDfP-hYYVT6Z44wIA', '118K', 'the Department of School Education, Telangana')
+    },
+    {
+      id: 'res-tgtet-103', title: 'Keshavarao Psychology Pedagogy — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'Keshavarao Psychology Pedagogy (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCTiCI_u7WsCp2HlvXeiq6UA', youtubeUrl: 'https://www.youtube.com/channel/UCTiCI_u7WsCp2HlvXeiq6UA',
+      description: 'A free YouTube channel candidates widely follow (82.1K subscribers as read on its own page on 2026-10-06). Useful for: Paper-I & II - CDP; EVS/Science pedagogy. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with the Department of School Education, Telangana’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Paper-I & II - CDP; EVS/Science pedagogy.',
+      officialTag: 'FREE ON YOUTUBE · 82.1K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-tgtet-103', 'Keshavarao Psychology Pedagogy', 'https://www.youtube.com/channel/UCTiCI_u7WsCp2HlvXeiq6UA', '82.1K', 'the Department of School Education, Telangana')
+    },
+    {
+      id: 'res-tgtet-104', title: 'TJR STUDIES — free YouTube lessons', subject: 'Languages',
+      author: 'TJR STUDIES (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCMadu57yimDNxXPErimmzng', youtubeUrl: 'https://www.youtube.com/channel/UCMadu57yimDNxXPErimmzng',
+      description: 'A free YouTube channel candidates widely follow (164K subscribers as read on its own page on 2026-10-06). Useful for: Paper-I & II - Language-I Telugu; CDP. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with the Department of School Education, Telangana’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Paper-I & II - Language-I Telugu; CDP.',
+      officialTag: 'FREE ON YOUTUBE · 164K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-tgtet-104', 'TJR STUDIES', 'https://www.youtube.com/channel/UCMadu57yimDNxXPErimmzng', '164K', 'the Department of School Education, Telangana')
+    },
+    {
+      id: 'res-tgtet-105', title: 'Telugu Online Teaching — free YouTube lessons', subject: 'Languages',
+      author: 'Telugu Online Teaching (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCXJIgaJ8vACGbSgZ0wJ33xw', youtubeUrl: 'https://www.youtube.com/channel/UCXJIgaJ8vACGbSgZ0wJ33xw',
+      description: 'A free YouTube channel candidates widely follow (101K subscribers as read on its own page on 2026-10-06). Useful for: Paper-I & II - Language-I Telugu (grammar: sandhulu, samasalu, chandassu). Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with the Department of School Education, Telangana’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Paper-I & II - Language-I Telugu (grammar: sandhulu, samasalu, chandassu).',
+      officialTag: 'FREE ON YOUTUBE · 101K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-tgtet-105', 'Telugu Online Teaching', 'https://www.youtube.com/channel/UCXJIgaJ8vACGbSgZ0wJ33xw', '101K', 'the Department of School Education, Telangana')
+    },
+    {
+      id: 'res-tgtet-106', title: 'Handbook Academy — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'Handbook Academy (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCYHnJVY6h2aaD43m9luXb8A', youtubeUrl: 'https://www.youtube.com/channel/UCYHnJVY6h2aaD43m9luXb8A',
+      description: 'A free YouTube channel candidates widely follow (91.9K subscribers as read on its own page on 2026-10-06). Useful for: Paper-I & II - Mathematics (reads the Telangana/AP Telugu Academy maths textbooks line by line). Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with the Department of School Education, Telangana’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Paper-I & II - Mathematics (reads the Telangana/AP Telugu Academy maths textbooks line by line).',
+      officialTag: 'FREE ON YOUTUBE · 91.9K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-tgtet-106', 'Handbook Academy', 'https://www.youtube.com/channel/UCYHnJVY6h2aaD43m9luXb8A', '91.9K', 'the Department of School Education, Telangana')
+    },
+    {
+      id: 'res-tgtet-107', title: 'English By Sandeep sir — free YouTube lessons', subject: 'Languages',
+      author: 'English By Sandeep sir (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCSbm-Icz_qSKyxjTNEzGlFQ', youtubeUrl: 'https://www.youtube.com/channel/UCSbm-Icz_qSKyxjTNEzGlFQ',
+      description: 'A free YouTube channel candidates widely follow (208K subscribers as read on its own page on 2026-10-06). Useful for: Paper-I & II - Language-II English (for Telugu-medium learners). Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with the Department of School Education, Telangana’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Paper-I & II - Language-II English (for Telugu-medium learners).',
+      officialTag: 'FREE ON YOUTUBE · 208K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-tgtet-107', 'English By Sandeep sir', 'https://www.youtube.com/channel/UCSbm-Icz_qSKyxjTNEzGlFQ', '208K', 'the Department of School Education, Telangana')
+    }
+  ],
+  faqs: [
+    { id: 'faq-tgtet-01', question: 'Who can appear in the Special TGTET-In-service Teachers-2026-II?',
+      answer: 'Only in-service teachers working in Government, Local Body, TGREIS, Government Welfare Residential Societies, Telangana Model Schools, or teachers working in other Government departments. Anyone else takes the regular TG TET or CTET.',
+      officialClause: 'Notification p.3, para 5 (i)', provenance: tgP_who },
+    { id: 'faq-tgtet-02', question: 'Can I use this pass to apply in a teacher recruitment (DSC)?',
+      answer: 'No. The notification says a pass in this special TET cannot be used for appearing in any direct recruitment in future. It counts only for continuing in your present post or for promotion to the next higher post. For direct recruitment you need the regular TET the State conducts twice a year, or CTET.',
+      officialClause: 'Notification p.3, para 5 (ii)–(iii)', provenance: tgP_noRecruit },
+    { id: 'faq-tgtet-03', question: 'Which paper should I take?',
+      answer: 'Teachers of classes I–V take Paper-I and teachers of classes VI–VIII take Paper-II; a teacher of classes I–V who intends to teach VI–VIII takes both. The notification also names the posts: Secondary Grade Teachers and LFL Head Masters appointed with both D.El.Ed. and B.Ed. for Paper I; School Assistants, TGTs, Language Pandits and Head Masters of High Schools for Paper II.',
+      officialClause: 'Notification p.3, paras 4 and 5 (iv)–(v)', provenance: tgP_papers },
+    { id: 'faq-tgtet-04', question: 'What are the pass marks?',
+      answer: 'General / EWS 60% and above, BCs 50% and above, SC / ST / Differently abled 40% and above. Each paper has 150 one-mark questions.',
+      officialClause: 'Information Bulletin p.7, para 9 (i)', provenance: tgP_pass },
+    { id: 'faq-tgtet-05', question: 'Is there negative marking?',
+      answer: 'No. Every question is a one-mark multiple-choice question with four alternatives, and there is no negative marking.',
+      officialClause: 'Information Bulletin p.5, para 7', provenance: tgP_mcq },
+    { id: 'faq-tgtet-06', question: 'How long is the certificate valid?',
+      answer: 'For life, for continuing in the present post or for promotion to the next higher post from it, unless the Government of Telangana notifies otherwise.',
+      officialClause: 'Notification p.5, para 13', provenance: tgP_validity },
+    { id: 'faq-tgtet-07', question: 'In which language will the question paper be?',
+      answer: 'Bilingual: English followed by the Language-I you chose. For Sanskrit, Telugu followed by Sanskrit in Devanagari script.',
+      officialClause: 'Information Bulletin p.7, para 8', provenance: tgP_medium },
+    { id: 'faq-tgtet-08', question: 'Will there be an answer key, and can I object to it?',
+      answer: 'Yes. After the CBT the Director of School Education and Chairperson, TGTET publishes an initial key and invites objections online, giving a reasonable time; an expert committee disposes of them and the final key is published. Objections after that period are not entertained. The notification gives no date for the key.',
+      officialClause: 'Notification p.4, para 11 (c)', provenance: tgP_key },
+    { id: 'faq-tgtet-09', question: 'Can I choose my examination centre?',
+      answer: 'You give an order of preference of examination districts in the online application, but the Convenor may allot candidates to districts depending on each district’s capacity.',
+      officialClause: 'Information Bulletin p.8, para 12', provenance: tgP_centres }
+  ],
+  applicationGuide: {
+    officialPortal: TGTET_DSE,
+    simulator: TGTET_APPLICATION_SIMULATOR,
+    otrSteps: [
+      {
+        stepNumber: 1,
+        title: 'Read the Information Bulletin and check that you may appear',
+        portalUrl: TGTET_DSE,
+        instructions: [
+          'Download the Information Bulletin free of cost (from 07.10.2026) and verify your eligibility.',
+          'This special TET is only for in-service teachers of the Government institutions the notification names; its pass is for your present post or promotion, not for direct recruitment.'
+        ],
+        mandatoryFields: [],
+        commonMistakesToAvoid: ['Applying as a private-school teacher or an aspirant — this cycle is not open to you.'],
+        provenance: tgP_who
+      },
+      {
+        stepNumber: 2,
+        title: 'Pay the fee online and note the Journal Number',
+        portalUrl: TGTET_DSE,
+        instructions: [
+          'Pay between 07.10.2026 and 16.10.2026 through the online payment option.',
+          'Give the preliminary data asked at payment: name, date of birth, whether you belong to Telangana, mobile number.',
+          'You receive a Journal Number. It confirms the fee only; your application is not submitted yet.'
+        ],
+        mandatoryFields: ['Name of the candidate', 'Date of Birth', 'Whether the candidate belongs to Telangana', 'Mobile phone number'],
+        commonMistakesToAvoid: [
+          'Paying a one-paper fee for both papers (both papers: Rs. 1000, or Rs. 950 for SC / ST / PwD).',
+          'Treating the Journal Number as a completed application.',
+          'Expecting a refund: fee once remitted is not refunded under any circumstances.'
+        ],
+        provenance: tgP_journal
+      },
+      {
+        stepNumber: 3,
+        title: 'Submit the application with the Journal Number',
+        portalUrl: TGTET_DSE,
+        instructions: [
+          'Go to https://schooledu.telangana.gov.in and click Application Submission.',
+          'Enter your Journal Number, date of payment and the date of birth given at payment; click “Proceed to fill Application”.',
+          'Fill all mandatory fields, give your order of preference of examination districts, and upload the photograph (500kb) and signature (100kb) as separate *.jpeg images.',
+          'Click Preview, check everything, then SUBMIT. The application is frozen and cannot be edited after final submission; an SMS reaches your registered mobile.'
+        ],
+        mandatoryFields: ['Journal Number', 'Date of Payment', 'Date of Birth', 'Photograph (*.jpeg, 500kb)', 'Signature (*.jpeg, 100kb)', 'Preference of examination districts'],
+        commonMistakesToAvoid: [
+          'An unclear photograph or signature, or one too small: the application is rejected and no Hall Ticket is issued.',
+          'Submitting before checking: complaints about a mismatched photograph or details are not accepted after submission.'
+        ],
+        provenance: tgP_steps
+      },
+      {
+        stepNumber: 4,
+        title: 'Keep your records and download the Hall Ticket',
+        portalUrl: TGTET_DSE,
+        instructions: [
+          'Preserve the payment ID and Journal Number, and take a printout of the application for yourself. Do not post it to the TGTET Cell.',
+          'Download the Hall Ticket from 09.11.2026 on the same website.'
+        ],
+        mandatoryFields: [],
+        commonMistakesToAvoid: ['Posting the printout: the bulletin says not to.'],
+        provenance: tgP_hallTicket
+      }
+    ],
+    photoRules: {
+      documentType: 'Photograph',
+      dimensions: 'Not printed in the bulletin',
+      fileFormat: '*.jpeg only (a separate scanned image)',
+      fileSize: '500kb, as printed (“scanned copy of the photograph of 500kb”)',
+      rules: [
+        'A scanned copy of your latest photograph, as a separate image.',
+        'After pressing UPLOAD, check that it is clear, of the required size and of you; if not, restart with scanning.',
+        'An application with no photograph, or an unclear or inadequate-size one, is rejected and no Hall Ticket is issued.'
+      ],
+      sampleDescription: 'A clear, recent scanned photograph of the candidate, uploaded as its own .jpeg file.',
+      provenance: tgP_photo
+    },
+    signatureRules: {
+      documentType: 'Signature',
+      dimensions: 'Not printed in the bulletin',
+      fileFormat: '*.jpeg only (a separate scanned image)',
+      fileSize: '100kb, as printed (“Signature of 100kb”)',
+      rules: [
+        'A scanned signature, as a separate image from the photograph.',
+        'After pressing UPLOAD, check that it is clear and yours.',
+        'An application with no signature, or an unclear one, is rejected.'
+      ],
+      sampleDescription: 'The candidate’s own signature, scanned clearly and uploaded as its own .jpeg file.',
+      provenance: tgP_photo
+    },
+    certificateRules: [],
+    rejectionPitfalls: [
+      { pitfall: 'No photograph or signature, or an unclear or inadequate-size one', consequence: 'The application is rejected and no Hall Ticket is issued.', prevention: 'Check both after pressing UPLOAD; rescan if either is unclear or small.' },
+      { pitfall: 'A wrong photograph or detail noticed after submission', consequence: 'Complaints about a mismatch are not accepted after submission, at any cost.', prevention: 'Use Preview and check every field before SUBMIT.' },
+      { pitfall: 'False, wrong or inaccurate information', consequence: 'May lead to cancellation of the test result, and even prosecution.', prevention: 'Enter only what your records show.' },
+      { pitfall: 'A paper form instead of the online application', consequence: 'Applications are not received in any kind of manual form.', prevention: 'Apply online on https://schooledu.telangana.gov.in only.' }
+    ],
+    requiredDocuments: [
+      { id: 'doc-tgtet-photo', name: 'Scanned photograph', required: true, specifications: ['*.jpeg only', '500kb (as printed)', 'Latest photograph, separate image'], provenance: tgP_apply },
+      { id: 'doc-tgtet-signature', name: 'Scanned signature', required: true, specifications: ['*.jpeg only', '100kb (as printed)', 'Separate image'], provenance: tgP_photo }
+    ],
+    fee: {
+      amounts: ['Rs. 750/-', 'Rs.1000/-', 'Rs.700/-', 'Rs.950/-'],
+      rules: [
+        { scope: 'General & BC — one paper (Paper I or Paper II)', amount: 'Rs. 750/-', isExempt: false },
+        { scope: 'General & BC — both papers', amount: 'Rs.1000/-', isExempt: false },
+        { scope: 'SC / ST / PwD — one paper', amount: 'Rs.700/-', isExempt: false },
+        { scope: 'SC / ST / PwD — two papers', amount: 'Rs.950/-', isExempt: false }
+      ],
+      acceptedModes: ['Online payment option on https://schooledu.telangana.gov.in'],
+      exemptions: [],
+      statedAs: tgP_fee.excerptText,
+      provenance: tgP_fee
+    }
+  },
+  roadmapTracks: [],
+  examDayChecklist: [
+    { id: 'ed-tgtet-hall-ticket', category: 'DOCUMENTS', title: 'Carry your Hall Ticket', description: 'Show it on demand for admission to the examination room. A candidate without the Hall Ticket issued by the TGTET Office is not permitted in under any circumstances.', isMandatory: true,
+      provenance: tgtet('prov-tgtet-ed-ht', 'IB', 12, 'Para 18 (a)', 'A candidate who does not possess the Hall Ticket issued by the TGTET Office shall not be permitted for the examination under any circumstances by the Test Centre In-charge.') },
+    { id: 'ed-tgtet-no-late', category: 'TIMING', title: 'Be in the hall before the start', description: 'No one is allowed into the examination hall after the examination begins, and the test starts exactly at the time on the Hall Ticket.', isMandatory: true,
+      provenance: tgtet('prov-tgtet-ed-late', 'IB', 12, 'Para 18 (c)', 'Candidate shall not under any circumstances be permitted to the examination hall after the commencement of the examination.') },
+    { id: 'ed-tgtet-duration', category: 'TIMING', title: '150 minutes on a countdown timer', description: 'The timer is at the top right of the screen; the examination ends when it reaches zero. You may not leave your seat before the full duration without permission.', isMandatory: false, provenance: tgP_cbtConduct },
+    { id: 'ed-tgtet-prohibited', category: 'ITEMS_PROHIBITED', title: 'No calculators, tables, phones, watches or gadgets', description: 'Calculators, mathematical / log tables, pagers, cell phones, wrist-watches, any other electronic gadget and personal belongings are strictly prohibited in the hall; anything you bring is kept outside at your own risk.', isMandatory: true,
+      provenance: tgtet('prov-tgtet-ed-prohibited', 'IB', 13, 'Para 18 (j)', 'Carrying of Calculators, Mathematical / Log Tables, Pagers, Cell Phones, Wrist-watches or any other Electronic Gadgets and personal belongings into the examination hall is strictly prohibited.') },
+    { id: 'ed-tgtet-food', category: 'ITEMS_PROHIBITED', title: 'No tea, coffee, cold drinks or snacks', description: 'They are not allowed into the examination rooms during examination hours. Smoking is strictly prohibited.', isMandatory: true,
+      provenance: tgtet('prov-tgtet-ed-food', 'IB', 13, 'Para 18 (l)–(m)', 'Tea, coffee, cold drinks or snacks are not allowed to be taken into the examination rooms during examination hours.') },
+    { id: 'ed-tgtet-rough', category: 'CENTRE_INSTRUCTIONS', title: 'Rough work on the sheets provided', description: 'Blank white papers are given for rough work; hand them to the invigilator at the end.', isMandatory: true,
+      provenance: tgtet('prov-tgtet-ed-rough', 'IB', 14, 'Para 19 — Rough work', 'Blank (White) papers will be provided for rough work in the examination hall. Candidates have to handover the rough sheets to the invigilator concerned after the end of the examination.') },
+    { id: 'ed-tgtet-review', category: 'CENTRE_INSTRUCTIONS', title: 'A marked-for-review answer still counts', description: 'If you answer a question and mark it for review, the answer is evaluated even if you never return to it. Use Save & Next to save each answer.', isMandatory: false,
+      provenance: tgtet('prov-tgtet-ed-review', 'IB', 12, 'Para 18 (g)', 'If a question is answered and Marked for Review, your answer for that question will be considered in the evaluation even if you could not Review the question for any reason.') },
+    { id: 'ed-tgtet-attendance', category: 'CENTRE_INSTRUCTIONS', title: 'Sign the attendance sheet', description: 'Sign the Attendance Sheet at the appropriate place.', isMandatory: true,
+      provenance: tgtet('prov-tgtet-ed-attendance', 'IB', 14, 'Para 18 (p)', 'The candidates must sign on the Attendance Sheet at the appropriate place.') },
+    { id: 'ed-tgtet-unfair', category: 'CENTRE_INSTRUCTIONS', title: 'Unfair means end your candidature', description: 'Conversation, gesturing or disturbance is misbehaviour; unfair means or impersonation cancel the candidature and may debar you. TGTET is covered by Act No. 25 of 1997 on prohibition of malpractices in examinations.', isMandatory: true,
+      provenance: tgtet('prov-tgtet-ed-unfair', 'IB', 14, 'Para 18 (o)', 'Further TGTET is covered by ACT No.25 of 1997 of Prohibition of Malpractices in Examinations.') }
+  ],
+  eligibilityHighlights: [
+    { title: 'Only in-service teachers', body: 'Teachers working in Government, Local Body, TGREIS, Government Welfare Residential Societies, Telangana Model Schools, or in other Government departments — ONLY these may appear (Notification para 5 (i)).', provenance: tgP_who },
+    { title: 'What the pass is for', body: 'It meets the mandatory condition of passing TET for continuing in the present post or for promotion to the next higher post, following the Supreme Court’s orders of 01.09.2025 (para 5 (ii)). It CANNOT be used in any direct recruitment; for that, take the regular TET or CTET (para 5 (iii)).', provenance: tgP_noRecruit },
+    { title: 'Which paper', body: 'Classes I–V: Paper-I; classes VI–VIII: Paper-II; a teacher of I–V who intends to teach VI–VIII: both (para 4). Paper I is open to Secondary Grade Teachers and LFL Head Masters appointed with both D.El.Ed. and B.Ed.; Paper II to School Assistants, TGTs, Language Pandits and Head Masters of High Schools (para 5 (iv)–(v)).', provenance: tgP_papers },
+    { title: 'Language-I', body: 'You choose Language-I from the paper’s list and must have studied it as medium or first language at least up to Class X; CBSE / ICSE candidates choose the language they studied up to Class X, and language pandits the language of their pandit training (bulletin p.5–6).', provenance: tgP_lang1P1 },
+    { title: 'Pass marks and validity', body: 'Pass: General / EWS 60% and above, BCs 50%, SC / ST / Differently abled 40% (bulletin para 9). The certificate is valid for life for the present post or promotion, unless the Government notifies otherwise (para 13).', provenance: tgP_pass }
+  ],
+  officialLinks: [
+    { title: 'Department of School Education, Telangana', url: TGTET_DSE, note: 'The website the notification names for the bulletin, the fee, the application and the Hall Tickets. Its home page links to the TG TET portal.' },
+    { title: 'TG TET portal', url: TGTET_PORTAL, note: 'tgtet.aptonline.in — the notification, bulletin, press note, syllabus files, mock test and old results.' },
+    { title: 'Notification — Rc.No.444, 01.10.2026 (PDF, scanned)', url: TGTET_SOURCES.NOTIF.url, note: 'Who may appear, papers, fee, pass marks, validity and the important dates.', provenance: tgP_notified },
+    { title: 'Information Bulletin (PDF, scanned, 15 pages)', url: TGTET_SOURCES.IB.url, note: 'Structure and content of both papers, how to apply, the Hall Ticket, the CBT procedure.', provenance: tgP_mcq },
+    { title: 'Press Note, 01.10.2026 (PDF, scanned)', url: TGTET_SOURCES.PRESS.url, note: 'The notice as issued to the press: who may appear, CBT 16.11.2026–21.11.2026, apply 07.10.2026–16.10.2026.',
+      provenance: tgtet('prov-tgtet-press', 'PRESS', 1, 'Press note', 'notification inviting applications from eligible candidates is issued on 01.10.2026 for conduct of Special - TGTET- In-service Teachers -2026-II to be conducted in the state in online mode as Computer Based Test between 16.11.2026 and 21.11.2026.') },
+    { title: 'Syllabus files (Paper-I and Paper-II, by language)', url: TGTET_SYLLABUS_PAGE, note: 'Each file is served by the page’s Download button.', provenance: tgP_syllabus },
+    { title: '“GOs” — as listed on the TG TET portal (PDF)', url: TGTET_DOCS + 'PWD-F.No.p-13013-75-2023-Policy-DD-III_01082025.pdf', note: 'Listed under the portal’s “GOs” menu. GovOS has not read this document; nothing on this page is taken from it.' }
+  ],
+  syllabusSourceNote: 'the Department\u2019s own Paper I and Paper II syllabus files for Special TGTET-In-service Teachers-2026-II (the Telugu-medium files: the subject syllabi are in English, Language-I in Telugu; the other Language-I files are on the official syllabus page and have not been read here)'
+};
+
+
+// ==========================================================================
+// JEE (Main) 2026 — National Testing Agency
+// ==========================================================================
+// Read on 2026-10-06 from NTA's own documents, every one linked from https://jeemain.nta.nic.in:
+//   the Information Bulletin – 2026 (91 pp., text layer; pages are cited by the bulletin's own printed
+//   number, which NTA's FAQ also uses -- the PDF page is six more), the Syllabus for JEE (Main) - 2026
+//   (17 pp.), the FAQs for JEE (Main) - 2026 (6 pp.) and the Press Release of 20 April 2026 declaring the
+//   Paper 1 result (14 pp., a scan: read from its page images). The press release also lists candidates
+//   by name; GovOS records no candidate.
+// JEE (Main) is an admission test: it fills no post, so the record carries no posts, vacancies, pay or
+// age band (`examNature: 'ADMISSION_TEST'`); the bulletin itself says there is no age limit (para 3.1).
+// The 2026 cycle is over. NTA had published nothing for JEE (Main) 2027 by the day this was read; when
+// it does, author that cycle as its own exam from its own bulletin.
+const JEE_EXAM_ID = 'exam-jee-main-2026';
+const JEE_AUTHORITY = 'National Testing Agency (NTA)';
+const JEE_CHECK = '2026-10-06';
+const JEE_SITE = 'https://jeemain.nta.nic.in';
+const JEE_FILES = 'https://cdnbbsr.s3waas.gov.in/s3f8e59f4b2fe7c5705bf878bbd494ccdf/uploads/';
+const JEE_SOURCES = {
+  IB: { title: 'Joint Entrance Examination (Main) – 2026 — Information Bulletin (NTA)', url: JEE_FILES + '2025/11/202511021649722475.pdf', published: '', how: 'from the text of NTA’s PDF' },
+  SYL: { title: 'Syllabus for JEE (Main) - 2026 (NTA)', url: JEE_FILES + '2025/10/202510311323551056.pdf', published: '', how: 'from the text of NTA’s PDF' },
+  FAQ: { title: 'Frequently Asked Questions (FAQs) for JEE (Main) - 2026 (NTA)', url: JEE_FILES + '2025/11/202511201840645521.pdf', published: '', how: 'from the text of NTA’s PDF' },
+  RES: { title: 'Press Release, 20 April 2026 — Declaration of the Result/NTA Scores for JEE (Main) - 2026 of Paper 1 (B.E. / B.Tech.)', url: JEE_FILES + '2026/04/20260420809492136.pdf', published: '2026-04-20', how: 'from the page image of NTA’s scanned press release' },
+  SITE: { title: 'JEE (Main) website — Public Notices and Question Papers, as listed on 2026-10-06', url: JEE_SITE + '/', published: '', how: 'from the listing on NTA’s JEE (Main) website' }
+} as const;
+
+/** A clause of one of NTA's own JEE (Main) 2026 documents, cited by page. */
+const jee = (id: string, doc: keyof typeof JEE_SOURCES, pageNumber: number, clauseNumber: string, excerptText: string,
+  taxonomyType: DataProvenance['taxonomyType'] = 'FACT'): DataProvenance => ({
+  id, documentTitle: JEE_SOURCES[doc].title, officialUrl: JEE_SOURCES[doc].url, pageNumber, clauseNumber,
+  publishedDate: JEE_SOURCES[doc].published, verifiedDate: JEE_CHECK,
+  verifiedBy: `GovOS verifier — read ${JEE_SOURCES[doc].how} on ${JEE_CHECK}`,
+  taxonomyType, verificationLevel: 'OFFICIALLY_VERIFIED', excerptText, authorityName: JEE_AUTHORITY
+});
+
+const jeeP_about = jee('prov-jee-about', 'IB', 7, 'Para 1.3 — About JEE (Main) - 2026',
+  'The Joint Entrance Examination, JEE (Main) comprises of two papers. Paper 1 is conducted for admission to Undergraduate Engineering Programs at NITs, IIITs, other Centrally Funded Technical Institutions (CFTIs) and Institutions / Universities funded / recognized by participating State Governments. JEE (Main) is also an eligibility test for JEE (Advanced), which is conducted for admission to IITs. JEE (Main) Paper 2 is conducted for admission to B. Arch and B. Planning courses in the country.');
+const jeeP_sessions = jee('prov-jee-sessions', 'IB', 7, 'Para 1.3',
+  'A candidate need not appear in both Sessions, if he/she so desires. However, a candidate appears in more than one Session then his/her best of the JEE (Main) - 2026 NTA Scores will be considered for preparation of the Merit List/ Ranking.');
+const jeeP_s1Window = jee('prov-jee-s1-window', 'IB', 2, 'Important Dates — Session 1 (January 2026)',
+  'Online Submission of Application Form 31 October 2025 to 27 November 2025 (Up to 09:00 P.M.)');
+const jeeP_s1Fee = jee('prov-jee-s1-fee', 'IB', 2, 'Important Dates — Session 1 (January 2026)',
+  'Last date for successful transaction of prescribed Application Fee 27 November 2025 (Up to 11:50 P.M.)');
+const jeeP_s1City = jee('prov-jee-s1-city', 'IB', 2, 'Important Dates — Session 1 (January 2026)', 'City Intimation Slip First Week of January 2026 (Tentatively)');
+const jeeP_admitRule = jee('prov-jee-admit-rule', 'IB', 2, 'Important Dates — Session 1 and Session 2',
+  'Downloading Admit Cards from the NTA website 03-04 days before the date of the Examination');
+const jeeP_s1Exam = jee('prov-jee-s1-exam', 'IB', 2, 'Important Dates — Session 1 (January 2026)', 'Dates of Examination Between 21 January 2026 to 30 January 2026');
+const jeeP_s1Result = jee('prov-jee-s1-result', 'IB', 2, 'Important Dates — Session 1 (January 2026)', 'Declaration of Result By 12 February, 2026');
+const jeeP_s2Window = jee('prov-jee-s2-window', 'IB', 2, 'Important Dates — Session 2 (April 2026)',
+  'Session 2 (April 2026): JEE (Main) - 2026 Online Submission of Application Form Last week of January 2026 Onwards');
+const jeeP_s2City = jee('prov-jee-s2-city', 'IB', 2, 'Important Dates — Session 2 (April 2026)', 'City Intimation Slip Second Week of March 2026 (Tentatively)');
+const jeeP_s2Exam = jee('prov-jee-s2-exam', 'IB', 2, 'Important Dates — Session 2 (April 2026)', 'Dates of Examination Between 02 April 2026 to 09 April 2026');
+const jeeP_s2Result = jee('prov-jee-s2-result', 'IB', 2, 'Important Dates — Session 2 (April 2026)', 'Declaration of Result By 20 April, 2026');
+const jeeP_duration = jee('prov-jee-duration', 'IB', 2, 'Duration and timing of examination for each session',
+  'Paper 1 (B. E/ B. Tech.) Or Paper 2A (B. Arch.) Or Paper 2B (B. Planning) 03 Hours B. Arch & B. Planning (Both) 03 Hours 30 Minutes');
+const jeeP_shifts = jee('prov-jee-shifts', 'IB', 2, 'Timing of Examination for each Session',
+  'For 03 Hours Paper 09:00 A.M. to 12:00 Noon (IST) 03:00 P.M. to 06:00 P.M. (IST) For 03 Hours 30 Minutes Paper 09:00 A.M. to 12:30 P.M. (IST) 03:00 P.M. to 06:30 P.M. (IST)');
+const jeeP_fee = jee('prov-jee-fee', 'IB', 3, 'Para 2 — Fee payable for JEE (Main) – 2026 for each Session',
+  'Paper 1: B.E./B. Tech OR Paper 2A: B. Arch OR Paper 2B: B. Planning General Male 1000 5000 Female 800 4000 Gen-EWS/ OBC (NCL) Male 900 4500 Female 800 4000 SC/ST/ PwD/PwBD Male 500 2500 Female 500 2500 Third Gender 500 3000');
+const jeeP_feeTwo = jee('prov-jee-fee-two', 'IB', 3, 'Para 2 — Fee payable for JEE (Main) – 2026 for each Session',
+  'General/ Gen-EWS/ OBC (NCL) Male 2000 10000 Female 1600 8000 SC/ ST/ PwD/ PwBD Male 1000 5000 Female 1000 5000 Third Gender 1000 5000');
+const jeeP_feeMode = jee('prov-jee-fee-mode', 'IB', 3, 'Para 2 (iv)',
+  'The fee can be submitted only online through Net Banking, Credit Card, Debit Card, or UPI Services.');
+const jeeP_session2Apply = jee('prov-jee-session2-apply', 'IB', 3, 'Para 2 (i)',
+  'A candidate can apply for Session-1 (January 2026) examination and pay the exam fee accordingly. The candidates will be given opportunity to apply for Session-2 (April 2026) separately (using same application number) along with the fee payment, for which separate notification will be issued.');
+const jeeP_oneForm = jee('prov-jee-one-form', 'IB', 3, 'Para 2, Note',
+  'Under no circumstances, candidates will be allowed to fill more than one Application Form. Strict action will be taken, even at a later stage, against such candidates who have filled more than one Application Form and will be treated as UFM.');
+const jeeP_steps = jee('prov-jee-steps', 'IB', 4, 'Para 3 — Application Procedure, Step 1',
+  'Register for the Online Application Form and note down the system-generated Application Number.');
+const jeeP_uploads = jee('prov-jee-uploads', 'IB', 4, 'Para 3 — Application Procedure, Step 2',
+  'Photograph in JPG/JPEG format (clearly legible) between 10 kb to 200 kb. Signature file should be JPG/JPEG format (clearly legible) between 10 kb to 100 kb. Scanned copy of Class 10 or Equivalent Certificate/Marks-sheet should be a pdf between 50 kb to 300 kb (clearly legible).');
+const jeeP_livePhoto = jee('prov-jee-live-photo', 'IB', 4, 'Para 3 — Application Procedure, Step 2',
+  'The candidate will have to upload his/her live photograph at the time of filling of the application form and will also have to upload his/her Scanned Images of Photograph (.jpeg/.jpg), Signature, Class X or Equivalent Certificate/Marks-sheet and PwD/PwBD Certificate (wherever applicable).');
+const jeeP_photoLook = jee('prov-jee-photo-look', 'IB', 4, 'Para 3 — Application Procedure, Step 2',
+  'The recent passport size photograph should be in colour with 80% face (without mask) visible including ears against white background.');
+const jeeP_idProof = jee('prov-jee-id-proof', 'IB', 4, 'Para 3 — Application Procedure, Step 2',
+  'Scanned copy of Identity Proof (for those candidates who will verify their identities through methods other than Aadhaar or DigiLocker) should be in format JPG/JPEG between 10 kb to 200 kb (clearly legible). Scanned copy of Disability/UDID certificate should be a pdf between 50 kb to 300 kb (clearly legible).');
+const jeeP_payStep = jee('prov-jee-pay-step', 'IB', 5, 'Para 3 — Application Procedure, Step 3',
+  'After successful payment, candidate will be able to print the Confirmation Page. In case the Confirmation Page is not generated after payment of fee then the transaction is cancelled and the candidates have to approach the concerned bank for refund of amount.');
+const jeeP_mode = jee('prov-jee-mode', 'IB', 10, 'Para 2.1 — Mode of Examination',
+  'Paper 2A (B. Arch): Mathematics (Part-I) and Aptitude Test (Part-II) in “Computer Based Test (CBT)” mode and Drawing Test (Part-III) in pen and paper (offline) mode, to be attempted on a drawing sheet of A4 size.');
+const jeeP_medium = jee('prov-jee-medium', 'IB', 10, 'Para 2.2 — Choice of Medium of Question Papers',
+  'the JEE (Main) - 2026 will be conducted in thirteen languages i.e. English, Hindi, Assamese, Bengali, Gujarati, Kannada Malayalam, Marathi, Odia, Punjabi, Tamil, Telugu and Urdu');
+const jeeP_mediumFixed = jee('prov-jee-medium-fixed', 'IB', 10, 'Note 2.2',
+  'The option of language for Question Paper should be exercised carefully while filling up the online Application Form and it cannot be changed at a later stage. The Question Paper will be in both English and the language opted by the candidate. English version will prevail in the event of any difference of opinion.');
+const jeeP_scheme = jee('prov-jee-scheme', 'IB', 11, 'Para 2.3 — Scheme of Examination',
+  'Paper 1: B.E. / B. Tech. Mathematics, Physics and Chemistry Objective Type - Multiple Choice Questions (MCQs) and Questions for which the answer is a numerical value, with equal weightage to Mathematics, Physics and Chemistry “Computer Based Test (CBT)” mode only');
+const jeeP_p1 = jee('prov-jee-p1', 'IB', 11, 'Para 2.4 — Paper 1: B.E./ B. Tech.',
+  'Subject Number of Questions Marks Section A Section B Mathematics 20 05 100 Physics 20 05 100 Chemistry 20 05 100 Total 75 300');
+const jeeP_p1Sections = jee('prov-jee-p1-sections', 'IB', 11, 'Para 2.4 — Paper 1',
+  'Each Subject will have two sections. Section A will be of Multiple-Choice Questions (MCQs) and Section B will contain Questions whose answers are to be filled in as a numerical value. There will be negative marking for incorrect answer in Section A and Section B.');
+const jeeP_marking = jee('prov-jee-marking', 'IB', 12, 'Para 2.4 — Paper 1, Marking Scheme',
+  'Marking Scheme for MCQs Correct Answer or the Most Appropriate Answer Four marks (+4) Incorrect Answer Minus one mark (-1) Unanswered / Marked for Review (without selecting any option) No mark (0)');
+const jeeP_markingNum = jee('prov-jee-marking-num', 'IB', 12, 'Para 2.4 — Paper 1, Marking Scheme',
+  'Marking Scheme for questions for which the answer is a Numerical value Correct Answer Four marks (+4) Incorrect Answer Minus one mark (-1) Unanswered / Marked for Review (without filling any Numerical value) No mark (0)');
+const jeeP_merit = jee('prov-jee-merit', 'IB', 12, 'Para 2.4 — Paper 1, Method of determining merit',
+  'Conversion of the raw score in Mathematics, Physics and Chemistry and total into NTA scores. Overall merit shall be prepared by merging NTA scores of all shifts of both sessions.');
+const jeeP_ties = jee('prov-jee-ties', 'IB', 12, 'Para 2.4 — Paper 1, Method of resolving ties',
+  'Tie between candidates obtaining same Total NTA scores will be resolved in the following order: 1. NTA score in Mathematics, followed by; 2. NTA score in Physics, followed by; 3. NTA score in Chemistry');
+const jeeP_p2a = jee('prov-jee-p2a', 'IB', 12, 'Para 2.4 — Paper 2A (B. Arch)',
+  'Part I: Mathematics 20 (Section A) and 05 (Section B) 100 Part II: Aptitude test 50 200 Part III: Drawing Test 02 100 Total 77 400');
+const jeeP_drawing = jee('prov-jee-drawing', 'IB', 13, 'Para 2.4 — Paper 2A, Marking Scheme',
+  '(b)Marking Scheme for Drawing Test (Part III) Two questions are to be evaluated out of 100 marks.');
+const jeeP_p2b = jee('prov-jee-p2b', 'IB', 13, 'Para 2.4 — Paper 2B (B. Planning)',
+  'Part-I: Mathematics 20 (Section A) and 05 (Section B) 100 Part-II: Aptitude Test 50 200 Part-III: Planning 25 100 Total 100 400');
+const jeeP_p2Marking = jee('prov-jee-p2-marking', 'IB', 14, 'Para 2.4 — Paper 2B, Marking Scheme',
+  'Correct Answer or the most appropriate Answer Four marks (+4) Incorrect Answer/Multiple Answer Minus one mark (-1)');
+const jeeP_dropped = jee('prov-jee-dropped', 'IB', 15, 'Para 2.4.1 — Multiple Choice Questions',
+  'in the event that a question(s) needs to be dropped, full marks for that question(s) will be awarded to ALL candidates who appear for that particular shift.');
+const jeeP_rounding = jee('prov-jee-rounding', 'IB', 15, 'Para 2.4.2 — Numerical Value Questions',
+  'Candidates are advised to do the calculations with the constants given (if any) in the questions. The answer should be rounded off to the nearest integer.');
+const jeeP_pwdTime = jee('prov-jee-pwd-time', 'IB', 16, 'Para 2.5 and Note 2.5 — Duration of Test',
+  'Paper 2A (B. Arch) & Paper 2B (B. Planning) both Mathematics, Aptitude Test, Drawing Test, and Planning Based Questions 03 hours 30 minutes 04 hours 10 minutes Note – 2.5: *Compensatory time for PwD/PwBD Candidates of 20 minutes per hour of Examination will be given to those who are eligible for Scribe.');
+const jeeP_syllabus = jee('prov-jee-syllabus', 'IB', 16, 'Para 2.6 — Syllabus of Examination',
+  'The detailed syllabus for JEE (Main) is available on the website: https://jeemain.nta.nic.in/');
+const jeeP_age = jee('prov-jee-age', 'IB', 18, 'Para 3.1 — Age Criteria',
+  'For appearing in the JEE (Main) - 2026, there is no age limit for the candidates. The candidates who have passed the class XII / equivalent Examination in 2024, 2025 or appearing in 2026 irrespective of their age can appear in JEE (Main) - 2026 Examination. However, the candidates may be required to fulfill the age criteria of the Institute(s) to which they are desirous of taking admission.');
+const jeeP_qe = jee('prov-jee-qe', 'IB', 18, 'Para 3.2 — List of Qualifying Examinations',
+  'The final Examination of the 10+2 system, conducted by any recognized Central/ State Board, such as the Central Board of Secondary Education, New Delhi; Council for the Indian School Certificate Examinations, New Delhi; etc.');
+const jeeP_year = jee('prov-jee-year', 'IB', 19, 'Para 3.3 — Year of Appearance in Qualifying Examination',
+  'Candidates those who have passed the Class XII / Equivalent Examination in 2024, 2025 or those who are appearing in the Class XII / equivalent Examination in 2026, are eligible to appear in JEE (Main) - 2026. Candidates who passed the Class XII / equivalent Examination in 2023 or before are not eligible to appear in JEE (Main) - 2026.');
+const jeeP_stateCode = jee('prov-jee-state-code', 'IB', 19, 'Para 3.4 — State of Eligibility',
+  'State code of eligibility means the code of the State from where the candidate has passed the Class XII (or Equivalent) qualifying Examination by virtue of which the candidate becomes eligible to appear in JEE (Main) - 2026. It is important to note that the State code of eligibility does NOT depend upon the native place or the place of residence of the candidate.');
+const jeeP_reservation = jee('prov-jee-reservation', 'IB', 21, 'Para 4.1 — Reservations',
+  'General category belonging to Economically Weaker Section (GEN- EWS) – 10% of seats in every course.');
+const jeeP_cities = jee('prov-jee-cities', 'IB', 26, 'Para 5.1 — Choice of Cities',
+  'While filling up the Online Application Form, candidates can select maximum four Convenient Cities from Appendix - VI as their Choice of Cities for the exam Centre in order of their priority. Choice of Centre Cities will be limited to the State of Permanent Address or State of Present Address only');
+const jeeP_admit = jee('prov-jee-admit', 'IB', 27, 'Para 5.2 — Admit Card',
+  'The e-Admit Card will be issued provisionally to the candidates through the NTA website: https://jeemain.nta.nic.in/, subject to the fulfillment of the eligibility conditions and receipt of the prescribed application fee by NTA.');
+const jeeP_timing = jee('prov-jee-timing', 'IB', 28, 'Para 5.3 — Schedule of Examination',
+  'Entry in the Examination Centre/ Hall/ Room, frisking, biometric registration/ record of manual attendance by Invigilator, document verification/ cross-checking of Admit Card, signature, and photo match to be completed by Invigilator, etc. 07.00 A.M. to 08.30 A.M. 01.00 P.M. to 02.30 P.M.');
+const jeeP_report = jee('prov-jee-report', 'IB', 29, 'Para 5.4 (1)–(2) — Important Instructions for the Candidates',
+  'Candidates are advised to report at the Examination Center well on time i.e. 02 hours before the commencement of the Examination.');
+const jeeP_noRetest = jee('prov-jee-no-retest', 'IB', 29, 'Para 5.4 (9)',
+  'For those who are unable to appear on the scheduled date/shift and pre-intimated time of the test for any reason, no opportunity for re-test will be provided by the NTA under any circumstances.');
+const jeeP_noCorrection = jee('prov-jee-no-correction', 'IB', 29, 'Para 5.4 (10)',
+  'Any request for change in the particulars and uploaded scanned images at any stage will not be considered by NTA under any circumstances. NTA will not entertain the corrections sent by the candidate through Post/Fax/WhatsApp/E-mail/by Hand.');
+const jeeP_prohibited = jee('prov-jee-prohibited', 'IB', 29, 'Para 5.4 (11)',
+  'Candidates are NOT allowed to carry Instruments, Geometry or Pencil box, Handbag, Purse, any kind of Paper/ Stationery/ Textual material (printed or written material), Eatables and Water (loose or packed), Mobile Phone/ Earphone/ Microphone/ Pager, Calculator, DocuPen, Slide Rules, Log Tables, Camera, Tape Recorder, Electronic Watches with facilities of calculator, any metallic item or electronic gadgets/ devices in the Examination Centre/ Hall/Room.');
+const jeeP_keepDocs = jee('prov-jee-keep-docs', 'IB', 29, 'Para 5.4 (12)',
+  'Candidates are requested to retain both hard and soft copies of the Confirmation Page, Admit Card, and Scorecard of the JEE (Main) – 2026 as the same will not be available after 31 July 2026.');
+const jeeP_carry = jee('prov-jee-carry', 'IB', 30, 'Para 5.4 (13)',
+  'Candidates MUST carry the following documents on the day of Examination at the test centre. In the absence of these documents, candidates will not be allowed to appear for the Examination. a. Print copy of Admit Card along with Self Declaration (Undertaking) downloaded from the NTA Website (a clear printout on A4 size paper) duly filled in.');
+const jeeP_photoId = jee('prov-jee-photo-id', 'IB', 30, 'Para 5.4 (13) (b)–(e)',
+  'b. One passport size photograph (same as uploaded on the Online Application Form) for pasting on the specific space in the Attendance Sheet at Centre during the Examination. c. Any one of the authorized photo IDs (must be original, valid, and non-expired)');
+const jeeP_rough = jee('prov-jee-rough', 'IB', 30, 'Para 5.4 (14) — For Rough work',
+  'All calculations/writing work is to be done only in the Rough Sheet provided at the Test Centre in the Examination Room/Hall and on completion of the test, candidates must hand over the Rough Sheets to the Invigilator on duty in the Room/Hall.');
+const jeeP_debar = jee('prov-jee-debar', 'IB', 32, 'Para 5.5.2 — Punishment for using Unfair Means Practices',
+  'The candidate may be debarred up to 3 years in the future and shall also be liable for criminal action and /or any other action as deemed fit.');
+const jeeP_challenge = jee('prov-jee-challenge', 'IB', 32, 'Para 5.6.1 — Display of Answer Key for Challenges',
+  'to provide an opportunity to the candidates to challenge the Provisional Answer Keys with a non-refundable online payment of ₹ 200/- per question challenged as processing charges.');
+const jeeP_best = jee('prov-jee-best', 'IB', 34, 'Para 5.7.1 (c)',
+  'The best of the two NTA Scores in Total (and not in individual subject) will be considered for further processing for those candidates who appeared in both sessions.');
+const jeeP_noReeval = jee('prov-jee-no-reeval', 'IB', 36, 'Para 5.7.3 — Re-evaluation / Re-checking of Result',
+  'There shall be no re-evaluation/re-checking of the result.');
+const jeeP_nit = jee('prov-jee-nit', 'IB', 36, 'Para 5.8.1 — Eligibility for Admission to NIT+ System',
+  'The candidates seeking admission to NIT+ System must have passed class XII (or equivalent) Board examination with a minimum of five subjects and secured at least 75% aggregate marks [for SC, ST, and PwD candidates should be at least 65%] of these five subjects OR must have passed class XII (or equivalent) Board examination with a minimum of five subjects and be within the category-wise (category as per the central list https://www.ncbc.nic.in, https://socialjustice.gov.in, and https://ncst.nic.in) top 20 percentile of successful candidates in their respective Class XII (or equivalent) board examination.');
+const jeeP_air = jee('prov-jee-air', 'IB', 35, 'Note 5.7.2 (3) and (5)',
+  'Only the All India Rank (AIR) is used for admissions through Central Seat Allocation Board (CSAB)/Joint Seat Allocation Authority (JoSAA) to NITs/ IIITs/ CFTIs/ SFIs/ Others.');
+const jeeP_advanced = jee('prov-jee-advanced', 'IB', 38, 'Para 5.8.4 — Eligibility Criteria for Indian Nationals Appearing in JEE (Advanced) – 2026',
+  'Candidates should be among the top 2, 50, 000 successful candidates (including all categories) in B.E./B.Tech. Paper of JEE (Main) – 2026.');
+const jeeP_percentile = jee('prov-jee-percentile', 'IB', 55, 'Appendix-VII — Normalization procedure based on Percentile Score',
+  'The Percentile Score indicates the percentage of candidates that have scored EQUAL TO OR BELOW (same or lower raw scores) that particular Candidate in that Shift. Note: The Percentile of the Total shall NOT be an aggregate or average of the Percentile of the individual subject. The percentile score is not the same as the percentage of marks obtained.');
+const jeeP_faqCalc = jee('prov-jee-faq-calc', 'FAQ', 1, 'FAQ 7', 'No. The use of calculators in any form is not permitted in the JEE (Main) examination.');
+const jeeP_faqSeparate = jee('prov-jee-faq-separate', 'FAQ', 1, 'FAQ 4', 'Yes, candidates have to apply separately for each session.');
+const jeeP_faqCategory = jee('prov-jee-faq-category', 'FAQ', 4, 'FAQ 25',
+  'No, the Category Certificate is not required to be uploaded in the online Application Form of JEE (Main) 2026. Instead, the candidate should fill in the following details: 1. Certificate Number. 2. Date of issue. 3. Issuing authority.');
+const jeeP_faqCentre = jee('prov-jee-faq-centre', 'FAQ', 5, 'FAQ 32', 'The allotted Examination Centre cannot be changed, in any case.');
+const jeeP_faqCancel = jee('prov-jee-faq-cancel', 'FAQ', 5, 'FAQ 30', 'The online application form, once submitted successfully, cannot be cancelled or withdrawn.');
+const jeeP_faqLeave = jee('prov-jee-faq-leave', 'FAQ', 5, 'FAQ 34', 'No, candidates are not allowed to leave the examination centre before the test concludes.');
+const jeeP_faqClash = jee('prov-jee-faq-clash', 'FAQ', 4, 'FAQ 27', 'If such a clash occurs, then NTA will not change the allotted date or shift of the examination for the candidates.');
+const jeeP_resDeclared = jee('prov-jee-res-declared', 'RES', 1, 'Press Release, subject line',
+  'Press Release 20 April 2026 Subject.: Declaration of the Result/NTA Scores for the Joint Entrance Examination [JEE (Main) - 2026] of Paper 1 (B.E. / B.Tech.) – reg.');
+const jeeP_resS1Held = jee('prov-jee-res-s1-held', 'RES', 1, 'Press Release, table of examination dates',
+  'Session 1 Paper 1 (B.E. / B.Tech.) 21, 22, 23, 24 and 28 January 2026');
+const jeeP_resS2Held = jee('prov-jee-res-s2-held', 'RES', 1, 'Press Release, table of examination dates',
+  'Session 2 Paper 1 (B.E. / B.Tech.) 02, 04, 05, 06 and 08 April 2026');
+const jeeP_resShifts = jee('prov-jee-res-shifts', 'RES', 1, 'Press Release',
+  'JEE (Main) 2026 Session-1 Examination was conducted in ten (10) shifts and in Session-2 (April 2026), it was conducted in nine (09) shifts.');
+const jeeP_resKeys = jee('prov-jee-res-keys', 'RES', 3, 'Press Release',
+  'The NTA Scores/ Results of JEE (Main) 2026 Session 2, Paper 1 (B.E./B.Tech.) computed using the Final Answer keys released on 20 April 2026 are being declared today. For those candidates who appeared in both the Sessions of the Examination, the best NTA score of both the Sessions has been declared.');
+const jeeP_resCount = jee('prov-jee-res-count', 'RES', 3, 'Press Release, candidates registered and appeared in both sessions',
+  'Total Number of Unique Candidates Appeared in both Sessions (January/April) of the JEE (Main) - 2026 Examination. 15,38,468');
+const jeeP_resPaper2 = jee('prov-jee-res-paper2', 'RES', 13, 'Press Release',
+  'The NTA Scores for Paper 2A (B.Arch.) and 2B (B. Planning) for the JEE (Main) – 2026 Session 2 will be issued separately.');
+const jeeCut = (n: number, category: string, from: string, to: string, candidates: string) =>
+  jee(`prov-jee-cutoff-${n}`, 'RES', 3, 'Press Release — Category-wise Cut-off of NTA Score for candidates to become eligible for JEE (Advanced) - 2026 for Paper 1 (B.E/ B.Tech.)',
+    `${n} ${category} ${from} ${to} ${candidates}`);
+
+/** The practice form: NTA's three steps (Registration, Application Form, Fee Payment) as the bulletin sets them
+ *  out on pp. 4–5, with traps that fire on the bulletin's and the FAQ's own rules. Session 1's window is used for
+ *  the date, because Session 2's was announced in a separate notice GovOS has not read. */
+const JEE_APPLICATION_SIMULATOR: ApplicationSimulatorSpec = {
+  examId: JEE_EXAM_ID,
+  portalName: 'JEE (Main) 2026 online application on jeemain.nta.nic.in',
+  portalUrl: JEE_SITE,
+  sourceDocumentTitle: JEE_SOURCES.IB.title,
+  sourceDocumentUrl: JEE_SOURCES.IB.url,
+  modelledOnNote:
+    'This mock follows the three steps of the Information Bulletin (Important Information, para 3): Registration, which gives the Application Number used for both sessions; the Application Form, with the live photograph and the uploads; and the Fee Payment, which produces the Confirmation Page. It is a practice form inside GovOS — nothing here reaches NTA, and no application is submitted on your behalf. The 2026 cycle is over.',
+  cleanSubmissionNote:
+    'No rule in the bulletin was broken by these answers. On the real portal the Confirmation Page appears only after the fee is paid; keep its hard and soft copies (they are not available after 31 July 2026), and remember that Session 2 needs its own fee payment, made with the same Application Number in Session 2’s window.',
+  provenance: jeeP_steps,
+  modules: [
+    {
+      moduleNumber: 1,
+      cardName: 'Step 1 — Registration Form',
+      title: 'Register and note your Application Number',
+      introduction:
+        'Register for the online form, create a password and a security question, and note the system-generated Application Number. The same number is used for both sessions of JEE (Main) - 2026.',
+      noticeReference: 'Information Bulletin p.4, para 3, Step 1; p.18–19, paras 3.1 and 3.3',
+      fields: [
+        {
+          id: 'qualifyingYear',
+          label: 'Your Class XII (or equivalent)',
+          kind: 'SELECT',
+          defaultValue: 'APPEARING_2026',
+          options: [
+            { value: 'APPEARING_2026', label: 'Appearing in 2026' },
+            { value: 'PASSED_2025', label: 'Passed in 2025' },
+            { value: 'PASSED_2024', label: 'Passed in 2024' },
+            { value: 'PASSED_2023_OR_EARLIER', label: 'Passed in 2023 or before' }
+          ],
+          noteFromNotice: 'Passed in 2024 or 2025, or appearing in 2026; the passing year is the year the result was first declared “pass” — an improvement attempt does not change it (para 3.3). There is no age limit (para 3.1).'
+        },
+        {
+          id: 'registration',
+          label: 'Registration',
+          kind: 'RADIO',
+          defaultValue: 'ONE',
+          options: [
+            { value: 'ONE', label: 'One registration — the same Application Number for both sessions' },
+            { value: 'SECOND', label: 'Register again with a new Application Number (to change a detail, or for Session 2)' }
+          ],
+          noteFromNotice: 'Under no circumstances may a candidate fill more than one Application Form (para 2, Note).'
+        },
+        {
+          id: 'session2',
+          label: 'If you also want Session 2 (April 2026)',
+          kind: 'SELECT',
+          defaultValue: 'PAY_LATER',
+          options: [
+            { value: 'PAY_LATER', label: 'Log in with the same Application Number and pay Session 2’s fee in its own window' },
+            { value: 'AUTOMATIC', label: 'Nothing more — registering for Session 1 covers Session 2' }
+          ],
+          noteFromNotice: 'Candidates apply separately for each session (FAQ 4), with the same Application Number and Session 2’s fee (bulletin para 2 (i)–(ii)).'
+        }
+      ]
+    },
+    {
+      moduleNumber: 2,
+      cardName: 'Step 2 — Application Form',
+      title: 'Fill the form: paper, cities, medium, qualification and uploads',
+      introduction:
+        'Log in with the Application Number and password; give your personal details, the paper, up to four examination cities, the medium of the question paper and your qualification; capture a live photograph and upload the scanned images.',
+      noticeReference: 'Information Bulletin p.4, Step 2; p.10, Note 2.2; p.26, para 5.1',
+      fields: [
+        {
+          id: 'livePhoto',
+          label: 'Photograph',
+          kind: 'SELECT',
+          defaultValue: 'BOTH',
+          options: [
+            { value: 'BOTH', label: 'Capture a live photograph and also upload a scanned photograph' },
+            { value: 'SCAN_ONLY', label: 'Upload a scanned photograph only' }
+          ],
+          noteFromNotice: 'A live photograph at the time of filling the form, and a scanned photograph as well; colour, 80% face visible including ears, without a mask, against a white background (p.4).'
+        },
+        {
+          id: 'photoFile',
+          label: 'Scanned photograph file',
+          kind: 'SELECT',
+          defaultValue: 'JPG_OK',
+          options: [
+            { value: 'JPG_OK', label: 'JPG/JPEG, between 10 kb and 200 kb' },
+            { value: 'JPG_BIG', label: 'JPG/JPEG, 450 kb (straight from the phone)' },
+            { value: 'PNG', label: 'PNG' }
+          ]
+        },
+        {
+          id: 'signatureFile',
+          label: 'Signature file',
+          kind: 'SELECT',
+          defaultValue: 'JPG_OK',
+          options: [
+            { value: 'JPG_OK', label: 'JPG/JPEG, between 10 kb and 100 kb' },
+            { value: 'JPG_BIG', label: 'JPG/JPEG, 180 kb' }
+          ]
+        },
+        {
+          id: 'class10File',
+          label: 'Class 10 certificate / marks-sheet',
+          kind: 'SELECT',
+          defaultValue: 'PDF_OK',
+          options: [
+            { value: 'PDF_OK', label: 'PDF, between 50 kb and 300 kb' },
+            { value: 'JPG', label: 'A JPG photograph of it' }
+          ],
+          noteFromNotice: 'The score card is generated in the name printed on the Class 10 certificate / marks-sheet (Note 5.7.1).'
+        },
+        {
+          id: 'cities',
+          label: 'Examination cities',
+          kind: 'SELECT',
+          defaultValue: 'FOUR_HOME',
+          options: [
+            { value: 'FOUR_HOME', label: 'Up to four cities, in the State of my present or permanent address' },
+            { value: 'SIX', label: 'Six cities, to improve my chances' },
+            { value: 'OTHER_STATE', label: 'A city in another State, where my relatives live' }
+          ]
+        },
+        {
+          id: 'medium',
+          label: 'Medium of the question paper',
+          kind: 'SELECT',
+          defaultValue: 'CHOSEN_NOW',
+          options: [
+            { value: 'CHOSEN_NOW', label: 'Chosen now, from the thirteen languages offered at my centres' },
+            { value: 'DECIDE_LATER', label: 'I will choose on the examination day' }
+          ]
+        }
+      ]
+    },
+    {
+      moduleNumber: 3,
+      cardName: 'Step 3 — Fee Payment',
+      title: 'Pay the fee and print the Confirmation Page',
+      introduction:
+        'Pay the fee for this session online. The Confirmation Page is generated only after a successful payment; if it is not, the transaction is cancelled and you pay again.',
+      noticeReference: 'Information Bulletin p.3, para 2; p.5, Step 3; p.29, para 5.4 (10)',
+      fields: [
+        {
+          id: 'category',
+          label: 'Category',
+          kind: 'SELECT',
+          defaultValue: 'GENERAL',
+          options: [
+            { value: 'GENERAL', label: 'General' },
+            { value: 'EWS_OBC', label: 'Gen-EWS / OBC (NCL)' },
+            { value: 'SC_ST_PWD', label: 'SC / ST / PwD / PwBD' },
+            { value: 'THIRD_GENDER', label: 'Third Gender' }
+          ]
+        },
+        {
+          id: 'gender',
+          label: 'Gender',
+          kind: 'RADIO',
+          defaultValue: 'MALE',
+          options: [
+            { value: 'MALE', label: 'Male' },
+            { value: 'FEMALE', label: 'Female' },
+            { value: 'THIRD', label: 'Third Gender' }
+          ]
+        },
+        {
+          id: 'papers',
+          label: 'Papers',
+          kind: 'RADIO',
+          defaultValue: 'ONE',
+          options: [
+            { value: 'ONE', label: 'One paper: Paper 1, or Paper 2A, or Paper 2B' },
+            { value: 'TWO_OR_MORE', label: 'Two or more: Paper 1 with 2A and/or 2B, or 2A with 2B' }
+          ]
+        },
+        {
+          id: 'fee',
+          label: 'Fee paid (centres in India)',
+          kind: 'SELECT',
+          defaultValue: 'RS_1000',
+          options: [
+            { value: 'RS_1000', label: '₹1000' },
+            { value: 'RS_900', label: '₹900' },
+            { value: 'RS_800', label: '₹800' },
+            { value: 'RS_500', label: '₹500' },
+            { value: 'RS_2000', label: '₹2000' },
+            { value: 'RS_1600', label: '₹1600' }
+          ],
+          noteFromNotice: 'For centres outside India the fee is higher (₹2500–₹10000 by category, gender and papers). Processing charges and GST are extra (para 2).'
+        },
+        {
+          id: 'paymentMode',
+          label: 'How you pay',
+          kind: 'SELECT',
+          defaultValue: 'ONLINE',
+          options: [
+            { value: 'ONLINE', label: 'Net Banking, Credit Card, Debit Card or UPI' },
+            { value: 'CHALLAN', label: 'Bank challan or demand draft' }
+          ]
+        },
+        {
+          id: 'paymentDate',
+          label: 'Date you pay (Session 1)',
+          kind: 'DATE',
+          defaultValue: '2025-11-20',
+          noteFromNotice: 'Session 1: the form until 27 November 2025, 9:00 PM; the fee until 27 November 2025, 11:50 PM.'
+        },
+        {
+          id: 'afterSubmit',
+          label: 'If you find a mistake after submitting',
+          kind: 'SELECT',
+          defaultValue: 'CORRECTION_WINDOW',
+          options: [
+            { value: 'CORRECTION_WINDOW', label: 'Use the one-time correction window NTA announces, for the fields it opens' },
+            { value: 'EMAIL', label: 'Email NTA the correction' }
+          ]
+        }
+      ]
+    }
+  ],
+  traps: [
+    {
+      id: 'jee-trap-passed-2023',
+      rule: { kind: 'VALUE_IN', fieldId: 'qualifyingYear', values: ['PASSED_2023_OR_EARLIER'] },
+      severity: 'CRITICAL',
+      title: 'Class XII passed in 2023 or before: not eligible for JEE (Main) - 2026',
+      problem: 'Only candidates who passed Class XII (or equivalent) in 2024 or 2025, or are appearing in 2026, may appear.',
+      whyItMatters: 'There is no age limit, but there is a limit on the year of passing, and an improvement attempt does not reset it.',
+      rememberRule: 'JEE (Main) - 2026: Class XII passed in 2024 / 2025, or appearing in 2026.',
+      officialClause: jeeP_year.excerptText!,
+      noticeReference: 'Information Bulletin p.19, para 3.3'
+    },
+    {
+      id: 'jee-trap-second-form',
+      rule: { kind: 'VALUE_IN', fieldId: 'registration', values: ['SECOND'] },
+      severity: 'CRITICAL',
+      title: 'A second Application Form is treated as unfair means',
+      problem: 'One candidate, one Application Number — for both sessions.',
+      whyItMatters: 'The bulletin says a candidate who fills more than one form is treated as UFM, even at a later stage, and the result is cancelled.',
+      rememberRule: 'Never register twice. Session 2 uses the same Application Number.',
+      officialClause: jeeP_oneForm.excerptText!,
+      noticeReference: 'Information Bulletin p.3, para 2, Note'
+    },
+    {
+      id: 'jee-trap-session2-automatic',
+      rule: { kind: 'VALUE_IN', fieldId: 'session2', values: ['AUTOMATIC'] },
+      severity: 'CRITICAL',
+      title: 'Session 1 does not register you for Session 2',
+      problem: 'Session 2 is applied for separately: log in with the same Application Number and pay its fee in Session 2’s window.',
+      whyItMatters: 'A candidate who never paid Session 2’s fee is not a Session 2 candidate.',
+      rememberRule: 'Each session: its own application and fee, one Application Number.',
+      officialClause: jeeP_session2Apply.excerptText!,
+      noticeReference: 'Information Bulletin p.3, para 2 (i)–(ii); FAQ 4'
+    },
+    {
+      id: 'jee-trap-scan-only',
+      rule: { kind: 'VALUE_IN', fieldId: 'livePhoto', values: ['SCAN_ONLY'] },
+      severity: 'CRITICAL',
+      title: 'The live photograph is required as well as the scanned one',
+      problem: 'The form captures a live photograph through your camera (or by scanning the QR code with a phone), and you also upload a scanned photograph.',
+      whyItMatters: 'Both are part of the form; NTA reviews mismatches between them and your identity documents.',
+      rememberRule: 'Live photograph and scanned photograph — both.',
+      officialClause: jeeP_livePhoto.excerptText!,
+      noticeReference: 'Information Bulletin p.4, Step 2 and Note 2'
+    },
+    {
+      id: 'jee-trap-photo-file',
+      rule: { kind: 'VALUE_IN', fieldId: 'photoFile', values: ['JPG_BIG', 'PNG'] },
+      severity: 'CRITICAL',
+      title: 'The photograph must be JPG/JPEG, 10 kb to 200 kb',
+      problem: 'A 450 kb file or a PNG does not meet the bulletin’s specification.',
+      whyItMatters: 'The bulletin says no correction of uploaded images will be given later.',
+      rememberRule: 'Photograph: JPG/JPEG, 10–200 kb. Signature: JPG/JPEG, 10–100 kb. Class 10 certificate: PDF, 50–300 kb.',
+      officialClause: jeeP_uploads.excerptText!,
+      noticeReference: 'Information Bulletin p.4, Step 2'
+    },
+    {
+      id: 'jee-trap-signature-file',
+      rule: { kind: 'VALUE_IN', fieldId: 'signatureFile', values: ['JPG_BIG'] },
+      severity: 'CRITICAL',
+      title: 'The signature file must be 10 kb to 100 kb',
+      problem: 'A 180 kb signature file is over the limit.',
+      whyItMatters: 'Uploaded images cannot be corrected later.',
+      rememberRule: 'Signature: JPG/JPEG, 10–100 kb.',
+      officialClause: jeeP_uploads.excerptText!,
+      noticeReference: 'Information Bulletin p.4, Step 2'
+    },
+    {
+      id: 'jee-trap-class10-file',
+      rule: { kind: 'VALUE_IN', fieldId: 'class10File', values: ['JPG'] },
+      severity: 'CRITICAL',
+      title: 'The Class 10 certificate is uploaded as a PDF',
+      problem: 'The bulletin asks for a PDF between 50 kb and 300 kb, not an image.',
+      whyItMatters: 'Uploaded documents cannot be corrected later, and your score card is generated in the name on this certificate.',
+      rememberRule: 'Class 10 certificate / marks-sheet: PDF, 50–300 kb.',
+      officialClause: jeeP_uploads.excerptText!,
+      noticeReference: 'Information Bulletin p.4, Step 2'
+    },
+    {
+      id: 'jee-trap-cities-count',
+      rule: { kind: 'VALUE_IN', fieldId: 'cities', values: ['SIX'] },
+      severity: 'WARNING',
+      title: 'At most four examination cities',
+      problem: 'You may choose a maximum of four cities, in order of priority.',
+      whyItMatters: 'NTA allots a city by computer, mostly from your choices; it may still allot another city, and the allotted centre cannot be changed.',
+      rememberRule: 'Up to four cities, in your present or permanent address State.',
+      officialClause: jeeP_cities.excerptText!,
+      noticeReference: 'Information Bulletin p.26, para 5.1'
+    },
+    {
+      id: 'jee-trap-cities-state',
+      rule: { kind: 'VALUE_IN', fieldId: 'cities', values: ['OTHER_STATE'] },
+      severity: 'WARNING',
+      title: 'Cities are limited to your present or permanent address State',
+      problem: 'A city in a State where you have neither address is outside the choice the form offers.',
+      whyItMatters: 'Choice of centre cities is limited to the State of permanent or present address.',
+      rememberRule: 'Choose your own city or a neighbouring one in your address State.',
+      officialClause: jeeP_cities.excerptText!,
+      noticeReference: 'Information Bulletin p.26, para 5.1'
+    },
+    {
+      id: 'jee-trap-medium-later',
+      rule: { kind: 'VALUE_IN', fieldId: 'medium', values: ['DECIDE_LATER'] },
+      severity: 'CRITICAL',
+      title: 'The medium of the question paper is fixed in the form',
+      problem: 'The language you opt for cannot be changed later, and you must choose the same medium in the examination.',
+      whyItMatters: 'The paper is in English and the language you opted for; English prevails in any difference.',
+      rememberRule: 'Choose the medium carefully now — it cannot be changed.',
+      officialClause: jeeP_mediumFixed.excerptText!,
+      noticeReference: 'Information Bulletin p.10, Note 2.2'
+    },
+    {
+      id: 'jee-trap-fee-general-male',
+      rule: { kind: 'VALUE_IN_ALL', conditions: [
+        { fieldId: 'category', values: ['GENERAL'] }, { fieldId: 'gender', values: ['MALE'] },
+        { fieldId: 'papers', values: ['ONE'] }, { fieldId: 'fee', values: ['RS_900', 'RS_800', 'RS_500'] }
+      ] },
+      severity: 'CRITICAL',
+      title: 'A General male candidate’s one-paper fee is ₹1000',
+      problem: 'For centres in India, General male: ₹1000; Gen-EWS / OBC (NCL) male: ₹900; women of General, Gen-EWS and OBC (NCL): ₹800; SC / ST / PwD / PwBD and Third Gender: ₹500.',
+      whyItMatters: 'The Confirmation Page is generated only after the prescribed fee is paid.',
+      rememberRule: 'Read your row of the fee table: category, gender, papers, centre in or outside India.',
+      officialClause: jeeP_fee.excerptText!,
+      noticeReference: 'Information Bulletin p.3, para 2'
+    },
+    {
+      id: 'jee-trap-fee-two-papers',
+      rule: { kind: 'VALUE_IN_ALL', conditions: [
+        { fieldId: 'papers', values: ['TWO_OR_MORE'] }, { fieldId: 'fee', values: ['RS_1000', 'RS_900', 'RS_800', 'RS_500'] }
+      ] },
+      severity: 'CRITICAL',
+      title: 'Two or more papers cost more than one',
+      problem: 'In India, General / Gen-EWS / OBC (NCL): ₹2000 (male) or ₹1600 (female); SC / ST / PwD / PwBD and Third Gender: ₹1000.',
+      whyItMatters: 'A one-paper fee does not register you for a second paper.',
+      rememberRule: 'Two or more papers: ₹2000 / ₹1600, or ₹1000 for SC / ST / PwD / PwBD and Third Gender.',
+      officialClause: jeeP_feeTwo.excerptText!,
+      noticeReference: 'Information Bulletin p.3, para 2'
+    },
+    {
+      id: 'jee-trap-offline-payment',
+      rule: { kind: 'VALUE_IN', fieldId: 'paymentMode', values: ['CHALLAN'] },
+      severity: 'CRITICAL',
+      title: 'The fee is paid online only',
+      problem: 'Net Banking, Credit Card, Debit Card or UPI — nothing else.',
+      whyItMatters: 'There is no challan or demand-draft route; processing charges and GST are added by the bank or gateway.',
+      rememberRule: 'Online only: Net Banking, card or UPI.',
+      officialClause: jeeP_feeMode.excerptText!,
+      noticeReference: 'Information Bulletin p.3, para 2 (iv)'
+    },
+    {
+      id: 'jee-trap-s1-window',
+      rule: { kind: 'DATE_OUTSIDE', fieldId: 'paymentDate', earliest: '2025-10-31', latest: '2025-11-27' },
+      severity: 'CRITICAL',
+      title: 'Outside Session 1’s window',
+      problem: 'Session 1’s form ran from 31 October 2025 to 27 November 2025 (9:00 PM); its fee until 27 November 2025 (11:50 PM).',
+      whyItMatters: 'A form without a successful fee payment has no Confirmation Page.',
+      rememberRule: 'Fill the form before 9:00 PM on the last day; pay before 11:50 PM.',
+      officialClause: jeeP_s1Window.excerptText!,
+      noticeReference: 'Information Bulletin p.2, Important Dates'
+    },
+    {
+      id: 'jee-trap-email-correction',
+      rule: { kind: 'VALUE_IN', fieldId: 'afterSubmit', values: ['EMAIL'] },
+      severity: 'WARNING',
+      title: 'NTA does not take corrections by email',
+      problem: 'Corrections sent by post, fax, WhatsApp, email or by hand are not entertained.',
+      whyItMatters: 'Only the one-time correction facility NTA opens, for the fields it opens, changes the form (FAQ 29).',
+      rememberRule: 'Check every field before paying; use only NTA’s correction window.',
+      officialClause: jeeP_noCorrection.excerptText!,
+      noticeReference: 'Information Bulletin p.29, para 5.4 (10); FAQ 29'
+    }
+  ]
+};
+
+const jeePaperNode = (id: string, code: string, name: string, order: number, questions: number, marks: number, provenance: DataProvenance,
+  children: ExamPatternNode[], extra: Partial<ExamPatternNode> = {}): ExamPatternNode => ({
+  id, level: 'PAPER', levelLabel: 'Paper', name, code, order, status: 'VERIFIED', questions, marks, durationMinutes: 180,
+  negativeMarking: '−1 for each incorrect answer (Section A and Section B)', negativeMarkPerWrong: 1, marksPerQuestion: 4,
+  durationVariants: [{ minutes: 240, asPrinted: '04 hours', appliesTo: 'PwD / PwBD candidates eligible for a scribe' }],
+  provenance, children, ...extra
+});
+const jeeMathsPart = (id: string, name: string, provenance: DataProvenance): ExamPatternNode => ({
+  id, level: 'SUBJECT', levelLabel: 'Subject', name, order: 1, status: 'VERIFIED', questions: 25, marks: 100, marksPerQuestion: 4,
+  negativeMarking: '−1 for each incorrect answer', negativeMarkPerWrong: 1, provenance,
+  children: [
+    { id: id + '-a', level: 'SECTION', levelLabel: 'Section', name: 'Section A', order: 1, status: 'VERIFIED', questions: 20, questionType: 'Multiple Choice Questions', provenance },
+    { id: id + '-b', level: 'SECTION', levelLabel: 'Section', name: 'Section B', order: 2, status: 'VERIFIED', questions: 5, questionType: 'Numerical value, entered as an integer on the on-screen keypad (rounded off to the nearest integer)', provenance: jeeP_rounding }
+  ]
+});
+
+const JEE_SYLLABUS_TOPICS: SyllabusTopic[] = [
+  { id: 'syl-jee-p1-maths-1', subject: 'Paper 1 · Mathematics', tier: 'JEE (Main)', topicName: 'Sets, Relations and Functions',
+    subtopics: ['Sets and their representation', 'Union, intersection and complement of sets and their algebraic properties', 'Power set', 'Relations, type of relations, equivalence relations, functions', 'one-one, into and onto functions, the composition of functions'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-maths-1', 'SYL', 1, 'Paper 1 syllabus, Mathematics', 'UNIT 1: SETS, RELATIONS AND FUNCTIONS:') },
+  { id: 'syl-jee-p1-maths-2', subject: 'Paper 1 · Mathematics', tier: 'JEE (Main)', topicName: 'Complex Numbers and Quadratic Equations',
+    subtopics: ['Complex numbers as ordered pairs of reals, Representation of complex numbers in the form a + ib and their representation in a plane, Argand diagram, algebra of complex numbers, modulus and argument (or amplitude) of a complex number, Quadratic equations in real and complex number systems and their solutions', 'Relations between roots and coefficients, nature of roots, the formation of quadratic equations with given roots'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-maths-2', 'SYL', 1, 'Paper 1 syllabus, Mathematics', 'UNIT 2: COMPLEX NUMBERS AND QUADRATIC EQUATIONS:') },
+  { id: 'syl-jee-p1-maths-3', subject: 'Paper 1 · Mathematics', tier: 'JEE (Main)', topicName: 'Matrices and Determinants',
+    subtopics: ['Matrices, algebra of matrices, type of matrices, determinants and matrices of order two and three, evaluation of determinants, area of triangles using determinants', 'Adjoint and inverse of a square matrix', 'Test of consistency and solution of simultaneous linear equations in two or three variables using matrices'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-maths-3', 'SYL', 1, 'Paper 1 syllabus, Mathematics', 'UNIT3: MATRICES AND DETERMINANTS:') },
+  { id: 'syl-jee-p1-maths-4', subject: 'Paper 1 · Mathematics', tier: 'JEE (Main)', topicName: 'Permutations and Combinations',
+    subtopics: ['The fundamental principle of counting, permutations and combinations', 'Meaning of P(n, r) and C(n, r)', 'Simple applications'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-maths-4', 'SYL', 1, 'Paper 1 syllabus, Mathematics', 'UNIT 4: PERMUTATIONS AND COMBINATIONS:') },
+  { id: 'syl-jee-p1-maths-5', subject: 'Paper 1 · Mathematics', tier: 'JEE (Main)', topicName: 'Binomial Theorem and its Simple Applications',
+    subtopics: ['Binomial theorem for a positive integral index, general term and middle term and simple applications'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-maths-5', 'SYL', 1, 'Paper 1 syllabus, Mathematics', 'UNIT 5: BINOMIAL THEOREM AND ITS SIMPLE APPLICATIONS:') },
+  { id: 'syl-jee-p1-maths-6', subject: 'Paper 1 · Mathematics', tier: 'JEE (Main)', topicName: 'Sequence and Series',
+    subtopics: ['Arithmetic and Geometric progressions, insertion of arithmetic, geometric means between two given numbers, Relation between A.M and G.M'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-maths-6', 'SYL', 1, 'Paper 1 syllabus, Mathematics', 'UNIT 6: SEQUENCE AND SERIES:') },
+  { id: 'syl-jee-p1-maths-7', subject: 'Paper 1 · Mathematics', tier: 'JEE (Main)', topicName: 'Limit, Continuity and Differentiability',
+    subtopics: ['Real–valued functions, algebra of functions', 'polynomial, rational, trigonometric, logarithmic and exponential functions', 'inverse functions', 'Graphs of simple functions', 'Limits, continuity and differentiability', 'Differentiation of the sum, difference, product and quotient of two functions', 'Differentiation of trigonometric, inverse trigonometric, logarithmic, exponential, composite and implicit functions', 'derivatives of order upto two, Applications of derivatives: Rate of change of quantities, monotonic-Increasing and decreasing functions, Maxima and minima of functions of one variable'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-maths-7', 'SYL', 1, 'Paper 1 syllabus, Mathematics', 'UNIT 7: LIMIT, CONTINUITY AND DIFFERENTIABILITY:') },
+  { id: 'syl-jee-p1-maths-8', subject: 'Paper 1 · Mathematics', tier: 'JEE (Main)', topicName: 'Integral Calculus',
+    subtopics: ['Integral as an anti-derivative, Fundamental integrals involving algebraic, trigonometric, exponential and logarithmic functions', 'Integration by substitution, by parts and by partial fractions', 'Integration using trigonometric identities', 'Evaluation of simple integrals of the type ∫dx/(x²+a²), ∫dx/√(x²±a²), ∫dx/(a²−x²), ∫dx/√(a²−x²), ∫dx/(ax²+bx+c), ∫dx/√(ax²+bx+c), ∫(px+q)dx/(ax²+bx+c), ∫(px+q)dx/√(ax²+bx+c), ∫√(a²±x²)dx, ∫√(x²−a²)dx', 'The fundamental theorem of calculus, properties of definite integrals', 'Evaluation of definite integrals, determining areas of the regions bounded by simple curves by simple curves in standard forms'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-maths-8', 'SYL', 1, 'Paper 1 syllabus, Mathematics', 'UNIT 8: INTEGRAL CALCULAS:') },
+  { id: 'syl-jee-p1-maths-9', subject: 'Paper 1 · Mathematics', tier: 'JEE (Main)', topicName: 'Differential Equations',
+    subtopics: ['Ordinary differential equations, their order and degree, the solution of differential equation by the method of separation of variables, solution of a homogeneous and linear differential equation of the type dy/dx + p(x)y = q(x)'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-maths-9', 'SYL', 2, 'Paper 1 syllabus, Mathematics', 'UNIT 9: DIFFRENTIAL EQUATIONS :') },
+  { id: 'syl-jee-p1-maths-10', subject: 'Paper 1 · Mathematics', tier: 'JEE (Main)', topicName: 'Co-ordinate Geometry',
+    subtopics: ['Cartesian system of rectangular coordinates in a plane, distance formula, sections formula, locus and its equation, the slope of a line, parallel and perpendicular lines, intercepts of a line on the co-ordinate axis', 'Straight line: Various forms of equations of a line, intersection of lines, angles between two lines, conditions for concurrence of three lines, the distance of a point form a line, co-ordinate of the centroid, orthocentre and circumcentre of a triangle', 'Circle, conic sections: A standard form of equations of a circle, the general form of the equation of a circle, its radius and centre, equation of a circle when the endpoints of a diameter are given, points of intersection of a line and a circle with the centre at the origin and sections of conics, equations of conic sections (parabola, ellipse and hyperbola) in standard forms'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-maths-10', 'SYL', 2, 'Paper 1 syllabus, Mathematics', 'UNIT 10: CO-ORDINATE GEOMETRY :') },
+  { id: 'syl-jee-p1-maths-11', subject: 'Paper 1 · Mathematics', tier: 'JEE (Main)', topicName: 'Three Dimensional Geometry',
+    subtopics: ['Coordinates of a point in space, the distance between two points, section formula, direction ratios and direction cosines and the angle between two intersecting lines', 'Equation of a line', 'Skew lines, the shortest distance between them and its equation'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-maths-11', 'SYL', 2, 'Paper 1 syllabus, Mathematics', 'UNIT 11: THREE DIMENSIONAL GEOMETRY :') },
+  { id: 'syl-jee-p1-maths-12', subject: 'Paper 1 · Mathematics', tier: 'JEE (Main)', topicName: 'Vector Algebra',
+    subtopics: ['Vectors and scalars, the addition of vectors, components of a vector in two dimensions and three-dimensional spaces, scalar and vector products'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-maths-12', 'SYL', 2, 'Paper 1 syllabus, Mathematics', 'UNIT 12: VECTOR ALGEBRA :') },
+  { id: 'syl-jee-p1-maths-13', subject: 'Paper 1 · Mathematics', tier: 'JEE (Main)', topicName: 'Statistics and Probability',
+    subtopics: ['Measures of dispersion', 'calculation of mean, median, mode of grouped and ungrouped data, calculation of standard deviation, variance and mean deviation for grouped and ungrouped data', 'Probability: Probability of an event, addition and multiplication theorems of probability, Baye\'s theorem, probability distribution of a random variable'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-maths-13', 'SYL', 2, 'Paper 1 syllabus, Mathematics', 'UNIT 13: STATISTICS AND PROBABILITY :') },
+  { id: 'syl-jee-p1-maths-14', subject: 'Paper 1 · Mathematics', tier: 'JEE (Main)', topicName: 'Trigonometry',
+    subtopics: ['Trigonometrical identities and trigonometrical functions, inverse trigonometrical functions their properties'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-maths-14', 'SYL', 2, 'Paper 1 syllabus, Mathematics', 'UNIT 14: TRIGONOMETRY :') },
+  { id: 'syl-jee-p1-phys-1', subject: 'Paper 1 · Physics', tier: 'JEE (Main)', topicName: 'Units and Measurements',
+    subtopics: ['Units of measurements, System of units, SI Units, fundamental and derived units, least count, significant figures, Errors in measurements', 'Dimensions of Physics quantities, dimensional analysis and its applications'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-phys-1', 'SYL', 3, 'Paper 1 syllabus, Physics', 'UNIT 1: Units and Measurements') },
+  { id: 'syl-jee-p1-phys-2', subject: 'Paper 1 · Physics', tier: 'JEE (Main)', topicName: 'Kinematics',
+    subtopics: ['The frame of reference, motion in a straight line, speed and velocity, uniform and non-uniform motion, average speed and instantaneous velocity, uniformly accelerated motion, velocity-time, position-time graph, relations for uniformly accelerated motion, relative velocity', 'Motion in a plane, projectile motion, uniform circular motion'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-phys-2', 'SYL', 3, 'Paper 1 syllabus, Physics', 'UNIT 2: Kinematics') },
+  { id: 'syl-jee-p1-phys-3', subject: 'Paper 1 · Physics', tier: 'JEE (Main)', topicName: 'Laws of Motion',
+    subtopics: ['Force and inertia, Newton’s first law of motion, momentum, Newton’s second Law of motion, impulse, Newton’s third Law of motion', 'Law of conservation of linear momentum and its applications, equilibrium of concurrent forces', 'Static and Kinetic friction, laws of friction, rolling friction', 'Dynamics of uniform circular motion, centripetal force and its applications: vehicle on a level circular road, vehicle on a banked road'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-phys-3', 'SYL', 3, 'Paper 1 syllabus, Physics', 'UNIT 3: Laws of Motion') },
+  { id: 'syl-jee-p1-phys-4', subject: 'Paper 1 · Physics', tier: 'JEE (Main)', topicName: 'Work, Energy and Power',
+    subtopics: ['Work done by a constant force and a variable force, kinetic and potential energies, work-energy theorem, power', 'The potential energy of a spring, conservation of mechanical energy, conservative and non- conservative forces, motion in a vertical circle', 'Elastic and inelastic collisions in one and two dimensions'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-phys-4', 'SYL', 3, 'Paper 1 syllabus, Physics', 'UNIT 4: Work, Energy and Power') },
+  { id: 'syl-jee-p1-phys-5', subject: 'Paper 1 · Physics', tier: 'JEE (Main)', topicName: 'Rotational Motion',
+    subtopics: ['Centre of mass of a two-particle system, centre of mass of a rigid body', 'Basic concepts of rotational motion, moment of a force, torque, angular momentum, conservation of angular momentum and its applications', 'The moment of inertia, the radius of gyration, values of moments of inertia for simple geometrical objects, parallel and perpendicular axes theorems and their applications', 'Equilibrium of rigid bodies, rigid body rotation and equations of rotational motion, comparison of linear and rotational motions'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-phys-5', 'SYL', 3, 'Paper 1 syllabus, Physics', 'UNIT 5: Rotational Motion') },
+  { id: 'syl-jee-p1-phys-6', subject: 'Paper 1 · Physics', tier: 'JEE (Main)', topicName: 'Gravitation',
+    subtopics: ['The universal law of gravitation', 'Acceleration due to gravity and its variation with altitude and depth', 'Kepler’s law of planetary motion', 'Gravitational potential energy, gravitational potential', 'Escape velocity, motion of a satellite, orbital velocity, time period and energy of satellite'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-phys-6', 'SYL', 3, 'Paper 1 syllabus, Physics', 'UNIT 6: Gravitation') },
+  { id: 'syl-jee-p1-phys-7', subject: 'Paper 1 · Physics', tier: 'JEE (Main)', topicName: 'Properties of Solids and Liquids',
+    subtopics: ['Elastic behaviour, stress-strain relationship, Hooke\'s Law, Young\'s modulus, bulk modulus and modulus of rigidity', 'Pressure due to a fluid column, Pascal\'s law and its applications, effect of gravity on fluid pressure, viscosity, Stoke’s law, terminal velocity, streamline and turbulent flow, critical velocity, Bernoulli\'s principle and its applications', 'Surface energy and surface tension, angle of contact, excess of pressure across a curved surface, application of surface tension: drops, bubbles and capillary rise', 'Heat, temperature, thermal expansion, specific heat capacity, calorimetry, change of state, latent heat', 'Heat transfer: conduction, convection and radiation'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-phys-7', 'SYL', 3, 'Paper 1 syllabus, Physics', 'UNIT 7: Properties of Solids and Liquids') },
+  { id: 'syl-jee-p1-phys-8', subject: 'Paper 1 · Physics', tier: 'JEE (Main)', topicName: 'Thermodynamics',
+    subtopics: ['Thermal equilibrium and the concept of temperature, zeroth law of thermodynamics, heat, work and internal energy', 'The first law of thermodynamics, isothermal and adiabatic processes', 'The second law of thermodynamics: reversible and irreversible processes'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-phys-8', 'SYL', 4, 'Paper 1 syllabus, Physics', 'UNIT 8: Thermodynamics') },
+  { id: 'syl-jee-p1-phys-9', subject: 'Paper 1 · Physics', tier: 'JEE (Main)', topicName: 'Kinetic Theory of Gases',
+    subtopics: ['Equation of state of a perfect gas, work done on compressing a gas, kinetic theory of gases: assumptions, the concept of pressure, kinetic interpretation of temperature, RMS speed of gas molecules, degrees of freedom, law of equipartition of energy and applications to specific heat capacities of gases, mean free path, Avogadro\'s number'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-phys-9', 'SYL', 4, 'Paper 1 syllabus, Physics', 'UNIT 9: Kinetic Theory of Gases') },
+  { id: 'syl-jee-p1-phys-10', subject: 'Paper 1 · Physics', tier: 'JEE (Main)', topicName: 'Oscillations and Waves',
+    subtopics: ['Oscillations and periodic motion: time period, frequency, displacement as a function of time, periodic functions', 'Simple harmonic motion (S.H.M.) and its equation, phase, oscillations of a spring: restoring force and force constant, energy in S.H.M.: kinetic and potential energies, simple pendulum: derivation of expression for its time period', 'Wave motion, longitudinal and transverse waves, speed of the travelling wave, displacement relation for a progressive wave, principle of superposition of waves, reflection of waves, standing waves in strings and organ pipes, fundamental mode and harmonics, beats'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-phys-10', 'SYL', 4, 'Paper 1 syllabus, Physics', 'UNIT 10: Oscillations and Waves') },
+  { id: 'syl-jee-p1-phys-11', subject: 'Paper 1 · Physics', tier: 'JEE (Main)', topicName: 'Electrostatics',
+    subtopics: ['Electric charges: conservation of charge, Coulomb\'s law forces between two point charges, forces between multiple charges, superposition principle and continuous charge distribution', 'Electric field: electric field due to a point charge, electric field lines, electric dipole, electric field due to a dipole, torque on a dipole in a uniform electric field', 'Electric flux, Gauss\'s law and its applications to find field due to infinitely long uniformly charged straight wire, uniformly charged infinite plane sheet and uniformly charged thin spherical shell', 'Electric potential and its calculation for a point charge, electric dipole and system of charges, potential difference, equipotential surfaces, electrical potential energy of a system of two point charges and of electric dipole in an electrostatic field', 'Conductors and insulators, dielectrics and electric polarization, capacitors and capacitance, the combination of capacitors in series and parallel and capacitance of a parallel plate capacitor with and without dielectric medium between the plates, energy stored in a capacitor'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-phys-11', 'SYL', 4, 'Paper 1 syllabus, Physics', 'UNIT 11: Electrostatics') },
+  { id: 'syl-jee-p1-phys-12', subject: 'Paper 1 · Physics', tier: 'JEE (Main)', topicName: 'Current Electricity',
+    subtopics: ['Electric current: drift velocity, mobility and their relation with electric current, Ohm\'s law, electrical resistance, I-V characteristics of Ohmic and non-ohmic conductors, electrical energy and power, electrical resistivity and conductivity, series and parallel combinations of resistors, temperature dependence of resistance', 'Internal resistance, potential difference and emf of a cell, a combination of cells in series and parallel', 'Kirchhoff’s laws and their applications, Wheatstone bridge, Metre Bridge'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-phys-12', 'SYL', 5, 'Paper 1 syllabus, Physics', 'UNIT 12: Current Electricity') },
+  { id: 'syl-jee-p1-phys-13', subject: 'Paper 1 · Physics', tier: 'JEE (Main)', topicName: 'Magnetic Effects of Current and Magnetism',
+    subtopics: ['Biot - Savart law and its application to the current carrying circular loop, Ampere\'s law and its applications to infinitely long current carrying straight wire and solenoid', 'Force on a moving charge in uniform magnetic and electric fields, force on a current-carrying conductor in a uniform magnetic field, the force between two parallel currents carrying conductors-definition of ampere, torque experienced by a current loop in a uniform magnetic field: Moving coil galvanometer, its sensitivity and conversion to ammeter and voltmeter', 'Current loop as a magnetic dipole and its magnetic dipole moment, bar magnet as an equivalent solenoid, magnetic field lines, magnetic field due to a magnetic dipole (bar magnet) along its axis and perpendicular to its axis, torque on a magnetic dipole in a uniform magnetic field, para-, dia- and ferromagnetic substances with examples, the effect of temperature on magnetic properties'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-phys-13', 'SYL', 5, 'Paper 1 syllabus, Physics', 'UNIT 13: Magnetic Effects of Current and Magnetism') },
+  { id: 'syl-jee-p1-phys-14', subject: 'Paper 1 · Physics', tier: 'JEE (Main)', topicName: 'Electromagnetic Induction and Alternating Currents',
+    subtopics: ['Electromagnetic induction: Faraday\'s law, induced emf and current, Lenz’s law, eddy currents, self and mutual inductance', 'Alternating currents, peak and RMS value of alternating current/voltage, reactance and impedance, LCR series circuit, resonance, power in AC circuits, wattless current, AC generator and transformer'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-phys-14', 'SYL', 5, 'Paper 1 syllabus, Physics', 'UNIT 14: Electromagnetic Induction and Alternating Currents') },
+  { id: 'syl-jee-p1-phys-15', subject: 'Paper 1 · Physics', tier: 'JEE (Main)', topicName: 'Electromagnetic Waves',
+    subtopics: ['Displacement current, electromagnetic waves and their characteristics, transverse nature of electromagnetic waves, electromagnetic spectrum (radio waves, microwaves, infrared, visible, ultraviolet, X-rays, Gamma rays), applications of electromagnetic waves'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-phys-15', 'SYL', 5, 'Paper 1 syllabus, Physics', 'UNIT 15: Electromagnetic Waves') },
+  { id: 'syl-jee-p1-phys-16', subject: 'Paper 1 · Physics', tier: 'JEE (Main)', topicName: 'Optics',
+    subtopics: ['Reflection of light, spherical mirrors, mirror formula', 'Refraction of light at plane and spherical surfaces, thin lens formula and lens maker formula, total internal reflection and its applications, magnification, power of a lens, combination of thin lenses in contact, refraction of light through a prism, microscope and astronomical telescope (reflecting and refracting ) and their magnifying powers', 'Wave optics: wavefront and Huygens ‘Principle, laws of reflection and refraction using Huygens principle', 'Interference: Young\'s double-slit experiment and expression for fringe width, coherent sources and sustained interference of light', 'Diffraction due to a single slit, width of central maximum', 'Polarization: plane-polarized light, Brewster\'s law, uses of plane- polarized light and Polaroid'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-phys-16', 'SYL', 5, 'Paper 1 syllabus, Physics', 'UNIT 16: Optics') },
+  { id: 'syl-jee-p1-phys-17', subject: 'Paper 1 · Physics', tier: 'JEE (Main)', topicName: 'Dual Nature of Matter and Radiation',
+    subtopics: ['Dual nature of radiation, Photoelectric effect, Hertz and Lenard\'s observations, Einstein\'s photoelectric equation, particle nature of light', 'Matter waves: wave nature of particle, de- Broglie relation'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-phys-17', 'SYL', 6, 'Paper 1 syllabus, Physics', 'UNIT 17: Dual Nature of Matter and Radiation') },
+  { id: 'syl-jee-p1-phys-18', subject: 'Paper 1 · Physics', tier: 'JEE (Main)', topicName: 'Atoms and Nuclei',
+    subtopics: ['Alpha-particle scattering experiment, Rutherford\'s model of atom, Bohr model, energy levels, hydrogen spectrum', 'Composition and size of nucleus, atomic masses, mass-energy relation, mass defect, binding energy per nucleon and its variation with mass number, nuclear fission and fusion'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-phys-18', 'SYL', 6, 'Paper 1 syllabus, Physics', 'UNIT 18: Atoms and Nuclei') },
+  { id: 'syl-jee-p1-phys-19', subject: 'Paper 1 · Physics', tier: 'JEE (Main)', topicName: 'Electronic Devices',
+    subtopics: ['Semiconductors, semiconductor diode: I-V characteristics in forward and reverse bias, diode as a rectifier', 'I-V characteristics of LED, the photodiode, solar cell, Zener diode, Zener diode as a voltage regulator', 'Logic gates (OR', 'AND', 'NOT', 'NAND and NOR)'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-phys-19', 'SYL', 6, 'Paper 1 syllabus, Physics', 'UNIT 19: Electronic Devices') },
+  { id: 'syl-jee-p1-phys-20', subject: 'Paper 1 · Physics', tier: 'JEE (Main)', topicName: 'Experimental Skills',
+    subtopics: ['Familiarity with the basic approach and observations of the experiments and activities', 'Vernier calipers -its use to measure the internal and external diameter and depth of a vessel', 'Screw gauge-its use to determine the thickness/ diameter of thin sheet/wire', 'Simple pendulum-dissipation of energy by plotting a graph between the square of amplitude and time', 'Metre scale - the mass of a given object by the principle of moments', 'Young\'s modulus of elasticity of the material of a metallic wire', 'Surface tension of water by capillary rise and effect of detergents', 'Co-efficient of viscosity of a given viscous liquid by measuring the terminal velocity of a given spherical body', 'Speed of sound in air at room temperature using a resonance tube', 'Specific heat capacity of a given (i) solid and (ii) liquid by method of mixtures', 'The resistivity of the material of a given wire using a metre bridge', 'The resistance of a given wire using Ohm\'s law', 'Resistance and figure of merit of a galvanometer by half deflection method', 'The focal length of (i) Convex mirror (ii) Concave mirror and (iii)Convex lens, using the parallax method', 'The plot of the angle of deviation vs angle of incidence for a triangular prism', 'The refractive index of a glass slab using a travelling microscope', 'Characteristic curves of a p-n junction diode in forward and reverse bias', 'Characteristic curves of a Zener diode and finding reverse breakdown voltage', 'Identification of diode, LED, resistor, a capacitor from a mixed collection of such items'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-phys-20', 'SYL', 6, 'Paper 1 syllabus, Physics', 'UNIT 20: Experimental Skills') },
+  { id: 'syl-jee-p1-chem-1', subject: 'Paper 1 · Chemistry', tier: 'JEE (Main)', topicName: 'Some Basic Concepts in Chemistry',
+    subtopics: ['Matter and its nature, Dalton\'s atomic theory, Concept of atom, molecule, element and compound, Laws of chemical combination, Atomic and molecular masses, mole concept, molar mass, percentage composition, empirical and molecular formulae, Chemical equations and stoichiometry'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-chem-1', 'SYL', 7, 'Paper 1 syllabus, Chemistry — Physical Chemistry', 'UNIT I: SOME BASIC CONCEPTS IN CHEMISTRY') },
+  { id: 'syl-jee-p1-chem-2', subject: 'Paper 1 · Chemistry', tier: 'JEE (Main)', topicName: 'Atomic Structure',
+    subtopics: ['Nature of electromagnetic radiation, photoelectric effect, spectrum of the hydrogen atom, Bohr model of a hydrogen atom - its postulates, derivation of the relations for the energy of the electron and radii of the different orbits, limitations of Bohr\'s model, dual nature of matter, de Broglie\'s relationship, Heisenberg uncertainty principle, elementary ideas of quantum mechanics, the quantum mechanical model of the atom and its important features, concept of atomic orbitals as one-electron wave functions, variation of ψ and ψ² with r for 1s and 2s orbitals, various quantum numbers (principal, angular momentum and magnetic quantum numbers) and their significance, shapes of s, p and d - orbitals, electron spin and spin quantum number, rules for filling electrons in orbitals – Aufbau principle, Pauli\'s exclusion principle and Hund\'s rule, electronic configuration of elements and extra stability of half-filled and completely filled orbitals'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-chem-2', 'SYL', 7, 'Paper 1 syllabus, Chemistry — Physical Chemistry', 'UNIT 2: ATOMIC STRUCTURE') },
+  { id: 'syl-jee-p1-chem-3', subject: 'Paper 1 · Chemistry', tier: 'JEE (Main)', topicName: 'Chemical Bonding and Molecular Structure',
+    subtopics: ['Kossel-Lewis approach to chemical bond formation, the concept of ionic and covalent bonds', 'Ionic Bonding: Formation of ionic bonds, factors affecting the formation of ionic bonds', 'calculation of lattice enthalpy', 'Covalent Bonding: Concept of electronegativity, Fajan’s rule, dipole moment, Valence Shell Electron Pair Repulsion (VSEPR ) theory and shapes of simple molecules', 'Quantum mechanical approach to covalent bonding: Valence bond theory - its important features, the concept of hybridization involving s, p and d orbitals, resonance', 'Molecular Orbital Theory - Its important features, LCAOs, types of molecular orbitals (bonding, antibonding), sigma and pi-bonds, molecular orbital electronic configurations of homonuclear diatomic molecules, the concept of bond order, bond length and bond energy', 'Elementary idea of metallic bonding, hydrogen bonding and its applications'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-chem-3', 'SYL', 7, 'Paper 1 syllabus, Chemistry — Physical Chemistry', 'UNIT 3: CHEMICAL BONDING AND MOLECULAR STRUCTURE') },
+  { id: 'syl-jee-p1-chem-4', subject: 'Paper 1 · Chemistry', tier: 'JEE (Main)', topicName: 'Chemical Thermodynamics',
+    subtopics: ['Fundamentals of thermodynamics: System and surroundings, extensive and intensive properties, state functions, entropy, types of processes', 'The first law of thermodynamics - Concept of work, heat, internal energy and enthalpy, heat capacity, molar heat capacity, Hess’s law of constant heat summation, Enthalpies of bond dissociation, combustion, formation, atomization, sublimation, phase transition, hydration, ionization and solution', 'The second law of thermodynamics - Spontaneity of processes, ΔS of the universe and ΔG of the system as criteria for spontaneity. ΔG°(Standard Gibbs energy change) and equilibrium constant'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-chem-4', 'SYL', 7, 'Paper 1 syllabus, Chemistry — Physical Chemistry', 'UNIT 4: CHEMICAL THERMODYNAMICS') },
+  { id: 'syl-jee-p1-chem-5', subject: 'Paper 1 · Chemistry', tier: 'JEE (Main)', topicName: 'Solutions',
+    subtopics: ['Different methods for expressing the concentration of solution - molality, molarity, mole fraction, percentage (by volume and mass both), the vapour pressure of solutions and Raoult\'s Law - Ideal and non-ideal solutions, vapour pressure - composition, plots for ideal and non- ideal solutions, Colligative properties of dilute solutions - a relative lowering of vapour pressure, depression of freezing point, the elevation of boiling point and osmotic pressure, determination of molecular mass using colligative properties, abnormal value of molar mass, van’t Hoff factor and its significance'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-chem-5', 'SYL', 7, 'Paper 1 syllabus, Chemistry — Physical Chemistry', 'UNIT 5: SOLUTIONS') },
+  { id: 'syl-jee-p1-chem-6', subject: 'Paper 1 · Chemistry', tier: 'JEE (Main)', topicName: 'Equilibrium',
+    subtopics: ['Meaning of equilibrium is the concept of dynamic equilibrium', 'Equilibria involving physical processes: Solid-liquid, liquid-gas, gas-gas and solid-gas equilibria, Henry\'s law', 'General characteristics of equilibrium involving physical processes', 'Equilibrium involving chemical processes: Law of chemical equilibrium, equilibrium constants (Kp and Kc) and their significance, the significance of ΔG and ΔG° in chemical equilibrium, factors affecting equilibrium concentration, pressure, temperature, the effect of catalyst, Le Chatelier’s principle', 'Ionic equilibrium: Weak and strong electrolytes, ionization of electrolytes, various concepts of acids and bases (Arrhenius, Bronsted - Lowry and Lewis) and their ionization, acid-base equilibria (including multistage ionization) and ionization constants, ionization of water, pH scale, common ion effect, hydrolysis of salts and pH of their solutions, the solubility of sparingly soluble salts, solubility products and buffer solutions'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-chem-6', 'SYL', 8, 'Paper 1 syllabus, Chemistry — Physical Chemistry', 'UNIT 6: EQUILIBRIUM') },
+  { id: 'syl-jee-p1-chem-7', subject: 'Paper 1 · Chemistry', tier: 'JEE (Main)', topicName: 'Redox Reactions and Electrochemistry',
+    subtopics: ['Electronic concepts of oxidation and reduction, redox reactions, oxidation number, rules for assigning oxidation number and balancing of redox reactions', 'Electrolytic and metallic conduction, conductance in electrolytic solutions, molar conductivities and their variation with concentration, Kohlrausch’s law and its applications', 'Electrochemical cells - Electrolytic and Galvanic cells, different types of electrodes, electrode potentials including standard electrode potential, half-cell and cell reactions, emf of a Galvanic cell and its measurement, Nernst equation and its applications, relationship between cell potential and Gibbs\' energy change, dry cell and lead accumulator, fuel cells'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-chem-7', 'SYL', 8, 'Paper 1 syllabus, Chemistry — Physical Chemistry', 'UNIT 7: REDOX REACTIONS AND ELECTROCHEMISTRY') },
+  { id: 'syl-jee-p1-chem-8', subject: 'Paper 1 · Chemistry', tier: 'JEE (Main)', topicName: 'Chemical Kinetics',
+    subtopics: ['Rate of a chemical reaction, factors affecting the rate of reactions: concentration, temperature, pressure and catalyst, elementary and complex reactions, order and molecularity of reactions, rate law, rate constant and its units, differential and integral forms of zero and first-order reactions, their characteristics and half-lives, the effect of temperature on the rate of reactions, Arrhenius theory, activation energy and its calculation, collision theory of bi-molecular gaseous reactions (no derivation)'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-chem-8', 'SYL', 8, 'Paper 1 syllabus, Chemistry — Physical Chemistry', 'UNIT 8: CHEMICAL KINETICS') },
+  { id: 'syl-jee-p1-chem-9', subject: 'Paper 1 · Chemistry', tier: 'JEE (Main)', topicName: 'Classification of Elements and Periodicity in Properties',
+    subtopics: ['Modern periodic law and present form of the periodic table, s, p. d and f block elements, periodic trends in properties of elements atomic and ionic radii, ionization enthalpy, electron gain enthalpy, valence, oxidation states and chemical reactivity'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-chem-9', 'SYL', 8, 'Paper 1 syllabus, Chemistry — Inorganic Chemistry', 'UNIT 9: CLASSIFICATION OF ELEMENTS AND PERIODICITY IN PROPERTIES') },
+  { id: 'syl-jee-p1-chem-10', subject: 'Paper 1 · Chemistry', tier: 'JEE (Main)', topicName: 'p-Block Elements',
+    subtopics: ['Group -13 to Group 18 Elements General Introduction: Electronic configuration and general trends in physical and chemical properties of elements across the periods and down the groups, unique behaviour of the first element in each group'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-chem-10', 'SYL', 8, 'Paper 1 syllabus, Chemistry — Inorganic Chemistry', 'UNIT 10: p- BLOCK ELEMENTS') },
+  { id: 'syl-jee-p1-chem-11', subject: 'Paper 1 · Chemistry', tier: 'JEE (Main)', topicName: 'd- and f-Block Elements',
+    subtopics: ['Transition Elements - General introduction, electronic configuration, occurrence and characteristics, general trends in properties of the first-row transition elements - physical properties, ionization enthalpy, oxidation states, atomic radii, colour, catalytic behaviour, magnetic properties, complex formation, interstitial compounds, alloy formation, preparation, properties and uses of K2Cr2O7 and KMnO4', 'Inner Transition Elements Lanthanoids - Electronic configuration, oxidation states and Lanthanoid contraction', 'Actinoids - Electronic configuration and oxidation states'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-chem-11', 'SYL', 8, 'Paper 1 syllabus, Chemistry — Inorganic Chemistry', 'UNIT 11: d - and f- BLOCK ELEMENTS') },
+  { id: 'syl-jee-p1-chem-12', subject: 'Paper 1 · Chemistry', tier: 'JEE (Main)', topicName: 'Coordination Compounds',
+    subtopics: ['Introduction to coordination compounds', 'Werner\'s theory, ligands, coordination number, denticity, chelation, IUPAC nomenclature of mononuclear co-ordination compounds, isomerism, Bonding: Valence bond approach and basic ideas of Crystal field theory, colour and magnetic properties, importance of coordination compounds (in qualitative analysis, extraction of metals and in biological systems)'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-chem-12', 'SYL', 9, 'Paper 1 syllabus, Chemistry — Inorganic Chemistry', 'UNIT 12: COORDINATION COMPOUNDS') },
+  { id: 'syl-jee-p1-chem-13', subject: 'Paper 1 · Chemistry', tier: 'JEE (Main)', topicName: 'Purification and Characterisation of Organic Compounds',
+    subtopics: ['Purification - Crystallization, sublimation, distillation, differential extraction and chromatography - principles and their applications', 'Qualitative analysis - Detection of nitrogen, sulphur, phosphorus and halogens', 'Quantitative analysis (basic principles only) - Estimation of carbon, hydrogen, nitrogen, halogens, sulphur and phosphorus', 'Calculations of empirical formulae and molecular formulae, numerical problems in organic quantitative analysis'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-chem-13', 'SYL', 9, 'Paper 1 syllabus, Chemistry — Organic Chemistry', 'UNIT 13: PURIFICATION AND CHARACTERISATION OF ORGANIC COMPOUNDS') },
+  { id: 'syl-jee-p1-chem-14', subject: 'Paper 1 · Chemistry', tier: 'JEE (Main)', topicName: 'Some Basic Principles of Organic Chemistry',
+    subtopics: ['Tetravalency of carbon, shapes of simple molecules - hybridization (s and p): classification of organic compounds based on functional groups and those containing halogens, oxygen, nitrogen and sulphur, homologous series: Isomerism - structural and stereoisomerism', 'Nomenclature (Trivial and IUPAC) Covalent bond fission - Homolytic and heterolytic, free radicals, carbocations and carbanions, stability of carbocations and free radicals, electrophiles and nucleophiles', 'Electronic displacement in a covalent bond - Inductive effect, electromeric effect, resonance and hyperconjugation', 'Common types of organic reactions- Substitution, addition, elimination and rearrangement'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-chem-14', 'SYL', 9, 'Paper 1 syllabus, Chemistry — Organic Chemistry', 'UNIT 14: SOME BASIC PRINCIPLES OF ORGANIC CHEMISTRY') },
+  { id: 'syl-jee-p1-chem-15', subject: 'Paper 1 · Chemistry', tier: 'JEE (Main)', topicName: 'Hydrocarbons',
+    subtopics: ['Classification, isomerism, IUPAC nomenclature, general methods of preparation, properties and reactions', 'Alkanes - Conformations: Sawhorse and Newman projections (of ethane), mechanism of halogenation of alkanes', 'Alkenes - Geometrical isomerism, mechanism of electrophilic addition, addition of hydrogen, halogens, water, hydrogen halides (Markownikoffs and peroxide effect), Ozonolysis and polymerization', 'Alkynes - Acidic character, addition of hydrogen, halogens, water and hydrogen halides, polymerization', 'Aromatic hydrocarbons - Nomenclature, benzene - structure and aromaticity, mechanism of electrophilic substitution, halogenation, nitration', 'Friedel-Craft\'s alkylation and acylation, directive influence of the functional group in mono- substituted benzene'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-chem-15', 'SYL', 9, 'Paper 1 syllabus, Chemistry — Organic Chemistry', 'UNITS 15:HYDROCARBONS') },
+  { id: 'syl-jee-p1-chem-16', subject: 'Paper 1 · Chemistry', tier: 'JEE (Main)', topicName: 'Organic Compounds Containing Halogens',
+    subtopics: ['General methods of preparation, properties and reactions, nature of C-X bond, mechanisms of substitution reactions', 'Uses, environmental effects of chloroform, iodoform, freons and DDT'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-chem-16', 'SYL', 9, 'Paper 1 syllabus, Chemistry — Organic Chemistry', 'UNIT 16: ORGANIC COMPOUNDS CONTAINING HALOGENS') },
+  { id: 'syl-jee-p1-chem-17', subject: 'Paper 1 · Chemistry', tier: 'JEE (Main)', topicName: 'Organic Compounds Containing Oxygen',
+    subtopics: ['General methods of preparation, properties, reactions and uses', 'ALCOHOLS,PHENOLS AND ETHERS Alcohols: Identification of primary, secondary and tertiary alcohols, mechanism of dehydration', 'Phenols: Acidic nature, electrophilic substitution reactions, halogenation, nitration and sulphonation, Reimer - Tiemann reaction', 'Ethers: Structure', 'Aldehyde and Ketones: Nature of carbonyl group, nucleophilic addition to >C=O group, relative reactivities of aldehydes and ketones, important reactions such as - Nucleophilic addition reactions (addition of HCN, NH3 and its derivatives), Grignard reagent, oxidation, reduction (Wolf Kishner and Clemmensen), the acidity of α-hydrogen', 'Aldol condensation, Cannizzaro reaction, Haloform reaction, chemical tests to distinguish between aldehydes and ketones', 'Carboxylic Acids: Acidic strength and factors affecting it'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-chem-17', 'SYL', 10, 'Paper 1 syllabus, Chemistry — Organic Chemistry', 'UNIT 17: ORGANIC COMPOUNDS CONTAINING OXYGEN') },
+  { id: 'syl-jee-p1-chem-18', subject: 'Paper 1 · Chemistry', tier: 'JEE (Main)', topicName: 'Organic Compounds Containing Nitrogen',
+    subtopics: ['General methods of preparation, properties, reactions and uses', 'Amines: Nomenclature, classification, structure, basic character and identification of primary, secondary and tertiary amines and their basic character', 'Diazonium Salts: Importance in synthetic organic chemistry'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-chem-18', 'SYL', 10, 'Paper 1 syllabus, Chemistry — Organic Chemistry', 'UNIT 18: ORGANIC COMPOUNDS CONTAINING NITROGEN') },
+  { id: 'syl-jee-p1-chem-19', subject: 'Paper 1 · Chemistry', tier: 'JEE (Main)', topicName: 'Biomolecules',
+    subtopics: ['General introduction and importance of biomolecules', 'CARBOHYDRATES – Classification, aldoses and ketoses, monosaccharides (glucose and fructose) and constituent monosaccharides of oligosaccharides (sucrose, lactose and maltose)', 'PROTEINS - Elementary idea of α-amino acids, peptide bond, polypeptides, proteins: primary, secondary, tertiary and quaternary structure (qualitative idea only), denaturation of proteins, enzymes', 'VITAMINS – Classification and functions', 'NUCLEIC ACIDS – Chemical constitution of DNA and RNA, biological functions of nucleic acids', 'Hormones (General introduction)'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-chem-19', 'SYL', 10, 'Paper 1 syllabus, Chemistry — Organic Chemistry', 'UNIT 19: BIOMOLECULES') },
+  { id: 'syl-jee-p1-chem-20', subject: 'Paper 1 · Chemistry', tier: 'JEE (Main)', topicName: 'Principles Related to Practical Chemistry',
+    subtopics: ['Detection of extra elements (Nitrogen, sulphur, halogens) in organic compounds', 'Detection of the following functional groups: hydroxyl (alcoholic and phenolic), carbonyl (aldehyde and ketones), carboxyl and amino groups in organic compounds', 'The chemistry involved in the preparation of the following: Inorganic compounds — Mohr’s salt, potash alum; Organic compounds — Acetanilide, p-nitro acetanilide, aniline yellow, iodoform', 'The chemistry involved in the titrimetric exercises – acids, bases and the use of indicators, oxalic-acid vs KMnO4, Mohr’s salt vs KMnO4', 'Chemical principles involved in the qualitative salt analysis: Cations – Pb²⁺, Cu²⁺, Al³⁺, Fe³⁺, Zn²⁺, Ni²⁺, Ca²⁺, Ba²⁺, Mg²⁺, NH₄⁺; Anions – CO₃²⁻, S²⁻, SO₄²⁻, NO₃⁻, NO₂⁻, Cl⁻, Br⁻, I⁻ (insoluble salts excluded)', 'Chemical principles involved in the following experiments: enthalpy of solution of CuSO4; enthalpy of neutralization of strong acid and strong base; preparation of lyophilic and lyophobic sols; kinetic study of the reaction of iodide ions with hydrogen peroxide at room temperature'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p1-chem-20', 'SYL', 10, 'Paper 1 syllabus, Chemistry — Organic Chemistry', 'UNIT 20: PRINCIPLES RELATED TO PRACTICAL CHEMISTRY') },
+  { id: 'syl-jee-p2a-maths', subject: 'Paper 2A · Mathematics', tier: 'JEE (Main)', topicName: 'Mathematics (Part I) — the same 14 units as Paper 1',
+    subtopics: ['Sets, Relations and Functions', 'Complex Numbers and Quadratic Equations', 'Matrices and Determinants', 'Permutations and Combinations', 'Binomial Theorem and its Simple Applications', 'Sequence and Series', 'Limit, Continuity and Differentiability', 'Integral Calculus', 'Differential Equations', 'Co-ordinate Geometry', 'Three Dimensional Geometry', 'Vector Algebra', 'Statistics and Probability', 'Trigonometry'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p2a-maths', 'SYL', 12, 'Paper 2A syllabus, Part I Mathematics', 'Part - I MATHEMATICS') },
+  { id: 'syl-jee-p2a-apt-1', subject: 'Paper 2A · Aptitude Test', tier: 'JEE (Main)', topicName: 'Awareness of persons, buildings, materials, objects and textures',
+    subtopics: ['Awareness of persons, buildings, materials, objects, texture related to Architecture and Build-environment', 'Visualizing three-dimensional objects from two-dimensional drawings', 'Visualizing different sides of three-dimensional objects', 'Analytical Reasoning Mental Ability (Visual, Numerical and Verbal)'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p2a-apt-1', 'SYL', 14, 'Paper 2A syllabus, Part II Aptitude Test', 'UNIT - 1 Awareness of persons') },
+  { id: 'syl-jee-p2a-apt-2', subject: 'Paper 2A · Aptitude Test', tier: 'JEE (Main)', topicName: 'Three-dimensional perception',
+    subtopics: ['Understanding and appreciation of scale and proportions of objects, building forms and elements, colour texture harmony and contrast', 'Design and drawing of geometrical or abstract shapes and patterns in pencil', 'Transformation of forms both 2D and 3D union, subtraction rotation, development of surfaces and volumes', 'Generation of plans, elevations and 3D views of objects', 'Creating two-dimensional and three-dimensional compositions using given shapes and forms'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p2a-apt-2', 'SYL', 14, 'Paper 2A syllabus, Part II Aptitude Test', 'UNIT – 2 Three dimensional- perception') },
+  { id: 'syl-jee-p2a-drawing-1', subject: 'Paper 2A · Drawing Test', tier: 'JEE (Main)', topicName: 'Drawing Test',
+    subtopics: ['Sketching of scenes and activities from memory of urbanscape (public space, market, festivals, street scenes, monuments, recreational spaces, etc.)', 'Landscape (riverfronts, jungle, gardens, trees, plants, etc.) and rural life', 'To be conducted in a Drawing sheet', 'Candidates are advised to bring pencils, own geometry box set, erasers (printed “crasets”) and colour pencils and crayons for the Drawing Test'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p2a-drawing-1', 'SYL', 14, 'Paper 2A syllabus, Part III Drawing Test', 'Part – III DRAWING TEST') },
+  { id: 'syl-jee-p2b-maths', subject: 'Paper 2B · Mathematics', tier: 'JEE (Main)', topicName: 'Mathematics (Part I) — the same 14 units as Paper 1',
+    subtopics: ['Sets, Relations and Functions', 'Complex Numbers and Quadratic Equations', 'Matrices and Determinants', 'Permutations and Combinations', 'Binomial Theorem and its Simple Applications', 'Sequence and Series', 'Limit, Continuity and Differentiability', 'Integral Calculus', 'Differential Equations', 'Co-ordinate Geometry', 'Three Dimensional Geometry', 'Vector Algebra', 'Statistics and Probability', 'Trigonometry'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p2b-maths', 'SYL', 15, 'Paper 2B syllabus, Part I Mathematics', 'Part - I MATHEMATICS') },
+  { id: 'syl-jee-p2b-apt-1', subject: 'Paper 2B · Aptitude Test', tier: 'JEE (Main)', topicName: 'Awareness of persons, buildings, materials, objects and textures',
+    subtopics: ['Awareness of persons, buildings, materials, objects, texture related to Architecture and Build-environment', 'Visualizing three-dimensional objects from two-dimensional drawings', 'Visualizing different sides of three-dimensional objects', 'Analytical Reasoning Mental Ability (Visual, Numerical and Verbal)'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p2b-apt-1', 'SYL', 16, 'Paper 2B syllabus, Part II Aptitude Test', 'UNIT - 1 Awareness of persons') },
+  { id: 'syl-jee-p2b-apt-2', subject: 'Paper 2B · Aptitude Test', tier: 'JEE (Main)', topicName: 'Three-dimensional perception',
+    subtopics: ['Understanding and appreciation of scale and proportions of objects, building forms and elements, colour texture harmony and contrast', 'Design and drawing of geometrical or abstract shapes and patterns in pencil', 'Transformation of forms both 2D and 3D union, subtraction rotation, development of surfaces and volumes', 'Generation of plans, elevations and 3D views of objects', 'Creating two-dimensional and three-dimensional compositions using given shapes and forms'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p2b-apt-2', 'SYL', 16, 'Paper 2B syllabus, Part II Aptitude Test', 'UNIT – 2 Three dimensional- perception') },
+  { id: 'syl-jee-p2b-planning-1', subject: 'Paper 2B · Planning', tier: 'JEE (Main)', topicName: 'General Awareness',
+    subtopics: ['General knowledge questions and knowledge about prominent cities, development issues, government programs etc'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p2b-planning-1', 'SYL', 17, 'Paper 2B syllabus, Part III Planning', 'UNIT-1 GENERAL AWARENESS') },
+  { id: 'syl-jee-p2b-planning-2', subject: 'Paper 2B · Planning', tier: 'JEE (Main)', topicName: 'Social Sciences',
+    subtopics: ['The idea of nationalism, nationalism in India, pre-modern world, 19th-century global economy, colonialism and colonial cities, industrialization, resources and development, types of resources, agriculture, water, mineral resources, industries, national economy', 'Human Settlements', 'Power-sharing, federalism, political parties, democracy, the constitution of India', 'Economic development- economic sectors, globalization, the concept of development, poverty', 'Population structure, social exclusion and inequality, urbanization, rural development, colonial cities'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p2b-planning-2', 'SYL', 17, 'Paper 2B syllabus, Part III Planning', 'UNIT-2 SOCIAL SCIENCES') },
+  { id: 'syl-jee-p2b-planning-3', subject: 'Paper 2B · Planning', tier: 'JEE (Main)', topicName: 'Thinking Skills',
+    subtopics: ['Comprehension (unseen passage)', 'map reading skills, scale, distance, direction, area etc', 'critical reasoning', 'understanding of charts, graphs and tables', 'basic concepts of statistics and quantitative reasoning'],
+    weightagePercentage: 0, avgQuestions: 0, isHighYield: false,
+    officialProvenance: jee('prov-syl-jee-p2b-planning-3', 'SYL', 17, 'Paper 2B syllabus, Part III Planning', 'UNIT-3 THINKING SKILLS') }
+];
+
+const JEE_SYLLABUS_TREE: ExamSyllabusNode[] = [
+  { id: 'tree-jee-p1', title: 'Syllabus for JEE Main Paper 1 (B.E./B.Tech.)- Mathematics, Physics and Chemistry', levelLabel: 'Paper', order: 1, status: 'VERIFIED',
+    scope: [{ kind: 'PAPER', label: 'Paper 1' }],
+    provenance: jee('prov-tree-jee-p1', 'SYL', 1, 'Syllabus for JEE Main Paper 1', 'Syllabus for JEE Main Paper 1 (B.E./B.Tech.)- Mathematics, Physics and Chemistry'),
+    children: [
+      { id: 'tree-jee-p1-maths', title: 'MATHEMATICS', levelLabel: 'Subject', order: 1, status: 'VERIFIED',
+      provenance: jee('prov-tree-jee-p1-maths', 'SYL', 1, 'Paper 1 syllabus, Mathematics', 'MATHEMATICS'),
+      children: [
+        { id: 'tree-syl-jee-p1-maths-1', title: 'UNIT 1: SETS, RELATIONS AND FUNCTIONS', levelLabel: 'Unit', order: 1, status: 'VERIFIED', note: 'Sets and their representation; Union, intersection and complement of sets and their algebraic properties; Power set; Relations, type of relations, equivalence relations, functions; one-one, into and onto functions, the composition of functions', provenance: jee('prov-tree-syl-jee-p1-maths-1', 'SYL', 1, 'Paper 1 syllabus, Mathematics', 'UNIT 1: SETS, RELATIONS AND FUNCTIONS:') },
+        { id: 'tree-syl-jee-p1-maths-2', title: 'UNIT 2: COMPLEX NUMBERS AND QUADRATIC EQUATIONS', levelLabel: 'Unit', order: 2, status: 'VERIFIED', note: 'Complex numbers as ordered pairs of reals, Representation of complex numbers in the form a + ib and their representation in a plane, Argand diagram, algebra of complex numbers, modulus and argument (or amplitude) of a complex number, Quadratic equations in real and complex number systems and their solutions; Relations between roots and coefficients, nature of roots, the formation of quadratic equations with given roots', provenance: jee('prov-tree-syl-jee-p1-maths-2', 'SYL', 1, 'Paper 1 syllabus, Mathematics', 'UNIT 2: COMPLEX NUMBERS AND QUADRATIC EQUATIONS:') },
+        { id: 'tree-syl-jee-p1-maths-3', title: 'UNIT3: MATRICES AND DETERMINANTS', levelLabel: 'Unit', order: 3, status: 'VERIFIED', note: 'Matrices, algebra of matrices, type of matrices, determinants and matrices of order two and three, evaluation of determinants, area of triangles using determinants; Adjoint and inverse of a square matrix; Test of consistency and solution of simultaneous linear equations in two or three variables using matrices', provenance: jee('prov-tree-syl-jee-p1-maths-3', 'SYL', 1, 'Paper 1 syllabus, Mathematics', 'UNIT3: MATRICES AND DETERMINANTS:') },
+        { id: 'tree-syl-jee-p1-maths-4', title: 'UNIT 4: PERMUTATIONS AND COMBINATIONS', levelLabel: 'Unit', order: 4, status: 'VERIFIED', note: 'The fundamental principle of counting, permutations and combinations; Meaning of P(n, r) and C(n, r); Simple applications', provenance: jee('prov-tree-syl-jee-p1-maths-4', 'SYL', 1, 'Paper 1 syllabus, Mathematics', 'UNIT 4: PERMUTATIONS AND COMBINATIONS:') },
+        { id: 'tree-syl-jee-p1-maths-5', title: 'UNIT 5: BINOMIAL THEOREM AND ITS SIMPLE APPLICATIONS', levelLabel: 'Unit', order: 5, status: 'VERIFIED', note: 'Binomial theorem for a positive integral index, general term and middle term and simple applications', provenance: jee('prov-tree-syl-jee-p1-maths-5', 'SYL', 1, 'Paper 1 syllabus, Mathematics', 'UNIT 5: BINOMIAL THEOREM AND ITS SIMPLE APPLICATIONS:') },
+        { id: 'tree-syl-jee-p1-maths-6', title: 'UNIT 6: SEQUENCE AND SERIES', levelLabel: 'Unit', order: 6, status: 'VERIFIED', note: 'Arithmetic and Geometric progressions, insertion of arithmetic, geometric means between two given numbers, Relation between A.M and G.M', provenance: jee('prov-tree-syl-jee-p1-maths-6', 'SYL', 1, 'Paper 1 syllabus, Mathematics', 'UNIT 6: SEQUENCE AND SERIES:') },
+        { id: 'tree-syl-jee-p1-maths-7', title: 'UNIT 7: LIMIT, CONTINUITY AND DIFFERENTIABILITY', levelLabel: 'Unit', order: 7, status: 'VERIFIED', note: 'Real–valued functions, algebra of functions; polynomial, rational, trigonometric, logarithmic and exponential functions; inverse functions; Graphs of simple functions; Limits, continuity and differentiability; Differentiation of the sum, difference, product and quotient of two functions; Differentiation of trigonometric, inverse trigonometric, logarithmic, exponential, composite and implicit functions; derivatives of order upto two, Applications of derivatives: Rate of change of quantities, monotonic-Increasing and decreasing functions, Maxima and minima of functions of one variable', provenance: jee('prov-tree-syl-jee-p1-maths-7', 'SYL', 1, 'Paper 1 syllabus, Mathematics', 'UNIT 7: LIMIT, CONTINUITY AND DIFFERENTIABILITY:') },
+        { id: 'tree-syl-jee-p1-maths-8', title: 'UNIT 8: INTEGRAL CALCULAS', levelLabel: 'Unit', order: 8, status: 'VERIFIED', note: 'Integral as an anti-derivative, Fundamental integrals involving algebraic, trigonometric, exponential and logarithmic functions; Integration by substitution, by parts and by partial fractions; Integration using trigonometric identities; Evaluation of simple integrals of the type ∫dx/(x²+a²), ∫dx/√(x²±a²), ∫dx/(a²−x²), ∫dx/√(a²−x²), ∫dx/(ax²+bx+c), ∫dx/√(ax²+bx+c), ∫(px+q)dx/(ax²+bx+c), ∫(px+q)dx/√(ax²+bx+c), ∫√(a²±x²)dx, ∫√(x²−a²)dx; The fundamental theorem of calculus, properties of definite integrals; Evaluation of definite integrals, determining areas of the regions bounded by simple curves by simple curves in standard forms', provenance: jee('prov-tree-syl-jee-p1-maths-8', 'SYL', 1, 'Paper 1 syllabus, Mathematics', 'UNIT 8: INTEGRAL CALCULAS:') },
+        { id: 'tree-syl-jee-p1-maths-9', title: 'UNIT 9: DIFFRENTIAL EQUATIONS', levelLabel: 'Unit', order: 9, status: 'VERIFIED', note: 'Ordinary differential equations, their order and degree, the solution of differential equation by the method of separation of variables, solution of a homogeneous and linear differential equation of the type dy/dx + p(x)y = q(x)', provenance: jee('prov-tree-syl-jee-p1-maths-9', 'SYL', 2, 'Paper 1 syllabus, Mathematics', 'UNIT 9: DIFFRENTIAL EQUATIONS :') },
+        { id: 'tree-syl-jee-p1-maths-10', title: 'UNIT 10: CO-ORDINATE GEOMETRY', levelLabel: 'Unit', order: 10, status: 'VERIFIED', note: 'Cartesian system of rectangular coordinates in a plane, distance formula, sections formula, locus and its equation, the slope of a line, parallel and perpendicular lines, intercepts of a line on the co-ordinate axis; Straight line: Various forms of equations of a line, intersection of lines, angles between two lines, conditions for concurrence of three lines, the distance of a point form a line, co-ordinate of the centroid, orthocentre and circumcentre of a triangle; Circle, conic sections: A standard form of equations of a circle, the general form of the equation of a circle, its radius and centre, equation of a circle when the endpoints of a diameter are given, points of intersection of a line and a circle with the centre at the origin and sections of conics, equations of conic sections (parabola, ellipse and hyperbola) in standard forms', provenance: jee('prov-tree-syl-jee-p1-maths-10', 'SYL', 2, 'Paper 1 syllabus, Mathematics', 'UNIT 10: CO-ORDINATE GEOMETRY :') },
+        { id: 'tree-syl-jee-p1-maths-11', title: 'UNIT 11: THREE DIMENSIONAL GEOMETRY', levelLabel: 'Unit', order: 11, status: 'VERIFIED', note: 'Coordinates of a point in space, the distance between two points, section formula, direction ratios and direction cosines and the angle between two intersecting lines; Equation of a line; Skew lines, the shortest distance between them and its equation', provenance: jee('prov-tree-syl-jee-p1-maths-11', 'SYL', 2, 'Paper 1 syllabus, Mathematics', 'UNIT 11: THREE DIMENSIONAL GEOMETRY :') },
+        { id: 'tree-syl-jee-p1-maths-12', title: 'UNIT 12: VECTOR ALGEBRA', levelLabel: 'Unit', order: 12, status: 'VERIFIED', note: 'Vectors and scalars, the addition of vectors, components of a vector in two dimensions and three-dimensional spaces, scalar and vector products', provenance: jee('prov-tree-syl-jee-p1-maths-12', 'SYL', 2, 'Paper 1 syllabus, Mathematics', 'UNIT 12: VECTOR ALGEBRA :') },
+        { id: 'tree-syl-jee-p1-maths-13', title: 'UNIT 13: STATISTICS AND PROBABILITY', levelLabel: 'Unit', order: 13, status: 'VERIFIED', note: 'Measures of dispersion; calculation of mean, median, mode of grouped and ungrouped data, calculation of standard deviation, variance and mean deviation for grouped and ungrouped data; Probability: Probability of an event, addition and multiplication theorems of probability, Baye\'s theorem, probability distribution of a random variable', provenance: jee('prov-tree-syl-jee-p1-maths-13', 'SYL', 2, 'Paper 1 syllabus, Mathematics', 'UNIT 13: STATISTICS AND PROBABILITY :') },
+        { id: 'tree-syl-jee-p1-maths-14', title: 'UNIT 14: TRIGONOMETRY', levelLabel: 'Unit', order: 14, status: 'VERIFIED', note: 'Trigonometrical identities and trigonometrical functions, inverse trigonometrical functions their properties', provenance: jee('prov-tree-syl-jee-p1-maths-14', 'SYL', 2, 'Paper 1 syllabus, Mathematics', 'UNIT 14: TRIGONOMETRY :') }
+      ] },
+      { id: 'tree-jee-p1-phys', title: 'PHYSICS', levelLabel: 'Subject', order: 2, status: 'VERIFIED',
+      provenance: jee('prov-tree-jee-p1-phys', 'SYL', 3, 'Paper 1 syllabus, Physics', 'PHYSICS'),
+      children: [
+        { id: 'tree-syl-jee-p1-phys-1', title: 'UNIT 1: Units and Measurements', levelLabel: 'Unit', order: 1, status: 'VERIFIED', note: 'Units of measurements, System of units, SI Units, fundamental and derived units, least count, significant figures, Errors in measurements; Dimensions of Physics quantities, dimensional analysis and its applications', provenance: jee('prov-tree-syl-jee-p1-phys-1', 'SYL', 3, 'Paper 1 syllabus, Physics', 'UNIT 1: Units and Measurements') },
+        { id: 'tree-syl-jee-p1-phys-2', title: 'UNIT 2: Kinematics', levelLabel: 'Unit', order: 2, status: 'VERIFIED', note: 'The frame of reference, motion in a straight line, speed and velocity, uniform and non-uniform motion, average speed and instantaneous velocity, uniformly accelerated motion, velocity-time, position-time graph, relations for uniformly accelerated motion, relative velocity; Motion in a plane, projectile motion, uniform circular motion', provenance: jee('prov-tree-syl-jee-p1-phys-2', 'SYL', 3, 'Paper 1 syllabus, Physics', 'UNIT 2: Kinematics') },
+        { id: 'tree-syl-jee-p1-phys-3', title: 'UNIT 3: Laws of Motion', levelLabel: 'Unit', order: 3, status: 'VERIFIED', note: 'Force and inertia, Newton’s first law of motion, momentum, Newton’s second Law of motion, impulse, Newton’s third Law of motion; Law of conservation of linear momentum and its applications, equilibrium of concurrent forces; Static and Kinetic friction, laws of friction, rolling friction; Dynamics of uniform circular motion, centripetal force and its applications: vehicle on a level circular road, vehicle on a banked road', provenance: jee('prov-tree-syl-jee-p1-phys-3', 'SYL', 3, 'Paper 1 syllabus, Physics', 'UNIT 3: Laws of Motion') },
+        { id: 'tree-syl-jee-p1-phys-4', title: 'UNIT 4: Work, Energy and Power', levelLabel: 'Unit', order: 4, status: 'VERIFIED', note: 'Work done by a constant force and a variable force, kinetic and potential energies, work-energy theorem, power; The potential energy of a spring, conservation of mechanical energy, conservative and non- conservative forces, motion in a vertical circle; Elastic and inelastic collisions in one and two dimensions', provenance: jee('prov-tree-syl-jee-p1-phys-4', 'SYL', 3, 'Paper 1 syllabus, Physics', 'UNIT 4: Work, Energy and Power') },
+        { id: 'tree-syl-jee-p1-phys-5', title: 'UNIT 5: Rotational Motion', levelLabel: 'Unit', order: 5, status: 'VERIFIED', note: 'Centre of mass of a two-particle system, centre of mass of a rigid body; Basic concepts of rotational motion, moment of a force, torque, angular momentum, conservation of angular momentum and its applications; The moment of inertia, the radius of gyration, values of moments of inertia for simple geometrical objects, parallel and perpendicular axes theorems and their applications; Equilibrium of rigid bodies, rigid body rotation and equations of rotational motion, comparison of linear and rotational motions', provenance: jee('prov-tree-syl-jee-p1-phys-5', 'SYL', 3, 'Paper 1 syllabus, Physics', 'UNIT 5: Rotational Motion') },
+        { id: 'tree-syl-jee-p1-phys-6', title: 'UNIT 6: Gravitation', levelLabel: 'Unit', order: 6, status: 'VERIFIED', note: 'The universal law of gravitation; Acceleration due to gravity and its variation with altitude and depth; Kepler’s law of planetary motion; Gravitational potential energy, gravitational potential; Escape velocity, motion of a satellite, orbital velocity, time period and energy of satellite', provenance: jee('prov-tree-syl-jee-p1-phys-6', 'SYL', 3, 'Paper 1 syllabus, Physics', 'UNIT 6: Gravitation') },
+        { id: 'tree-syl-jee-p1-phys-7', title: 'UNIT 7: Properties of Solids and Liquids', levelLabel: 'Unit', order: 7, status: 'VERIFIED', note: 'Elastic behaviour, stress-strain relationship, Hooke\'s Law, Young\'s modulus, bulk modulus and modulus of rigidity; Pressure due to a fluid column, Pascal\'s law and its applications, effect of gravity on fluid pressure, viscosity, Stoke’s law, terminal velocity, streamline and turbulent flow, critical velocity, Bernoulli\'s principle and its applications; Surface energy and surface tension, angle of contact, excess of pressure across a curved surface, application of surface tension: drops, bubbles and capillary rise; Heat, temperature, thermal expansion, specific heat capacity, calorimetry, change of state, latent heat; Heat transfer: conduction, convection and radiation', provenance: jee('prov-tree-syl-jee-p1-phys-7', 'SYL', 3, 'Paper 1 syllabus, Physics', 'UNIT 7: Properties of Solids and Liquids') },
+        { id: 'tree-syl-jee-p1-phys-8', title: 'UNIT 8: Thermodynamics', levelLabel: 'Unit', order: 8, status: 'VERIFIED', note: 'Thermal equilibrium and the concept of temperature, zeroth law of thermodynamics, heat, work and internal energy; The first law of thermodynamics, isothermal and adiabatic processes; The second law of thermodynamics: reversible and irreversible processes', provenance: jee('prov-tree-syl-jee-p1-phys-8', 'SYL', 4, 'Paper 1 syllabus, Physics', 'UNIT 8: Thermodynamics') },
+        { id: 'tree-syl-jee-p1-phys-9', title: 'UNIT 9: Kinetic Theory of Gases', levelLabel: 'Unit', order: 9, status: 'VERIFIED', note: 'Equation of state of a perfect gas, work done on compressing a gas, kinetic theory of gases: assumptions, the concept of pressure, kinetic interpretation of temperature, RMS speed of gas molecules, degrees of freedom, law of equipartition of energy and applications to specific heat capacities of gases, mean free path, Avogadro\'s number', provenance: jee('prov-tree-syl-jee-p1-phys-9', 'SYL', 4, 'Paper 1 syllabus, Physics', 'UNIT 9: Kinetic Theory of Gases') },
+        { id: 'tree-syl-jee-p1-phys-10', title: 'UNIT 10: Oscillations and Waves', levelLabel: 'Unit', order: 10, status: 'VERIFIED', note: 'Oscillations and periodic motion: time period, frequency, displacement as a function of time, periodic functions; Simple harmonic motion (S.H.M.) and its equation, phase, oscillations of a spring: restoring force and force constant, energy in S.H.M.: kinetic and potential energies, simple pendulum: derivation of expression for its time period; Wave motion, longitudinal and transverse waves, speed of the travelling wave, displacement relation for a progressive wave, principle of superposition of waves, reflection of waves, standing waves in strings and organ pipes, fundamental mode and harmonics, beats', provenance: jee('prov-tree-syl-jee-p1-phys-10', 'SYL', 4, 'Paper 1 syllabus, Physics', 'UNIT 10: Oscillations and Waves') },
+        { id: 'tree-syl-jee-p1-phys-11', title: 'UNIT 11: Electrostatics', levelLabel: 'Unit', order: 11, status: 'VERIFIED', note: 'Electric charges: conservation of charge, Coulomb\'s law forces between two point charges, forces between multiple charges, superposition principle and continuous charge distribution; Electric field: electric field due to a point charge, electric field lines, electric dipole, electric field due to a dipole, torque on a dipole in a uniform electric field; Electric flux, Gauss\'s law and its applications to find field due to infinitely long uniformly charged straight wire, uniformly charged infinite plane sheet and uniformly charged thin spherical shell; Electric potential and its calculation for a point charge, electric dipole and system of charges, potential difference, equipotential surfaces, electrical potential energy of a system of two point charges and of electric dipole in an electrostatic field; Conductors and insulators, dielectrics and electric polarization, capacitors and capacitance, the combination of capacitors in series and parallel and capacitance of a parallel plate capacitor with and without dielectric medium between the plates, energy stored in a capacitor', provenance: jee('prov-tree-syl-jee-p1-phys-11', 'SYL', 4, 'Paper 1 syllabus, Physics', 'UNIT 11: Electrostatics') },
+        { id: 'tree-syl-jee-p1-phys-12', title: 'UNIT 12: Current Electricity', levelLabel: 'Unit', order: 12, status: 'VERIFIED', note: 'Electric current: drift velocity, mobility and their relation with electric current, Ohm\'s law, electrical resistance, I-V characteristics of Ohmic and non-ohmic conductors, electrical energy and power, electrical resistivity and conductivity, series and parallel combinations of resistors, temperature dependence of resistance; Internal resistance, potential difference and emf of a cell, a combination of cells in series and parallel; Kirchhoff’s laws and their applications, Wheatstone bridge, Metre Bridge', provenance: jee('prov-tree-syl-jee-p1-phys-12', 'SYL', 5, 'Paper 1 syllabus, Physics', 'UNIT 12: Current Electricity') },
+        { id: 'tree-syl-jee-p1-phys-13', title: 'UNIT 13: Magnetic Effects of Current and Magnetism', levelLabel: 'Unit', order: 13, status: 'VERIFIED', note: 'Biot - Savart law and its application to the current carrying circular loop, Ampere\'s law and its applications to infinitely long current carrying straight wire and solenoid; Force on a moving charge in uniform magnetic and electric fields, force on a current-carrying conductor in a uniform magnetic field, the force between two parallel currents carrying conductors-definition of ampere, torque experienced by a current loop in a uniform magnetic field: Moving coil galvanometer, its sensitivity and conversion to ammeter and voltmeter; Current loop as a magnetic dipole and its magnetic dipole moment, bar magnet as an equivalent solenoid, magnetic field lines, magnetic field due to a magnetic dipole (bar magnet) along its axis and perpendicular to its axis, torque on a magnetic dipole in a uniform magnetic field, para-, dia- and ferromagnetic substances with examples, the effect of temperature on magnetic properties', provenance: jee('prov-tree-syl-jee-p1-phys-13', 'SYL', 5, 'Paper 1 syllabus, Physics', 'UNIT 13: Magnetic Effects of Current and Magnetism') },
+        { id: 'tree-syl-jee-p1-phys-14', title: 'UNIT 14: Electromagnetic Induction and Alternating Currents', levelLabel: 'Unit', order: 14, status: 'VERIFIED', note: 'Electromagnetic induction: Faraday\'s law, induced emf and current, Lenz’s law, eddy currents, self and mutual inductance; Alternating currents, peak and RMS value of alternating current/voltage, reactance and impedance, LCR series circuit, resonance, power in AC circuits, wattless current, AC generator and transformer', provenance: jee('prov-tree-syl-jee-p1-phys-14', 'SYL', 5, 'Paper 1 syllabus, Physics', 'UNIT 14: Electromagnetic Induction and Alternating Currents') },
+        { id: 'tree-syl-jee-p1-phys-15', title: 'UNIT 15: Electromagnetic Waves', levelLabel: 'Unit', order: 15, status: 'VERIFIED', note: 'Displacement current, electromagnetic waves and their characteristics, transverse nature of electromagnetic waves, electromagnetic spectrum (radio waves, microwaves, infrared, visible, ultraviolet, X-rays, Gamma rays), applications of electromagnetic waves', provenance: jee('prov-tree-syl-jee-p1-phys-15', 'SYL', 5, 'Paper 1 syllabus, Physics', 'UNIT 15: Electromagnetic Waves') },
+        { id: 'tree-syl-jee-p1-phys-16', title: 'UNIT 16: Optics', levelLabel: 'Unit', order: 16, status: 'VERIFIED', note: 'Reflection of light, spherical mirrors, mirror formula; Refraction of light at plane and spherical surfaces, thin lens formula and lens maker formula, total internal reflection and its applications, magnification, power of a lens, combination of thin lenses in contact, refraction of light through a prism, microscope and astronomical telescope (reflecting and refracting ) and their magnifying powers; Wave optics: wavefront and Huygens ‘Principle, laws of reflection and refraction using Huygens principle; Interference: Young\'s double-slit experiment and expression for fringe width, coherent sources and sustained interference of light; Diffraction due to a single slit, width of central maximum; Polarization: plane-polarized light, Brewster\'s law, uses of plane- polarized light and Polaroid', provenance: jee('prov-tree-syl-jee-p1-phys-16', 'SYL', 5, 'Paper 1 syllabus, Physics', 'UNIT 16: Optics') },
+        { id: 'tree-syl-jee-p1-phys-17', title: 'UNIT 17: Dual Nature of Matter and Radiation', levelLabel: 'Unit', order: 17, status: 'VERIFIED', note: 'Dual nature of radiation, Photoelectric effect, Hertz and Lenard\'s observations, Einstein\'s photoelectric equation, particle nature of light; Matter waves: wave nature of particle, de- Broglie relation', provenance: jee('prov-tree-syl-jee-p1-phys-17', 'SYL', 6, 'Paper 1 syllabus, Physics', 'UNIT 17: Dual Nature of Matter and Radiation') },
+        { id: 'tree-syl-jee-p1-phys-18', title: 'UNIT 18: Atoms and Nuclei', levelLabel: 'Unit', order: 18, status: 'VERIFIED', note: 'Alpha-particle scattering experiment, Rutherford\'s model of atom, Bohr model, energy levels, hydrogen spectrum; Composition and size of nucleus, atomic masses, mass-energy relation, mass defect, binding energy per nucleon and its variation with mass number, nuclear fission and fusion', provenance: jee('prov-tree-syl-jee-p1-phys-18', 'SYL', 6, 'Paper 1 syllabus, Physics', 'UNIT 18: Atoms and Nuclei') },
+        { id: 'tree-syl-jee-p1-phys-19', title: 'UNIT 19: Electronic Devices', levelLabel: 'Unit', order: 19, status: 'VERIFIED', note: 'Semiconductors, semiconductor diode: I-V characteristics in forward and reverse bias, diode as a rectifier; I-V characteristics of LED, the photodiode, solar cell, Zener diode, Zener diode as a voltage regulator; Logic gates (OR; AND; NOT; NAND and NOR)', provenance: jee('prov-tree-syl-jee-p1-phys-19', 'SYL', 6, 'Paper 1 syllabus, Physics', 'UNIT 19: Electronic Devices') },
+        { id: 'tree-syl-jee-p1-phys-20', title: 'UNIT 20: Experimental Skills', levelLabel: 'Unit', order: 20, status: 'VERIFIED', note: 'Familiarity with the basic approach and observations of the experiments and activities; Vernier calipers -its use to measure the internal and external diameter and depth of a vessel; Screw gauge-its use to determine the thickness/ diameter of thin sheet/wire; Simple pendulum-dissipation of energy by plotting a graph between the square of amplitude and time; Metre scale - the mass of a given object by the principle of moments; Young\'s modulus of elasticity of the material of a metallic wire; Surface tension of water by capillary rise and effect of detergents; Co-efficient of viscosity of a given viscous liquid by measuring the terminal velocity of a given spherical body; Speed of sound in air at room temperature using a resonance tube; Specific heat capacity of a given (i) solid and (ii) liquid by method of mixtures; The resistivity of the material of a given wire using a metre bridge; The resistance of a given wire using Ohm\'s law; Resistance and figure of merit of a galvanometer by half deflection method; The focal length of (i) Convex mirror (ii) Concave mirror and (iii)Convex lens, using the parallax method; The plot of the angle of deviation vs angle of incidence for a triangular prism; The refractive index of a glass slab using a travelling microscope; Characteristic curves of a p-n junction diode in forward and reverse bias; Characteristic curves of a Zener diode and finding reverse breakdown voltage; Identification of diode, LED, resistor, a capacitor from a mixed collection of such items', provenance: jee('prov-tree-syl-jee-p1-phys-20', 'SYL', 6, 'Paper 1 syllabus, Physics', 'UNIT 20: Experimental Skills') }
+      ] },
+      { id: 'tree-jee-p1-chem', title: 'CHEMISTRY', levelLabel: 'Subject', order: 3, status: 'VERIFIED',
+      provenance: jee('prov-tree-jee-p1-chem', 'SYL', 7, 'Paper 1 syllabus, Chemistry', 'CHEMISTRY'),
+      children: [
+        { id: 'tree-jee-p1-chem-1', title: 'PHYSICAL CHEMISTRY', levelLabel: 'Branch', order: 1, status: 'VERIFIED',
+      provenance: jee('prov-tree-jee-p1-chem-1', 'SYL', 7, 'Paper 1 syllabus, Chemistry', 'PHYSICAL CHEMISTRY'),
+      children: [
+        { id: 'tree-syl-jee-p1-chem-1', title: 'UNIT I: SOME BASIC CONCEPTS IN CHEMISTRY', levelLabel: 'Unit', order: 1, status: 'VERIFIED', note: 'Matter and its nature, Dalton\'s atomic theory, Concept of atom, molecule, element and compound, Laws of chemical combination, Atomic and molecular masses, mole concept, molar mass, percentage composition, empirical and molecular formulae, Chemical equations and stoichiometry', provenance: jee('prov-tree-syl-jee-p1-chem-1', 'SYL', 7, 'Paper 1 syllabus, Chemistry — Physical Chemistry', 'UNIT I: SOME BASIC CONCEPTS IN CHEMISTRY') },
+        { id: 'tree-syl-jee-p1-chem-2', title: 'UNIT 2: ATOMIC STRUCTURE', levelLabel: 'Unit', order: 2, status: 'VERIFIED', note: 'Nature of electromagnetic radiation, photoelectric effect, spectrum of the hydrogen atom, Bohr model of a hydrogen atom - its postulates, derivation of the relations for the energy of the electron and radii of the different orbits, limitations of Bohr\'s model, dual nature of matter, de Broglie\'s relationship, Heisenberg uncertainty principle, elementary ideas of quantum mechanics, the quantum mechanical model of the atom and its important features, concept of atomic orbitals as one-electron wave functions, variation of ψ and ψ² with r for 1s and 2s orbitals, various quantum numbers (principal, angular momentum and magnetic quantum numbers) and their significance, shapes of s, p and d - orbitals, electron spin and spin quantum number, rules for filling electrons in orbitals – Aufbau principle, Pauli\'s exclusion principle and Hund\'s rule, electronic configuration of elements and extra stability of half-filled and completely filled orbitals', provenance: jee('prov-tree-syl-jee-p1-chem-2', 'SYL', 7, 'Paper 1 syllabus, Chemistry — Physical Chemistry', 'UNIT 2: ATOMIC STRUCTURE') },
+        { id: 'tree-syl-jee-p1-chem-3', title: 'UNIT 3: CHEMICAL BONDING AND MOLECULAR STRUCTURE', levelLabel: 'Unit', order: 3, status: 'VERIFIED', note: 'Kossel-Lewis approach to chemical bond formation, the concept of ionic and covalent bonds; Ionic Bonding: Formation of ionic bonds, factors affecting the formation of ionic bonds; calculation of lattice enthalpy; Covalent Bonding: Concept of electronegativity, Fajan’s rule, dipole moment, Valence Shell Electron Pair Repulsion (VSEPR ) theory and shapes of simple molecules; Quantum mechanical approach to covalent bonding: Valence bond theory - its important features, the concept of hybridization involving s, p and d orbitals, resonance; Molecular Orbital Theory - Its important features, LCAOs, types of molecular orbitals (bonding, antibonding), sigma and pi-bonds, molecular orbital electronic configurations of homonuclear diatomic molecules, the concept of bond order, bond length and bond energy; Elementary idea of metallic bonding, hydrogen bonding and its applications', provenance: jee('prov-tree-syl-jee-p1-chem-3', 'SYL', 7, 'Paper 1 syllabus, Chemistry — Physical Chemistry', 'UNIT 3: CHEMICAL BONDING AND MOLECULAR STRUCTURE') },
+        { id: 'tree-syl-jee-p1-chem-4', title: 'UNIT 4: CHEMICAL THERMODYNAMICS', levelLabel: 'Unit', order: 4, status: 'VERIFIED', note: 'Fundamentals of thermodynamics: System and surroundings, extensive and intensive properties, state functions, entropy, types of processes; The first law of thermodynamics - Concept of work, heat, internal energy and enthalpy, heat capacity, molar heat capacity, Hess’s law of constant heat summation, Enthalpies of bond dissociation, combustion, formation, atomization, sublimation, phase transition, hydration, ionization and solution; The second law of thermodynamics - Spontaneity of processes, ΔS of the universe and ΔG of the system as criteria for spontaneity. ΔG°(Standard Gibbs energy change) and equilibrium constant', provenance: jee('prov-tree-syl-jee-p1-chem-4', 'SYL', 7, 'Paper 1 syllabus, Chemistry — Physical Chemistry', 'UNIT 4: CHEMICAL THERMODYNAMICS') },
+        { id: 'tree-syl-jee-p1-chem-5', title: 'UNIT 5: SOLUTIONS', levelLabel: 'Unit', order: 5, status: 'VERIFIED', note: 'Different methods for expressing the concentration of solution - molality, molarity, mole fraction, percentage (by volume and mass both), the vapour pressure of solutions and Raoult\'s Law - Ideal and non-ideal solutions, vapour pressure - composition, plots for ideal and non- ideal solutions, Colligative properties of dilute solutions - a relative lowering of vapour pressure, depression of freezing point, the elevation of boiling point and osmotic pressure, determination of molecular mass using colligative properties, abnormal value of molar mass, van’t Hoff factor and its significance', provenance: jee('prov-tree-syl-jee-p1-chem-5', 'SYL', 7, 'Paper 1 syllabus, Chemistry — Physical Chemistry', 'UNIT 5: SOLUTIONS') },
+        { id: 'tree-syl-jee-p1-chem-6', title: 'UNIT 6: EQUILIBRIUM', levelLabel: 'Unit', order: 6, status: 'VERIFIED', note: 'Meaning of equilibrium is the concept of dynamic equilibrium; Equilibria involving physical processes: Solid-liquid, liquid-gas, gas-gas and solid-gas equilibria, Henry\'s law; General characteristics of equilibrium involving physical processes; Equilibrium involving chemical processes: Law of chemical equilibrium, equilibrium constants (Kp and Kc) and their significance, the significance of ΔG and ΔG° in chemical equilibrium, factors affecting equilibrium concentration, pressure, temperature, the effect of catalyst, Le Chatelier’s principle; Ionic equilibrium: Weak and strong electrolytes, ionization of electrolytes, various concepts of acids and bases (Arrhenius, Bronsted - Lowry and Lewis) and their ionization, acid-base equilibria (including multistage ionization) and ionization constants, ionization of water, pH scale, common ion effect, hydrolysis of salts and pH of their solutions, the solubility of sparingly soluble salts, solubility products and buffer solutions', provenance: jee('prov-tree-syl-jee-p1-chem-6', 'SYL', 8, 'Paper 1 syllabus, Chemistry — Physical Chemistry', 'UNIT 6: EQUILIBRIUM') },
+        { id: 'tree-syl-jee-p1-chem-7', title: 'UNIT 7: REDOX REACTIONS AND ELECTROCHEMISTRY', levelLabel: 'Unit', order: 7, status: 'VERIFIED', note: 'Electronic concepts of oxidation and reduction, redox reactions, oxidation number, rules for assigning oxidation number and balancing of redox reactions; Electrolytic and metallic conduction, conductance in electrolytic solutions, molar conductivities and their variation with concentration, Kohlrausch’s law and its applications; Electrochemical cells - Electrolytic and Galvanic cells, different types of electrodes, electrode potentials including standard electrode potential, half-cell and cell reactions, emf of a Galvanic cell and its measurement, Nernst equation and its applications, relationship between cell potential and Gibbs\' energy change, dry cell and lead accumulator, fuel cells', provenance: jee('prov-tree-syl-jee-p1-chem-7', 'SYL', 8, 'Paper 1 syllabus, Chemistry — Physical Chemistry', 'UNIT 7: REDOX REACTIONS AND ELECTROCHEMISTRY') },
+        { id: 'tree-syl-jee-p1-chem-8', title: 'UNIT 8: CHEMICAL KINETICS', levelLabel: 'Unit', order: 8, status: 'VERIFIED', note: 'Rate of a chemical reaction, factors affecting the rate of reactions: concentration, temperature, pressure and catalyst, elementary and complex reactions, order and molecularity of reactions, rate law, rate constant and its units, differential and integral forms of zero and first-order reactions, their characteristics and half-lives, the effect of temperature on the rate of reactions, Arrhenius theory, activation energy and its calculation, collision theory of bi-molecular gaseous reactions (no derivation)', provenance: jee('prov-tree-syl-jee-p1-chem-8', 'SYL', 8, 'Paper 1 syllabus, Chemistry — Physical Chemistry', 'UNIT 8: CHEMICAL KINETICS') }
+      ] },
+        { id: 'tree-jee-p1-chem-2', title: 'INORGANIC CHEMISTRY', levelLabel: 'Branch', order: 2, status: 'VERIFIED',
+      provenance: jee('prov-tree-jee-p1-chem-2', 'SYL', 8, 'Paper 1 syllabus, Chemistry', 'INORGANIC CHEMISTRY'),
+      children: [
+        { id: 'tree-syl-jee-p1-chem-9', title: 'UNIT 9: CLASSIFICATION OF ELEMENTS AND PERIODICITY IN PROPERTIES', levelLabel: 'Unit', order: 1, status: 'VERIFIED', note: 'Modern periodic law and present form of the periodic table, s, p. d and f block elements, periodic trends in properties of elements atomic and ionic radii, ionization enthalpy, electron gain enthalpy, valence, oxidation states and chemical reactivity', provenance: jee('prov-tree-syl-jee-p1-chem-9', 'SYL', 8, 'Paper 1 syllabus, Chemistry — Inorganic Chemistry', 'UNIT 9: CLASSIFICATION OF ELEMENTS AND PERIODICITY IN PROPERTIES') },
+        { id: 'tree-syl-jee-p1-chem-10', title: 'UNIT 10: p- BLOCK ELEMENTS', levelLabel: 'Unit', order: 2, status: 'VERIFIED', note: 'Group -13 to Group 18 Elements General Introduction: Electronic configuration and general trends in physical and chemical properties of elements across the periods and down the groups, unique behaviour of the first element in each group', provenance: jee('prov-tree-syl-jee-p1-chem-10', 'SYL', 8, 'Paper 1 syllabus, Chemistry — Inorganic Chemistry', 'UNIT 10: p- BLOCK ELEMENTS') },
+        { id: 'tree-syl-jee-p1-chem-11', title: 'UNIT 11: d - and f- BLOCK ELEMENTS', levelLabel: 'Unit', order: 3, status: 'VERIFIED', note: 'Transition Elements - General introduction, electronic configuration, occurrence and characteristics, general trends in properties of the first-row transition elements - physical properties, ionization enthalpy, oxidation states, atomic radii, colour, catalytic behaviour, magnetic properties, complex formation, interstitial compounds, alloy formation, preparation, properties and uses of K2Cr2O7 and KMnO4; Inner Transition Elements Lanthanoids - Electronic configuration, oxidation states and Lanthanoid contraction; Actinoids - Electronic configuration and oxidation states', provenance: jee('prov-tree-syl-jee-p1-chem-11', 'SYL', 8, 'Paper 1 syllabus, Chemistry — Inorganic Chemistry', 'UNIT 11: d - and f- BLOCK ELEMENTS') },
+        { id: 'tree-syl-jee-p1-chem-12', title: 'UNIT 12: COORDINATION COMPOUNDS', levelLabel: 'Unit', order: 4, status: 'VERIFIED', note: 'Introduction to coordination compounds; Werner\'s theory, ligands, coordination number, denticity, chelation, IUPAC nomenclature of mononuclear co-ordination compounds, isomerism, Bonding: Valence bond approach and basic ideas of Crystal field theory, colour and magnetic properties, importance of coordination compounds (in qualitative analysis, extraction of metals and in biological systems)', provenance: jee('prov-tree-syl-jee-p1-chem-12', 'SYL', 9, 'Paper 1 syllabus, Chemistry — Inorganic Chemistry', 'UNIT 12: COORDINATION COMPOUNDS') }
+      ] },
+        { id: 'tree-jee-p1-chem-3', title: 'ORGANIC CHEMISTRY', levelLabel: 'Branch', order: 3, status: 'VERIFIED',
+      provenance: jee('prov-tree-jee-p1-chem-3', 'SYL', 9, 'Paper 1 syllabus, Chemistry', 'ORGANIC CHEMISTRY'),
+      children: [
+        { id: 'tree-syl-jee-p1-chem-13', title: 'UNIT 13: PURIFICATION AND CHARACTERISATION OF ORGANIC COMPOUNDS', levelLabel: 'Unit', order: 1, status: 'VERIFIED', note: 'Purification - Crystallization, sublimation, distillation, differential extraction and chromatography - principles and their applications; Qualitative analysis - Detection of nitrogen, sulphur, phosphorus and halogens; Quantitative analysis (basic principles only) - Estimation of carbon, hydrogen, nitrogen, halogens, sulphur and phosphorus; Calculations of empirical formulae and molecular formulae, numerical problems in organic quantitative analysis', provenance: jee('prov-tree-syl-jee-p1-chem-13', 'SYL', 9, 'Paper 1 syllabus, Chemistry — Organic Chemistry', 'UNIT 13: PURIFICATION AND CHARACTERISATION OF ORGANIC COMPOUNDS') },
+        { id: 'tree-syl-jee-p1-chem-14', title: 'UNIT 14: SOME BASIC PRINCIPLES OF ORGANIC CHEMISTRY', levelLabel: 'Unit', order: 2, status: 'VERIFIED', note: 'Tetravalency of carbon, shapes of simple molecules - hybridization (s and p): classification of organic compounds based on functional groups and those containing halogens, oxygen, nitrogen and sulphur, homologous series: Isomerism - structural and stereoisomerism; Nomenclature (Trivial and IUPAC) Covalent bond fission - Homolytic and heterolytic, free radicals, carbocations and carbanions, stability of carbocations and free radicals, electrophiles and nucleophiles; Electronic displacement in a covalent bond - Inductive effect, electromeric effect, resonance and hyperconjugation; Common types of organic reactions- Substitution, addition, elimination and rearrangement', provenance: jee('prov-tree-syl-jee-p1-chem-14', 'SYL', 9, 'Paper 1 syllabus, Chemistry — Organic Chemistry', 'UNIT 14: SOME BASIC PRINCIPLES OF ORGANIC CHEMISTRY') },
+        { id: 'tree-syl-jee-p1-chem-15', title: 'UNITS 15:HYDROCARBONS', levelLabel: 'Unit', order: 3, status: 'VERIFIED', note: 'Classification, isomerism, IUPAC nomenclature, general methods of preparation, properties and reactions; Alkanes - Conformations: Sawhorse and Newman projections (of ethane), mechanism of halogenation of alkanes; Alkenes - Geometrical isomerism, mechanism of electrophilic addition, addition of hydrogen, halogens, water, hydrogen halides (Markownikoffs and peroxide effect), Ozonolysis and polymerization; Alkynes - Acidic character, addition of hydrogen, halogens, water and hydrogen halides, polymerization; Aromatic hydrocarbons - Nomenclature, benzene - structure and aromaticity, mechanism of electrophilic substitution, halogenation, nitration; Friedel-Craft\'s alkylation and acylation, directive influence of the functional group in mono- substituted benzene', provenance: jee('prov-tree-syl-jee-p1-chem-15', 'SYL', 9, 'Paper 1 syllabus, Chemistry — Organic Chemistry', 'UNITS 15:HYDROCARBONS') },
+        { id: 'tree-syl-jee-p1-chem-16', title: 'UNIT 16: ORGANIC COMPOUNDS CONTAINING HALOGENS', levelLabel: 'Unit', order: 4, status: 'VERIFIED', note: 'General methods of preparation, properties and reactions, nature of C-X bond, mechanisms of substitution reactions; Uses, environmental effects of chloroform, iodoform, freons and DDT', provenance: jee('prov-tree-syl-jee-p1-chem-16', 'SYL', 9, 'Paper 1 syllabus, Chemistry — Organic Chemistry', 'UNIT 16: ORGANIC COMPOUNDS CONTAINING HALOGENS') },
+        { id: 'tree-syl-jee-p1-chem-17', title: 'UNIT 17: ORGANIC COMPOUNDS CONTAINING OXYGEN', levelLabel: 'Unit', order: 5, status: 'VERIFIED', note: 'General methods of preparation, properties, reactions and uses; ALCOHOLS,PHENOLS AND ETHERS Alcohols: Identification of primary, secondary and tertiary alcohols, mechanism of dehydration; Phenols: Acidic nature, electrophilic substitution reactions, halogenation, nitration and sulphonation, Reimer - Tiemann reaction; Ethers: Structure; Aldehyde and Ketones: Nature of carbonyl group, nucleophilic addition to >C=O group, relative reactivities of aldehydes and ketones, important reactions such as - Nucleophilic addition reactions (addition of HCN, NH3 and its derivatives), Grignard reagent, oxidation, reduction (Wolf Kishner and Clemmensen), the acidity of α-hydrogen; Aldol condensation, Cannizzaro reaction, Haloform reaction, chemical tests to distinguish between aldehydes and ketones; Carboxylic Acids: Acidic strength and factors affecting it', provenance: jee('prov-tree-syl-jee-p1-chem-17', 'SYL', 10, 'Paper 1 syllabus, Chemistry — Organic Chemistry', 'UNIT 17: ORGANIC COMPOUNDS CONTAINING OXYGEN') },
+        { id: 'tree-syl-jee-p1-chem-18', title: 'UNIT 18: ORGANIC COMPOUNDS CONTAINING NITROGEN', levelLabel: 'Unit', order: 6, status: 'VERIFIED', note: 'General methods of preparation, properties, reactions and uses; Amines: Nomenclature, classification, structure, basic character and identification of primary, secondary and tertiary amines and their basic character; Diazonium Salts: Importance in synthetic organic chemistry', provenance: jee('prov-tree-syl-jee-p1-chem-18', 'SYL', 10, 'Paper 1 syllabus, Chemistry — Organic Chemistry', 'UNIT 18: ORGANIC COMPOUNDS CONTAINING NITROGEN') },
+        { id: 'tree-syl-jee-p1-chem-19', title: 'UNIT 19: BIOMOLECULES', levelLabel: 'Unit', order: 7, status: 'VERIFIED', note: 'General introduction and importance of biomolecules; CARBOHYDRATES – Classification, aldoses and ketoses, monosaccharides (glucose and fructose) and constituent monosaccharides of oligosaccharides (sucrose, lactose and maltose); PROTEINS - Elementary idea of α-amino acids, peptide bond, polypeptides, proteins: primary, secondary, tertiary and quaternary structure (qualitative idea only), denaturation of proteins, enzymes; VITAMINS – Classification and functions; NUCLEIC ACIDS – Chemical constitution of DNA and RNA, biological functions of nucleic acids; Hormones (General introduction)', provenance: jee('prov-tree-syl-jee-p1-chem-19', 'SYL', 10, 'Paper 1 syllabus, Chemistry — Organic Chemistry', 'UNIT 19: BIOMOLECULES') },
+        { id: 'tree-syl-jee-p1-chem-20', title: 'UNIT 20: PRINCIPLES RELATED TO PRACTICAL CHEMISTRY', levelLabel: 'Unit', order: 8, status: 'VERIFIED', note: 'Detection of extra elements (Nitrogen, sulphur, halogens) in organic compounds; Detection of the following functional groups: hydroxyl (alcoholic and phenolic), carbonyl (aldehyde and ketones), carboxyl and amino groups in organic compounds; The chemistry involved in the preparation of the following: Inorganic compounds — Mohr’s salt, potash alum; Organic compounds — Acetanilide, p-nitro acetanilide, aniline yellow, iodoform; The chemistry involved in the titrimetric exercises – acids, bases and the use of indicators, oxalic-acid vs KMnO4, Mohr’s salt vs KMnO4; Chemical principles involved in the qualitative salt analysis: Cations – Pb²⁺, Cu²⁺, Al³⁺, Fe³⁺, Zn²⁺, Ni²⁺, Ca²⁺, Ba²⁺, Mg²⁺, NH₄⁺; Anions – CO₃²⁻, S²⁻, SO₄²⁻, NO₃⁻, NO₂⁻, Cl⁻, Br⁻, I⁻ (insoluble salts excluded); Chemical principles involved in the following experiments: enthalpy of solution of CuSO4; enthalpy of neutralization of strong acid and strong base; preparation of lyophilic and lyophobic sols; kinetic study of the reaction of iodide ions with hydrogen peroxide at room temperature', provenance: jee('prov-tree-syl-jee-p1-chem-20', 'SYL', 10, 'Paper 1 syllabus, Chemistry — Organic Chemistry', 'UNIT 20: PRINCIPLES RELATED TO PRACTICAL CHEMISTRY') }
+      ] }
+      ] }
+    ] },
+  { id: 'tree-jee-p2a', title: 'Syllabus for JEE (Main) Paper 2A (B.Arch.) - Mathematics, Aptitude Test and Drawing Test', levelLabel: 'Paper', order: 2, status: 'VERIFIED',
+    scope: [{ kind: 'PAPER', label: 'Paper 2A' }],
+    provenance: jee('prov-tree-jee-p2a', 'SYL', 12, 'Syllabus for JEE (Main) Paper 2A', 'Syllabus for JEE (Main) Paper 2A (B.Arch.) - Mathematics, Aptitude Test and Drawing Test'),
+    children: [
+      { id: 'tree-jee-p2a-part1', title: 'Part - I MATHEMATICS', levelLabel: 'Part', order: 1, status: 'VERIFIED',
+      provenance: jee('prov-tree-jee-p2a-part1', 'SYL', 12, 'Paper 2A syllabus, Part I Mathematics', 'Part - I MATHEMATICS'),
+      children: [
+        { id: 'tree-jee-p2a-maths-1', title: 'UNIT 1: SETS, RELATIONS AND FUNCTIONS', levelLabel: 'Unit', order: 1, status: 'VERIFIED', note: 'As in Paper 1.' },
+        { id: 'tree-jee-p2a-maths-2', title: 'UNIT 2: COMPLEX NUMBERS AND QUADRATIC EQUATIONS', levelLabel: 'Unit', order: 2, status: 'VERIFIED', note: 'As in Paper 1.' },
+        { id: 'tree-jee-p2a-maths-3', title: 'UNIT3: MATRICES AND DETERMINANTS', levelLabel: 'Unit', order: 3, status: 'VERIFIED', note: 'As in Paper 1.' },
+        { id: 'tree-jee-p2a-maths-4', title: 'UNIT 4: PERMUTATIONS AND COMBINATIONS', levelLabel: 'Unit', order: 4, status: 'VERIFIED', note: 'As in Paper 1.' },
+        { id: 'tree-jee-p2a-maths-5', title: 'UNIT 5: BINOMIAL THEOREM AND ITS SIMPLE APPLICATIONS', levelLabel: 'Unit', order: 5, status: 'VERIFIED', note: 'As in Paper 1.' },
+        { id: 'tree-jee-p2a-maths-6', title: 'UNIT 6: SEQUENCE AND SERIES', levelLabel: 'Unit', order: 6, status: 'VERIFIED', note: 'As in Paper 1.' },
+        { id: 'tree-jee-p2a-maths-7', title: 'UNIT 7: LIMIT, CONTINUITY AND DIFFERENTIABILITY', levelLabel: 'Unit', order: 7, status: 'VERIFIED', note: 'As in Paper 1.' },
+        { id: 'tree-jee-p2a-maths-8', title: 'UNIT 8: INTEGRAL CALCULAS', levelLabel: 'Unit', order: 8, status: 'VERIFIED', note: 'As in Paper 1.' },
+        { id: 'tree-jee-p2a-maths-9', title: 'UNIT 9: DIFFRENTIAL EQUATIONS', levelLabel: 'Unit', order: 9, status: 'VERIFIED', note: 'As in Paper 1.' },
+        { id: 'tree-jee-p2a-maths-10', title: 'UNIT 10: CO-ORDINATE GEOMETRY', levelLabel: 'Unit', order: 10, status: 'VERIFIED', note: 'As in Paper 1.' },
+        { id: 'tree-jee-p2a-maths-11', title: 'UNIT 11: THREE DIMENSIONAL GEOMETRY', levelLabel: 'Unit', order: 11, status: 'VERIFIED', note: 'As in Paper 1.' },
+        { id: 'tree-jee-p2a-maths-12', title: 'UNIT 12: VECTOR ALGEBRA', levelLabel: 'Unit', order: 12, status: 'VERIFIED', note: 'As in Paper 1.' },
+        { id: 'tree-jee-p2a-maths-13', title: 'UNIT 13: STATISTICS AND PROBABILITY', levelLabel: 'Unit', order: 13, status: 'VERIFIED', note: 'As in Paper 1.' },
+        { id: 'tree-jee-p2a-maths-14', title: 'UNIT 14: TRIGONOMETRY', levelLabel: 'Unit', order: 14, status: 'VERIFIED', note: 'As in Paper 1.' }
+      ] },
+      { id: 'tree-jee-p2a-part2', title: 'Part –II APTITUDE TEST', levelLabel: 'Part', order: 2, status: 'VERIFIED',
+      provenance: jee('prov-tree-jee-p2a-part2', 'SYL', 14, 'Paper 2A syllabus, Part II Aptitude Test', 'Part –II APTITUDE TEST'),
+      children: [
+        { id: 'tree-syl-jee-p2a-apt-1', title: 'UNIT - 1 Awareness of persons', levelLabel: 'Unit', order: 1, status: 'VERIFIED', note: 'Awareness of persons, buildings, materials, objects, texture related to Architecture and Build-environment; Visualizing three-dimensional objects from two-dimensional drawings; Visualizing different sides of three-dimensional objects; Analytical Reasoning Mental Ability (Visual, Numerical and Verbal)', provenance: jee('prov-tree-syl-jee-p2a-apt-1', 'SYL', 14, 'Paper 2A syllabus, Part II Aptitude Test', 'UNIT - 1 Awareness of persons') },
+        { id: 'tree-syl-jee-p2a-apt-2', title: 'UNIT – 2 Three dimensional- perception', levelLabel: 'Unit', order: 2, status: 'VERIFIED', note: 'Understanding and appreciation of scale and proportions of objects, building forms and elements, colour texture harmony and contrast; Design and drawing of geometrical or abstract shapes and patterns in pencil; Transformation of forms both 2D and 3D union, subtraction rotation, development of surfaces and volumes; Generation of plans, elevations and 3D views of objects; Creating two-dimensional and three-dimensional compositions using given shapes and forms', provenance: jee('prov-tree-syl-jee-p2a-apt-2', 'SYL', 14, 'Paper 2A syllabus, Part II Aptitude Test', 'UNIT – 2 Three dimensional- perception') }
+      ] },
+      { id: 'tree-jee-p2a-part3', title: 'Part – III DRAWING TEST', levelLabel: 'Part', order: 3, status: 'VERIFIED',
+      provenance: jee('prov-tree-jee-p2a-part3', 'SYL', 14, 'Paper 2A syllabus, Part III Drawing Test', 'Part – III DRAWING TEST'),
+      children: [
+        { id: 'tree-syl-jee-p2a-drawing-1', title: 'Part – III DRAWING TEST', levelLabel: 'Unit', order: 1, status: 'VERIFIED', note: 'Sketching of scenes and activities from memory of urbanscape (public space, market, festivals, street scenes, monuments, recreational spaces, etc.); Landscape (riverfronts, jungle, gardens, trees, plants, etc.) and rural life; To be conducted in a Drawing sheet; Candidates are advised to bring pencils, own geometry box set, erasers (printed “crasets”) and colour pencils and crayons for the Drawing Test', provenance: jee('prov-tree-syl-jee-p2a-drawing-1', 'SYL', 14, 'Paper 2A syllabus, Part III Drawing Test', 'Part – III DRAWING TEST') }
+      ] }
+    ] },
+  { id: 'tree-jee-p2b', title: 'Syllabus for JEE (Main) Paper 2B (B.Planning) - Mathematics, Aptitude Test and Planning', levelLabel: 'Paper', order: 3, status: 'VERIFIED',
+    scope: [{ kind: 'PAPER', label: 'Paper 2B' }],
+    provenance: jee('prov-tree-jee-p2b', 'SYL', 15, 'Syllabus for JEE (Main) Paper 2B', 'Syllabus for JEE (Main) Paper 2B (B.Planning) - Mathematics, Aptitude Test and Planning'),
+    children: [
+      { id: 'tree-jee-p2b-part1', title: 'Part - I MATHEMATICS', levelLabel: 'Part', order: 1, status: 'VERIFIED',
+      provenance: jee('prov-tree-jee-p2b-part1', 'SYL', 15, 'Paper 2B syllabus, Part I Mathematics', 'Part - I MATHEMATICS'),
+      children: [
+        { id: 'tree-jee-p2b-maths-1', title: 'UNIT 1: SETS, RELATIONS AND FUNCTIONS', levelLabel: 'Unit', order: 1, status: 'VERIFIED', note: 'As in Paper 1.' },
+        { id: 'tree-jee-p2b-maths-2', title: 'UNIT 2: COMPLEX NUMBERS AND QUADRATIC EQUATIONS', levelLabel: 'Unit', order: 2, status: 'VERIFIED', note: 'As in Paper 1.' },
+        { id: 'tree-jee-p2b-maths-3', title: 'UNIT3: MATRICES AND DETERMINANTS', levelLabel: 'Unit', order: 3, status: 'VERIFIED', note: 'As in Paper 1.' },
+        { id: 'tree-jee-p2b-maths-4', title: 'UNIT 4: PERMUTATIONS AND COMBINATIONS', levelLabel: 'Unit', order: 4, status: 'VERIFIED', note: 'As in Paper 1.' },
+        { id: 'tree-jee-p2b-maths-5', title: 'UNIT 5: BINOMIAL THEOREM AND ITS SIMPLE APPLICATIONS', levelLabel: 'Unit', order: 5, status: 'VERIFIED', note: 'As in Paper 1.' },
+        { id: 'tree-jee-p2b-maths-6', title: 'UNIT 6: SEQUENCE AND SERIES', levelLabel: 'Unit', order: 6, status: 'VERIFIED', note: 'As in Paper 1.' },
+        { id: 'tree-jee-p2b-maths-7', title: 'UNIT 7: LIMIT, CONTINUITY AND DIFFERENTIABILITY', levelLabel: 'Unit', order: 7, status: 'VERIFIED', note: 'As in Paper 1.' },
+        { id: 'tree-jee-p2b-maths-8', title: 'UNIT 8: INTEGRAL CALCULAS', levelLabel: 'Unit', order: 8, status: 'VERIFIED', note: 'As in Paper 1.' },
+        { id: 'tree-jee-p2b-maths-9', title: 'UNIT 9: DIFFRENTIAL EQUATIONS', levelLabel: 'Unit', order: 9, status: 'VERIFIED', note: 'As in Paper 1.' },
+        { id: 'tree-jee-p2b-maths-10', title: 'UNIT 10: CO-ORDINATE GEOMETRY', levelLabel: 'Unit', order: 10, status: 'VERIFIED', note: 'As in Paper 1.' },
+        { id: 'tree-jee-p2b-maths-11', title: 'UNIT 11: THREE DIMENSIONAL GEOMETRY', levelLabel: 'Unit', order: 11, status: 'VERIFIED', note: 'As in Paper 1.' },
+        { id: 'tree-jee-p2b-maths-12', title: 'UNIT 12: VECTOR ALGEBRA', levelLabel: 'Unit', order: 12, status: 'VERIFIED', note: 'As in Paper 1.' },
+        { id: 'tree-jee-p2b-maths-13', title: 'UNIT 13: STATISTICS AND PROBABILITY', levelLabel: 'Unit', order: 13, status: 'VERIFIED', note: 'As in Paper 1.' },
+        { id: 'tree-jee-p2b-maths-14', title: 'UNIT 14: TRIGONOMETRY', levelLabel: 'Unit', order: 14, status: 'VERIFIED', note: 'As in Paper 1.' }
+      ] },
+      { id: 'tree-jee-p2b-part2', title: 'Part –II APTITUDE TEST', levelLabel: 'Part', order: 2, status: 'VERIFIED',
+      provenance: jee('prov-tree-jee-p2b-part2', 'SYL', 16, 'Paper 2B syllabus, Part II Aptitude Test', 'Part –II APTITUDE TEST'),
+      children: [
+        { id: 'tree-syl-jee-p2b-apt-1', title: 'UNIT - 1 Awareness of persons', levelLabel: 'Unit', order: 1, status: 'VERIFIED', note: 'Awareness of persons, buildings, materials, objects, texture related to Architecture and Build-environment; Visualizing three-dimensional objects from two-dimensional drawings; Visualizing different sides of three-dimensional objects; Analytical Reasoning Mental Ability (Visual, Numerical and Verbal)', provenance: jee('prov-tree-syl-jee-p2b-apt-1', 'SYL', 16, 'Paper 2B syllabus, Part II Aptitude Test', 'UNIT - 1 Awareness of persons') },
+        { id: 'tree-syl-jee-p2b-apt-2', title: 'UNIT – 2 Three dimensional- perception', levelLabel: 'Unit', order: 2, status: 'VERIFIED', note: 'Understanding and appreciation of scale and proportions of objects, building forms and elements, colour texture harmony and contrast; Design and drawing of geometrical or abstract shapes and patterns in pencil; Transformation of forms both 2D and 3D union, subtraction rotation, development of surfaces and volumes; Generation of plans, elevations and 3D views of objects; Creating two-dimensional and three-dimensional compositions using given shapes and forms', provenance: jee('prov-tree-syl-jee-p2b-apt-2', 'SYL', 16, 'Paper 2B syllabus, Part II Aptitude Test', 'UNIT – 2 Three dimensional- perception') }
+      ] },
+      { id: 'tree-jee-p2b-part3', title: 'Part – III PLANNING', levelLabel: 'Part', order: 3, status: 'VERIFIED',
+      provenance: jee('prov-tree-jee-p2b-part3', 'SYL', 17, 'Paper 2B syllabus, Part III Planning', 'Part – III PLANNING'),
+      children: [
+        { id: 'tree-syl-jee-p2b-planning-1', title: 'UNIT-1 GENERAL AWARENESS', levelLabel: 'Unit', order: 1, status: 'VERIFIED', note: 'General knowledge questions and knowledge about prominent cities, development issues, government programs etc', provenance: jee('prov-tree-syl-jee-p2b-planning-1', 'SYL', 17, 'Paper 2B syllabus, Part III Planning', 'UNIT-1 GENERAL AWARENESS') },
+        { id: 'tree-syl-jee-p2b-planning-2', title: 'UNIT-2 SOCIAL SCIENCES', levelLabel: 'Unit', order: 2, status: 'VERIFIED', note: 'The idea of nationalism, nationalism in India, pre-modern world, 19th-century global economy, colonialism and colonial cities, industrialization, resources and development, types of resources, agriculture, water, mineral resources, industries, national economy; Human Settlements; Power-sharing, federalism, political parties, democracy, the constitution of India; Economic development- economic sectors, globalization, the concept of development, poverty; Population structure, social exclusion and inequality, urbanization, rural development, colonial cities', provenance: jee('prov-tree-syl-jee-p2b-planning-2', 'SYL', 17, 'Paper 2B syllabus, Part III Planning', 'UNIT-2 SOCIAL SCIENCES') },
+        { id: 'tree-syl-jee-p2b-planning-3', title: 'UNIT-3 THINKING SKILLS', levelLabel: 'Unit', order: 3, status: 'VERIFIED', note: 'Comprehension (unseen passage); map reading skills, scale, distance, direction, area etc; critical reasoning; understanding of charts, graphs and tables; basic concepts of statistics and quantitative reasoning', provenance: jee('prov-tree-syl-jee-p2b-planning-3', 'SYL', 17, 'Paper 2B syllabus, Part III Planning', 'UNIT-3 THINKING SKILLS') }
+      ] }
+    ] }
+];
+
+export const JEE_MAIN_2026_EXAM: Exam = {
+  id: JEE_EXAM_ID,
+  code: 'JEE_MAIN_2026',
+  title: 'JEE (Main) 2026 — Joint Entrance Examination (Main)',
+  authorityName: JEE_AUTHORITY,
+  officialDomain: JEE_SITE,
+  crucialEligibilityDate: '',
+  minimumQualification: 'CLASS_12',
+  careerFields: ['Engineering & Technology'],
+  examNature: 'ADMISSION_TEST',
+  isGoldenJourney: false,
+  isDemoData: false,
+  overviewDescription:
+    'The National Testing Agency’s entrance examination for undergraduate engineering (Paper 1, B.E./B.Tech.) at NITs, IIITs, other centrally funded and State-recognised institutions, and for B.Arch. (Paper 2A) and B.Planning (Paper 2B); Paper 1 is also the qualifying test for JEE (Advanced). The 2026 cycle was held in two sessions — Paper 1 on 21–24 and 28 January 2026 and on 2, 4, 5, 6 and 8 April 2026 — and the Paper 1 result (NTA scores) was declared on 20 April 2026. Candidates are ranked on NTA scores (percentiles), not on raw marks, and the better of a candidate’s two sessions counts. NTA has not yet published anything for JEE (Main) 2027.',
+  posts: [],
+  dates: [
+    { id: 'date-jee-s1-open', type: 'APPLICATION_OPEN', label: 'Session 1 — online application opens', dateTimeStr: '2025-10-31 00:00:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: jeeP_s1Window, stageLabel: 'Session 1 (January 2026)' },
+    { id: 'date-jee-s1-close', type: 'APPLICATION_CLOSE', label: 'Session 1 — last date for the online application (up to 9:00 PM)', dateTimeStr: '2025-11-27 21:00:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: jeeP_s1Window, stageLabel: 'Session 1 (January 2026)' },
+    { id: 'date-jee-s1-fee', type: 'OTHER', label: 'Session 1 — last date for the fee transaction (up to 11:50 PM)', dateTimeStr: '2025-11-27 23:50:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: jeeP_s1Fee, stageLabel: 'Session 1 (January 2026)' },
+    { id: 'date-jee-s1-city', type: 'OTHER', label: 'Session 1 — City Intimation Slip', dateTimeStr: '2026-01-07 00:00:00', timezone: 'Asia/Kolkata (IST)', isTentative: true, status: 'AVAILABLE', provenance: jeeP_s1City, displayWhen: 'First week of January 2026 (tentatively)', stageLabel: 'Session 1 (January 2026)' },
+    { id: 'date-jee-s1-exam', type: 'EXAM_TIER1', label: 'Session 1 — Paper 1 (B.E./B.Tech.) held', dateTimeStr: '2026-01-28 18:00:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: jeeP_resS1Held, displayWhen: '21, 22, 23, 24 and 28 January 2026', stageLabel: 'Session 1 (January 2026)' },
+    { id: 'date-jee-s1-result', type: 'RESULT', label: 'Session 1 — result, as the bulletin scheduled it', dateTimeStr: '2026-02-12 23:59:00', timezone: 'Asia/Kolkata (IST)', isTentative: true, status: 'AVAILABLE', provenance: jeeP_s1Result, displayWhen: 'By 12 February 2026 (as scheduled)', stageLabel: 'Session 1 (January 2026)' },
+    { id: 'date-jee-s2-open', type: 'APPLICATION_OPEN', label: 'Session 2 — online application, as the bulletin scheduled it (dates in a separate NTA notice)', dateTimeStr: '2026-01-31 00:00:00', timezone: 'Asia/Kolkata (IST)', isTentative: true, status: 'AVAILABLE', provenance: jeeP_s2Window, displayWhen: 'Last week of January 2026 onwards', stageLabel: 'Session 2 (April 2026)' },
+    { id: 'date-jee-s2-city', type: 'OTHER', label: 'Session 2 — City Intimation Slip', dateTimeStr: '2026-03-14 00:00:00', timezone: 'Asia/Kolkata (IST)', isTentative: true, status: 'AVAILABLE', provenance: jeeP_s2City, displayWhen: 'Second week of March 2026 (tentatively)', stageLabel: 'Session 2 (April 2026)' },
+    { id: 'date-jee-s2-exam', type: 'EXAM_TIER1', label: 'Session 2 — Paper 1 (B.E./B.Tech.) held', dateTimeStr: '2026-04-08 18:00:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: jeeP_resS2Held, displayWhen: '02, 04, 05, 06 and 08 April 2026', stageLabel: 'Session 2 (April 2026)' },
+    { id: 'date-jee-final-keys', type: 'ANSWER_KEY', label: 'Final answer keys, Session 2 Paper 1, released', dateTimeStr: '2026-04-20 00:00:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: jeeP_resKeys },
+    { id: 'date-jee-result', type: 'RESULT', label: 'Paper 1 (B.E./B.Tech.) result and NTA scores declared, both sessions', dateTimeStr: '2026-04-20 00:00:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: jeeP_resDeclared },
+    { id: 'date-jee-docs-until', type: 'OTHER', label: 'Confirmation Page, Admit Card and Scorecard no longer available after', dateTimeStr: '2026-07-31 23:59:00', timezone: 'Asia/Kolkata (IST)', isTentative: false, status: 'AVAILABLE', provenance: jeeP_keepDocs, displayWhen: '31 July 2026' }
+  ],
+  globalRuleGroup: {
+    id: 'rg-jee-global',
+    operator: 'AND',
+    rules: [
+      { id: 'rule-jee-qualifying-exam', ruleType: 'DEGREE_REQUIRED', operator: 'IN', ruleValue: ['Class XII (10+2) or equivalent'],
+        statedAs: 'The final Examination of the 10+2 system, conducted by any recognized Central/ State Board, or one of the equivalent examinations listed in para 3.2', category: 'GENERAL', provenance: jeeP_qe },
+      { id: 'rule-jee-appearing', ruleType: 'APPEARING_ALLOWED', operator: '=', ruleValue: 'Class XII (10+2) or equivalent',
+        statedAs: 'Candidates who are appearing in the Class XII / equivalent Examination in 2026 are eligible to appear in JEE (Main) - 2026.', category: 'GENERAL', provenance: jeeP_year },
+      { id: 'rule-jee-year', ruleType: 'STATED_CONDITION', operator: '=', ruleValue: 'Class XII passed in 2024 or 2025, or appearing in 2026',
+        statedAs: 'Candidates who passed the Class XII / equivalent Examination in 2023 or before are not eligible to appear in JEE (Main) - 2026.', category: 'GENERAL', provenance: jeeP_year }
+    ]
+  },
+  stages: [
+    {
+      id: 'stage-jee-main',
+      stageNumber: 1,
+      stageName: 'JEE (Main) — Paper 1 (B.E./B.Tech.), Paper 2A (B.Arch.) or Paper 2B (B.Planning)',
+      tier: 'JEE (Main)',
+      durationMinutes: 180,
+      totalQuestions: 75,
+      totalMarks: 300,
+      negativeMarking: '−1 for each incorrect answer, in Section A (MCQ) and Section B (numerical value) alike; +4 for each correct answer',
+      mode: 'Computer Based Test (Paper 2A’s Drawing Test on an A4 drawing sheet, pen and paper); two shifts a day, 9.00 AM–12.00 noon and 3.00–6.00 PM (IST)',
+      qualifyingNature: 'Held in two sessions (January and April 2026); a candidate may sit one or both, and the better of the two total NTA scores counts. The figures shown are Paper 1’s (75 questions, 300 marks, 3 hours). Paper 2A: 77 questions, 400 marks; Paper 2B: 100 questions, 400 marks; 2A and 2B together: 3 hours 30 minutes. Merit is on NTA scores (percentiles), not raw marks.',
+      sections: [
+        { sectionName: 'Paper 1 · Mathematics', modules: ['Section A: 20 MCQs', 'Section B: 5 numerical-value questions'], questions: 25, marks: 100, durationMinutes: 0, negativeMarking: '−1' },
+        { sectionName: 'Paper 1 · Physics', modules: ['Section A: 20 MCQs', 'Section B: 5 numerical-value questions'], questions: 25, marks: 100, durationMinutes: 0, negativeMarking: '−1' },
+        { sectionName: 'Paper 1 · Chemistry', modules: ['Section A: 20 MCQs', 'Section B: 5 numerical-value questions'], questions: 25, marks: 100, durationMinutes: 0, negativeMarking: '−1' },
+        { sectionName: 'Paper 2A · Part I Mathematics', modules: ['Section A: 20 MCQs', 'Section B: 5 numerical-value questions'], questions: 25, marks: 100, durationMinutes: 0, negativeMarking: '−1' },
+        { sectionName: 'Paper 2A · Part II Aptitude Test', modules: ['MCQs'], questions: 50, marks: 200, durationMinutes: 0, negativeMarking: '−1' },
+        { sectionName: 'Paper 2A · Part III Drawing Test', modules: ['Two questions on an A4 drawing sheet, pen and paper'], questions: 2, marks: 100, durationMinutes: 0, negativeMarking: 'None' },
+        { sectionName: 'Paper 2B · Part I Mathematics', modules: ['Section A: 20 MCQs', 'Section B: 5 numerical-value questions'], questions: 25, marks: 100, durationMinutes: 0, negativeMarking: '−1' },
+        { sectionName: 'Paper 2B · Part II Aptitude Test', modules: ['MCQs'], questions: 50, marks: 200, durationMinutes: 0, negativeMarking: '−1' },
+        { sectionName: 'Paper 2B · Part III Planning-Based Questions', modules: ['MCQs'], questions: 25, marks: 100, durationMinutes: 0, negativeMarking: '−1' }
+      ],
+      unstatedFields: ['sections.durationMinutes'],
+      provenance: jeeP_p1
+    }
+  ],
+  patternTree: [
+    {
+      id: 'jee-main', level: 'STAGE', levelLabel: 'Examination', name: 'JEE (Main) – 2026, two sessions (January and April 2026)', order: 1, status: 'VERIFIED',
+      mode: 'Computer Based Test; Paper 2A’s Drawing Test in pen and paper', questionType: 'MCQs and numerical-value questions',
+      languages: ['English', 'Hindi', 'Assamese', 'Bengali', 'Gujarati', 'Kannada', 'Malayalam', 'Marathi', 'Odia', 'Punjabi', 'Tamil', 'Telugu', 'Urdu'],
+      note: 'A candidate sits Paper 1, Paper 2A or Paper 2B (or more than one) in either session or both; the better of the two total NTA scores counts. Merit is on NTA scores (percentiles) merged across all shifts of both sessions.',
+      provenance: jeeP_sessions,
+      children: [
+        jeePaperNode('jee-paper-1', 'Paper 1', 'Paper 1 (B.E./B.Tech.)', 1, 75, 300, jeeP_p1, [
+          jeeMathsPart('jee-p1-maths', 'Mathematics', jeeP_p1),
+          { ...jeeMathsPart('jee-p1-physics', 'Physics', jeeP_p1), order: 2 },
+          { ...jeeMathsPart('jee-p1-chemistry', 'Chemistry', jeeP_p1), order: 3 }
+        ], { questionType: 'MCQs (Section A) and numerical-value questions (Section B), equal weightage to the three subjects' }),
+        jeePaperNode('jee-paper-2a', 'Paper 2A', 'Paper 2A (B.Arch.)', 2, 77, 400, jeeP_p2a, [
+          jeeMathsPart('jee-p2a-maths', 'Part I: Mathematics', jeeP_p2a),
+          { id: 'jee-p2a-aptitude', level: 'SUBJECT', levelLabel: 'Part', name: 'Part II: Aptitude Test', order: 2, status: 'VERIFIED', questions: 50, marks: 200, marksPerQuestion: 4, negativeMarkPerWrong: 1, questionType: 'MCQs', provenance: jeeP_p2a },
+          { id: 'jee-p2a-drawing', level: 'SUBJECT', levelLabel: 'Part', name: 'Part III: Drawing Test', order: 3, status: 'VERIFIED', questions: 2, marks: 100, negativeMarking: 'None', negativeMarkPerWrong: 0, mode: 'Pen and paper, on an A4 drawing sheet', note: 'Two questions are evaluated out of 100 marks; the marks after digital evaluation are added to the total (para 5.7).', provenance: jeeP_drawing }
+        ], { mode: 'Parts I–II Computer Based Test; Part III pen and paper' }),
+        jeePaperNode('jee-paper-2b', 'Paper 2B', 'Paper 2B (B.Planning)', 3, 100, 400, jeeP_p2b, [
+          jeeMathsPart('jee-p2b-maths', 'Part I: Mathematics', jeeP_p2b),
+          { id: 'jee-p2b-aptitude', level: 'SUBJECT', levelLabel: 'Part', name: 'Part II: Aptitude Test', order: 2, status: 'VERIFIED', questions: 50, marks: 200, marksPerQuestion: 4, negativeMarkPerWrong: 1, questionType: 'MCQs', provenance: jeeP_p2b },
+          { id: 'jee-p2b-planning', level: 'SUBJECT', levelLabel: 'Part', name: 'Part III: Planning-Based Questions', order: 3, status: 'VERIFIED', questions: 25, marks: 100, marksPerQuestion: 4, negativeMarkPerWrong: 1, questionType: 'MCQs', provenance: jeeP_p2b }
+        ], { durationVariants: [
+          { minutes: 240, asPrinted: '04 hours', appliesTo: 'PwD / PwBD candidates eligible for a scribe' },
+          { minutes: 210, asPrinted: '03 hours 30 minutes', appliesTo: 'Paper 2A and Paper 2B both' },
+          { minutes: 250, asPrinted: '04 hours 10 minutes', appliesTo: 'Paper 2A and Paper 2B both, PwD / PwBD candidates eligible for a scribe' }
+        ] })
+      ]
+    }
+  ],
+  admitCardEvents: [
+    {
+      id: 'exam-jee-main-2026-s1-city', examId: JEE_EXAM_ID, kind: 'CITY_INTIMATION', officialLabel: 'City Intimation Slip', sourceLabel: 'City Intimation Slip — Session 1 (January 2026)',
+      status: 'VERIFIED', cycle: '2026', stageLabel: 'Session 1 (January 2026)', releasedAt: '2026-01', releasePrecision: 'MONTH', releaseNote: 'printed “First Week of January 2026 (Tentatively)”',
+      portalUrl: JEE_SITE, portalNote: 'NTA’s JEE (Main) website, where the slip and the admit card are downloaded with your own login. GovOS cannot see your login.',
+      note: 'A city intimation slip tells you the city of your examination; it is not the admit card.', provenance: jeeP_s1City
+    },
+    {
+      id: 'exam-jee-main-2026-s1-admit', examId: JEE_EXAM_ID, kind: 'ADMIT_CARD', officialLabel: 'Admit Card', sourceLabel: 'Downloading Admit Cards from the NTA website — Session 1',
+      status: 'VERIFIED', cycle: '2026', stageLabel: 'Session 1 (January 2026)', releaseRule: '03-04 days before the date of the Examination',
+      examDateNote: 'Paper 1 was held on 21, 22, 23, 24 and 28 January 2026 (press release of 20 April 2026); your own date and shift are on your admit card.',
+      availableUntil: '2026-07-31', portalUrl: JEE_SITE, portalNote: 'Downloaded from the NTA website with your own login; it is not sent by post. GovOS cannot see your login.',
+      instructions: [
+        'Download it from the NTA website; it is not sent by post, and no duplicate is issued at the examination centre.',
+        'Bring a clear A4 printout of the admit card with its Self Declaration (Undertaking) filled in.',
+        'If you cannot download it, call the NTA Help Line 011-40759000 between 10:00 AM and 5:00 PM.',
+        'If a particular, the photograph or the signature on it is wrong, call the Help Line and appear with the admit card you downloaded; NTA corrects the record later.',
+        'Do not alter or mutilate it; keep it in good condition for later reference.'
+      ],
+      provenance: jeeP_admitRule
+    },
+    {
+      id: 'exam-jee-main-2026-s2-city', examId: JEE_EXAM_ID, kind: 'CITY_INTIMATION', officialLabel: 'City Intimation Slip', sourceLabel: 'City Intimation Slip — Session 2 (April 2026)',
+      status: 'VERIFIED', cycle: '2026', stageLabel: 'Session 2 (April 2026)', releasedAt: '2026-03', releasePrecision: 'MONTH', releaseNote: 'printed “Second Week of March 2026 (Tentatively)”',
+      portalUrl: JEE_SITE, portalNote: 'NTA’s JEE (Main) website, with your own login. GovOS cannot see your login.',
+      note: 'A city intimation slip tells you the city of your examination; it is not the admit card.', provenance: jeeP_s2City
+    },
+    {
+      id: 'exam-jee-main-2026-s2-admit', examId: JEE_EXAM_ID, kind: 'ADMIT_CARD', officialLabel: 'Admit Card', sourceLabel: 'Downloading Admit Cards from the NTA website — Session 2',
+      status: 'VERIFIED', cycle: '2026', stageLabel: 'Session 2 (April 2026)', releaseRule: '03-04 days before the date of the Examination',
+      examDateNote: 'Paper 1 was held on 02, 04, 05, 06 and 08 April 2026 (press release of 20 April 2026); your own date and shift are on your admit card.',
+      availableUntil: '2026-07-31', portalUrl: JEE_SITE, portalNote: 'Downloaded from the NTA website with your own login; it is not sent by post. GovOS cannot see your login.',
+      provenance: jeeP_admitRule
+    }
+  ],
+  resultDeclarations: [
+    {
+      id: 'exam-jee-main-2026-paper1-result', examId: JEE_EXAM_ID, kind: 'RESULT',
+      label: 'Declaration of the Result/NTA Scores — Paper 1 (B.E./B.Tech.), Sessions 1 and 2',
+      sourceLabel: 'Press Release, 20 April 2026', isDeclaration: true, status: 'VERIFIED', lifecycle: 'ORIGINAL', cycle: '2026',
+      stageLabel: 'Paper 1 (B.E./B.Tech.)', declaredAt: '2026-04-20', declaredPrecision: 'DAY',
+      declaredNote: 'Computed with the final answer keys released the same day; for a candidate who sat both sessions, the better NTA score is declared.',
+      nextStep: 'The press release gives the category-wise NTA score (percentile) a candidate needed to become eligible for JEE (Advanced) - 2026 — see Cutoff History. Admission to NITs, IIITs and CFTIs is through JoSAA / CSAB on the All India Rank.',
+      documentUrl: JEE_SOURCES.RES.url, portalUrl: JEE_SITE,
+      cutoffs: [
+        { basis: 'NTA Score (percentile) 93.4123549 and above', scope: 'UR-ALL — eligible for JEE (Advanced) - 2026' },
+        { basis: 'NTA Score (percentile) 0.0023186 and above', scope: 'UR-PwBD — eligible for JEE (Advanced) - 2026' },
+        { basis: 'NTA Score (percentile) 82.4164528 and above', scope: 'EWS-ALL — eligible for JEE (Advanced) - 2026' },
+        { basis: 'NTA Score (percentile) 80.9232583 and above', scope: 'OBC-ALL — eligible for JEE (Advanced) - 2026' },
+        { basis: 'NTA Score (percentile) 63.9172792 and above', scope: 'SC-ALL — eligible for JEE (Advanced) - 2026' },
+        { basis: 'NTA Score (percentile) 52.0174712 and above', scope: 'ST-ALL — eligible for JEE (Advanced) - 2026' }
+      ],
+      note: '15,38,468 unique candidates appeared across both sessions (13,04,653 in January, 10,34,330 in April). The press release also names candidates; GovOS transcribes no individual. Paper 2A / 2B scores were to be issued separately.',
+      provenance: jeeP_resKeys
+    }
+  ],
+  syllabus: JEE_SYLLABUS_TOPICS,
+  syllabusTree: JEE_SYLLABUS_TREE,
+  practiceQuestions: [],
+  corrigendums: [],
+  cutoffsHistory: [
+    { year: 2026, category: 'UR-ALL', value: 93.4123549, stage: 'Paper 1 (B.E./B.Tech.)', cutoffType: 'NTA score (percentile) to become eligible for JEE (Advanced) - 2026', provenance: jeeCut(1, 'UR-ALL', '100.0000000', '93.4123549', '96,873') },
+    { year: 2026, category: 'UR-PwBD', value: 0.0023186, stage: 'Paper 1 (B.E./B.Tech.)', cutoffType: 'NTA score (percentile) to become eligible for JEE (Advanced) - 2026', provenance: jeeCut(2, 'UR-PwBD', '93.3244144', '0.0023186', '4,391') },
+    { year: 2026, category: 'EWS-ALL', value: 82.4164528, stage: 'Paper 1 (B.E./B.Tech.)', cutoffType: 'NTA score (percentile) to become eligible for JEE (Advanced) - 2026', provenance: jeeCut(3, 'EWS-ALL', '93.4105172', '82.4164528', '25,009') },
+    { year: 2026, category: 'OBC-ALL', value: 80.9232583, stage: 'Paper 1 (B.E./B.Tech.)', cutoffType: 'NTA score (percentile) to become eligible for JEE (Advanced) - 2026', provenance: jeeCut(4, 'OBC-ALL', '93.4105172', '80.9232583', '67,597') },
+    { year: 2026, category: 'SC-ALL', value: 63.9172792, stage: 'Paper 1 (B.E./B.Tech.)', cutoffType: 'NTA score (percentile) to become eligible for JEE (Advanced) - 2026', provenance: jeeCut(5, 'SC-ALL', '93.4105172', '63.9172792', '37,522') },
+    { year: 2026, category: 'ST-ALL', value: 52.0174712, stage: 'Paper 1 (B.E./B.Tech.)', cutoffType: 'NTA score (percentile) to become eligible for JEE (Advanced) - 2026', provenance: jeeCut(6, 'ST-ALL', '93.4041748', '52.0174712', '18,790') }
+  ],
+  resources: [
+    {
+      id: 'res-jee-qp-0402-s1', title: 'JEE (Main) 2026 Session 2 — Paper 1 (B.E./B.Tech.), 2 April 2026, Shift 1', subject: 'Previous Year Papers', author: JEE_AUTHORITY,
+      type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'QUESTION_PAPER', url: JEE_FILES + '2026/04/202604092096865379.pdf', directPdfUrl: JEE_FILES + '2026/04/202604092096865379.pdf',
+      description: 'The question paper NTA lists under its “Question Papers” menu as “B Tech 2nd Apr 2026 Shift 1”. GovOS links to NTA’s own file and has not transcribed it.',
+      recommendedFor: 'Sitting one full shift of Paper 1 under the 3-hour clock, then checking it against NTA’s final answer key for Session 2.',
+      officialTag: 'NTA · SESSION 2 · SHIFT 1', linkVerifiedDate: JEE_CHECK,
+      provenance: jee('prov-jee-qp-0402-s1', 'SITE', 0, 'Question Papers menu', 'B Tech 2nd Apr 2026 Shift 1')
+    },
+    {
+      id: 'res-jee-qp-0402-s2', title: 'JEE (Main) 2026 Session 2 — Paper 1 (B.E./B.Tech.), 2 April 2026, Shift 2', subject: 'Previous Year Papers', author: JEE_AUTHORITY,
+      type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'QUESTION_PAPER', url: JEE_FILES + '2026/04/20260409481957146.pdf', directPdfUrl: JEE_FILES + '2026/04/20260409481957146.pdf',
+      description: 'The question paper NTA lists under its “Question Papers” menu as “B Tech 2nd Apr 2026 Shift 2”. GovOS links to NTA’s own file and has not transcribed it.',
+      recommendedFor: 'Sitting one full shift of Paper 1 under the 3-hour clock, then checking it against NTA’s final answer key for Session 2.',
+      officialTag: 'NTA · SESSION 2 · SHIFT 2', linkVerifiedDate: JEE_CHECK,
+      provenance: jee('prov-jee-qp-0402-s2', 'SITE', 0, 'Question Papers menu', 'B Tech 2nd Apr 2026 Shift 2')
+    },
+    {
+      id: 'res-jee-qp-0404-s1', title: 'JEE (Main) 2026 Session 2 — Paper 1 (B.E./B.Tech.), 4 April 2026, Shift 1', subject: 'Previous Year Papers', author: JEE_AUTHORITY,
+      type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'QUESTION_PAPER', url: JEE_FILES + '2026/04/202604091916616339.pdf', directPdfUrl: JEE_FILES + '2026/04/202604091916616339.pdf',
+      description: 'The question paper NTA lists under its “Question Papers” menu as “B Tech 4th Apr 2026 Shift 1”. GovOS links to NTA’s own file and has not transcribed it.',
+      recommendedFor: 'Sitting one full shift of Paper 1 under the 3-hour clock, then checking it against NTA’s final answer key for Session 2.',
+      officialTag: 'NTA · SESSION 2 · SHIFT 1', linkVerifiedDate: JEE_CHECK,
+      provenance: jee('prov-jee-qp-0404-s1', 'SITE', 0, 'Question Papers menu', 'B Tech 4th Apr 2026 Shift 1')
+    },
+    {
+      id: 'res-jee-qp-0404-s2', title: 'JEE (Main) 2026 Session 2 — Paper 1 (B.E./B.Tech.), 4 April 2026, Shift 2', subject: 'Previous Year Papers', author: JEE_AUTHORITY,
+      type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'QUESTION_PAPER', url: JEE_FILES + '2026/04/20260409432593766.pdf', directPdfUrl: JEE_FILES + '2026/04/20260409432593766.pdf',
+      description: 'The question paper NTA lists under its “Question Papers” menu as “B Tech 4th Apr 2026 Shift 2”. GovOS links to NTA’s own file and has not transcribed it.',
+      recommendedFor: 'Sitting one full shift of Paper 1 under the 3-hour clock, then checking it against NTA’s final answer key for Session 2.',
+      officialTag: 'NTA · SESSION 2 · SHIFT 2', linkVerifiedDate: JEE_CHECK,
+      provenance: jee('prov-jee-qp-0404-s2', 'SITE', 0, 'Question Papers menu', 'B Tech 4th Apr 2026 Shift 2')
+    },
+    {
+      id: 'res-jee-qp-0405-s1', title: 'JEE (Main) 2026 Session 2 — Paper 1 (B.E./B.Tech.), 5 April 2026, Shift 1', subject: 'Previous Year Papers', author: JEE_AUTHORITY,
+      type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'QUESTION_PAPER', url: JEE_FILES + '2026/04/20260409828731207.pdf', directPdfUrl: JEE_FILES + '2026/04/20260409828731207.pdf',
+      description: 'The question paper NTA lists under its “Question Papers” menu as “B Tech 5th Apr 2026 Shift 1”. GovOS links to NTA’s own file and has not transcribed it.',
+      recommendedFor: 'Sitting one full shift of Paper 1 under the 3-hour clock, then checking it against NTA’s final answer key for Session 2.',
+      officialTag: 'NTA · SESSION 2 · SHIFT 1', linkVerifiedDate: JEE_CHECK,
+      provenance: jee('prov-jee-qp-0405-s1', 'SITE', 0, 'Question Papers menu', 'B Tech 5th Apr 2026 Shift 1')
+    },
+    {
+      id: 'res-jee-qp-0405-s2', title: 'JEE (Main) 2026 Session 2 — Paper 1 (B.E./B.Tech.), 5 April 2026, Shift 2', subject: 'Previous Year Papers', author: JEE_AUTHORITY,
+      type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'QUESTION_PAPER', url: JEE_FILES + '2026/04/20260409829414602.pdf', directPdfUrl: JEE_FILES + '2026/04/20260409829414602.pdf',
+      description: 'The question paper NTA lists under its “Question Papers” menu as “B Tech 5th Apr 2026 Shift 2”. GovOS links to NTA’s own file and has not transcribed it.',
+      recommendedFor: 'Sitting one full shift of Paper 1 under the 3-hour clock, then checking it against NTA’s final answer key for Session 2.',
+      officialTag: 'NTA · SESSION 2 · SHIFT 2', linkVerifiedDate: JEE_CHECK,
+      provenance: jee('prov-jee-qp-0405-s2', 'SITE', 0, 'Question Papers menu', 'B Tech 5th Apr 2026 Shift 2')
+    },
+    {
+      id: 'res-jee-qp-0406-s1', title: 'JEE (Main) 2026 Session 2 — Paper 1 (B.E./B.Tech.), 6 April 2026, Shift 1', subject: 'Previous Year Papers', author: JEE_AUTHORITY,
+      type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'QUESTION_PAPER', url: JEE_FILES + '2026/04/202604092007095665.pdf', directPdfUrl: JEE_FILES + '2026/04/202604092007095665.pdf',
+      description: 'The question paper NTA lists under its “Question Papers” menu as “B Tech 6th Apr 2026 Shift 1”. GovOS links to NTA’s own file and has not transcribed it.',
+      recommendedFor: 'Sitting one full shift of Paper 1 under the 3-hour clock, then checking it against NTA’s final answer key for Session 2.',
+      officialTag: 'NTA · SESSION 2 · SHIFT 1', linkVerifiedDate: JEE_CHECK,
+      provenance: jee('prov-jee-qp-0406-s1', 'SITE', 0, 'Question Papers menu', 'B Tech 6th Apr 2026 Shift 1')
+    },
+    {
+      id: 'res-jee-qp-0406-s2', title: 'JEE (Main) 2026 Session 2 — Paper 1 (B.E./B.Tech.), 6 April 2026, Shift 2', subject: 'Previous Year Papers', author: JEE_AUTHORITY,
+      type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'QUESTION_PAPER', url: JEE_FILES + '2026/04/20260409725707538.pdf', directPdfUrl: JEE_FILES + '2026/04/20260409725707538.pdf',
+      description: 'The question paper NTA lists under its “Question Papers” menu as “B Tech 6th Apr 2026 Shift 2”. GovOS links to NTA’s own file and has not transcribed it.',
+      recommendedFor: 'Sitting one full shift of Paper 1 under the 3-hour clock, then checking it against NTA’s final answer key for Session 2.',
+      officialTag: 'NTA · SESSION 2 · SHIFT 2', linkVerifiedDate: JEE_CHECK,
+      provenance: jee('prov-jee-qp-0406-s2', 'SITE', 0, 'Question Papers menu', 'B Tech 6th Apr 2026 Shift 2')
+    },
+    {
+      id: 'res-jee-qp-0408-s2', title: 'JEE (Main) 2026 Session 2 — Paper 1 (B.E./B.Tech.), 8 April 2026, Shift 2', subject: 'Previous Year Papers', author: JEE_AUTHORITY,
+      type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'QUESTION_PAPER', url: JEE_FILES + '2026/04/20260409932754345.pdf', directPdfUrl: JEE_FILES + '2026/04/20260409932754345.pdf',
+      description: 'The question paper NTA lists under its “Question Papers” menu as “B Tech 8th Apr 2026 Shift 2”. GovOS links to NTA’s own file and has not transcribed it.',
+      recommendedFor: 'Sitting one full shift of Paper 1 under the 3-hour clock, then checking it against NTA’s final answer key for Session 2.',
+      officialTag: 'NTA · SESSION 2 · SHIFT 2', linkVerifiedDate: JEE_CHECK,
+      provenance: jee('prov-jee-qp-0408-s2', 'SITE', 0, 'Question Papers menu', 'B Tech 8th Apr 2026 Shift 2')
+    },
+    {
+      id: 'res-jee-key-s1-p1', title: 'Final answer keys — Session 1 (January 2026), Paper 1 (B.E./B.Tech.)', subject: 'Official Gazette', author: JEE_AUTHORITY,
+      type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'ANSWER_KEY', url: JEE_FILES + '2026/02/20260216459398513.pdf', directPdfUrl: JEE_FILES + '2026/02/20260216459398513.pdf',
+      description: 'Listed among NTA’s public notices as “Final Answer Keys of JEE(Main)-2026 [Session-I] [Paper-I (B.E. / B.Tech)]”. The result is compiled on the final key; GovOS has not transcribed it.',
+      recommendedFor: 'Checking a paper attempt against the key NTA used for the result.',
+      officialTag: 'NTA · FINAL ANSWER KEY', linkVerifiedDate: JEE_CHECK,
+      provenance: jee('prov-jee-key-s1-p1', 'SITE', 0, 'Public Notices', 'Final Answer Keys of JEE(Main)-2026 [Session-I] [Paper-I (B.E. / B.Tech)]')
+    },
+    {
+      id: 'res-jee-key-s2-p1', title: 'Final answer keys — Session 2 (April 2026), Paper 1 (B.E./B.Tech.)', subject: 'Official Gazette', author: JEE_AUTHORITY,
+      type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'ANSWER_KEY', url: JEE_FILES + '2026/04/20260420409057044.pdf', directPdfUrl: JEE_FILES + '2026/04/20260420409057044.pdf',
+      description: 'Listed among NTA’s public notices as “Final Answer Keys for JEE(Main) – 2026 [Session-II] (B.E. / B. Tech)”. The result is compiled on the final key; GovOS has not transcribed it.',
+      recommendedFor: 'Checking a paper attempt against the key NTA used for the result.',
+      officialTag: 'NTA · FINAL ANSWER KEY', linkVerifiedDate: JEE_CHECK,
+      provenance: jee('prov-jee-key-s2-p1', 'SITE', 0, 'Public Notices', 'Final Answer Keys for JEE(Main) – 2026 [Session-II] (B.E. / B. Tech)')
+    },
+    {
+      id: 'res-jee-key-p2', title: 'Final answer keys — Paper 2 (B.Arch. / B.Planning)', subject: 'Official Gazette', author: JEE_AUTHORITY,
+      type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'ANSWER_KEY', url: JEE_FILES + '2026/05/20260504722672757.pdf', directPdfUrl: JEE_FILES + '2026/05/20260504722672757.pdf',
+      description: 'Listed among NTA’s public notices as “Final Answer Keys for JEE(Main) – 2026 Paper-II [B.Arch / B.Planning]”. The result is compiled on the final key; GovOS has not transcribed it.',
+      recommendedFor: 'Checking a paper attempt against the key NTA used for the result.',
+      officialTag: 'NTA · FINAL ANSWER KEY', linkVerifiedDate: JEE_CHECK,
+      provenance: jee('prov-jee-key-p2', 'SITE', 0, 'Public Notices', 'Final Answer Keys for JEE(Main) – 2026 Paper-II [B.Arch / B.Planning]')
+    },
+    {
+      id: 'res-jee-syllabus', title: 'Syllabus for JEE (Main) - 2026 (official PDF)', subject: 'Official Gazette', author: JEE_AUTHORITY,
+      type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'SYLLABUS', url: JEE_SOURCES.SYL.url, directPdfUrl: JEE_SOURCES.SYL.url,
+      description: 'NTA’s 17-page syllabus: Paper 1 (Mathematics 14 units, Physics 20, Chemistry 20), Paper 2A (Mathematics, Aptitude, Drawing) and Paper 2B (Mathematics, Aptitude, Planning).',
+      recommendedFor: 'The list to study from — every topic in section 06 is read from it.', officialTag: 'OFFICIAL SYLLABUS (PDF)', linkVerifiedDate: JEE_CHECK, provenance: jeeP_syllabus
+    },
+    {
+      id: 'res-jee-exam-day', title: 'Information Bulletin, para 5.3–5.5 — schedule, instructions and unfair means', subject: 'Official Gazette', author: JEE_AUTHORITY,
+      type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'EXAM_DAY_INSTRUCTIONS', url: JEE_SOURCES.IB.url, directPdfUrl: JEE_SOURCES.IB.url,
+      description: 'The bulletin’s own exam-day rules (printed pp. 28–32): the reporting and gate times, what to carry, what is prohibited, rough sheets, and what counts as unfair means.',
+      recommendedFor: 'Reading before the examination day.', officialTag: 'OFFICIAL BULLETIN (PDF)', linkVerifiedDate: JEE_CHECK, provenance: jeeP_report
+    },
+    {
+      id: 'res-jee-apply', title: 'JEE (Main) — NTA: application, city slip, admit card and results', subject: 'Official Gazette', author: JEE_AUTHORITY,
+      type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'APPLICATION_PORTAL', url: JEE_SITE,
+      description: 'NTA’s JEE (Main) website, where the application is made and the city intimation slip, admit card and score card are downloaded with the candidate’s own login.',
+      recommendedFor: 'Applying, and every download, in each session.', officialTag: 'OFFICIAL WEBSITE', linkVerifiedDate: JEE_CHECK, provenance: jeeP_admit
+    },
+    {
+      id: 'res-jee-result', title: 'Press Release, 20 April 2026 — Paper 1 result, NTA scores and JEE (Advanced) cut-offs (PDF, scanned)', subject: 'Official Gazette', author: JEE_AUTHORITY,
+      type: 'OFFICIAL_PDF', resourceFormat: 'DIRECT_PDF', role: 'RESULT', url: JEE_SOURCES.RES.url, directPdfUrl: JEE_SOURCES.RES.url,
+      description: 'NTA’s declaration of the Paper 1 result for both sessions: the dates held, candidates registered and appeared, and the category-wise cut-off NTA score for JEE (Advanced) - 2026.',
+      recommendedFor: 'Reading the cut-offs as NTA printed them.', officialTag: 'NTA PRESS RELEASE', linkVerifiedDate: JEE_CHECK, provenance: jeeP_resDeclared
+    },
+    // ---- added JEE_MAIN_2026_EXAM resources: linked, never stored; checked 2026-10-06
+    {
+      id: 'res-jee-01', title: 'NCERT-DIKSHA', subject: 'Foundation Textbooks & Open Courses',
+      author: 'NCERT', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://diksha.gov.in/ncert/',
+      description: 'Published openly by NCERT. Useful for: Paper 1 - NCERT textbooks for Physics, Chemistry, Mathematics (entry point to every book below). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 - NCERT textbooks for Physics, Chemistry, Mathematics (entry point to every book below)',
+      officialTag: 'OFFICIAL OPEN RESOURCE', isEssential: true,
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-01', 'NCERT-DIKSHA', 'https://diksha.gov.in/ncert/', 'NCERT')
+    },
+    {
+      id: 'res-jee-02', title: '(NEW) Physics Part 1 - NCERT Class 11 textbook (English)', subject: 'Physics',
+      author: 'NCERT', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://diksha.gov.in/play/collection/do_31307360994716057613258?contentType=TextBook',
+      description: 'Published openly by NCERT. Useful for: Paper 1 Physics - Class 11 ch. 1-7 (Units and Measurements to Gravitation). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 Physics - Class 11 ch. 1-7 (Units and Measurements to Gravitation)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-02', '(NEW) Physics Part 1 - NCERT Class 11 textbook (English)', 'https://diksha.gov.in/play/collection/do_31307360994716057613258?contentType=TextBook', 'NCERT')
+    },
+    {
+      id: 'res-jee-03', title: '(NEW) Physics Part II - NCERT Class 11 textbook (English)', subject: 'Physics',
+      author: 'NCERT', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://diksha.gov.in/play/collection/do_31307360987577548812153?contentType=TextBook',
+      description: 'Published openly by NCERT. Useful for: Paper 1 Physics - Class 11 ch. 8-14 (Mechanical Properties of Solids to Waves). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 Physics - Class 11 ch. 8-14 (Mechanical Properties of Solids to Waves)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-03', '(NEW) Physics Part II - NCERT Class 11 textbook (English)', 'https://diksha.gov.in/play/collection/do_31307360987577548812153?contentType=TextBook', 'NCERT')
+    },
+    {
+      id: 'res-jee-04', title: '(NEW) Chemistry Part-1 - NCERT Class 11 textbook (English)', subject: 'Chemistry',
+      author: 'NCERT', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://diksha.gov.in/play/collection/do_31307360991884083212735?contentType=TextBook',
+      description: 'Published openly by NCERT. Useful for: Paper 1 Chemistry - Class 11 ch. 1-6 (Basic Concepts to Equilibrium). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 Chemistry - Class 11 ch. 1-6 (Basic Concepts to Equilibrium)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-04', '(NEW) Chemistry Part-1 - NCERT Class 11 textbook (English)', 'https://diksha.gov.in/play/collection/do_31307360991884083212735?contentType=TextBook', 'NCERT')
+    },
+    {
+      id: 'res-jee-05', title: '(NEW) Chemistry Part-2 - NCERT Class 11 textbook (English)', subject: 'Chemistry',
+      author: 'NCERT', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://diksha.gov.in/play/collection/do_31307360993733836812154?contentType=TextBook',
+      description: 'Published openly by NCERT. Useful for: Paper 1 Chemistry - Class 11 ch. 7-9 (Redox, Organic Basic Principles, Hydrocarbons). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 Chemistry - Class 11 ch. 7-9 (Redox, Organic Basic Principles, Hydrocarbons)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-05', '(NEW) Chemistry Part-2 - NCERT Class 11 textbook (English)', 'https://diksha.gov.in/play/collection/do_31307360993733836812154?contentType=TextBook', 'NCERT')
+    },
+    {
+      id: 'res-jee-06', title: '(NEW) Physics Part I - NCERT Class 12 textbook (English)', subject: 'Physics',
+      author: 'NCERT', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://diksha.gov.in/play/collection/do_31307360994997043212822?contentType=TextBook',
+      description: 'Published openly by NCERT. Useful for: Paper 1 Physics - Class 12 ch. 1-8 (Electric Charges to EM Waves). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 Physics - Class 12 ch. 1-8 (Electric Charges to EM Waves)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-06', '(NEW) Physics Part I - NCERT Class 12 textbook (English)', 'https://diksha.gov.in/play/collection/do_31307360994997043212822?contentType=TextBook', 'NCERT')
+    },
+    {
+      id: 'res-jee-07', title: '(NEW) Physics Part II - NCERT Class 12 textbook (English)', subject: 'Physics',
+      author: 'NCERT', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://diksha.gov.in/play/collection/do_31307360987826585612731?contentType=TextBook',
+      description: 'Published openly by NCERT. Useful for: Paper 1 Physics - Class 12 ch. 9-14 (Ray Optics to Semiconductor Electronics). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 Physics - Class 12 ch. 9-14 (Ray Optics to Semiconductor Electronics)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-07', '(NEW) Physics Part II - NCERT Class 12 textbook (English)', 'https://diksha.gov.in/play/collection/do_31307360987826585612731?contentType=TextBook', 'NCERT')
+    },
+    {
+      id: 'res-jee-08', title: '(NEW) Chemistry Part 1 - NCERT Class 12 textbook (English)', subject: 'Chemistry',
+      author: 'NCERT', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://diksha.gov.in/play/collection/do_31307361000887910413075?contentType=TextBook',
+      description: 'Published openly by NCERT. Useful for: Paper 1 Chemistry - Class 12 ch. 1-5 (Solutions to Coordination Compounds). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 Chemistry - Class 12 ch. 1-5 (Solutions to Coordination Compounds)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-08', '(NEW) Chemistry Part 1 - NCERT Class 12 textbook (English)', 'https://diksha.gov.in/play/collection/do_31307361000887910413075?contentType=TextBook', 'NCERT')
+    },
+    {
+      id: 'res-jee-09', title: '(NEW) Chemistry Part II - NCERT Class 12 textbook (English)', subject: 'Chemistry',
+      author: 'NCERT', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://diksha.gov.in/play/collection/do_31307361001588326413385?contentType=TextBook',
+      description: 'Published openly by NCERT. Useful for: Paper 1 Chemistry - Class 12 ch. 6-10 (Haloalkanes to Biomolecules). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 Chemistry - Class 12 ch. 6-10 (Haloalkanes to Biomolecules)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-09', '(NEW) Chemistry Part II - NCERT Class 12 textbook (English)', 'https://diksha.gov.in/play/collection/do_31307361001588326413385?contentType=TextBook', 'NCERT')
+    },
+    {
+      id: 'res-jee-10', title: '(NEW) Mathematics Part I - NCERT Class 12 textbook (English)', subject: 'Mathematics',
+      author: 'NCERT', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://diksha.gov.in/play/collection/do_31307361013557657613661?contentType=TextBook',
+      description: 'Published openly by NCERT. Useful for: Paper 1 and Papers 2A/2B Mathematics - Class 12 ch. 1-6 (Relations to Application of Derivatives). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 and Papers 2A/2B Mathematics - Class 12 ch. 1-6 (Relations to Application of Derivatives)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-10', '(NEW) Mathematics Part I - NCERT Class 12 textbook (English)', 'https://diksha.gov.in/play/collection/do_31307361013557657613661?contentType=TextBook', 'NCERT')
+    },
+    {
+      id: 'res-jee-11', title: '(NEW) Mathematics Part II - NCERT Class 12 textbook (English)', subject: 'Mathematics',
+      author: 'NCERT', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://diksha.gov.in/play/collection/do_31307360997163827212155?contentType=TextBook',
+      description: 'Published openly by NCERT. Useful for: Paper 1 and Papers 2A/2B Mathematics - Class 12 ch. 7-13 (Integrals to Probability). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 and Papers 2A/2B Mathematics - Class 12 ch. 7-13 (Integrals to Probability)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-11', '(NEW) Mathematics Part II - NCERT Class 12 textbook (English)', 'https://diksha.gov.in/play/collection/do_31307360997163827212155?contentType=TextBook', 'NCERT')
+    },
+    {
+      id: 'res-jee-12', title: 'SATHEE - Free JEE, NEET, SSC, CUET Coaching by IIT Kanpur', subject: 'Foundation Textbooks & Open Courses',
+      author: 'Ministry of Education with IIT Kanpur', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'PRACTICE_TOOL',
+      url: 'https://sathee.iitk.ac.in/',
+      description: 'Published openly by Ministry of Education with IIT Kanpur. Useful for: Paper 1 - whole PCM syllabus (lectures, PYQs, mock tests, live doubt clearing); free, some parts need a free login. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 - whole PCM syllabus (lectures, PYQs, mock tests, live doubt clearing); free, some parts need a free login',
+      officialTag: 'OFFICIAL OPEN RESOURCE', isEssential: true,
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-12', 'SATHEE - Free JEE, NEET, SSC, CUET Coaching by IIT Kanpur', 'https://sathee.iitk.ac.in/', 'Ministry of Education with IIT Kanpur')
+    },
+    {
+      id: 'res-jee-13', title: 'Physics 11 | SATHEE JEE', subject: 'Physics',
+      author: 'SATHEE (Ministry of Education + IIT Kanpur)', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://sathee.iitk.ac.in/sathee-jee/jee/physics_11/',
+      description: 'Published openly by SATHEE (Ministry of Education + IIT Kanpur). Useful for: Paper 1 Physics - Class 11, chapter by chapter (e.g. Prof. Sanjeev Sanghi, Prof. H C Verma). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 Physics - Class 11, chapter by chapter (e.g. Prof. Sanjeev Sanghi, Prof. H C Verma)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-13', 'Physics 11 | SATHEE JEE', 'https://sathee.iitk.ac.in/sathee-jee/jee/physics_11/', 'SATHEE (Ministry of Education + IIT Kanpur)')
+    },
+    {
+      id: 'res-jee-14', title: 'Physics 12 | SATHEE JEE', subject: 'Physics',
+      author: 'SATHEE (Ministry of Education + IIT Kanpur)', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://sathee.iitk.ac.in/sathee-jee/jee/physics_12/',
+      description: 'Published openly by SATHEE (Ministry of Education + IIT Kanpur). Useful for: Paper 1 Physics - Class 12, chapter by chapter. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 Physics - Class 12, chapter by chapter',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-14', 'Physics 12 | SATHEE JEE', 'https://sathee.iitk.ac.in/sathee-jee/jee/physics_12/', 'SATHEE (Ministry of Education + IIT Kanpur)')
+    },
+    {
+      id: 'res-jee-15', title: 'Chemistry 11 | SATHEE JEE', subject: 'Chemistry',
+      author: 'SATHEE (Ministry of Education + IIT Kanpur)', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://sathee.iitk.ac.in/sathee-jee/jee/chemistry_11/',
+      description: 'Published openly by SATHEE (Ministry of Education + IIT Kanpur). Useful for: Paper 1 Chemistry - Class 11, chapter by chapter. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 Chemistry - Class 11, chapter by chapter',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-15', 'Chemistry 11 | SATHEE JEE', 'https://sathee.iitk.ac.in/sathee-jee/jee/chemistry_11/', 'SATHEE (Ministry of Education + IIT Kanpur)')
+    },
+    {
+      id: 'res-jee-16', title: 'Chemistry 12 | SATHEE JEE', subject: 'Chemistry',
+      author: 'SATHEE (Ministry of Education + IIT Kanpur)', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://sathee.iitk.ac.in/sathee-jee/jee/chemistry_12/',
+      description: 'Published openly by SATHEE (Ministry of Education + IIT Kanpur). Useful for: Paper 1 Chemistry - Class 12, chapter by chapter (e.g. Prof. Ashish Kumar Gupta, Prof. Mintu Halder). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 Chemistry - Class 12, chapter by chapter (e.g. Prof. Ashish Kumar Gupta, Prof. Mintu Halder)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-16', 'Chemistry 12 | SATHEE JEE', 'https://sathee.iitk.ac.in/sathee-jee/jee/chemistry_12/', 'SATHEE (Ministry of Education + IIT Kanpur)')
+    },
+    {
+      id: 'res-jee-17', title: 'Maths 11 | SATHEE JEE', subject: 'Mathematics',
+      author: 'SATHEE (Ministry of Education + IIT Kanpur)', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://sathee.iitk.ac.in/sathee-jee/jee/maths_11/',
+      description: 'Published openly by SATHEE (Ministry of Education + IIT Kanpur). Useful for: Paper 1 and Papers 2A/2B Mathematics - Class 11. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 and Papers 2A/2B Mathematics - Class 11',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-17', 'Maths 11 | SATHEE JEE', 'https://sathee.iitk.ac.in/sathee-jee/jee/maths_11/', 'SATHEE (Ministry of Education + IIT Kanpur)')
+    },
+    {
+      id: 'res-jee-18', title: 'Maths 12 | SATHEE JEE', subject: 'Mathematics',
+      author: 'SATHEE (Ministry of Education + IIT Kanpur)', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://sathee.iitk.ac.in/sathee-jee/jee/maths_12/',
+      description: 'Published openly by SATHEE (Ministry of Education + IIT Kanpur). Useful for: Paper 1 and Papers 2A/2B Mathematics - Class 12 (e.g. Dr. Saif K. Mohammed). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 and Papers 2A/2B Mathematics - Class 12 (e.g. Dr. Saif K. Mohammed)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-18', 'Maths 12 | SATHEE JEE', 'https://sathee.iitk.ac.in/sathee-jee/jee/maths_12/', 'SATHEE (Ministry of Education + IIT Kanpur)')
+    },
+    {
+      id: 'res-jee-19', title: 'JEE NCERT Exemplar | SATHEE JEE', subject: 'Foundation Textbooks & Open Courses',
+      author: 'SATHEE (Ministry of Education + IIT Kanpur)', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://sathee.iitk.ac.in/sathee-jee/ncert-books/jee-ncert-exemplar/',
+      description: 'Published openly by SATHEE (Ministry of Education + IIT Kanpur). Useful for: Paper 1 - NCERT Exemplar for Physics, Chemistry, Maths, Class 11 and 12. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 - NCERT Exemplar for Physics, Chemistry, Maths, Class 11 and 12',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-19', 'JEE NCERT Exemplar | SATHEE JEE', 'https://sathee.iitk.ac.in/sathee-jee/ncert-books/jee-ncert-exemplar/', 'SATHEE (Ministry of Education + IIT Kanpur)')
+    },
+    {
+      id: 'res-jee-20', title: 'JEE Mock Tests - SATHEE practice portal', subject: 'Foundation Textbooks & Open Courses',
+      author: 'SATHEE (Ministry of Education + IIT Kanpur)', type: 'ONLINE_TOOL', resourceFormat: 'ONLINE_TOOL', role: 'PRACTICE_TOOL',
+      url: 'https://sathee.iitk.ac.in/jee-mock-tests',
+      description: 'Published openly by SATHEE (Ministry of Education + IIT Kanpur). Useful for: Paper 1 - full and subject-wise mock tests. The page asks you to sign in to SATHEE (free) before a test starts. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 - full and subject-wise mock tests',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-20', 'JEE Mock Tests - SATHEE practice portal', 'https://sathee.iitk.ac.in/jee-mock-tests', 'SATHEE (Ministry of Education + IIT Kanpur)')
+    },
+    {
+      id: 'res-jee-21', title: 'Mock Test - NTA Test Practice Centre', subject: 'Foundation Textbooks & Open Courses',
+      author: 'National Testing Agency (Ministry of Education)', type: 'ONLINE_TOOL', resourceFormat: 'ONLINE_TOOL', role: 'PRACTICE_TOOL',
+      url: 'https://nta.ac.in/Quiz',
+      description: 'Published openly by National Testing Agency (Ministry of Education). Useful for: Paper 1 / Paper 2 - familiarity with the computer-based test (choose \'JEE-Main\'). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 / Paper 2 - familiarity with the computer-based test (choose \'JEE-Main\')',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-21', 'Mock Test - NTA Test Practice Centre', 'https://nta.ac.in/Quiz', 'National Testing Agency (Ministry of Education)')
+    },
+    {
+      id: 'res-jee-22', title: 'National Test Abhyas', subject: 'Foundation Textbooks & Open Courses',
+      author: 'National Testing Agency', type: 'ONLINE_TOOL', resourceFormat: 'ONLINE_TOOL', role: 'PRACTICE_TOOL',
+      url: 'https://nta.ac.in/Abhyas',
+      description: 'Published openly by National Testing Agency. Useful for: Paper 1 - daily mock tests for Engineering (app-based). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 - daily mock tests for Engineering (app-based)',
+      officialTag: 'OFFICIAL OPEN RESOURCE', isEssential: true,
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-22', 'National Test Abhyas', 'https://nta.ac.in/Abhyas', 'National Testing Agency')
+    },
+    {
+      id: 'res-jee-23', title: 'Content Based Lectures by [IIT PAL] - for JEE MAIN and NEET-UG', subject: 'Foundation Textbooks & Open Courses',
+      author: 'National Testing Agency', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://nta.ac.in/LecturesContent',
+      description: 'Published openly by National Testing Agency. Useful for: Paper 1 - Physics, Chemistry, Mathematics lecture channels. GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 - Physics, Chemistry, Mathematics lecture channels',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-23', 'Content Based Lectures by [IIT PAL] - for JEE MAIN and NEET-UG', 'https://nta.ac.in/LecturesContent', 'National Testing Agency')
+    },
+    {
+      id: 'res-jee-24', title: 'SATHEE (Competitive Exam) - SWAYAM PRABHA', subject: 'Foundation Textbooks & Open Courses',
+      author: 'SWAYAM PRABHA (INFLIBNET Centre, Ministry of Education)', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.swayamprabha.gov.in/about/competitive',
+      description: 'Published openly by SWAYAM PRABHA (INFLIBNET Centre, Ministry of Education). Useful for: Paper 1 - SATHEE\'s free 24x7 engineering-entrance channel (DTH and web). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 - SATHEE\'s free 24x7 engineering-entrance channel (DTH and web)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-24', 'SATHEE (Competitive Exam) - SWAYAM PRABHA', 'https://www.swayamprabha.gov.in/about/competitive', 'SWAYAM PRABHA (INFLIBNET Centre, Ministry of Education)')
+    },
+    {
+      id: 'res-jee-25', title: 'CH 22: IIT Delhi: Physics [ IIT-PAL]', subject: 'Physics',
+      author: 'IIT-PAL / SWAYAM PRABHA Channel 22 (IIT Delhi)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCwNr8peMxn8-Nc2V_RZsRvg',
+      description: 'Published openly by IIT-PAL / SWAYAM PRABHA Channel 22 (IIT Delhi). Useful for: Paper 1 Physics - topic playlists (kinematics, rotation, electrostatics, EM waves, optics ...). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 Physics - topic playlists (kinematics, rotation, electrostatics, EM waves, optics ...)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-25', 'CH 22: IIT Delhi: Physics [ IIT-PAL]', 'https://www.youtube.com/channel/UCwNr8peMxn8-Nc2V_RZsRvg', 'IIT-PAL / SWAYAM PRABHA Channel 22 (IIT Delhi)')
+    },
+    {
+      id: 'res-jee-26', title: 'CH-22 Chemistry [ IIT-PAL]', subject: 'Chemistry',
+      author: 'IIT-PAL / SWAYAM PRABHA Channel 22', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UC3Zv0XxBjYlWMjbMv8ODE8Q',
+      description: 'Published openly by IIT-PAL / SWAYAM PRABHA Channel 22. Useful for: Paper 1 Chemistry - chapter playlists (atomic structure to biomolecules). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 Chemistry - chapter playlists (atomic structure to biomolecules)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-26', 'CH-22 Chemistry [ IIT-PAL]', 'https://www.youtube.com/channel/UC3Zv0XxBjYlWMjbMv8ODE8Q', 'IIT-PAL / SWAYAM PRABHA Channel 22')
+    },
+    {
+      id: 'res-jee-27', title: 'Ch-22 Mathematics [ IIT-PAL]', subject: 'Mathematics',
+      author: 'IIT-PAL / SWAYAM PRABHA Channel 22', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCfz4W0rG8HoyyrrK6qNc1rA',
+      description: 'Published openly by IIT-PAL / SWAYAM PRABHA Channel 22. Useful for: Paper 1 and Papers 2A/2B Mathematics - topic playlists (complex numbers, matrices, calculus, probability ...). GovOS links to the publisher’s own copy and stores nothing.',
+      recommendedFor: 'Paper 1 and Papers 2A/2B Mathematics - topic playlists (complex numbers, matrices, calculus, probability ...)',
+      officialTag: 'OFFICIAL OPEN RESOURCE',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: openResource('prov-res-jee-27', 'Ch-22 Mathematics [ IIT-PAL]', 'https://www.youtube.com/channel/UCfz4W0rG8HoyyrrK6qNc1rA', 'IIT-PAL / SWAYAM PRABHA Channel 22')
+    },
+    {
+      id: 'res-jee-28', title: 'SATHEE live classes — the Prutor Ai channel', subject: 'Foundation Textbooks & Open Courses',
+      author: 'Prutor Ai (runs SATHEE’s lessons; linked from sathee.iitk.ac.in)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCCCGFJEyhssBpgFGmNTfzZQ',
+      description: 'SATHEE’s live classes and lectures (JEE among other exams), on the YouTube channel “Prutor Ai”. SATHEE is an initiative of IIT Kanpur and the Ministry of Education, and its website links to this channel — but the channel is run by Prutor Ai, not by IIT Kanpur or the Ministry, so GovOS does not present it as an official source. GovOS links to it and stores nothing.',
+      recommendedFor: 'Paper 1 - SATHEE live classes and lectures (JEE among other exams)',
+      officialTag: 'LINKED FROM SATHEE · NOT A GOVERNMENT CHANNEL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: {
+        id: 'prov-res-jee-28', documentTitle: 'Prutor Ai (YouTube channel)', officialUrl: 'https://www.youtube.com/channel/UCCCGFJEyhssBpgFGmNTfzZQ', publishedDate: '',
+        verifiedDate: RESOURCE_CHECK, verifiedBy: `GovOS link check — channel identity read from its own page on ${RESOURCE_CHECK}; sathee.iitk.ac.in links to it`,
+        taxonomyType: 'RECOMMENDATION', verificationLevel: 'UNDER_VERIFICATION',
+        excerptText: 'The channel describes itself as “SATHEE - An Initiative by IIT Kanpur & Ministry of Education (Govt. of India)” and SATHEE’s website links to it, but it is run by Prutor Ai. Being linked from an official site does not make it official; GovOS has not fact-checked its lessons, and NTA’s documents govern wherever a lesson disagrees.'
+      }
+    },
+    {
+      id: 'res-jee-29', title: 'NCERT Physics Class 11 | Khan Academy', subject: 'Physics',
+      author: 'Khan Academy (non-profit)', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.khanacademy.org/science/in-in-class11th-physics',
+      description: 'Published openly by Khan Academy (non-profit). Useful for: Paper 1 Physics - Class 11 (units follow the NCERT book). GovOS links to the publisher’s own copy and stores nothing. It is not a government publication.',
+      recommendedFor: 'Paper 1 Physics - Class 11 (units follow the NCERT book)',
+      officialTag: 'OPEN RESOURCE (TRUSTED, NOT A GOVERNMENT BODY)',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: { ...openResource('prov-res-jee-29', 'NCERT Physics Class 11 | Khan Academy', 'https://www.khanacademy.org/science/in-in-class11th-physics', 'Khan Academy (non-profit)'), taxonomyType: 'RECOMMENDATION', verificationLevel: 'UNDER_VERIFICATION' }
+    },
+    {
+      id: 'res-jee-30', title: 'NCERT Physics Class 12 | Khan Academy', subject: 'Physics',
+      author: 'Khan Academy (non-profit)', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.khanacademy.org/science/in-in-class-12th-physics-india',
+      description: 'Published openly by Khan Academy (non-profit). Useful for: Paper 1 Physics - Class 12, units 1-14. GovOS links to the publisher’s own copy and stores nothing. It is not a government publication.',
+      recommendedFor: 'Paper 1 Physics - Class 12, units 1-14',
+      officialTag: 'OPEN RESOURCE (TRUSTED, NOT A GOVERNMENT BODY)',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: { ...openResource('prov-res-jee-30', 'NCERT Physics Class 12 | Khan Academy', 'https://www.khanacademy.org/science/in-in-class-12th-physics-india', 'Khan Academy (non-profit)'), taxonomyType: 'RECOMMENDATION', verificationLevel: 'UNDER_VERIFICATION' }
+    },
+    {
+      id: 'res-jee-31', title: 'NCERT Chemistry Class 11 | Khan Academy', subject: 'Chemistry',
+      author: 'Khan Academy (non-profit)', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.khanacademy.org/science/class-11-chemistry-india',
+      description: 'Published openly by Khan Academy (non-profit). Useful for: Paper 1 Chemistry - Class 11, units 1-9. GovOS links to the publisher’s own copy and stores nothing. It is not a government publication.',
+      recommendedFor: 'Paper 1 Chemistry - Class 11, units 1-9',
+      officialTag: 'OPEN RESOURCE (TRUSTED, NOT A GOVERNMENT BODY)',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: { ...openResource('prov-res-jee-31', 'NCERT Chemistry Class 11 | Khan Academy', 'https://www.khanacademy.org/science/class-11-chemistry-india', 'Khan Academy (non-profit)'), taxonomyType: 'RECOMMENDATION', verificationLevel: 'UNDER_VERIFICATION' }
+    },
+    {
+      id: 'res-jee-32', title: 'NCERT Chemistry Class 12 | Khan Academy', subject: 'Chemistry',
+      author: 'Khan Academy (non-profit)', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.khanacademy.org/science/class-12-chemistry-india',
+      description: 'Published openly by Khan Academy (non-profit). Useful for: Paper 1 Chemistry - Class 12, units 1-10. GovOS links to the publisher’s own copy and stores nothing. It is not a government publication.',
+      recommendedFor: 'Paper 1 Chemistry - Class 12, units 1-10',
+      officialTag: 'OPEN RESOURCE (TRUSTED, NOT A GOVERNMENT BODY)',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: { ...openResource('prov-res-jee-32', 'NCERT Chemistry Class 12 | Khan Academy', 'https://www.khanacademy.org/science/class-12-chemistry-india', 'Khan Academy (non-profit)'), taxonomyType: 'RECOMMENDATION', verificationLevel: 'UNDER_VERIFICATION' }
+    },
+    {
+      id: 'res-jee-33', title: 'NCERT Math Class 11 | Khan Academy', subject: 'Mathematics',
+      author: 'Khan Academy (non-profit)', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.khanacademy.org/math/ncert-class-11',
+      description: 'Published openly by Khan Academy (non-profit). Useful for: Paper 1 and Papers 2A/2B Mathematics - Class 11. GovOS links to the publisher’s own copy and stores nothing. It is not a government publication.',
+      recommendedFor: 'Paper 1 and Papers 2A/2B Mathematics - Class 11',
+      officialTag: 'OPEN RESOURCE (TRUSTED, NOT A GOVERNMENT BODY)',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: { ...openResource('prov-res-jee-33', 'NCERT Math Class 11 | Khan Academy', 'https://www.khanacademy.org/math/ncert-class-11', 'Khan Academy (non-profit)'), taxonomyType: 'RECOMMENDATION', verificationLevel: 'UNDER_VERIFICATION' }
+    },
+    {
+      id: 'res-jee-34', title: 'NCERT Math Class 12 | Khan Academy', subject: 'Mathematics',
+      author: 'Khan Academy (non-profit)', type: 'OFFICIAL_PORTAL', resourceFormat: 'OFFICIAL_PORTAL', role: 'STUDY_MATERIAL',
+      url: 'https://www.khanacademy.org/math/ncert-class-12',
+      description: 'Published openly by Khan Academy (non-profit). Useful for: Paper 1 and Papers 2A/2B Mathematics - Class 12, units 1-13. GovOS links to the publisher’s own copy and stores nothing. It is not a government publication.',
+      recommendedFor: 'Paper 1 and Papers 2A/2B Mathematics - Class 12, units 1-13',
+      officialTag: 'OPEN RESOURCE (TRUSTED, NOT A GOVERNMENT BODY)',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: { ...openResource('prov-res-jee-34', 'NCERT Math Class 12 | Khan Academy', 'https://www.khanacademy.org/math/ncert-class-12', 'Khan Academy (non-profit)'), taxonomyType: 'RECOMMENDATION', verificationLevel: 'UNDER_VERIFICATION' }
+    },
+    {
+      id: 'res-jee-35', title: 'JEE Wallah — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'JEE Wallah (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCVJU_IChPMOe8RWkdVQjtfQ', youtubeUrl: 'https://www.youtube.com/channel/UCVJU_IChPMOe8RWkdVQjtfQ',
+      description: 'A free YouTube channel candidates widely follow (3.39M subscribers as read on its own page on 2026-10-06). Useful for: Paper 1 - Physics, Chemistry, Maths (PW\'s JEE channel). Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with NTA’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Paper 1 - Physics, Chemistry, Maths (PW\'s JEE channel).',
+      officialTag: 'FREE ON YOUTUBE · 3.39M SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-jee-35', 'JEE Wallah', 'https://www.youtube.com/channel/UCVJU_IChPMOe8RWkdVQjtfQ', '3.39M', 'NTA')
+    },
+    {
+      id: 'res-jee-36', title: 'Vedantu JEE Made Ejee — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'Vedantu JEE Made Ejee (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UC91RZv71f8p0VV2gaFI07pg', youtubeUrl: 'https://www.youtube.com/channel/UC91RZv71f8p0VV2gaFI07pg',
+      description: 'A free YouTube channel candidates widely follow (2.51M subscribers as read on its own page on 2026-10-06). Useful for: Paper 1 - Physics, Chemistry, Maths. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with NTA’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Paper 1 - Physics, Chemistry, Maths.',
+      officialTag: 'FREE ON YOUTUBE · 2.51M SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-jee-36', 'Vedantu JEE Made Ejee', 'https://www.youtube.com/channel/UC91RZv71f8p0VV2gaFI07pg', '2.51M', 'NTA')
+    },
+    {
+      id: 'res-jee-37', title: 'Unacademy JEE Official — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'Unacademy JEE Official (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCZNNx4KYmCkwxCLdsHyWqQA', youtubeUrl: 'https://www.youtube.com/channel/UCZNNx4KYmCkwxCLdsHyWqQA',
+      description: 'A free YouTube channel candidates widely follow (2.26M subscribers as read on its own page on 2026-10-06). Useful for: Paper 1 - Physics, Chemistry, Maths. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with NTA’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Paper 1 - Physics, Chemistry, Maths.',
+      officialTag: 'FREE ON YOUTUBE · 2.26M SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-jee-37', 'Unacademy JEE Official', 'https://www.youtube.com/channel/UCZNNx4KYmCkwxCLdsHyWqQA', '2.26M', 'NTA')
+    },
+    {
+      id: 'res-jee-38', title: 'Mohit Tyagi — free YouTube lessons', subject: 'Foundation Textbooks & Open Courses',
+      author: 'Mohit Tyagi (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCpyc1eTpM1cA3P0ZWym4clw', youtubeUrl: 'https://www.youtube.com/channel/UCpyc1eTpM1cA3P0ZWym4clw',
+      description: 'A free YouTube channel candidates widely follow (2.22M subscribers as read on its own page on 2026-10-06). Useful for: Paper 1 - mainly Mathematics, with Physics and Chemistry. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with NTA’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Paper 1 - mainly Mathematics, with Physics and Chemistry.',
+      officialTag: 'FREE ON YOUTUBE · 2.22M SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-jee-38', 'Mohit Tyagi', 'https://www.youtube.com/channel/UCpyc1eTpM1cA3P0ZWym4clw', '2.22M', 'NTA')
+    },
+    {
+      id: 'res-jee-39', title: 'Physics Galaxy — free YouTube lessons', subject: 'Physics',
+      author: 'Physics Galaxy (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCgBmfNILAlXmGv3CsJ8oFJA', youtubeUrl: 'https://www.youtube.com/channel/UCgBmfNILAlXmGv3CsJ8oFJA',
+      description: 'A free YouTube channel candidates widely follow (1.38M subscribers as read on its own page on 2026-10-06). Useful for: Paper 1 Physics. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with NTA’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Paper 1 Physics.',
+      officialTag: 'FREE ON YOUTUBE · 1.38M SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-jee-39', 'Physics Galaxy', 'https://www.youtube.com/channel/UCgBmfNILAlXmGv3CsJ8oFJA', '1.38M', 'NTA')
+    },
+    {
+      id: 'res-jee-40', title: 'Motion - NV Sir — free YouTube lessons', subject: 'Physics',
+      author: 'Motion - NV Sir (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCVUjsfIErUfWI57ep1L7B6Q', youtubeUrl: 'https://www.youtube.com/channel/UCVUjsfIErUfWI57ep1L7B6Q',
+      description: 'A free YouTube channel candidates widely follow (1.03M subscribers as read on its own page on 2026-10-06). Useful for: Paper 1 - Physics mainly. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with NTA’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Paper 1 - Physics mainly.',
+      officialTag: 'FREE ON YOUTUBE · 1.03M SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-jee-40', 'Motion - NV Sir', 'https://www.youtube.com/channel/UCVUjsfIErUfWI57ep1L7B6Q', '1.03M', 'NTA')
+    },
+    {
+      id: 'res-jee-41', title: 'MathonGo — free YouTube lessons', subject: 'Mathematics',
+      author: 'MathonGo (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCNn75PJi2J5OmZGuLCZGJPg', youtubeUrl: 'https://www.youtube.com/channel/UCNn75PJi2J5OmZGuLCZGJPg',
+      description: 'A free YouTube channel candidates widely follow (538K subscribers as read on its own page on 2026-10-06). Useful for: Paper 1 Mathematics (also used for 2A/2B Mathematics). Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with NTA’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Paper 1 Mathematics (also used for 2A/2B Mathematics).',
+      officialTag: 'FREE ON YOUTUBE · 538K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-jee-41', 'MathonGo', 'https://www.youtube.com/channel/UCNn75PJi2J5OmZGuLCZGJPg', '538K', 'NTA')
+    },
+    {
+      id: 'res-jee-42', title: 'Sachin Rana [IITB] — free YouTube lessons', subject: 'Chemistry',
+      author: 'Sachin Rana [IITB] (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UC1-ZdFLBukC6fTZ8QRWvpDw', youtubeUrl: 'https://www.youtube.com/channel/UC1-ZdFLBukC6fTZ8QRWvpDw',
+      description: 'A free YouTube channel candidates widely follow (287K subscribers as read on its own page on 2026-10-06). Useful for: Paper 1 Chemistry. Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with NTA’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Paper 1 Chemistry.',
+      officialTag: 'FREE ON YOUTUBE · 287K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-jee-42', 'Sachin Rana [IITB]', 'https://www.youtube.com/channel/UC1-ZdFLBukC6fTZ8QRWvpDw', '287K', 'NTA')
+    },
+    {
+      id: 'res-jee-43', title: 'PW Design & Arch — free YouTube lessons', subject: 'Architecture & Planning Aptitude',
+      author: 'PW Design & Arch (YouTube channel)', type: 'VIDEO_LECTURE', resourceFormat: 'YOUTUBE_CHANNEL', role: 'LECTURE_VIDEO',
+      url: 'https://www.youtube.com/channel/UCNxT9vCRqFKeYVuwUWImY8w', youtubeUrl: 'https://www.youtube.com/channel/UCNxT9vCRqFKeYVuwUWImY8w',
+      description: 'A free YouTube channel candidates widely follow (53.3K subscribers as read on its own page on 2026-10-06). Useful for: Paper 2A B.Arch / 2B B.Planning - aptitude and drawing (description lists NATA and JEE Main B.Arch). Coaching content — not official and not fact-checked by GovOS; paid courses advertised alongside can be ignored. Where a lesson disagrees with NTA’s notice, the notice governs.',
+      recommendedFor: 'Free video lessons for Paper 2A B.Arch / 2B B.Planning - aptitude and drawing (description lists NATA and JEE Main B.Arch).',
+      officialTag: 'FREE ON YOUTUBE · 53.3K SUBSCRIBERS · COACHING, NOT OFFICIAL',
+      linkVerifiedDate: RESOURCE_CHECK,
+      provenance: coachingSource('prov-res-jee-43', 'PW Design & Arch', 'https://www.youtube.com/channel/UCNxT9vCRqFKeYVuwUWImY8w', '53.3K', 'NTA')
+    }
+  ],
+  faqs: [
+    { id: 'faq-jee-01', question: 'Is there an age limit for JEE (Main) 2026?',
+      answer: 'No. There is no age limit for appearing; candidates who passed Class XII (or equivalent) in 2024 or 2025, or are appearing in 2026, may appear whatever their age. The institute you seek admission to may have its own age criteria.',
+      officialClause: 'Information Bulletin p.18, para 3.1', provenance: jeeP_age },
+    { id: 'faq-jee-02', question: 'I passed Class XII in 2023. Can I appear?',
+      answer: 'No. Candidates who passed Class XII (or equivalent) in 2023 or before are not eligible for JEE (Main) - 2026. The passing year is the year your result was first declared “pass”; an improvement attempt does not count as a first attempt.',
+      officialClause: 'Information Bulletin p.19, para 3.3', provenance: jeeP_year },
+    { id: 'faq-jee-03', question: 'How many sessions are there, and do I apply separately for each?',
+      answer: 'Two: Session 1 (January 2026) and Session 2 (April 2026). You apply and pay for each separately, using the same Application Number. You may sit one session or both; if you sit both, the better of your two total NTA scores counts.',
+      officialClause: 'FAQ 4 and 6; Information Bulletin p.3, para 2 (i)', provenance: jeeP_faqSeparate },
+    { id: 'faq-jee-04', question: 'Is there negative marking?',
+      answer: 'Yes. Every correct answer earns +4 and every incorrect answer −1, in Section A (MCQs) and Section B (numerical value) alike; an unanswered question earns 0. Paper 2A’s Drawing Test has no negative marking.',
+      officialClause: 'Information Bulletin pp.11–14, para 2.4', provenance: jeeP_marking },
+    { id: 'faq-jee-05', question: 'Can I use a calculator in the examination?',
+      answer: 'No. The use of calculators in any form is not permitted in JEE (Main).',
+      officialClause: 'FAQ 7', provenance: jeeP_faqCalc },
+    { id: 'faq-jee-06', question: 'What is a percentile (NTA score), and is it my percentage of marks?',
+      answer: 'Your NTA score is a percentile: the percentage of candidates in your shift who scored the same as you or lower — not your percentage of marks. The topper of every shift gets 100. It is calculated to 7 decimal places, and the total’s percentile is not an average of the subject percentiles.',
+      officialClause: 'Information Bulletin p.55, Appendix VII', provenance: jeeP_percentile },
+    { id: 'faq-jee-07', question: 'Who can take JEE (Advanced) 2026?',
+      answer: 'Candidates among the top 2,50,000 successful candidates (all categories) in the B.E./B.Tech. paper of JEE (Main) - 2026. The 20 April 2026 press release gives each category’s cut-off NTA score for it (in Cutoff History). JEE (Advanced) has its own website, jeeadv.ac.in, for its other conditions.',
+      officialClause: 'Information Bulletin p.38, para 5.8.4', provenance: jeeP_advanced },
+    { id: 'faq-jee-08', question: 'What do I need for admission to an NIT, IIIT or CFTI?',
+      answer: 'The admission rule NTA prints from CSAB: Class XII (or equivalent) passed with at least five subjects and at least 75% aggregate (65% for SC, ST and PwD), or a place in your board’s category-wise top 20 percentile. Seats are allotted on the All India Rank through JoSAA / CSAB; their own rules govern.',
+      officialClause: 'Information Bulletin p.36, para 5.8.1', provenance: jeeP_nit },
+    { id: 'faq-jee-09', question: 'Can I change my examination city or centre?',
+      answer: 'No. The allotted examination centre cannot be changed in any case, and NTA does not change an allotted date or shift because of a clash with another examination.',
+      officialClause: 'FAQ 32 and 27', provenance: jeeP_faqCentre },
+    { id: 'faq-jee-10', question: 'Can my result be re-evaluated?',
+      answer: 'No. There is no re-evaluation or re-checking of the result. Before the result you can challenge the provisional answer key, at ₹200 per question, non-refundable.',
+      officialClause: 'Information Bulletin p.36, para 5.7.3; p.32, para 5.6.1', provenance: jeeP_noReeval },
+    { id: 'faq-jee-11', question: 'Do I upload my category certificate?',
+      answer: 'No. You enter its certificate number, date of issue and issuing authority; if you have only applied for it, the acknowledgement number, date and authority. The certificate is checked at admission.',
+      officialClause: 'FAQ 25', provenance: jeeP_faqCategory },
+    { id: 'faq-jee-12', question: 'Can I cancel my application after submitting it?',
+      answer: 'No. Once submitted successfully, the online application cannot be cancelled or withdrawn.',
+      officialClause: 'FAQ 30', provenance: jeeP_faqCancel }
+  ],
+  applicationGuide: {
+    officialPortal: JEE_SITE,
+    simulator: JEE_APPLICATION_SIMULATOR,
+    otrSteps: [
+      {
+        stepNumber: 1,
+        title: 'Read the bulletin and check that you may appear',
+        portalUrl: JEE_SITE,
+        instructions: [
+          'There is no age limit; Class XII (or equivalent) passed in 2024 or 2025, or appearing in 2026.',
+          'Decide which paper(s): Paper 1 for B.E./B.Tech., Paper 2A for B.Arch., Paper 2B for B.Planning.'
+        ],
+        mandatoryFields: [],
+        commonMistakesToAvoid: ['Applying with Class XII passed in 2023 or before — not eligible for the 2026 cycle.'],
+        provenance: jeeP_year
+      },
+      {
+        stepNumber: 2,
+        title: 'Register and note the Application Number',
+        portalUrl: JEE_SITE,
+        instructions: [
+          'Register, create a password (8 to 13 characters, with an upper-case and a lower-case letter, a number and a special character) and a security question.',
+          'Note the system-generated Application Number; it is used for both sessions and in all correspondence.'
+        ],
+        mandatoryFields: ['Personal details', 'Password', 'Security question and answer'],
+        commonMistakesToAvoid: ['Registering a second time: more than one Application Form is treated as unfair means.'],
+        provenance: jeeP_steps
+      },
+      {
+        stepNumber: 3,
+        title: 'Fill the Application Form and upload the images',
+        portalUrl: JEE_SITE,
+        instructions: [
+          'Choose the paper(s), up to four examination cities in the State of your present or permanent address, and the medium of the question paper (it cannot be changed later).',
+          'Capture a live photograph, and upload the scanned photograph (JPG/JPEG, 10–200 kb), signature (JPG/JPEG, 10–100 kb), Class 10 certificate (PDF, 50–300 kb) and, where applicable, the PwD / UDID certificate (PDF, 50–300 kb).',
+          'If you verify your identity by a method other than Aadhaar or DigiLocker, upload the identity proof (JPG/JPEG, 10–200 kb).'
+        ],
+        mandatoryFields: ['Paper(s)', 'Examination cities (up to four)', 'Medium of question paper', 'Educational qualification', 'Live photograph', 'Scanned photograph', 'Signature', 'Class 10 certificate'],
+        commonMistakesToAvoid: [
+          'Uploading someone else’s photograph, signature or certificate: treated as unfair means.',
+          'Expecting to change the medium of the question paper later — it cannot be changed.'
+        ],
+        provenance: jeeP_uploads
+      },
+      {
+        stepNumber: 4,
+        title: 'Pay the fee online and keep the Confirmation Page',
+        portalUrl: JEE_SITE,
+        instructions: [
+          'Pay by Net Banking, Credit Card, Debit Card or UPI. Processing charges and GST are extra.',
+          'The Confirmation Page is generated only after a successful payment; if it is not, pay again — duplicate payments are refunded after the result.',
+          'For Session 2, log in with the same Application Number and pay Session 2’s fee in its own window.'
+        ],
+        mandatoryFields: ['Fee payment'],
+        commonMistakesToAvoid: ['Treating a payment with no Confirmation Page as complete.', 'Assuming Session 1 registration covers Session 2.'],
+        provenance: jeeP_payStep
+      }
+    ],
+    photoRules: {
+      documentType: 'Photograph',
+      dimensions: 'Not printed in the bulletin',
+      fileFormat: 'JPG/JPEG',
+      fileSize: 'Between 10 kb and 200 kb',
+      rules: [
+        'A recent passport-size photograph, in colour, with 80% of the face (without mask) visible including ears, against a white background.',
+        'A live photograph is also captured through your camera when you fill the form (or by scanning the QR code with a phone).'
+      ],
+      sampleDescription: 'A recent colour photograph, face uncovered and ears visible, on a white background.',
+      provenance: jeeP_photoLook
+    },
+    signatureRules: {
+      documentType: 'Signature',
+      dimensions: 'Not printed in the bulletin',
+      fileFormat: 'JPG/JPEG',
+      fileSize: 'Between 10 kb and 100 kb',
+      rules: ['Your own signature, clearly legible.'],
+      sampleDescription: 'The candidate’s own signature, scanned clearly.',
+      provenance: jeeP_uploads
+    },
+    certificateRules: [],
+    rejectionPitfalls: [
+      { pitfall: 'More than one Application Form', consequence: 'Treated as unfair means, even at a later stage; the result is cancelled.', prevention: 'Register once; Session 2 uses the same Application Number.' },
+      { pitfall: 'Someone else’s photograph, signature or certificate uploaded', consequence: 'Treated as unfair means.', prevention: 'Upload only your own, correctly.' },
+      { pitfall: 'Fee paid but no Confirmation Page generated', consequence: 'The transaction is cancelled; the application is not complete.', prevention: 'Pay again; duplicate payments are refunded after the final result.' },
+      { pitfall: 'Corrections sent by post, fax, WhatsApp, email or by hand', consequence: 'Not entertained.', prevention: 'Check every field before paying; use only NTA’s correction window.' }
+    ],
+    requiredDocuments: [
+      { id: 'doc-jee-photo', name: 'Scanned photograph', required: true, specifications: ['JPG/JPEG', '10 kb to 200 kb', 'Colour, 80% face visible including ears, white background'], provenance: jeeP_uploads },
+      { id: 'doc-jee-signature', name: 'Scanned signature', required: true, specifications: ['JPG/JPEG', '10 kb to 100 kb'], provenance: jeeP_uploads },
+      { id: 'doc-jee-class10', name: 'Class 10 or equivalent certificate / marks-sheet', required: true, specifications: ['PDF', '50 kb to 300 kb'], provenance: jeeP_uploads },
+      { id: 'doc-jee-id', name: 'Identity proof (only if not verifying through Aadhaar or DigiLocker)', required: false, specifications: ['JPG/JPEG', '10 kb to 200 kb'], provenance: jeeP_idProof },
+      { id: 'doc-jee-udid', name: 'Disability / UDID certificate (PwD / PwBD candidates)', required: false, specifications: ['PDF', '50 kb to 300 kb'], provenance: jeeP_idProof }
+    ],
+    fee: {
+      amounts: ['1000', '900', '800', '500', '2000', '1600'],
+      rules: [
+        { scope: 'One paper, centres in India — General, male', amount: '₹1000', isExempt: false },
+        { scope: 'One paper, centres in India — Gen-EWS / OBC (NCL), male', amount: '₹900', isExempt: false },
+        { scope: 'One paper, centres in India — General, Gen-EWS or OBC (NCL), female', amount: '₹800', isExempt: false },
+        { scope: 'One paper, centres in India — SC / ST / PwD / PwBD, and Third Gender', amount: '₹500', isExempt: false },
+        { scope: 'Two or more papers, centres in India — General / Gen-EWS / OBC (NCL), male', amount: '₹2000', isExempt: false },
+        { scope: 'Two or more papers, centres in India — General / Gen-EWS / OBC (NCL), female', amount: '₹1600', isExempt: false },
+        { scope: 'Two or more papers, centres in India — SC / ST / PwD / PwBD, and Third Gender', amount: '₹1000', isExempt: false },
+        { scope: 'Centres outside India', amount: '₹2500 to ₹10000, by category, gender and papers', isExempt: false }
+      ],
+      acceptedModes: ['Net Banking', 'Credit Card', 'Debit Card', 'UPI'],
+      exemptions: [],
+      statedAs: jeeP_fee.excerptText,
+      provenance: jeeP_fee
+    }
+  },
+  roadmapTracks: [],
+  examDayChecklist: [
+    { id: 'ed-jee-report', category: 'TIMING', title: 'Report two hours before the start', description: 'Entry, frisking, biometric registration and document checks run 7.00–8.30 AM for the morning shift and 1.00–2.30 PM for the afternoon one. A candidate who reaches after the gate closes is not let in, whatever the reason.', isMandatory: true, provenance: jeeP_report },
+    { id: 'ed-jee-admit', category: 'DOCUMENTS', title: 'Admit card with its Self Declaration', description: 'A clear A4 printout of the admit card downloaded from the NTA website, with the Self Declaration (Undertaking) filled in. Without it you are not allowed to appear.', isMandatory: true, provenance: jeeP_carry },
+    { id: 'ed-jee-photo-id', category: 'DOCUMENTS', title: 'One passport-size photograph and an original photo ID', description: 'The same photograph you uploaded, for the attendance sheet, and one original, valid, non-expired photo ID: school identity card, PAN card, voter ID, passport, Aadhaar (or e-Aadhaar) with photograph, Class XII board admit card with photograph, or bank passbook with photograph.', isMandatory: true, provenance: jeeP_photoId },
+    { id: 'ed-jee-pwd', category: 'DOCUMENTS', title: 'PwD / PwBD certificate, if you claim relaxation', description: 'The certificate issued by the authorised medical officer, or the certificate regarding physical limitation to write, as in the bulletin’s appendices.', isMandatory: false, provenance: jeeP_photoId },
+    { id: 'ed-jee-pen', category: 'ITEMS_ALLOWED', title: 'A simple transparent ball point pen', description: 'Listed among what you must carry. Rough work is done only on the rough sheets given at the centre, which you hand back with your name and Application Number on each.', isMandatory: true, provenance: jeeP_rough },
+    { id: 'ed-jee-prohibited', category: 'ITEMS_PROHIBITED', title: 'No geometry box, bag, paper, food, water, phone, calculator or watch with a calculator', description: 'Instruments, geometry or pencil box, handbag, purse, any paper or stationery, eatables and water, mobile phone, earphone, calculator, log tables, camera, electronic watches with calculator, any metallic item or electronic gadget are not allowed. Sikh candidates may wear Kara and Kirpan.', isMandatory: true, provenance: jeeP_prohibited },
+    { id: 'ed-jee-seat', category: 'CENTRE_INSTRUCTIONS', title: 'Sit only in the seat with your Roll Number', description: 'Changing seats is treated as unfair means and may lead to cancellation or debarment.', isMandatory: true,
+      provenance: jee('prov-jee-ed-seat', 'IB', 29, 'Para 5.4 (4)', 'A seat indicating Roll Number will be allotted to each candidate. Candidates should find and sit in their allocated seats only.') },
+    { id: 'ed-jee-subject', category: 'CENTRE_INSTRUCTIONS', title: 'Check the paper on screen is the one you opted for', description: 'If the question paper on the computer is not your opted subject, tell the invigilator.', isMandatory: true,
+      provenance: jee('prov-jee-ed-subject', 'IB', 29, 'Para 5.4 (5)', 'The candidate should ensure that the Question Paper available on the computer is as per candidate opted subject indicated in the Admit Card.') },
+    { id: 'ed-jee-no-leave', category: 'TIMING', title: 'You cannot leave before the test ends', description: 'Candidates are not allowed to leave the centre before the test concludes.', isMandatory: true, provenance: jeeP_faqLeave },
+    { id: 'ed-jee-no-retest', category: 'TIMING', title: 'There is no re-test', description: 'If you cannot appear on your date and shift for any reason, NTA gives no re-test.', isMandatory: true, provenance: jeeP_noRetest },
+    { id: 'ed-jee-ufm', category: 'CENTRE_INSTRUCTIONS', title: 'Unfair means can debar you for up to three years', description: 'Including possession of a prohibited item, impersonation, appearing in more than one shift, or tampering with the admit card; the result is cancelled and criminal action may follow.', isMandatory: true, provenance: jeeP_debar }
+  ],
+  eligibilityHighlights: [
+    { title: 'No age limit', body: 'There is no age limit for appearing in JEE (Main) - 2026; the institute you seek admission to may have its own (Information Bulletin para 3.1).', provenance: jeeP_age },
+    { title: 'Year of Class XII', body: 'Class XII (or equivalent) passed in 2024 or 2025, or appearing in 2026. Passed in 2023 or before: not eligible. The passing year is the year the result was first declared “pass”; an improvement attempt does not change it (para 3.3).', provenance: jeeP_year },
+    { title: 'Qualifying examinations', body: 'The final examination of the 10+2 system of a recognised Central or State board (CBSE, CISCE, etc.), or one of the equivalents listed: a two-year Intermediate / Pre-University course, NDA’s Joint Services Wing, NIOS Senior Secondary with five subjects, an AIU-recognised equivalent, HSC Vocational, a three-year AICTE / State-board diploma, GCE A level, the IB Diploma, BOSSE Sikkim (para 3.2).', provenance: jeeP_qe },
+    { title: 'State code of eligibility', body: 'The State from which you passed (or are appearing in) Class XII — not your native place or residence; for an improvement attempt, the State where you first passed (para 3.4).', provenance: jeeP_stateCode },
+    { title: 'After JEE (Main)', body: 'JEE (Advanced) - 2026: the top 2,50,000 successful candidates of the B.E./B.Tech. paper (para 5.8.4). NITs, IIITs and CFTIs (JoSAA / CSAB): Class XII with at least 75% aggregate (65% SC / ST / PwD), or the board’s category-wise top 20 percentile (para 5.8.1).', provenance: jeeP_advanced }
+  ],
+  officialLinks: [
+    { title: 'JEE (Main) — NTA', url: JEE_SITE, note: 'The application, the city intimation slip, the admit card, answer keys, question papers, results and every public notice.' },
+    { title: 'National Testing Agency', url: 'https://nta.ac.in', note: 'NTA’s own website; the bulletin names it for score and rank cards too.' },
+    { title: 'Information Bulletin – 2026 (PDF, 91 pages)', url: JEE_SOURCES.IB.url, note: 'Dates, fee, how to apply, the scheme and pattern of each paper, eligibility, reservations, exam-day rules, NTA scores and admission.', provenance: jeeP_about },
+    { title: 'Syllabus for JEE (Main) - 2026 (PDF)', url: JEE_SOURCES.SYL.url, note: 'Paper 1, Paper 2A and Paper 2B.', provenance: jeeP_syllabus },
+    { title: 'FAQs for JEE (Main) - 2026 (PDF)', url: JEE_SOURCES.FAQ.url, note: 'NTA’s 42 answers.', provenance: jeeP_faqSeparate },
+    { title: 'Press Release, 20 April 2026 — Paper 1 result (PDF, scanned)', url: JEE_SOURCES.RES.url, note: 'Dates held, candidates, the JEE (Advanced) cut-offs by category.', provenance: jeeP_resDeclared },
+    { title: 'Declaration of Final NTA Scores, Paper 2A (B.Arch.) and 2B (B.Planning) — as listed on the JEE (Main) website (PDF)', url: JEE_FILES + '2026/05/20260505152853066.pdf', note: 'Listed among NTA’s public notices. GovOS has not read this document; nothing on this page is taken from it.' },
+    { title: 'JoSAA — Joint Seat Allocation Authority', url: 'https://josaa.nic.in/', note: 'Named by the bulletin for seat allocation to NITs, IIITs and CFTIs; run by JoSAA, not by NTA.' },
+    { title: 'JEE (Advanced)', url: 'https://jeeadv.ac.in/', note: 'Named by the bulletin for JEE (Advanced) - 2026; run by the IITs, not by NTA.' }
+  ],
+  syllabusSourceNote: 'NTA’s Syllabus for JEE (Main) - 2026 (Paper 1: Mathematics, Physics and Chemistry; Paper 2A: Mathematics, Aptitude and Drawing; Paper 2B: Mathematics, Aptitude and Planning). Formulae the PDF’s text layer lost were read from its page images'
+};
+
+
 export const ALL_EXAMS: Exam[] = [
   SSC_CGL_EXAM,
   UPSC_CSE_EXAM,
   IBPS_PO_EXAM,
   APPSC_GROUP1_EXAM,
-  APPSC_GROUP2_EXAM
+  APPSC_GROUP2_EXAM,
+  TG_TET_INSERVICE_2026_II_EXAM,
+  JEE_MAIN_2026_EXAM
 ];
 
 

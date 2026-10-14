@@ -175,6 +175,17 @@ def test_changed_source_is_surfaced() -> None:
           result.changed_sources, ['https://ssc.gov.in/cgl.pdf'])
 
 
+def test_replay_keeps_the_documents_discovery_turned_away() -> None:
+    """A manifest records what discovery rejected; a replay that dropped them lost that audit."""
+    ss = _source_set(['https://ssc.gov.in/cgl.pdf'])
+    ss.rejected.append(DiscoveredDoc(url='https://ssc.gov.in/chsl.pdf', kind=DocKind.NOTIFICATION,
+                                     title='Another exam', relevance=Relevance.DIRECT, matched=['chsl']))
+    replay = to_source_set(from_source_set(ss, query='q', authority_name='Staff Selection Commission'))
+    check('the rejected document survives a replay', [d.url for d in replay.rejected],
+          ['https://ssc.gov.in/chsl.pdf'])
+    check('and is still not a source', [d.url for d in replay.docs], ['https://ssc.gov.in/cgl.pdf'])
+
+
 def main() -> int:
     test_fresh_discovery_can_vary_but_replay_cannot()
     test_manifest_round_trips_on_disk_and_is_never_overwritten()
@@ -183,6 +194,7 @@ def main() -> int:
     test_replay_does_not_bypass_the_publication_gate()
     test_unfetchable_source_is_infrastructure_not_absence()
     test_changed_source_is_surfaced()
+    test_replay_keeps_the_documents_discovery_turned_away()
     if _FAILURES:
         print(f'{len(_FAILURES)} FAILURE(S):')
         for f in _FAILURES:
